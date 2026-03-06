@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
+import { NativePushListener } from "@/components/NativePushListener";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -95,6 +96,7 @@ function AppRoutes() {
       {user && <BottomNav />}
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
+      {user && <NativePushListener />}
     </div>
   );
 }

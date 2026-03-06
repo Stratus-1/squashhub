@@ -48,3 +48,35 @@ Required Supabase secrets for the function:
 
 - `STRAVA_CLIENT_ID`
 - `STRAVA_CLIENT_SECRET`
+
+## Push notifications (PWA + APK)
+
+This project supports:
+
+- **PWA (installed from Chrome)**: Web Push via service worker + VAPID.
+- **APK/iOS builds (Capacitor)**: Native push via **Firebase Cloud Messaging (FCM)**.
+
+### PWA (Web Push)
+
+1. Deploy:
+   - `supabase functions deploy push-notifications`
+   - `supabase db push`
+2. On Android/Chrome: install the PWA from the Vercel site and tap **Enable Notifications** in-app.
+
+### Native (APK/iOS) via FCM
+
+1. Create a Firebase project and add apps:
+   - Android package: `com.gbsquash.hub`
+   - iOS bundle id: `com.gbsquash.hub` (or update `capacitor.config.ts` to match)
+2. Download config files:
+   - Android: `google-services.json` -> `android/app/google-services.json`
+   - iOS: `GoogleService-Info.plist` -> `ios/App/App/GoogleService-Info.plist`
+3. Add Supabase secret for sending pushes:
+   - `FCM_SERVER_KEY` (Firebase Cloud Messaging legacy server key)
+4. Sync native projects:
+   - `npm run cap:sync`
+5. Build/run:
+   - Android: `npm run cap:android`
+   - iOS: `npm run cap:ios`
+
+Note: native push won’t show in the Android notification bar until Firebase is configured and the device token is successfully registered (Enable Notifications prompt).

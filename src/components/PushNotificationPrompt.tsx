@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { Bell, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useAppPushNotifications } from "@/hooks/use-app-push-notifications";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function PushNotificationPrompt() {
   const { user } = useAuth();
-  const { permission, isSubscribed, loading, subscribe } = usePushNotifications();
+  const { permission, isSubscribed, loading, subscribe, kind } = useAppPushNotifications();
   const [dismissed, setDismissed] = useState(false);
   const [show, setShow] = useState(false);
 
@@ -59,6 +59,7 @@ export function PushNotificationPrompt() {
                 <p className="text-sm font-semibold">Stay in the game!</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Get notified about new challenges, match results, and court availability.
+                  {kind === "native" ? " (Android/iOS)" : " (PWA)"}
                 </p>
                 <div className="flex gap-2 mt-3">
                   <Button

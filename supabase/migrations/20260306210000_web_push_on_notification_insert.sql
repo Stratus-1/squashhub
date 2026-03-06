@@ -9,7 +9,10 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 -- Internal secret shared between Postgres trigger -> edge function.
 -- Stored in app_settings under a "private" key so authenticated clients cannot read it via RLS.
 INSERT INTO public.app_settings (key, value)
-VALUES ('push_private_internal_secret', encode(gen_random_bytes(32), 'hex'))
+VALUES (
+  'push_private_internal_secret',
+  encode(uuid_send(gen_random_uuid()) || uuid_send(gen_random_uuid()), 'hex')
+)
 ON CONFLICT (key) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION public.deliver_web_push_for_notification()
@@ -58,4 +61,3 @@ CREATE TRIGGER deliver_web_push_for_notification_trigger
   AFTER INSERT ON public.notifications
   FOR EACH ROW
   EXECUTE FUNCTION public.deliver_web_push_for_notification();
-

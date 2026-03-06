@@ -33,10 +33,6 @@ export default function Profile() {
     ?.trim()
     ?.replace(/\/+$/, "");
 
-  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
-    ?.trim()
-    ?.replace(/\/+$/, "");
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -109,23 +105,11 @@ export default function Profile() {
                       onClick={async () => {
                         try {
                           setStravaSyncing(true);
-                          const { data: sessionData } = await supabase.auth.getSession();
-                          const token = sessionData.session?.access_token;
-                          if (!token) throw new Error("You must be logged in");
-                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
-                          const res = await fetch(
-                            `${supabaseUrl}/functions/v1/strava?action=sync`,
-                            {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
-                              },
-                              body: JSON.stringify({}),
-                            }
-                          );
-                          const payload = await res.json();
-                          if (!res.ok) throw new Error(payload?.error || "Sync failed");
+                          const { data: payload, error: fnError } = await supabase.functions.invoke("strava", {
+                            body: { action: "sync" },
+                          });
+                          if (fnError) throw fnError;
+                          if (!payload?.totals) throw new Error("Sync failed");
 
                           const km = Math.round((payload.totals.distance_m / 1000) * 10) / 10;
                           const minutes = Math.round(payload.totals.moving_time_s / 60);
@@ -146,23 +130,11 @@ export default function Profile() {
                       disabled={stravaSyncing}
                       onClick={async () => {
                         try {
-                          const { data: sessionData } = await supabase.auth.getSession();
-                          const token = sessionData.session?.access_token;
-                          if (!token) throw new Error("You must be logged in");
-                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
-                          const res = await fetch(
-                            `${supabaseUrl}/functions/v1/strava?action=disconnect`,
-                            {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
-                              },
-                              body: JSON.stringify({}),
-                            }
-                          );
-                          const payload = await res.json();
-                          if (!res.ok) throw new Error(payload?.error || "Failed to disconnect");
+                          const { data: payload, error: fnError } = await supabase.functions.invoke("strava", {
+                            body: { action: "disconnect" },
+                          });
+                          if (fnError) throw fnError;
+                          if (!payload?.disconnected) throw new Error("Failed to disconnect");
                           toast.success("Strava disconnected");
                           queryClient.invalidateQueries({ queryKey: ["integrations"] });
                         } catch (e: any) {

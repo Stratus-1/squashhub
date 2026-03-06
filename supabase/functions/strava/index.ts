@@ -152,13 +152,28 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    let body: Record<string, unknown> | null = null;
+    if (req.method !== "GET") {
+      const contentType = req.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        try {
+          body = (await req.json()) as Record<string, unknown>;
+        } catch {
+          body = null;
+        }
+      }
+    }
+
+    const action =
+      url.searchParams.get("action") ??
+      (typeof body?.action === "string" ? (body.action as string) : null);
 
     const user = await getUserFromRequest(req);
     if (!user) return jsonResponse(401, { error: "Unauthorized" });
 
     if (action === "exchange") {
-      const { code, scope } = await req.json();
+      const code = typeof body?.code === "string" ? (body.code as string) : null;
+      const scope = typeof body?.scope === "string" ? (body.scope as string) : null;
       if (!code) return jsonResponse(400, { error: "Missing code" });
 
       const token = await stravaTokenExchange(code);

@@ -69,7 +69,55 @@ type RecordDialogState = {
   winnerId: string;
   matchDate: string;
   courtId: string;
+  durationMinutes: string;
+  notes: string;
+  sets: Array<{ a: string; b: string }>;
 };
+
+type AcceptDialogState = {
+  open: boolean;
+  challenge: ChallengeWithProfiles | null;
+  date: string;
+};
+
+function parseGameScores(value: string | null): { sets?: Array<{ a: number; b: number }>; notes?: string } | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as any;
+  } catch {
+    return null;
+  }
+}
+
+function computeFromSets(sets: Array<{ a: number; b: number }>) {
+  if (sets.length === 0) return null;
+  if (sets.length > 5) return { error: "Max 5 sets" } as const;
+
+  let aSets = 0;
+  let bSets = 0;
+  for (let i = 0; i < sets.length; i++) {
+    const s = sets[i];
+    if (!Number.isFinite(s.a) || !Number.isFinite(s.b)) return { error: "Invalid set score" } as const;
+    if (s.a < 0 || s.b < 0) return { error: "Set score can't be negative" } as const;
+    if (s.a === s.b) return { error: "Set score can't be tied" } as const;
+
+    const aWins = s.a === 15 && s.b >= 0 && s.b <= 14;
+    const bWins = s.b === 15 && s.a >= 0 && s.a <= 14;
+    if (!aWins && !bWins) return { error: "Each set must be first to 15 (15-x)" } as const;
+
+    if (aWins) aSets += 1;
+    if (bWins) bSets += 1;
+
+    if (aSets === 3 || bSets === 3) {
+      if (i !== sets.length - 1) return { error: "Remove extra sets after match is won" } as const;
+    }
+  }
+
+  if (aSets !== 3 && bSets !== 3) return { error: "Best of 5: first to 3 sets wins" } as const;
+  return { aSets, bSets } as const;
+}
 
 export default function Challenges() {
   const navigate = useNavigate();
@@ -95,11 +143,23 @@ export default function Challenges() {
     winnerId: "",
     matchDate: format(new Date(), "yyyy-MM-dd"),
     courtId: "1",
+    durationMinutes: "",
+    notes: "",
+    sets: [{ a: "", b: "" }, { a: "", b: "" }, { a: "", b: "" }],
+  }));
+
+  const [accept, setAccept] = useState<AcceptDialogState>(() => ({
+    open: false,
+    challenge: null,
+    date: format(new Date(), "yyyy-MM-dd"),
   }));
 
   const openRecord = (challenge: ChallengeWithProfiles) => {
     const existing = matchByChallengeId.get(challenge.id);
     const date = (existing?.match_date || challenge.proposed_date) ?? format(new Date(), "yyyy-MM-dd");
+    const parsed = parseGameScores(existing?.game_scores ?? null);
+    const existingSets =
+      parsed?.sets?.slice(0, 5)?.map((s) => ({ a: String(s.a), b: String(s.b) })) || null;
     setRecord({
       open: true,
       challenge,
@@ -107,6 +167,9 @@ export default function Challenges() {
       winnerId: existing?.winner_id || "",
       matchDate: date,
       courtId: String(existing?.court_id || 1),
+      durationMinutes: existing?.duration_s ? String(Math.round((existing.duration_s as any) / 60)) : "",
+      notes: (existing?.notes as any) || parsed?.notes || "",
+      sets: existingSets || [{ a: "", b: "" }, { a: "", b: "" }, { a: "", b: "" }],
     });
   };
 
@@ -114,9 +177,19 @@ export default function Challenges() {
     setRecord((s) => ({ ...s, open: false, challenge: null }));
   };
 
-  const respond = async (challengeId: string, status: "accepted" | "declined") => {
+  const openAccept = (challenge: ChallengeWithProfiles) => {
+    setAccept({
+      open: true,
+      challenge,
+      date: challenge.proposed_date ?? format(new Date(), "yyyy-MM-dd"),
+    });
+  };
+
+  const closeAccept = () => setAccept((s) => ({ ...s, open: false, challenge: null }));
+
+  const respond = async (challengeId: string, status: "accepted" | "declined", proposedDate?: string | null) => {
     try {
-      await updateChallenge.mutateAsync({ challengeId, status });
+      await updateChallenge.mutateAsync({ challengeId, status, proposedDate });
       toast.success(status === "accepted" ? "Challenge accepted" : "Challenge declined");
     } catch (err: any) {
       toast.error(err.message || "Failed to update challenge");
@@ -142,21 +215,59 @@ export default function Challenges() {
       return;
     }
 
-    const winnerId = record.winnerId || null;
-    if (!winnerId) {
-      toast.error("Choose a winner");
+    const cleanedSets = record.sets
+      .map((s) => ({ a: s.a.trim(), b: s.b.trim() }))
+      .filter((s) => s.a !== "" || s.b !== "");
+
+    let winnerId = record.winnerId || null;
+    let score = (record.score || "").trim() || null;
+    let gameScores: string | null = null;
+
+    if (cleanedSets.length > 0) {
+      const numericSets = cleanedSets.map((s) => ({ a: Number(s.a), b: Number(s.b) }));
+      const computed = computeFromSets(numericSets);
+      if ((computed as any)?.error) {
+        toast.error((computed as any).error);
+        return;
+      }
+      const { aSets, bSets } = computed as any;
+      score = `${aSets}-${bSets}`;
+      winnerId = aSets > bSets ? challenge.challenger_id : challenge.opponent_id;
+      gameScores = JSON.stringify({
+        format: { best_of: 5, points_to: 15 },
+        sets: numericSets,
+      });
+    } else {
+      if (!winnerId) {
+        toast.error("Choose a winner (or enter set scores)");
+        return;
+      }
+      if (!score) {
+        toast.error("Enter a score (e.g. 3-1) or set scores");
+        return;
+      }
+    }
+
+    const minutes = record.durationMinutes.trim() ? Number(record.durationMinutes) : null;
+    if (minutes != null && (!Number.isFinite(minutes) || minutes < 0 || minutes > 600)) {
+      toast.error("Duration must be between 0 and 600 minutes");
       return;
     }
+    const durationS = minutes == null ? null : Math.round(minutes * 60);
+    const notes = record.notes.trim() || null;
 
     try {
       await createMatch.mutateAsync({
         playerA: challenge.challenger_id,
         playerB: challenge.opponent_id,
         winnerId,
-        score: record.score || null,
+        score,
         matchDate: record.matchDate,
         courtId: Number(record.courtId) || 1,
         challengeId: challenge.id,
+        gameScores,
+        durationS,
+        notes,
       });
       toast.success("Result submitted (awaiting confirmation)");
       closeRecord();
@@ -217,9 +328,9 @@ export default function Challenges() {
               const isOutgoing = user?.id === challenge.challenger_id;
               const canRespond = challenge.status === "pending" && isIncoming;
               const canWithdraw = challenge.status === "pending" && isOutgoing;
-              const canRecord = challenge.status === "accepted" && !match;
 
               const match = matchByChallengeId.get(challenge.id);
+              const canRecord = challenge.status === "accepted" && !match;
 
               return (
                 <div
@@ -284,6 +395,16 @@ export default function Challenges() {
                         )}
                       </p>
                     )}
+                    {match?.game_scores && (() => {
+                      const parsed = parseGameScores(match.game_scores);
+                      const sets = parsed?.sets?.map((s) => `${s.a}-${s.b}`).join(" · ");
+                      if (!sets) return null;
+                      return (
+                        <p className="text-[11px] text-muted-foreground mt-1 text-center">
+                          Sets: {sets}
+                        </p>
+                      );
+                    })()}
 
                     {canRespond && (
                       <div className="flex gap-2 mt-3">
@@ -291,7 +412,7 @@ export default function Challenges() {
                           size="sm"
                           className="flex-1 h-8 text-xs"
                           disabled={updateChallenge.isPending}
-                          onClick={() => respond(challenge.id, "accepted")}
+                          onClick={() => openAccept(challenge)}
                         >
                           Accept
                         </Button>
@@ -413,6 +534,17 @@ export default function Challenges() {
                     </div>
                   </div>
 
+                  {match.game_scores && (() => {
+                    const parsed = parseGameScores(match.game_scores);
+                    const sets = parsed?.sets?.map((s) => `${s.a}-${s.b}`).join(" · ");
+                    if (!sets) return null;
+                    return (
+                      <p className="text-[11px] text-muted-foreground mt-2 text-center">
+                        Sets: {sets}
+                      </p>
+                    );
+                  })()}
+
                   {canConfirm && (
                     <div className="flex gap-2 mt-3">
                       <Button
@@ -501,7 +633,67 @@ export default function Challenges() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="score">Score</Label>
+                <Label>Set scores (optional)</Label>
+                <div className="space-y-2">
+                  {record.sets.slice(0, 5).map((set, idx) => (
+                    <div key={idx} className="grid grid-cols-[1fr_24px_1fr] gap-2 items-center">
+                      <Input
+                        inputMode="numeric"
+                        placeholder="15"
+                        value={set.a}
+                        onChange={(e) =>
+                          setRecord((s) => {
+                            const next = [...s.sets];
+                            next[idx] = { ...next[idx], a: e.target.value };
+                            return { ...s, sets: next };
+                          })
+                        }
+                      />
+                      <span className="text-center text-xs text-muted-foreground">-</span>
+                      <Input
+                        inputMode="numeric"
+                        placeholder="12"
+                        value={set.b}
+                        onChange={(e) =>
+                          setRecord((s) => {
+                            const next = [...s.sets];
+                            next[idx] = { ...next[idx], b: e.target.value };
+                            return { ...s, sets: next };
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() => setRecord((s) => ({ ...s, sets: [...s.sets, { a: "", b: "" }].slice(0, 5) }))}
+                      disabled={record.sets.length >= 5}
+                    >
+                      Add set
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() => setRecord((s) => ({ ...s, sets: s.sets.slice(0, Math.max(1, s.sets.length - 1)) }))}
+                      disabled={record.sets.length <= 1}
+                    >
+                      Remove set
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Best of 5 · first to 15 each set.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="score">Match score (if not using set scores)</Label>
                 <Input
                   id="score"
                   placeholder="e.g. 3-1"
@@ -530,6 +722,29 @@ export default function Challenges() {
                     {record.challenge.opponent_name}
                   </Button>
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Tip: entering set scores will auto-pick the winner.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Duration (minutes)</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="e.g. 45"
+                    value={record.durationMinutes}
+                    onChange={(e) => setRecord((s) => ({ ...s, durationMinutes: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Notes</Label>
+                  <Input
+                    placeholder="Optional"
+                    value={record.notes}
+                    onChange={(e) => setRecord((s) => ({ ...s, notes: e.target.value }))}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -553,6 +768,46 @@ export default function Challenges() {
               ) : (
                 "Submit Result"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accept.open} onOpenChange={(open) => (!open ? closeAccept() : null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Accept Challenge</DialogTitle>
+          </DialogHeader>
+
+          {accept.challenge && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Confirm the date for this match. You can still record the result later.
+              </p>
+              <div className="space-y-1.5">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={accept.date}
+                  onChange={(e) => setAccept((s) => ({ ...s, date: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={closeAccept}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!accept.challenge) return;
+                await respond(accept.challenge.id, "accepted", accept.date || null);
+                closeAccept();
+              }}
+              disabled={updateChallenge.isPending}
+            >
+              Accept
             </Button>
           </DialogFooter>
         </DialogContent>

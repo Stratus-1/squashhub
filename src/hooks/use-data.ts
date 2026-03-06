@@ -290,13 +290,17 @@ export function useUpdateChallengeStatus() {
     mutationFn: async ({
       challengeId,
       status,
+      proposedDate,
     }: {
       challengeId: string;
       status: ChallengeStatus;
+      proposedDate?: string | null;
     }) => {
+      const patch: Record<string, any> = { status };
+      if (typeof proposedDate !== "undefined") patch.proposed_date = proposedDate;
       const { data, error } = await supabase
         .from("challenges")
-        .update({ status })
+        .update(patch)
         .eq("id", challengeId)
         .select()
         .single();
@@ -323,6 +327,8 @@ export type MatchWithProfiles = {
   confirmed: boolean;
   disputed: boolean;
   challenge_id: string | null;
+  duration_s?: number | null;
+  notes?: string | null;
   created_at: string;
   player_a_name: string;
   player_b_name: string;
@@ -377,6 +383,8 @@ export function useCreateMatch() {
       courtId,
       challengeId,
       gameScores,
+      durationS,
+      notes,
     }: {
       playerA: string;
       playerB: string;
@@ -386,6 +394,8 @@ export function useCreateMatch() {
       courtId?: number | null;
       challengeId?: string | null;
       gameScores?: string | null;
+      durationS?: number | null;
+      notes?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
 
@@ -400,6 +410,8 @@ export function useCreateMatch() {
           court_id: courtId ?? null,
           challenge_id: challengeId ?? null,
           game_scores: gameScores ?? null,
+          duration_s: durationS ?? null,
+          notes: notes ?? null,
           submitted_by: user.id,
           confirmed: false,
           disputed: false,

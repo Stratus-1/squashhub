@@ -54,10 +54,26 @@ export default function PlayerProfile() {
       const nameMap = new Map((profiles || []).map((p: any) => [p.id, p.name as string]));
       return (matches || []).map((m: any) => {
         const opponentId = m.player_a === id ? m.player_b : m.player_a;
+        let sets_text: string | null = null;
+        if (m.game_scores) {
+          try {
+            const parsed = JSON.parse(m.game_scores);
+            const sets = parsed?.sets;
+            if (Array.isArray(sets) && sets.length > 0) {
+              sets_text = sets
+                .slice(0, 5)
+                .map((s: any) => `${s?.a}-${s?.b}`)
+                .join(" · ");
+            }
+          } catch {
+            sets_text = null;
+          }
+        }
         return {
           ...m,
           opponent_name: nameMap.get(opponentId) || "Unknown",
           is_win: m.winner_id === id,
+          sets_text,
         };
       });
     },
@@ -253,6 +269,11 @@ export default function PlayerProfile() {
                       <p className="text-xs text-muted-foreground">
                         {m.match_date} · Court {m.court_id || "—"}
                       </p>
+                      {m.sets_text && (
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          Sets: {m.sets_text}
+                        </p>
+                      )}
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-sm font-semibold">{m.score || "—"}</p>

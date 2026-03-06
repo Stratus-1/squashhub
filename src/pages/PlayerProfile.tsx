@@ -8,7 +8,7 @@ import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { usePlayerProfile, useProfile } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Swords, Trophy, Target, TrendingUp } from "lucide-react";
+import { Activity, Flame, Loader2, Swords, Target, Timer, Trophy, TrendingUp } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -31,8 +31,8 @@ export default function PlayerProfile() {
   const { data: me } = useProfile();
   const { data: player, isLoading } = usePlayerProfile(id);
 
-  const { data: recentMatches, isLoading: recentMatchesLoading } = useQuery({
-    queryKey: ["player-recent-matches", id],
+  const { data: matches, isLoading: matchesLoading } = useQuery({
+    queryKey: ["player-matches", id],
     queryFn: async () => {
       if (!id) return [];
       const { data: matches, error } = await supabase
@@ -41,7 +41,7 @@ export default function PlayerProfile() {
         .or(`player_a.eq.${id},player_b.eq.${id}`)
         .order("match_date", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(50);
       if (error) throw error;
 
       const opponentIds = [...new Set((matches || []).flatMap((m: any) => [m.player_a, m.player_b]).filter((x: string) => x !== id))];
@@ -103,6 +103,129 @@ export default function PlayerProfile() {
     if (!player) return 0;
     return player.matches_played > 0 ? Math.round((player.wins / player.matches_played) * 100) : 0;
   }, [player]);
+
+  const matchStats = useMemo(() => {
+    if (!id) {
+      return {
+        confirmedCount: 0,
+        confirmedWins: 0,
+        confirmedLosses: 0,
+        winRateConfirmed: 0,
+        streakLabel: "—",
+        lastMatchDate: null as string | null,
+        avgDurationMin: null as number | null,
+        setsFor: 0,
+        setsAgainst: 0,
+        pointsFor: 0,
+        pointsAgainst: 0,
+        recentForm: "" as string,
+      };
+    }
+
+    const confirmed = (matches || [])
+      .filter((m: any) => m.confirmed === true && m.disputed !== true && m.winner_id)
+      .slice()
+      .sort((a: any, b: any) => String(b.match_date || "").localeCompare(String(a.match_date || "")));
+
+    let confirmedWins = 0;
+    let confirmedLosses = 0;
+    let durationTotalS = 0;
+    let durationCount = 0;
+    let setsFor = 0;
+    let setsAgainst = 0;
+    let pointsFor = 0;
+    let pointsAgainst = 0;
+    const form: string[] = [];
+
+    for (const m of confirmed) {
+      const isWin = m.winner_id === id;
+      if (isWin) confirmedWins += 1;
+      else confirmedLosses += 1;
+      if (form.length < 5) form.push(isWin ? "W" : "L");
+
+      if (typeof m.duration_s === "number" && Number.isFinite(m.duration_s) && m.duration_s > 0) {
+        durationTotalS += m.duration_s;
+        durationCount += 1;
+      }
+
+      const isPlayerA = m.player_a === id;
+
+      // Sets + points stats from game_scores when available (best source of truth).
+      if (m.game_scores) {
+        try {
+          const parsed = JSON.parse(m.game_scores);
+          const sets = parsed?.sets;
+          if (Array.isArray(sets)) {
+            for (const s of sets) {
+              const a = Number(s?.a);
+              const b = Number(s?.b);
+              if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+
+              const myPts = isPlayerA ? a : b;
+              const oppPts = isPlayerA ? b : a;
+              pointsFor += myPts;
+              pointsAgainst += oppPts;
+
+              if (myPts === 15 && oppPts >= 0 && oppPts <= 14) setsFor += 1;
+              if (oppPts === 15 && myPts >= 0 && myPts <= 14) setsAgainst += 1;
+            }
+          }
+        } catch {
+          // ignore
+        }
+        continue;
+      }
+
+      // Fallback: infer sets from "score" when game_scores is missing.
+      if (typeof m.score === "string" && m.score.includes("-")) {
+        const [a, b] = m.score.split("-").map((x: string) => Number(x.trim()));
+        if (Number.isFinite(a) && Number.isFinite(b)) {
+          if (isPlayerA) {
+            setsFor += a;
+            setsAgainst += b;
+          } else {
+            setsFor += b;
+            setsAgainst += a;
+          }
+        }
+      }
+    }
+
+    const confirmedCount = confirmedWins + confirmedLosses;
+    const winRateConfirmed = confirmedCount > 0 ? Math.round((confirmedWins / confirmedCount) * 100) : 0;
+
+    let streakLabel = "—";
+    if (confirmedCount > 0) {
+      const first = confirmed[0];
+      const firstIsWin = first.winner_id === id;
+      let streak = 0;
+      for (const m of confirmed) {
+        const isWin = m.winner_id === id;
+        if (isWin !== firstIsWin) break;
+        streak += 1;
+      }
+      streakLabel = `${firstIsWin ? "W" : "L"}${streak}`;
+    }
+
+    const lastMatchDate = confirmed[0]?.match_date ? String(confirmed[0].match_date) : null;
+    const avgDurationMin =
+      durationCount > 0 ? Math.round(durationTotalS / durationCount / 60) : null;
+
+    return {
+      confirmedCount,
+      confirmedWins,
+      confirmedLosses,
+      winRateConfirmed,
+      streakLabel,
+      lastMatchDate,
+      avgDurationMin,
+      setsFor,
+      setsAgainst,
+      pointsFor,
+      pointsAgainst,
+      recentForm: form.join(""),
+    };
+  }, [id, matches]);
 
   const canChallenge = useMemo(() => {
     if (!user?.id || !me?.rank || !player?.rank) return false;
@@ -198,6 +321,48 @@ export default function PlayerProfile() {
         <StatCard label="Win %" value={`${winRate}%`} icon={<TrendingUp className="w-4 h-4" />} />
       </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 mt-2">
+        <StatCard
+          label="Streak"
+          value={matchStats.streakLabel}
+          icon={<Flame className="w-4 h-4" />}
+        />
+        <StatCard
+          label="Sets +/-"
+          value={`${matchStats.setsFor - matchStats.setsAgainst}`}
+          icon={<Activity className="w-4 h-4" />}
+        />
+        <StatCard
+          label="Points +/-"
+          value={`${matchStats.pointsFor - matchStats.pointsAgainst}`}
+          icon={<Activity className="w-4 h-4" />}
+        />
+        <StatCard
+          label="Avg mins"
+          value={matchStats.avgDurationMin != null ? `${matchStats.avgDurationMin}m` : "—"}
+          icon={<Timer className="w-4 h-4" />}
+        />
+      </div>
+
+      <div className="px-4 mt-2">
+        <Card className="p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Confirmed: <span className="text-foreground font-medium">{matchStats.confirmedWins}W {matchStats.confirmedLosses}L</span> ·{" "}
+              <span className="text-foreground font-medium">{matchStats.winRateConfirmed}%</span> win
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Last: <span className="text-foreground font-medium">{matchStats.lastMatchDate || "—"}</span>
+            </p>
+          </div>
+          {matchStats.recentForm ? (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Recent form: <span className="text-foreground font-medium">{matchStats.recentForm}</span>
+            </p>
+          ) : null}
+        </Card>
+      </div>
+
       <Separator className="my-5 mx-4" />
 
       <div className="px-4 mb-4">
@@ -251,15 +416,15 @@ export default function PlayerProfile() {
             </Badge>
           </div>
 
-          {recentMatchesLoading ? (
+          {matchesLoading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </div>
-          ) : (recentMatches || []).length === 0 ? (
+          ) : (matches || []).length === 0 ? (
             <p className="text-sm text-muted-foreground mt-2">No matches recorded yet.</p>
           ) : (
             <div className="mt-3 space-y-2">
-              {(recentMatches || []).slice(0, 10).map((m: any) => (
+              {(matches || []).slice(0, 10).map((m: any) => (
                 <div key={m.id} className="rounded-md border p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

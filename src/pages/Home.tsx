@@ -38,7 +38,7 @@ export default function Home() {
     name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background bottom-nav-safe">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
@@ -46,7 +46,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--court))]/90 via-[hsl(var(--court))]/70 to-background" />
         </div>
 
-        <div className="relative z-10 px-5 pt-12 pb-10">
+        <div className="relative z-10 w-full px-4 sm:px-6 lg:px-[5%] pt-12 pb-10">
           {/* Nav bar */}
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export default function Home() {
                 size="sm"
                 variant="outline"
                 className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/dashboard")}
               >
                 Dashboard
               </Button>
@@ -76,29 +76,29 @@ export default function Home() {
 
           {/* Hero content */}
           <motion.div {...fadeUp} transition={{ duration: 0.5 }}>
-            <h1 className="font-heading text-3xl font-bold text-primary-foreground leading-tight mb-3">
+            <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground leading-tight mb-3">
               Gordon's Bay<br />Squash Club
             </h1>
-            <p className="text-primary-foreground/80 text-sm leading-relaxed mb-6 max-w-xs">
+            <p className="text-primary-foreground/80 text-sm sm:text-base leading-relaxed mb-6 max-w-none w-[92%] sm:w-[70%] lg:w-[55%]">
               Book courts, challenge players, and track your performance — all in one place.
             </p>
           </motion.div>
 
           {/* CTA Buttons */}
           <motion.div
-            className="flex gap-3"
+            className="flex flex-col sm:flex-row gap-3"
             {...fadeUp}
             transition={{ delay: 0.15, duration: 0.5 }}
           >
             <Button
-              className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
+              className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold w-full sm:w-auto"
               onClick={() => navigate(user ? "/bookings" : "/auth")}
             >
               <Calendar className="w-4 h-4 mr-1.5" /> Book a Court
             </Button>
             <Button
               variant="outline"
-              className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
+              className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
               onClick={() => navigate(user ? "/ladder" : "/auth")}
             >
               <Trophy className="w-4 h-4 mr-1.5" /> View Ladder
@@ -107,7 +107,7 @@ export default function Home() {
 
           {/* Live stats strip */}
           <motion.div
-            className="flex gap-3 mt-8"
+            className="flex flex-wrap gap-2 sm:gap-3 mt-8"
             {...fadeUp}
             transition={{ delay: 0.25, duration: 0.5 }}
           >
@@ -127,14 +127,15 @@ export default function Home() {
         </div>
       </section>
 
+      <div className="w-full">
       {/* Quick Actions */}
       <motion.section
-        className="px-4 -mt-1 relative z-20"
+        className="px-4 sm:px-6 lg:px-[5%] -mt-1 relative z-20"
         {...fadeUp}
         transition={{ delay: 0.3 }}
       >
         <h2 className="font-heading font-semibold text-base mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { icon: Calendar, label: "Book a Court", desc: "Reserve Court 1 or 2", to: "/bookings", color: "text-primary" },
             { icon: Swords, label: "Challenge Player", desc: "Send a ladder challenge", to: "/challenges", color: "text-accent-foreground" },
@@ -162,7 +163,7 @@ export default function Home() {
 
       {/* Ladder Rankings */}
       <motion.section
-        className="px-4 mt-8"
+        className="px-4 sm:px-6 lg:px-[5%] mt-8"
         {...fadeUp}
         transition={{ delay: 0.35 }}
       >
@@ -222,7 +223,7 @@ export default function Home() {
 
       {/* Court Availability */}
       <motion.section
-        className="px-4 mt-8"
+        className="px-4 sm:px-6 lg:px-[5%] mt-8"
         {...fadeUp}
         transition={{ delay: 0.4 }}
       >
@@ -286,7 +287,7 @@ export default function Home() {
       {/* Player Spotlight */}
       {spotlight && (
         <motion.section
-          className="px-4 mt-8"
+          className="px-4 sm:px-6 lg:px-[5%] mt-8"
           {...fadeUp}
           transition={{ delay: 0.45 }}
         >
@@ -324,7 +325,7 @@ export default function Home() {
       {/* Join CTA for unauthenticated */}
       {!user && (
         <motion.section
-          className="px-4 mt-10 mb-8"
+          className="px-4 sm:px-6 lg:px-[5%] mt-10 mb-8"
           {...fadeUp}
           transition={{ delay: 0.5 }}
         >
@@ -346,11 +347,12 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <footer className="px-4 py-6 text-center border-t border-border mt-8">
+      <footer className="px-4 sm:px-6 lg:px-[5%] py-6 text-center border-t border-border mt-8">
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} Gordon's Bay Squash Club
         </p>
       </footer>
+      </div>
     </div>
   );
 }

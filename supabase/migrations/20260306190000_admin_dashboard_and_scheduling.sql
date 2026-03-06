@@ -363,7 +363,7 @@ BEGIN
     next_rank
   );
 
-  IF NEW.email = 'danielmommsen@hotmail.com' THEN
+  IF NEW.email = 'danielmommsen2@gmail.com' THEN
     INSERT INTO public.user_roles (user_id, role)
     VALUES (NEW.id, 'admin'::public.app_role)
     ON CONFLICT (user_id, role) DO NOTHING;

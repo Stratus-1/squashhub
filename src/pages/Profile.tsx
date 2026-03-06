@@ -628,12 +628,14 @@ export default function Profile() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Profile</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
+          <div className="p-6 pb-4 border-b">
+            <DialogHeader>
+              <DialogTitle>Edit Profile</DialogTitle>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input value={edit.name} onChange={(e) => setEdit((s) => ({ ...s, name: e.target.value }))} />
@@ -717,51 +719,53 @@ export default function Profile() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button
-              onClick={async () => {
-                try {
-                  if (!user?.id) throw new Error("You must be logged in");
-                  setEditSaving(true);
-                  const years = edit.years_playing.trim() ? Number(edit.years_playing) : null;
-                  if (years != null && (!Number.isFinite(years) || years < 0 || years > 80)) {
-                    throw new Error("Years playing must be between 0 and 80");
+          <div className="p-6 pt-4 border-t bg-background">
+            <DialogFooter>
+              <Button
+                onClick={async () => {
+                  try {
+                    if (!user?.id) throw new Error("You must be logged in");
+                    setEditSaving(true);
+                    const years = edit.years_playing.trim() ? Number(edit.years_playing) : null;
+                    if (years != null && (!Number.isFinite(years) || years < 0 || years > 80)) {
+                      throw new Error("Years playing must be between 0 and 80");
+                    }
+
+                    const { error } = await supabase
+                      .from("profiles")
+                      .update({
+                        name: edit.name.trim(),
+                        bio: edit.bio.trim() || null,
+                        location: edit.location.trim() || null,
+                        home_club: edit.home_club.trim() || null,
+                        dominant_hand: edit.dominant_hand || null,
+                        years_playing: years == null ? null : Math.trunc(years),
+                        playing_style: edit.playing_style.trim() || null,
+                        favorite_shot: edit.favorite_shot.trim() || null,
+                        availability: edit.availability.trim() || null,
+                      } as any)
+                      .eq("id", user.id);
+                    if (error) throw error;
+
+                    await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+                    await queryClient.invalidateQueries({ queryKey: ["player-profile", user.id] });
+                    toast.success("Profile updated");
+                    setEditOpen(false);
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to update profile");
+                  } finally {
+                    setEditSaving(false);
                   }
-
-                  const { error } = await supabase
-                    .from("profiles")
-                    .update({
-                      name: edit.name.trim(),
-                      bio: edit.bio.trim() || null,
-                      location: edit.location.trim() || null,
-                      home_club: edit.home_club.trim() || null,
-                      dominant_hand: edit.dominant_hand || null,
-                      years_playing: years == null ? null : Math.trunc(years),
-                      playing_style: edit.playing_style.trim() || null,
-                      favorite_shot: edit.favorite_shot.trim() || null,
-                      availability: edit.availability.trim() || null,
-                    } as any)
-                    .eq("id", user.id);
-                  if (error) throw error;
-
-                  await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
-                  await queryClient.invalidateQueries({ queryKey: ["player-profile", user.id] });
-                  toast.success("Profile updated");
-                  setEditOpen(false);
-                } catch (e: any) {
-                  toast.error(e.message || "Failed to update profile");
-                } finally {
-                  setEditSaving(false);
-                }
-              }}
-              disabled={editSaving}
-            >
-              {editSaving ? "Saving…" : "Save"}
-            </Button>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
+                }}
+                disabled={editSaving}
+              >
+                {editSaving ? "Saving…" : "Save"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditOpen(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

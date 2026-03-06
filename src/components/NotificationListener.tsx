@@ -35,6 +35,19 @@ export function NotificationListener() {
           const row = payload.new as NotificationRow;
           toast(row.title || "Notification", { description: row.message });
           queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+          queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user.id] });
+
+          // Best-effort: show an OS-level notification when permission is granted (foreground only).
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            try {
+              new Notification(row.title || "Gordon's Bay Squash", {
+                body: row.message,
+                icon: "/pwa-192x192.png",
+              });
+            } catch {
+              // ignore (some platforms restrict programmatic notifications)
+            }
+          }
         }
       )
       .subscribe();
@@ -46,4 +59,3 @@ export function NotificationListener() {
 
   return null;
 }
-

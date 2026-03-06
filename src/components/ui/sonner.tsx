@@ -9,6 +9,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      position="top-center"
+      offset={{
+        top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+      }}
       className="toaster group"
       toastOptions={{
         classNames: {

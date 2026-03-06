@@ -2,6 +2,27 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+export function useUnreadNotificationsCount() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["notifications-unread-count", user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
+
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user,
+  });
+}
+
 export function useBookings(date: string) {
   return useQuery({
     queryKey: ["bookings", date],

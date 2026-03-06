@@ -1,6 +1,7 @@
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useUnreadNotificationsCount } from "@/hooks/use-data";
 
 interface PageHeaderProps {
   title: string;
@@ -10,6 +11,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, showNotifications = false }: PageHeaderProps) {
   const navigate = useNavigate();
+  const { data: unreadCount } = useUnreadNotificationsCount();
 
   return (
     <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -25,7 +27,9 @@ export function PageHeader({ title, subtitle, showNotifications = false }: PageH
           onClick={() => navigate("/notifications")}
         >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
+          {(unreadCount ?? 0) > 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
+          )}
         </Button>
       )}
     </div>

@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
+import { useMemo } from "react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -20,6 +21,30 @@ export default function Dashboard() {
   const { data: myBookings } = useMyBookings();
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
+
+  const trackableBooking = useMemo(() => {
+    const list = (myBookings || []).filter((b) => b.status === "active");
+    const now = new Date();
+
+    const candidates = list
+      .filter((b) => b.date === todayStr)
+      .map((b) => {
+        const start = new Date(`${b.date}T${b.start_time}`);
+        const end = new Date(`${b.date}T${b.end_time}`);
+        return { booking: b, start, end };
+      })
+      .filter(({ start, end }) => Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()))
+      .map(({ booking, start, end }) => {
+        const msToStart = start.getTime() - now.getTime();
+        const isStartingSoon = msToStart <= 15 * 60 * 1000 && msToStart >= -5 * 60 * 1000;
+        const isOngoing = now >= start && now <= end;
+        return { booking, start, end, isStartingSoon, isOngoing, msToStart };
+      })
+      .filter((x) => x.isOngoing || x.isStartingSoon)
+      .sort((a, b) => Math.abs(a.msToStart) - Math.abs(b.msToStart));
+
+    return candidates[0] ?? null;
+  }, [myBookings, todayStr]);
 
   if (isLoading) {
     return (
@@ -60,6 +85,33 @@ export default function Dashboard() {
           <span className="text-[11px]">Challenge</span>
         </Button>
       </div>
+
+      {trackableBooking && (
+        <motion.div
+          className="px-4 mt-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold font-heading">
+                {trackableBooking.isOngoing ? "Match in progress" : "Match starting soon"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Track your match with a start/stop timer, then attach the Strava activity after.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="shrink-0"
+              onClick={() => navigate(`/match-tracker/${trackableBooking.booking.id}`)}
+            >
+              Track
+            </Button>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Today's Bookings */}
       <motion.div

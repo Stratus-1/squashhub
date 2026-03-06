@@ -210,6 +210,11 @@ Deno.serve(async (req) => {
           { onConflict: "user_id,provider" }
         );
 
+      await supabaseAdmin
+        .from("profiles")
+        .update({ strava_connected: true, updated_at: new Date().toISOString() })
+        .eq("id", user.id);
+
       return jsonResponse(200, { connected: true });
     }
 
@@ -225,6 +230,19 @@ Deno.serve(async (req) => {
         .delete()
         .eq("user_id", user.id)
         .eq("provider", "strava");
+
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          strava_connected: false,
+          strava_activities_count: null,
+          strava_distance_m: null,
+          strava_moving_time_s: null,
+          strava_elevation_m: null,
+          strava_last_sync_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
 
       return jsonResponse(200, { disconnected: true });
     }
@@ -276,9 +294,62 @@ Deno.serve(async (req) => {
         .eq("user_id", user.id)
         .eq("provider", "strava");
 
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          strava_connected: true,
+          strava_activities_count: activities.length,
+          strava_distance_m: Math.round(totals.distance_m),
+          strava_moving_time_s: Math.round(totals.moving_time_s),
+          strava_elevation_m: Math.round(totals.elevation_m),
+          strava_last_sync_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
       return jsonResponse(200, {
         activitiesCount: activities.length,
         totals,
+      });
+    }
+
+    if (action === "recent") {
+      const { accessToken } = await getValidStravaAccessToken(user.id);
+
+      const res = await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=30", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        return jsonResponse(502, { error: `Strava API error (${res.status}): ${text}` });
+      }
+
+      const activities = (await res.json()) as Array<{
+        id: number;
+        name: string;
+        type: string;
+        sport_type?: string;
+        start_date: string;
+        start_date_local?: string;
+        distance: number;
+        moving_time: number;
+        elapsed_time?: number;
+        total_elevation_gain: number;
+      }>;
+
+      return jsonResponse(200, {
+        activities: activities.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          sport_type: a.sport_type ?? null,
+          start_date: a.start_date,
+          start_date_local: a.start_date_local ?? null,
+          distance: a.distance,
+          moving_time: a.moving_time,
+          elapsed_time: a.elapsed_time ?? null,
+          total_elevation_gain: a.total_elevation_gain,
+        })),
       });
     }
 

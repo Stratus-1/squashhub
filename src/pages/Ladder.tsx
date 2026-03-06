@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,9 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useProfile } from "@/hooks/use-data";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Ladder() {
   const navigate = useNavigate();
@@ -16,6 +20,22 @@ export default function Ladder() {
   const { data: players, isLoading } = useLadder();
   const { data: profile } = useProfile();
   const myRank = profile?.rank ?? null;
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("realtime:ladder-profiles")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles" },
+        () => queryClient.invalidateQueries({ queryKey: ["ladder"] })
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const getInitials = (name: string) =>
     name
@@ -43,6 +63,15 @@ export default function Ladder() {
               player.matches_played > 0
                 ? Math.round((player.wins / player.matches_played) * 100)
                 : 0;
+
+            const stravaKm =
+              (player as any)?.strava_connected && (player as any)?.strava_distance_m != null
+                ? Math.round((Number((player as any).strava_distance_m) / 1000) * 10) / 10
+                : null;
+            const stravaMinutes =
+              (player as any)?.strava_connected && (player as any)?.strava_moving_time_s != null
+                ? Math.round(Number((player as any).strava_moving_time_s) / 60)
+                : null;
 
             return (
               <motion.div
@@ -86,6 +115,14 @@ export default function Ladder() {
                         <TrendingUp className="w-3 h-3" />
                         {winRate}%
                       </span>
+                      {stravaKm != null && stravaMinutes != null && (
+                        <span className="text-[11px] text-muted-foreground flex items-center gap-1 min-w-0">
+                          <IntegrationLogo provider="strava" className="h-4 w-4 rounded-sm" />
+                          <span className="truncate">
+                            {stravaKm} km · {stravaMinutes} min
+                          </span>
+                        </span>
+                      )}
                     </div>
                   </div>
 

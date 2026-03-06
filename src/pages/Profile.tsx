@@ -352,6 +352,31 @@ export default function Profile() {
               </Button>
             </div>
 
+            {/* Huawei Health */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <IntegrationLogo provider="huawei_health" className="opacity-40 grayscale" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">Huawei Health</p>
+                  <p className="text-xs text-muted-foreground">
+                    Requires a mobile app integration (Huawei Health Kit / Huawei ID). Not available from the web.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() =>
+                  toast(
+                    "Huawei Health connection requires a native app integration (Huawei Health Kit + Huawei ID). Coming soon."
+                  )
+                }
+              >
+                Connect
+              </Button>
+            </div>
+
             {/* Garmin */}
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">

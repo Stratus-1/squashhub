@@ -425,7 +425,12 @@ export function useUpdateMatch() {
   });
 }
 
-export type IntegrationProvider = "strava" | "apple_health" | "samsung_health" | "garmin";
+export type IntegrationProvider =
+  | "strava"
+  | "apple_health"
+  | "samsung_health"
+  | "huawei_health"
+  | "garmin";
 
 export type IntegrationAccount = {
   id: string;

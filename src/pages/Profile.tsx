@@ -7,14 +7,26 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/use-data";
+import { useIntegrations, useProfile } from "@/hooks/use-data";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useMemo, useState } from "react";
 
 export default function Profile() {
   const { signOut } = useAuth();
   const { data: profile, isLoading } = useProfile();
+  const { data: integrations } = useIntegrations();
   const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  const queryClient = useQueryClient();
+  const [stravaSyncing, setStravaSyncing] = useState(false);
+
+  const strava = useMemo(
+    () => integrations?.find((i) => i.provider === "strava") || null,
+    [integrations]
+  );
 
   if (isLoading) {
     return (
@@ -56,6 +68,192 @@ export default function Profile() {
       <Separator className="my-5 mx-4" />
 
       <div className="px-4 space-y-2 mb-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold font-heading">Connected Apps</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Connect fitness apps to enrich your training stats.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {/* Strava */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">Strava</p>
+                <p className="text-xs text-muted-foreground">
+                  {strava?.display_name
+                    ? `Connected as ${strava.display_name}`
+                    : "Sync your recent activities (running/cycling/training)"}
+                </p>
+              </div>
+              <div className="shrink-0">
+                {strava ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      disabled={stravaSyncing}
+                      onClick={async () => {
+                        try {
+                          setStravaSyncing(true);
+                          const { data: sessionData } = await supabase.auth.getSession();
+                          const token = sessionData.session?.access_token;
+                          if (!token) throw new Error("You must be logged in");
+                          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+                          const res = await fetch(
+                            `https://${projectId}.supabase.co/functions/v1/strava?action=sync`,
+                            {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
+                              body: JSON.stringify({}),
+                            }
+                          );
+                          const payload = await res.json();
+                          if (!res.ok) throw new Error(payload?.error || "Sync failed");
+
+                          const km = Math.round((payload.totals.distance_m / 1000) * 10) / 10;
+                          const minutes = Math.round(payload.totals.moving_time_s / 60);
+                          toast.success(`Synced: ${km} km · ${minutes} min (last ${payload.activitiesCount} activities)`);
+                        } catch (e: any) {
+                          toast.error(e.message || "Sync failed");
+                        } finally {
+                          setStravaSyncing(false);
+                        }
+                      }}
+                    >
+                      {stravaSyncing ? "Syncing…" : "Sync"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      disabled={stravaSyncing}
+                      onClick={async () => {
+                        try {
+                          const { data: sessionData } = await supabase.auth.getSession();
+                          const token = sessionData.session?.access_token;
+                          if (!token) throw new Error("You must be logged in");
+                          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+                          const res = await fetch(
+                            `https://${projectId}.supabase.co/functions/v1/strava?action=disconnect`,
+                            {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
+                              body: JSON.stringify({}),
+                            }
+                          );
+                          const payload = await res.json();
+                          if (!res.ok) throw new Error(payload?.error || "Failed to disconnect");
+                          toast.success("Strava disconnected");
+                          queryClient.invalidateQueries({ queryKey: ["integrations"] });
+                        } catch (e: any) {
+                          toast.error(e.message || "Failed to disconnect");
+                        }
+                      }}
+                    >
+                      Disconnect
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
+                      if (!clientId) {
+                        toast.error("Missing VITE_STRAVA_CLIENT_ID");
+                        return;
+                      }
+
+                      const state = crypto.randomUUID();
+                      sessionStorage.setItem("strava_oauth_state", state);
+                      const redirectUri = `${window.location.origin}/integrations/strava/callback`;
+
+                      const url = new URL("https://www.strava.com/oauth/authorize");
+                      url.searchParams.set("client_id", clientId);
+                      url.searchParams.set("redirect_uri", redirectUri);
+                      url.searchParams.set("response_type", "code");
+                      url.searchParams.set("approval_prompt", "auto");
+                      url.searchParams.set("scope", "read,activity:read");
+                      url.searchParams.set("state", state);
+
+                      window.location.assign(url.toString());
+                    }}
+                  >
+                    Connect
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Apple Health */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">Apple Health</p>
+                <p className="text-xs text-muted-foreground">
+                  Requires an iPhone app (HealthKit). Web browsers can’t read Health data directly.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => toast("Coming soon: Apple Health requires an iOS app integration.")}
+              >
+                Learn more
+              </Button>
+            </div>
+
+            {/* Samsung Health */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">Samsung Health</p>
+                <p className="text-xs text-muted-foreground">
+                  Requires an Android app / Samsung SDK integration; not available from the web.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => toast("Coming soon: Samsung Health needs an Android app integration.")}
+              >
+                Learn more
+              </Button>
+            </div>
+
+            {/* Garmin */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">Garmin</p>
+                <p className="text-xs text-muted-foreground">
+                  Typically requires a Garmin partner integration to access user activity data.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => toast("Coming soon: Garmin integration usually requires partner approval.")}
+              >
+                Learn more
+              </Button>
+            </div>
+          </div>
+        </Card>
+
         {permission !== "unsupported" && (
           <Card className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">

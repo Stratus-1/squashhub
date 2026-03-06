@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "/(auth|dashboard|bookings|ladder|challenges|profile|notifications|reset-password)(/.*)?",
+      "source": "/(auth|dashboard|bookings|ladder|challenges|profile|notifications|reset-password|integrations)(/.*)?",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],

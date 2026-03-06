@@ -10,5 +10,6 @@ Disallow: /challenges
 Disallow: /profile
 Disallow: /notifications
 Disallow: /reset-password
+Disallow: /integrations
 
 Sitemap: https://gordon-s-bay-squash-hub.vercel.app/sitemap.xml

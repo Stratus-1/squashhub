@@ -407,3 +407,35 @@ export function useUpdateMatch() {
     },
   });
 }
+
+export type IntegrationProvider = "strava" | "apple_health" | "samsung_health" | "garmin";
+
+export type IntegrationAccount = {
+  id: string;
+  user_id: string;
+  provider: IntegrationProvider;
+  provider_user_id: string | null;
+  display_name: string | null;
+  scopes: string | null;
+  status: "connected" | "error" | "disconnected";
+  connected_at: string;
+  updated_at: string;
+};
+
+export function useIntegrations() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["integrations", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as IntegrationAccount[];
+      const { data, error } = await supabase
+        .from("integrations_accounts")
+        .select("*")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return (data || []) as IntegrationAccount[];
+    },
+    enabled: !!user,
+  });
+}

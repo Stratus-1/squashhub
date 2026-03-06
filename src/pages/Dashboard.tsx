@@ -77,6 +77,22 @@ export default function Dashboard() {
     return map;
   }, [opponentProfiles]);
 
+  const { data: availablePlayers } = useQuery({
+    queryKey: ["dashboard-available-players"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,name,rank,availability")
+        .not("availability", "is", null)
+        .neq("availability", "")
+        .order("rank", { ascending: true })
+        .limit(8);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -116,6 +132,48 @@ export default function Dashboard() {
           <span className="text-[11px]">Challenge</span>
         </Button>
       </div>
+
+      {/* Availability */}
+      {availablePlayers && availablePlayers.length > 0 && (
+        <motion.div
+          className="px-4 mt-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold font-heading">Who's available</h2>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/ladder")}>
+              View ladder <ChevronRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {(availablePlayers || []).slice(0, 6).map((p: any) => (
+              <Card
+                key={p.id}
+                className="p-3 cursor-pointer hover:bg-secondary/40 transition-colors"
+                onClick={() => navigate(`/players/${p.id}`)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {p.name}{" "}
+                      {typeof p.rank === "number" ? (
+                        <span className="text-xs text-muted-foreground">(Rank #{p.rank})</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">(Unranked)</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {p.availability}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {trackableBooking && (
         <motion.div
@@ -202,7 +260,10 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{booking.player_name || "Unknown"}</p>
-                    <p className="text-xs text-muted-foreground">Court {booking.court_id}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Court {booking.court_id}
+                      {(booking as any).player_availability ? ` · ${(booking as any).player_availability}` : ""}
+                    </p>
                   </div>
                 </div>
                 <Badge variant="secondary" className="text-xs">
@@ -232,7 +293,11 @@ export default function Dashboard() {
               <Card key={booking.id} className="p-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">{booking.court_name}</p>
-                  <p className="text-xs text-muted-foreground">{booking.date}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {booking.date}
+                    {(booking as any).opponent_name ? ` · vs ${(booking as any).opponent_name}` : ""}
+                    {(booking as any).is_friendly ? " · Friendly" : ""}
+                  </p>
                 </div>
                 <Badge variant="secondary" className="text-xs">
                   {booking.start_time?.slice(0, 5)}

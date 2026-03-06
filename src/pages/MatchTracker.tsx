@@ -14,6 +14,9 @@ import { toast } from "sonner";
 type BookingRow = {
   id: string;
   user_id: string;
+  opponent_id: string | null;
+  is_friendly: boolean;
+  challenge_id: string | null;
   court_id: number;
   date: string;
   start_time: string;
@@ -90,12 +93,12 @@ export default function MatchTracker() {
 
         const { data: bookingRow, error: bookingError } = await supabase
           .from("bookings")
-          .select("id,user_id,court_id,date,start_time,end_time")
+          .select("id,user_id,opponent_id,is_friendly,challenge_id,court_id,date,start_time,end_time")
           .eq("id", bookingId)
           .single();
         if (bookingError) throw bookingError;
         const b = bookingRow as unknown as BookingRow;
-        if (b.user_id !== user.id) {
+        if (b.user_id !== user.id && b.opponent_id !== user.id) {
           const { data: scheduled, error: scheduledError } = await supabase
             .from("scheduled_matches")
             .select("id,player_a,player_b")

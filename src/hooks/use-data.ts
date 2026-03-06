@@ -35,19 +35,30 @@ export function useBookings(date: string) {
       if (error) throw error;
 
       // Fetch player names for bookings
-      const userIds = [...new Set(bookings.map(b => b.user_id))];
+      const userIds = [
+        ...new Set(
+          bookings
+            .flatMap((b: any) => [b.user_id, b.opponent_id])
+            .filter(Boolean)
+        ),
+      ];
       if (userIds.length === 0) return [];
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, name")
+        .select("id, name, availability, rank")
         .in("id", userIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
+      const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
 
       return bookings.map(b => ({
         ...b,
-        player_name: profileMap.get(b.user_id) || "Unknown",
+        player_name: (profileMap.get((b as any).user_id) as any)?.name || "Unknown",
+        player_availability: (profileMap.get((b as any).user_id) as any)?.availability || null,
+        player_rank: (profileMap.get((b as any).user_id) as any)?.rank ?? null,
+        opponent_name: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.name || "Unknown") : null,
+        opponent_availability: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.availability || null) : null,
+        opponent_rank: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.rank ?? null) : null,
       }));
     },
   });
@@ -58,8 +69,22 @@ export function useCreateBooking() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ courtId, date, startTime, endTime }: {
-      courtId: number; date: string; startTime: string; endTime: string;
+    mutationFn: async ({
+      courtId,
+      date,
+      startTime,
+      endTime,
+      opponentId,
+      isFriendly,
+      challengeId,
+    }: {
+      courtId: number;
+      date: string;
+      startTime: string;
+      endTime: string;
+      opponentId?: string | null;
+      isFriendly?: boolean;
+      challengeId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
       const { data, error } = await supabase
@@ -70,7 +95,10 @@ export function useCreateBooking() {
           date,
           start_time: startTime,
           end_time: endTime,
-        })
+          opponent_id: opponentId ?? null,
+          is_friendly: !!isFriendly,
+          challenge_id: challengeId ?? null,
+        } as any)
         .select()
         .single();
       if (error) {
@@ -122,9 +150,22 @@ export function useMyBookings() {
       if (error) throw error;
 
       // Map court names
-      return data.map(b => ({
+      const opponentIds = [...new Set((data as any[]).map((b) => b.opponent_id).filter(Boolean))] as string[];
+      let opponentMap = new Map<string, any>();
+      if (opponentIds.length > 0) {
+        const { data: oppProfiles } = await supabase
+          .from("profiles")
+          .select("id,name,availability,rank")
+          .in("id", opponentIds);
+        opponentMap = new Map((oppProfiles || []).map((p: any) => [p.id, p]));
+      }
+
+      return data.map((b: any) => ({
         ...b,
         court_name: b.court_id === 1 ? "Court 1" : "Court 2",
+        opponent_name: b.opponent_id ? (opponentMap.get(b.opponent_id)?.name || "Unknown") : null,
+        opponent_availability: b.opponent_id ? (opponentMap.get(b.opponent_id)?.availability || null) : null,
+        opponent_rank: b.opponent_id ? (opponentMap.get(b.opponent_id)?.rank ?? null) : null,
       }));
     },
     enabled: !!user,

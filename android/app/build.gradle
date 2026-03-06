@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 android {
     namespace = "com.gbsquash.hub"
@@ -22,6 +23,13 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
 }
 
 repositories {
@@ -40,6 +48,19 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Firebase
+    implementation platform("com.google.firebase:firebase-bom:$firebaseBomVersion")
+    implementation "com.google.firebase:firebase-messaging-ktx"
+
+    // Health Connect
+    implementation "androidx.health.connect:connect-client:$healthConnectVersion"
+
+    // WorkManager for background processing
+    implementation "androidx.work:work-runtime-ktx:$workVersion"
+    
+    // Kotlin Standard Library
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
 }
 
 apply from: 'capacitor.build.gradle'

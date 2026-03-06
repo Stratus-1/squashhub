@@ -1,14 +1,14 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+
+# Keep private/authenticated areas out of search results
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /bookings
+Disallow: /ladder
+Disallow: /challenges
+Disallow: /profile
+Disallow: /notifications
+Disallow: /reset-password
+
+Sitemap: https://gordon-s-bay-squash-hub.vercel.app/sitemap.xml

@@ -1,0 +1,12 @@
+{
+  "headers": [
+    {
+      "source": "/(auth|dashboard|bookings|ladder|challenges|profile|notifications|reset-password)(/.*)?",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    }
+  ],
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

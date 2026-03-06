@@ -574,13 +574,15 @@ export default function Challenges() {
       </Tabs>
 
       <Dialog open={record.open} onOpenChange={(open) => (!open ? closeRecord() : null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Record Match Result</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
+          <div className="p-6 pb-4 border-b">
+            <DialogHeader>
+              <DialogTitle>Record Match Result</DialogTitle>
+            </DialogHeader>
+          </div>
 
           {record.challenge && (
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {matchByChallengeId.get(record.challenge.id) && (
                 <Card className="p-3 border-primary/20 bg-primary/5">
                   <p className="text-xs text-muted-foreground">
@@ -749,38 +751,42 @@ export default function Challenges() {
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeRecord}>
-              Cancel
-            </Button>
-            <Button
-              onClick={submitResult}
-              disabled={
-                createMatch.isPending ||
-                updateChallenge.isPending ||
-                (!!record.challenge && !!matchByChallengeId.get(record.challenge.id))
-              }
-            >
-              {createMatch.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…
-                </>
-              ) : (
-                "Submit Result"
-              )}
-            </Button>
-          </DialogFooter>
+          <div className="p-6 pt-4 border-t bg-background">
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={closeRecord}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitResult}
+                disabled={
+                  createMatch.isPending ||
+                  updateChallenge.isPending ||
+                  (!!record.challenge && !!matchByChallengeId.get(record.challenge.id))
+                }
+              >
+                {createMatch.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Submit Result"
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={accept.open} onOpenChange={(open) => (!open ? closeAccept() : null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Accept Challenge</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
+          <div className="p-6 pb-4 border-b">
+            <DialogHeader>
+              <DialogTitle>Accept Challenge</DialogTitle>
+            </DialogHeader>
+          </div>
 
           {accept.challenge && (
-            <div className="space-y-3">
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
               <p className="text-sm text-muted-foreground">
                 Confirm the date for this match. You can still record the result later.
               </p>
@@ -795,21 +801,23 @@ export default function Challenges() {
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={closeAccept}>
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!accept.challenge) return;
-                await respond(accept.challenge.id, "accepted", accept.date || null);
-                closeAccept();
-              }}
-              disabled={updateChallenge.isPending}
-            >
-              Accept
-            </Button>
-          </DialogFooter>
+          <div className="p-6 pt-4 border-t bg-background">
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={closeAccept}>
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!accept.challenge) return;
+                  await respond(accept.challenge.id, "accepted", accept.date || null);
+                  closeAccept();
+                }}
+                disabled={updateChallenge.isPending}
+              >
+                Accept
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

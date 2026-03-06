@@ -4,14 +4,17 @@ import { StatCard } from "@/components/StatCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/use-data";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { motion } from "framer-motion";
 
 export default function Profile() {
   const { signOut } = useAuth();
   const { data: profile, isLoading } = useProfile();
+  const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
 
   if (isLoading) {
     return (
@@ -53,6 +56,24 @@ export default function Profile() {
       <Separator className="my-5 mx-4" />
 
       <div className="px-4 space-y-2 mb-4">
+        {permission !== "unsupported" && (
+          <Card className="p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Bell className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Push Notifications</p>
+                <p className="text-xs text-muted-foreground">
+                  {permission === "denied" ? "Blocked in browser settings" : "Challenges, matches & updates"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={isSubscribed}
+              disabled={pushLoading || permission === "denied"}
+              onCheckedChange={(checked) => checked ? subscribe() : unsubscribe()}
+            />
+          </Card>
+        )}
         <Button variant="outline" className="w-full justify-start gap-3">
           <Settings className="w-4 h-4" /> Edit Profile
         </Button>

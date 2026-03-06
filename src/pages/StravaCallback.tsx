@@ -33,11 +33,13 @@ export default function StravaCallback() {
         const token = sessionData.session?.access_token;
         if (!token) throw new Error("You must be logged in");
 
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        if (!projectId) throw new Error("Missing VITE_SUPABASE_PROJECT_ID");
+        const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
+          ?.trim()
+          ?.replace(/\/+$/, "");
+        if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
 
         const res = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/strava?action=exchange`,
+          `${supabaseUrl}/functions/v1/strava?action=exchange`,
           {
             method: "POST",
             headers: {
@@ -78,4 +80,3 @@ export default function StravaCallback() {
     </div>
   );
 }
-

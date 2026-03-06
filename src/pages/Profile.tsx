@@ -33,6 +33,10 @@ export default function Profile() {
     ?.trim()
     ?.replace(/\/+$/, "");
 
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
+    ?.trim()
+    ?.replace(/\/+$/, "");
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -108,9 +112,9 @@ export default function Profile() {
                           const { data: sessionData } = await supabase.auth.getSession();
                           const token = sessionData.session?.access_token;
                           if (!token) throw new Error("You must be logged in");
-                          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
                           const res = await fetch(
-                            `https://${projectId}.supabase.co/functions/v1/strava?action=sync`,
+                            `${supabaseUrl}/functions/v1/strava?action=sync`,
                             {
                               method: "POST",
                               headers: {
@@ -145,9 +149,9 @@ export default function Profile() {
                           const { data: sessionData } = await supabase.auth.getSession();
                           const token = sessionData.session?.access_token;
                           if (!token) throw new Error("You must be logged in");
-                          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
                           const res = await fetch(
-                            `https://${projectId}.supabase.co/functions/v1/strava?action=disconnect`,
+                            `${supabaseUrl}/functions/v1/strava?action=disconnect`,
                             {
                               method: "POST",
                               headers: {

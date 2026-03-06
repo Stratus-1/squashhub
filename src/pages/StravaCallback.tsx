@@ -36,11 +36,25 @@ export default function StravaCallback() {
           throw new Error("Your login session looks invalid. Please sign out and sign in again.");
         }
 
-        const { data, error: fnError } = await supabase.functions.invoke("strava", {
-          body: { action: "exchange", code, scope },
-          headers: { Authorization: `Bearer ${accessToken}` },
+        const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
+          ?.trim()
+          ?.replace(/\/+$/, "");
+        const supabaseKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim();
+        if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
+        if (!supabaseKey) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/strava`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ action: "exchange", code, scope }),
         });
-        if (fnError) throw fnError;
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || "Failed to connect Strava");
         if (!data?.connected) throw new Error("Failed to connect Strava");
 
         toast.success("Strava connected");

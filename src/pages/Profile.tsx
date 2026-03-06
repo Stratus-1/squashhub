@@ -33,6 +33,12 @@ export default function Profile() {
     ?.trim()
     ?.replace(/\/+$/, "");
 
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
+    ?.trim()
+    ?.replace(/\/+$/, "");
+
+  const supabaseKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -111,11 +117,21 @@ export default function Profile() {
                           if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
                             throw new Error("Your login session looks invalid. Please sign out and sign in again.");
                           }
-                          const { data: payload, error: fnError } = await supabase.functions.invoke("strava", {
-                            body: { action: "sync" },
-                            headers: { Authorization: `Bearer ${accessToken}` },
+                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
+                          if (!supabaseKey) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
+
+                          const res = await fetch(`${supabaseUrl}/functions/v1/strava`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              apikey: supabaseKey,
+                              Authorization: `Bearer ${accessToken}`,
+                            },
+                            body: JSON.stringify({ action: "sync" }),
                           });
-                          if (fnError) throw fnError;
+
+                          const payload = await res.json().catch(() => ({}));
+                          if (!res.ok) throw new Error(payload?.error || "Sync failed");
                           if (!payload?.totals) throw new Error("Sync failed");
 
                           const km = Math.round((payload.totals.distance_m / 1000) * 10) / 10;
@@ -143,11 +159,21 @@ export default function Profile() {
                           if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
                             throw new Error("Your login session looks invalid. Please sign out and sign in again.");
                           }
-                          const { data: payload, error: fnError } = await supabase.functions.invoke("strava", {
-                            body: { action: "disconnect" },
-                            headers: { Authorization: `Bearer ${accessToken}` },
+                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
+                          if (!supabaseKey) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
+
+                          const res = await fetch(`${supabaseUrl}/functions/v1/strava`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              apikey: supabaseKey,
+                              Authorization: `Bearer ${accessToken}`,
+                            },
+                            body: JSON.stringify({ action: "disconnect" }),
                           });
-                          if (fnError) throw fnError;
+
+                          const payload = await res.json().catch(() => ({}));
+                          if (!res.ok) throw new Error(payload?.error || "Failed to disconnect");
                           if (!payload?.disconnected) throw new Error("Failed to disconnect");
                           toast.success("Strava disconnected");
                           queryClient.invalidateQueries({ queryKey: ["integrations"] });

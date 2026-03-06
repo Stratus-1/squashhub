@@ -77,6 +77,10 @@ export default function PlayerProfile() {
     (player as any)?.strava_connected && (player as any)?.strava_last_sync_at
       ? new Date((player as any).strava_last_sync_at as string)
       : null;
+  const stravaElevationM =
+    (player as any)?.strava_connected && (player as any)?.strava_elevation_m != null
+      ? Math.round(Number((player as any).strava_elevation_m) * 10) / 10
+      : null;
 
   if (isLoading) {
     return (
@@ -151,7 +155,7 @@ export default function PlayerProfile() {
           </div>
 
           {(player as any)?.strava_connected ? (
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="rounded-md border p-2">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Distance</p>
                 <p className="text-sm font-semibold">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
@@ -161,10 +165,14 @@ export default function PlayerProfile() {
                 <p className="text-sm font-semibold">{stravaMinutes != null ? `${stravaMinutes} min` : "—"}</p>
               </div>
               <div className="rounded-md border p-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Elevation</p>
+                <p className="text-sm font-semibold">{stravaElevationM != null ? `${stravaElevationM} m` : "—"}</p>
+              </div>
+              <div className="rounded-md border p-2">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Activities</p>
                 <p className="text-sm font-semibold">{stravaActivitiesCount != null ? stravaActivitiesCount : "—"}</p>
               </div>
-              <p className="text-[11px] text-muted-foreground col-span-3">
+              <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
                 {stravaLastSync ? `Last synced: ${stravaLastSync.toLocaleString()}` : "Not synced yet."}
               </p>
             </div>

@@ -4,13 +4,14 @@ import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Swords, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useProfile } from "@/hooks/use-data";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,6 +22,11 @@ export default function Ladder() {
   const { data: profile } = useProfile();
   const myRank = profile?.rank ?? null;
   const queryClient = useQueryClient();
+  const [blockedChallenge, setBlockedChallenge] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+  }>({ open: false, title: "Can't challenge this player", description: "" });
 
   useEffect(() => {
     const channel = supabase
@@ -44,6 +50,20 @@ export default function Ladder() {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+
+  const getChallengeBlockReason = useMemo(() => {
+    return (playerId: string, opponentRank: number | null) => {
+      if (!user?.id) return "You must be logged in to challenge players.";
+      if (playerId === user.id) return "You can't challenge yourself.";
+      if (!myRank) return "You need a ladder rank before you can challenge players.";
+      if (!opponentRank) return "This player is not ranked yet.";
+
+      const diff = myRank - opponentRank;
+      if (diff < 1) return "You can only challenge players above you.";
+      if (diff > 2) return "You may only challenge up to 2 positions above you.";
+      return null;
+    };
+  }, [myRank, user?.id]);
 
   return (
     <div className="bottom-nav-safe">
@@ -142,16 +162,23 @@ export default function Ladder() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 text-xs shrink-0 gap-1"
-                    disabled={
-                      player.id === user?.id ||
-                      !myRank ||
-                      !player.rank ||
-                      myRank - player.rank < 1 ||
-                      myRank - player.rank > 2
-                    }
+                    className={cn(
+                      "h-8 text-xs shrink-0 gap-1",
+                      !!getChallengeBlockReason(player.id, player.rank) && "opacity-50 cursor-not-allowed"
+                    )}
+                    aria-disabled={!!getChallengeBlockReason(player.id, player.rank)}
                     onClick={(e) => {
                       e.stopPropagation();
+                      const reason = getChallengeBlockReason(player.id, player.rank);
+                      if (reason) {
+                        setBlockedChallenge({
+                          open: true,
+                          title: "Can't challenge this player",
+                          description: reason,
+                        });
+                        return;
+                      }
+
                       navigate(`/challenges/new?opponent=${player.id}`);
                     }}
                   >
@@ -164,6 +191,23 @@ export default function Ladder() {
           })
         )}
       </div>
+
+      <Dialog
+        open={blockedChallenge.open}
+        onOpenChange={(open) => setBlockedChallenge((s) => ({ ...s, open }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{blockedChallenge.title}</DialogTitle>
+            <DialogDescription>{blockedChallenge.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setBlockedChallenge((s) => ({ ...s, open: false }))}>
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

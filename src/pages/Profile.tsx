@@ -17,6 +17,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 
+type StravaActivityPreview = {
+  id: number;
+  name: string;
+  type: string;
+  sport_type: string | null;
+  start_date: string;
+  start_date_local: string | null;
+  distance: number;
+  moving_time: number;
+  elapsed_time: number | null;
+  total_elevation_gain: number;
+};
+
 export default function Profile() {
   const { signOut, user } = useAuth();
   const { data: profile, isLoading } = useProfile();
@@ -24,6 +37,8 @@ export default function Profile() {
   const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const queryClient = useQueryClient();
   const [stravaSyncing, setStravaSyncing] = useState(false);
+  const [stravaRecentLoading, setStravaRecentLoading] = useState(false);
+  const [stravaRecent, setStravaRecent] = useState<StravaActivityPreview[] | null>(null);
 
   const strava = useMemo(
     () => integrations?.find((i) => i.provider === "strava") || null,
@@ -80,14 +95,34 @@ export default function Profile() {
     ? profile.name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
     : "?";
 
+  const stravaDistanceM =
+    (profile as any)?.strava_distance_m != null ? Number((profile as any).strava_distance_m) : null;
+  const stravaMovingTimeS =
+    (profile as any)?.strava_moving_time_s != null ? Number((profile as any).strava_moving_time_s) : null;
+
   const stravaKm =
-    typeof (profile as any)?.strava_distance_m === "number" || typeof (profile as any)?.strava_distance_m === "bigint"
-      ? Math.round((Number((profile as any).strava_distance_m) / 1000) * 10) / 10
-      : null;
+    stravaDistanceM != null ? Math.round((stravaDistanceM / 1000) * 10) / 10 : null;
   const stravaMinutes =
-    typeof (profile as any)?.strava_moving_time_s === "number"
-      ? Math.round(Number((profile as any).strava_moving_time_s) / 60)
+    stravaMovingTimeS != null ? Math.round(stravaMovingTimeS / 60) : null;
+  const stravaElevationRaw =
+    (profile as any)?.strava_elevation_m != null ? Number((profile as any).strava_elevation_m) : null;
+  const stravaElevationM =
+    stravaElevationRaw != null ? Math.round(stravaElevationRaw * 10) / 10 : null;
+  const stravaAvgSpeedKmh =
+    stravaDistanceM != null && stravaMovingTimeS != null && stravaMovingTimeS > 0
+      ? Math.round(((stravaDistanceM / stravaMovingTimeS) * 3.6) * 10) / 10
       : null;
+  const stravaPaceSecPerKm =
+    stravaDistanceM != null && stravaMovingTimeS != null && stravaDistanceM > 0
+      ? stravaMovingTimeS / (stravaDistanceM / 1000)
+      : null;
+  const stravaPace = (() => {
+    if (stravaPaceSecPerKm == null || !Number.isFinite(stravaPaceSecPerKm)) return null;
+    const paceSeconds = Math.max(0, Math.round(stravaPaceSecPerKm));
+    const mm = Math.floor(paceSeconds / 60);
+    const ss = paceSeconds % 60;
+    return `${mm}:${String(ss).padStart(2, "0")} /km`;
+  })();
   const stravaLastSync =
     (profile as any)?.strava_last_sync_at ? new Date((profile as any).strava_last_sync_at as string) : null;
   const stravaActivitiesCount =
@@ -129,7 +164,7 @@ export default function Profile() {
           </div>
 
           {strava ? (
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="rounded-md border p-2">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Distance</p>
                 <p className="text-sm font-semibold">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
@@ -139,14 +174,107 @@ export default function Profile() {
                 <p className="text-sm font-semibold">{stravaMinutes != null ? `${stravaMinutes} min` : "—"}</p>
               </div>
               <div className="rounded-md border p-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Elevation</p>
+                <p className="text-sm font-semibold">{stravaElevationM != null ? `${stravaElevationM} m` : "—"}</p>
+              </div>
+              <div className="rounded-md border p-2">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Activities</p>
                 <p className="text-sm font-semibold">{stravaActivitiesCount != null ? stravaActivitiesCount : "—"}</p>
               </div>
-              <p className="text-[11px] text-muted-foreground col-span-3">
+              <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
                 {stravaLastSync ? `Last synced: ${stravaLastSync.toLocaleString()}` : "Not synced yet — tap Sync in Connected Apps."}
               </p>
+              {stravaDistanceM != null && stravaMovingTimeS != null && stravaElevationRaw != null && (
+                <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
+                  Raw totals: {stravaDistanceM} m · {stravaMovingTimeS} s · {Math.round(stravaElevationRaw * 10) / 10} m
+                </p>
+              )}
+              {(stravaAvgSpeedKmh != null || stravaPace) && (
+                <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
+                  {stravaAvgSpeedKmh != null ? `Avg speed: ${stravaAvgSpeedKmh} km/h` : ""}
+                  {stravaAvgSpeedKmh != null && stravaPace ? " · " : ""}
+                  {stravaPace ? `Pace: ${stravaPace}` : ""}
+                </p>
+              )}
             </div>
           ) : null}
+
+          {strava && (
+            <div className="mt-3">
+              <Button
+                variant="secondary"
+                className="w-full"
+                disabled={stravaRecentLoading || !supabaseUrl || !supabaseKey}
+                onClick={async () => {
+                  try {
+                    setStravaRecentLoading(true);
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const accessToken = sessionData.session?.access_token;
+                    if (!accessToken) throw new Error("You must be logged in");
+                    if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
+                      throw new Error("Your login session looks invalid. Please sign out and sign in again.");
+                    }
+                    if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
+                    if (!supabaseKey) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
+
+                    const res = await fetch(`${supabaseUrl}/functions/v1/strava`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        apikey: supabaseKey,
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                      body: JSON.stringify({ action: "recent" }),
+                    });
+                    const payload = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(payload?.error || "Failed to load recent activities");
+                    setStravaRecent((payload.activities || []) as StravaActivityPreview[]);
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to load recent activities");
+                  } finally {
+                    setStravaRecentLoading(false);
+                  }
+                }}
+              >
+                {stravaRecentLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Loading Strava activities…
+                  </>
+                ) : (
+                  "Show recent Strava activities"
+                )}
+              </Button>
+
+              {stravaRecent && stravaRecent.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {stravaRecent.slice(0, 5).map((a) => {
+                    const km = Math.round((a.distance / 1000) * 10) / 10;
+                    const minutes = Math.round(a.moving_time / 60);
+                    const elevation = Math.round(a.total_elevation_gain * 10) / 10;
+                    return (
+                      <div key={a.id} className="rounded-md border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{a.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(a.start_date).toLocaleString()} · {a.sport_type || a.type}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-sm font-semibold tabular-nums">{km} km</p>
+                            <p className="text-xs text-muted-foreground tabular-nums">
+                              {minutes} min · {elevation} m
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -170,12 +298,20 @@ export default function Profile() {
                 <IntegrationLogo provider="strava" className={strava ? "" : "opacity-40 grayscale"} />
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">Strava</p>
-                <p className="text-xs text-muted-foreground">
-                  {strava?.display_name
-                    ? `Connected as ${strava.display_name}`
-                    : "Sync your recent activities (running/cycling/training)"}
-                </p>
-              </div>
+                  <p className="text-xs text-muted-foreground">
+                    {strava?.display_name
+                      ? `Connected as ${strava.display_name}`
+                      : "Sync your recent activities (running/cycling/training)"}
+                  </p>
+                  {strava && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {stravaActivitiesCount != null ? `${stravaActivitiesCount} activities` : "—"}
+                      {stravaKm != null ? ` · ${stravaKm} km` : ""}
+                      {stravaMinutes != null ? ` · ${stravaMinutes} min` : ""}
+                      {stravaElevationM != null ? ` · ${stravaElevationM} m` : ""}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="shrink-0">
                 {strava ? (
@@ -213,7 +349,8 @@ export default function Profile() {
 
                           const km = Math.round((payload.totals.distance_m / 1000) * 10) / 10;
                           const minutes = Math.round(payload.totals.moving_time_s / 60);
-                          toast.success(`Synced: ${km} km · ${minutes} min (last ${payload.activitiesCount} activities)`);
+                          const elevation = Math.round(payload.totals.elevation_m * 10) / 10;
+                          toast.success(`Synced: ${km} km · ${minutes} min · ${elevation} m (last ${payload.activitiesCount} activities)`);
                           queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
                           queryClient.invalidateQueries({ queryKey: ["ladder"] });
                           queryClient.invalidateQueries({ queryKey: ["integrations"] });

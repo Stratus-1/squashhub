@@ -299,9 +299,9 @@ Deno.serve(async (req) => {
         .update({
           strava_connected: true,
           strava_activities_count: activities.length,
-          strava_distance_m: Math.round(totals.distance_m),
+          strava_distance_m: totals.distance_m,
           strava_moving_time_s: Math.round(totals.moving_time_s),
-          strava_elevation_m: Math.round(totals.elevation_m),
+          strava_elevation_m: totals.elevation_m,
           strava_last_sync_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

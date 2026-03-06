@@ -15,6 +15,7 @@ This project can be shipped as native iOS/Android apps using Capacitor, while ke
 
 2. Set env vars:
    - Web + mobile build needs: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`
+   - Recommended (auth + OAuth redirects): `VITE_PUBLIC_URL=https://gordon-s-bay-squash-hub.vercel.app`
    - Strava connect button needs: `VITE_STRAVA_CLIENT_ID`
 
 3. Build and sync native projects:
@@ -47,4 +48,3 @@ Required Supabase secrets for the function:
 
 - `STRAVA_CLIENT_ID`
 - `STRAVA_CLIENT_SECRET`
-

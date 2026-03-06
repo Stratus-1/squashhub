@@ -322,7 +322,7 @@ CREATE TRIGGER update_scheduled_matches_updated_at
 -- 5) Bootstrap admin user role (by email) + ensure new signups auto-grant
 DO $$
 DECLARE
-  admin_email text := 'danielmommsen@hotmail.com';
+  admin_email text := 'danielmommsen2@gmail.com';
   admin_user_id uuid;
 BEGIN
   SELECT id INTO admin_user_id

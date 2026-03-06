@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: { name },
-        emailRedirectTo: publicBaseUrl,
+        emailRedirectTo: `${publicBaseUrl}/auth/callback`,
       },
     });
     return { error: error as Error | null };

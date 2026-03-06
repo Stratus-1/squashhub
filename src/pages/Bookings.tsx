@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { format, addDays, subDays } from "date-fns";
-import { useBookings, useCreateBooking, useCreateChallenge, useProfile } from "@/hooks/use-data";
+import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
@@ -59,6 +59,7 @@ const courts = [1, 2];
 
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [bookingDetails, setBookingDetails] = useState<any | null>(null);
   const [bookingDialog, setBookingDialog] = useState<{
     courtId: number;
     time: string;
@@ -91,6 +92,7 @@ export default function Bookings() {
   const { data: bookings, isLoading } = useBookings(dateStr);
   const createBooking = useCreateBooking();
   const createChallenge = useCreateChallenge();
+  const cancelBooking = useCancelBooking();
 
   const { data: availablePlayers } = useQuery({
     queryKey: ["available-players", dateStr],
@@ -253,9 +255,8 @@ export default function Bookings() {
                         : "hover:bg-secondary/80 border-dashed"
                     )}
                     onClick={() => {
-                      if (!booking) {
-                        setBookingDialog({ courtId, time, opponentId: "", isFriendly: false });
-                      }
+                      if (booking) setBookingDetails(booking);
+                      else setBookingDialog({ courtId, time, opponentId: "", isFriendly: false });
                     }}
                   >
                     {booking ? (
@@ -278,6 +279,100 @@ export default function Bookings() {
           ))}
         </motion.div>
       )}
+
+      {/* Booking Details Dialog */}
+      <Dialog open={!!bookingDetails} onOpenChange={() => setBookingDetails(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Booking details</DialogTitle>
+          </DialogHeader>
+          {bookingDetails && (
+            <div className="space-y-3 py-2">
+              <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    Court {bookingDetails.court_id} · {format(selectedDate, "d MMM yyyy")}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {String(bookingDetails.start_time || "").slice(0, 5)} - {String(bookingDetails.end_time || "").slice(0, 5)}
+                    {bookingDetails.is_friendly ? " · Friendly" : " · Ladder"}
+                  </p>
+                </div>
+                <Badge variant="secondary" className={bookingDetails.is_friendly ? "bg-muted text-muted-foreground" : "bg-primary/15 text-primary"}>
+                  {bookingDetails.is_friendly ? "Friendly" : "Ladder"}
+                </Badge>
+              </div>
+
+              <div className="rounded-md border p-3 space-y-2">
+                <div className="flex items-start justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">Booked by</span>
+                  <span className="font-medium text-right">
+                    {bookingDetails.player_name || "Unknown"}
+                    {typeof bookingDetails.player_rank === "number" ? ` (Rank #${bookingDetails.player_rank})` : ""}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">Opponent</span>
+                  <span className="font-medium text-right">
+                    {bookingDetails.opponent_name || "Not selected"}
+                    {typeof bookingDetails.opponent_rank === "number" ? ` (Rank #${bookingDetails.opponent_rank})` : ""}
+                  </span>
+                </div>
+                {bookingDetails.challenge_id ? (
+                  <div className="flex items-start justify-between gap-3 text-sm">
+                    <span className="text-muted-foreground">Challenge</span>
+                    <span className="font-medium text-right">Linked</span>
+                  </div>
+                ) : null}
+              </div>
+
+              {(bookingDetails.player_availability || bookingDetails.opponent_availability) && (
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</p>
+                  {bookingDetails.player_availability ? (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">{(bookingDetails.player_name || "Booked by").split(" ")[0]}:</span>{" "}
+                      {bookingDetails.player_availability}
+                    </p>
+                  ) : null}
+                  {bookingDetails.opponent_availability ? (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">{(bookingDetails.opponent_name || "Opponent").split(" ")[0]}:</span>{" "}
+                      {bookingDetails.opponent_availability}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {bookingDetails.created_at ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Created: {new Date(bookingDetails.created_at).toLocaleString()}
+                </p>
+              ) : null}
+            </div>
+          )}
+          <DialogFooter>
+            {bookingDetails && bookingDetails.user_id === user?.id ? (
+              <Button
+                variant="outline"
+                disabled={cancelBooking.isPending}
+                onClick={async () => {
+                  try {
+                    await cancelBooking.mutateAsync(String(bookingDetails.id));
+                    toast.success("Booking cancelled");
+                    setBookingDetails(null);
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to cancel booking");
+                  }
+                }}
+              >
+                {cancelBooking.isPending ? "Cancelling..." : "Cancel booking"}
+              </Button>
+            ) : null}
+            <Button onClick={() => setBookingDetails(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Booking Confirmation Dialog */}
       <Dialog open={!!bookingDialog} onOpenChange={() => setBookingDialog(null)}>

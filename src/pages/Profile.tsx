@@ -105,8 +105,15 @@ export default function Profile() {
                       onClick={async () => {
                         try {
                           setStravaSyncing(true);
+                          const { data: sessionData } = await supabase.auth.getSession();
+                          const accessToken = sessionData.session?.access_token;
+                          if (!accessToken) throw new Error("You must be logged in");
+                          if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
+                            throw new Error("Your login session looks invalid. Please sign out and sign in again.");
+                          }
                           const { data: payload, error: fnError } = await supabase.functions.invoke("strava", {
                             body: { action: "sync" },
+                            headers: { Authorization: `Bearer ${accessToken}` },
                           });
                           if (fnError) throw fnError;
                           if (!payload?.totals) throw new Error("Sync failed");
@@ -130,8 +137,15 @@ export default function Profile() {
                       disabled={stravaSyncing}
                       onClick={async () => {
                         try {
+                          const { data: sessionData } = await supabase.auth.getSession();
+                          const accessToken = sessionData.session?.access_token;
+                          if (!accessToken) throw new Error("You must be logged in");
+                          if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
+                            throw new Error("Your login session looks invalid. Please sign out and sign in again.");
+                          }
                           const { data: payload, error: fnError } = await supabase.functions.invoke("strava", {
                             body: { action: "disconnect" },
+                            headers: { Authorization: `Bearer ${accessToken}` },
                           });
                           if (fnError) throw fnError;
                           if (!payload?.disconnected) throw new Error("Failed to disconnect");

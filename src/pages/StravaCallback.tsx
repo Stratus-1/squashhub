@@ -30,10 +30,15 @@ export default function StravaCallback() {
         }
 
         const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session?.access_token) throw new Error("You must be logged in");
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error("You must be logged in");
+        if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
+          throw new Error("Your login session looks invalid. Please sign out and sign in again.");
+        }
 
         const { data, error: fnError } = await supabase.functions.invoke("strava", {
           body: { action: "exchange", code, scope },
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (fnError) throw fnError;
         if (!data?.connected) throw new Error("Failed to connect Strava");

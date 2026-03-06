@@ -29,6 +29,10 @@ export default function Profile() {
     [integrations]
   );
 
+  const publicWebBaseUrl = (import.meta.env.VITE_PUBLIC_URL as string | undefined)
+    ?.trim()
+    ?.replace(/\/+$/, "");
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -178,9 +182,10 @@ export default function Profile() {
 
                       const state = crypto.randomUUID();
                       sessionStorage.setItem("strava_oauth_state", state);
+                      const webBase = publicWebBaseUrl || window.location.origin;
                       const redirectUri = Capacitor.isNativePlatform()
                         ? "gbsquash://integrations/strava/callback"
-                        : `${window.location.origin}/integrations/strava/callback`;
+                        : `${webBase}/integrations/strava/callback`;
 
                       const url = new URL("https://www.strava.com/oauth/authorize");
                       url.searchParams.set("client_id", clientId);

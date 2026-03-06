@@ -3,6 +3,7 @@ package com.gbsquash.hub
 import android.content.Context
 import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -26,9 +27,6 @@ class HealthConnectManager(private val context: Context) {
         val granted = healthConnectClient.permissionController.getGrantedPermissions()
         return granted.containsAll(permissions)
     }
-
-    fun requestPermissionsActivityContract() = 
-        healthConnectClient.permissionController.createRequestPermissionResultContract()
 
     fun getPermissions() = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),

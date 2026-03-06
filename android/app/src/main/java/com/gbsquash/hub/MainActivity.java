@@ -18,15 +18,26 @@ import com.getcapacitor.BridgeActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends BridgeActivity {
 
     private HealthConnectManager healthConnectManager;
 
-    // Permissions for Health Connect
-    private final ActivityResultLauncher<java.util.Set<String>> requestHealthPermissionsLauncher =
+    // Permissions for Health Connect and others
+    private final ActivityResultLauncher<String[]> requestPermissionsLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
-                Log.d("MainActivity", "Health Connect Permissions result: " + result);
+                Log.d("MainActivity", "Permissions result: " + result);
+                boolean allGranted = true;
+                for (Boolean granted : result.values()) {
+                    if (!granted) {
+                        allGranted = false;
+                        break;
+                    }
+                }
+                if (allGranted) {
+                    checkHealthConnectPermissions();
+                }
             });
 
     @Override
@@ -58,7 +69,7 @@ public class MainActivity extends BridgeActivity {
         }
 
         if (!permissionsNeeded.isEmpty()) {
-            requestPermissions(permissionsNeeded.toArray(new String[0]), 101);
+            requestPermissionsLauncher.launch(permissionsNeeded.toArray(new String[0]));
         } else {
             // If standard permissions are granted, check Health Connect
             checkHealthConnectPermissions();
@@ -67,20 +78,11 @@ public class MainActivity extends BridgeActivity {
 
     private void checkHealthConnectPermissions() {
         if (healthConnectManager.isHealthConnectAvailable()) {
-            // Note: Health Connect permissions are requested via a special contract
-            // In a real app, you might trigger this via a UI button.
-            // For now, we'll just log availability.
             Log.d("MainActivity", "Health Connect is available");
+            // In a real app, you would check if permissions are granted and request if not.
+            // healthConnectManager.hasAllPermissions() (suspended call, need a coroutine)
         } else {
             Log.d("MainActivity", "Health Connect is not available or not installed");
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 101) {
-            checkHealthConnectPermissions();
         }
     }
 }

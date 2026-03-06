@@ -18,10 +18,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "From: ${remoteMessage.from}")
 
         // Handle both Data and Notification messages
-        // Even if the app is in the background or killed, onMessageReceived is called 
-        // if the message contains ONLY data. 
-        // If it contains 'notification', the system handles it in background/killed.
-        
         val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: "New Notification"
         val body = remoteMessage.notification?.body ?: remoteMessage.data["body"] ?: "You have a new message."
 
@@ -31,7 +27,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun sendNotification(title: String, messageBody: String, data: Map<String, String>) {
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            // Pass data to MainActivity
             for ((key, value) in data) {
                 putExtra(key, value)
             }
@@ -44,21 +39,28 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         val channelId = "default_channel_id"
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Replace with your app icon
+            .setSmallIcon(R.drawable.club_logo) // Use app logo instead of generic alert icon
             .setContentTitle(title)
             .setContentText(messageBody)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+        // Create the channel with high importance to ensure it appears in the bar/lockscreen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Default Channel",
+                "Notifications",
                 NotificationManager.IMPORTANCE_HIGH
-            )
+            ).apply {
+                description = "General app notifications"
+                setShowBadge(true)
+                enableLights(true)
+                enableVibration(true)
+            }
             notificationManager.createNotificationChannel(channel)
         }
 

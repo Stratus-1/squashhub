@@ -73,6 +73,14 @@
             </intent-filter>
         </service>
 
+        <!-- Default Notification Icon and Channel for FCM -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/club_logo" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel_id" />
+
         <!-- Health Connect metadata -->
         <meta-data android:name="health_permissions_rationale_activity"
             android:value=".MainActivity" />

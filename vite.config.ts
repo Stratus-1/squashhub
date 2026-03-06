@@ -16,8 +16,11 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
+      strategies: "injectManifest",
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
+      srcDir: "src",
+      filename: "sw.ts",
       manifest: {
         name: "Gordon's Bay Squash",
         short_name: "GB Squash",
@@ -41,9 +44,8 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
-      workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,jpg,webmanifest}"],
       },
     }),
   ].filter(Boolean),

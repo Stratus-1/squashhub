@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
-import { useEffect } from "react";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -27,15 +26,6 @@ import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 
 const queryClient = new QueryClient();
-
-// Register push service worker
-function registerPushSW() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw-push.js", { scope: "/" }).catch((err) => {
-      console.log("Push SW registration failed:", err);
-    });
-  }
-}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -72,10 +62,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-
-  useEffect(() => {
-    if (user) registerPushSW();
-  }, [user]);
 
   if (loading) {
     return (

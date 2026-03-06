@@ -3,13 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import {
-  Calendar, Trophy, Swords, BarChart3, ClipboardList,
+  Calendar, Trophy, Swords, ClipboardList,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,
-  Clock, Users, LogIn
+  Clock, Users, LogIn, Bell, Shield, UserRound
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLadder, useBookings } from "@/hooks/use-data";
+import { useBookings, useChallenges, useLadder, useMyBookings, useMyRoles, useProfile, usePublicLeaderboard, useUnreadNotificationsCount } from "@/hooks/use-data";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -24,18 +24,37 @@ export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: ladder } = useLadder();
+  const { data: publicLeaderboard } = usePublicLeaderboard(10);
+  const { data: me } = useProfile();
+  const { data: myBookings } = useMyBookings();
+  const { data: myChallenges } = useChallenges();
+  const { data: unreadCount } = useUnreadNotificationsCount();
+  const { data: myRoles } = useMyRoles();
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
 
-  const topPlayers = ladder?.slice(0, 5) || [];
+  const topPlayers = (user ? ladder?.slice(0, 5) : publicLeaderboard?.slice(0, 5)) || [];
   const spotlight = topPlayers.length > 0 ? topPlayers[0] : null;
 
-  const totalSlots = 2 * 12; // 2 courts × 12 slots
+  const totalSlots = 2 * 32; // 2 courts × 32 slots (06:00–22:00 in 30-min increments)
   const bookedCount = todayBookings?.length || 0;
   const availableSlots = Math.max(0, totalSlots - bookedCount);
 
   const getInitials = (name: string) =>
     name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+
+  const myWinRate = me && me.matches_played > 0
+    ? Math.round((me.wins / me.matches_played) * 100)
+    : 0;
+
+  const incomingPendingCount = user
+    ? (myChallenges || []).filter((c) => c.status === "pending" && c.opponent_id === user.id).length
+    : 0;
+
+  const activeChallengesCount = (myChallenges || []).filter((c) => c.status === "pending" || c.status === "accepted").length;
+
+  const nextBooking = (myBookings || [])[0] || null;
+  const canOpenAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
 
   return (
     <div className="min-h-screen bg-background bottom-nav-safe">
@@ -63,14 +82,27 @@ export default function Home() {
                 <LogIn className="w-4 h-4 mr-1" /> Sign In
               </Button>
             ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
-                onClick={() => navigate("/dashboard")}
-              >
-                Dashboard
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="relative border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
+                  onClick={() => navigate("/notifications")}
+                >
+                  <Bell className="w-4 h-4" />
+                  {(unreadCount ?? 0) > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
+                  onClick={() => navigate("/dashboard")}
+                >
+                  Dashboard
+                </Button>
+              </div>
             )}
           </div>
 
@@ -111,16 +143,25 @@ export default function Home() {
             {...fadeUp}
             transition={{ delay: 0.25, duration: 0.5 }}
           >
-            <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
-              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              <span className="text-xs font-medium text-primary-foreground">
-                {availableSlots} slots open today
-              </span>
-            </div>
+            {user ? (
+              <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
+                <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <span className="text-xs font-medium text-primary-foreground">
+                  {availableSlots} slots open today
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/70" />
+                <span className="text-xs font-medium text-primary-foreground">
+                  Public leaderboard live
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
               <Users className="w-3.5 h-3.5 text-primary-foreground/70" />
               <span className="text-xs font-medium text-primary-foreground">
-                {ladder?.length || 0} players
+                {user ? (ladder?.length || 0) : (publicLeaderboard?.length || 0)} players
               </span>
             </div>
           </motion.div>
@@ -128,38 +169,111 @@ export default function Home() {
       </section>
 
       <div className="w-full">
-      {/* Quick Actions */}
-      <motion.section
-        className="px-4 sm:px-6 lg:px-[5%] -mt-1 relative z-20"
-        {...fadeUp}
-        transition={{ delay: 0.3 }}
-      >
-        <h2 className="font-heading font-semibold text-base mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { icon: Calendar, label: "Book a Court", desc: "Reserve Court 1 or 2", to: "/bookings", color: "text-primary" },
-            { icon: Swords, label: "Challenge Player", desc: "Send a ladder challenge", to: "/challenges/new", color: "text-accent-foreground" },
-            { icon: Trophy, label: "Ladder Rankings", desc: "See where you rank", to: "/ladder", color: "text-primary" },
-            { icon: ClipboardList, label: "Record Match", desc: "Log your latest game", to: "/challenges", color: "text-accent-foreground" },
-          ].map((action) => (
-            <Card
-              key={action.label}
-              className="cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5 group"
-              onClick={() => navigate(user ? action.to : "/auth")}
-            >
-              <CardContent className="p-4 flex flex-col gap-2">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <action.icon className={`w-5 h-5 ${action.color}`} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold font-heading">{action.label}</p>
-                  <p className="text-xs text-muted-foreground">{action.desc}</p>
-                </div>
+      {/* Logged-in Overview */}
+      {user && (
+        <motion.section
+          className="px-4 sm:px-6 lg:px-[5%] -mt-1 relative z-20"
+          {...fadeUp}
+          transition={{ delay: 0.28 }}
+        >
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <h2 className="font-heading font-semibold text-base truncate">
+                Welcome back{me?.name ? `, ${me.name.split(" ")[0]}` : ""}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your stats, challenges, and upcoming bookings.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/profile")}>
+              <UserRound className="w-4 h-4 mr-1.5" /> Profile
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/ladder")}>
+              <CardContent className="p-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rank</p>
+                <p className="font-heading font-bold text-lg mt-1">
+                  {typeof me?.rank === "number" ? `#${me.rank}` : "—"}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {typeof me?.rank === "number" ? "On the ladder" : "Not ranked yet"}
+                </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      </motion.section>
+
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/profile")}>
+              <CardContent className="p-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Record</p>
+                <p className="font-heading font-bold text-lg mt-1">
+                  {(me?.wins ?? 0)}-{(me?.losses ?? 0)}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {myWinRate}% win · {me?.matches_played ?? 0} played
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/challenges")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Challenges</p>
+                  {incomingPendingCount > 0 ? (
+                    <Badge variant="secondary" className="text-[10px] bg-primary/15 text-primary">
+                      {incomingPendingCount} new
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="font-heading font-bold text-lg mt-1">{activeChallengesCount}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Active (pending/accepted)
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/bookings")}>
+              <CardContent className="p-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Next booking</p>
+                <p className="font-heading font-bold text-lg mt-1">
+                  {nextBooking ? String(nextBooking.start_time || "").slice(0, 5) : "—"}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                  {nextBooking
+                    ? `${nextBooking.court_name || `Court ${nextBooking.court_id}`} · ${nextBooking.date}${nextBooking.opponent_name ? ` · vs ${nextBooking.opponent_name}` : ""}`
+                    : "No upcoming booking"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
+            <Button className="justify-start" variant="secondary" onClick={() => navigate("/bookings")}>
+              <Calendar className="w-4 h-4 mr-2" /> Book
+            </Button>
+            <Button className="justify-start" variant="secondary" onClick={() => navigate("/challenges/new")}>
+              <Swords className="w-4 h-4 mr-2" /> Challenge
+            </Button>
+            <Button className="justify-start" variant="secondary" onClick={() => navigate("/ladder")}>
+              <Trophy className="w-4 h-4 mr-2" /> Ladder
+            </Button>
+            <Button className="justify-start" variant="secondary" onClick={() => navigate("/challenges")}>
+              <ClipboardList className="w-4 h-4 mr-2" /> Matches
+            </Button>
+            {canOpenAdmin ? (
+              <Button className="justify-start" variant="secondary" onClick={() => navigate("/admin")}>
+                <Shield className="w-4 h-4 mr-2" /> Admin
+              </Button>
+            ) : (
+              <Button className="justify-start" variant="secondary" onClick={() => navigate("/profile")}>
+                <UserRound className="w-4 h-4 mr-2" /> Me
+              </Button>
+            )}
+          </div>
+        </motion.section>
+      )}
+
+      {/* Public view: hide shortcuts until logged in */}
 
       {/* Ladder Rankings */}
       <motion.section
@@ -168,14 +282,14 @@ export default function Home() {
         transition={{ delay: 0.35 }}
       >
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-heading font-semibold text-base">Ladder Rankings</h2>
+          <h2 className="font-heading font-semibold text-base">{user ? "Ladder Rankings" : "Leaderboard"}</h2>
           <Button
             variant="ghost"
             size="sm"
             className="text-xs h-7 text-primary"
             onClick={() => navigate(user ? "/ladder" : "/auth")}
           >
-            View Full Ladder <ChevronRight className="w-3 h-3 ml-1" />
+            {user ? "View Full Ladder" : "Sign in for full ladder"} <ChevronRight className="w-3 h-3 ml-1" />
           </Button>
         </div>
 
@@ -214,75 +328,86 @@ export default function Home() {
               </div>
             ) : (
               <div className="p-6 text-center text-sm text-muted-foreground">
-                No ranked players yet. Be the first!
+                No ranked players yet.
               </div>
             )}
           </CardContent>
         </Card>
+
+        {!user && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button onClick={() => navigate("/auth")} className="w-full">
+              <LogIn className="w-4 h-4 mr-2" /> Sign in
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/auth")} className="w-full">
+              Join & play <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        )}
       </motion.section>
 
       {/* Court Availability */}
-      <motion.section
-        className="px-4 sm:px-6 lg:px-[5%] mt-8"
-        {...fadeUp}
-        transition={{ delay: 0.4 }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-heading font-semibold text-base">Today's Courts</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7 text-primary"
-            onClick={() => navigate(user ? "/bookings" : "/auth")}
-          >
-            Book Now <ChevronRight className="w-3 h-3 ml-1" />
-          </Button>
-        </div>
+      {user && (
+        <motion.section
+          className="px-4 sm:px-6 lg:px-[5%] mt-8"
+          {...fadeUp}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-heading font-semibold text-base">Today's Courts</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-7 text-primary"
+              onClick={() => navigate("/bookings")}
+            >
+              Book Now <ChevronRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2].map((courtId) => {
-            const courtBookings = todayBookings?.filter(b => b.court_id === courtId) || [];
-            const nextSlot = courtBookings.length > 0
-              ? courtBookings[courtBookings.length - 1]
-              : null;
-            return (
-              <Card key={courtId} className="overflow-hidden">
-                <div className="h-2 bg-primary" />
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-heading font-bold text-sm">Court {courtId}</span>
-                    <Badge
-                      variant={courtBookings.length < 10 ? "secondary" : "destructive"}
-                      className="text-[10px]"
-                    >
-                      {Math.max(0, 12 - courtBookings.length)} open
-                    </Badge>
-                  </div>
-                  {courtBookings.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {courtBookings.slice(0, 3).map((b) => (
-                        <div key={b.id} className="flex items-center gap-2 text-xs">
-                          <Clock className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            {b.start_time?.slice(0, 5)} — {b.player_name}
-                          </span>
-                        </div>
-                      ))}
-                      {courtBookings.length > 3 && (
-                        <p className="text-[10px] text-muted-foreground">
-                          +{courtBookings.length - 3} more
-                        </p>
-                      )}
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2].map((courtId) => {
+              const courtBookings = todayBookings?.filter(b => b.court_id === courtId) || [];
+              return (
+                <Card key={courtId} className="overflow-hidden">
+                  <div className="h-2 bg-primary" />
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-heading font-bold text-sm">Court {courtId}</span>
+                      <Badge
+                        variant={courtBookings.length < 28 ? "secondary" : "destructive"}
+                        className="text-[10px]"
+                      >
+                        {Math.max(0, 32 - courtBookings.length)} open
+                      </Badge>
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">All slots available</p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </motion.section>
+                    {courtBookings.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {courtBookings.slice(0, 3).map((b) => (
+                          <div key={b.id} className="flex items-center gap-2 text-xs">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              {b.start_time?.slice(0, 5)} — {b.player_name}
+                              {b.opponent_name ? ` vs ${b.opponent_name}` : ""}
+                            </span>
+                          </div>
+                        ))}
+                        {courtBookings.length > 3 && (
+                          <p className="text-[10px] text-muted-foreground">
+                            +{courtBookings.length - 3} more
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">All slots available</p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </motion.section>
+      )}
 
       {/* Player Spotlight */}
       {spotlight && (

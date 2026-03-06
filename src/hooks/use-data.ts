@@ -24,6 +24,8 @@ export function useUnreadNotificationsCount() {
 }
 
 export function useBookings(date: string) {
+  const { user } = useAuth();
+
   return useQuery({
     queryKey: ["bookings", date],
     queryFn: async () => {
@@ -60,6 +62,28 @@ export function useBookings(date: string) {
         opponent_availability: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.availability || null) : null,
         opponent_rank: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.rank ?? null) : null,
       }));
+    },
+    enabled: !!user,
+  });
+}
+
+export type PublicLeaderboardRow = {
+  id: string;
+  name: string;
+  rank: number;
+  matches_played: number;
+  wins: number;
+  losses: number;
+  win_rate: number;
+};
+
+export function usePublicLeaderboard(limit = 10) {
+  return useQuery({
+    queryKey: ["public-leaderboard", limit],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_public_leaderboard", { limit_count: limit } as any);
+      if (error) throw error;
+      return (data || []) as PublicLeaderboardRow[];
     },
   });
 }
@@ -196,6 +220,8 @@ export function useMyScheduledMatches() {
 }
 
 export function useLadder() {
+  const { user } = useAuth();
+
   return useQuery({
     queryKey: ["ladder"],
     queryFn: async () => {
@@ -208,6 +234,7 @@ export function useLadder() {
       if (error) throw error;
       return data;
     },
+    enabled: !!user,
   });
 }
 

@@ -45,7 +45,7 @@ export default function Notifications() {
   if (isLoading) {
     return (
       <div className="bottom-nav-safe">
-        <PageHeader title="Notifications" />
+        <PageHeader title="Notifications" showNotifications={false} />
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
@@ -55,7 +55,7 @@ export default function Notifications() {
 
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="Notifications" />
+      <PageHeader title="Notifications" showNotifications={false} />
 
       <div className="px-4 mt-3 space-y-2 mb-4">
         {notifications && notifications.length > 0 ? (

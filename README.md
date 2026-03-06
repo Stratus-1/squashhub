@@ -2,7 +2,7 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Web URL (Vercel)**: https://gordon-s-bay-squash-hub.vercel.app/
 
 ## How can I edit this code?
 
@@ -59,6 +59,12 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase
+- Capacitor (iOS/Android wrapper)
+
+## Mobile builds (iOS/Android)
+
+See `MOBILE.md`.
 
 ## How can I deploy this project?
 

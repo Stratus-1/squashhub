@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GB Squash</string>
+    <string name="title_activity_main">GB Squash</string>
+    <string name="package_name">com.gbsquash.hub</string>
+    <string name="custom_url_scheme">com.gbsquash.hub</string>
+</resources>

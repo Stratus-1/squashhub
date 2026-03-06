@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 
 export default function Profile() {
   const { signOut } = useAuth();
@@ -168,7 +169,7 @@ export default function Profile() {
                   <Button
                     size="sm"
                     className="h-8 text-xs"
-                    onClick={() => {
+                    onClick={async () => {
                       const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
                       if (!clientId) {
                         toast.error("Missing VITE_STRAVA_CLIENT_ID");
@@ -177,7 +178,9 @@ export default function Profile() {
 
                       const state = crypto.randomUUID();
                       sessionStorage.setItem("strava_oauth_state", state);
-                      const redirectUri = `${window.location.origin}/integrations/strava/callback`;
+                      const redirectUri = Capacitor.isNativePlatform()
+                        ? "gbsquash://integrations/strava/callback"
+                        : `${window.location.origin}/integrations/strava/callback`;
 
                       const url = new URL("https://www.strava.com/oauth/authorize");
                       url.searchParams.set("client_id", clientId);
@@ -186,6 +189,12 @@ export default function Profile() {
                       url.searchParams.set("approval_prompt", "auto");
                       url.searchParams.set("scope", "read,activity:read");
                       url.searchParams.set("state", state);
+
+                      if (Capacitor.isNativePlatform()) {
+                        const { Browser } = await import("@capacitor/browser");
+                        await Browser.open({ url: url.toString() });
+                        return;
+                      }
 
                       window.location.assign(url.toString());
                     }}

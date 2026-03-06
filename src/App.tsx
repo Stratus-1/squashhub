@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
+import { NotificationListener } from "@/components/NotificationListener";
 import { useEffect } from "react";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -107,6 +108,7 @@ function AppRoutes() {
       </Routes>
       {user && <BottomNav />}
       {user && <PushNotificationPrompt />}
+      {user && <NotificationListener />}
     </div>
   );
 }

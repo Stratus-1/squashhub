@@ -95,7 +95,17 @@ export default function MatchTracker() {
           .single();
         if (bookingError) throw bookingError;
         const b = bookingRow as unknown as BookingRow;
-        if (b.user_id !== user.id) throw new Error("You can only track your own booking");
+        if (b.user_id !== user.id) {
+          const { data: scheduled, error: scheduledError } = await supabase
+            .from("scheduled_matches")
+            .select("id,player_a,player_b")
+            .eq("booking_id", bookingId)
+            .limit(1);
+          if (scheduledError) throw scheduledError;
+          const sm = scheduled?.[0];
+          const isParticipant = !!sm && (sm.player_a === user.id || sm.player_b === user.id);
+          if (!isParticipant) throw new Error("You can only track bookings you are playing in");
+        }
         setBooking(b);
 
         const { data: sessionRows, error: sessionError } = await supabase
@@ -476,4 +486,3 @@ export default function MatchTracker() {
     </div>
   );
 }
-

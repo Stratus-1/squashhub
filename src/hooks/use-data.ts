@@ -110,6 +110,29 @@ export function useMyBookings() {
   });
 }
 
+export function useMyScheduledMatches() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-scheduled-matches", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("scheduled_matches")
+        .select("*")
+        .or(`player_a.eq.${user.id},player_b.eq.${user.id}`)
+        .eq("status", "scheduled")
+        .gte("scheduled_date", today)
+        .order("scheduled_date", { ascending: true })
+        .order("start_time", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+}
+
 export function useLadder() {
   return useQuery({
     queryKey: ["ladder"],
@@ -457,6 +480,26 @@ export function useIntegrations() {
         .eq("user_id", user.id);
       if (error) throw error;
       return (data || []) as IntegrationAccount[];
+    },
+    enabled: !!user,
+  });
+}
+
+export type AppRole = "admin" | "moderator" | "user";
+
+export function useMyRoles() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-roles", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as AppRole[];
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return (data || []).map((r) => r.role) as AppRole[];
     },
     enabled: !!user,
   });

@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
+import { useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ export default function Dashboard() {
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
   const { data: myBookings } = useMyBookings();
+  const { data: myScheduledMatches } = useMyScheduledMatches();
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
 
@@ -45,6 +48,34 @@ export default function Dashboard() {
 
     return candidates[0] ?? null;
   }, [myBookings, todayStr]);
+
+  const scheduledOpponentIds = useMemo(() => {
+    if (!user?.id) return [] as string[];
+    const ids = (myScheduledMatches || [])
+      .map((s: any) => (s.player_a === user.id ? s.player_b : s.player_a))
+      .filter(Boolean) as string[];
+    return [...new Set(ids)];
+  }, [myScheduledMatches, user?.id]);
+
+  const { data: opponentProfiles } = useQuery({
+    queryKey: ["scheduled-opponents", user?.id, scheduledOpponentIds.join(",")],
+    queryFn: async () => {
+      if (scheduledOpponentIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id,name")
+        .in("id", scheduledOpponentIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: scheduledOpponentIds.length > 0,
+  });
+
+  const opponentNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of opponentProfiles || []) map.set(p.id, (p as any).name || "Unknown");
+    return map;
+  }, [opponentProfiles]);
 
   if (isLoading) {
     return (
@@ -110,6 +141,41 @@ export default function Dashboard() {
               Track
             </Button>
           </Card>
+        </motion.div>
+      )}
+
+      {myScheduledMatches && myScheduledMatches.length > 0 && (
+        <motion.div
+          className="px-4 mt-5"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold font-heading">My Scheduled Matches</h2>
+          </div>
+          <div className="space-y-2">
+            {myScheduledMatches.slice(0, 3).map((s: any) => {
+              const opponentId = user?.id ? (s.player_a === user.id ? s.player_b : s.player_a) : null;
+              const opponentName = opponentId ? opponentNameMap.get(opponentId) || "Opponent" : "Opponent";
+              const courtLabel = s.court_id ? `Court ${s.court_id}` : "Court";
+              return (
+                <Card key={s.id} className="p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">Vs {opponentName}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {s.scheduled_date} · {s.start_time?.slice(0, 5)}–{s.end_time?.slice(0, 5)} · {courtLabel}
+                    </p>
+                  </div>
+                  {s.booking_id ? (
+                    <Button size="sm" variant="outline" className="shrink-0 h-8 text-xs" onClick={() => navigate(`/match-tracker/${s.booking_id}`)}>
+                      Track
+                    </Button>
+                  ) : null}
+                </Card>
+              );
+            })}
+          </div>
         </motion.div>
       )}
 

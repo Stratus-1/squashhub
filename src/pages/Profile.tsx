@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell } from "lucide-react";
+import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIntegrations, useProfile } from "@/hooks/use-data";
+import { useIntegrations, useMyRoles, useProfile } from "@/hooks/use-data";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { Link } from "react-router-dom";
 
 type StravaActivityPreview = {
   id: number;
@@ -34,6 +35,7 @@ export default function Profile() {
   const { signOut, user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const { data: integrations } = useIntegrations();
+  const { data: myRoles } = useMyRoles();
   const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const queryClient = useQueryClient();
   const [stravaSyncing, setStravaSyncing] = useState(false);
@@ -127,6 +129,9 @@ export default function Profile() {
     (profile as any)?.strava_last_sync_at ? new Date((profile as any).strava_last_sync_at as string) : null;
   const stravaActivitiesCount =
     typeof (profile as any)?.strava_activities_count === "number" ? ((profile as any).strava_activities_count as number) : null;
+
+  const canOpenAdmin =
+    (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
 
   return (
     <div className="bottom-nav-safe">
@@ -558,6 +563,13 @@ export default function Profile() {
         <Button variant="outline" className="w-full justify-start gap-3">
           <Settings className="w-4 h-4" /> Edit Profile
         </Button>
+        {canOpenAdmin && (
+          <Button variant="outline" className="w-full justify-start gap-3" asChild>
+            <Link to="/admin">
+              <Shield className="w-4 h-4" /> Admin Dashboard
+            </Link>
+          </Button>
+        )}
         <Button
           variant="outline"
           className="w-full justify-start gap-3 text-destructive hover:text-destructive"

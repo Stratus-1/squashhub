@@ -20,7 +20,9 @@ import NewChallenge from "./pages/NewChallenge";
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
 import PlayerProfile from "./pages/PlayerProfile";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import { useMyRoles } from "@/hooks/use-data";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +45,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const { data: roles, isLoading } = useMyRoles();
+
+  if (loading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/auth" replace />;
+
+  const allowed = (roles || []).includes("admin") || (roles || []).includes("moderator");
+  if (!allowed) return <Navigate to="/dashboard" replace />;
+
   return <>{children}</>;
 }
 
@@ -77,6 +99,7 @@ function AppRoutes() {
         <Route path="/players/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
         <Route path="/integrations/strava/callback" element={<ProtectedRoute><StravaCallback /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

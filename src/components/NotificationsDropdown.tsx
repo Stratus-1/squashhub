@@ -1,0 +1,187 @@
+import { useMemo, useState } from "react";
+import type { ComponentProps } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUnreadNotificationsCount } from "@/hooks/use-data";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+};
+
+const iconMap: Record<string, typeof Bell> = {
+  challenge: Swords,
+  booking: Calendar,
+  ladder: Trophy,
+  match: CheckCircle,
+  general: Bell,
+};
+
+export function NotificationsDropdown({
+  triggerClassName,
+  triggerVariant = "ghost",
+}: {
+  triggerClassName?: string;
+  triggerVariant?: ComponentProps<typeof Button>["variant"];
+}) {
+  const { user } = useAuth();
+  const { data: unreadCount } = useUnreadNotificationsCount();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const canLoad = !!user?.id;
+
+  const { data: notifications, isLoading } = useQuery({
+    queryKey: ["notifications", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      return (data || []) as NotificationRow[];
+    },
+    enabled: canLoad && open,
+  });
+
+  const markRead = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("notifications").update({ read: true }).eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
+    },
+  });
+
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) return;
+      await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
+    },
+  });
+
+  const hasUnread = useMemo(() => (unreadCount ?? 0) > 0, [unreadCount]);
+
+  if (!user) return null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant={triggerVariant}
+          size="icon"
+          className={cn("relative", triggerClassName)}
+          aria-label="Open notifications"
+        >
+          <Bell className="w-5 h-5" />
+          {hasUnread && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />}
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="w-[92vw] max-w-sm p-0 overflow-hidden"
+      >
+        <div className="p-3 border-b flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Notifications</p>
+            <p className="text-[11px] text-muted-foreground">
+              {hasUnread ? `${unreadCount} unread` : "All caught up"}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            disabled={!hasUnread || markAllRead.isPending}
+            onClick={() => markAllRead.mutate()}
+          >
+            {markAllRead.isPending ? "Marking..." : "Mark all read"}
+          </Button>
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          ) : notifications && notifications.length > 0 ? (
+            <div className="divide-y divide-border">
+              {notifications.map((notif) => {
+                const Icon = iconMap[notif.type] || Bell;
+                return (
+                  <button
+                    key={notif.id}
+                    className={cn(
+                      "w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-muted/40 transition-colors",
+                      !notif.read && "bg-primary/5"
+                    )}
+                    onClick={() => {
+                      if (!notif.read) markRead.mutate(notif.id);
+                    }}
+                  >
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                        !notif.read ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold truncate">{notif.title}</p>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        {notif.message}
+                      </p>
+                    </div>
+
+                    {!notif.read && (
+                      <Badge variant="secondary" className="text-[10px] bg-primary/15 text-primary shrink-0 mt-0.5">
+                        New
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-sm text-muted-foreground">
+              <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              No notifications yet
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}

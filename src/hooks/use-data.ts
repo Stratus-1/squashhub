@@ -2,6 +2,43 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+export type CourtBusynessRow = { slot: string; bookings_count: number };
+
+export function useCourtBusyness(daysBack = 30) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["court-busyness", user?.id, daysBack],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_court_busyness", { days_back: daysBack } as any);
+      if (error) throw error;
+      return (data || []) as CourtBusynessRow[];
+    },
+    enabled: !!user,
+  });
+}
+
+export type HomeInsights = {
+  range: { from: string; to: string; days: number };
+  totals: { sessions: number; avg_session_minutes: number };
+  busiest: { slot: string | null; slot_count: number; day: string | null; day_count: number };
+  top_players: Array<{ id: string; name: string; sessions: number }>;
+  top_pairs: Array<{ a_id: string; a_name: string; b_id: string; b_name: string; sessions: number }>;
+  me: { sessions: number; avg_session_minutes: number };
+};
+
+export function useHomeInsights(daysBack = 30) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["home-insights", user?.id, daysBack],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_home_insights", { days_back: daysBack } as any);
+      if (error) throw error;
+      return data as HomeInsights;
+    },
+    enabled: !!user,
+  });
+}
+
 export function useUnreadNotificationsCount() {
   const { user } = useAuth();
 

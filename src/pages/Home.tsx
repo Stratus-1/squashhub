@@ -2,14 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import {
   Calendar, Trophy, Swords, ClipboardList,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,
-  Clock, Users, LogIn, Bell, Shield, UserRound
+  Clock, Users, LogIn, Shield, UserRound
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBookings, useChallenges, useLadder, useMyBookings, useMyRoles, useProfile, usePublicLeaderboard, useUnreadNotificationsCount } from "@/hooks/use-data";
+import { useBookings, useChallenges, useCourtBusyness, useHomeInsights, useLadder, useMyBookings, useMyRoles, useProfile, usePublicLeaderboard } from "@/hooks/use-data";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -28,17 +29,20 @@ export default function Home() {
   const { data: me } = useProfile();
   const { data: myBookings } = useMyBookings();
   const { data: myChallenges } = useChallenges();
-  const { data: unreadCount } = useUnreadNotificationsCount();
   const { data: myRoles } = useMyRoles();
+  const { data: insights } = useHomeInsights(30);
+  const { data: busyness } = useCourtBusyness(30);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
 
   const topPlayers = (user ? ladder?.slice(0, 5) : publicLeaderboard?.slice(0, 5)) || [];
   const spotlight = topPlayers.length > 0 ? topPlayers[0] : null;
 
-  const totalSlots = 2 * 32; // 2 courts × 32 slots (06:00–22:00 in 30-min increments)
-  const bookedCount = todayBookings?.length || 0;
-  const availableSlots = Math.max(0, totalSlots - bookedCount);
+  const slotsPerCourt = 32; // 06:00–22:00 in 30-min increments
+  const bookedCourt1 = (todayBookings || []).filter((b: any) => b.court_id === 1).length;
+  const bookedCourt2 = (todayBookings || []).filter((b: any) => b.court_id === 2).length;
+  const openCourt1 = Math.max(0, slotsPerCourt - bookedCourt1);
+  const openCourt2 = Math.max(0, slotsPerCourt - bookedCourt2);
 
   const getInitials = (name: string) =>
     name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -83,17 +87,10 @@ export default function Home() {
               </Button>
             ) : (
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="relative border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
-                  onClick={() => navigate("/notifications")}
-                >
-                  <Bell className="w-4 h-4" />
-                  {(unreadCount ?? 0) > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent" />
-                  )}
-                </Button>
+                <NotificationsDropdown
+                  triggerVariant="outline"
+                  triggerClassName="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
+                />
                 <Button
                   size="sm"
                   variant="outline"
@@ -144,12 +141,20 @@ export default function Home() {
             transition={{ delay: 0.25, duration: 0.5 }}
           >
             {user ? (
-              <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
-                <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                <span className="text-xs font-medium text-primary-foreground">
-                  {availableSlots} slots open today
-                </span>
-              </div>
+              <>
+                <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span className="text-xs font-medium text-primary-foreground">
+                    Court 1: {openCourt1} open
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span className="text-xs font-medium text-primary-foreground">
+                    Court 2: {openCourt2} open
+                  </span>
+                </div>
+              </>
             ) : (
               <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/70" />
@@ -270,6 +275,135 @@ export default function Home() {
               </Button>
             )}
           </div>
+        </motion.section>
+      )}
+
+      {/* Club Insights */}
+      {user && (
+        <motion.section
+          className="px-4 sm:px-6 lg:px-[5%] mt-8"
+          {...fadeUp}
+          transition={{ delay: 0.32 }}
+        >
+          <div className="flex items-end justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <h2 className="font-heading font-semibold text-base">Club Insights</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {insights?.range ? `Last ${insights.range.days} days` : "Loading…"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Sessions</p>
+                <p className="font-heading font-bold text-lg mt-1">{insights?.totals?.sessions ?? "—"}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Bookings played</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg session</p>
+                <p className="font-heading font-bold text-lg mt-1">
+                  {typeof insights?.totals?.avg_session_minutes === "number" ? `${insights.totals.avg_session_minutes}m` : "—"}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">Based on bookings</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Busiest day</p>
+                <p className="font-heading font-bold text-lg mt-1">{insights?.busiest?.day ?? "—"}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {typeof insights?.busiest?.day_count === "number" ? `${insights.busiest.day_count} sessions` : "—"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Busiest time</p>
+                <p className="font-heading font-bold text-lg mt-1">{insights?.busiest?.slot ?? "—"}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {typeof insights?.busiest?.slot_count === "number" ? `${insights.busiest.slot_count} bookings` : "—"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="mt-3 overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">When the courts are busiest</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Bookings per 30-min slot (both courts combined)
+                  </p>
+                </div>
+                {insights?.busiest?.slot ? (
+                  <Badge variant="secondary" className="shrink-0">
+                    Peak: {insights.busiest.slot}
+                  </Badge>
+                ) : null}
+              </div>
+
+              {busyness && busyness.length > 0 ? (
+                <div className="mt-4">
+                  <div className="flex items-end gap-1 overflow-x-auto pb-2">
+                    {(() => {
+                      const max = Math.max(...busyness.map((b) => Number(b.bookings_count || 0)), 1);
+                      return busyness.map((b) => {
+                        const c = Number(b.bookings_count || 0);
+                        const h = Math.max(2, Math.round((c / max) * 64));
+                        const isPeak = insights?.busiest?.slot && b.slot === insights.busiest.slot;
+                        return (
+                          <div key={b.slot} className="shrink-0 flex flex-col items-center gap-1">
+                            <div
+                              title={`${b.slot} — ${c} bookings`}
+                              className={`w-3 rounded-sm ${isPeak ? "bg-accent" : c > 0 ? "bg-primary/60" : "bg-muted"}`}
+                              style={{ height: `${h}px` }}
+                            />
+                            <span className="text-[9px] text-muted-foreground">
+                              {b.slot.endsWith(":00") ? b.slot.slice(0, 2) : ""}
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    Tip: tap/hover a bar to see the slot and count.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-4">No data yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {(insights?.top_players?.length || 0) > 0 && (
+            <Card className="mt-3">
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold">Most active players</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Players with the most sessions in the last {insights?.range?.days ?? 30} days
+                </p>
+                <div className="mt-3 space-y-2">
+                  {insights!.top_players.slice(0, 5).map((p, idx) => (
+                    <div key={p.id} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground w-5 text-right">{idx + 1}</span>
+                        <span className="text-sm font-medium truncate">{p.name}</span>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">
+                        {p.sessions}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </motion.section>
       )}
 

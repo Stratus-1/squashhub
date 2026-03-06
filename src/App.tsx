@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
 import Ladder from "./pages/Ladder";
@@ -44,9 +45,10 @@ function AppRoutes() {
   return (
     <div className="min-h-screen max-w-lg mx-auto bg-background relative">
       <Routes>
+        <Route path="/home" element={<Home />} />
         <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/" element={user ? <ProtectedRoute><Dashboard /></ProtectedRoute> : <Navigate to="/home" replace />} />
         <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
         <Route path="/ladder" element={<ProtectedRoute><Ladder /></ProtectedRoute>} />
         <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />

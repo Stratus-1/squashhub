@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NativePushListener } from "@/components/NativePushListener";
+import { RealtimeSync } from "@/components/RealtimeSync";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -97,6 +98,7 @@ function AppRoutes() {
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
       {user && <NativePushListener />}
+      {user && <RealtimeSync />}
     </div>
   );
 }

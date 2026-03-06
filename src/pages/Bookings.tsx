@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { format, addDays, subDays } from "date-fns";
+import { format, addDays, subDays, getISODay } from "date-fns";
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -100,14 +100,31 @@ export default function Bookings() {
       const { data, error } = await supabase
         .from("profiles")
         .select("id,name,rank,availability,email")
-        .not("availability", "is", null)
-        .neq("availability", "")
         .order("rank", { ascending: true })
         .limit(100);
       if (error) throw error;
       return (data || []) as Array<{ id: string; name: string; rank: number | null; availability: string | null; email: string | null }>;
     },
     enabled: !!user,
+  });
+
+  const { data: availableForSlotUserIds } = useQuery({
+    queryKey: ["available-for-slot", dateStr, bookingDialog?.time],
+    queryFn: async () => {
+      if (!bookingDialog?.time) return [] as string[];
+      const dow = getISODay(selectedDate);
+      const start = `${bookingDialog.time}:00`;
+      const end = `${addMinutesToTime(bookingDialog.time, 30)}:00`;
+      const { data, error } = await supabase
+        .from("player_availability")
+        .select("user_id")
+        .eq("day_of_week", dow)
+        .lte("start_time", start)
+        .gte("end_time", end);
+      if (error) throw error;
+      return [...new Set((data || []).map((r: any) => String(r.user_id)))] as string[];
+    },
+    enabled: !!user && !!bookingDialog?.time,
   });
 
   const getBooking = (courtId: number, time: string) => {
@@ -189,7 +206,14 @@ export default function Bookings() {
     if (bookingDialog.isFriendly) return list;
     if (!myRank) return [] as typeof list;
 
-    return list.filter((p) => typeof p.rank === "number" && myRank - p.rank >= 1 && myRank - p.rank <= 2);
+    const availableSet = availableForSlotUserIds ? new Set(availableForSlotUserIds) : null;
+    return list.filter(
+      (p) =>
+        typeof p.rank === "number" &&
+        myRank - p.rank >= 1 &&
+        myRank - p.rank <= 2 &&
+        (availableSet ? availableSet.has(p.id) : true)
+    );
   })();
 
   const selectedOpponent = bookingDialog?.opponentId
@@ -425,10 +449,12 @@ export default function Bookings() {
                     {eligibleOpponents.length === 0 ? (
                       <div className="px-3 py-2 text-xs text-muted-foreground">
                         {bookingDialog.isFriendly
-                          ? "No players with availability yet."
+                          ? "No other players found."
                           : !me?.rank
                             ? "You need a ladder rank to book a ladder match. Toggle Friendly to book anyone."
-                            : "No available players you can challenge right now. Toggle Friendly to book anyone."}
+                            : availableForSlotUserIds
+                              ? "No eligible opponents are available for this 30-minute slot. Toggle Friendly to book anyone."
+                              : "Loading availability…"}
                       </div>
                     ) : (
                       eligibleOpponents.map((p) => (
@@ -440,10 +466,21 @@ export default function Bookings() {
                   </SelectContent>
                 </Select>
 
-                {selectedOpponent?.availability ? (
+                {selectedOpponent ? (
                   <div className="rounded-md border p-3">
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</p>
-                    <p className="text-sm mt-1">{selectedOpponent.availability}</p>
+                    {selectedOpponent.availability ? (
+                      <p className="text-sm mt-1">{selectedOpponent.availability}</p>
+                    ) : (
+                      <p className="text-sm mt-1 text-muted-foreground">No availability set.</p>
+                    )}
+                    {availableForSlotUserIds ? (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {availableForSlotUserIds.includes(selectedOpponent.id)
+                          ? "Available for this slot."
+                          : "Not available for this slot (based on their availability blocks)."}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

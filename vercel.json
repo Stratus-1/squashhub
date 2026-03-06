@@ -5,6 +5,9 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],
+  "crons": [
+    { "path": "/api/cron/expire", "schedule": "0 * * * *" }
+  ],
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }

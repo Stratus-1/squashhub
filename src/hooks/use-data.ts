@@ -311,7 +311,7 @@ export function usePlayerProfile(playerId?: string | null) {
   });
 }
 
-export type ChallengeStatus = "pending" | "accepted" | "declined" | "completed";
+export type ChallengeStatus = "pending" | "accepted" | "declined" | "completed" | "expired";
 
 export type ChallengeWithProfiles = {
   id: string;
@@ -319,11 +319,122 @@ export type ChallengeWithProfiles = {
   opponent_id: string;
   status: ChallengeStatus;
   proposed_date: string | null;
+  expires_at?: string | null;
   created_at: string;
   updated_at: string;
   challenger_name: string;
   opponent_name: string;
 };
+
+export type ChallengeScheduleStatus = "proposed" | "accepted" | "declined" | "cancelled" | "expired";
+
+export type ChallengeSchedule = {
+  id: string;
+  challenge_id: string;
+  proposed_by: string;
+  proposed_date: string;
+  start_time: string;
+  end_time: string;
+  court_id: number | null;
+  booking_id: string | null;
+  status: ChallengeScheduleStatus;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export function useChallengeSchedulesByChallengeIds(challengeIds: string[]) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["challenge-schedules", user?.id, challengeIds.join(",")],
+    queryFn: async () => {
+      if (!user || challengeIds.length === 0) return [] as ChallengeSchedule[];
+      const { data, error } = await supabase
+        .from("challenge_schedules")
+        .select("*")
+        .in("challenge_id", challengeIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as ChallengeSchedule[];
+    },
+    enabled: !!user && challengeIds.length > 0,
+  });
+}
+
+export function useProposeChallengeSchedule() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      challengeId: string;
+      proposedDate: string;
+      startTime: string;
+      endTime: string;
+      courtId: number;
+    }) => {
+      if (!user) throw new Error("Must be logged in");
+      const { data, error } = await supabase
+        .from("challenge_schedules")
+        .insert({
+          challenge_id: payload.challengeId,
+          proposed_by: user.id,
+          proposed_date: payload.proposedDate,
+          start_time: payload.startTime,
+          end_time: payload.endTime,
+          court_id: payload.courtId,
+          status: "proposed",
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ChallengeSchedule;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["challenge-schedules"] });
+      await queryClient.invalidateQueries({ queryKey: ["challenges"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useRespondChallengeSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ scheduleId, status }: { scheduleId: string; status: "accepted" | "declined" | "cancelled" }) => {
+      const { error } = await supabase
+        .from("challenge_schedules")
+        .update({ status } as any)
+        .eq("id", scheduleId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["challenge-schedules"] });
+      await queryClient.invalidateQueries({ queryKey: ["challenges"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+    },
+  });
+}
+
+export function useAcceptChallengeSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (scheduleId: string) => {
+      const { error } = await supabase.rpc("accept_challenge_schedule", { target_schedule_id: scheduleId } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["challenge-schedules"] });
+      await queryClient.invalidateQueries({ queryKey: ["challenges"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+    },
+  });
+}
 
 export function useChallenges() {
   const { user } = useAuth();
@@ -452,6 +563,16 @@ export type MatchWithProfiles = {
   submitted_by: string | null;
   confirmed: boolean;
   disputed: boolean;
+  is_friendly?: boolean;
+  booking_id?: string | null;
+  confirm_a?: boolean;
+  confirm_b?: boolean;
+  confirmed_by_admin?: boolean;
+  confirmed_at?: string | null;
+  disputed_by?: string | null;
+  disputed_at?: string | null;
+  dispute_notes?: string | null;
+  dispute_evidence_url?: string | null;
   challenge_id: string | null;
   duration_s?: number | null;
   notes?: string | null;
@@ -567,21 +688,84 @@ export function useUpdateMatch() {
       confirmed?: boolean;
       disputed?: boolean;
     }) => {
+      // Deprecated: use confirm/dispute RPCs for the new two-party workflow.
+      // Keep for backward compatibility where admin UIs may still patch fields.
       const patch: Record<string, boolean> = {};
       if (typeof confirmed === "boolean") patch.confirmed = confirmed;
       if (typeof disputed === "boolean") patch.disputed = disputed;
 
-      const { data, error } = await supabase
-        .from("matches")
-        .update(patch)
-        .eq("id", matchId)
-        .select()
-        .single();
+      const { data, error } = await supabase.from("matches").update(patch).eq("id", matchId).select().single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
+    },
+  });
+}
+
+export function useConfirmMatch() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (matchId: string) => {
+      const { error } = await supabase.rpc("confirm_match", { match_id: matchId } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["matches", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["challenges", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+    },
+  });
+}
+
+export function useDisputeMatch() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      matchId,
+      notes,
+      evidenceUrl,
+    }: {
+      matchId: string;
+      notes?: string | null;
+      evidenceUrl?: string | null;
+    }) => {
+      const { error } = await supabase.rpc("dispute_match", {
+        match_id: matchId,
+        notes: notes ?? null,
+        evidence_url: evidenceUrl ?? null,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["matches", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["challenges", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+    },
+  });
+}
+
+export function useAdminConfirmMatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (matchId: string) => {
+      const { error } = await supabase.rpc("admin_confirm_match", { match_id: matchId } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
     },
   });
 }

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -39,11 +40,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   ChallengeWithProfiles,
   MatchWithProfiles,
+  useAcceptChallengeSchedule,
+  useChallengeSchedulesByChallengeIds,
   useChallenges,
+  useConfirmMatch,
   useCreateMatch,
+  useDisputeMatch,
   useMatches,
+  useProposeChallengeSchedule,
+  useRespondChallengeSchedule,
   useUpdateChallengeStatus,
-  useUpdateMatch,
 } from "@/hooks/use-data";
 
 const statusConfig = {
@@ -51,6 +57,7 @@ const statusConfig = {
   accepted: { color: "bg-primary/15 text-primary", icon: Check },
   declined: { color: "bg-destructive/15 text-destructive", icon: X },
   completed: { color: "bg-muted text-muted-foreground", icon: Trophy },
+  expired: { color: "bg-muted text-muted-foreground", icon: Clock },
 } as const;
 
 function initials(name: string) {
@@ -74,10 +81,20 @@ type RecordDialogState = {
   sets: Array<{ a: string; b: string }>;
 };
 
-type AcceptDialogState = {
+type DisputeDialogState = {
+  open: boolean;
+  match: MatchWithProfiles | null;
+  notes: string;
+  evidenceUrl: string;
+};
+
+type ProposeScheduleDialogState = {
   open: boolean;
   challenge: ChallengeWithProfiles | null;
   date: string;
+  startTime: string;
+  durationMinutes: string;
+  courtId: string;
 };
 
 function parseGameScores(value: string | null): { sets?: Array<{ a: number; b: number }>; notes?: string } | null {
@@ -119,6 +136,21 @@ function computeFromSets(sets: Array<{ a: number; b: number }>) {
   return { aSets, bSets } as const;
 }
 
+function timeToMinutes(t: string) {
+  const [hh, mm] = t.split(":").map((x) => Number(x));
+  return hh * 60 + mm;
+}
+
+function minutesToTime(m: number) {
+  const mm = ((m % 60) + 60) % 60;
+  const hh = Math.floor(m / 60);
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+function addMinutesToTime(t: string, delta: number) {
+  return minutesToTime(timeToMinutes(t) + delta);
+}
+
 export default function Challenges() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -126,7 +158,12 @@ export default function Challenges() {
   const { data: matches, isLoading: matchesLoading } = useMatches();
   const updateChallenge = useUpdateChallengeStatus();
   const createMatch = useCreateMatch();
-  const updateMatch = useUpdateMatch();
+  const confirmMatchMutation = useConfirmMatch();
+  const disputeMatchMutation = useDisputeMatch();
+  const { data: schedules } = useChallengeSchedulesByChallengeIds((challenges || []).map((c) => c.id));
+  const proposeSchedule = useProposeChallengeSchedule();
+  const respondSchedule = useRespondChallengeSchedule();
+  const acceptSchedule = useAcceptChallengeSchedule();
 
   const matchByChallengeId = useMemo(() => {
     const map = new Map<string, MatchWithProfiles>();
@@ -148,10 +185,20 @@ export default function Challenges() {
     sets: [{ a: "", b: "" }, { a: "", b: "" }, { a: "", b: "" }],
   }));
 
-  const [accept, setAccept] = useState<AcceptDialogState>(() => ({
+  const [dispute, setDispute] = useState<DisputeDialogState>(() => ({
+    open: false,
+    match: null,
+    notes: "",
+    evidenceUrl: "",
+  }));
+
+  const [propose, setPropose] = useState<ProposeScheduleDialogState>(() => ({
     open: false,
     challenge: null,
     date: format(new Date(), "yyyy-MM-dd"),
+    startTime: "18:00",
+    durationMinutes: "60",
+    courtId: "1",
   }));
 
   const openRecord = (challenge: ChallengeWithProfiles) => {
@@ -177,20 +224,26 @@ export default function Challenges() {
     setRecord((s) => ({ ...s, open: false, challenge: null }));
   };
 
-  const openAccept = (challenge: ChallengeWithProfiles) => {
-    setAccept({
+  const openPropose = (
+    challenge: ChallengeWithProfiles,
+    seed?: Partial<Pick<ProposeScheduleDialogState, "date" | "startTime" | "durationMinutes" | "courtId">>
+  ) => {
+    setPropose({
       open: true,
       challenge,
-      date: challenge.proposed_date ?? format(new Date(), "yyyy-MM-dd"),
+      date: seed?.date ?? challenge.proposed_date ?? format(new Date(), "yyyy-MM-dd"),
+      startTime: seed?.startTime ?? "18:00",
+      durationMinutes: seed?.durationMinutes ?? "60",
+      courtId: seed?.courtId ?? "1",
     });
   };
 
-  const closeAccept = () => setAccept((s) => ({ ...s, open: false, challenge: null }));
+  const closePropose = () => setPropose((s) => ({ ...s, open: false, challenge: null }));
 
-  const respond = async (challengeId: string, status: "accepted" | "declined", proposedDate?: string | null) => {
+  const declineChallenge = async (challengeId: string) => {
     try {
-      await updateChallenge.mutateAsync({ challengeId, status, proposedDate });
-      toast.success(status === "accepted" ? "Challenge accepted" : "Challenge declined");
+      await updateChallenge.mutateAsync({ challengeId, status: "declined" });
+      toast.success("Challenge declined");
     } catch (err: any) {
       toast.error(err.message || "Failed to update challenge");
     }
@@ -278,21 +331,43 @@ export default function Challenges() {
 
   const confirmMatch = async (matchId: string) => {
     try {
-      await updateMatch.mutateAsync({ matchId, confirmed: true, disputed: false });
-      toast.success("Match confirmed");
+      await confirmMatchMutation.mutateAsync(matchId);
+      toast.success("Confirmation recorded");
     } catch (err: any) {
       toast.error(err.message || "Failed to confirm match");
     }
   };
 
-  const disputeMatch = async (matchId: string) => {
+  const openDispute = (match: MatchWithProfiles) => {
+    setDispute({ open: true, match, notes: "", evidenceUrl: "" });
+  };
+
+  const closeDispute = () => setDispute((s) => ({ ...s, open: false, match: null }));
+
+  const submitDispute = async () => {
+    if (!dispute.match) return;
     try {
-      await updateMatch.mutateAsync({ matchId, disputed: true });
-      toast.success("Marked as disputed");
+      await disputeMatchMutation.mutateAsync({
+        matchId: dispute.match.id,
+        notes: dispute.notes.trim() || null,
+        evidenceUrl: dispute.evidenceUrl.trim() || null,
+      });
+      toast.success("Dispute submitted");
+      closeDispute();
     } catch (err: any) {
       toast.error(err.message || "Failed to dispute match");
     }
   };
+
+  const schedulesByChallengeId = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const s of schedules || []) {
+      const list = map.get(s.challenge_id) || [];
+      list.push(s);
+      map.set(s.challenge_id, list);
+    }
+    return map;
+  }, [schedules]);
 
   return (
     <div className="bottom-nav-safe">
@@ -321,7 +396,8 @@ export default function Challenges() {
             </Card>
           ) : (
             (challenges || []).map((challenge, i) => {
-              const config = statusConfig[challenge.status as keyof typeof statusConfig];
+              const config =
+                statusConfig[challenge.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = config.icon;
 
               const isIncoming = user?.id === challenge.opponent_id;
@@ -331,6 +407,14 @@ export default function Challenges() {
 
               const match = matchByChallengeId.get(challenge.id);
               const canRecord = challenge.status === "accepted" && !match;
+              const isLocked =
+                challenge.status === "declined" ||
+                challenge.status === "completed" ||
+                (challenge.status as any) === "expired";
+
+              const challengeSchedules = schedulesByChallengeId.get(challenge.id) || [];
+              const acceptedSchedule = challengeSchedules.find((s) => s.status === "accepted") || null;
+              const proposedSchedules = challengeSchedules.filter((s) => s.status === "proposed");
 
               return (
                 <div
@@ -378,11 +462,108 @@ export default function Challenges() {
                       </div>
                     </div>
 
-                    {challenge.proposed_date && (
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        Proposed: {challenge.proposed_date}
+                    {!isLocked && (challenge.status === "pending" || challenge.status === "accepted") && (challenge as any).expires_at ? (
+                      <p className="text-[11px] text-muted-foreground mt-2 text-center">
+                        Expires: {format(new Date((challenge as any).expires_at as string), "yyyy-MM-dd")}
                       </p>
-                    )}
+                    ) : null}
+
+                    {acceptedSchedule ? (
+                      <div className="mt-3 rounded-md border p-3">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Scheduled</p>
+                        <p className="text-sm font-medium mt-1">
+                          {acceptedSchedule.proposed_date} · {String(acceptedSchedule.start_time).slice(0, 5)}-
+                          {String(acceptedSchedule.end_time).slice(0, 5)}
+                          {acceptedSchedule.court_id ? ` · Court ${acceptedSchedule.court_id}` : ""}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Booking: {acceptedSchedule.booking_id ? "created" : "pending"}
+                        </p>
+                      </div>
+                    ) : proposedSchedules.length > 0 ? (
+                      <div className="mt-3 rounded-md border p-3 space-y-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Proposed times</p>
+                        {proposedSchedules.slice(0, 3).map((s) => {
+                          const proposedByMe = s.proposed_by === user?.id;
+                          const canAccept = !proposedByMe && !isLocked;
+                          const canCancel = proposedByMe && !isLocked;
+
+                          return (
+                            <div key={s.id} className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {s.proposed_date} · {String(s.start_time).slice(0, 5)}-
+                                  {String(s.end_time).slice(0, 5)}
+                                  {s.court_id ? ` · Court ${s.court_id}` : ""}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Proposed by {proposedByMe ? "you" : "opponent"}
+                                </p>
+                              </div>
+                              <div className="shrink-0 flex gap-2">
+                                {canAccept ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      className="h-8 text-xs"
+                                      disabled={acceptSchedule.isPending}
+                                      onClick={async () => {
+                                        try {
+                                          await acceptSchedule.mutateAsync(s.id);
+                                          toast.success("Time accepted");
+                                        } catch (e: any) {
+                                          toast.error(e.message || "Failed to accept time");
+                                        }
+                                      }}
+                                    >
+                                      Accept
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs"
+                                      disabled={respondSchedule.isPending}
+                                      onClick={async () => {
+                                        try {
+                                          await respondSchedule.mutateAsync({ scheduleId: s.id, status: "declined" });
+                                          toast.success("Declined");
+                                        } catch (e: any) {
+                                          toast.error(e.message || "Failed to decline");
+                                        }
+                                      }}
+                                    >
+                                      Decline
+                                    </Button>
+                                  </>
+                                ) : null}
+                                {canCancel ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs"
+                                    disabled={respondSchedule.isPending}
+                                    onClick={async () => {
+                                      try {
+                                        await respondSchedule.mutateAsync({ scheduleId: s.id, status: "cancelled" });
+                                        toast.success("Cancelled proposal");
+                                      } catch (e: any) {
+                                        toast.error(e.message || "Failed to cancel");
+                                      }
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : challenge.proposed_date ? (
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        Proposed date: {challenge.proposed_date}
+                      </p>
+                    ) : null}
 
                     {match?.score && (
                       <p className="text-xs mt-2 text-center">
@@ -406,24 +587,30 @@ export default function Challenges() {
                       );
                     })()}
 
-                    {canRespond && (
-                      <div className="flex gap-2 mt-3">
-                        <Button
-                          size="sm"
-                          className="flex-1 h-8 text-xs"
-                          disabled={updateChallenge.isPending}
-                          onClick={() => openAccept(challenge)}
-                        >
-                          Accept
-                        </Button>
+                    {!isLocked && (challenge.status === "pending" || challenge.status === "accepted") && (
+                      <div className="mt-3">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 h-8 text-xs"
-                          disabled={updateChallenge.isPending}
-                          onClick={() => respond(challenge.id, "declined")}
+                          className="w-full h-8 text-xs"
+                          disabled={proposeSchedule.isPending}
+                          onClick={() => openPropose(challenge)}
                         >
-                          Decline
+                          {acceptedSchedule ? "Propose a new time" : "Propose a time"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {canRespond && (
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-8 text-xs"
+                          disabled={updateChallenge.isPending}
+                          onClick={() => declineChallenge(challenge.id)}
+                        >
+                          Decline challenge
                         </Button>
                       </div>
                     )}
@@ -486,8 +673,13 @@ export default function Challenges() {
           ) : (
             (matches || []).map((match) => {
               const needsConfirmation = !match.confirmed && !match.disputed;
-              const canConfirm =
-                needsConfirmation && !!user && match.submitted_by !== user.id;
+              const myId = user?.id || null;
+              const myIsA = !!myId && match.player_a === myId;
+              const myIsB = !!myId && match.player_b === myId;
+              const myConfirmed = myIsA ? !!(match as any).confirm_a : myIsB ? !!(match as any).confirm_b : false;
+              const oppConfirmed = myIsA ? !!(match as any).confirm_b : myIsB ? !!(match as any).confirm_a : false;
+              const canConfirm = needsConfirmation && (myIsA || myIsB) && !myConfirmed;
+              const canDispute = needsConfirmation && (myIsA || myIsB);
 
               return (
                 <Card key={match.id} className="p-4">
@@ -499,7 +691,7 @@ export default function Challenges() {
                       </Badge>
                     ) : !match.confirmed ? (
                       <Badge variant="secondary" className="text-[10px] bg-accent/20">
-                        Awaiting confirmation
+                        Awaiting confirmations
                       </Badge>
                     ) : (
                       <Badge variant="secondary" className="text-[10px]">
@@ -545,25 +737,59 @@ export default function Challenges() {
                     );
                   })()}
 
-                  {canConfirm && (
+                  {(canConfirm || canDispute) && (
                     <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        className="flex-1 h-8 text-xs"
-                        disabled={updateMatch.isPending}
-                        onClick={() => confirmMatch(match.id)}
-                      >
-                        Confirm
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-8 text-xs"
-                        disabled={updateMatch.isPending}
-                        onClick={() => disputeMatch(match.id)}
-                      >
-                        Dispute
-                      </Button>
+                      {canConfirm ? (
+                        <Button
+                          size="sm"
+                          className="flex-1 h-8 text-xs"
+                          disabled={confirmMatchMutation.isPending}
+                          onClick={() => confirmMatch(match.id)}
+                        >
+                          {confirmMatchMutation.isPending ? "Confirming..." : "Confirm"}
+                        </Button>
+                      ) : (
+                        <Button size="sm" className="flex-1 h-8 text-xs" disabled>
+                          You confirmed
+                        </Button>
+                      )}
+                      {canDispute ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-8 text-xs"
+                          disabled={disputeMatchMutation.isPending}
+                          onClick={() => openDispute(match)}
+                        >
+                          Dispute
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {!match.confirmed && !match.disputed && (myIsA || myIsB) && (
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      {myConfirmed ? "You confirmed." : "You still need to confirm."}{" "}
+                      {oppConfirmed ? "Opponent confirmed." : "Waiting on opponent."}
+                    </p>
+                  )}
+
+                  {match.disputed && (
+                    <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                      <p className="text-xs font-semibold text-destructive">Dispute raised</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {((match as any).dispute_notes as string | null) || "No dispute notes provided."}
+                      </p>
+                      {((match as any).dispute_evidence_url as string | null) ? (
+                        <a
+                          href={String((match as any).dispute_evidence_url)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary underline mt-2 inline-block"
+                        >
+                          View evidence
+                        </a>
+                      ) : null}
                     </div>
                   )}
                 </Card>
@@ -572,6 +798,55 @@ export default function Challenges() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={dispute.open} onOpenChange={(open) => (!open ? closeDispute() : null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Dispute Match</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="rounded-md border p-3">
+              <p className="text-xs text-muted-foreground">Match</p>
+              <p className="text-sm font-medium">
+                {dispute.match ? `${dispute.match.player_a_name} vs ${dispute.match.player_b_name}` : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {dispute.match?.match_date} · {dispute.match?.score || "—"}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Dispute reason</Label>
+              <Textarea
+                value={dispute.notes}
+                onChange={(e) => setDispute((s) => ({ ...s, notes: e.target.value }))}
+                placeholder="Explain what’s wrong with the result…"
+                className="min-h-[90px]"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                An admin can resolve disputes if needed.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Evidence link (optional)</Label>
+              <Input
+                value={dispute.evidenceUrl}
+                onChange={(e) => setDispute((s) => ({ ...s, evidenceUrl: e.target.value }))}
+                placeholder="Paste a link (photo/doc)"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDispute}>Cancel</Button>
+            <Button onClick={submitDispute} disabled={disputeMatchMutation.isPending}>
+              {disputeMatchMutation.isPending ? "Submitting..." : "Submit dispute"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={record.open} onOpenChange={(open) => (!open ? closeRecord() : null)}>
         <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
@@ -777,44 +1052,109 @@ export default function Challenges() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={accept.open} onOpenChange={(open) => (!open ? closeAccept() : null)}>
+      <Dialog open={propose.open} onOpenChange={(open) => (!open ? closePropose() : null)}>
         <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
           <div className="p-6 pb-4 border-b">
             <DialogHeader>
-              <DialogTitle>Accept Challenge</DialogTitle>
+              <DialogTitle>Propose a time</DialogTitle>
             </DialogHeader>
           </div>
 
-          {accept.challenge && (
+          {propose.challenge && (
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Confirm the date for this match. You can still record the result later.
-              </p>
-              <div className="space-y-1.5">
-                <Label>Date</Label>
-                <Input
-                  type="date"
-                  value={accept.date}
-                  onChange={(e) => setAccept((s) => ({ ...s, date: e.target.value }))}
-                />
+              <p className="text-sm text-muted-foreground">Suggest a time and court for this match.</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Date</Label>
+                  <Input
+                    type="date"
+                    value={propose.date}
+                    onChange={(e) => setPropose((s) => ({ ...s, date: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Court</Label>
+                  <Select value={propose.courtId} onValueChange={(v) => setPropose((s) => ({ ...s, courtId: v }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Court" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Court 1</SelectItem>
+                      <SelectItem value="2">Court 2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Start time</Label>
+                  <Input
+                    type="time"
+                    step={1800}
+                    value={propose.startTime}
+                    onChange={(e) => setPropose((s) => ({ ...s, startTime: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Duration</Label>
+                  <Select value={propose.durationMinutes} onValueChange={(v) => setPropose((s) => ({ ...s, durationMinutes: v }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 minutes</SelectItem>
+                      <SelectItem value="60">60 minutes</SelectItem>
+                      <SelectItem value="90">90 minutes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="rounded-md border p-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+                <p className="text-sm font-medium mt-1">
+                  {propose.date} · {propose.startTime}-
+                  {addMinutesToTime(propose.startTime, Number(propose.durationMinutes || "60"))}
+                  {propose.courtId ? ` · Court ${propose.courtId}` : ""}
+                </p>
               </div>
             </div>
           )}
 
           <div className="p-6 pt-4 border-t bg-background">
             <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={closeAccept}>
+              <Button variant="outline" onClick={closePropose}>
                 Cancel
               </Button>
               <Button
                 onClick={async () => {
-                  if (!accept.challenge) return;
-                  await respond(accept.challenge.id, "accepted", accept.date || null);
-                  closeAccept();
+                  if (!propose.challenge) return;
+                  const minutes = propose.durationMinutes.trim() ? Number(propose.durationMinutes) : 60;
+                  if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 240) {
+                    toast.error("Choose a duration between 30 and 240 minutes");
+                    return;
+                  }
+
+                  const end = addMinutesToTime(propose.startTime, minutes);
+                  try {
+                    await proposeSchedule.mutateAsync({
+                      challengeId: propose.challenge.id,
+                      proposedDate: propose.date,
+                      startTime: `${propose.startTime}:00`,
+                      endTime: `${end}:00`,
+                      courtId: Number(propose.courtId) || 1,
+                    });
+                    toast.success("Time proposed");
+                    closePropose();
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to propose time");
+                  }
                 }}
-                disabled={updateChallenge.isPending}
+                disabled={proposeSchedule.isPending}
               >
-                Accept
+                Propose
               </Button>
             </DialogFooter>
           </div>

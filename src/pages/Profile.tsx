@@ -46,8 +46,23 @@ type EditableProfileFields = {
   years_playing: string;
   playing_style: string;
   favorite_shot: string;
-  availability: string;
 };
+
+type AvailabilityBlock = {
+  day_of_week: number; // 1=Mon ... 7=Sun
+  start_time: string; // HH:MM
+  end_time: string; // HH:MM
+};
+
+const dayOptions: Array<{ value: number; label: string }> = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 7, label: "Sun" },
+];
 
 function ComingSoonAppCard({
   provider,
@@ -110,8 +125,9 @@ export default function Profile() {
     years_playing: "",
     playing_style: "",
     favorite_shot: "",
-    availability: "",
   });
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
 
   const strava = useMemo(
     () => integrations?.find((i) => i.provider === "strava") || null,
@@ -612,8 +628,30 @@ export default function Profile() {
               years_playing: (profile as any).years_playing != null ? String((profile as any).years_playing) : "",
               playing_style: (profile as any).playing_style || "",
               favorite_shot: (profile as any).favorite_shot || "",
-              availability: (profile as any).availability || "",
             });
+          }
+
+          if (open && user?.id) {
+            setAvailabilityLoading(true);
+            supabase
+              .from("player_availability")
+              .select("day_of_week,start_time,end_time")
+              .eq("user_id", user.id)
+              .order("day_of_week", { ascending: true })
+              .order("start_time", { ascending: true })
+              .then(({ data, error }) => {
+                if (error) throw error;
+                const blocks = (data || []).map((b: any) => ({
+                  day_of_week: Number(b.day_of_week),
+                  start_time: String(b.start_time || "").slice(0, 5),
+                  end_time: String(b.end_time || "").slice(0, 5),
+                })) as AvailabilityBlock[];
+                setAvailabilityBlocks(blocks);
+              })
+              .catch((e: any) => {
+                toast.error(e.message || "Failed to load availability");
+              })
+              .finally(() => setAvailabilityLoading(false));
           }
         }}
       >
@@ -697,14 +735,110 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Availability</Label>
-              <Textarea
-                className="min-h-[72px]"
-                placeholder="When do you usually play? (e.g. Weekdays after 6pm)"
-                value={edit.availability}
-                onChange={(e) => setEdit((s) => ({ ...s, availability: e.target.value }))}
-              />
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Label>Availability</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Add structured time windows so others can see when you usually play.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() =>
+                    setAvailabilityBlocks((prev) => [
+                      ...prev,
+                      { day_of_week: 1, start_time: "18:00", end_time: "19:00" },
+                    ])
+                  }
+                >
+                  Add
+                </Button>
+              </div>
+
+              {(profile as any)?.availability ? (
+                <div className="rounded-md border p-3">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Summary</p>
+                  <p className="text-sm mt-1">{String((profile as any).availability)}</p>
+                </div>
+              ) : null}
+
+              {availabilityLoading ? (
+                <div className="rounded-md border p-3 text-sm text-muted-foreground">Loading availability…</div>
+              ) : availabilityBlocks.length === 0 ? (
+                <div className="rounded-md border p-3 text-sm text-muted-foreground">
+                  No availability set yet. Tap “Add” to add a time window.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availabilityBlocks.map((b, idx) => (
+                    <div key={`${b.day_of_week}-${b.start_time}-${idx}`} className="rounded-md border p-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Day</Label>
+                          <Select
+                            value={String(b.day_of_week)}
+                            onValueChange={(v) =>
+                              setAvailabilityBlocks((prev) =>
+                                prev.map((x, i) => (i === idx ? { ...x, day_of_week: Number(v) } : x))
+                              )
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Day" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {dayOptions.map((d) => (
+                                <SelectItem key={d.value} value={String(d.value)}>
+                                  {d.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Start</Label>
+                          <Input
+                            type="time"
+                            step={1800}
+                            value={b.start_time}
+                            onChange={(e) =>
+                              setAvailabilityBlocks((prev) =>
+                                prev.map((x, i) => (i === idx ? { ...x, start_time: e.target.value } : x))
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">End</Label>
+                          <Input
+                            type="time"
+                            step={1800}
+                            value={b.end_time}
+                            onChange={(e) =>
+                              setAvailabilityBlocks((prev) =>
+                                prev.map((x, i) => (i === idx ? { ...x, end_time: e.target.value } : x))
+                              )
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-10 sm:h-9 text-xs"
+                          onClick={() => setAvailabilityBlocks((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -731,13 +865,38 @@ export default function Profile() {
                         years_playing: years == null ? null : Math.trunc(years),
                         playing_style: edit.playing_style.trim() || null,
                         favorite_shot: edit.favorite_shot.trim() || null,
-                        availability: edit.availability.trim() || null,
                       } as any)
                       .eq("id", user.id);
                     if (error) throw error;
 
+                    const cleanedBlocks = availabilityBlocks
+                      .map((b) => ({
+                        day_of_week: Number(b.day_of_week),
+                        start_time: String(b.start_time || "").trim(),
+                        end_time: String(b.end_time || "").trim(),
+                      }))
+                      .filter((b) => b.start_time && b.end_time);
+
+                    for (const b of cleanedBlocks) {
+                      if (!Number.isFinite(b.day_of_week) || b.day_of_week < 1 || b.day_of_week > 7) {
+                        throw new Error("Availability day must be between Monday and Sunday");
+                      }
+                      if (b.start_time.length !== 5 || b.end_time.length !== 5) {
+                        throw new Error("Availability times must be HH:MM");
+                      }
+                      if (b.end_time <= b.start_time) {
+                        throw new Error("Availability end time must be after start time");
+                      }
+                    }
+
+                    const { error: availabilityError } = await supabase.rpc("set_my_availability", {
+                      blocks: cleanedBlocks,
+                    } as any);
+                    if (availabilityError) throw availabilityError;
+
                     await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
                     await queryClient.invalidateQueries({ queryKey: ["player-profile", user.id] });
+                    await queryClient.invalidateQueries({ queryKey: ["bookings"] });
                     toast.success("Profile updated");
                     setEditOpen(false);
                   } catch (e: any) {

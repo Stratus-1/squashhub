@@ -80,6 +80,16 @@ type ScheduledMatchRow = {
   updated_at: string;
 };
 
+type SeasonRow = {
+  id: string;
+  name: string;
+  starts_on: string;
+  ends_on: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+};
+
 type EditUserState = {
   open: boolean;
   profile: ProfileRow | null;
@@ -124,6 +134,18 @@ export default function Admin() {
     matchesPlayed: "",
     wins: "",
     losses: "",
+  });
+
+  const [seasonStart, setSeasonStart] = useState<{ open: boolean; name: string; startsOn: string }>({
+    open: false,
+    name: "",
+    startsOn: format(new Date(), "yyyy-MM-dd"),
+  });
+
+  const [seasonEnd, setSeasonEnd] = useState<{ open: boolean; resetStats: boolean; resetRanks: boolean }>({
+    open: false,
+    resetStats: true,
+    resetRanks: false,
   });
 
   const [schedule, setSchedule] = useState<ScheduleState>(() => ({
@@ -211,6 +233,21 @@ export default function Admin() {
     },
   });
 
+  const { data: seasons } = useQuery({
+    queryKey: ["admin", "seasons"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("seasons")
+        .select("*")
+        .order("starts_on", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data || []) as SeasonRow[];
+    },
+  });
+
+  const activeSeason = useMemo(() => (seasons || []).find((s) => s.is_active) || null, [seasons]);
+
   const setRank = useMutation({
     mutationFn: async ({ userId, newRank }: { userId: string; newRank: number | null }) => {
       const { error } = await supabase.rpc("admin_set_rank", {
@@ -265,6 +302,57 @@ export default function Admin() {
       toast.success("Match updated");
     },
     onError: (err: any) => toast.error(err.message || "Failed to update match"),
+  });
+
+  const adminConfirmMatch = useMutation({
+    mutationFn: async (matchId: string) => {
+      const { error } = await supabase.rpc("admin_confirm_match", { match_id: matchId } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Match confirmed");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to confirm match"),
+  });
+
+  const startSeason = useMutation({
+    mutationFn: async ({ name, startsOn }: { name: string; startsOn: string }) => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Season name is required");
+      const { error } = await supabase.rpc("admin_start_season", {
+        season_name: trimmed,
+        starts_on: startsOn,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "seasons"] });
+      toast.success("Season started");
+      setSeasonStart((s) => ({ ...s, open: false, name: "" }));
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to start season"),
+  });
+
+  const endSeason = useMutation({
+    mutationFn: async ({ resetStats, resetRanks }: { resetStats: boolean; resetRanks: boolean }) => {
+      const { error } = await supabase.rpc("admin_end_active_season", {
+        reset_stats: resetStats,
+        reset_ranks: resetRanks,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "seasons"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Season ended");
+      setSeasonEnd((s) => ({ ...s, open: false }));
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to end season"),
   });
 
   const { data: selectedRoles } = useQuery({
@@ -432,6 +520,7 @@ export default function Admin() {
           <TabsTrigger value="challenges" className="flex-1">Challenges</TabsTrigger>
           <TabsTrigger value="matches" className="flex-1">Matches</TabsTrigger>
           <TabsTrigger value="schedule" className="flex-1">Schedule</TabsTrigger>
+          <TabsTrigger value="seasons" className="flex-1">Seasons</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-3 space-y-3">
@@ -657,7 +746,7 @@ export default function Admin() {
                               size="sm"
                               className="h-8 text-xs"
                               disabled={m.confirmed}
-                              onClick={() => updateMatch.mutate({ matchId: m.id, patch: { confirmed: true, disputed: false } })}
+                              onClick={() => adminConfirmMatch.mutate(m.id)}
                             >
                               Confirm
                             </Button>
@@ -766,7 +855,176 @@ export default function Admin() {
             </Table>
           </Card>
         </TabsContent>
+
+        <TabsContent value="seasons" className="mt-3 space-y-3">
+          <Card className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold font-heading">Active season</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {activeSeason
+                    ? `${activeSeason.name} · ${activeSeason.starts_on}${activeSeason.ends_on ? ` → ${activeSeason.ends_on}` : ""}`
+                    : "No active season"}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() => setSeasonStart((s) => ({ ...s, open: true }))}
+                >
+                  Start season
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={!activeSeason}
+                  onClick={() => setSeasonEnd((s) => ({ ...s, open: true }))}
+                >
+                  End season
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Start</TableHead>
+                  <TableHead>End</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(seasons || []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-sm text-muted-foreground">
+                      No seasons yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  (seasons || []).map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="p-3 text-sm">
+                        <span className="font-medium">{s.name}</span>
+                      </TableCell>
+                      <TableCell className="p-3 text-xs text-muted-foreground">{s.starts_on}</TableCell>
+                      <TableCell className="p-3 text-xs text-muted-foreground">{s.ends_on || "—"}</TableCell>
+                      <TableCell className="p-3">
+                        {s.is_active ? (
+                          <Badge variant="secondary" className="bg-primary/15 text-primary">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary">Ended</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={seasonStart.open}
+        onOpenChange={(open) => setSeasonStart((s) => ({ ...s, open }))}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Start new season</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Name</Label>
+              <Input
+                placeholder="e.g. Winter 2026"
+                value={seasonStart.name}
+                onChange={(e) => setSeasonStart((s) => ({ ...s, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Start date</Label>
+              <Input
+                type="date"
+                value={seasonStart.startsOn}
+                onChange={(e) => setSeasonStart((s) => ({ ...s, startsOn: e.target.value }))}
+              />
+            </div>
+            {activeSeason && (
+              <p className="text-[11px] text-muted-foreground">
+                Starting a new season will end the current active season automatically.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSeasonStart((s) => ({ ...s, open: false }))}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => startSeason.mutate({ name: seasonStart.name, startsOn: seasonStart.startsOn })}
+              disabled={startSeason.isPending}
+            >
+              {startSeason.isPending ? "Starting..." : "Start"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={seasonEnd.open}
+        onOpenChange={(open) => setSeasonEnd((s) => ({ ...s, open }))}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>End active season</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-md border p-3">
+              <p className="text-sm font-medium">{activeSeason?.name || "Active season"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                This will archive the current ladder + stats into a season snapshot.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">Reset stats</p>
+                <p className="text-xs text-muted-foreground">Set W/L/played back to 0</p>
+              </div>
+              <Switch
+                checked={seasonEnd.resetStats}
+                onCheckedChange={(checked) => setSeasonEnd((s) => ({ ...s, resetStats: checked }))}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">Reset ladder ranks</p>
+                <p className="text-xs text-muted-foreground">Clear ranks (set to unranked)</p>
+              </div>
+              <Switch
+                checked={seasonEnd.resetRanks}
+                onCheckedChange={(checked) => setSeasonEnd((s) => ({ ...s, resetRanks: checked }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSeasonEnd((s) => ({ ...s, open: false }))}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => endSeason.mutate({ resetStats: seasonEnd.resetStats, resetRanks: seasonEnd.resetRanks })}
+              disabled={endSeason.isPending || !activeSeason}
+            >
+              {endSeason.isPending ? "Ending..." : "End season"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editUser.open} onOpenChange={(open) => setEditUser((s) => ({ ...s, open }))}>
         <DialogContent>
@@ -1030,4 +1288,3 @@ export default function Admin() {
 function SeparatorBlock() {
   return <div className="h-px bg-border" />;
 }
-

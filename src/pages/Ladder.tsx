@@ -93,6 +93,14 @@ export default function Ladder() {
                 ? Math.round(Number((player as any).strava_moving_time_s) / 60)
                 : null;
 
+            const form = typeof (player as any)?.form_last5 === "string" ? String((player as any).form_last5) : "";
+            const lastCompetitive = (player as any)?.last_competitive_match_at
+              ? new Date(String((player as any).last_competitive_match_at)).getTime()
+              : null;
+            const inactiveDays =
+              lastCompetitive != null ? Math.floor((Date.now() - lastCompetitive) / (1000 * 60 * 60 * 24)) : null;
+            const isInactive = inactiveDays != null && inactiveDays >= 21;
+
             return (
               <motion.div
                 key={player.id}
@@ -148,6 +156,11 @@ export default function Ladder() {
                         <TrendingUp className="w-3 h-3" />
                         {winRate}%
                       </span>
+                      {isInactive && (
+                        <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground">
+                          Inactive
+                        </Badge>
+                      )}
                       {stravaKm != null && stravaMinutes != null && (
                         <span className="text-[11px] text-muted-foreground flex items-center gap-1 min-w-0">
                           <IntegrationLogo provider="strava" className="h-4 w-4 rounded-sm" />
@@ -157,6 +170,24 @@ export default function Ladder() {
                         </span>
                       )}
                     </div>
+                    {form ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Form</span>
+                        <div className="flex items-center gap-1">
+                          {form.split("").slice(0, 5).map((c, idx) => (
+                            <span
+                              key={idx}
+                              className={cn(
+                                "text-[10px] font-semibold w-5 h-5 rounded-full flex items-center justify-center",
+                                c === "W" ? "bg-green-500/15 text-green-600" : "bg-destructive/15 text-destructive"
+                              )}
+                            >
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   <Button

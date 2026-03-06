@@ -10,9 +10,31 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useCreateChallenge, useLadder, useProfile } from "@/hooks/use-data";
+import { useCreateChallenge, useLadder, useProfile, useProposeChallengeSchedule } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
+
+function timeToMinutes(t: string) {
+  const [hh, mm] = t.split(":").map((x) => Number(x));
+  return hh * 60 + mm;
+}
+
+function minutesToTime(m: number) {
+  const mm = ((m % 60) + 60) % 60;
+  const hh = Math.floor(m / 60);
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+function addMinutesToTime(t: string, delta: number) {
+  return minutesToTime(timeToMinutes(t) + delta);
+}
 
 export default function NewChallenge() {
   const navigate = useNavigate();
@@ -21,6 +43,7 @@ export default function NewChallenge() {
   const { data: ladder, isLoading } = useLadder();
   const { data: profile } = useProfile();
   const createChallenge = useCreateChallenge();
+  const proposeSchedule = useProposeChallengeSchedule();
 
   const today = useMemo(() => new Date(), []);
   const todayStr = format(today, "yyyy-MM-dd");
@@ -29,6 +52,9 @@ export default function NewChallenge() {
   const initialOpponent = params.get("opponent") || "";
   const [opponentId, setOpponentId] = useState(initialOpponent);
   const [proposedDate, setProposedDate] = useState<string>(defaultProposed);
+  const [startTime, setStartTime] = useState<string>("18:00");
+  const [durationMinutes, setDurationMinutes] = useState<string>("60");
+  const [courtId, setCourtId] = useState<string>("1");
   const [query, setQuery] = useState("");
 
   const opponentProfile = useMemo(() => {
@@ -74,10 +100,28 @@ export default function NewChallenge() {
     }
 
     try {
-      await createChallenge.mutateAsync({
+      const challenge = await createChallenge.mutateAsync({
         opponentId,
         proposedDate: proposedDate || null,
       });
+
+      try {
+        const minutes = durationMinutes.trim() ? Number(durationMinutes) : 60;
+        if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 240) {
+          throw new Error("Duration must be between 30 and 240 minutes");
+        }
+        const endTime = addMinutesToTime(startTime, minutes);
+        await proposeSchedule.mutateAsync({
+          challengeId: (challenge as any).id,
+          proposedDate,
+          startTime: `${startTime}:00`,
+          endTime: `${endTime}:00`,
+          courtId: Number(courtId) || 1,
+        });
+      } catch (e: any) {
+        toast.error(e.message || "Challenge sent, but proposing a time failed");
+      }
+
       toast.success("Challenge sent");
       navigate("/challenges");
     } catch (err: any) {
@@ -87,7 +131,7 @@ export default function NewChallenge() {
 
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="New Challenge" subtitle="Choose an opponent and propose a date" />
+      <PageHeader title="New Challenge" subtitle="Choose an opponent and propose a time" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-4">
         {!myRank && (
@@ -155,6 +199,50 @@ export default function NewChallenge() {
               />
             </div>
           </div>
+
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label>Start time</Label>
+              <Input
+                type="time"
+                step={1800}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Duration</Label>
+              <Select value={durationMinutes} onValueChange={setDurationMinutes}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 min</SelectItem>
+                  <SelectItem value="60">60 min</SelectItem>
+                  <SelectItem value="90">90 min</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Court</Label>
+              <Select value={courtId} onValueChange={setCourtId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Court" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Court 1</SelectItem>
+                  <SelectItem value="2">Court 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-md border p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
+            <p className="text-sm font-medium mt-1">
+              {proposedDate} · {startTime}-{addMinutesToTime(startTime, Number(durationMinutes || "60"))} · Court {courtId}
+            </p>
+          </div>
         </Card>
 
         <div className="flex items-center justify-between">
@@ -218,10 +306,10 @@ export default function NewChallenge() {
 
         <Button
           className="w-full"
-          disabled={!myRank || !opponentId || !selectedEligible || createChallenge.isPending}
+          disabled={!myRank || !opponentId || !selectedEligible || createChallenge.isPending || proposeSchedule.isPending}
           onClick={onSend}
         >
-          {createChallenge.isPending ? (
+          {createChallenge.isPending || proposeSchedule.isPending ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…
             </>

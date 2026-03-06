@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "94174799884",
+    "project_id": "gb-squash",
+    "storage_bucket": "gb-squash.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94174799884:android:b9ca11362020cfe9b92629",
+        "android_client_info": {
+          "package_name": "com.gbsquash.hub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7oIHriWMQ9mViWD21N01ub_vtAzE5Hok"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
 apply plugin: 'kotlin-android'
 
 android {
@@ -33,6 +34,8 @@ android {
 }
 
 repositories {
+    google()
+    mavenCentral()
     flatDir{
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
@@ -50,26 +53,18 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
 
     // Firebase
-    implementation platform("com.google.firebase:firebase-bom:$firebaseBomVersion")
-    implementation "com.google.firebase:firebase-messaging-ktx"
+    implementation platform("com.google.firebase:firebase-bom:${rootProject.ext.firebaseBomVersion}")
+    implementation "com.google.firebase:firebase-analytics"
+    implementation "com.google.firebase:firebase-messaging"
 
     // Health Connect
-    implementation "androidx.health.connect:connect-client:$healthConnectVersion"
+    implementation "androidx.health.connect:connect-client:${rootProject.ext.healthConnectVersion}"
 
     // WorkManager for background processing
-    implementation "androidx.work:work-runtime-ktx:$workVersion"
+    implementation "androidx.work:work-runtime-ktx:${rootProject.ext.workVersion}"
     
     // Kotlin Standard Library
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
 }
 
 apply from: 'capacitor.build.gradle'
-
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
-}

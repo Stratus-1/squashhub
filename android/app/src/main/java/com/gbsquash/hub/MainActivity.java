@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.splashscreen.SplashScreen;
 
 import com.getcapacitor.BridgeActivity;
+import com.google.firebase.FirebaseApp;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,8 +46,18 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         // Handle the splash screen transition.
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
-
+        
         super.onCreate(savedInstanceState);
+
+        // Manually initialize Firebase to prevent the "FirebaseApp is not initialized" crash
+        // in Capacitor PushNotifications plugin.
+        try {
+            FirebaseApp.initializeApp(this);
+            Log.d("MainActivity", "Firebase initialized successfully");
+        } catch (Exception e) {
+            Log.e("MainActivity", "Firebase initialization failed", e);
+        }
+
         healthConnectManager = new HealthConnectManager(this);
         
         checkAndRequestPermissions();
@@ -83,8 +94,6 @@ public class MainActivity extends BridgeActivity {
     private void checkHealthConnectPermissions() {
         if (healthConnectManager.isHealthConnectAvailable()) {
             Log.d("MainActivity", "Health Connect is available");
-            // In a real app, you would check if permissions are granted and request if not.
-            // healthConnectManager.hasAllPermissions() (suspended call, need a coroutine)
         } else {
             Log.d("MainActivity", "Health Connect is not available or not installed");
         }

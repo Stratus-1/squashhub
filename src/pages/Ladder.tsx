@@ -3,23 +3,46 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Swords, TrendingUp } from "lucide-react";
-import { players } from "@/lib/mock-data";
+import { Loader2, Swords, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLadder, useProfile } from "@/hooks/use-data";
 
 export default function Ladder() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: players, isLoading } = useLadder();
+  const { data: profile } = useProfile();
+  const myRank = profile?.rank ?? null;
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="Player Ladder" subtitle={`${players.length} players ranked`} />
+      <PageHeader
+        title="Player Ladder"
+        subtitle={`${players?.length || 0} players ranked`}
+      />
 
       <div className="px-4 mt-3 space-y-2 mb-4">
-        {players
-          .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))
-          .map((player, index) => {
-            const winRate = player.matchesPlayed > 0
-              ? Math.round((player.wins / player.matchesPlayed) * 100)
-              : 0;
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          (players || []).map((player, index) => {
+            const winRate =
+              player.matches_played > 0
+                ? Math.round((player.wins / player.matches_played) * 100)
+                : 0;
 
             return (
               <motion.div
@@ -44,10 +67,17 @@ export default function Ladder() {
                     {player.rank}
                   </div>
 
-                  <PlayerAvatar initials={player.avatar} size="sm" />
+                  <PlayerAvatar initials={getInitials(player.name)} size="sm" />
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{player.name}</p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-semibold truncate">{player.name}</p>
+                      {player.id === user?.id && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          You
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[11px] text-muted-foreground">
                         {player.wins}W - {player.losses}L
@@ -59,14 +89,27 @@ export default function Ladder() {
                     </div>
                   </div>
 
-                  <Button variant="outline" size="sm" className="h-8 text-xs shrink-0 gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs shrink-0 gap-1"
+                    disabled={
+                      player.id === user?.id ||
+                      !myRank ||
+                      !player.rank ||
+                      myRank - player.rank < 1 ||
+                      myRank - player.rank > 2
+                    }
+                    onClick={() => navigate(`/challenges/new?opponent=${player.id}`)}
+                  >
                     <Swords className="w-3 h-3" />
                     Challenge
                   </Button>
                 </Card>
               </motion.div>
             );
-          })}
+          })
+        )}
       </div>
     </div>
   );

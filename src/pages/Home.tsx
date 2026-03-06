@@ -138,7 +138,7 @@ export default function Home() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { icon: Calendar, label: "Book a Court", desc: "Reserve Court 1 or 2", to: "/bookings", color: "text-primary" },
-            { icon: Swords, label: "Challenge Player", desc: "Send a ladder challenge", to: "/challenges", color: "text-accent-foreground" },
+            { icon: Swords, label: "Challenge Player", desc: "Send a ladder challenge", to: "/challenges/new", color: "text-accent-foreground" },
             { icon: Trophy, label: "Ladder Rankings", desc: "See where you rank", to: "/ladder", color: "text-primary" },
             { icon: ClipboardList, label: "Record Match", desc: "Log your latest game", to: "/challenges", color: "text-accent-foreground" },
           ].map((action) => (

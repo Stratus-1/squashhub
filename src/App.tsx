@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import NewChallenge from "./pages/NewChallenge";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
         <Route path="/ladder" element={<ProtectedRoute><Ladder /></ProtectedRoute>} />
+        <Route path="/challenges/new" element={<ProtectedRoute><NewChallenge /></ProtectedRoute>} />
         <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />

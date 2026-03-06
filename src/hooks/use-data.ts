@@ -118,6 +118,7 @@ export function useLadder() {
         .from("profiles")
         .select("*")
         .not("rank", "is", null)
+        .lte("rank", 20)
         .order("rank");
       if (error) throw error;
       return data;
@@ -141,5 +142,268 @@ export function useProfile() {
       return data;
     },
     enabled: !!user,
+  });
+}
+
+export type ChallengeStatus = "pending" | "accepted" | "declined" | "completed";
+
+export type ChallengeWithProfiles = {
+  id: string;
+  challenger_id: string;
+  opponent_id: string;
+  status: ChallengeStatus;
+  proposed_date: string | null;
+  created_at: string;
+  updated_at: string;
+  challenger_name: string;
+  opponent_name: string;
+};
+
+export function useChallenges() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["challenges", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as ChallengeWithProfiles[];
+
+      const { data: challenges, error } = await supabase
+        .from("challenges")
+        .select("*")
+        .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const ids = [
+        ...new Set(challenges.flatMap((c) => [c.challenger_id, c.opponent_id])),
+      ];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", ids);
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map(profiles?.map((p) => [p.id, p.name]) || []);
+
+      return challenges.map((c) => ({
+        ...c,
+        challenger_name: profileMap.get(c.challenger_id) || "Unknown",
+        opponent_name: profileMap.get(c.opponent_id) || "Unknown",
+      })) as ChallengeWithProfiles[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCreateChallenge() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      opponentId,
+      proposedDate,
+    }: {
+      opponentId: string;
+      proposedDate?: string | null;
+    }) => {
+      if (!user) throw new Error("Must be logged in");
+      if (!opponentId) throw new Error("Choose an opponent");
+      if (opponentId === user.id) throw new Error("You can't challenge yourself");
+
+      const { data: existing, error: existingError } = await supabase
+        .from("challenges")
+        .select("id, status")
+        .in("status", ["pending", "accepted"])
+        .or(
+          `and(challenger_id.eq.${user.id},opponent_id.eq.${opponentId}),and(challenger_id.eq.${opponentId},opponent_id.eq.${user.id})`
+        )
+        .limit(1);
+      if (existingError) throw existingError;
+      if (existing && existing.length > 0) {
+        throw new Error("A challenge between you two is already active");
+      }
+
+      const { data, error } = await supabase
+        .from("challenges")
+        .insert({
+          challenger_id: user.id,
+          opponent_id: opponentId,
+          proposed_date: proposedDate ?? null,
+          status: "pending",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["challenges"] });
+    },
+  });
+}
+
+export function useUpdateChallengeStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      challengeId,
+      status,
+    }: {
+      challengeId: string;
+      status: ChallengeStatus;
+    }) => {
+      const { data, error } = await supabase
+        .from("challenges")
+        .update({ status })
+        .eq("id", challengeId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+    },
+  });
+}
+
+export type MatchWithProfiles = {
+  id: string;
+  player_a: string;
+  player_b: string;
+  score: string | null;
+  game_scores: string | null;
+  winner_id: string | null;
+  court_id: number | null;
+  match_date: string;
+  submitted_by: string | null;
+  confirmed: boolean;
+  disputed: boolean;
+  challenge_id: string | null;
+  created_at: string;
+  player_a_name: string;
+  player_b_name: string;
+};
+
+export function useMatches() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["matches", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as MatchWithProfiles[];
+
+      const { data: matches, error } = await supabase
+        .from("matches")
+        .select("*")
+        .or(`player_a.eq.${user.id},player_b.eq.${user.id}`)
+        .order("match_date", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const ids = [...new Set(matches.flatMap((m) => [m.player_a, m.player_b]))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", ids);
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map(profiles?.map((p) => [p.id, p.name]) || []);
+
+      return matches.map((m) => ({
+        ...m,
+        player_a_name: profileMap.get(m.player_a) || "Unknown",
+        player_b_name: profileMap.get(m.player_b) || "Unknown",
+      })) as MatchWithProfiles[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCreateMatch() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      playerA,
+      playerB,
+      winnerId,
+      score,
+      matchDate,
+      courtId,
+      challengeId,
+      gameScores,
+    }: {
+      playerA: string;
+      playerB: string;
+      winnerId: string | null;
+      score?: string | null;
+      matchDate: string;
+      courtId?: number | null;
+      challengeId?: string | null;
+      gameScores?: string | null;
+    }) => {
+      if (!user) throw new Error("Must be logged in");
+
+      const { data, error } = await supabase
+        .from("matches")
+        .insert({
+          player_a: playerA,
+          player_b: playerB,
+          winner_id: winnerId,
+          score: score ?? null,
+          match_date: matchDate,
+          court_id: courtId ?? null,
+          challenge_id: challengeId ?? null,
+          game_scores: gameScores ?? null,
+          submitted_by: user.id,
+          confirmed: false,
+          disputed: false,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: ["challenges"] });
+    },
+  });
+}
+
+export function useUpdateMatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      matchId,
+      confirmed,
+      disputed,
+    }: {
+      matchId: string;
+      confirmed?: boolean;
+      disputed?: boolean;
+    }) => {
+      const patch: Record<string, boolean> = {};
+      if (typeof confirmed === "boolean") patch.confirmed = confirmed;
+      if (typeof disputed === "boolean") patch.disputed = disputed;
+
+      const { data, error } = await supabase
+        .from("matches")
+        .update(patch)
+        .eq("id", matchId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+    },
   });
 }

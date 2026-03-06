@@ -55,7 +55,7 @@ export default function Dashboard() {
           <Trophy className="w-5 h-5 text-primary" />
           <span className="text-[11px]">Ladder</span>
         </Button>
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/challenges")}>
+        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/challenges/new")}>
           <Swords className="w-5 h-5 text-primary" />
           <span className="text-[11px]">Challenge</span>
         </Button>

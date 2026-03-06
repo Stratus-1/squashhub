@@ -259,7 +259,11 @@ export default function Dashboard() {
                     <span className="text-xs font-bold text-primary">{booking.court_id}</span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{booking.player_name || "Unknown"}</p>
+                    <p className="text-sm font-medium">
+                      {booking.player_name || "Unknown"}
+                      {(booking as any).opponent_name ? ` vs ${(booking as any).opponent_name}` : ""}
+                      {(booking as any).is_friendly ? " (Friendly)" : ""}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Court {booking.court_id}
                       {(booking as any).player_availability ? ` · ${(booking as any).player_availability}` : ""}

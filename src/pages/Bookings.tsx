@@ -30,11 +30,30 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 
-const timeSlots = [
-  "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
-  "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
-  "18:00", "19:00", "20:00", "21:00",
-];
+function timeToMinutes(t: string) {
+  const [hh, mm] = t.split(":").map((x) => Number(x));
+  return hh * 60 + mm;
+}
+
+function minutesToTime(m: number) {
+  const mm = ((m % 60) + 60) % 60;
+  const hh = Math.floor(m / 60);
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+function addMinutesToTime(t: string, delta: number) {
+  return minutesToTime(timeToMinutes(t) + delta);
+}
+
+const timeSlots = (() => {
+  const slots: string[] = [];
+  const start = 6 * 60; // 06:00
+  const end = 22 * 60; // 22:00 (exclusive)
+  for (let m = start; m < end; m += 30) {
+    slots.push(minutesToTime(m));
+  }
+  return slots;
+})();
 
 const courts = [1, 2];
 
@@ -90,15 +109,21 @@ export default function Bookings() {
   });
 
   const getBooking = (courtId: number, time: string) => {
-    return bookings?.find(
-      (b) => b.court_id === courtId && b.start_time === time + ":00"
-    );
+    const tMin = timeToMinutes(time);
+    return (bookings as any[] | undefined)?.find((b: any) => {
+      if (b.court_id !== courtId) return false;
+      const start = String(b.start_time || "").slice(0, 5);
+      const end = String(b.end_time || "").slice(0, 5);
+      if (!start || !end) return false;
+      const sMin = timeToMinutes(start);
+      const eMin = timeToMinutes(end);
+      return tMin >= sMin && tMin < eMin;
+    });
   };
 
   const handleBook = async () => {
     if (!bookingDialog) return;
-    const endHour = parseInt(bookingDialog.time.split(":")[0]) + 1;
-    const endTime = `${endHour.toString().padStart(2, "0")}:00`;
+    const endTime = addMinutesToTime(bookingDialog.time, 30);
 
     try {
       const created = await createBooking.mutateAsync({
@@ -215,7 +240,8 @@ export default function Bookings() {
               </div>
               {courts.map((courtId) => {
                 const booking = getBooking(courtId, time);
-                const playerName = booking?.player_name || "Booked";
+                const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
+                const b = (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
 
                 return (
                   <Card
@@ -233,10 +259,10 @@ export default function Bookings() {
                     }}
                   >
                     {booking ? (
-                      <div className="px-1 min-w-0 text-center">
+                      <div className="px-1 min-w-0 text-center leading-tight">
                         <p className="font-medium text-primary text-[11px] truncate">
-                          {(booking as any).player_name?.split(" ")[0]}
-                          {(booking as any).opponent_name ? ` vs ${(booking as any).opponent_name.split(" ")[0]}` : ""}
+                          {a || "Booked"}
+                          {b ? ` vs ${b}` : ""}
                         </p>
                         {(booking as any).is_friendly ? (
                           <p className="text-[10px] text-muted-foreground">Friendly</p>
@@ -272,7 +298,7 @@ export default function Bookings() {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Time</span>
                 <span className="font-medium">
-                  {bookingDialog.time} - {(parseInt(bookingDialog.time) + 1).toString().padStart(2, "0")}:00
+                  {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, 30)}
                 </span>
               </div>
 

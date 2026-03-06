@@ -145,6 +145,23 @@ export function useProfile() {
   });
 }
 
+export function usePlayerProfile(playerId?: string | null) {
+  return useQuery({
+    queryKey: ["player-profile", playerId],
+    queryFn: async () => {
+      if (!playerId) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", playerId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!playerId,
+  });
+}
+
 export type ChallengeStatus = "pending" | "accepted" | "declined" | "completed";
 
 export type ChallengeWithProfiles = {

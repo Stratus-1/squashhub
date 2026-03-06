@@ -81,11 +81,24 @@ export default function Ladder() {
                 transition={{ delay: index * 0.05 }}
               >
                 <Card className={cn(
-                  "p-3 flex items-center gap-3",
+                  "p-3 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors",
                   index === 0 && "border-accent/50 bg-accent/5",
                   index === 1 && "border-primary/30 bg-primary/5",
                   index === 2 && "border-primary/20 bg-primary/[0.02]"
-                )}>
+                )}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (player.id === user?.id) navigate("/profile");
+                  else navigate(`/players/${player.id}`);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  if (player.id === user?.id) navigate("/profile");
+                  else navigate(`/players/${player.id}`);
+                }}
+                >
                   {/* Rank */}
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center font-heading font-bold text-sm shrink-0",
@@ -137,7 +150,10 @@ export default function Ladder() {
                       myRank - player.rank < 1 ||
                       myRank - player.rank > 2
                     }
-                    onClick={() => navigate(`/challenges/new?opponent=${player.id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/challenges/new?opponent=${player.id}`);
+                    }}
                   >
                     <Swords className="w-3 h-3" />
                     Challenge

@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Swords, Trophy, Target, TrendingUp } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
 function initialsFromName(name: string) {
   return name
@@ -29,6 +30,39 @@ export default function PlayerProfile() {
   const queryClient = useQueryClient();
   const { data: me } = useProfile();
   const { data: player, isLoading } = usePlayerProfile(id);
+
+  const { data: recentMatches, isLoading: recentMatchesLoading } = useQuery({
+    queryKey: ["player-recent-matches", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data: matches, error } = await supabase
+        .from("matches")
+        .select("*")
+        .or(`player_a.eq.${id},player_b.eq.${id}`)
+        .order("match_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+
+      const opponentIds = [...new Set((matches || []).flatMap((m: any) => [m.player_a, m.player_b]).filter((x: string) => x !== id))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,name")
+        .in("id", opponentIds.length > 0 ? opponentIds : ["00000000-0000-0000-0000-000000000000"]);
+      if (profilesError) throw profilesError;
+
+      const nameMap = new Map((profiles || []).map((p: any) => [p.id, p.name as string]));
+      return (matches || []).map((m: any) => {
+        const opponentId = m.player_a === id ? m.player_b : m.player_a;
+        return {
+          ...m,
+          opponent_name: nameMap.get(opponentId) || "Unknown",
+          is_win: m.winner_id === id,
+        };
+      });
+    },
+    enabled: !!id,
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -102,6 +136,14 @@ export default function PlayerProfile() {
   }
 
   const initials = player.name ? initialsFromName(player.name) : "?";
+  const bio = ((player as any).bio as string | null) || null;
+  const location = ((player as any).location as string | null) || null;
+  const homeClub = ((player as any).home_club as string | null) || null;
+  const dominantHand = ((player as any).dominant_hand as string | null) || null;
+  const yearsPlaying = ((player as any).years_playing as number | null) ?? null;
+  const playingStyle = ((player as any).playing_style as string | null) || null;
+  const favoriteShot = ((player as any).favorite_shot as string | null) || null;
+  const availability = ((player as any).availability as string | null) || null;
 
   return (
     <div className="bottom-nav-safe">
@@ -141,6 +183,102 @@ export default function PlayerProfile() {
       </div>
 
       <Separator className="my-5 mx-4" />
+
+      <div className="px-4 mb-4">
+        <Card className="p-4">
+          <p className="text-sm font-semibold font-heading">About</p>
+          <div className="mt-2 space-y-3">
+            {bio ? (
+              <p className="text-sm leading-relaxed">{bio}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No bio yet.</p>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <AboutItem label="Location" value={location} />
+              <AboutItem label="Home club" value={homeClub} />
+              <AboutItem
+                label="Dominant hand"
+                value={
+                  dominantHand
+                    ? dominantHand === "right"
+                      ? "Right"
+                      : dominantHand === "left"
+                        ? "Left"
+                        : dominantHand === "ambidextrous"
+                          ? "Ambidextrous"
+                          : dominantHand
+                    : null
+                }
+              />
+              <AboutItem label="Years playing" value={yearsPlaying != null ? String(yearsPlaying) : null} />
+              <AboutItem label="Playing style" value={playingStyle} />
+              <AboutItem label="Favorite shot" value={favoriteShot} />
+            </div>
+
+            {availability ? (
+              <div className="rounded-md border p-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</p>
+                <p className="text-sm mt-1">{availability}</p>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+      </div>
+
+      <div className="px-4 mb-4">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold font-heading">Recent Matches</p>
+            <Badge variant="secondary" className="text-[10px]">
+              Last 10
+            </Badge>
+          </div>
+
+          {recentMatchesLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          ) : (recentMatches || []).length === 0 ? (
+            <p className="text-sm text-muted-foreground mt-2">No matches recorded yet.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {(recentMatches || []).slice(0, 10).map((m: any) => (
+                <div key={m.id} className="rounded-md border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        vs {m.opponent_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.match_date} · Court {m.court_id || "—"}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold">{m.score || "—"}</p>
+                      {m.winner_id ? (
+                        <Badge variant="secondary" className={m.is_win ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}>
+                          {m.is_win ? "Win" : "Loss"}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                          Pending
+                        </Badge>
+                      )}
+                      {!m.confirmed && (
+                        <p className="text-[10px] text-muted-foreground mt-1">Unconfirmed</p>
+                      )}
+                      {m.disputed && (
+                        <p className="text-[10px] text-destructive mt-1">Disputed</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
       <div className="px-4 mb-4">
         <Card className="p-4">
@@ -192,6 +330,17 @@ export default function PlayerProfile() {
           Back
         </Button>
       </div>
+    </div>
+  );
+}
+
+function AboutItem({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="rounded-md border p-3">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={value ? "text-sm font-medium mt-1" : "text-sm text-muted-foreground mt-1"}>
+        {value || "—"}
+      </p>
     </div>
   );
 }

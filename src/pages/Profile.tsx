@@ -4,8 +4,13 @@ import { StatCard } from "@/components/StatCard";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIntegrations, useMyRoles, useProfile } from "@/hooks/use-data";
@@ -31,6 +36,18 @@ type StravaActivityPreview = {
   total_elevation_gain: number;
 };
 
+type EditableProfileFields = {
+  name: string;
+  bio: string;
+  location: string;
+  home_club: string;
+  dominant_hand: "" | "right" | "left" | "ambidextrous";
+  years_playing: string;
+  playing_style: string;
+  favorite_shot: string;
+  availability: string;
+};
+
 export default function Profile() {
   const { signOut, user } = useAuth();
   const { data: profile, isLoading } = useProfile();
@@ -41,6 +58,19 @@ export default function Profile() {
   const [stravaSyncing, setStravaSyncing] = useState(false);
   const [stravaRecentLoading, setStravaRecentLoading] = useState(false);
   const [stravaRecent, setStravaRecent] = useState<StravaActivityPreview[] | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [edit, setEdit] = useState<EditableProfileFields>({
+    name: "",
+    bio: "",
+    location: "",
+    home_club: "",
+    dominant_hand: "",
+    years_playing: "",
+    playing_style: "",
+    favorite_shot: "",
+    availability: "",
+  });
 
   const strava = useMemo(
     () => integrations?.find((i) => i.provider === "strava") || null,
@@ -560,7 +590,7 @@ export default function Profile() {
             />
           </Card>
         )}
-        <Button variant="outline" className="w-full justify-start gap-3">
+        <Button variant="outline" className="w-full justify-start gap-3" onClick={() => setEditOpen(true)}>
           <Settings className="w-4 h-4" /> Edit Profile
         </Button>
         {canOpenAdmin && (
@@ -578,6 +608,162 @@ export default function Profile() {
           <LogOut className="w-4 h-4" /> Sign Out
         </Button>
       </div>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (open && profile) {
+            setEdit({
+              name: profile.name || "",
+              bio: (profile as any).bio || "",
+              location: (profile as any).location || "",
+              home_club: (profile as any).home_club || "",
+              dominant_hand: ((profile as any).dominant_hand as EditableProfileFields["dominant_hand"]) || "",
+              years_playing: (profile as any).years_playing != null ? String((profile as any).years_playing) : "",
+              playing_style: (profile as any).playing_style || "",
+              favorite_shot: (profile as any).favorite_shot || "",
+              availability: (profile as any).availability || "",
+            });
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Name</Label>
+              <Input value={edit.name} onChange={(e) => setEdit((s) => ({ ...s, name: e.target.value }))} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Bio</Label>
+              <Textarea
+                placeholder="A short intro about your squash game…"
+                value={edit.bio}
+                onChange={(e) => setEdit((s) => ({ ...s, bio: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Location</Label>
+                <Input value={edit.location} onChange={(e) => setEdit((s) => ({ ...s, location: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Home club</Label>
+                <Input value={edit.home_club} onChange={(e) => setEdit((s) => ({ ...s, home_club: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Dominant hand</Label>
+                <Select
+                  value={edit.dominant_hand}
+                  onValueChange={(v) => setEdit((s) => ({ ...s, dominant_hand: v as EditableProfileFields["dominant_hand"] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="right">Right</SelectItem>
+                    <SelectItem value="left">Left</SelectItem>
+                    <SelectItem value="ambidextrous">Ambidextrous</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Years playing</Label>
+                <Input
+                  inputMode="numeric"
+                  placeholder="e.g. 3"
+                  value={edit.years_playing}
+                  onChange={(e) => setEdit((s) => ({ ...s, years_playing: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Playing style</Label>
+                <Input
+                  placeholder="e.g. Aggressive / Defensive"
+                  value={edit.playing_style}
+                  onChange={(e) => setEdit((s) => ({ ...s, playing_style: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Favorite shot</Label>
+                <Input
+                  placeholder="e.g. Backhand drop"
+                  value={edit.favorite_shot}
+                  onChange={(e) => setEdit((s) => ({ ...s, favorite_shot: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Availability</Label>
+              <Textarea
+                className="min-h-[72px]"
+                placeholder="When do you usually play? (e.g. Weekdays after 6pm)"
+                value={edit.availability}
+                onChange={(e) => setEdit((s) => ({ ...s, availability: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={async () => {
+                try {
+                  if (!user?.id) throw new Error("You must be logged in");
+                  setEditSaving(true);
+                  const years = edit.years_playing.trim() ? Number(edit.years_playing) : null;
+                  if (years != null && (!Number.isFinite(years) || years < 0 || years > 80)) {
+                    throw new Error("Years playing must be between 0 and 80");
+                  }
+
+                  const { error } = await supabase
+                    .from("profiles")
+                    .update({
+                      name: edit.name.trim(),
+                      bio: edit.bio.trim() || null,
+                      location: edit.location.trim() || null,
+                      home_club: edit.home_club.trim() || null,
+                      dominant_hand: edit.dominant_hand || null,
+                      years_playing: years == null ? null : Math.trunc(years),
+                      playing_style: edit.playing_style.trim() || null,
+                      favorite_shot: edit.favorite_shot.trim() || null,
+                      availability: edit.availability.trim() || null,
+                    } as any)
+                    .eq("id", user.id);
+                  if (error) throw error;
+
+                  await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+                  await queryClient.invalidateQueries({ queryKey: ["player-profile", user.id] });
+                  toast.success("Profile updated");
+                  setEditOpen(false);
+                } catch (e: any) {
+                  toast.error(e.message || "Failed to update profile");
+                } finally {
+                  setEditSaving(false);
+                }
+              }}
+              disabled={editSaving}
+            >
+              {editSaving ? "Saving…" : "Save"}
+            </Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

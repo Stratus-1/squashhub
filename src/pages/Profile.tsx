@@ -4,6 +4,7 @@ import { StatCard } from "@/components/StatCard";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +48,46 @@ type EditableProfileFields = {
   favorite_shot: string;
   availability: string;
 };
+
+function ComingSoonAppCard({
+  provider,
+  title,
+  subtitle,
+  learnMoreText,
+  className,
+}: {
+  provider: "apple_health" | "samsung_health" | "huawei_health" | "garmin";
+  title: string;
+  subtitle: string;
+  learnMoreText: string;
+  className?: string;
+}) {
+  return (
+    <div className={["rounded-lg border bg-card p-4 h-full flex flex-col", className || ""].join(" ")}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <IntegrationLogo provider={provider} className="opacity-40 grayscale" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{title}</p>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+        </div>
+        <Badge variant="secondary" className="bg-muted text-muted-foreground">
+          Coming soon
+        </Badge>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 text-xs mt-3 w-full"
+        onClick={() => toast(learnMoreText)}
+      >
+        Learn more
+      </Button>
+    </div>
+  );
+}
 
 export default function Profile() {
   const { signOut, user } = useAuth();
@@ -326,35 +367,44 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="mt-4 space-y-2">
-            {/* Strava */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <IntegrationLogo provider="strava" className={strava ? "" : "opacity-40 grayscale"} />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">Strava</p>
-                  <p className="text-xs text-muted-foreground">
-                    {strava?.display_name
-                      ? `Connected as ${strava.display_name}`
-                      : "Sync your recent activities (running/cycling/training)"}
-                  </p>
-                  {strava && (
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {stravaActivitiesCount != null ? `${stravaActivitiesCount} activities` : "—"}
-                      {stravaKm != null ? ` · ${stravaKm} km` : ""}
-                      {stravaMinutes != null ? ` · ${stravaMinutes} min` : ""}
-                      {stravaElevationM != null ? ` · ${stravaElevationM} m` : ""}
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-lg border bg-card p-4 h-full flex flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <IntegrationLogo provider="strava" className={strava ? "" : "opacity-40 grayscale"} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">Strava</p>
+                    <p className="text-xs text-muted-foreground">
+                      {strava?.display_name
+                        ? `Connected as ${strava.display_name}`
+                        : "Sync your recent activities (running/cycling/training)"}
                     </p>
-                  )}
+                  </div>
                 </div>
+                <Badge
+                  variant="secondary"
+                  className={strava ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}
+                >
+                  {strava ? "Connected" : "Not connected"}
+                </Badge>
               </div>
-              <div className="shrink-0">
+
+              {strava && (
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  {stravaActivitiesCount != null ? `${stravaActivitiesCount} activities` : "—"}
+                  {stravaKm != null ? ` · ${stravaKm} km` : ""}
+                  {stravaMinutes != null ? ` · ${stravaMinutes} min` : ""}
+                  {stravaElevationM != null ? ` · ${stravaElevationM} m` : ""}
+                </p>
+              )}
+
+              <div className={`mt-3 grid gap-2 ${strava ? "grid-cols-2" : "grid-cols-1"}`}>
                 {strava ? (
-                  <div className="flex items-center gap-2">
+                  <>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 text-xs"
+                      className="h-8 text-xs w-full"
                       disabled={stravaSyncing}
                       onClick={async () => {
                         try {
@@ -401,7 +451,7 @@ export default function Profile() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 text-xs"
+                      className="h-8 text-xs w-full"
                       disabled={stravaSyncing}
                       onClick={async () => {
                         try {
@@ -438,11 +488,11 @@ export default function Profile() {
                     >
                       Disconnect
                     </Button>
-                  </div>
+                  </>
                 ) : (
                   <Button
                     size="sm"
-                    className="h-8 text-xs"
+                    className="h-8 text-xs w-full"
                     onClick={async () => {
                       const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
                       if (!clientId) {
@@ -480,95 +530,34 @@ export default function Profile() {
               </div>
             </div>
 
-            <Separator />
+            <ComingSoonAppCard
+              provider="apple_health"
+              title="Apple Health"
+              subtitle="Requires an iPhone app (HealthKit)."
+              learnMoreText="Coming soon: Apple Health requires an iOS app integration."
+            />
 
-            {/* Apple Health */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <IntegrationLogo provider="apple_health" className="opacity-40 grayscale" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">Apple Health</p>
-                  <p className="text-xs text-muted-foreground">
-                    Requires an iPhone app (HealthKit). Web browsers can’t read Health data directly.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => toast("Coming soon: Apple Health requires an iOS app integration.")}
-              >
-                Learn more
-              </Button>
-            </div>
+            <ComingSoonAppCard
+              provider="samsung_health"
+              title="Samsung Health"
+              subtitle="Requires an Android app / Samsung SDK."
+              learnMoreText="Coming soon: Samsung Health needs an Android app integration."
+            />
 
-            {/* Samsung Health */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <IntegrationLogo provider="samsung_health" className="opacity-40 grayscale" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">Samsung Health</p>
-                  <p className="text-xs text-muted-foreground">
-                    Requires an Android app / Samsung SDK integration; not available from the web.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => toast("Coming soon: Samsung Health needs an Android app integration.")}
-              >
-                Learn more
-              </Button>
-            </div>
+            <ComingSoonAppCard
+              provider="huawei_health"
+              title="Huawei Health"
+              subtitle="Requires Huawei Health Kit + Huawei ID."
+              learnMoreText="Huawei Health connection requires a native app integration (Huawei Health Kit + Huawei ID). Coming soon."
+            />
 
-            {/* Huawei Health */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <IntegrationLogo provider="huawei_health" className="opacity-40 grayscale" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">Huawei Health</p>
-                  <p className="text-xs text-muted-foreground">
-                    Requires a mobile app integration (Huawei Health Kit / Huawei ID). Not available from the web.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() =>
-                  toast(
-                    "Huawei Health connection requires a native app integration (Huawei Health Kit + Huawei ID). Coming soon."
-                  )
-                }
-              >
-                Connect
-              </Button>
-            </div>
-
-            {/* Garmin */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <IntegrationLogo provider="garmin" className="opacity-40 grayscale" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">Garmin</p>
-                  <p className="text-xs text-muted-foreground">
-                    Typically requires a Garmin partner integration to access user activity data.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => toast("Coming soon: Garmin integration usually requires partner approval.")}
-              >
-                Learn more
-              </Button>
-            </div>
+            <ComingSoonAppCard
+              provider="garmin"
+              title="Garmin"
+              subtitle="Usually requires Garmin partner approval."
+              learnMoreText="Coming soon: Garmin integration usually requires partner approval."
+              className="sm:col-span-2"
+            />
           </div>
         </Card>
 

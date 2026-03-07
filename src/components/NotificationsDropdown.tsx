@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 type NotificationRow = {
   id: string;
@@ -17,6 +18,7 @@ type NotificationRow = {
   title: string;
   message: string;
   type: string;
+  url?: string | null;
   read: boolean;
   created_at: string;
 };
@@ -26,6 +28,8 @@ const iconMap: Record<string, typeof Bell> = {
   booking: Calendar,
   ladder: Trophy,
   match: CheckCircle,
+  marketing: Bell,
+  event: Calendar,
   general: Bell,
 };
 
@@ -40,6 +44,7 @@ export function NotificationsDropdown({
   const { data: unreadCount } = useUnreadNotificationsCount();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const canLoad = !!user?.id;
 
@@ -141,7 +146,12 @@ export function NotificationsDropdown({
                       !notif.read && "bg-primary/5"
                     )}
                     onClick={() => {
+                      const url = (notif as any).url as string | undefined;
                       if (!notif.read) markRead.mutate(notif.id);
+                      if (url) {
+                        setOpen(false);
+                        navigate(url);
+                      }
                     }}
                   >
                     <div

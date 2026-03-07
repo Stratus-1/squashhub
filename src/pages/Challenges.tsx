@@ -51,6 +51,7 @@ import {
   useRespondChallengeSchedule,
   useUpdateChallengeStatus,
 } from "@/hooks/use-data";
+import { enqueueOutbox } from "@/lib/outbox";
 
 const statusConfig = {
   pending: { color: "bg-accent/20 text-accent-foreground", icon: Clock },
@@ -310,7 +311,44 @@ export default function Challenges() {
     const notes = record.notes.trim() || null;
 
     try {
+      const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
+      const matchId = crypto.randomUUID();
+
+      if (!isOnline) {
+        enqueueOutbox({
+          id: crypto.randomUUID(),
+          kind: "create_match",
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          payload: {
+            match: {
+              id: matchId,
+              player_a: challenge.challenger_id,
+              player_b: challenge.opponent_id,
+              winner_id: winnerId,
+              score: score ?? null,
+              match_date: record.matchDate,
+              court_id: Number(record.courtId) || 1,
+              challenge_id: challenge.id,
+              game_scores: gameScores ?? null,
+              duration_s: durationS,
+              notes,
+              submitted_by: user.id,
+              confirmed: false,
+              disputed: false,
+            },
+          },
+        });
+
+        toast.message("Saved offline", {
+          description: "Your match result will sync automatically when you’re back online.",
+        });
+        closeRecord();
+        return;
+      }
+
       await createMatch.mutateAsync({
+        matchId,
         playerA: challenge.challenger_id,
         playerB: challenge.opponent_id,
         winnerId,
@@ -325,6 +363,47 @@ export default function Challenges() {
       toast.success("Result submitted (awaiting confirmation)");
       closeRecord();
     } catch (err: any) {
+      const msg = String(err?.message || "");
+      const likelyNetwork =
+        msg.includes("Failed to fetch") ||
+        msg.includes("NetworkError") ||
+        msg.includes("fetch failed") ||
+        msg.includes("Network request failed");
+
+      if (likelyNetwork && user?.id) {
+        const matchId = crypto.randomUUID();
+        enqueueOutbox({
+          id: crypto.randomUUID(),
+          kind: "create_match",
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          payload: {
+            match: {
+              id: matchId,
+              player_a: challenge.challenger_id,
+              player_b: challenge.opponent_id,
+              winner_id: winnerId,
+              score: score ?? null,
+              match_date: record.matchDate,
+              court_id: Number(record.courtId) || 1,
+              challenge_id: challenge.id,
+              game_scores: gameScores ?? null,
+              duration_s: durationS,
+              notes,
+              submitted_by: user.id,
+              confirmed: false,
+              disputed: false,
+            },
+          },
+        });
+
+        toast.message("Network issue — saved offline", {
+          description: "We’ll retry syncing your match result automatically.",
+        });
+        closeRecord();
+        return;
+      }
+
       toast.error(err.message || "Failed to submit result");
     }
   };

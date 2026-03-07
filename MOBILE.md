@@ -63,16 +63,21 @@ This project supports:
    - `supabase db push`
 2. On Android/Chrome: install the PWA from the Vercel site and tap **Enable Notifications** in-app.
 
-### Native (APK/iOS) via FCM
+### Native (Android/iOS) via FCM + APNS
 
 1. Create a Firebase project and add apps:
    - Android package: `com.gbsquash.hub`
-   - iOS bundle id: `com.gbsquash.hub` (or update `capacitor.config.ts` to match)
+   - (Optional) iOS can also be added to Firebase for analytics/crash reporting, but push delivery in this app is APNS token-based.
 2. Download config files:
    - Android: `google-services.json` -> `android/app/google-services.json`
-   - iOS: `GoogleService-Info.plist` -> `ios/App/App/GoogleService-Info.plist`
-3. Add Supabase secret for sending pushes:
-   - `FCM_SERVER_KEY` (Firebase Cloud Messaging legacy server key)
+3. Add Supabase secrets for sending pushes:
+   - Android (FCM legacy): `FCM_SERVER_KEY`
+   - iOS (APNS token-based):
+     - `APNS_TEAM_ID`
+     - `APNS_KEY_ID`
+     - `APNS_PRIVATE_KEY` (the `.p8` contents, including header/footer)
+     - `APNS_BUNDLE_ID` (must match the iOS bundle id)
+     - `APNS_USE_SANDBOX=true` for dev builds, `false` for production/TestFlight
 4. Sync native projects:
    - `npm run cap:sync`
 5. Build/run:
@@ -80,3 +85,17 @@ This project supports:
    - iOS: `npm run cap:ios`
 
 Note: native push won’t show in the Android notification bar until Firebase is configured and the device token is successfully registered (Enable Notifications prompt).
+
+### iOS Xcode checklist (required for background delivery)
+
+- Enable **Signing & Capabilities**:
+  - **Push Notifications**
+  - **Background Modes** → **Remote notifications**
+- Ensure the iOS bundle id matches `APNS_BUNDLE_ID` and the app id used in Apple Developer.
+
+### Quick test (background)
+
+1. Install the app (APK/TestFlight/device).
+2. Tap **Enable Notifications** in-app (stores a token in `device_push_tokens`).
+3. Put the app fully in the background.
+4. Insert a row into `public.notifications` for your user (Admin dashboard already has a “send notification” action) and confirm it appears in the OS notification tray.

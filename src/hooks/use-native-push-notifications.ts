@@ -45,6 +45,22 @@ export function useNativePushNotifications() {
 
       setPermission("granted");
 
+      // Android: ensure the default notification channel exists (required for proper notification bar behavior).
+      if (platform === "android") {
+        try {
+          await PushNotifications.createChannel({
+            id: "default_channel_id",
+            name: "General",
+            description: "General updates",
+            importance: 4,
+            visibility: 1,
+            vibration: true,
+          } as any);
+        } catch {
+          // ignore (older Android / already exists)
+        }
+      }
+
       const tokenPromise = new Promise<string>((resolve, reject) => {
         let done = false;
 
@@ -141,4 +157,3 @@ export function useNativePushNotifications() {
 
   return { permission, isSubscribed, loading, subscribe, unsubscribe };
 }
-

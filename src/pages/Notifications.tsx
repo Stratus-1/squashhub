@@ -15,6 +15,8 @@ const iconMap: Record<string, typeof Bell> = {
   booking: Calendar,
   ladder: Trophy,
   match: CheckCircle,
+  marketing: Bell,
+  event: Calendar,
   general: Bell,
 };
 
@@ -81,7 +83,14 @@ export default function Notifications() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
-                    onClick={() => !notif.read && markRead.mutate(notif.id)}
+                    onClick={() => {
+                      if (!notif.read) markRead.mutate(notif.id);
+                      const url = (notif as any).url as string | undefined;
+                      if (url) {
+                        close();
+                        navigate(url);
+                      }
+                    }}
                   >
                     <Card
                       className={cn(

@@ -9,6 +9,8 @@ import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NativePushListener } from "@/components/NativePushListener";
 import { RealtimeSync } from "@/components/RealtimeSync";
+import { OutboxSync } from "@/components/OutboxSync";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -16,6 +18,8 @@ import Ladder from "./pages/Ladder";
 import Challenges from "./pages/Challenges";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
+import Events from "./pages/Events";
+import EventDetail from "./pages/EventDetail";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
@@ -78,6 +82,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <Auth />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -95,10 +101,12 @@ function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {user && <BottomNav />}
+      {user && <OfflineBanner />}
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
       {user && <NativePushListener />}
       {user && <RealtimeSync />}
+      {user && <OutboxSync />}
     </div>
   );
 }

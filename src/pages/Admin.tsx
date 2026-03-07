@@ -91,6 +91,23 @@ type SeasonRow = {
   created_at: string;
 };
 
+type AdminEventRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  location: string | null;
+  court_id: number | null;
+  capacity: number | null;
+  rsvp_deadline: string | null;
+  visibility: "public" | "members";
+  status: "draft" | "published" | "cancelled";
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type AuditLogRow = {
   id: string;
   actor_id: string | null;
@@ -209,6 +226,50 @@ export default function Admin() {
     targetId: "",
   });
 
+  const [eventEdit, setEventEdit] = useState<{
+    open: boolean;
+    event: AdminEventRow | null;
+    title: string;
+    description: string;
+    startsAtLocal: string;
+    endsAtLocal: string;
+    location: string;
+    courtId: string;
+    capacity: string;
+    rsvpDeadlineLocal: string;
+    visibility: "public" | "members";
+    status: "draft" | "published" | "cancelled";
+  }>({
+    open: false,
+    event: null,
+    title: "",
+    description: "",
+    startsAtLocal: "",
+    endsAtLocal: "",
+    location: "",
+    courtId: "",
+    capacity: "",
+    rsvpDeadlineLocal: "",
+    visibility: "members",
+    status: "draft",
+  });
+
+  const [broadcast, setBroadcast] = useState<{
+    template: "custom" | "braai" | "club_night" | "tournament" | "maintenance";
+    audience: "all" | "ranked" | "active30" | "strava" | "rsvp_event";
+    eventId: string;
+    title: string;
+    message: string;
+    url: string;
+  }>({
+    template: "custom",
+    audience: "all",
+    eventId: "",
+    title: "",
+    message: "",
+    url: "/events",
+  });
+
   const { data: profiles, isLoading: profilesLoading } = useQuery({
     queryKey: ["admin", "profiles"],
     queryFn: async () => {
@@ -275,6 +336,35 @@ export default function Admin() {
       if (error) throw error;
       return (data || []) as MatchRow[];
     },
+  });
+
+  const { data: events, isLoading: eventsLoading } = useQuery({
+    queryKey: ["admin", "events"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .order("starts_at", { ascending: true })
+        .limit(200);
+      if (error) throw error;
+      return (data || []) as AdminEventRow[];
+    },
+    enabled: isAdmin || isManager,
+  });
+
+  const { data: rsvpAudienceUserIds } = useQuery({
+    queryKey: ["admin", "event-rsvp-audience", broadcast.eventId],
+    queryFn: async () => {
+      if (!broadcast.eventId) return [] as string[];
+      const { data, error } = await supabase
+        .from("event_rsvps")
+        .select("user_id,status")
+        .eq("event_id", broadcast.eventId)
+        .in("status", ["going", "maybe"] as any);
+      if (error) throw error;
+      return [...new Set((data || []).map((r: any) => String(r.user_id)))];
+    },
+    enabled: (isAdmin || isManager) && broadcast.audience === "rsvp_event" && !!broadcast.eventId,
   });
 
   const { data: auditLog, isLoading: auditLoading } = useQuery({
@@ -425,6 +515,75 @@ export default function Admin() {
       setBulkRanksCsv("");
     },
     onError: (err: any) => toast.error(err.message || "Failed to import ladder"),
+  });
+
+  const saveEvent = useMutation({
+    mutationFn: async (payload: {
+      id?: string;
+      title: string;
+      description: string | null;
+      starts_at: string;
+      ends_at: string | null;
+      location: string | null;
+      court_id: number | null;
+      capacity: number | null;
+      rsvp_deadline: string | null;
+      visibility: "public" | "members";
+      status: "draft" | "published" | "cancelled";
+    }) => {
+      const row: any = {
+        ...(payload.id ? { id: payload.id } : {}),
+        title: payload.title,
+        description: payload.description,
+        starts_at: payload.starts_at,
+        ends_at: payload.ends_at,
+        location: payload.location,
+        court_id: payload.court_id,
+        capacity: payload.capacity,
+        rsvp_deadline: payload.rsvp_deadline,
+        visibility: payload.visibility,
+        status: payload.status,
+        created_by: user?.id || null,
+      };
+
+      const { error } = await supabase.from("events").upsert(row, { onConflict: "id" });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
+      toast.success("Event saved");
+      setEventEdit((s) => ({ ...s, open: false, event: null }));
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to save event"),
+  });
+
+  const sendBroadcast = useMutation({
+    mutationFn: async (payload: { recipients: string[]; title: string; message: string; url: string; data?: any }) => {
+      const title = payload.title.trim();
+      const message = payload.message.trim();
+      const url = payload.url.trim() || "/events";
+      if (!title) throw new Error("Title is required");
+      if (!message) throw new Error("Message is required");
+      if (payload.recipients.length === 0) throw new Error("No recipients");
+
+      // Batch inserts to avoid request size limits.
+      const chunkSize = 200;
+      for (let i = 0; i < payload.recipients.length; i += chunkSize) {
+        const chunk = payload.recipients.slice(i, i + chunkSize);
+        const rows = chunk.map((uid) => ({
+          user_id: uid,
+          title,
+          message,
+          type: "marketing",
+          url,
+          data: payload.data || {},
+        }));
+        const { error } = await supabase.from("notifications").insert(rows as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => toast.success("Broadcast sent"),
+    onError: (e: any) => toast.error(e?.message || "Failed to send broadcast"),
   });
 
   const startSeason = useMutation({
@@ -595,6 +754,33 @@ export default function Admin() {
       matchesPlayed: String(p.matches_played ?? 0),
       wins: String(p.wins ?? 0),
       losses: String(p.losses ?? 0),
+    });
+  };
+
+  const toLocalInput = (iso: string | null) => {
+    if (!iso) return "";
+    try {
+      return format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
+    } catch {
+      return "";
+    }
+  };
+
+  const openEventEditor = (e?: AdminEventRow | null) => {
+    const ev = e || null;
+    setEventEdit({
+      open: true,
+      event: ev,
+      title: ev?.title || "",
+      description: ev?.description || "",
+      startsAtLocal: toLocalInput(ev?.starts_at || null) || format(new Date(), "yyyy-MM-dd'T'18:00"),
+      endsAtLocal: toLocalInput(ev?.ends_at || null),
+      location: ev?.location || "",
+      courtId: ev?.court_id != null ? String(ev.court_id) : "",
+      capacity: ev?.capacity != null ? String(ev.capacity) : "",
+      rsvpDeadlineLocal: toLocalInput(ev?.rsvp_deadline || null),
+      visibility: ev?.visibility || "members",
+      status: ev?.status || "draft",
     });
   };
 
@@ -1194,6 +1380,253 @@ export default function Admin() {
             </div>
           </Card>
 
+          <Card className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold font-heading">Events</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Create club events and let players RSVP.
+                </p>
+              </div>
+              <Button size="sm" className="h-8 text-xs shrink-0" onClick={() => openEventEditor(null)}>
+                New event
+              </Button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {eventsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : !events || events.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No events yet.</p>
+              ) : (
+                events.slice(0, 10).map((e) => {
+                  const starts = e.starts_at ? format(new Date(e.starts_at), "d MMM yyyy HH:mm") : "—";
+                  return (
+                    <div key={e.id} className="rounded-lg border p-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{e.title}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                          {starts} · {e.visibility} · {e.status}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Select
+                          value={e.status}
+                          onValueChange={(value) => {
+                            saveEvent.mutate({
+                              id: e.id,
+                              title: e.title,
+                              description: e.description || null,
+                              starts_at: e.starts_at,
+                              ends_at: e.ends_at || null,
+                              location: e.location || null,
+                              court_id: e.court_id ?? null,
+                              capacity: e.capacity ?? null,
+                              rsvp_deadline: e.rsvp_deadline || null,
+                              visibility: e.visibility,
+                              status: value as any,
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-[130px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="draft">draft</SelectItem>
+                            <SelectItem value="published">published</SelectItem>
+                            <SelectItem value="cancelled">cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openEventEditor(e)}>
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <p className="text-sm font-semibold font-heading">Broadcast (Marketing)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Sends an in-app notification to a selected audience. Push delivery happens automatically for users with push enabled.
+            </p>
+
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Template</Label>
+                    <Select
+                      value={broadcast.template}
+                      onValueChange={(value) => {
+                        const v = value as any;
+                        const templates: Record<string, { title: string; message: string; url: string }> = {
+                          braai: {
+                            title: "Braai Social",
+                            message: "Friendly braai + social matches. RSVP in Events!",
+                            url: "/events",
+                          },
+                          club_night: {
+                            title: "Club Night",
+                            message: "Club night matches are on. Book a court and get a game in!",
+                            url: "/bookings",
+                          },
+                          tournament: {
+                            title: "Tournament",
+                            message: "Tournament coming up! Check Events for details and RSVP.",
+                            url: "/events",
+                          },
+                          maintenance: {
+                            title: "Maintenance",
+                            message: "Courts will be unavailable during maintenance. See Events for timing.",
+                            url: "/events",
+                          },
+                        };
+                        const t = templates[v];
+                        setBroadcast((s) => ({
+                          ...s,
+                          template: v,
+                          ...(t ? { title: t.title, message: t.message, url: t.url } : {}),
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="custom">Custom</SelectItem>
+                        <SelectItem value="braai">Braai social</SelectItem>
+                        <SelectItem value="club_night">Club night</SelectItem>
+                        <SelectItem value="tournament">Tournament</SelectItem>
+                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Audience</Label>
+                    <Select value={broadcast.audience} onValueChange={(value) => setBroadcast((s) => ({ ...s, audience: value as any }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All members</SelectItem>
+                        <SelectItem value="ranked">Ranked only</SelectItem>
+                        <SelectItem value="active30">Active last 30d</SelectItem>
+                        <SelectItem value="strava">Strava-connected</SelectItem>
+                        <SelectItem value="rsvp_event">RSVPed to event</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {broadcast.audience === "rsvp_event" ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Event</Label>
+                    <Select value={broadcast.eventId} onValueChange={(value) => setBroadcast((s) => ({ ...s, eventId: value }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select event…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(events || []).map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Title</Label>
+                  <Input value={broadcast.title} onChange={(e) => setBroadcast((s) => ({ ...s, title: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Message</Label>
+                  <Textarea
+                    value={broadcast.message}
+                    onChange={(e) => setBroadcast((s) => ({ ...s, message: e.target.value }))}
+                    className="min-h-[90px]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link URL</Label>
+                  <Input value={broadcast.url} onChange={(e) => setBroadcast((s) => ({ ...s, url: e.target.value }))} placeholder="/events" />
+                  <p className="text-[11px] text-muted-foreground">
+                    Example: <span className="font-mono">/events</span> or <span className="font-mono">/events/&lt;id&gt;</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-3">
+                <p className="text-sm font-medium">Preview</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Recipients are calculated from your selected audience filter.
+                </p>
+
+                {(() => {
+                  const allIds = (profiles || []).map((p) => p.id);
+                  let ids: string[] = [];
+                  if (broadcast.audience === "all") ids = allIds;
+                  if (broadcast.audience === "ranked") ids = (profiles || []).filter((p) => p.rank != null).map((p) => p.id);
+                  if (broadcast.audience === "active30") {
+                    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                    ids = (profiles || [])
+                      .filter((p) => {
+                        const last = (p as any).last_competitive_match_at as string | null | undefined;
+                        if (!last) return false;
+                        return new Date(last).getTime() >= cutoff;
+                      })
+                      .map((p) => p.id);
+                  }
+                  if (broadcast.audience === "strava") ids = (profiles || []).filter((p) => !!(p as any).strava_connected).map((p) => p.id);
+                  if (broadcast.audience === "rsvp_event") ids = rsvpAudienceUserIds || [];
+
+                  const count = ids.length;
+                  return (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Recipients</span>
+                        <span className="font-medium">{count}</span>
+                      </div>
+                      <div className="rounded-md border p-3">
+                        <p className="text-xs font-semibold">{broadcast.title || "—"}</p>
+                        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">
+                          {broadcast.message || "—"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-2">
+                          Link: <span className="font-mono">{broadcast.url || "/events"}</span>
+                        </p>
+                      </div>
+                      <Button
+                        className="w-full h-9 text-xs"
+                        disabled={!isAdmin && !isManager ? true : sendBroadcast.isPending || count === 0}
+                        onClick={() => {
+                          sendBroadcast.mutate({
+                            recipients: ids,
+                            title: broadcast.title,
+                            message: broadcast.message,
+                            url: broadcast.url,
+                            data: {
+                              kind: "broadcast",
+                              template: broadcast.template,
+                              ...(broadcast.audience === "rsvp_event" && broadcast.eventId ? { event_id: broadcast.eventId } : {}),
+                            },
+                          });
+                        }}
+                      >
+                        {sendBroadcast.isPending ? "Sending…" : "Send broadcast"}
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </Card>
+
           <Card className="p-0">
             <div className="p-4 pb-2">
               <p className="text-sm font-semibold font-heading">Audit log</p>
@@ -1257,6 +1690,160 @@ export default function Admin() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={eventEdit.open} onOpenChange={(open) => setEventEdit((s) => ({ ...s, open }))}>
+        <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
+          <div className="p-6 pb-4 border-b">
+            <DialogHeader>
+              <DialogTitle>{eventEdit.event ? "Edit event" : "New event"}</DialogTitle>
+            </DialogHeader>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label>Title</Label>
+              <Input value={eventEdit.title} onChange={(e) => setEventEdit((s) => ({ ...s, title: e.target.value }))} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea
+                value={eventEdit.description}
+                onChange={(e) => setEventEdit((s) => ({ ...s, description: e.target.value }))}
+                className="min-h-[120px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Starts</Label>
+                <Input
+                  type="datetime-local"
+                  value={eventEdit.startsAtLocal}
+                  onChange={(e) => setEventEdit((s) => ({ ...s, startsAtLocal: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ends (optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={eventEdit.endsAtLocal}
+                  onChange={(e) => setEventEdit((s) => ({ ...s, endsAtLocal: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Location (optional)</Label>
+                <Input value={eventEdit.location} onChange={(e) => setEventEdit((s) => ({ ...s, location: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Court (optional)</Label>
+                <Select value={eventEdit.courtId} onValueChange={(v) => setEventEdit((s) => ({ ...s, courtId: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select court" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">—</SelectItem>
+                    <SelectItem value="1">Court 1</SelectItem>
+                    <SelectItem value="2">Court 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Capacity (optional)</Label>
+                <Input
+                  inputMode="numeric"
+                  value={eventEdit.capacity}
+                  onChange={(e) => setEventEdit((s) => ({ ...s, capacity: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>RSVP deadline (optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={eventEdit.rsvpDeadlineLocal}
+                  onChange={(e) => setEventEdit((s) => ({ ...s, rsvpDeadlineLocal: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Visibility</Label>
+                <Select value={eventEdit.visibility} onValueChange={(v) => setEventEdit((s) => ({ ...s, visibility: v as any }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="members">Members</SelectItem>
+                    <SelectItem value="public">Public</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select value={eventEdit.status} onValueChange={(v) => setEventEdit((s) => ({ ...s, status: v as any }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">draft</SelectItem>
+                  <SelectItem value="published">published</SelectItem>
+                  <SelectItem value="cancelled">cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="p-6 pt-4 border-t bg-background">
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEventEdit((s) => ({ ...s, open: false, event: null }))}>
+                Cancel
+              </Button>
+              <Button
+                disabled={saveEvent.isPending}
+                onClick={() => {
+                  try {
+                    const title = eventEdit.title.trim();
+                    if (!title) throw new Error("Title is required");
+                    if (!eventEdit.startsAtLocal.trim()) throw new Error("Start time is required");
+
+                    const startsAtIso = new Date(eventEdit.startsAtLocal).toISOString();
+                    const endsAtIso = eventEdit.endsAtLocal.trim() ? new Date(eventEdit.endsAtLocal).toISOString() : null;
+                    const deadlineIso = eventEdit.rsvpDeadlineLocal.trim() ? new Date(eventEdit.rsvpDeadlineLocal).toISOString() : null;
+                    const cap = eventEdit.capacity.trim() ? Number(eventEdit.capacity) : null;
+                    if (cap != null && (!Number.isFinite(cap) || cap < 1 || cap > 5000)) {
+                      throw new Error("Capacity must be between 1 and 5000");
+                    }
+
+                    saveEvent.mutate({
+                      id: eventEdit.event?.id,
+                      title,
+                      description: eventEdit.description.trim() || null,
+                      starts_at: startsAtIso,
+                      ends_at: endsAtIso,
+                      location: eventEdit.location.trim() || null,
+                      court_id: eventEdit.courtId ? Number(eventEdit.courtId) : null,
+                      capacity: cap == null ? null : Math.trunc(cap),
+                      rsvp_deadline: deadlineIso,
+                      visibility: eventEdit.visibility,
+                      status: eventEdit.status,
+                    });
+                  } catch (e: any) {
+                    toast.error(e?.message || "Invalid event");
+                  }
+                }}
+              >
+                {saveEvent.isPending ? "Saving…" : "Save event"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={seasonStart.open}

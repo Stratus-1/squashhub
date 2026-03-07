@@ -41,6 +41,7 @@ async function sendFcmToUser(args: {
   body: string;
   url?: string;
   tag?: string;
+  data?: Record<string, unknown>;
 }) {
   const serverKey = Deno.env.get("FCM_SERVER_KEY");
   if (!serverKey) return { sent: 0, failed: 0, skipped: true };
@@ -48,7 +49,8 @@ async function sendFcmToUser(args: {
   const { data: tokens } = await supabaseAdmin
     .from("device_push_tokens")
     .select("id, token")
-    .eq("user_id", args.targetUserId);
+    .eq("user_id", args.targetUserId)
+    .eq("platform", "android");
 
   const registrationIds = (tokens || []).map((t) => t.token).filter(Boolean);
   if (registrationIds.length === 0) return { sent: 0, failed: 0, skipped: false };
@@ -76,12 +78,14 @@ async function sendFcmToUser(args: {
         notification: {
           title: args.title,
           body: args.body,
+          android_channel_id: "default_channel_id",
         },
         data: {
           url: args.url || "/notifications",
           tag: args.tag || "gb-squash-notification",
           title: args.title,
           body: args.body,
+          ...(args.data || {}),
         },
       }),
     });
@@ -117,6 +121,169 @@ async function sendFcmToUser(args: {
 
   if (invalidTokenIds.length > 0) {
     await supabaseAdmin.from("device_push_tokens").delete().in("id", invalidTokenIds);
+  }
+
+  return { sent, failed, skipped: false };
+}
+
+function toBase64Url(bytes: Uint8Array) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function textToBase64Url(s: string) {
+  return toBase64Url(new TextEncoder().encode(s));
+}
+
+function pemToArrayBuffer(pem: string) {
+  const cleaned = pem
+    .replace(/-----(BEGIN|END) PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+  const raw = atob(cleaned);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return bytes.buffer;
+}
+
+// WebCrypto ECDSA signatures are typically DER encoded; JWT expects JOSE (raw r|s).
+function derToJose(derSig: Uint8Array, keySizeBits = 256) {
+  const keySizeBytes = Math.ceil(keySizeBits / 8);
+  if (derSig[0] !== 0x30) throw new Error("Invalid DER signature");
+
+  let offset = 2;
+  if (derSig[1] & 0x80) {
+    const lenBytes = derSig[1] & 0x7f;
+    offset = 2 + lenBytes;
+  }
+
+  if (derSig[offset] !== 0x02) throw new Error("Invalid DER signature");
+  const rLen = derSig[offset + 1];
+  const rStart = offset + 2;
+  const r = derSig.slice(rStart, rStart + rLen);
+  offset = rStart + rLen;
+
+  if (derSig[offset] !== 0x02) throw new Error("Invalid DER signature");
+  const sLen = derSig[offset + 1];
+  const sStart = offset + 2;
+  const s = derSig.slice(sStart, sStart + sLen);
+
+  const rOut = new Uint8Array(keySizeBytes);
+  const sOut = new Uint8Array(keySizeBytes);
+
+  // Left-pad with zeros; if longer, trim leading zeros.
+  rOut.set(r.slice(Math.max(0, r.length - keySizeBytes)), Math.max(0, keySizeBytes - r.length));
+  sOut.set(s.slice(Math.max(0, s.length - keySizeBytes)), Math.max(0, keySizeBytes - s.length));
+
+  const out = new Uint8Array(keySizeBytes * 2);
+  out.set(rOut, 0);
+  out.set(sOut, keySizeBytes);
+  return out;
+}
+
+let apnsKeyCache: CryptoKey | null = null;
+let apnsJwtCache: { token: string; iat: number } | null = null;
+
+async function getApnsJwt() {
+  const keyId = Deno.env.get("APNS_KEY_ID");
+  const teamId = Deno.env.get("APNS_TEAM_ID");
+  const privateKeyPem = Deno.env.get("APNS_PRIVATE_KEY");
+  if (!keyId || !teamId || !privateKeyPem) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (apnsJwtCache && now - apnsJwtCache.iat < 50 * 60) return apnsJwtCache.token;
+
+  if (!apnsKeyCache) {
+    apnsKeyCache = await crypto.subtle.importKey(
+      "pkcs8",
+      pemToArrayBuffer(privateKeyPem),
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"]
+    );
+  }
+
+  const header = { alg: "ES256", kid: keyId };
+  const payload = { iss: teamId, iat: now };
+  const unsigned = `${textToBase64Url(JSON.stringify(header))}.${textToBase64Url(JSON.stringify(payload))}`;
+  const sigDer = new Uint8Array(
+    await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, apnsKeyCache, new TextEncoder().encode(unsigned))
+  );
+  const sigJose = derToJose(sigDer, 256);
+  const jwt = `${unsigned}.${toBase64Url(sigJose)}`;
+
+  apnsJwtCache = { token: jwt, iat: now };
+  return jwt;
+}
+
+async function sendApnsToUser(args: {
+  targetUserId: string;
+  title: string;
+  body: string;
+  url?: string;
+  tag?: string;
+  data?: Record<string, unknown>;
+}) {
+  const bundleId = Deno.env.get("APNS_BUNDLE_ID");
+  const useSandbox = (Deno.env.get("APNS_USE_SANDBOX") || "").toLowerCase() === "true";
+  if (!bundleId) return { sent: 0, failed: 0, skipped: true };
+
+  const jwt = await getApnsJwt();
+  if (!jwt) return { sent: 0, failed: 0, skipped: true };
+
+  const { data: tokens } = await supabaseAdmin
+    .from("device_push_tokens")
+    .select("id, token")
+    .eq("user_id", args.targetUserId)
+    .eq("platform", "ios");
+
+  const deviceTokens = (tokens || []).map((t) => ({ id: t.id as string, token: String(t.token || "").replace(/\s+/g, "") })).filter((t) => t.token);
+  if (deviceTokens.length === 0) return { sent: 0, failed: 0, skipped: false };
+
+  const host = useSandbox ? "https://api.sandbox.push.apple.com" : "https://api.push.apple.com";
+  let sent = 0;
+  let failed = 0;
+  const invalidIds: string[] = [];
+
+  for (const t of deviceTokens) {
+    const res = await fetch(`${host}/3/device/${t.token}`, {
+      method: "POST",
+      headers: {
+        authorization: `bearer ${jwt}`,
+        "apns-topic": bundleId,
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        aps: {
+          alert: { title: args.title, body: args.body },
+          sound: "default",
+        },
+        url: args.url || "/notifications",
+        tag: args.tag || "gb-squash-notification",
+        ...(args.data || {}),
+      }),
+    });
+
+    if (res.status === 200) {
+      sent += 1;
+      continue;
+    }
+
+    failed += 1;
+    if (res.status === 410 || res.status === 400) {
+      const body = await res.json().catch(() => null);
+      const reason = body?.reason as string | undefined;
+      if (res.status === 410 || reason === "BadDeviceToken" || reason === "Unregistered") {
+        invalidIds.push(t.id);
+      }
+    }
+  }
+
+  if (invalidIds.length > 0) {
+    await supabaseAdmin.from("device_push_tokens").delete().in("id", invalidIds);
   }
 
   return { sent, failed, skipped: false };
@@ -193,7 +360,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { targetUserId, title, body, url: notifUrl, icon, tag } = await req.json();
+      const { targetUserId, title, body, url: notifUrl, icon, tag, data: extraData } = await req.json();
 
       const keys = await getOrCreateVapidKeys();
       webpush.setVapidDetails(
@@ -214,6 +381,7 @@ Deno.serve(async (req) => {
         url: notifUrl || "/notifications",
         badge: "/pwa-192x192.png",
         tag: tag || "gb-squash-notification",
+        data: extraData || {},
       });
 
       const results = await Promise.allSettled(
@@ -248,6 +416,16 @@ Deno.serve(async (req) => {
         body,
         url: notifUrl || "/notifications",
         tag,
+        data: extraData || {},
+      });
+
+      const apns = await sendApnsToUser({
+        targetUserId,
+        title,
+        body,
+        url: notifUrl || "/notifications",
+        tag,
+        data: extraData || {},
       });
 
       return new Response(
@@ -257,6 +435,9 @@ Deno.serve(async (req) => {
           native_sent: fcm.sent,
           native_failed: fcm.failed,
           native_skipped: fcm.skipped,
+          ios_sent: apns.sent,
+          ios_failed: apns.failed,
+          ios_skipped: apns.skipped,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

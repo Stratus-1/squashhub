@@ -29,6 +29,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
+import { enqueueOutbox } from "@/lib/outbox";
 
 function timeToMinutes(t: string) {
   const [hh, mm] = t.split(":").map((x) => Number(x));
@@ -143,9 +144,68 @@ export default function Bookings() {
   const handleBook = async () => {
     if (!bookingDialog) return;
     const endTime = addMinutesToTime(bookingDialog.time, 30);
+    const bookingId = crypto.randomUUID();
 
     try {
+      const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
+      if (!isOnline) {
+        if (!user?.id) throw new Error("Must be logged in");
+
+        const needsChallenge = !!bookingDialog.opponentId && !bookingDialog.isFriendly;
+        const challengeId = needsChallenge ? crypto.randomUUID() : null;
+        const opponent = bookingDialog.opponentId
+          ? (availablePlayers || []).find((p) => p.id === bookingDialog.opponentId) || null
+          : null;
+
+        enqueueOutbox({
+          id: crypto.randomUUID(),
+          kind: "booking_flow",
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          payload: {
+            booking: {
+              id: bookingId,
+              user_id: user.id,
+              court_id: bookingDialog.courtId,
+              date: dateStr,
+              start_time: bookingDialog.time + ":00",
+              end_time: endTime + ":00",
+              opponent_id: bookingDialog.opponentId || null,
+              is_friendly: bookingDialog.isFriendly,
+            },
+            ...(needsChallenge && bookingDialog.opponentId
+              ? {
+                  challenge: {
+                    id: challengeId,
+                    opponent_id: bookingDialog.opponentId,
+                    proposed_date: dateStr,
+                  },
+                }
+              : {}),
+          },
+        });
+
+        toast.message("Saved offline", {
+          description: "Your booking will sync automatically when you’re back online.",
+        });
+
+        setCalendarPrompt({
+          open: true,
+          courtId: bookingDialog.courtId,
+          dateStr,
+          startTime: bookingDialog.time,
+          endTime,
+          isFriendly: bookingDialog.isFriendly,
+          opponentName: opponent?.name || null,
+          opponentEmail: opponent?.email || null,
+        });
+
+        setBookingDialog(null);
+        return;
+      }
+
       const created = await createBooking.mutateAsync({
+        bookingId,
         courtId: bookingDialog.courtId,
         date: dateStr,
         startTime: bookingDialog.time + ":00",
@@ -194,6 +254,52 @@ export default function Bookings() {
 
       setBookingDialog(null);
     } catch (err: any) {
+      const msg = String(err?.message || "");
+      const likelyNetwork =
+        msg.includes("Failed to fetch") ||
+        msg.includes("NetworkError") ||
+        msg.includes("fetch failed") ||
+        msg.includes("Network request failed");
+
+      if (likelyNetwork && user?.id && bookingDialog) {
+        const needsChallenge = !!bookingDialog.opponentId && !bookingDialog.isFriendly;
+        const challengeId = needsChallenge ? crypto.randomUUID() : null;
+
+        enqueueOutbox({
+          id: crypto.randomUUID(),
+          kind: "booking_flow",
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          payload: {
+            booking: {
+              id: bookingId,
+              user_id: user.id,
+              court_id: bookingDialog.courtId,
+              date: dateStr,
+              start_time: bookingDialog.time + ":00",
+              end_time: endTime + ":00",
+              opponent_id: bookingDialog.opponentId || null,
+              is_friendly: bookingDialog.isFriendly,
+            },
+            ...(needsChallenge && bookingDialog.opponentId
+              ? {
+                  challenge: {
+                    id: challengeId,
+                    opponent_id: bookingDialog.opponentId,
+                    proposed_date: dateStr,
+                  },
+                }
+              : {}),
+          },
+        });
+
+        toast.message("Network issue — saved offline", {
+          description: "We’ll retry syncing your booking automatically.",
+        });
+        setBookingDialog(null);
+        return;
+      }
+
       toast.error(err.message || "Failed to book");
     }
   };

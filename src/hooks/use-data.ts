@@ -193,6 +193,7 @@ export function useCreateBooking() {
 
   return useMutation({
     mutationFn: async ({
+      bookingId,
       courtId,
       date,
       startTime,
@@ -201,6 +202,7 @@ export function useCreateBooking() {
       isFriendly,
       challengeId,
     }: {
+      bookingId?: string;
       courtId: number;
       date: string;
       startTime: string;
@@ -210,9 +212,11 @@ export function useCreateBooking() {
       challengeId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
+      const id = bookingId || crypto.randomUUID();
       const { data, error } = await supabase
         .from("bookings")
-        .insert({
+        .upsert({
+          id,
           court_id: courtId,
           user_id: user.id,
           date,
@@ -221,7 +225,7 @@ export function useCreateBooking() {
           opponent_id: opponentId ?? null,
           is_friendly: !!isFriendly,
           challenge_id: challengeId ?? null,
-        } as any)
+        } as any, { onConflict: "id" })
         .select()
         .single();
       if (error) {
@@ -684,6 +688,7 @@ export function useCreateMatch() {
 
   return useMutation({
     mutationFn: async ({
+      matchId,
       playerA,
       playerB,
       winnerId,
@@ -695,6 +700,7 @@ export function useCreateMatch() {
       durationS,
       notes,
     }: {
+      matchId?: string;
       playerA: string;
       playerB: string;
       winnerId: string | null;
@@ -708,9 +714,12 @@ export function useCreateMatch() {
     }) => {
       if (!user) throw new Error("Must be logged in");
 
+      const id = matchId || crypto.randomUUID();
+
       const { data, error } = await supabase
         .from("matches")
-        .insert({
+        .upsert({
+          id,
           player_a: playerA,
           player_b: playerB,
           winner_id: winnerId,
@@ -724,7 +733,7 @@ export function useCreateMatch() {
           submitted_by: user.id,
           confirmed: false,
           disputed: false,
-        })
+        } as any, { onConflict: "id" })
         .select()
         .single();
       if (error) throw error;

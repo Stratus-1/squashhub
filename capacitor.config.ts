@@ -5,10 +5,15 @@ const config: CapacitorConfig = {
   appName: "GB Squash",
   webDir: "dist",
   bundledWebRuntime: false,
+  plugins: {
+    PushNotifications: {
+      // Foreground behavior (especially important on iOS).
+      presentationOptions: ["badge", "sound", "alert"],
+    },
+  },
   server: {
     androidScheme: "https",
   },
 };
 
 export default config;
-

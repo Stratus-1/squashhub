@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -90,6 +91,17 @@ type SeasonRow = {
   created_at: string;
 };
 
+type AuditLogRow = {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  entity_table: string;
+  entity_id: string | null;
+  summary: string | null;
+  details: any;
+  created_at: string;
+};
+
 type EditUserState = {
   open: boolean;
   profile: ProfileRow | null;
@@ -116,6 +128,38 @@ function toIntOrNull(value: string) {
   const n = Number(trimmed);
   if (!Number.isFinite(n)) return null;
   return Math.trunc(n);
+}
+
+function escapeCsvValue(value: any) {
+  const s = value == null ? "" : String(value);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function toCsv(rows: Array<Record<string, any>>) {
+  if (rows.length === 0) return "";
+  const headers = Object.keys(rows[0]);
+  const lines = [
+    headers.map(escapeCsvValue).join(","),
+    ...rows.map((r) => headers.map((h) => escapeCsvValue(r[h])).join(",")),
+  ];
+  return lines.join("\n");
+}
+
+function downloadFile(filename: string, content: string, mime = "text/csv;charset=utf-8") {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function looksLikeUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export default function Admin() {
@@ -159,6 +203,12 @@ export default function Admin() {
     notes: "",
   }));
 
+  const [bulkRanksCsv, setBulkRanksCsv] = useState("");
+  const [mergeUsers, setMergeUsers] = useState<{ sourceId: string; targetId: string }>({
+    sourceId: "",
+    targetId: "",
+  });
+
   const { data: profiles, isLoading: profilesLoading } = useQuery({
     queryKey: ["admin", "profiles"],
     queryFn: async () => {
@@ -180,6 +230,14 @@ export default function Admin() {
   const profileMap = useMemo(() => {
     const map = new Map<string, ProfileRow>();
     for (const p of profiles || []) map.set(p.id, p);
+    return map;
+  }, [profiles]);
+
+  const emailToIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of profiles || []) {
+      if (p.email) map.set(String(p.email).trim().toLowerCase(), p.id);
+    }
     return map;
   }, [profiles]);
 
@@ -217,6 +275,20 @@ export default function Admin() {
       if (error) throw error;
       return (data || []) as MatchRow[];
     },
+  });
+
+  const { data: auditLog, isLoading: auditLoading } = useQuery({
+    queryKey: ["admin", "audit-log"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("admin_audit_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(250);
+      if (error) throw error;
+      return (data || []) as AuditLogRow[];
+    },
+    enabled: isAdmin || isManager,
   });
 
   const { data: scheduledMatches, isLoading: scheduledLoading } = useQuery({
@@ -317,6 +389,42 @@ export default function Admin() {
       toast.success("Match confirmed");
     },
     onError: (err: any) => toast.error(err.message || "Failed to confirm match"),
+  });
+
+  const mergeDuplicateUsers = useMutation({
+    mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
+      if (!looksLikeUuid(sourceId) || !looksLikeUuid(targetId)) throw new Error("Select two users to merge");
+      const { error } = await supabase.rpc("admin_merge_users", {
+        source_user_id: sourceId,
+        target_user_id: targetId,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "challenges"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "audit-log"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Users merged");
+      setMergeUsers({ sourceId: "", targetId: "" });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to merge users"),
+  });
+
+  const bulkSetRanks = useMutation({
+    mutationFn: async ({ assignments }: { assignments: Array<{ user_id: string; rank: number }> }) => {
+      const { error } = await supabase.rpc("admin_bulk_set_ranks", { assignments } as any);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "audit-log"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Ladder imported");
+      setBulkRanksCsv("");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to import ladder"),
   });
 
   const startSeason = useMutation({
@@ -521,6 +629,7 @@ export default function Admin() {
           <TabsTrigger value="matches" className="flex-1">Matches</TabsTrigger>
           <TabsTrigger value="schedule" className="flex-1">Schedule</TabsTrigger>
           <TabsTrigger value="seasons" className="flex-1">Seasons</TabsTrigger>
+          <TabsTrigger value="clubops" className="flex-1">Club Ops</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-3 space-y-3">
@@ -922,6 +1031,226 @@ export default function Admin() {
                       </TableCell>
                     </TableRow>
                   ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="clubops" className="mt-3 space-y-3">
+          <Card className="p-4">
+            <p className="text-sm font-semibold font-heading">Bulk actions</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Import ladder ranks in bulk, or export CSV for reporting.
+            </p>
+
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="rounded-lg border p-3">
+                <p className="text-sm font-medium">Import ladder (CSV)</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Paste lines as <span className="font-mono">email,rank</span> or <span className="font-mono">user_id,rank</span>.
+                  This clears all existing ranks first.
+                </p>
+                <Textarea
+                  value={bulkRanksCsv}
+                  onChange={(e) => setBulkRanksCsv(e.target.value)}
+                  placeholder={`email,rank\nplayer1@example.com,1\nplayer2@example.com,2`}
+                  className="mt-2 min-h-[120px] text-xs"
+                />
+                <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 text-xs"
+                    disabled={!isAdmin || bulkSetRanks.isPending}
+                    onClick={() => {
+                      try {
+                        const lines = bulkRanksCsv
+                          .split(/\r?\n/)
+                          .map((l) => l.trim())
+                          .filter(Boolean)
+                          .filter((l) => !/^email\s*,\s*rank/i.test(l) && !/^user_id\s*,\s*rank/i.test(l));
+
+                        const assignments: Array<{ user_id: string; rank: number }> = [];
+                        const seen = new Set<number>();
+
+                        for (const line of lines) {
+                          const parts = line.split(/[,\t;]+/).map((p) => p.trim()).filter(Boolean);
+                          if (parts.length < 2) throw new Error(`Bad line: ${line}`);
+                          const key = parts[0];
+                          const rank = Number(parts[1]);
+                          if (!Number.isFinite(rank)) throw new Error(`Invalid rank on line: ${line}`);
+                          const r = Math.trunc(rank);
+                          if (r < 1 || r > 20) throw new Error(`Rank must be 1-20 on line: ${line}`);
+                          if (seen.has(r)) throw new Error(`Duplicate rank ${r} in import`);
+                          seen.add(r);
+
+                          let userId: string | null = null;
+                          if (looksLikeUuid(key)) userId = key;
+                          else userId = emailToIdMap.get(key.toLowerCase()) || null;
+                          if (!userId) throw new Error(`Unknown user: ${key}`);
+
+                          assignments.push({ user_id: userId, rank: r });
+                        }
+
+                        if (assignments.length === 0) throw new Error("No assignments found");
+                        bulkSetRanks.mutate({ assignments });
+                      } catch (e: any) {
+                        toast.error(e?.message || "Invalid CSV");
+                      }
+                    }}
+                  >
+                    Import ranks
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const ladderRows = (profiles || [])
+                        .filter((p) => p.rank != null)
+                        .slice()
+                        .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+                        .map((p) => ({
+                          rank: p.rank ?? "",
+                          name: p.name || "",
+                          email: p.email || "",
+                          matches_played: p.matches_played ?? 0,
+                          wins: p.wins ?? 0,
+                          losses: p.losses ?? 0,
+                        }));
+                      downloadFile(`ladder-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(ladderRows));
+                    }}
+                  >
+                    Export ladder CSV
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const matchRows = (matches || []).map((m) => ({
+                        match_date: m.match_date,
+                        player_a: profileMap.get(m.player_a)?.name || m.player_a,
+                        player_b: profileMap.get(m.player_b)?.name || m.player_b,
+                        score: m.score || "",
+                        winner: m.winner_id ? (profileMap.get(m.winner_id)?.name || m.winner_id) : "",
+                        confirmed: m.confirmed,
+                        disputed: m.disputed,
+                        challenge_id: m.challenge_id || "",
+                      }));
+                      downloadFile(`matches-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(matchRows));
+                    }}
+                  >
+                    Export matches CSV
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-3">
+                <p className="text-sm font-medium">Merge duplicate users</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Moves public app data from the source user into the target user, then marks the source profile as merged (unranked).
+                </p>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Source user (to merge)</Label>
+                    <Select value={mergeUsers.sourceId} onValueChange={(v) => setMergeUsers((s) => ({ ...s, sourceId: v }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select user…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(profiles || []).map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name || "—"} {p.email ? `(${p.email})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Target user (keep)</Label>
+                    <Select value={mergeUsers.targetId} onValueChange={(v) => setMergeUsers((s) => ({ ...s, targetId: v }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select user…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(profiles || []).map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name || "—"} {p.email ? `(${p.email})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <Button
+                    className="h-8 text-xs"
+                    disabled={!isAdmin || mergeDuplicateUsers.isPending}
+                    onClick={() => mergeDuplicateUsers.mutate({ sourceId: mergeUsers.sourceId, targetId: mergeUsers.targetId })}
+                  >
+                    Merge users
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-0">
+            <div className="p-4 pb-2">
+              <p className="text-sm font-semibold font-heading">Audit log</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Tracks rank changes, match updates, and booking cancellations.
+              </p>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[18%]">Time</TableHead>
+                  <TableHead className="w-[18%]">Actor</TableHead>
+                  <TableHead className="w-[16%]">Action</TableHead>
+                  <TableHead className="w-[18%]">Entity</TableHead>
+                  <TableHead className="w-[30%]">Summary</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {auditLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
+                      Loading…
+                    </TableCell>
+                  </TableRow>
+                ) : (auditLog || []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
+                      No audit entries yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  (auditLog || []).map((row) => {
+                    const actorName = row.actor_id ? (profileMap.get(row.actor_id)?.name || row.actor_id) : "System";
+                    const actorEmail = row.actor_id ? (profileMap.get(row.actor_id)?.email || null) : null;
+                    const when = row.created_at ? format(new Date(row.created_at), "yyyy-MM-dd HH:mm") : "—";
+                    const entity = `${row.entity_table}${row.entity_id ? `:${row.entity_id.slice(0, 8)}` : ""}`;
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="p-3 text-xs text-muted-foreground">{when}</TableCell>
+                        <TableCell className="p-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium truncate">{actorName}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{actorEmail || "—"}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-3 text-xs">
+                          <Badge variant="secondary" className="capitalize">
+                            {row.action.replace(/_/g, " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="p-3 text-xs text-muted-foreground">{entity}</TableCell>
+                        <TableCell className="p-3 text-xs">
+                          <span className="text-muted-foreground">{row.summary || "—"}</span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

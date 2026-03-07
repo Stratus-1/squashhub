@@ -4,6 +4,68 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export type CourtBusynessRow = { slot: string; bookings_count: number };
 
+export type SquashTotals = {
+  matches: number;
+  wins: number;
+  losses: number;
+  win_rate: number;
+  avg_duration_min: number | null;
+  last_match_date: string | null;
+  current_streak: string;
+  best_win_streak: number;
+  best_loss_streak: number;
+  sets_for: number;
+  sets_against: number;
+  points_for: number;
+  points_against: number;
+};
+
+export function useSquashTotals(playerId?: string | null) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["squash-totals", playerId],
+    queryFn: async () => {
+      if (!playerId) return null;
+      const { data, error } = await supabase.rpc("get_squash_totals", { target_user_id: playerId } as any);
+      if (error) throw error;
+      return data as SquashTotals;
+    },
+    enabled: !!user && !!playerId,
+  });
+}
+
+export type HeadToHeadRow = {
+  opponent_id: string;
+  opponent_name: string;
+  matches: number;
+  wins: number;
+  losses: number;
+  win_rate: number;
+  last_match_date: string | null;
+  avg_duration_min: number | null;
+  sets_for: number;
+  sets_against: number;
+  points_for: number;
+  points_against: number;
+};
+
+export function useHeadToHead(playerId?: string | null, limit = 20) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["head-to-head", playerId, limit],
+    queryFn: async () => {
+      if (!playerId) return [] as HeadToHeadRow[];
+      const { data, error } = await supabase.rpc("get_head_to_head", {
+        target_user_id: playerId,
+        limit_count: limit,
+      } as any);
+      if (error) throw error;
+      return (data || []) as HeadToHeadRow[];
+    },
+    enabled: !!user && !!playerId,
+  });
+}
+
 export function useCourtBusyness(daysBack = 30) {
   const { user } = useAuth();
   return useQuery({

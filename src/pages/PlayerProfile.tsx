@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
-import { usePlayerProfile, useProfile } from "@/hooks/use-data";
+import { useHeadToHead, usePlayerProfile, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Flame, Loader2, Swords, Target, Timer, Trophy, TrendingUp } from "lucide-react";
@@ -13,6 +13,7 @@ import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 function initialsFromName(name: string) {
   return name
@@ -30,6 +31,15 @@ export default function PlayerProfile() {
   const queryClient = useQueryClient();
   const { data: me } = useProfile();
   const { data: player, isLoading } = usePlayerProfile(id);
+  const isSelf = !!id && user?.id === id;
+  const showRecentMatches = isSelf || (!!player && (((player as any)?.privacy_show_recent_matches) ?? true));
+  const showTraining = isSelf || (!!player && (((player as any)?.privacy_show_training) ?? true));
+  const showAbout = isSelf || (!!player && (((player as any)?.privacy_show_about) ?? true));
+  const showAvailability = isSelf || (!!player && (((player as any)?.privacy_show_availability) ?? true));
+  const showAdvanced = isSelf || (!!player && (((player as any)?.privacy_show_advanced_stats) ?? true));
+
+  const { data: squashTotals, isLoading: squashTotalsLoading } = useSquashTotals(showAdvanced ? id : null);
+  const { data: headToHead, isLoading: headToHeadLoading } = useHeadToHead(showRecentMatches ? id : null, 10);
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["player-matches", id],
@@ -39,6 +49,7 @@ export default function PlayerProfile() {
         .from("matches")
         .select("*")
         .or(`player_a.eq.${id},player_b.eq.${id}`)
+        .eq("is_friendly", false)
         .order("match_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(50);
@@ -77,7 +88,7 @@ export default function PlayerProfile() {
         };
       });
     },
-    enabled: !!id,
+    enabled: !!id && !!player && showRecentMatches,
   });
 
   useEffect(() => {
@@ -104,128 +115,22 @@ export default function PlayerProfile() {
     return player.matches_played > 0 ? Math.round((player.wins / player.matches_played) * 100) : 0;
   }, [player]);
 
-  const matchStats = useMemo(() => {
-    if (!id) {
-      return {
-        confirmedCount: 0,
-        confirmedWins: 0,
-        confirmedLosses: 0,
-        winRateConfirmed: 0,
-        streakLabel: "—",
-        lastMatchDate: null as string | null,
-        avgDurationMin: null as number | null,
-        setsFor: 0,
-        setsAgainst: 0,
-        pointsFor: 0,
-        pointsAgainst: 0,
-        recentForm: "" as string,
-      };
-    }
-
-    const confirmed = (matches || [])
-      .filter((m: any) => m.confirmed === true && m.disputed !== true && m.winner_id)
+  const rivals = useMemo(() => {
+    const rows = headToHead || [];
+    return rows
+      .filter((r: any) => (r?.matches ?? 0) >= 2)
       .slice()
-      .sort((a: any, b: any) => String(b.match_date || "").localeCompare(String(a.match_date || "")));
+      .sort((a: any, b: any) => {
+        if ((b.matches ?? 0) !== (a.matches ?? 0)) return (b.matches ?? 0) - (a.matches ?? 0);
+        return Math.abs((a.win_rate ?? 0) - 50) - Math.abs((b.win_rate ?? 0) - 50);
+      })
+      .slice(0, 3);
+  }, [headToHead]);
 
-    let confirmedWins = 0;
-    let confirmedLosses = 0;
-    let durationTotalS = 0;
-    let durationCount = 0;
-    let setsFor = 0;
-    let setsAgainst = 0;
-    let pointsFor = 0;
-    let pointsAgainst = 0;
-    const form: string[] = [];
-
-    for (const m of confirmed) {
-      const isWin = m.winner_id === id;
-      if (isWin) confirmedWins += 1;
-      else confirmedLosses += 1;
-      if (form.length < 5) form.push(isWin ? "W" : "L");
-
-      if (typeof m.duration_s === "number" && Number.isFinite(m.duration_s) && m.duration_s > 0) {
-        durationTotalS += m.duration_s;
-        durationCount += 1;
-      }
-
-      const isPlayerA = m.player_a === id;
-
-      // Sets + points stats from game_scores when available (best source of truth).
-      if (m.game_scores) {
-        try {
-          const parsed = JSON.parse(m.game_scores);
-          const sets = parsed?.sets;
-          if (Array.isArray(sets)) {
-            for (const s of sets) {
-              const a = Number(s?.a);
-              const b = Number(s?.b);
-              if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
-
-              const myPts = isPlayerA ? a : b;
-              const oppPts = isPlayerA ? b : a;
-              pointsFor += myPts;
-              pointsAgainst += oppPts;
-
-              if (myPts === 15 && oppPts >= 0 && oppPts <= 14) setsFor += 1;
-              if (oppPts === 15 && myPts >= 0 && myPts <= 14) setsAgainst += 1;
-            }
-          }
-        } catch {
-          // ignore
-        }
-        continue;
-      }
-
-      // Fallback: infer sets from "score" when game_scores is missing.
-      if (typeof m.score === "string" && m.score.includes("-")) {
-        const [a, b] = m.score.split("-").map((x: string) => Number(x.trim()));
-        if (Number.isFinite(a) && Number.isFinite(b)) {
-          if (isPlayerA) {
-            setsFor += a;
-            setsAgainst += b;
-          } else {
-            setsFor += b;
-            setsAgainst += a;
-          }
-        }
-      }
-    }
-
-    const confirmedCount = confirmedWins + confirmedLosses;
-    const winRateConfirmed = confirmedCount > 0 ? Math.round((confirmedWins / confirmedCount) * 100) : 0;
-
-    let streakLabel = "—";
-    if (confirmedCount > 0) {
-      const first = confirmed[0];
-      const firstIsWin = first.winner_id === id;
-      let streak = 0;
-      for (const m of confirmed) {
-        const isWin = m.winner_id === id;
-        if (isWin !== firstIsWin) break;
-        streak += 1;
-      }
-      streakLabel = `${firstIsWin ? "W" : "L"}${streak}`;
-    }
-
-    const lastMatchDate = confirmed[0]?.match_date ? String(confirmed[0].match_date) : null;
-    const avgDurationMin =
-      durationCount > 0 ? Math.round(durationTotalS / durationCount / 60) : null;
-
-    return {
-      confirmedCount,
-      confirmedWins,
-      confirmedLosses,
-      winRateConfirmed,
-      streakLabel,
-      lastMatchDate,
-      avgDurationMin,
-      setsFor,
-      setsAgainst,
-      pointsFor,
-      pointsAgainst,
-      recentForm: form.join(""),
-    };
-  }, [id, matches]);
+  const headToHeadVsMe = useMemo(() => {
+    if (!user?.id || !id || user.id === id) return null;
+    return (headToHead || []).find((r: any) => r.opponent_id === user.id) || null;
+  }, [headToHead, id, user?.id]);
 
   const canChallenge = useMemo(() => {
     if (!user?.id || !me?.rank || !player?.rank) return false;
@@ -321,47 +226,145 @@ export default function PlayerProfile() {
         <StatCard label="Win %" value={`${winRate}%`} icon={<TrendingUp className="w-4 h-4" />} />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 mt-2">
-        <StatCard
-          label="Streak"
-          value={matchStats.streakLabel}
-          icon={<Flame className="w-4 h-4" />}
-        />
-        <StatCard
-          label="Sets +/-"
-          value={`${matchStats.setsFor - matchStats.setsAgainst}`}
-          icon={<Activity className="w-4 h-4" />}
-        />
-        <StatCard
-          label="Points +/-"
-          value={`${matchStats.pointsFor - matchStats.pointsAgainst}`}
-          icon={<Activity className="w-4 h-4" />}
-        />
-        <StatCard
-          label="Avg mins"
-          value={matchStats.avgDurationMin != null ? `${matchStats.avgDurationMin}m` : "—"}
-          icon={<Timer className="w-4 h-4" />}
-        />
-      </div>
-
-      <div className="px-4 mt-2">
-        <Card className="p-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
-              Confirmed: <span className="text-foreground font-medium">{matchStats.confirmedWins}W {matchStats.confirmedLosses}L</span> ·{" "}
-              <span className="text-foreground font-medium">{matchStats.winRateConfirmed}%</span> win
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Last: <span className="text-foreground font-medium">{matchStats.lastMatchDate || "—"}</span>
-            </p>
+      {showAdvanced ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 mt-2">
+            <StatCard
+              label="Streak"
+              value={squashTotals?.current_streak || (squashTotalsLoading ? "…" : "—")}
+              icon={<Flame className="w-4 h-4" />}
+            />
+            <StatCard
+              label="Sets F/A"
+              value={
+                squashTotals
+                  ? `${squashTotals.sets_for}-${squashTotals.sets_against}`
+                  : squashTotalsLoading ? "…" : "—"
+              }
+              icon={<Activity className="w-4 h-4" />}
+            />
+            <StatCard
+              label="Points F/A"
+              value={
+                squashTotals
+                  ? `${squashTotals.points_for}-${squashTotals.points_against}`
+                  : squashTotalsLoading ? "…" : "—"
+              }
+              icon={<Activity className="w-4 h-4" />}
+            />
+            <StatCard
+              label="Avg mins"
+              value={squashTotals?.avg_duration_min != null ? `${squashTotals.avg_duration_min}m` : squashTotalsLoading ? "…" : "—"}
+              icon={<Timer className="w-4 h-4" />}
+            />
           </div>
-          {matchStats.recentForm ? (
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Recent form: <span className="text-foreground font-medium">{matchStats.recentForm}</span>
-            </p>
-          ) : null}
-        </Card>
-      </div>
+
+          <div className="px-4 mt-2">
+            <Card className="p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Confirmed:{" "}
+                  <span className="text-foreground font-medium">
+                    {squashTotals ? `${squashTotals.wins}W ${squashTotals.losses}L` : squashTotalsLoading ? "…" : "—"}
+                  </span>{" "}
+                  ·{" "}
+                  <span className="text-foreground font-medium">
+                    {squashTotals ? `${squashTotals.win_rate}%` : squashTotalsLoading ? "…" : "—"} win
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Last:{" "}
+                  <span className="text-foreground font-medium">
+                    {squashTotals?.last_match_date || (squashTotalsLoading ? "…" : "—")}
+                  </span>
+                </p>
+              </div>
+              {(player as any)?.form_last5 ? (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Recent form:{" "}
+                  <span className="text-foreground font-medium">{String((player as any).form_last5)}</span>
+                </p>
+              ) : null}
+            </Card>
+          </div>
+        </>
+      ) : null}
+
+      {showRecentMatches ? (
+        <div className="px-4 mt-3">
+          <Card className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold font-heading">Head-to-head</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Competitive confirmed matches only.</p>
+              </div>
+              <Badge variant="secondary" className="text-[10px]">
+                Top
+              </Badge>
+            </div>
+
+            {headToHeadVsMe ? (
+              <div className="mt-3 rounded-md border p-3">
+                <p className="text-sm font-medium">vs you</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {headToHeadVsMe.matches} matches · {headToHeadVsMe.wins}W {headToHeadVsMe.losses}L · {headToHeadVsMe.win_rate}% win
+                </p>
+              </div>
+            ) : null}
+
+            {rivals.length > 0 ? (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {rivals.map((r: any) => (
+                  <div key={r.opponent_id} className="rounded-md border p-3">
+                    <p className="text-sm font-medium truncate">{r.opponent_name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {r.matches} matches · {r.wins}W {r.losses}L
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="mt-3">
+              {headToHeadLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                </div>
+              ) : (headToHead || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No head-to-head data yet.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40%]">Opponent</TableHead>
+                      <TableHead className="w-[18%]">W/L</TableHead>
+                      <TableHead className="w-[22%]">Sets</TableHead>
+                      <TableHead className="w-[20%] text-right">Last</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(headToHead || []).slice(0, 6).map((r: any) => (
+                      <TableRow key={r.opponent_id}>
+                        <TableCell className="p-3 text-sm">{r.opponent_name}</TableCell>
+                        <TableCell className="p-3 text-sm tabular-nums">{r.wins}-{r.losses}</TableCell>
+                        <TableCell className="p-3">
+                          <p className="text-sm tabular-nums">{r.sets_for}-{r.sets_against}</p>
+                          <p className="text-[11px] text-muted-foreground tabular-nums">
+                            {r.points_for}-{r.points_against} pts
+                          </p>
+                        </TableCell>
+                        <TableCell className="p-3 text-sm text-right text-muted-foreground tabular-nums">
+                          {r.last_match_date || "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       <Separator className="my-5 mx-4" />
 
@@ -369,140 +372,160 @@ export default function PlayerProfile() {
         <Card className="p-4">
           <p className="text-sm font-semibold font-heading">About</p>
           <div className="mt-2 space-y-3">
-            {bio ? (
-              <p className="text-sm leading-relaxed">{bio}</p>
+            {showAbout ? (
+              <>
+                {bio ? (
+                  <p className="text-sm leading-relaxed">{bio}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No bio yet.</p>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <AboutItem label="Location" value={location} />
+                  <AboutItem label="Home club" value={homeClub} />
+                  <AboutItem
+                    label="Dominant hand"
+                    value={
+                      dominantHand
+                        ? dominantHand === "right"
+                          ? "Right"
+                          : dominantHand === "left"
+                            ? "Left"
+                            : dominantHand === "ambidextrous"
+                              ? "Ambidextrous"
+                              : dominantHand
+                        : null
+                    }
+                  />
+                  <AboutItem label="Years playing" value={yearsPlaying != null ? String(yearsPlaying) : null} />
+                  <AboutItem label="Playing style" value={playingStyle} />
+                  <AboutItem label="Favorite shot" value={favoriteShot} />
+                </div>
+              </>
             ) : (
-              <p className="text-sm text-muted-foreground">No bio yet.</p>
+              <p className="text-sm text-muted-foreground">This player has hidden their about section.</p>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <AboutItem label="Location" value={location} />
-              <AboutItem label="Home club" value={homeClub} />
-              <AboutItem
-                label="Dominant hand"
-                value={
-                  dominantHand
-                    ? dominantHand === "right"
-                      ? "Right"
-                      : dominantHand === "left"
-                        ? "Left"
-                        : dominantHand === "ambidextrous"
-                          ? "Ambidextrous"
-                          : dominantHand
-                    : null
-                }
-              />
-              <AboutItem label="Years playing" value={yearsPlaying != null ? String(yearsPlaying) : null} />
-              <AboutItem label="Playing style" value={playingStyle} />
-              <AboutItem label="Favorite shot" value={favoriteShot} />
-            </div>
-
-            {availability ? (
+            {showAvailability && availability ? (
               <div className="rounded-md border p-3">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</p>
                 <p className="text-sm mt-1">{availability}</p>
               </div>
+            ) : !showAvailability ? (
+              <p className="text-sm text-muted-foreground">Availability is hidden.</p>
             ) : null}
           </div>
         </Card>
       </div>
 
-      <div className="px-4 mb-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold font-heading">Recent Matches</p>
-            <Badge variant="secondary" className="text-[10px]">
-              Last 10
-            </Badge>
-          </div>
-
-          {matchesLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+      {showRecentMatches ? (
+        <div className="px-4 mb-4">
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold font-heading">Recent Matches</p>
+              <Badge variant="secondary" className="text-[10px]">
+                Last 10
+              </Badge>
             </div>
-          ) : (matches || []).length === 0 ? (
-            <p className="text-sm text-muted-foreground mt-2">No matches recorded yet.</p>
-          ) : (
-            <div className="mt-3 space-y-2">
-              {(matches || []).slice(0, 10).map((m: any) => (
-                <div key={m.id} className="rounded-md border p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        vs {m.opponent_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {m.match_date} · Court {m.court_id || "—"}
-                      </p>
-                      {m.sets_text && (
-                        <p className="text-[11px] text-muted-foreground mt-1">
-                          Sets: {m.sets_text}
+
+            {matchesLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            ) : (matches || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground mt-2">No matches recorded yet.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {(matches || []).slice(0, 10).map((m: any) => (
+                  <div key={m.id} className="rounded-md border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          vs {m.opponent_name}
                         </p>
-                      )}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-semibold">{m.score || "—"}</p>
-                      {m.winner_id ? (
-                        <Badge variant="secondary" className={m.is_win ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}>
-                          {m.is_win ? "Win" : "Loss"}
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-muted text-muted-foreground">
-                          Pending
-                        </Badge>
-                      )}
-                      {!m.confirmed && (
-                        <p className="text-[10px] text-muted-foreground mt-1">Unconfirmed</p>
-                      )}
-                      {m.disputed && (
-                        <p className="text-[10px] text-destructive mt-1">Disputed</p>
-                      )}
+                        <p className="text-xs text-muted-foreground">
+                          {m.match_date} · Court {m.court_id || "—"}
+                        </p>
+                        {m.sets_text && (
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            Sets: {m.sets_text}
+                          </p>
+                        )}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold">{m.score || "—"}</p>
+                        {m.winner_id ? (
+                          <Badge variant="secondary" className={m.is_win ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}>
+                            {m.is_win ? "Win" : "Loss"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                            Pending
+                          </Badge>
+                        )}
+                        {!m.confirmed && (
+                          <p className="text-[10px] text-muted-foreground mt-1">Unconfirmed</p>
+                        )}
+                        {m.disputed && (
+                          <p className="text-[10px] text-destructive mt-1">Disputed</p>
+                        )}
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      ) : (
+        <div className="px-4 mb-4">
+          <Card className="p-4 text-sm text-muted-foreground">Match history is hidden.</Card>
+        </div>
+      )}
+
+      {showTraining ? (
+        <div className="px-4 mb-4">
+          <Card className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold font-heading">Training Stats</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {(player as any)?.strava_connected ? "From Strava (last sync)." : "No connected training stats."}
+                </p>
+              </div>
+              <IntegrationLogo provider="strava" className={(player as any)?.strava_connected ? "" : "opacity-40 grayscale"} />
+            </div>
+
+            {(player as any)?.strava_connected ? (
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Distance</p>
+                  <p className="text-sm font-semibold">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      <div className="px-4 mb-4">
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold font-heading">Training Stats</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {(player as any)?.strava_connected ? "From Strava (last sync)." : "No connected training stats."}
-              </p>
-            </div>
-            <IntegrationLogo provider="strava" className={(player as any)?.strava_connected ? "" : "opacity-40 grayscale"} />
-          </div>
-
-          {(player as any)?.strava_connected ? (
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Distance</p>
-                <p className="text-sm font-semibold">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Time</p>
+                  <p className="text-sm font-semibold">{stravaMinutes != null ? `${stravaMinutes} min` : "—"}</p>
+                </div>
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Elevation</p>
+                  <p className="text-sm font-semibold">{stravaElevationM != null ? `${stravaElevationM} m` : "—"}</p>
+                </div>
+                <div className="rounded-md border p-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Activities</p>
+                  <p className="text-sm font-semibold">{stravaActivitiesCount != null ? stravaActivitiesCount : "—"}</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
+                  {stravaLastSync ? `Last synced: ${stravaLastSync.toLocaleString()}` : "Not synced yet."}
+                </p>
               </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Time</p>
-                <p className="text-sm font-semibold">{stravaMinutes != null ? `${stravaMinutes} min` : "—"}</p>
-              </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Elevation</p>
-                <p className="text-sm font-semibold">{stravaElevationM != null ? `${stravaElevationM} m` : "—"}</p>
-              </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Activities</p>
-                <p className="text-sm font-semibold">{stravaActivitiesCount != null ? stravaActivitiesCount : "—"}</p>
-              </div>
-              <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
-                {stravaLastSync ? `Last synced: ${stravaLastSync.toLocaleString()}` : "Not synced yet."}
-              </p>
-            </div>
-          ) : null}
-        </Card>
-      </div>
+            ) : null}
+          </Card>
+        </div>
+      ) : (
+        <div className="px-4 mb-4">
+          <Card className="p-4 text-sm text-muted-foreground">Training stats are hidden.</Card>
+        </div>
+      )}
 
       <div className="px-4 pb-4">
         <Button

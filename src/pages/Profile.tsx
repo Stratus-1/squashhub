@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIntegrations, useMyRoles, useProfile } from "@/hooks/use-data";
+import { HeadToHeadRow, useHeadToHead, useIntegrations, useMyRoles, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Link } from "react-router-dom";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type StravaActivityPreview = {
   id: number;
@@ -46,6 +47,11 @@ type EditableProfileFields = {
   years_playing: string;
   playing_style: string;
   favorite_shot: string;
+  privacy_show_about: boolean;
+  privacy_show_availability: boolean;
+  privacy_show_recent_matches: boolean;
+  privacy_show_training: boolean;
+  privacy_show_advanced_stats: boolean;
 };
 
 type AvailabilityBlock = {
@@ -110,6 +116,8 @@ export default function Profile() {
   const { data: integrations } = useIntegrations();
   const { data: myRoles } = useMyRoles();
   const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  const { data: squashTotals, isLoading: squashTotalsLoading } = useSquashTotals(user?.id);
+  const { data: headToHead, isLoading: headToHeadLoading } = useHeadToHead(user?.id, 10);
   const queryClient = useQueryClient();
   const [stravaSyncing, setStravaSyncing] = useState(false);
   const [stravaRecentLoading, setStravaRecentLoading] = useState(false);
@@ -125,6 +133,11 @@ export default function Profile() {
     years_playing: "",
     playing_style: "",
     favorite_shot: "",
+    privacy_show_about: true,
+    privacy_show_availability: true,
+    privacy_show_recent_matches: true,
+    privacy_show_training: true,
+    privacy_show_advanced_stats: true,
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
@@ -220,6 +233,18 @@ export default function Profile() {
   const canOpenAdmin =
     (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
 
+  const rivals = useMemo(() => {
+    const rows = (headToHead || []) as HeadToHeadRow[];
+    return rows
+      .filter((r) => r.matches >= 2)
+      .slice()
+      .sort((a, b) => {
+        if (b.matches !== a.matches) return b.matches - a.matches;
+        return Math.abs(a.win_rate - 50) - Math.abs(b.win_rate - 50);
+      })
+      .slice(0, 3);
+  }, [headToHead]);
+
   return (
     <div className="bottom-nav-safe">
       <PageHeader title="Profile" />
@@ -240,6 +265,123 @@ export default function Profile() {
         <StatCard label="Wins" value={profile?.wins || 0} variant="win" />
         <StatCard label="Win %" value={`${winRate}%`} icon={<TrendingUp className="w-4 h-4" />} />
       </div>
+
+      <div className="px-4 mt-3">
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold font-heading">Squash Stats</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Competitive confirmed matches (ladder-recordable).
+              </p>
+            </div>
+          </div>
+
+          {squashTotalsLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          ) : squashTotals && squashTotals.matches > 0 ? (
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-md border p-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg duration</p>
+                <p className="text-sm font-semibold">{squashTotals.avg_duration_min != null ? `${squashTotals.avg_duration_min} min` : "—"}</p>
+              </div>
+              <div className="rounded-md border p-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Streak</p>
+                <p className="text-sm font-semibold">{squashTotals.current_streak || "—"}</p>
+              </div>
+              <div className="rounded-md border p-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Sets F/A</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {squashTotals.sets_for}-{squashTotals.sets_against}
+                </p>
+              </div>
+              <div className="rounded-md border p-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Points F/A</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {squashTotals.points_for}-{squashTotals.points_against}
+                </p>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
+                Best streaks: <span className="text-foreground font-medium">W{squashTotals.best_win_streak}</span>{" "}
+                · <span className="text-foreground font-medium">L{squashTotals.best_loss_streak}</span>
+                {squashTotals.last_match_date ? (
+                  <>
+                    {" "}
+                    · Last match: <span className="text-foreground font-medium">{squashTotals.last_match_date}</span>
+                  </>
+                ) : null}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-2">No confirmed competitive matches yet.</p>
+          )}
+        </Card>
+      </div>
+
+      {headToHeadLoading ? (
+        <div className="px-4 mt-3">
+          <Card className="p-4">
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          </Card>
+        </div>
+      ) : (headToHead && headToHead.length > 0) ? (
+        <div className="px-4 mt-3">
+          <Card className="p-4">
+            <p className="text-sm font-semibold font-heading">Head-to-head</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Your most played opponents.
+            </p>
+
+            {rivals.length > 0 ? (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {rivals.map((r) => (
+                  <div key={r.opponent_id} className="rounded-md border p-3">
+                    <p className="text-sm font-medium truncate">{r.opponent_name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {r.matches} matches · {r.wins}W {r.losses}L · {r.win_rate}% win
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="mt-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40%]">Opponent</TableHead>
+                    <TableHead className="w-[18%]">W/L</TableHead>
+                    <TableHead className="w-[22%]">Sets</TableHead>
+                    <TableHead className="w-[20%] text-right">Last</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(headToHead || []).slice(0, 6).map((r) => (
+                    <TableRow key={r.opponent_id}>
+                      <TableCell className="p-3 text-sm">{r.opponent_name}</TableCell>
+                      <TableCell className="p-3 text-sm tabular-nums">{r.wins}-{r.losses}</TableCell>
+                      <TableCell className="p-3">
+                        <p className="text-sm tabular-nums">{r.sets_for}-{r.sets_against}</p>
+                        <p className="text-[11px] text-muted-foreground tabular-nums">
+                          {r.points_for}-{r.points_against} pts
+                        </p>
+                      </TableCell>
+                      <TableCell className="p-3 text-sm text-right text-muted-foreground tabular-nums">
+                        {r.last_match_date || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       <div className="px-4 mt-3">
         <Card className="p-4">
@@ -628,6 +770,11 @@ export default function Profile() {
               years_playing: (profile as any).years_playing != null ? String((profile as any).years_playing) : "",
               playing_style: (profile as any).playing_style || "",
               favorite_shot: (profile as any).favorite_shot || "",
+              privacy_show_about: (profile as any).privacy_show_about ?? true,
+              privacy_show_availability: (profile as any).privacy_show_availability ?? true,
+              privacy_show_recent_matches: (profile as any).privacy_show_recent_matches ?? true,
+              privacy_show_training: (profile as any).privacy_show_training ?? true,
+              privacy_show_advanced_stats: (profile as any).privacy_show_advanced_stats ?? true,
             });
           }
 
@@ -840,6 +987,72 @@ export default function Profile() {
                 </div>
               )}
             </div>
+
+            <Separator className="my-2" />
+
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-semibold font-heading">Public profile</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Control what other players can see when viewing your profile.
+                </p>
+              </div>
+
+              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">About section</p>
+                  <p className="text-[11px] text-muted-foreground">Bio + playing style details</p>
+                </div>
+                <Switch
+                  checked={edit.privacy_show_about}
+                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_about: checked }))}
+                />
+              </div>
+
+              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Availability</p>
+                  <p className="text-[11px] text-muted-foreground">Your weekly time windows</p>
+                </div>
+                <Switch
+                  checked={edit.privacy_show_availability}
+                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_availability: checked }))}
+                />
+              </div>
+
+              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Recent matches</p>
+                  <p className="text-[11px] text-muted-foreground">Head-to-head + recent results list</p>
+                </div>
+                <Switch
+                  checked={edit.privacy_show_recent_matches}
+                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_recent_matches: checked }))}
+                />
+              </div>
+
+              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Training stats</p>
+                  <p className="text-[11px] text-muted-foreground">Strava totals + activities</p>
+                </div>
+                <Switch
+                  checked={edit.privacy_show_training}
+                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_training: checked }))}
+                />
+              </div>
+
+              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Advanced squash stats</p>
+                  <p className="text-[11px] text-muted-foreground">Streaks, points/sets, averages</p>
+                </div>
+                <Switch
+                  checked={edit.privacy_show_advanced_stats}
+                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_advanced_stats: checked }))}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="p-6 pt-4 border-t bg-background">
@@ -865,6 +1078,11 @@ export default function Profile() {
                         years_playing: years == null ? null : Math.trunc(years),
                         playing_style: edit.playing_style.trim() || null,
                         favorite_shot: edit.favorite_shot.trim() || null,
+                        privacy_show_about: !!edit.privacy_show_about,
+                        privacy_show_availability: !!edit.privacy_show_availability,
+                        privacy_show_recent_matches: !!edit.privacy_show_recent_matches,
+                        privacy_show_training: !!edit.privacy_show_training,
+                        privacy_show_advanced_stats: !!edit.privacy_show_advanced_stats,
                       } as any)
                       .eq("id", user.id);
                     if (error) throw error;

@@ -11,6 +11,7 @@ import { NativePushListener } from "@/components/NativePushListener";
 import { RealtimeSync } from "@/components/RealtimeSync";
 import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -119,6 +120,7 @@ function AppRoutes() {
       {user && <NativePushListener />}
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
+      <PwaUpdatePrompt />
     </div>
   );
 }

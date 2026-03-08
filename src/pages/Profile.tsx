@@ -148,6 +148,16 @@ export default function Profile() {
   const publicWebBaseUrl = (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.trim()?.replace(/\/+$/, "");
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()?.replace(/\/+$/, "");
   const supabaseKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim();
+  const supabaseProjectRef = (import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined)?.trim();
+  const supabaseHostRef = (() => {
+    if (!supabaseUrl) return null;
+    try {
+      const host = new URL(supabaseUrl).hostname;
+      return host.split(".")[0] || host;
+    } catch {
+      return null;
+    }
+  })();
 
   const rivals = useMemo(() => {
     const rows = (headToHead || []) as HeadToHeadRow[];
@@ -578,6 +588,13 @@ export default function Profile() {
         <Button variant="outline" className="w-full justify-start gap-3 h-11 text-destructive hover:text-destructive" onClick={signOut}>
           <LogOut className="w-4 h-4" /> Sign Out
         </Button>
+
+        <div className="px-1">
+          <p className="text-[11px] text-muted-foreground">
+            Connected database:{" "}
+            <span className="font-mono">{supabaseProjectRef || supabaseHostRef || "—"}</span>
+          </p>
+        </div>
       </div>
 
       {/* ─── Edit Profile Dialog ─── */}

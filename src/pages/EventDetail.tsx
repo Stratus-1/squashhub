@@ -52,9 +52,9 @@ export default function EventDetail() {
     queryKey: ["event", id, user?.id ? "authed" : "anon"],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase.from("events").select("*").eq("id", id).single();
+      const { data, error } = await fromExt("events").select("*").eq("id", id).single();
       if (error) throw error;
-      return data as EventRow;
+      return data as unknown as EventRow;
     },
     enabled: !!id,
   });

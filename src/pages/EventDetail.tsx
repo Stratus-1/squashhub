@@ -121,7 +121,7 @@ export default function EventDetail() {
     mutationFn: async () => {
       if (!id) throw new Error("Missing event");
       if (!user?.id) throw new Error("Please log in");
-      const { error } = await supabase.from("event_rsvps").delete().eq("event_id", id).eq("user_id", user.id);
+      const { error } = await fromExt("event_rsvps").delete().eq("event_id", id).eq("user_id", user.id);
       if (error) throw error;
     },
     onSuccess: async () => {

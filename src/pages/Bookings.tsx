@@ -116,7 +116,7 @@ export default function Bookings() {
       const dow = getISODay(selectedDate);
       const start = `${bookingDialog.time}:00`;
       const end = `${addMinutesToTime(bookingDialog.time, 30)}:00`;
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("player_availability")
         .select("user_id")
         .eq("day_of_week", dow)

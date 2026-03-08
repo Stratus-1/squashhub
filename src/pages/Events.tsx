@@ -30,14 +30,13 @@ export default function Events() {
   const { data: events, isLoading, error } = useQuery({
     queryKey: ["events", user?.id ? "authed" : "anon"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
+      const { data, error } = await fromExt("events")
         .select("*")
         .eq("status", "published")
         .order("starts_at", { ascending: true })
         .limit(50);
       if (error) throw error;
-      return (data || []) as EventRow[];
+      return (data || []) as unknown as EventRow[];
     },
   });
 

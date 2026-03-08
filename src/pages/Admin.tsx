@@ -921,999 +921,872 @@ export default function Admin() {
   const selected = editUser.profile;
   const selectedRoleSet = new Set<AppRole>(selectedRoles || []);
 
-  return (
-    <div className="bottom-nav-safe">
-      <SEO title="Admin" description="Admin panel — manage players, bookings, matches, and club operations." path="/admin" noIndex />
-      <PageHeader title="Admin" subtitle="Manage players, challenges, matches & schedules" />
+  /* ─── Computed KPIs ─── */
+  const totalMembers = (profiles || []).length;
+  const rankedMembers = (profiles || []).filter(p => p.rank != null).length;
+  const pendingChallenges = (challenges || []).filter(c => c.status === "pending").length;
+  const disputedMatches = (matches || []).filter(m => m.disputed).length;
+  const activeBookingsToday = (allBookings || []).filter(b => b.date === format(new Date(), "yyyy-MM-dd") && b.status === "active").length;
+  const unconfirmedMatches = (matches || []).filter(m => !m.confirmed).length;
 
-      <div className="px-4 sm:px-6 lg:px-[5%] mt-3">
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold font-heading">Access</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {isAdmin ? "Admin" : isManager ? "Manager" : "—"}
-              </p>
+  const navSections = [
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "users", label: "Players", icon: Users },
+    { id: "challenges", label: "Challenges", icon: Swords },
+    { id: "matches", label: "Matches", icon: Trophy },
+    { id: "bookings", label: "Bookings", icon: CalendarDays },
+    { id: "schedule", label: "Schedule", icon: Clock },
+    { id: "seasons", label: "Seasons", icon: Calendar },
+    { id: "clubops", label: "Club Ops", icon: Wrench },
+  ];
+
+  const [activeSection, setActiveSection] = useState("overview");
+
+  return (
+    <div className="min-h-screen bg-background">
+      <SEO title="Admin" description="Admin panel — manage players, bookings, matches, and club operations." path="/admin" noIndex />
+
+      {/* ─── Top Header Bar ─── */}
+      <div className="border-b border-border bg-card sticky top-0 z-30">
+        <div className="flex items-center justify-between px-4 lg:px-6 h-14">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <Shield className="w-4 h-4 text-primary-foreground" />
             </div>
-            <div className="flex gap-2">
-              {isAdmin && <Badge variant="secondary">Admin</Badge>}
-              {isManager && <Badge variant="secondary">Manager</Badge>}
+            <div>
+              <h1 className="text-sm font-bold font-heading tracking-tight">Admin Dashboard</h1>
+              <p className="text-[10px] text-muted-foreground">{isAdmin ? "Administrator" : "Manager"}</p>
             </div>
           </div>
-        </Card>
+          <div className="flex items-center gap-2">
+            {isAdmin && <Badge className="bg-primary/15 text-primary border-primary/20 text-[10px]">Admin</Badge>}
+            {isManager && <Badge variant="secondary" className="text-[10px]">Manager</Badge>}
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/dashboard">← Back</Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile horizontal nav */}
+        <div className="lg:hidden overflow-x-auto border-t border-border">
+          <div className="flex px-2 py-1.5 gap-1 min-w-max">
+            {navSections.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setActiveSection(s.id)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap",
+                  activeSection === s.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                <s.icon className="w-3.5 h-3.5" />
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="users" className="px-4 sm:px-6 lg:px-[5%] mt-3">
-        <TabsList className="w-full overflow-x-auto">
-          <TabsTrigger value="users" className="flex-1">Users</TabsTrigger>
-          <TabsTrigger value="challenges" className="flex-1">Challenges</TabsTrigger>
-          <TabsTrigger value="matches" className="flex-1">Matches</TabsTrigger>
-          <TabsTrigger value="bookings" className="flex-1">Bookings</TabsTrigger>
-          <TabsTrigger value="schedule" className="flex-1">Schedule</TabsTrigger>
-          <TabsTrigger value="seasons" className="flex-1">Seasons</TabsTrigger>
-          <TabsTrigger value="clubops" className="flex-1">Club Ops</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="users" className="mt-3 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Search name or email…"
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-            />
-          </div>
-
-          <Card className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40%]">Player</TableHead>
-                  <TableHead className="w-[14%]">Rank</TableHead>
-                  <TableHead className="w-[18%]">W/L</TableHead>
-                  <TableHead className="w-[18%]">Strava</TableHead>
-                  <TableHead className="w-[10%] text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {profilesLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      Loading…
-                    </TableCell>
-                  </TableRow>
-                ) : filteredProfiles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      No users found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredProfiles.map((p) => {
-                    const isMe = p.id === user?.id;
-                    const stravaConnected = !!(p as any).strava_connected;
-                    return (
-                      <TableRow key={p.id}>
-                        <TableCell className="p-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{p.name || "—"}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">
-                              {p.email || "—"}
-                              {isMe ? " (you)" : ""}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-3">
-                          {p.rank != null ? (
-                            <Badge variant="secondary">#{p.rank}</Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="p-3">
-                          <span className="text-sm tabular-nums">
-                            {p.wins}-{p.losses}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground ml-2">
-                            ({p.matches_played})
-                          </span>
-                        </TableCell>
-                        <TableCell className="p-3">
-                          <span className={cn("text-xs", stravaConnected ? "text-foreground" : "text-muted-foreground")}>
-                            {stravaConnected ? "Connected" : "—"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="p-3 text-right">
-                          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openEdit(p)}>
-                            Edit
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="challenges" className="mt-3 space-y-2">
-          <Card className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Challenger</TableHead>
-                  <TableHead>Opponent</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Update</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {challengesLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      Loading…
-                    </TableCell>
-                  </TableRow>
-                ) : (challenges || []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      No challenges.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (challenges || []).map((c) => {
-                    const challenger = profileMap.get(c.challenger_id)?.name || "Unknown";
-                    const opponent = profileMap.get(c.opponent_id)?.name || "Unknown";
-                    return (
-                      <TableRow key={c.id}>
-                        <TableCell className="p-3 text-xs text-muted-foreground">
-                          {format(new Date(c.created_at), "yyyy-MM-dd")}
-                        </TableCell>
-                        <TableCell className="p-3 text-sm">{challenger}</TableCell>
-                        <TableCell className="p-3 text-sm">{opponent}</TableCell>
-                        <TableCell className="p-3">
-                          <Badge variant="secondary" className="capitalize">
-                            {c.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="p-3 text-right">
-                          <Select
-                            value={c.status}
-                            onValueChange={(value) =>
-                              updateChallengeStatus.mutate({ challengeId: c.id, status: value as ChallengeRow["status"] })
-                            }
-                          >
-                            <SelectTrigger className="h-8 w-[140px] ml-auto">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">pending</SelectItem>
-                              <SelectItem value="accepted">accepted</SelectItem>
-                              <SelectItem value="declined">declined</SelectItem>
-                              <SelectItem value="completed">completed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="matches" className="mt-3 space-y-2">
-          <Card className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Players</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Winner</TableHead>
-                  <TableHead>Flags</TableHead>
-                  <TableHead className="text-right">Update</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {matchesLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-sm text-muted-foreground">
-                      Loading…
-                    </TableCell>
-                  </TableRow>
-                ) : (matches || []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-sm text-muted-foreground">
-                      No matches.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (matches || []).map((m) => {
-                    const aName = profileMap.get(m.player_a)?.name || "Unknown";
-                    const bName = profileMap.get(m.player_b)?.name || "Unknown";
-                    const winnerName =
-                      m.winner_id === m.player_a ? aName : m.winner_id === m.player_b ? bName : "—";
-
-                    return (
-                      <TableRow key={m.id}>
-                        <TableCell className="p-3 text-xs text-muted-foreground">{m.match_date}</TableCell>
-                        <TableCell className="p-3 text-sm">
-                          <div className="min-w-0">
-                            <p className="truncate">{aName} vs {bName}</p>
-                            {m.challenge_id && (
-                              <p className="text-[11px] text-muted-foreground truncate">
-                                Challenge linked
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-3 text-sm">{m.score || "—"}</TableCell>
-                        <TableCell className="p-3 text-sm">{winnerName}</TableCell>
-                        <TableCell className="p-3">
-                          <div className="flex gap-2">
-                            {m.confirmed && <Badge variant="secondary">Confirmed</Badge>}
-                            {m.disputed && <Badge variant="secondary" className="bg-destructive/15 text-destructive">Disputed</Badge>}
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            {m.disputed && (
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="h-8 text-xs bg-accent text-accent-foreground hover:bg-accent/90"
-                                onClick={() => setDisputeResolve({
-                                  open: true,
-                                  matchId: m.id,
-                                  winnerId: m.winner_id || m.player_a,
-                                  notes: "",
-                                })}
-                              >
-                                Resolve
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() =>
-                                updateMatch.mutate({
-                                  matchId: m.id,
-                                  patch: { disputed: !m.disputed },
-                                })
-                              }
-                            >
-                              {m.disputed ? "Undispute" : "Dispute"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-8 text-xs"
-                              disabled={m.confirmed}
-                              onClick={() => adminConfirmMatch.mutate(m.id)}
-                            >
-                              Confirm
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        {/* Bookings tab */}
-        <TabsContent value="bookings" className="mt-3 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Search player, date, court…"
-              value={bookingSearch}
-              onChange={(e) => setBookingSearch(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={() => setCourtBlock((s) => ({ ...s, open: true }))}>
-              Block court
-            </Button>
-          </div>
-
-          <Card className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Court</TableHead>
-                  <TableHead>Player</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bookingsLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-sm text-muted-foreground">Loading…</TableCell>
-                  </TableRow>
-                ) : filteredBookings.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-sm text-muted-foreground">No bookings found.</TableCell>
-                  </TableRow>
-                ) : (
-                  filteredBookings.slice(0, 100).map((b) => {
-                    const playerName = profileMap.get(b.user_id)?.name || "Unknown";
-                    return (
-                      <TableRow key={b.id}>
-                        <TableCell className="p-3 text-xs text-muted-foreground">{b.date}</TableCell>
-                        <TableCell className="p-3 text-xs">{b.start_time?.slice(0, 5)}–{b.end_time?.slice(0, 5)}</TableCell>
-                        <TableCell className="p-3 text-sm">Court {b.court_id}</TableCell>
-                        <TableCell className="p-3 text-sm">{playerName}</TableCell>
-                        <TableCell className="p-3">
-                          <Badge variant="secondary" className={cn("capitalize", b.status === "cancelled" && "bg-destructive/15 text-destructive")}>
-                            {b.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="p-3 text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs"
-                            disabled={b.status === "cancelled" || adminCancelBooking.isPending}
-                            onClick={() => {
-                              if (confirm(`Cancel booking for ${playerName} on ${b.date}?`)) {
-                                adminCancelBooking.mutate(b.id);
-                              }
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="schedule" className="mt-3 space-y-3">
-          <div className="flex gap-2">
-            <Button className="w-full sm:w-auto" onClick={() => setSchedule((s) => ({ ...s, open: true }))}>
-              New scheduled match
-            </Button>
-          </div>
-
-          <Card className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Players</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {scheduledLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      Loading…
-                    </TableCell>
-                  </TableRow>
-                ) : (scheduledMatches || []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      No scheduled matches.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (scheduledMatches || []).map((s) => {
-                    const aName = profileMap.get(s.player_a)?.name || "Unknown";
-                    const bName = profileMap.get(s.player_b)?.name || "Unknown";
-                    return (
-                      <TableRow key={s.id}>
-                        <TableCell className="p-3 text-xs text-muted-foreground">
-                          {s.scheduled_date}
-                        </TableCell>
-                        <TableCell className="p-3 text-xs">
-                          {s.start_time}–{s.end_time}{" "}
-                          <span className="text-muted-foreground">
-                            (Court {s.court_id || "—"})
-                          </span>
-                        </TableCell>
-                        <TableCell className="p-3 text-sm">
-                          <div className="min-w-0">
-                            <p className="truncate">{aName} vs {bName}</p>
-                            {s.notes && <p className="text-[11px] text-muted-foreground truncate">{s.notes}</p>}
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-3">
-                          <Badge variant="secondary" className="capitalize">
-                            {s.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="p-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              asChild
-                            >
-                              <Link to={`/players/${s.player_a}`}>View A</Link>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              asChild
-                            >
-                              <Link to={`/players/${s.player_b}`}>View B</Link>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              disabled={s.status === "cancelled"}
-                              onClick={() => cancelSchedule.mutate({ scheduleId: s.id, bookingId: s.booking_id })}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="seasons" className="mt-3 space-y-3">
-          <Card className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold font-heading">Active season</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {activeSeason
-                    ? `${activeSeason.name} · ${activeSeason.starts_on}${activeSeason.ends_on ? ` → ${activeSeason.ends_on}` : ""}`
-                    : "No active season"}
-                </p>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs"
-                  onClick={() => setSeasonStart((s) => ({ ...s, open: true }))}
+      <div className="flex">
+        {/* ─── Desktop Sidebar ─── */}
+        <aside className="hidden lg:flex flex-col w-56 min-h-[calc(100vh-3.5rem)] border-r border-border bg-card/50 shrink-0">
+          <nav className="flex-1 p-3 space-y-0.5">
+            {navSections.map(s => {
+              const badgeCount =
+                s.id === "challenges" ? pendingChallenges :
+                s.id === "matches" ? disputedMatches :
+                0;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveSection(s.id)}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                    activeSection === s.id
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
                 >
-                  Start season
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs"
-                  disabled={!activeSeason}
-                  onClick={() => setSeasonEnd((s) => ({ ...s, open: true }))}
-                >
-                  End season
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Start</TableHead>
-                  <TableHead>End</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(seasons || []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-sm text-muted-foreground">
-                      No seasons yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (seasons || []).map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="p-3 text-sm">
-                        <span className="font-medium">{s.name}</span>
-                      </TableCell>
-                      <TableCell className="p-3 text-xs text-muted-foreground">{s.starts_on}</TableCell>
-                      <TableCell className="p-3 text-xs text-muted-foreground">{s.ends_on || "—"}</TableCell>
-                      <TableCell className="p-3">
-                        {s.is_active ? (
-                          <Badge variant="secondary" className="bg-primary/15 text-primary">Active</Badge>
-                        ) : (
-                          <Badge variant="secondary">Ended</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="clubops" className="mt-3 space-y-3">
-          <Card className="p-4">
-            <p className="text-sm font-semibold font-heading">Bulk actions</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Import ladder ranks in bulk, or export CSV for reporting.
+                  <s.icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1 text-left">{s.label}</span>
+                  {badgeCount > 0 && (
+                    <span className={cn(
+                      "text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center",
+                      activeSection === s.id ? "bg-primary-foreground/20 text-primary-foreground" : "bg-destructive/15 text-destructive"
+                    )}>
+                      {badgeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="p-3 border-t border-border">
+            <p className="text-[10px] text-muted-foreground">
+              {activeSeason ? `Season: ${activeSeason.name}` : "No active season"}
             </p>
+          </div>
+        </aside>
 
-            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <div className="rounded-lg border p-3">
-                <p className="text-sm font-medium">Import ladder (CSV)</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Paste lines as <span className="font-mono">email,rank</span> or <span className="font-mono">user_id,rank</span>.
-                  This clears all existing ranks first.
-                </p>
-                <Textarea
-                  value={bulkRanksCsv}
-                  onChange={(e) => setBulkRanksCsv(e.target.value)}
-                  placeholder={`email,rank\nplayer1@example.com,1\nplayer2@example.com,2`}
-                  className="mt-2 min-h-[120px] text-xs"
-                />
-                <div className="mt-2 flex flex-col sm:flex-row gap-2">
-                  <Button
-                    variant="outline"
-                    className="h-8 text-xs"
-                    disabled={!isAdmin || bulkSetRanks.isPending}
-                    onClick={() => {
-                      try {
-                        const lines = bulkRanksCsv
-                          .split(/\r?\n/)
-                          .map((l) => l.trim())
-                          .filter(Boolean)
-                          .filter((l) => !/^email\s*,\s*rank/i.test(l) && !/^user_id\s*,\s*rank/i.test(l));
-
-                        const assignments: Array<{ user_id: string; rank: number }> = [];
-                        const seen = new Set<number>();
-
-                        for (const line of lines) {
-                          const parts = line.split(/[,\t;]+/).map((p) => p.trim()).filter(Boolean);
-                          if (parts.length < 2) throw new Error(`Bad line: ${line}`);
-                          const key = parts[0];
-                          const rank = Number(parts[1]);
-                          if (!Number.isFinite(rank)) throw new Error(`Invalid rank on line: ${line}`);
-                          const r = Math.trunc(rank);
-                          if (r < 1 || r > 20) throw new Error(`Rank must be 1-20 on line: ${line}`);
-                          if (seen.has(r)) throw new Error(`Duplicate rank ${r} in import`);
-                          seen.add(r);
-
-                          let userId: string | null = null;
-                          if (looksLikeUuid(key)) userId = key;
-                          else userId = emailToIdMap.get(key.toLowerCase()) || null;
-                          if (!userId) throw new Error(`Unknown user: ${key}`);
-
-                          assignments.push({ user_id: userId, rank: r });
-                        }
-
-                        if (assignments.length === 0) throw new Error("No assignments found");
-                        bulkSetRanks.mutate({ assignments });
-                      } catch (e: any) {
-                        toast.error(e?.message || "Invalid CSV");
-                      }
-                    }}
-                  >
-                    Import ranks
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="h-8 text-xs"
-                    onClick={() => {
-                      const ladderRows = (profiles || [])
-                        .filter((p) => p.rank != null)
-                        .slice()
-                        .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
-                        .map((p) => ({
-                          rank: p.rank ?? "",
-                          name: p.name || "",
-                          email: p.email || "",
-                          matches_played: p.matches_played ?? 0,
-                          wins: p.wins ?? 0,
-                          losses: p.losses ?? 0,
-                        }));
-                      downloadFile(`ladder-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(ladderRows));
-                    }}
-                  >
-                    Export ladder CSV
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="h-8 text-xs"
-                    onClick={() => {
-                      const matchRows = (matches || []).map((m) => ({
-                        match_date: m.match_date,
-                        player_a: profileMap.get(m.player_a)?.name || m.player_a,
-                        player_b: profileMap.get(m.player_b)?.name || m.player_b,
-                        score: m.score || "",
-                        winner: m.winner_id ? (profileMap.get(m.winner_id)?.name || m.winner_id) : "",
-                        confirmed: m.confirmed,
-                        disputed: m.disputed,
-                        challenge_id: m.challenge_id || "",
-                      }));
-                      downloadFile(`matches-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(matchRows));
-                    }}
-                  >
-                    Export matches CSV
-                  </Button>
-                </div>
+        {/* ─── Main Content ─── */}
+        <main className="flex-1 p-4 lg:p-6 overflow-auto bottom-nav-safe">
+          {/* ── Overview ── */}
+          {activeSection === "overview" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <KpiCard label="Total Members" value={totalMembers} icon={<Users className="w-4 h-4" />} color="primary" onClick={() => setActiveSection("users")} />
+                <KpiCard label="Ranked Players" value={rankedMembers} icon={<Trophy className="w-4 h-4" />} color="primary" onClick={() => setActiveSection("users")} />
+                <KpiCard label="Pending Challenges" value={pendingChallenges} icon={<Swords className="w-4 h-4" />} color={pendingChallenges > 0 ? "accent" : "primary"} onClick={() => setActiveSection("challenges")} />
+                <KpiCard label="Today's Bookings" value={activeBookingsToday} icon={<CalendarDays className="w-4 h-4" />} color="primary" onClick={() => setActiveSection("bookings")} />
               </div>
 
-              <div className="rounded-lg border p-3">
-                <p className="text-sm font-medium">Merge duplicate users</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Moves public app data from the source user into the target user, then marks the source profile as merged (unranked).
-                </p>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Source user (to merge)</Label>
-                    <Select value={mergeUsers.sourceId} onValueChange={(v) => setMergeUsers((s) => ({ ...s, sourceId: v }))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select user…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(profiles || []).map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name || "—"} {p.email ? `(${p.email})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <KpiCard label="Disputed" value={disputedMatches} icon={<AlertTriangle className="w-4 h-4" />} color={disputedMatches > 0 ? "destructive" : "primary"} onClick={() => setActiveSection("matches")} />
+                <KpiCard label="Unconfirmed" value={unconfirmedMatches} icon={<ClipboardList className="w-4 h-4" />} color={unconfirmedMatches > 0 ? "accent" : "primary"} onClick={() => setActiveSection("matches")} />
+                <KpiCard label="Scheduled" value={(scheduledMatches || []).filter(s => s.status === "scheduled").length} icon={<Clock className="w-4 h-4" />} color="primary" onClick={() => setActiveSection("schedule")} />
+                <KpiCard label="Events" value={(events || []).filter(e => e.status === "published").length} icon={<Calendar className="w-4 h-4" />} color="primary" onClick={() => setActiveSection("clubops")} />
+              </div>
+
+              {/* Quick actions */}
+              <Card className="p-4">
+                <p className="text-sm font-semibold font-heading mb-3">Quick Actions</p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" onClick={() => setSchedule(s => ({ ...s, open: true }))}>
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span className="text-xs">Schedule Match</span>
+                  </Button>
+                  <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" onClick={() => setCourtBlock(s => ({ ...s, open: true }))}>
+                    <Wrench className="w-4 h-4 text-primary" />
+                    <span className="text-xs">Block Court</span>
+                  </Button>
+                  <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" onClick={() => openEventEditor(null)}>
+                    <Megaphone className="w-4 h-4 text-primary" />
+                    <span className="text-xs">New Event</span>
+                  </Button>
+                  <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" onClick={() => setSeasonStart(s => ({ ...s, open: true }))}>
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <span className="text-xs">New Season</span>
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Recent disputed matches */}
+              {disputedMatches > 0 && (
+                <Card className="p-4 border-destructive/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                    <p className="text-sm font-semibold font-heading text-destructive">Disputes Requiring Attention</p>
                   </div>
-                  <div>
-                    <Label className="text-xs">Target user (keep)</Label>
-                    <Select value={mergeUsers.targetId} onValueChange={(v) => setMergeUsers((s) => ({ ...s, targetId: v }))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select user…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(profiles || []).map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name || "—"} {p.email ? `(${p.email})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-2">
+                    {(matches || []).filter(m => m.disputed).slice(0, 3).map(m => {
+                      const aName = profileMap.get(m.player_a)?.name || "Unknown";
+                      const bName = profileMap.get(m.player_b)?.name || "Unknown";
+                      return (
+                        <div key={m.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                          <div>
+                            <p className="text-sm font-medium">{aName} vs {bName}</p>
+                            <p className="text-[11px] text-muted-foreground">{m.match_date} · {m.score || "No score"}</p>
+                          </div>
+                          <Button size="sm" className="h-8 text-xs" onClick={() => setDisputeResolve({ open: true, matchId: m.id, winnerId: m.winner_id || m.player_a, notes: "" })}>
+                            Resolve
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-                <div className="mt-2">
-                  <Button
-                    className="h-8 text-xs"
-                    disabled={!isAdmin || mergeDuplicateUsers.isPending}
-                    onClick={() => mergeDuplicateUsers.mutate({ sourceId: mergeUsers.sourceId, targetId: mergeUsers.targetId })}
-                  >
-                    Merge users
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold font-heading">Events</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Create club events and let players RSVP.
-                </p>
-              </div>
-              <Button size="sm" className="h-8 text-xs shrink-0" onClick={() => openEventEditor(null)}>
-                New event
-              </Button>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {eventsLoading ? (
-                <p className="text-sm text-muted-foreground">Loading…</p>
-              ) : !events || events.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No events yet.</p>
-              ) : (
-                events.slice(0, 10).map((e) => {
-                  const starts = e.starts_at ? format(new Date(e.starts_at), "d MMM yyyy HH:mm") : "—";
-                  return (
-                    <div key={e.id} className="rounded-lg border p-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{e.title}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                          {starts} · {e.visibility} · {e.status}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Select
-                          value={e.status}
-                          onValueChange={(value) => {
-                            saveEvent.mutate({
-                              id: e.id,
-                              title: e.title,
-                              description: e.description || null,
-                              starts_at: e.starts_at,
-                              ends_at: e.ends_at || null,
-                              location: e.location || null,
-                              court_id: e.court_id ?? null,
-                              capacity: e.capacity ?? null,
-                              rsvp_deadline: e.rsvp_deadline || null,
-                              visibility: e.visibility,
-                              status: value as any,
-                            });
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-[130px] text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="draft">draft</SelectItem>
-                            <SelectItem value="published">published</SelectItem>
-                            <SelectItem value="cancelled">cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openEventEditor(e)}>
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
+                </Card>
               )}
-            </div>
-          </Card>
 
-          <Card className="p-4">
-            <p className="text-sm font-semibold font-heading">Broadcast (Marketing)</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Sends an in-app notification to a selected audience. Push delivery happens automatically for users with push enabled.
-            </p>
-
-            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Template</Label>
-                    <Select
-                      value={broadcast.template}
-                      onValueChange={(value) => {
-                        const v = value as any;
-                        const templates: Record<string, { title: string; message: string; url: string }> = {
-                          braai: {
-                            title: "Braai Social",
-                            message: "Friendly braai + social matches. RSVP in Events!",
-                            url: "/events",
-                          },
-                          club_night: {
-                            title: "Club Night",
-                            message: "Club night matches are on. Book a court and get a game in!",
-                            url: "/bookings",
-                          },
-                          tournament: {
-                            title: "Tournament",
-                            message: "Tournament coming up! Check Events for details and RSVP.",
-                            url: "/events",
-                          },
-                          maintenance: {
-                            title: "Maintenance",
-                            message: "Courts will be unavailable during maintenance. See Events for timing.",
-                            url: "/events",
-                          },
-                        };
-                        const t = templates[v];
-                        setBroadcast((s) => ({
-                          ...s,
-                          template: v,
-                          ...(t ? { title: t.title, message: t.message, url: t.url } : {}),
-                        }));
-                      }}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="custom">Custom</SelectItem>
-                        <SelectItem value="braai">Braai social</SelectItem>
-                        <SelectItem value="club_night">Club night</SelectItem>
-                        <SelectItem value="tournament">Tournament</SelectItem>
-                        <SelectItem value="maintenance">Maintenance</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Audience</Label>
-                    <Select value={broadcast.audience} onValueChange={(value) => setBroadcast((s) => ({ ...s, audience: value as any }))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All members</SelectItem>
-                        <SelectItem value="ranked">Ranked only</SelectItem>
-                        <SelectItem value="active30">Active last 30d</SelectItem>
-                        <SelectItem value="strava">Strava-connected</SelectItem>
-                        <SelectItem value="rsvp_event">RSVPed to event</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              {/* Activity summary */}
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-semibold font-heading">Recent Activity</p>
                 </div>
-
-                {broadcast.audience === "rsvp_event" ? (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Event</Label>
-                    <Select value={broadcast.eventId} onValueChange={(value) => setBroadcast((s) => ({ ...s, eventId: value }))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select event…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(events || []).map((e) => (
-                          <SelectItem key={e.id} value={e.id}>
-                            {e.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                {auditLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : (auditLog || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No audit entries yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(auditLog || []).slice(0, 5).map(row => {
+                      const actorName = row.actor_id ? (profileMap.get(row.actor_id)?.name || "Unknown") : "System";
+                      const when = row.created_at ? format(new Date(row.created_at), "MMM d, HH:mm") : "—";
+                      return (
+                        <div key={row.id} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <BookOpen className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm"><span className="font-medium">{actorName}</span> <span className="text-muted-foreground">{row.action.replace(/_/g, " ")}</span></p>
+                            <p className="text-[11px] text-muted-foreground">{row.summary || "—"} · {when}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ) : null}
+                )}
+              </Card>
+            </motion.div>
+          )}
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Title</Label>
-                  <Input value={broadcast.title} onChange={(e) => setBroadcast((s) => ({ ...s, title: e.target.value }))} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Message</Label>
-                  <Textarea
-                    value={broadcast.message}
-                    onChange={(e) => setBroadcast((s) => ({ ...s, message: e.target.value }))}
-                    className="min-h-[90px]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Link URL</Label>
-                  <Input value={broadcast.url} onChange={(e) => setBroadcast((s) => ({ ...s, url: e.target.value }))} placeholder="/events" />
-                  <p className="text-[11px] text-muted-foreground">
-                    Example: <span className="font-mono">/events</span> or <span className="font-mono">/events/&lt;id&gt;</span>
-                  </p>
+          {/* ── Users Section ── */}
+          {activeSection === "users" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+              <SectionHeader title="Player Management" subtitle={`${totalMembers} members · ${rankedMembers} ranked`} />
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input placeholder="Search name or email…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="flex-1" />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+                    const ladderRows = (profiles || []).filter(p => p.rank != null).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)).map(p => ({ rank: p.rank ?? "", name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
+                    downloadFile(`ladder-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(ladderRows));
+                  }}>
+                    <Download className="w-3.5 h-3.5" /> Export
+                  </Button>
                 </div>
               </div>
 
-              <div className="rounded-lg border p-3">
-                <p className="text-sm font-medium">Preview</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Recipients are calculated from your selected audience filter.
-                </p>
-
-                {(() => {
-                  const allIds = (profiles || []).map((p) => p.id);
-                  let ids: string[] = [];
-                  if (broadcast.audience === "all") ids = allIds;
-                  if (broadcast.audience === "ranked") ids = (profiles || []).filter((p) => p.rank != null).map((p) => p.id);
-                  if (broadcast.audience === "active30") {
-                    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-                    ids = (profiles || [])
-                      .filter((p) => {
-                        const last = (p as any).last_competitive_match_at as string | null | undefined;
-                        if (!last) return false;
-                        return new Date(last).getTime() >= cutoff;
+              <Card className="p-0 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold">Player</TableHead>
+                      <TableHead className="font-semibold">Rank</TableHead>
+                      <TableHead className="font-semibold">Record</TableHead>
+                      <TableHead className="font-semibold">Win %</TableHead>
+                      <TableHead className="font-semibold text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {profilesLoading ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">Loading…</TableCell></TableRow>
+                    ) : filteredProfiles.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">No players found.</TableCell></TableRow>
+                    ) : (
+                      filteredProfiles.slice(0, 50).map(p => {
+                        const wr = p.matches_played > 0 ? Math.round((p.wins / p.matches_played) * 100) : 0;
+                        return (
+                          <TableRow key={p.id} className="hover:bg-muted/20">
+                            <TableCell className="p-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{p.name || "—"}</p>
+                                <p className="text-[11px] text-muted-foreground truncate">{p.email || p.id.slice(0, 8)}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="p-3">
+                              {p.rank != null ? (
+                                <Badge className="bg-primary/15 text-primary border-primary/20">#{p.rank}</Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Unranked</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <span className="text-sm tabular-nums font-medium">{p.wins}W–{p.losses}L</span>
+                              <span className="text-[11px] text-muted-foreground ml-1.5">({p.matches_played})</span>
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <div className="flex items-center gap-2">
+                                <Progress value={wr} className="h-1.5 w-12" />
+                                <span className="text-xs tabular-nums text-muted-foreground">{wr}%</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="p-3 text-right">
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEdit(p)}>
+                                <UserCog className="w-3 h-3 mr-1" /> Edit
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
                       })
-                      .map((p) => p.id);
-                  }
-                  if (broadcast.audience === "strava") ids = (profiles || []).filter((p) => !!(p as any).strava_connected).map((p) => p.id);
-                  if (broadcast.audience === "rsvp_event") ids = (rsvpAudienceUserIds || []) as string[];
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </motion.div>
+          )}
 
-                  const count = ids.length;
-                  return (
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Recipients</span>
-                        <span className="font-medium">{count}</span>
-                      </div>
-                      <div className="rounded-md border p-3">
-                        <p className="text-xs font-semibold">{broadcast.title || "—"}</p>
-                        <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">
-                          {broadcast.message || "—"}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground mt-2">
-                          Link: <span className="font-mono">{broadcast.url || "/events"}</span>
-                        </p>
-                      </div>
-                      <Button
-                        className="w-full h-9 text-xs"
-                        disabled={!isAdmin && !isManager ? true : sendBroadcast.isPending || count === 0}
-                        onClick={() => {
-                          sendBroadcast.mutate({
-                            recipients: ids,
-                            title: broadcast.title,
-                            message: broadcast.message,
-                            url: broadcast.url,
-                            data: {
-                              kind: "broadcast",
-                              template: broadcast.template,
-                              ...(broadcast.audience === "rsvp_event" && broadcast.eventId ? { event_id: broadcast.eventId } : {}),
-                            },
-                          });
-                        }}
-                      >
-                        {sendBroadcast.isPending ? "Sending…" : "Send broadcast"}
+          {/* ── Challenges Section ── */}
+          {activeSection === "challenges" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+              <SectionHeader title="Challenges" subtitle={`${pendingChallenges} pending`} />
+              <Card className="p-0 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold">Created</TableHead>
+                      <TableHead className="font-semibold">Challenger</TableHead>
+                      <TableHead className="font-semibold">Opponent</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold text-right">Update</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {challengesLoading ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">Loading…</TableCell></TableRow>
+                    ) : (challenges || []).length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">No challenges.</TableCell></TableRow>
+                    ) : (
+                      (challenges || []).map(c => {
+                        const challenger = profileMap.get(c.challenger_id)?.name || "Unknown";
+                        const opponent = profileMap.get(c.opponent_id)?.name || "Unknown";
+                        return (
+                          <TableRow key={c.id} className="hover:bg-muted/20">
+                            <TableCell className="p-3 text-xs text-muted-foreground">{format(new Date(c.created_at), "yyyy-MM-dd")}</TableCell>
+                            <TableCell className="p-3 text-sm font-medium">{challenger}</TableCell>
+                            <TableCell className="p-3 text-sm">{opponent}</TableCell>
+                            <TableCell className="p-3">
+                              <Badge variant="secondary" className={cn("capitalize", c.status === "pending" && "bg-accent/15 text-accent-foreground", c.status === "completed" && "bg-primary/15 text-primary")}>
+                                {c.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="p-3 text-right">
+                              <Select value={c.status} onValueChange={(value) => updateChallengeStatus.mutate({ challengeId: c.id, status: value as ChallengeRow["status"] })}>
+                                <SelectTrigger className="h-7 w-[130px] ml-auto text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">pending</SelectItem>
+                                  <SelectItem value="accepted">accepted</SelectItem>
+                                  <SelectItem value="declined">declined</SelectItem>
+                                  <SelectItem value="completed">completed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── Matches Section ── */}
+          {activeSection === "matches" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+              <SectionHeader title="Match Management" subtitle={`${disputedMatches} disputed · ${unconfirmedMatches} unconfirmed`} />
+
+              <div className="grid grid-cols-3 gap-3">
+                <Card className="p-3 text-center">
+                  <p className="text-2xl font-bold font-heading">{(matches || []).length}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
+                </Card>
+                <Card className={cn("p-3 text-center", disputedMatches > 0 && "border-destructive/30")}>
+                  <p className={cn("text-2xl font-bold font-heading", disputedMatches > 0 && "text-destructive")}>{disputedMatches}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Disputed</p>
+                </Card>
+                <Card className="p-3 text-center">
+                  <p className="text-2xl font-bold font-heading text-primary">{(matches || []).filter(m => m.confirmed).length}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Confirmed</p>
+                </Card>
+              </div>
+
+              <Card className="p-0 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Players</TableHead>
+                      <TableHead className="font-semibold">Score</TableHead>
+                      <TableHead className="font-semibold">Winner</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {matchesLoading ? (
+                      <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground py-8 text-center">Loading…</TableCell></TableRow>
+                    ) : (matches || []).length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground py-8 text-center">No matches.</TableCell></TableRow>
+                    ) : (
+                      (matches || []).map(m => {
+                        const aName = profileMap.get(m.player_a)?.name || "Unknown";
+                        const bName = profileMap.get(m.player_b)?.name || "Unknown";
+                        const winnerName = m.winner_id === m.player_a ? aName : m.winner_id === m.player_b ? bName : "—";
+                        return (
+                          <TableRow key={m.id} className={cn("hover:bg-muted/20", m.disputed && "bg-destructive/5")}>
+                            <TableCell className="p-3 text-xs text-muted-foreground">{m.match_date}</TableCell>
+                            <TableCell className="p-3 text-sm font-medium">{aName} vs {bName}</TableCell>
+                            <TableCell className="p-3 text-sm tabular-nums">{m.score || "—"}</TableCell>
+                            <TableCell className="p-3 text-sm">{winnerName}</TableCell>
+                            <TableCell className="p-3">
+                              <div className="flex gap-1.5">
+                                {m.confirmed && <Badge variant="secondary" className="text-[10px] bg-primary/15 text-primary">Confirmed</Badge>}
+                                {m.disputed && <Badge variant="secondary" className="text-[10px] bg-destructive/15 text-destructive">Disputed</Badge>}
+                                {!m.confirmed && !m.disputed && <Badge variant="secondary" className="text-[10px]">Pending</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="p-3 text-right">
+                              <div className="flex justify-end gap-1.5">
+                                {m.disputed && (
+                                  <Button size="sm" className="h-7 text-xs bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setDisputeResolve({ open: true, matchId: m.id, winnerId: m.winner_id || m.player_a, notes: "" })}>
+                                    Resolve
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateMatch.mutate({ matchId: m.id, patch: { disputed: !m.disputed } })}>
+                                  {m.disputed ? "Undispute" : "Dispute"}
+                                </Button>
+                                <Button size="sm" className="h-7 text-xs" disabled={m.confirmed} onClick={() => adminConfirmMatch.mutate(m.id)}>
+                                  Confirm
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── Bookings Section ── */}
+          {activeSection === "bookings" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+              <SectionHeader title="Booking Management" subtitle={`${activeBookingsToday} active today`} />
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input placeholder="Search player, date, court…" value={bookingSearch} onChange={(e) => setBookingSearch(e.target.value)} className="flex-1" />
+                <Button onClick={() => setCourtBlock(s => ({ ...s, open: true }))} className="gap-1.5">
+                  <Wrench className="w-3.5 h-3.5" /> Block Court
+                </Button>
+              </div>
+
+              <Card className="p-0 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Time</TableHead>
+                      <TableHead className="font-semibold">Court</TableHead>
+                      <TableHead className="font-semibold">Player</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bookingsLoading ? (
+                      <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground py-8 text-center">Loading…</TableCell></TableRow>
+                    ) : filteredBookings.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground py-8 text-center">No bookings found.</TableCell></TableRow>
+                    ) : (
+                      filteredBookings.slice(0, 100).map(b => {
+                        const playerName = profileMap.get(b.user_id)?.name || "Unknown";
+                        return (
+                          <TableRow key={b.id} className="hover:bg-muted/20">
+                            <TableCell className="p-3 text-xs text-muted-foreground">{b.date}</TableCell>
+                            <TableCell className="p-3 text-xs">{b.start_time?.slice(0, 5)}–{b.end_time?.slice(0, 5)}</TableCell>
+                            <TableCell className="p-3 text-sm">Court {b.court_id}</TableCell>
+                            <TableCell className="p-3 text-sm font-medium">{playerName}</TableCell>
+                            <TableCell className="p-3">
+                              <Badge variant="secondary" className={cn("capitalize text-[10px]", b.status === "cancelled" && "bg-destructive/15 text-destructive", b.status === "active" && "bg-primary/15 text-primary")}>
+                                {b.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="p-3 text-right">
+                              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={b.status === "cancelled" || adminCancelBooking.isPending} onClick={() => { if (confirm(`Cancel booking for ${playerName} on ${b.date}?`)) adminCancelBooking.mutate(b.id); }}>
+                                Cancel
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── Schedule Section ── */}
+          {activeSection === "schedule" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <SectionHeader title="Match Schedule" subtitle="Admin-scheduled matches" />
+                <Button size="sm" onClick={() => setSchedule(s => ({ ...s, open: true }))} className="gap-1.5">
+                  <Clock className="w-3.5 h-3.5" /> New
+                </Button>
+              </div>
+
+              <Card className="p-0 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Time</TableHead>
+                      <TableHead className="font-semibold">Players</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {scheduledLoading ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">Loading…</TableCell></TableRow>
+                    ) : (scheduledMatches || []).length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">No scheduled matches.</TableCell></TableRow>
+                    ) : (
+                      (scheduledMatches || []).map(s => {
+                        const aName = profileMap.get(s.player_a)?.name || "Unknown";
+                        const bName = profileMap.get(s.player_b)?.name || "Unknown";
+                        return (
+                          <TableRow key={s.id} className="hover:bg-muted/20">
+                            <TableCell className="p-3 text-xs text-muted-foreground">{s.scheduled_date}</TableCell>
+                            <TableCell className="p-3 text-xs">{s.start_time}–{s.end_time} <span className="text-muted-foreground">(Court {s.court_id || "—"})</span></TableCell>
+                            <TableCell className="p-3">
+                              <p className="text-sm font-medium truncate">{aName} vs {bName}</p>
+                              {s.notes && <p className="text-[11px] text-muted-foreground truncate">{s.notes}</p>}
+                            </TableCell>
+                            <TableCell className="p-3"><Badge variant="secondary" className="capitalize text-[10px]">{s.status}</Badge></TableCell>
+                            <TableCell className="p-3 text-right">
+                              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={s.status === "cancelled"} onClick={() => cancelSchedule.mutate({ scheduleId: s.id, bookingId: s.booking_id })}>
+                                Cancel
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* ── Seasons Section ── */}
+          {activeSection === "seasons" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+              <SectionHeader title="Season Management" subtitle={activeSeason ? `Active: ${activeSeason.name}` : "No active season"} />
+
+              <Card className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold font-heading">Active Season</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {activeSeason ? `${activeSeason.name} — started ${activeSeason.starts_on}` : "No active season. Start one to begin tracking."}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setSeasonStart(s => ({ ...s, open: true }))}>
+                      New Season
+                    </Button>
+                    {activeSeason && (
+                      <Button size="sm" variant="outline" className="h-8 text-xs border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => setSeasonEnd(s => ({ ...s, open: true }))}>
+                        End Season
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              {(seasons || []).length > 0 && (
+                <Card className="p-0 overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30">
+                        <TableHead className="font-semibold">Season</TableHead>
+                        <TableHead className="font-semibold">Started</TableHead>
+                        <TableHead className="font-semibold">Ended</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(seasons || []).map(s => (
+                        <TableRow key={s.id}>
+                          <TableCell className="p-3 text-sm font-medium">{s.name}</TableCell>
+                          <TableCell className="p-3 text-xs text-muted-foreground">{s.starts_on}</TableCell>
+                          <TableCell className="p-3 text-xs text-muted-foreground">{s.ends_on || "—"}</TableCell>
+                          <TableCell className="p-3">
+                            <Badge variant="secondary" className={cn("text-[10px]", s.is_active && "bg-primary/15 text-primary")}>
+                              {s.is_active ? "Active" : "Ended"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Club Ops Section ── */}
+          {activeSection === "clubops" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <SectionHeader title="Club Operations" subtitle="Events, broadcasts, data tools, audit" />
+
+              {/* Bulk tools */}
+              <Card className="p-4">
+                <p className="text-sm font-semibold font-heading mb-3">Data Tools</p>
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs font-medium">Bulk import ladder</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Paste CSV: <code className="text-[10px] bg-muted px-1 rounded">email,rank</code> or <code className="text-[10px] bg-muted px-1 rounded">name,rank</code></p>
+                    <Textarea className="mt-2 min-h-[80px] text-xs font-mono" placeholder="john@example.com,1&#10;jane@example.com,2" value={bulkRanksCsv} onChange={(e) => setBulkRanksCsv(e.target.value)} />
+                    <div className="flex gap-2 mt-2">
+                      <Button size="sm" className="h-7 text-xs gap-1" disabled={!isAdmin || bulkSetRanks.isPending || !bulkRanksCsv.trim()} onClick={() => {
+                        try {
+                          const lines = bulkRanksCsv.trim().split("\n").map(l => l.trim()).filter(Boolean);
+                          const assignments: Array<{ user_id: string; rank: number }> = [];
+                          for (const line of lines) {
+                            const [identifierRaw, rankRaw] = line.split(",").map(s => s.trim());
+                            const rank = Number(rankRaw);
+                            if (!identifierRaw || !Number.isFinite(rank) || rank < 1) continue;
+                            let userId = identifierRaw;
+                            if (!looksLikeUuid(identifierRaw)) {
+                              const lower = identifierRaw.toLowerCase();
+                              const byEmail = emailToIdMap.get(lower);
+                              if (byEmail) { userId = byEmail; }
+                              else {
+                                const byName = (profiles || []).find(p => p.name?.toLowerCase() === lower);
+                                if (!byName) { toast.error(`User not found: ${identifierRaw}`); return; }
+                                userId = byName.id;
+                              }
+                            }
+                            assignments.push({ user_id: userId, rank: Math.trunc(rank) });
+                          }
+                          if (assignments.length === 0) throw new Error("No assignments found");
+                          bulkSetRanks.mutate({ assignments });
+                        } catch (e: any) { toast.error(e?.message || "Invalid CSV"); }
+                      }}>
+                        <Upload className="w-3 h-3" /> Import
+                      </Button>
+                      <Button size="sm" variant="secondary" className="h-7 text-xs gap-1" onClick={() => {
+                        const ladderRows = (profiles || []).filter(p => p.rank != null).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)).map(p => ({ rank: p.rank ?? "", name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
+                        downloadFile(`ladder-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(ladderRows));
+                      }}>
+                        <Download className="w-3 h-3" /> Export Ladder
+                      </Button>
+                      <Button size="sm" variant="secondary" className="h-7 text-xs gap-1" onClick={() => {
+                        const matchRows = (matches || []).map(m => ({ match_date: m.match_date, player_a: profileMap.get(m.player_a)?.name || m.player_a, player_b: profileMap.get(m.player_b)?.name || m.player_b, score: m.score || "", winner: m.winner_id ? (profileMap.get(m.winner_id)?.name || m.winner_id) : "", confirmed: m.confirmed, disputed: m.disputed, challenge_id: m.challenge_id || "" }));
+                        downloadFile(`matches-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(matchRows));
+                      }}>
+                        <Download className="w-3 h-3" /> Export Matches
                       </Button>
                     </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </Card>
+                  </div>
 
-          <Card className="p-0">
-            <div className="p-4 pb-2">
-              <p className="text-sm font-semibold font-heading">Audit log</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Tracks rank changes, match updates, and booking cancellations.
-              </p>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[18%]">Time</TableHead>
-                  <TableHead className="w-[18%]">Actor</TableHead>
-                  <TableHead className="w-[16%]">Action</TableHead>
-                  <TableHead className="w-[18%]">Entity</TableHead>
-                  <TableHead className="w-[30%]">Summary</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {auditLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      Loading…
-                    </TableCell>
-                  </TableRow>
-                ) : (auditLog || []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      No audit entries yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (auditLog || []).map((row) => {
-                    const actorName = row.actor_id ? (profileMap.get(row.actor_id)?.name || row.actor_id) : "System";
-                    const actorEmail = row.actor_id ? (profileMap.get(row.actor_id)?.email || null) : null;
-                    const when = row.created_at ? format(new Date(row.created_at), "yyyy-MM-dd HH:mm") : "—";
-                    const entity = `${row.entity_table}${row.entity_id ? `:${row.entity_id.slice(0, 8)}` : ""}`;
-                    return (
-                      <TableRow key={row.id}>
-                        <TableCell className="p-3 text-xs text-muted-foreground">{when}</TableCell>
-                        <TableCell className="p-3">
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs font-medium">Merge duplicate users</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Moves data from source into target, then marks source as merged.</p>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Source (merge from)</Label>
+                        <Select value={mergeUsers.sourceId} onValueChange={(v) => setMergeUsers(s => ({ ...s, sourceId: v }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select…" /></SelectTrigger>
+                          <SelectContent>{(profiles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name || "—"} {p.email ? `(${p.email})` : ""}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Target (keep)</Label>
+                        <Select value={mergeUsers.targetId} onValueChange={(v) => setMergeUsers(s => ({ ...s, targetId: v }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select…" /></SelectTrigger>
+                          <SelectContent>{(profiles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name || "—"} {p.email ? `(${p.email})` : ""}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button size="sm" className="h-7 text-xs mt-2" disabled={!isAdmin || mergeDuplicateUsers.isPending} onClick={() => mergeDuplicateUsers.mutate({ sourceId: mergeUsers.sourceId, targetId: mergeUsers.targetId })}>
+                      Merge Users
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Events */}
+              <Card className="p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-sm font-semibold font-heading">Events</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Create events and manage RSVPs.</p>
+                  </div>
+                  <Button size="sm" className="h-8 text-xs shrink-0" onClick={() => openEventEditor(null)}>New Event</Button>
+                </div>
+                <div className="space-y-2">
+                  {eventsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : !events || events.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No events yet.</p>
+                  ) : (
+                    events.slice(0, 10).map(e => {
+                      const starts = e.starts_at ? format(new Date(e.starts_at), "d MMM yyyy HH:mm") : "—";
+                      return (
+                        <div key={e.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                           <div className="min-w-0">
-                            <p className="text-xs font-medium truncate">{actorName}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">{actorEmail || "—"}</p>
+                            <p className="text-sm font-medium truncate">{e.title}</p>
+                            <p className="text-[11px] text-muted-foreground">{starts} · <Badge variant="secondary" className="text-[10px] capitalize">{e.status}</Badge></p>
                           </div>
-                        </TableCell>
-                        <TableCell className="p-3 text-xs">
-                          <Badge variant="secondary" className="capitalize">
-                            {row.action.replace(/_/g, " ")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="p-3 text-xs text-muted-foreground">{entity}</TableCell>
-                        <TableCell className="p-3 text-xs">
-                          <span className="text-muted-foreground">{row.summary || "—"}</span>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Select value={e.status} onValueChange={(value) => {
+                              saveEvent.mutate({ id: e.id, title: e.title, description: e.description || null, starts_at: e.starts_at, ends_at: e.ends_at || null, location: e.location || null, court_id: e.court_id ?? null, capacity: e.capacity ?? null, rsvp_deadline: e.rsvp_deadline || null, visibility: e.visibility, status: value as any });
+                            }}>
+                              <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="draft">draft</SelectItem>
+                                <SelectItem value="published">published</SelectItem>
+                                <SelectItem value="cancelled">cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEventEditor(e)}>Edit</Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </Card>
+
+              {/* Broadcast */}
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Megaphone className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-semibold font-heading">Broadcast</p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">Send in-app notifications to selected audiences.</p>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Template</Label>
+                        <Select value={broadcast.template} onValueChange={(value) => {
+                          const v = value as any;
+                          const templates: Record<string, { title: string; message: string; url: string }> = {
+                            braai: { title: "Braai Social", message: "Friendly braai + social matches. RSVP in Events!", url: "/events" },
+                            club_night: { title: "Club Night", message: "Club night matches are on. Book a court!", url: "/bookings" },
+                            tournament: { title: "Tournament", message: "Tournament coming up! Check Events for details.", url: "/events" },
+                            maintenance: { title: "Maintenance", message: "Courts unavailable during maintenance.", url: "/events" },
+                          };
+                          const t = templates[v];
+                          setBroadcast(s => ({ ...s, template: v, ...(t ? { title: t.title, message: t.message, url: t.url } : {}) }));
+                        }}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="custom">Custom</SelectItem>
+                            <SelectItem value="braai">Braai social</SelectItem>
+                            <SelectItem value="club_night">Club night</SelectItem>
+                            <SelectItem value="tournament">Tournament</SelectItem>
+                            <SelectItem value="maintenance">Maintenance</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Audience</Label>
+                        <Select value={broadcast.audience} onValueChange={(value) => setBroadcast(s => ({ ...s, audience: value as any }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All members</SelectItem>
+                            <SelectItem value="ranked">Ranked only</SelectItem>
+                            <SelectItem value="active30">Active 30d</SelectItem>
+                            <SelectItem value="strava">Strava-connected</SelectItem>
+                            <SelectItem value="rsvp_event">RSVPed to event</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {broadcast.audience === "rsvp_event" && (
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Event</Label>
+                        <Select value={broadcast.eventId} onValueChange={(value) => setBroadcast(s => ({ ...s, eventId: value }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select event…" /></SelectTrigger>
+                          <SelectContent>{(events || []).map(e => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Title</Label>
+                      <Input className="h-8 text-xs" value={broadcast.title} onChange={(e) => setBroadcast(s => ({ ...s, title: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Message</Label>
+                      <Textarea className="min-h-[70px] text-xs" value={broadcast.message} onChange={(e) => setBroadcast(s => ({ ...s, message: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Link</Label>
+                      <Input className="h-8 text-xs" value={broadcast.url} onChange={(e) => setBroadcast(s => ({ ...s, url: e.target.value }))} placeholder="/events" />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs font-medium mb-2">Preview</p>
+                    {(() => {
+                      const allIds = (profiles || []).map(p => p.id);
+                      let ids: string[] = [];
+                      if (broadcast.audience === "all") ids = allIds;
+                      if (broadcast.audience === "ranked") ids = (profiles || []).filter(p => p.rank != null).map(p => p.id);
+                      if (broadcast.audience === "active30") {
+                        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                        ids = (profiles || []).filter(p => { const last = (p as any).last_competitive_match_at as string | null | undefined; return last ? new Date(last).getTime() >= cutoff : false; }).map(p => p.id);
+                      }
+                      if (broadcast.audience === "strava") ids = (profiles || []).filter(p => !!(p as any).strava_connected).map(p => p.id);
+                      if (broadcast.audience === "rsvp_event") ids = (rsvpAudienceUserIds || []) as string[];
+                      const count = ids.length;
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Recipients</span><span className="font-bold text-lg">{count}</span></div>
+                          <div className="rounded-md border border-border p-3 bg-muted/30">
+                            <p className="text-xs font-semibold">{broadcast.title || "—"}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-line">{broadcast.message || "—"}</p>
+                          </div>
+                          <Button className="w-full h-8 text-xs" disabled={(!isAdmin && !isManager) || sendBroadcast.isPending || count === 0} onClick={() => {
+                            sendBroadcast.mutate({ recipients: ids, title: broadcast.title, message: broadcast.message, url: broadcast.url, data: { kind: "broadcast", template: broadcast.template, ...(broadcast.audience === "rsvp_event" && broadcast.eventId ? { event_id: broadcast.eventId } : {}) } });
+                          }}>
+                            {sendBroadcast.isPending ? "Sending…" : `Send to ${count} members`}
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </Card>
+
+              {/* Audit Log */}
+              <Card className="p-0 overflow-hidden">
+                <div className="p-4 pb-2">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm font-semibold font-heading">Audit Log</p>
+                  </div>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold w-[18%]">Time</TableHead>
+                      <TableHead className="font-semibold w-[18%]">Actor</TableHead>
+                      <TableHead className="font-semibold w-[16%]">Action</TableHead>
+                      <TableHead className="font-semibold w-[18%]">Entity</TableHead>
+                      <TableHead className="font-semibold w-[30%]">Summary</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {auditLoading ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">Loading…</TableCell></TableRow>
+                    ) : (auditLog || []).length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-sm text-muted-foreground py-8 text-center">No audit entries yet.</TableCell></TableRow>
+                    ) : (
+                      (auditLog || []).map(row => {
+                        const actorName = row.actor_id ? (profileMap.get(row.actor_id)?.name || row.actor_id) : "System";
+                        const when = row.created_at ? format(new Date(row.created_at), "yyyy-MM-dd HH:mm") : "—";
+                        const entity = `${row.entity_table}${row.entity_id ? `:${row.entity_id.slice(0, 8)}` : ""}`;
+                        return (
+                          <TableRow key={row.id}>
+                            <TableCell className="p-3 text-xs text-muted-foreground">{when}</TableCell>
+                            <TableCell className="p-3 text-xs font-medium">{actorName}</TableCell>
+                            <TableCell className="p-3"><Badge variant="secondary" className="capitalize text-[10px]">{row.action.replace(/_/g, " ")}</Badge></TableCell>
+                            <TableCell className="p-3 text-xs text-muted-foreground">{entity}</TableCell>
+                            <TableCell className="p-3 text-xs text-muted-foreground">{row.summary || "—"}</TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </Card>
+            </motion.div>
+          )}
+        </main>
+      </div>
 
       <Dialog open={eventEdit.open} onOpenChange={(open) => setEventEdit((s) => ({ ...s, open }))}>
         <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">

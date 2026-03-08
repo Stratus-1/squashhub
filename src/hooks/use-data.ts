@@ -185,7 +185,7 @@ export function usePublicLeaderboard(limit = 10) {
   return useQuery({
     queryKey: ["public-leaderboard", limit],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_public_leaderboard", { limit_count: limit } as any);
+      const { data, error } = await rpc("get_public_leaderboard", { limit_count: limit });
       if (error) throw error;
       return (data || []) as PublicLeaderboardRow[];
     },

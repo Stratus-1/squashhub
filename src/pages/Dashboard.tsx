@@ -138,7 +138,23 @@ export default function Dashboard() {
 
       <WelcomeBanner />
 
-      {/* Quick Stats */}
+      {/* Profile Completion */}
+      <div className="px-4 mt-2">
+        <ProfileCompletionMeter
+          profile={profile}
+          onAction={(action) => {
+            if (action === "edit") navigate("/profile");
+            if (action === "avatar") navigate("/profile");
+            if (action === "availability") navigate("/availability");
+          }}
+        />
+      </div>
+
+      {/* Match of the Week */}
+      <div className="px-4 mt-3">
+        <MatchOfTheWeekCard />
+      </div>
+
       <motion.div
         className="grid grid-cols-4 gap-2 px-4 mt-3"
         initial={{ opacity: 0, y: 10 }}

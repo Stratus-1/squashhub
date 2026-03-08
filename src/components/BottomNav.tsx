@@ -1,4 +1,4 @@
-import { Home, Calendar, BarChart3, MessageCircle, User } from "lucide-react";
+import { Home, Calendar, BarChart3, MessageCircle, LayoutDashboard } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,7 @@ const navItems = [
   { to: "/bookings", icon: Calendar, label: "Courts" },
   { to: "/analytics", icon: BarChart3, label: "Stats" },
   { to: "/feed", icon: MessageCircle, label: "Feed" },
-  { to: "/profile", icon: User, label: "Profile" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
 ];
 
 export function BottomNav() {

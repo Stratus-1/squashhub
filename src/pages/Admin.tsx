@@ -440,6 +440,7 @@ export default function Admin() {
     });
   }, [allBookings, bookingSearch, profileMap]);
 
+  const { data: seasons } = useQuery({
     queryKey: ["admin", "seasons"],
     queryFn: async () => {
       const { data, error } = await fromExt("seasons")

@@ -87,7 +87,7 @@ export default function Home() {
           {/* Nav bar */}
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-2">
-              <img src={clubLogo} alt="GB Squash" className="w-9 h-9 rounded-lg" />
+              <img src={clubLogo} alt="GB Squash" className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg" />
               <span className="font-heading font-bold text-sm text-primary-foreground">GB Squash</span>
             </div>
             {!user ? (

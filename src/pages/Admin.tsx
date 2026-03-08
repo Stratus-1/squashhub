@@ -603,7 +603,7 @@ export default function Admin() {
 
   const endSeason = useMutation({
     mutationFn: async ({ resetStats, resetRanks }: { resetStats: boolean; resetRanks: boolean }) => {
-      const { error } = await supabase.rpc("admin_end_active_season", {
+      const { error } = await rpcExt("admin_end_active_season", {
         reset_stats: resetStats,
         reset_ranks: resetRanks,
       } as any);

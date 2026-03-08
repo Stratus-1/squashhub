@@ -3,13 +3,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Mail, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { format, addDays, subDays, getISODay } from "date-fns";
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { ShareBookingDialog } from "@/components/ShareBookingDialog";
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,7 @@ export default function Bookings() {
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;
+    bookingId: string;
     courtId: number;
     dateStr: string;
     startTime: string;
@@ -78,6 +80,7 @@ export default function Bookings() {
     opponentEmail: string | null;
   }>({
     open: false,
+    bookingId: "",
     courtId: 1,
     dateStr: "",
     startTime: "",
@@ -86,6 +89,15 @@ export default function Bookings() {
     opponentName: null,
     opponentEmail: null,
   });
+  const [shareDialog, setShareDialog] = useState<{
+    open: boolean;
+    bookingId: string;
+    courtId: number;
+    dateStr: string;
+    startTime: string;
+    endTime: string;
+    opponentName: string | null;
+  }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
   const { user } = useAuth();
   const { data: me } = useProfile();
 
@@ -191,6 +203,7 @@ export default function Bookings() {
 
         setCalendarPrompt({
           open: true,
+          bookingId,
           courtId: bookingDialog.courtId,
           dateStr,
           startTime: bookingDialog.time,
@@ -243,6 +256,7 @@ export default function Bookings() {
 
       setCalendarPrompt({
         open: true,
+        bookingId: (created as any)?.id || bookingId,
         courtId: bookingDialog.courtId,
         dateStr,
         startTime: bookingDialog.time,
@@ -481,24 +495,46 @@ export default function Bookings() {
               ) : null}
             </div>
           )}
-          <DialogFooter>
-            {bookingDetails && bookingDetails.user_id === user?.id ? (
-              <Button
-                variant="outline"
-                disabled={cancelBooking.isPending}
-                onClick={async () => {
-                  try {
-                    await cancelBooking.mutateAsync(String(bookingDetails.id));
-                    toast.success("Booking cancelled");
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {bookingDetails && bookingDetails.user_id === user?.id && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    const bd = bookingDetails;
                     setBookingDetails(null);
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to cancel booking");
-                  }
-                }}
-              >
-                {cancelBooking.isPending ? "Cancelling..." : "Cancel booking"}
-              </Button>
-            ) : null}
+                    setShareDialog({
+                      open: true,
+                      bookingId: bd.id,
+                      courtId: bd.court_id,
+                      dateStr: String(bd.date),
+                      startTime: String(bd.start_time || "").slice(0, 5),
+                      endTime: String(bd.end_time || "").slice(0, 5),
+                      opponentName: bd.opponent_name || null,
+                    });
+                  }}
+                >
+                  <Mail className="w-3.5 h-3.5" /> Share
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={cancelBooking.isPending}
+                  onClick={async () => {
+                    try {
+                      await cancelBooking.mutateAsync(String(bookingDetails.id));
+                      toast.success("Booking cancelled");
+                      setBookingDetails(null);
+                    } catch (e: any) {
+                      toast.error(e.message || "Failed to cancel booking");
+                    }
+                  }}
+                >
+                  {cancelBooking.isPending ? "Cancelling..." : "Cancel booking"}
+                </Button>
+              </>
+            )}
             <Button onClick={() => setBookingDetails(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
@@ -638,6 +674,44 @@ export default function Bookings() {
             )}
           </div>
 
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 rounded-md border p-3">
+              <p className="text-xs text-muted-foreground flex-1">Invite someone to this booking?</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  setCalendarPrompt((s) => ({ ...s, open: false }));
+                  setShareDialog({
+                    open: true,
+                    bookingId: calendarPrompt.bookingId,
+                    courtId: calendarPrompt.courtId,
+                    dateStr: calendarPrompt.dateStr,
+                    startTime: calendarPrompt.startTime,
+                    endTime: calendarPrompt.endTime,
+                    opponentName: calendarPrompt.opponentName,
+                  });
+                }}
+              >
+                <Mail className="w-3.5 h-3.5" /> Email
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  const msg = encodeURIComponent(
+                    `🏸 Squash booking!\n\nCourt ${calendarPrompt.courtId} on ${calendarPrompt.dateStr} from ${calendarPrompt.startTime} to ${calendarPrompt.endTime}.\n\nJoin me!`
+                  );
+                  window.open(`https://wa.me/?text=${msg}`, "_blank");
+                }}
+              >
+                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+              </Button>
+            </div>
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setCalendarPrompt((s) => ({ ...s, open: false }))}>
               Not now
@@ -672,6 +746,19 @@ export default function Bookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Share Booking Dialog */}
+      <ShareBookingDialog
+        open={shareDialog.open}
+        onOpenChange={(open) => setShareDialog((s) => ({ ...s, open }))}
+        bookingId={shareDialog.bookingId}
+        courtId={shareDialog.courtId}
+        dateStr={shareDialog.dateStr}
+        startTime={shareDialog.startTime}
+        endTime={shareDialog.endTime}
+        opponentName={shareDialog.opponentName}
+        inviterName={me?.name || undefined}
+      />
     </div>
   );
 }

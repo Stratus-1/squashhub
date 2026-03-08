@@ -32,6 +32,51 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_invites: {
+        Row: {
+          booking_id: string
+          channel: string
+          created_at: string
+          decline_reason: string | null
+          id: string
+          invitee_email: string | null
+          invitee_name: string | null
+          invitee_phone: string | null
+          inviter_id: string
+          responded_at: string | null
+          status: string
+          token: string
+        }
+        Insert: {
+          booking_id: string
+          channel?: string
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          invitee_email?: string | null
+          invitee_name?: string | null
+          invitee_phone?: string | null
+          inviter_id: string
+          responded_at?: string | null
+          status?: string
+          token?: string
+        }
+        Update: {
+          booking_id?: string
+          channel?: string
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          invitee_email?: string | null
+          invitee_name?: string | null
+          invitee_phone?: string | null
+          inviter_id?: string
+          responded_at?: string | null
+          status?: string
+          token?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           court_id: number
@@ -384,6 +429,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      respond_to_booking_invite: {
+        Args: { invite_token: string; new_status: string; reason?: string }
+        Returns: undefined
       }
     }
     Enums: {

@@ -465,7 +465,7 @@ export default function Admin() {
 
   const adminConfirmMatch = useMutation({
     mutationFn: async (matchId: string) => {
-      const { error } = await supabase.rpc("admin_confirm_match", { match_id: matchId } as any);
+      const { error } = await rpcExt("admin_confirm_match", { match_id: matchId });
       if (error) throw error;
     },
     onSuccess: async () => {

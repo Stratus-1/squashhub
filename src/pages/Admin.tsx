@@ -343,13 +343,12 @@ export default function Admin() {
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin", "events"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
+      const { data, error } = await fromExt("events")
         .select("*")
         .order("starts_at", { ascending: true })
         .limit(200);
       if (error) throw error;
-      return (data || []) as AdminEventRow[];
+      return (data || []) as unknown as AdminEventRow[];
     },
     enabled: isAdmin || isManager,
   });

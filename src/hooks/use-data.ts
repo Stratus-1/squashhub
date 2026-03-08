@@ -76,7 +76,7 @@ export function useCourtBusyness(daysBack = 30) {
   return useQuery({
     queryKey: ["court-busyness", user?.id, daysBack],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_court_busyness", { days_back: daysBack } as any);
+      const { data, error } = await rpc("get_court_busyness", { days_back: daysBack });
       if (error) throw error;
       return (data || []) as CourtBusynessRow[];
     },

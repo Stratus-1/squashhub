@@ -15,14 +15,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell, Shield,
-  Swords, Award, Flame, ChevronRight, Calendar, MapPin, Hand, Zap
+  Swords, Award, Flame, ChevronRight, Calendar, MapPin, Hand, Zap, Mail
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { HeadToHeadRow, useHeadToHead, useIntegrations, useMyRoles, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
@@ -146,6 +146,17 @@ export default function Profile() {
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const didHydrateEditRef = useRef(false);
   const didLoadAvailabilityRef = useRef(false);
+  const [emailPrefsAvailable, setEmailPrefsAvailable] = useState(true);
+  const [emailPrefsLoading, setEmailPrefsLoading] = useState(false);
+  const [emailPrefs, setEmailPrefs] = useState<{
+    transactional_email_enabled: boolean;
+    marketing_email_enabled: boolean;
+    email_fallback_only: boolean;
+  }>({
+    transactional_email_enabled: true,
+    marketing_email_enabled: false,
+    email_fallback_only: true,
+  });
 
   const strava = useMemo(() => integrations?.find((i) => i.provider === "strava") || null, [integrations]);
 
@@ -182,6 +193,62 @@ export default function Profile() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    setEmailPrefsLoading(true);
+    (supabase as any)
+      .from("notification_preferences")
+      .select("transactional_email_enabled,marketing_email_enabled,email_fallback_only")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data, error }: any) => {
+        if (cancelled) return;
+        if (error) {
+          if (error.code === "42P01") {
+            setEmailPrefsAvailable(false);
+            return;
+          }
+          if (error.code === "PGRST116") return; // no row
+          throw error;
+        }
+        if (!data) return;
+        setEmailPrefs({
+          transactional_email_enabled: data.transactional_email_enabled ?? true,
+          marketing_email_enabled: data.marketing_email_enabled ?? false,
+          email_fallback_only: data.email_fallback_only ?? true,
+        });
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        toast.error(e?.message || "Failed to load email preferences");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setEmailPrefsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const saveEmailPrefs = useMutation({
+    mutationFn: async (next: {
+      transactional_email_enabled: boolean;
+      marketing_email_enabled: boolean;
+      email_fallback_only: boolean;
+    }) => {
+      if (!user?.id) throw new Error("Not signed in");
+      const { error } = await (supabase as any)
+        .from("notification_preferences")
+        .upsert({ user_id: user.id, ...next }, { onConflict: "user_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => toast.success("Email preferences updated"),
+    onError: (e: any) => toast.error(e?.message || "Failed to update email preferences"),
+  });
 
   useEffect(() => {
     if (!editOpen) {
@@ -636,6 +703,72 @@ export default function Profile() {
               disabled={pushLoading || permission === "denied"}
               onCheckedChange={(checked) => checked ? subscribe() : unsubscribe()}
             />
+          </Card>
+        )}
+
+        {/* Email preferences */}
+        {emailPrefsAvailable && (
+          <Card className="p-3 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+                <Mail className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Email Preferences</p>
+                <p className="text-[11px] text-muted-foreground">Fallback emails and marketing opt-in.</p>
+              </div>
+              {emailPrefsLoading ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : null}
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Transactional emails</p>
+                <p className="text-[11px] text-muted-foreground">Challenges, bookings, match updates.</p>
+              </div>
+              <Switch
+                checked={emailPrefs.transactional_email_enabled}
+                disabled={emailPrefsLoading || saveEmailPrefs.isPending}
+                onCheckedChange={(checked) => {
+                  const next = { ...emailPrefs, transactional_email_enabled: checked };
+                  setEmailPrefs(next);
+                  saveEmailPrefs.mutate(next);
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Email only when no push</p>
+                <p className="text-[11px] text-muted-foreground">Avoid duplicate push + email.</p>
+              </div>
+              <Switch
+                checked={emailPrefs.email_fallback_only}
+                disabled={emailPrefsLoading || saveEmailPrefs.isPending || !emailPrefs.transactional_email_enabled}
+                onCheckedChange={(checked) => {
+                  const next = { ...emailPrefs, email_fallback_only: checked };
+                  setEmailPrefs(next);
+                  saveEmailPrefs.mutate(next);
+                }}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Marketing emails</p>
+                <p className="text-[11px] text-muted-foreground">Events, socials, club announcements.</p>
+              </div>
+              <Switch
+                checked={emailPrefs.marketing_email_enabled}
+                disabled={emailPrefsLoading || saveEmailPrefs.isPending}
+                onCheckedChange={(checked) => {
+                  const next = { ...emailPrefs, marketing_email_enabled: checked };
+                  setEmailPrefs(next);
+                  saveEmailPrefs.mutate(next);
+                }}
+              />
+            </div>
           </Card>
         )}
 

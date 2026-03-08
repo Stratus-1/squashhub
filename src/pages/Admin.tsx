@@ -380,6 +380,7 @@ export default function Admin() {
   const [broadcast, setBroadcast] = useState<{
     template: "custom" | "braai" | "club_night" | "tournament" | "maintenance";
     audience: "all" | "ranked" | "active30" | "strava" | "rsvp_event";
+    emailMode: "fallback" | "marketing";
     eventId: string;
     title: string;
     message: string;
@@ -387,11 +388,35 @@ export default function Admin() {
   }>({
     template: "custom",
     audience: "all",
+    emailMode: "fallback",
     eventId: "",
     title: "",
     message: "",
     url: "/events",
   });
+
+  const { data: notificationPrefs } = useQuery({
+    queryKey: ["admin", "notification-preferences"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("notification_preferences")
+        .select("user_id,transactional_email_enabled,marketing_email_enabled,email_fallback_only");
+      if (error) {
+        if ((error as any).code === "42P01") return [];
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: isAdmin || isManager,
+  });
+
+  const marketingOptInUserIds = useMemo(() => {
+    return new Set<string>(
+      (notificationPrefs || [])
+        .filter((p: any) => p?.marketing_email_enabled === true)
+        .map((p: any) => String(p.user_id))
+    );
+  }, [notificationPrefs]);
 
   const { data: profiles, isLoading: profilesLoading } = useQuery({
     queryKey: ["admin", "profiles"],
@@ -862,10 +887,11 @@ export default function Admin() {
   });
 
   const sendBroadcast = useMutation({
-    mutationFn: async (payload: { recipients: string[]; title: string; message: string; url: string; data?: any }) => {
+    mutationFn: async (payload: { recipients: string[]; title: string; message: string; url: string; type?: string; data?: any }) => {
       const title = payload.title.trim();
       const message = payload.message.trim();
       const url = payload.url.trim() || "/events";
+      const notifType = (payload.type || "general").trim();
       if (!title) throw new Error("Title is required");
       if (!message) throw new Error("Message is required");
       if (payload.recipients.length === 0) throw new Error("No recipients");
@@ -878,7 +904,7 @@ export default function Admin() {
           user_id: uid,
           title,
           message,
-          type: "marketing",
+          type: notifType,
           url,
           data: payload.data || {},
         }));
@@ -2103,18 +2129,20 @@ export default function Admin() {
               </Card>
 
               {/* Broadcast */}
-              <Card className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Megaphone className="w-4 h-4 text-primary" />
-                  <p className="text-sm font-semibold font-heading">Broadcast</p>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">Send in-app notifications to selected audiences.</p>
+	              <Card className="p-4">
+	                <div className="flex items-center gap-2 mb-3">
+	                  <Megaphone className="w-4 h-4 text-primary" />
+	                  <p className="text-sm font-semibold font-heading">Broadcast</p>
+	                </div>
+	                <p className="text-xs text-muted-foreground mb-3">
+	                  Send in-app + push notifications, with optional email delivery.
+	                </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Template</Label>
+	                    <div className="grid grid-cols-2 gap-2">
+	                      <div className="space-y-1">
+	                        <Label className="text-[10px] text-muted-foreground">Template</Label>
                         <Select value={broadcast.template} onValueChange={(value) => {
                           const v = value as any;
                           const templates: Record<string, { title: string; message: string; url: string }> = {
@@ -2136,9 +2164,9 @@ export default function Admin() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Audience</Label>
-                        <Select value={broadcast.audience} onValueChange={(value) => setBroadcast(s => ({ ...s, audience: value as any }))}>
+	                      <div className="space-y-1">
+	                        <Label className="text-[10px] text-muted-foreground">Audience</Label>
+	                        <Select value={broadcast.audience} onValueChange={(value) => setBroadcast(s => ({ ...s, audience: value as any }))}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All members</SelectItem>
@@ -2147,12 +2175,25 @@ export default function Admin() {
                             <SelectItem value="strava">Strava-connected</SelectItem>
                             <SelectItem value="rsvp_event">RSVPed to event</SelectItem>
                           </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    {broadcast.audience === "rsvp_event" && (
-                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Event</Label>
+	                        </Select>
+	                      </div>
+	                    </div>
+	                    <div className="space-y-1">
+	                      <Label className="text-[10px] text-muted-foreground">Email</Label>
+	                      <Select value={broadcast.emailMode} onValueChange={(value) => setBroadcast(s => ({ ...s, emailMode: value as any }))}>
+	                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+	                        <SelectContent>
+	                          <SelectItem value="fallback">Fallback (only if no push)</SelectItem>
+	                          <SelectItem value="marketing">Marketing (opt-in)</SelectItem>
+	                        </SelectContent>
+	                      </Select>
+	                      <p className="text-[11px] text-muted-foreground">
+	                        Marketing emails require users to opt in (Profile → Email preferences).
+	                      </p>
+	                    </div>
+	                    {broadcast.audience === "rsvp_event" && (
+	                      <div className="space-y-1">
+	                        <Label className="text-[10px] text-muted-foreground">Event</Label>
                         <Select value={broadcast.eventId} onValueChange={(value) => setBroadcast(s => ({ ...s, eventId: value }))}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select event…" /></SelectTrigger>
                           <SelectContent>{(events || []).map(e => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}</SelectContent>
@@ -2186,19 +2227,45 @@ export default function Admin() {
                       }
                       if (broadcast.audience === "strava") ids = (profiles || []).filter(p => !!(p as any).strava_connected).map(p => p.id);
                       if (broadcast.audience === "rsvp_event") ids = (rsvpAudienceUserIds || []) as string[];
-                      const count = ids.length;
-                      return (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Recipients</span><span className="font-bold text-lg">{count}</span></div>
-                          <div className="rounded-md border border-border p-3 bg-muted/30">
-                            <p className="text-xs font-semibold">{broadcast.title || "—"}</p>
-                            <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-line">{broadcast.message || "—"}</p>
-                          </div>
-                          <Button className="w-full h-8 text-xs" disabled={(!isAdmin && !isManager) || sendBroadcast.isPending || count === 0} onClick={() => {
-                            sendBroadcast.mutate({ recipients: ids, title: broadcast.title, message: broadcast.message, url: broadcast.url, data: { kind: "broadcast", template: broadcast.template, ...(broadcast.audience === "rsvp_event" && broadcast.eventId ? { event_id: broadcast.eventId } : {}) } });
-                          }}>
-                            {sendBroadcast.isPending ? "Sending…" : `Send to ${count} members`}
-                          </Button>
+	                      const count = ids.length;
+	                      const emailCount =
+	                        broadcast.emailMode === "marketing"
+	                          ? ids.filter((uid) => marketingOptInUserIds.has(uid)).length
+	                          : null;
+	                      return (
+	                        <div className="space-y-2">
+	                          <div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Recipients</span><span className="font-bold text-lg">{count}</span></div>
+	                          {broadcast.emailMode === "marketing" ? (
+	                            <div className="flex items-center justify-between text-xs">
+	                              <span className="text-muted-foreground">Marketing emails</span>
+	                              <span className="font-semibold">{emailCount}</span>
+	                            </div>
+	                          ) : (
+	                            <p className="text-[11px] text-muted-foreground">
+	                              Emails send as fallback only (members without push set up).
+	                            </p>
+	                          )}
+	                          <div className="rounded-md border border-border p-3 bg-muted/30">
+	                            <p className="text-xs font-semibold">{broadcast.title || "—"}</p>
+	                            <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-line">{broadcast.message || "—"}</p>
+	                          </div>
+	                          <Button className="w-full h-8 text-xs" disabled={(!isAdmin && !isManager) || sendBroadcast.isPending || count === 0} onClick={() => {
+	                            sendBroadcast.mutate({
+	                              recipients: ids,
+	                              title: broadcast.title,
+	                              message: broadcast.message,
+	                              url: broadcast.url,
+	                              type: broadcast.emailMode === "marketing" ? "marketing" : "general",
+	                              data: {
+	                                kind: "broadcast",
+	                                template: broadcast.template,
+	                                email_mode: broadcast.emailMode,
+	                                ...(broadcast.audience === "rsvp_event" && broadcast.eventId ? { event_id: broadcast.eventId } : {}),
+	                              },
+	                            });
+	                          }}>
+	                            {sendBroadcast.isPending ? "Sending…" : `Send to ${count} members`}
+	                          </Button>
                         </div>
                       );
                     })()}

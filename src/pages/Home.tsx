@@ -23,7 +23,7 @@ import clubLogo from "@/assets/club-logo.png";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -70,6 +70,122 @@ export default function Home() {
   const { data: busyness } = useCourtBusyness(30);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
+
+  const { data: myGames } = useQuery({
+    queryKey: ["home", "my-games", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as any[];
+
+      const { data: bookings, error } = await (supabase as any)
+        .from("bookings")
+        .select("*")
+        .eq("status", "active")
+        .eq("is_blocked", false)
+        .or(`user_id.eq.${user.id},opponent_id.eq.${user.id}`)
+        .gte("date", todayStr)
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true })
+        .limit(30);
+      if (error) throw error;
+
+      const ids = [
+        ...new Set(
+          (bookings || [])
+            .flatMap((b: any) => [b.user_id, b.opponent_id])
+            .filter(Boolean)
+        ),
+      ] as string[];
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,name,rank")
+        .in("id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]);
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+      return (bookings || []).map((b: any) => {
+        const opponentId = b.user_id === user.id ? b.opponent_id : b.user_id;
+        const opponentProfile = opponentId ? profileMap.get(opponentId) : null;
+        const startTime = String(b.start_time || "").slice(0, 5);
+        const endTime = String(b.end_time || "").slice(0, 5);
+        return {
+          ...b,
+          court_name: b.court_id === 1 ? "Court 1" : "Court 2",
+          start_hhmm: startTime,
+          end_hhmm: endTime,
+          opponent_id: opponentId,
+          opponent_name: opponentProfile?.name || (opponentId ? "Unknown" : null),
+          opponent_rank: opponentProfile?.rank ?? null,
+        };
+      });
+    },
+    enabled: !!user,
+  });
+
+  const upcomingGames = useMemo(() => {
+    if (!user) return [];
+    const now = new Date();
+    const rows = (myGames || []) as any[];
+    return rows
+      .filter((b) => {
+        if (!b?.date || !b?.start_hhmm) return false;
+        const dt = new Date(`${b.date}T${b.start_hhmm}:00`);
+        return Number.isFinite(dt.getTime()) && dt.getTime() >= now.getTime();
+      })
+      .slice(0, 5);
+  }, [myGames, user]);
+
+  const { data: recentResults } = useQuery({
+    queryKey: ["home", "recent-results", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as any[];
+      const { data: matches, error } = await (supabase as any)
+        .from("matches")
+        .select("*")
+        .or(`player_a.eq.${user.id},player_b.eq.${user.id}`)
+        .order("match_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+
+      const opponentIds = [
+        ...new Set(
+          (matches || [])
+            .flatMap((m: any) => [m.player_a, m.player_b])
+            .filter((id: string) => !!id && id !== user.id)
+        ),
+      ] as string[];
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id,name,rank")
+        .in("id", opponentIds.length > 0 ? opponentIds : ["00000000-0000-0000-0000-000000000000"]);
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+      return (matches || []).map((m: any) => {
+        const opponentId = m.player_a === user.id ? m.player_b : m.player_a;
+        const opp = opponentId ? profileMap.get(opponentId) : null;
+        return {
+          ...m,
+          opponent_id: opponentId,
+          opponent_name: opp?.name || "Unknown",
+          opponent_rank: opp?.rank ?? null,
+          is_win: m.winner_id ? m.winner_id === user.id : null,
+        };
+      });
+    },
+    enabled: !!user,
+  });
+
+  const recentGamesWithResults = useMemo(() => {
+    const rows = (recentResults || []) as any[];
+    return rows
+      .filter((m) => !!m?.score)
+      .slice(0, 5);
+  }, [recentResults]);
 
   const { data: activeSeason } = useQuery({
     queryKey: ["active-season"],
@@ -685,7 +801,7 @@ export default function Home() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
+	          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
             <Button className="justify-start" variant="secondary" onClick={() => navigate("/bookings")}>
               <Calendar className="w-4 h-4 mr-2" /> Book
             </Button>
@@ -707,9 +823,111 @@ export default function Home() {
                 <UserRound className="w-4 h-4 mr-2" /> Me
               </Button>
             )}
-          </div>
-        </motion.section>
-      )}
+	          </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+              <Card className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold font-heading">Upcoming games</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Your next booked sessions.</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate("/bookings")}>
+                    View
+                  </Button>
+                </div>
+
+                {upcomingGames.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-3">No upcoming games yet.</p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {upcomingGames.map((g: any) => (
+                      <div key={g.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {g.opponent_name ? `vs ${g.opponent_name}` : "Solo booking"}
+                              {typeof g.opponent_rank === "number" ? (
+                                <span className="text-xs text-muted-foreground"> · #{g.opponent_rank}</span>
+                              ) : null}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {g.date} · {g.court_name} · {g.start_hhmm}–{g.end_hhmm}
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex flex-col items-end gap-1">
+                            <Badge variant="secondary" className="text-[10px]">
+                              {g.is_friendly ? "Friendly" : g.challenge_id ? "Ladder" : "Game"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              <Card className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold font-heading">Recent results</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Past games with scores.</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate("/challenges")}>
+                    View
+                  </Button>
+                </div>
+
+                {recentGamesWithResults.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-3">No results yet.</p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {recentGamesWithResults.map((m: any) => {
+                      const icon =
+                        m.is_win === true ? <ArrowUp className="w-3.5 h-3.5 text-accent-foreground" /> :
+                        m.is_win === false ? <ArrowDown className="w-3.5 h-3.5 text-destructive" /> :
+                        <Minus className="w-3.5 h-3.5 text-muted-foreground" />;
+                      return (
+                        <div key={m.id} className="rounded-lg border border-border p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">vs {m.opponent_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {m.match_date} · Court {m.court_id || "—"}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {icon}
+                                <p className="text-sm font-semibold tabular-nums">{m.score || "—"}</p>
+                              </div>
+                              <div className="mt-1 flex items-center justify-end gap-1">
+                                {m.confirmed ? (
+                                  <Badge variant="secondary" className="text-[10px] bg-accent/20 text-accent-foreground border-0">
+                                    Confirmed
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground border-0">
+                                    Unconfirmed
+                                  </Badge>
+                                )}
+                                {m.disputed ? (
+                                  <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border-0">
+                                    Disputed
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
+	        </motion.section>
+	      )}
 
       {/* Create social dialog */}
       <Dialog open={socialCreateOpen} onOpenChange={setSocialCreateOpen}>

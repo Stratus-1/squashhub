@@ -10,7 +10,9 @@ CREATE TABLE public.booking_invites (
   channel text NOT NULL DEFAULT 'email', -- 'email' or 'whatsapp'
   status text NOT NULL DEFAULT 'pending', -- 'pending', 'accepted', 'declined'
   decline_reason text,
-  token text NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  -- Avoid relying on gen_random_bytes(), which may not be on the active search_path in hosted environments.
+  -- uuid_send() yields 16 bytes; concatenating two UUIDs gives 32 bytes (64 hex chars).
+  token text NOT NULL DEFAULT encode(uuid_send(gen_random_uuid()) || uuid_send(gen_random_uuid()), 'hex'),
   created_at timestamptz NOT NULL DEFAULT now(),
   responded_at timestamptz
 );

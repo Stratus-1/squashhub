@@ -1,8 +1,6 @@
-import { PageHeader } from "@/components/PageHeader";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
-import { StatCard } from "@/components/StatCard";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -10,9 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell, Shield } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Trophy, Target, TrendingUp, Settings, LogOut, Loader2, Bell, Shield,
+  Swords, Award, Flame, ChevronRight, Calendar, MapPin, Hand, Zap
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { HeadToHeadRow, useHeadToHead, useIntegrations, useMyRoles, useProfile, useSquashTotals } from "@/hooks/use-data";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
@@ -23,7 +26,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Link } from "react-router-dom";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type StravaActivityPreview = {
   id: number;
@@ -56,9 +58,9 @@ type EditableProfileFields = {
 };
 
 type AvailabilityBlock = {
-  day_of_week: number; // 1=Mon ... 7=Sun
-  start_time: string; // HH:MM
-  end_time: string; // HH:MM
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
 };
 
 const dayOptions: Array<{ value: number; label: string }> = [
@@ -71,42 +73,48 @@ const dayOptions: Array<{ value: number; label: string }> = [
   { value: 7, label: "Sun" },
 ];
 
+/* ─── Win Rate Ring ─── */
+function WinRateRing({ rate, size = 80 }: { rate: number; size?: number }) {
+  const stroke = 6;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (rate / 100) * circumference;
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius} fill="none"
+          stroke="hsl(var(--primary))" strokeWidth={stroke}
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-lg font-bold font-heading leading-none">{rate}%</span>
+        <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Win</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Coming Soon Card ─── */
 function ComingSoonAppCard({
-  provider,
-  title,
-  subtitle,
-  learnMoreText,
-  className,
+  provider, title, subtitle, learnMoreText, className,
 }: {
   provider: "apple_health" | "samsung_health" | "huawei_health" | "garmin";
-  title: string;
-  subtitle: string;
-  learnMoreText: string;
-  className?: string;
+  title: string; subtitle: string; learnMoreText: string; className?: string;
 }) {
   return (
-    <div className={["rounded-lg border bg-card p-4 h-full flex flex-col", className || ""].join(" ")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <IntegrationLogo provider={provider} className="opacity-40 grayscale" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{title}</p>
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
-          </div>
-        </div>
-        <Badge variant="secondary" className="bg-muted text-muted-foreground">
-          Coming soon
-        </Badge>
+    <div className={["rounded-lg border border-border bg-card p-4 flex items-center gap-3", className || ""].join(" ")}>
+      <IntegrationLogo provider={provider} className="opacity-40 grayscale shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium truncate">{title}</p>
+        <p className="text-[11px] text-muted-foreground">{subtitle}</p>
       </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 text-xs mt-3 w-full"
-        onClick={() => toast(learnMoreText)}
-      >
-        Learn more
-      </Button>
+      <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0 text-[10px]">Soon</Badge>
     </div>
   );
 }
@@ -126,61 +134,30 @@ export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [edit, setEdit] = useState<EditableProfileFields>({
-    name: "",
-    phone: "",
-    bio: "",
-    location: "",
-    home_club: "",
-    dominant_hand: "",
-    years_playing: "",
-    playing_style: "",
-    favorite_shot: "",
-    privacy_show_about: true,
-    privacy_show_availability: true,
-    privacy_show_recent_matches: true,
-    privacy_show_training: true,
-    privacy_show_advanced_stats: true,
+    name: "", phone: "", bio: "", location: "", home_club: "",
+    dominant_hand: "", years_playing: "", playing_style: "", favorite_shot: "",
+    privacy_show_about: true, privacy_show_availability: true,
+    privacy_show_recent_matches: true, privacy_show_training: true, privacy_show_advanced_stats: true,
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
 
-  const strava = useMemo(
-    () => integrations?.find((i) => i.provider === "strava") || null,
-    [integrations]
-  );
+  const strava = useMemo(() => integrations?.find((i) => i.provider === "strava") || null, [integrations]);
 
-  const publicWebBaseUrl = (import.meta.env.VITE_PUBLIC_URL as string | undefined)
-    ?.trim()
-    ?.replace(/\/+$/, "");
-
-  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
-    ?.trim()
-    ?.replace(/\/+$/, "");
-
+  const publicWebBaseUrl = (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.trim()?.replace(/\/+$/, "");
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()?.replace(/\/+$/, "");
   const supabaseKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim();
 
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
       .channel(`realtime:profiles:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "profiles",
-          filter: `id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
-          queryClient.invalidateQueries({ queryKey: ["ladder"] });
-        }
-      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [queryClient, user?.id]);
 
   if (isLoading) {
@@ -191,562 +168,390 @@ export default function Profile() {
     );
   }
 
-  const winRate = profile && profile.matches_played > 0
-    ? Math.round((profile.wins / profile.matches_played) * 100)
-    : 0;
-
+  const winRate = profile && profile.matches_played > 0 ? Math.round((profile.wins / profile.matches_played) * 100) : 0;
   const phoneMissing = !profile?.phone || String(profile.phone).trim().length === 0;
+  const initials = profile?.name ? profile.name.split(" ").map((n: string) => n[0]).join("").toUpperCase() : "?";
+  const canOpenAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
 
-  const initials = profile?.name
-    ? profile.name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
-    : "?";
-
-  const stravaDistanceM =
-    (profile as any)?.strava_distance_m != null ? Number((profile as any).strava_distance_m) : null;
-  const stravaMovingTimeS =
-    (profile as any)?.strava_moving_time_s != null ? Number((profile as any).strava_moving_time_s) : null;
-
-  const stravaKm =
-    stravaDistanceM != null ? Math.round((stravaDistanceM / 1000) * 10) / 10 : null;
-  const stravaMinutes =
-    stravaMovingTimeS != null ? Math.round(stravaMovingTimeS / 60) : null;
-  const stravaElevationRaw =
-    (profile as any)?.strava_elevation_m != null ? Number((profile as any).strava_elevation_m) : null;
-  const stravaElevationM =
-    stravaElevationRaw != null ? Math.round(stravaElevationRaw * 10) / 10 : null;
-  const stravaAvgSpeedKmh =
-    stravaDistanceM != null && stravaMovingTimeS != null && stravaMovingTimeS > 0
-      ? Math.round(((stravaDistanceM / stravaMovingTimeS) * 3.6) * 10) / 10
-      : null;
-  const stravaPaceSecPerKm =
-    stravaDistanceM != null && stravaMovingTimeS != null && stravaDistanceM > 0
-      ? stravaMovingTimeS / (stravaDistanceM / 1000)
-      : null;
-  const stravaPace = (() => {
-    if (stravaPaceSecPerKm == null || !Number.isFinite(stravaPaceSecPerKm)) return null;
-    const paceSeconds = Math.max(0, Math.round(stravaPaceSecPerKm));
-    const mm = Math.floor(paceSeconds / 60);
-    const ss = paceSeconds % 60;
-    return `${mm}:${String(ss).padStart(2, "0")} /km`;
-  })();
-  const stravaLastSync =
-    (profile as any)?.strava_last_sync_at ? new Date((profile as any).strava_last_sync_at as string) : null;
-  const stravaActivitiesCount =
-    typeof (profile as any)?.strava_activities_count === "number" ? ((profile as any).strava_activities_count as number) : null;
-
-  const canOpenAdmin =
-    (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
+  // Strava derived
+  const stravaDistanceM = (profile as any)?.strava_distance_m != null ? Number((profile as any).strava_distance_m) : null;
+  const stravaMovingTimeS = (profile as any)?.strava_moving_time_s != null ? Number((profile as any).strava_moving_time_s) : null;
+  const stravaKm = stravaDistanceM != null ? Math.round((stravaDistanceM / 1000) * 10) / 10 : null;
+  const stravaMinutes = stravaMovingTimeS != null ? Math.round(stravaMovingTimeS / 60) : null;
+  const stravaElevationRaw = (profile as any)?.strava_elevation_m != null ? Number((profile as any).strava_elevation_m) : null;
+  const stravaElevationM = stravaElevationRaw != null ? Math.round(stravaElevationRaw * 10) / 10 : null;
+  const stravaActivitiesCount = typeof (profile as any)?.strava_activities_count === "number" ? ((profile as any).strava_activities_count as number) : null;
+  const stravaLastSync = (profile as any)?.strava_last_sync_at ? new Date((profile as any).strava_last_sync_at as string) : null;
 
   const rivals = useMemo(() => {
     const rows = (headToHead || []) as HeadToHeadRow[];
     return rows
       .filter((r) => r.matches >= 2)
-      .slice()
-      .sort((a, b) => {
-        if (b.matches !== a.matches) return b.matches - a.matches;
-        return Math.abs(a.win_rate - 50) - Math.abs(b.win_rate - 50);
-      })
+      .sort((a, b) => b.matches !== a.matches ? b.matches - a.matches : Math.abs(a.win_rate - 50) - Math.abs(b.win_rate - 50))
       .slice(0, 3);
   }, [headToHead]);
 
-  return (
-    <div className="bottom-nav-safe">
-      <PageHeader title="Profile" />
+  /* ─── Strava helpers ─── */
+  const getStravaAuth = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("You must be logged in");
+    if (!supabaseUrl || !supabaseKey) throw new Error("Missing configuration");
+    return { accessToken, supabaseUrl, supabaseKey };
+  };
 
+  const stravaFetch = async (action: string) => {
+    const { accessToken, supabaseUrl: url, supabaseKey: key } = await getStravaAuth();
+    const res = await fetch(`${url}/functions/v1/strava`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ action }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || `${action} failed`);
+    return payload;
+  };
+
+  return (
+    <div className="bottom-nav-safe pb-8">
+      {/* ─── Hero Profile Header ─── */}
       <motion.div
-        className="flex flex-col items-center px-4 mt-2"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+        className="relative bg-gradient-to-b from-primary/15 via-primary/5 to-transparent pt-8 pb-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
       >
-        <PlayerAvatar initials={initials} rank={profile?.rank} size="lg" />
-        <h2 className="text-lg font-bold font-heading mt-3">{profile?.name || "New Player"}</h2>
-        <p className="text-sm text-muted-foreground">{profile?.email}</p>
+        <div className="flex flex-col items-center px-4">
+          <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200 }}>
+            <PlayerAvatar initials={initials} rank={profile?.rank} size="lg" />
+          </motion.div>
+          <h1 className="text-xl font-bold font-heading mt-3 tracking-tight">{profile?.name || "New Player"}</h1>
+          <p className="text-sm text-muted-foreground">{profile?.email}</p>
+
+          {/* Quick info badges */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+            {profile?.rank && (
+              <Badge className="bg-primary/15 text-primary border-primary/20 gap-1">
+                <Trophy className="w-3 h-3" /> Rank #{profile.rank}
+              </Badge>
+            )}
+            {(profile as any)?.playing_style && (
+              <Badge variant="secondary" className="gap-1">
+                <Zap className="w-3 h-3" /> {(profile as any).playing_style}
+              </Badge>
+            )}
+            {(profile as any)?.dominant_hand && (
+              <Badge variant="secondary" className="gap-1">
+                <Hand className="w-3 h-3" /> {(profile as any).dominant_hand}
+              </Badge>
+            )}
+            {(profile as any)?.location && (
+              <Badge variant="secondary" className="gap-1">
+                <MapPin className="w-3 h-3" /> {(profile as any).location}
+              </Badge>
+            )}
+          </div>
+
+          {/* Core Stats Row */}
+          <div className="flex items-center gap-6 mt-5">
+            <div className="text-center">
+              <p className="text-2xl font-bold font-heading">{profile?.matches_played || 0}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Played</p>
+            </div>
+            <WinRateRing rate={winRate} />
+            <div className="text-center">
+              <p className="text-2xl font-bold font-heading text-win">{profile?.wins || 0}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Wins</p>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 mt-4">
-        <StatCard label="Rank" value={profile?.rank ? `#${profile.rank}` : "—"} icon={<Trophy className="w-4 h-4" />} />
-        <StatCard label="Played" value={profile?.matches_played || 0} icon={<Target className="w-4 h-4" />} />
-        <StatCard label="Wins" value={profile?.wins || 0} variant="win" />
-        <StatCard label="Win %" value={`${winRate}%`} icon={<TrendingUp className="w-4 h-4" />} />
-      </div>
-
+      {/* ─── Complete Profile CTA ─── */}
       {phoneMissing && (
-        <div className="px-4 mt-3">
-          <Card className="p-4 border-accent/40 bg-accent/5">
-            <p className="text-sm font-semibold font-heading">Complete your profile</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Please add your cell number so the club can contact you about challenges and bookings.
-            </p>
-            <Button className="h-8 text-xs mt-3" onClick={() => setEditOpen(true)}>
-              Add cell number
-            </Button>
+        <div className="px-4 -mt-2 mb-3">
+          <Card className="border-accent/40 bg-accent/5">
+            <CardContent className="p-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold font-heading">Complete your profile</p>
+                <p className="text-xs text-muted-foreground">Add your cell number so the club can reach you.</p>
+              </div>
+              <Button size="sm" className="shrink-0" onClick={() => setEditOpen(true)}>Add</Button>
+            </CardContent>
           </Card>
         </div>
       )}
 
-      <div className="px-4 mt-3">
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold font-heading">Squash Stats</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Competitive confirmed matches (ladder-recordable).
-              </p>
-            </div>
-          </div>
+      {/* ─── Tabbed Content ─── */}
+      <div className="px-4 mt-2">
+        <Tabs defaultValue="stats" className="w-full">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="stats" className="text-xs gap-1"><Target className="w-3.5 h-3.5" /> Stats</TabsTrigger>
+            <TabsTrigger value="rivals" className="text-xs gap-1"><Swords className="w-3.5 h-3.5" /> Rivals</TabsTrigger>
+            <TabsTrigger value="training" className="text-xs gap-1"><Flame className="w-3.5 h-3.5" /> Training</TabsTrigger>
+          </TabsList>
 
-          {squashTotalsLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            </div>
-          ) : squashTotals && squashTotals.matches > 0 ? (
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg duration</p>
-                <p className="text-sm font-semibold">{squashTotals.avg_duration_min != null ? `${squashTotals.avg_duration_min} min` : "—"}</p>
+          {/* ── Stats Tab ── */}
+          <TabsContent value="stats" className="space-y-3 mt-3">
+            {squashTotalsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
               </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Streak</p>
-                <p className="text-sm font-semibold">{squashTotals.current_streak || "—"}</p>
-              </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Sets F/A</p>
-                <p className="text-sm font-semibold tabular-nums">
-                  {squashTotals.sets_for}-{squashTotals.sets_against}
-                </p>
-              </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Points F/A</p>
-                <p className="text-sm font-semibold tabular-nums">
-                  {squashTotals.points_for}-{squashTotals.points_against}
-                </p>
-              </div>
+            ) : squashTotals && squashTotals.matches > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <Card className="p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Current Streak</p>
+                    <p className="text-lg font-bold font-heading mt-1">{squashTotals.current_streak || "—"}</p>
+                  </Card>
+                  <Card className="p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Avg Duration</p>
+                    <p className="text-lg font-bold font-heading mt-1">{squashTotals.avg_duration_min != null ? `${squashTotals.avg_duration_min}m` : "—"}</p>
+                  </Card>
+                </div>
 
-              <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
-                Best streaks: <span className="text-foreground font-medium">W{squashTotals.best_win_streak}</span>{" "}
-                · <span className="text-foreground font-medium">L{squashTotals.best_loss_streak}</span>
-                {squashTotals.last_match_date ? (
-                  <>
-                    {" "}
-                    · Last match: <span className="text-foreground font-medium">{squashTotals.last_match_date}</span>
-                  </>
-                ) : null}
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground mt-2">No confirmed competitive matches yet.</p>
-          )}
-        </Card>
-      </div>
-
-      {headToHeadLoading ? (
-        <div className="px-4 mt-3">
-          <Card className="p-4">
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            </div>
-          </Card>
-        </div>
-      ) : (headToHead && headToHead.length > 0) ? (
-        <div className="px-4 mt-3">
-          <Card className="p-4">
-            <p className="text-sm font-semibold font-heading">Head-to-head</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Your most played opponents.
-            </p>
-
-            {rivals.length > 0 ? (
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {rivals.map((r) => (
-                  <div key={r.opponent_id} className="rounded-md border p-3">
-                    <p className="text-sm font-medium truncate">{r.opponent_name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {r.matches} matches · {r.wins}W {r.losses}L · {r.win_rate}% win
-                    </p>
+                <Card className="p-4">
+                  <p className="text-xs font-semibold font-heading mb-3">Sets & Points</p>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Sets won</span>
+                        <span className="font-medium tabular-nums">{squashTotals.sets_for} / {squashTotals.sets_for + squashTotals.sets_against}</span>
+                      </div>
+                      <Progress value={squashTotals.sets_for + squashTotals.sets_against > 0 ? (squashTotals.sets_for / (squashTotals.sets_for + squashTotals.sets_against)) * 100 : 0} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-muted-foreground">Points won</span>
+                        <span className="font-medium tabular-nums">{squashTotals.points_for} / {squashTotals.points_for + squashTotals.points_against}</span>
+                      </div>
+                      <Progress value={squashTotals.points_for + squashTotals.points_against > 0 ? (squashTotals.points_for / (squashTotals.points_for + squashTotals.points_against)) * 100 : 0} className="h-2" />
+                    </div>
                   </div>
-                ))}
-              </div>
-            ) : null}
+                  <div className="flex gap-4 mt-3 text-[11px] text-muted-foreground">
+                    <span>Best win streak: <span className="text-foreground font-medium">W{squashTotals.best_win_streak}</span></span>
+                    <span>Best loss streak: <span className="text-foreground font-medium">L{squashTotals.best_loss_streak}</span></span>
+                  </div>
+                  {squashTotals.last_match_date && (
+                    <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> Last match: {squashTotals.last_match_date}
+                    </p>
+                  )}
+                </Card>
+              </>
+            ) : (
+              <Card className="p-6 text-center">
+                <Award className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+                <p className="text-sm text-muted-foreground mt-2">No competitive matches yet.</p>
+                <p className="text-xs text-muted-foreground">Challenge someone to start building your stats!</p>
+              </Card>
+            )}
+          </TabsContent>
 
-            <div className="mt-3">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40%]">Opponent</TableHead>
-                    <TableHead className="w-[18%]">W/L</TableHead>
-                    <TableHead className="w-[22%]">Sets</TableHead>
-                    <TableHead className="w-[20%] text-right">Last</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(headToHead || []).slice(0, 6).map((r) => (
-                    <TableRow key={r.opponent_id}>
-                      <TableCell className="p-3 text-sm">{r.opponent_name}</TableCell>
-                      <TableCell className="p-3 text-sm tabular-nums">{r.wins}-{r.losses}</TableCell>
-                      <TableCell className="p-3">
-                        <p className="text-sm tabular-nums">{r.sets_for}-{r.sets_against}</p>
-                        <p className="text-[11px] text-muted-foreground tabular-nums">
-                          {r.points_for}-{r.points_against} pts
+          {/* ── Rivals Tab ── */}
+          <TabsContent value="rivals" className="space-y-3 mt-3">
+            {headToHeadLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            ) : rivals.length > 0 ? (
+              <>
+                {/* Top rivals */}
+                {rivals.map((r, idx) => (
+                  <Card key={r.opponent_id} className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{r.opponent_name}</p>
+                        <p className="text-xs text-muted-foreground">{r.matches} matches</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold tabular-nums">
+                          <span className="text-win">{r.wins}W</span>
+                          <span className="text-muted-foreground mx-1">–</span>
+                          <span className="text-loss">{r.losses}L</span>
                         </p>
-                      </TableCell>
-                      <TableCell className="p-3 text-sm text-right text-muted-foreground tabular-nums">
-                        {r.last_match_date || "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
-        </div>
-      ) : null}
+                        <p className="text-[11px] text-muted-foreground tabular-nums">{r.win_rate}% win rate</p>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <Progress value={r.win_rate} className="h-1.5" />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
+                      <span>Sets: {r.sets_for}–{r.sets_against}</span>
+                      <span>Pts: {r.points_for}–{r.points_against}</span>
+                      {r.last_match_date && <span>Last: {r.last_match_date}</span>}
+                    </div>
+                  </Card>
+                ))}
 
-      <div className="px-4 mt-3">
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold font-heading">Training Stats</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {strava ? "Strava totals from your last sync." : "Connect Strava to show training totals."}
-              </p>
-            </div>
-            <div className="shrink-0">
-              <IntegrationLogo provider="strava" className={strava ? "" : "opacity-40 grayscale"} />
-            </div>
-          </div>
-
-          {strava ? (
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Distance</p>
-                <p className="text-sm font-semibold">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
-              </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Time</p>
-                <p className="text-sm font-semibold">{stravaMinutes != null ? `${stravaMinutes} min` : "—"}</p>
-              </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Elevation</p>
-                <p className="text-sm font-semibold">{stravaElevationM != null ? `${stravaElevationM} m` : "—"}</p>
-              </div>
-              <div className="rounded-md border p-2">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Activities</p>
-                <p className="text-sm font-semibold">{stravaActivitiesCount != null ? stravaActivitiesCount : "—"}</p>
-              </div>
-              <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
-                {stravaLastSync ? `Last synced: ${stravaLastSync.toLocaleString()}` : "Not synced yet — tap Sync in Connected Apps."}
-              </p>
-              {stravaDistanceM != null && stravaMovingTimeS != null && stravaElevationRaw != null && (
-                <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
-                  Raw totals: {stravaDistanceM} m · {stravaMovingTimeS} s · {Math.round(stravaElevationRaw * 10) / 10} m
-                </p>
-              )}
-              {(stravaAvgSpeedKmh != null || stravaPace) && (
-                <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
-                  {stravaAvgSpeedKmh != null ? `Avg speed: ${stravaAvgSpeedKmh} km/h` : ""}
-                  {stravaAvgSpeedKmh != null && stravaPace ? " · " : ""}
-                  {stravaPace ? `Pace: ${stravaPace}` : ""}
-                </p>
-              )}
-            </div>
-          ) : null}
-
-          {strava && (
-            <div className="mt-3">
-              <Button
-                variant="secondary"
-                className="w-full"
-                disabled={stravaRecentLoading || !supabaseUrl || !supabaseKey}
-                onClick={async () => {
-                  try {
-                    setStravaRecentLoading(true);
-                    const { data: sessionData } = await supabase.auth.getSession();
-                    const accessToken = sessionData.session?.access_token;
-                    if (!accessToken) throw new Error("You must be logged in");
-                    if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
-                      throw new Error("Your login session looks invalid. Please sign out and sign in again.");
-                    }
-                    if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
-                    if (!supabaseKey) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
-
-                    const res = await fetch(`${supabaseUrl}/functions/v1/strava`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        apikey: supabaseKey,
-                        Authorization: `Bearer ${accessToken}`,
-                      },
-                      body: JSON.stringify({ action: "recent" }),
-                    });
-                    const payload = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(payload?.error || "Failed to load recent activities");
-                    setStravaRecent((payload.activities || []) as StravaActivityPreview[]);
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to load recent activities");
-                  } finally {
-                    setStravaRecentLoading(false);
-                  }
-                }}
-              >
-                {stravaRecentLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Loading Strava activities…
-                  </>
-                ) : (
-                  "Show recent Strava activities"
+                {/* Full H2H list */}
+                {(headToHead || []).length > 3 && (
+                  <Card className="p-4">
+                    <p className="text-xs font-semibold font-heading mb-2">All opponents</p>
+                    <div className="space-y-2">
+                      {(headToHead || []).filter(r => !rivals.find(rv => rv.opponent_id === r.opponent_id)).slice(0, 5).map((r) => (
+                        <div key={r.opponent_id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                          <span className="text-sm truncate">{r.opponent_name}</span>
+                          <span className="text-xs tabular-nums text-muted-foreground">{r.wins}W–{r.losses}L ({r.win_rate}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
                 )}
-              </Button>
+              </>
+            ) : (
+              <Card className="p-6 text-center">
+                <Swords className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+                <p className="text-sm text-muted-foreground mt-2">No rivals yet.</p>
+                <p className="text-xs text-muted-foreground">Play 2+ matches against someone to see them here.</p>
+              </Card>
+            )}
+          </TabsContent>
 
-              {stravaRecent && stravaRecent.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {stravaRecent.slice(0, 5).map((a) => {
-                    const km = Math.round((a.distance / 1000) * 10) / 10;
-                    const minutes = Math.round(a.moving_time / 60);
-                    const elevation = Math.round(a.total_elevation_gain * 10) / 10;
-                    return (
-                      <div key={a.id} className="rounded-md border p-3">
+          {/* ── Training Tab ── */}
+          <TabsContent value="training" className="space-y-3 mt-3">
+            {strava ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <Card className="p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Distance</p>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
+                  </Card>
+                  <Card className="p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Time</p>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaMinutes != null ? `${stravaMinutes} min` : "—"}</p>
+                  </Card>
+                  <Card className="p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Elevation</p>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaElevationM != null ? `${stravaElevationM} m` : "—"}</p>
+                  </Card>
+                  <Card className="p-3">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Activities</p>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaActivitiesCount ?? "—"}</p>
+                  </Card>
+                </div>
+                {stravaLastSync && (
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    Last synced: {stravaLastSync.toLocaleString()}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" disabled={stravaSyncing} onClick={async () => {
+                    try {
+                      setStravaSyncing(true);
+                      const payload = await stravaFetch("sync");
+                      if (!payload?.totals) throw new Error("Sync failed");
+                      const km = Math.round((payload.totals.distance_m / 1000) * 10) / 10;
+                      toast.success(`Synced: ${km} km`);
+                      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+                      queryClient.invalidateQueries({ queryKey: ["integrations"] });
+                    } catch (e: any) { toast.error(e.message); } finally { setStravaSyncing(false); }
+                  }}>
+                    {stravaSyncing ? "Syncing…" : "Sync Strava"}
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={stravaRecentLoading} onClick={async () => {
+                    try {
+                      setStravaRecentLoading(true);
+                      const payload = await stravaFetch("recent");
+                      setStravaRecent((payload.activities || []) as StravaActivityPreview[]);
+                    } catch (e: any) { toast.error(e.message); } finally { setStravaRecentLoading(false); }
+                  }}>
+                    {stravaRecentLoading ? "Loading…" : "Recent"}
+                  </Button>
+                </div>
+                {stravaRecent && stravaRecent.length > 0 && (
+                  <div className="space-y-2">
+                    {stravaRecent.slice(0, 5).map((a) => (
+                      <Card key={a.id} className="p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{a.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(a.start_date).toLocaleString()} · {a.sport_type || a.type}
-                            </p>
+                            <p className="text-[11px] text-muted-foreground">{new Date(a.start_date).toLocaleDateString()} · {a.sport_type || a.type}</p>
                           </div>
-                          <div className="shrink-0 text-right">
-                            <p className="text-sm font-semibold tabular-nums">{km} km</p>
-                            <p className="text-xs text-muted-foreground tabular-nums">
-                              {minutes} min · {elevation} m
-                            </p>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold tabular-nums">{Math.round((a.distance / 1000) * 10) / 10} km</p>
+                            <p className="text-[11px] text-muted-foreground tabular-nums">{Math.round(a.moving_time / 60)} min</p>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <Card className="p-6 text-center">
+                <IntegrationLogo provider="strava" className="opacity-40 grayscale mx-auto" />
+                <p className="text-sm text-muted-foreground mt-3">Connect Strava to track training.</p>
+                <Button size="sm" className="mt-3" onClick={async () => {
+                  const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
+                  if (!clientId) { toast.error("Missing Strava config"); return; }
+                  const state = crypto.randomUUID();
+                  sessionStorage.setItem("strava_oauth_state", state);
+                  const webBase = publicWebBaseUrl || window.location.origin;
+                  const redirectUri = Capacitor.isNativePlatform()
+                    ? "gbsquash://integrations/strava/callback"
+                    : `${webBase}/integrations/strava/callback`;
+                  const url = new URL("https://www.strava.com/oauth/authorize");
+                  url.searchParams.set("client_id", clientId);
+                  url.searchParams.set("redirect_uri", redirectUri);
+                  url.searchParams.set("response_type", "code");
+                  url.searchParams.set("approval_prompt", "auto");
+                  url.searchParams.set("scope", "read,activity:read");
+                  url.searchParams.set("state", state);
+                  if (Capacitor.isNativePlatform()) {
+                    const { Browser } = await import("@capacitor/browser");
+                    await Browser.open({ url: url.toString() });
+                    return;
+                  }
+                  window.location.assign(url.toString());
+                }}>
+                  Connect Strava
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
+      {/* ─── Settings Section ─── */}
       <Separator className="my-5 mx-4" />
 
       <div className="px-4 space-y-2 mb-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold font-heading">Connected Apps</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Connect fitness apps to enrich your training stats.
-              </p>
+        <p className="text-xs font-semibold font-heading text-muted-foreground uppercase tracking-wider mb-2">Settings</p>
+
+        {/* Connected Apps */}
+        <Card className="overflow-hidden">
+          <button
+            className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
+            onClick={() => {
+              // Scroll to connected apps section or open a dialog — for now toast
+              toast.info("Connected apps: Strava" + (strava ? " ✓" : " — not connected"));
+            }}
+          >
+            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+              <Flame className="w-4 h-4 text-primary" />
             </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-lg border bg-card p-4 h-full flex flex-col">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <IntegrationLogo provider="strava" className={strava ? "" : "opacity-40 grayscale"} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">Strava</p>
-                    <p className="text-xs text-muted-foreground">
-                      {strava?.display_name
-                        ? `Connected as ${strava.display_name}`
-                        : "Sync your recent activities (running/cycling/training)"}
-                    </p>
-                  </div>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className={strava ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}
-                >
-                  {strava ? "Connected" : "Not connected"}
-                </Badge>
-              </div>
-
-              {strava && (
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  {stravaActivitiesCount != null ? `${stravaActivitiesCount} activities` : "—"}
-                  {stravaKm != null ? ` · ${stravaKm} km` : ""}
-                  {stravaMinutes != null ? ` · ${stravaMinutes} min` : ""}
-                  {stravaElevationM != null ? ` · ${stravaElevationM} m` : ""}
-                </p>
-              )}
-
-              <div className={`mt-3 grid gap-2 ${strava ? "grid-cols-2" : "grid-cols-1"}`}>
-                {strava ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs w-full"
-                      disabled={stravaSyncing}
-                      onClick={async () => {
-                        try {
-                          setStravaSyncing(true);
-                          const { data: sessionData } = await supabase.auth.getSession();
-                          const accessToken = sessionData.session?.access_token;
-                          if (!accessToken) throw new Error("You must be logged in");
-                          if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
-                            throw new Error("Your login session looks invalid. Please sign out and sign in again.");
-                          }
-                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
-                          if (!supabaseKey) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
-
-                          const res = await fetch(`${supabaseUrl}/functions/v1/strava`, {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              apikey: supabaseKey,
-                              Authorization: `Bearer ${accessToken}`,
-                            },
-                            body: JSON.stringify({ action: "sync" }),
-                          });
-
-                          const payload = await res.json().catch(() => ({}));
-                          if (!res.ok) throw new Error(payload?.error || "Sync failed");
-                          if (!payload?.totals) throw new Error("Sync failed");
-
-                          const km = Math.round((payload.totals.distance_m / 1000) * 10) / 10;
-                          const minutes = Math.round(payload.totals.moving_time_s / 60);
-                          const elevation = Math.round(payload.totals.elevation_m * 10) / 10;
-                          toast.success(`Synced: ${km} km · ${minutes} min · ${elevation} m (last ${payload.activitiesCount} activities)`);
-                          queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
-                          queryClient.invalidateQueries({ queryKey: ["ladder"] });
-                          queryClient.invalidateQueries({ queryKey: ["integrations"] });
-                        } catch (e: any) {
-                          toast.error(e.message || "Sync failed");
-                        } finally {
-                          setStravaSyncing(false);
-                        }
-                      }}
-                    >
-                      {stravaSyncing ? "Syncing…" : "Sync"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs w-full"
-                      disabled={stravaSyncing}
-                      onClick={async () => {
-                        try {
-                          const { data: sessionData } = await supabase.auth.getSession();
-                          const accessToken = sessionData.session?.access_token;
-                          if (!accessToken) throw new Error("You must be logged in");
-                          if (!accessToken.startsWith("eyJ") || accessToken.split(".").length !== 3) {
-                            throw new Error("Your login session looks invalid. Please sign out and sign in again.");
-                          }
-                          if (!supabaseUrl) throw new Error("Missing VITE_SUPABASE_URL");
-                          if (!supabaseKey) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY");
-
-                          const res = await fetch(`${supabaseUrl}/functions/v1/strava`, {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              apikey: supabaseKey,
-                              Authorization: `Bearer ${accessToken}`,
-                            },
-                            body: JSON.stringify({ action: "disconnect" }),
-                          });
-
-                          const payload = await res.json().catch(() => ({}));
-                          if (!res.ok) throw new Error(payload?.error || "Failed to disconnect");
-                          if (!payload?.disconnected) throw new Error("Failed to disconnect");
-                          toast.success("Strava disconnected");
-                          queryClient.invalidateQueries({ queryKey: ["integrations"] });
-                          queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
-                          queryClient.invalidateQueries({ queryKey: ["ladder"] });
-                        } catch (e: any) {
-                          toast.error(e.message || "Failed to disconnect");
-                        }
-                      }}
-                    >
-                      Disconnect
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    className="h-8 text-xs w-full"
-                    onClick={async () => {
-                      const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
-                      if (!clientId) {
-                        toast.error("Missing VITE_STRAVA_CLIENT_ID");
-                        return;
-                      }
-
-                      const state = crypto.randomUUID();
-                      sessionStorage.setItem("strava_oauth_state", state);
-                      const webBase = publicWebBaseUrl || window.location.origin;
-                      const redirectUri = Capacitor.isNativePlatform()
-                        ? "gbsquash://integrations/strava/callback"
-                        : `${webBase}/integrations/strava/callback`;
-
-                      const url = new URL("https://www.strava.com/oauth/authorize");
-                      url.searchParams.set("client_id", clientId);
-                      url.searchParams.set("redirect_uri", redirectUri);
-                      url.searchParams.set("response_type", "code");
-                      url.searchParams.set("approval_prompt", "auto");
-                      url.searchParams.set("scope", "read,activity:read");
-                      url.searchParams.set("state", state);
-
-                      if (Capacitor.isNativePlatform()) {
-                        const { Browser } = await import("@capacitor/browser");
-                        await Browser.open({ url: url.toString() });
-                        return;
-                      }
-
-                      window.location.assign(url.toString());
-                    }}
-                  >
-                    Connect
-                  </Button>
-                )}
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Connected Apps</p>
+              <p className="text-[11px] text-muted-foreground">{strava ? "Strava connected" : "No apps connected"}</p>
             </div>
-
-            <ComingSoonAppCard
-              provider="apple_health"
-              title="Apple Health"
-              subtitle="Requires an iPhone app (HealthKit)."
-              learnMoreText="Coming soon: Apple Health requires an iOS app integration."
-            />
-
-            <ComingSoonAppCard
-              provider="samsung_health"
-              title="Samsung Health"
-              subtitle="Requires an Android app / Samsung SDK."
-              learnMoreText="Coming soon: Samsung Health needs an Android app integration."
-            />
-
-            <ComingSoonAppCard
-              provider="huawei_health"
-              title="Huawei Health"
-              subtitle="Requires Huawei Health Kit + Huawei ID."
-              learnMoreText="Huawei Health connection requires a native app integration (Huawei Health Kit + Huawei ID). Coming soon."
-            />
-
-            <ComingSoonAppCard
-              provider="garmin"
-              title="Garmin"
-              subtitle="Usually requires Garmin partner approval."
-              learnMoreText="Coming soon: Garmin integration usually requires partner approval."
-              className="sm:col-span-2"
-            />
-          </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
         </Card>
 
+        {/* Push notifications */}
         {permission !== "unsupported" && (
-          <Card className="p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <Card className="p-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
               <Bell className="w-4 h-4 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Push Notifications</p>
-                <p className="text-xs text-muted-foreground">
-                  {permission === "denied" ? "Blocked in browser settings" : "Challenges, matches & updates"}
-                </p>
-              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Push Notifications</p>
+              <p className="text-[11px] text-muted-foreground">
+                {permission === "denied" ? "Blocked in browser" : "Challenges & updates"}
+              </p>
             </div>
             <Switch
               checked={isSubscribed}
@@ -755,25 +560,22 @@ export default function Profile() {
             />
           </Card>
         )}
-        <Button variant="outline" className="w-full justify-start gap-3" onClick={() => setEditOpen(true)}>
+
+        {/* Action buttons */}
+        <Button variant="outline" className="w-full justify-start gap-3 h-11" onClick={() => setEditOpen(true)}>
           <Settings className="w-4 h-4" /> Edit Profile
         </Button>
         {canOpenAdmin && (
-          <Button variant="outline" className="w-full justify-start gap-3" asChild>
-            <Link to="/admin">
-              <Shield className="w-4 h-4" /> Admin Dashboard
-            </Link>
+          <Button variant="outline" className="w-full justify-start gap-3 h-11" asChild>
+            <Link to="/admin"><Shield className="w-4 h-4" /> Admin Dashboard</Link>
           </Button>
         )}
-        <Button
-          variant="outline"
-          className="w-full justify-start gap-3 text-destructive hover:text-destructive"
-          onClick={signOut}
-        >
+        <Button variant="outline" className="w-full justify-start gap-3 h-11 text-destructive hover:text-destructive" onClick={signOut}>
           <LogOut className="w-4 h-4" /> Sign Out
         </Button>
       </div>
 
+      {/* ─── Edit Profile Dialog ─── */}
       <Dialog
         open={editOpen}
         onOpenChange={(open) => {
@@ -796,7 +598,6 @@ export default function Profile() {
               privacy_show_advanced_stats: (profile as any).privacy_show_advanced_stats ?? true,
             });
           }
-
           if (open && user?.id) {
             setAvailabilityLoading(true);
             (supabase as any)
@@ -807,25 +608,20 @@ export default function Profile() {
               .order("start_time", { ascending: true })
               .then(({ data, error }: any) => {
                 if (error) throw error;
-                const blocks = (data || []).map((b: any) => ({
+                setAvailabilityBlocks((data || []).map((b: any) => ({
                   day_of_week: Number(b.day_of_week),
                   start_time: String(b.start_time || "").slice(0, 5),
                   end_time: String(b.end_time || "").slice(0, 5),
-                })) as AvailabilityBlock[];
-                setAvailabilityBlocks(blocks);
+                })));
               })
-              .catch((e: any) => {
-                toast.error(e.message || "Failed to load availability");
-              })
+              .catch((e: any) => toast.error(e.message || "Failed to load availability"))
               .finally(() => setAvailabilityLoading(false));
           }
         }}
       >
         <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
-          <div className="p-6 pb-4 border-b">
-            <DialogHeader>
-              <DialogTitle>Edit Profile</DialogTitle>
-            </DialogHeader>
+          <div className="p-6 pb-4 border-b border-border">
+            <DialogHeader><DialogTitle>Edit Profile</DialogTitle></DialogHeader>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -833,34 +629,15 @@ export default function Profile() {
               <Label>Name</Label>
               <Input value={edit.name} onChange={(e) => setEdit((s) => ({ ...s, name: e.target.value }))} />
             </div>
-
             <div className="space-y-1.5">
-              <Label>
-                Cell number <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                placeholder="e.g. +27 82 123 4567"
-                value={edit.phone}
-                onChange={(e) => setEdit((s) => ({ ...s, phone: e.target.value }))}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Required to complete your profile.
-              </p>
+              <Label>Cell number <span className="text-destructive">*</span></Label>
+              <Input type="tel" inputMode="tel" autoComplete="tel" placeholder="e.g. +27 82 123 4567" value={edit.phone} onChange={(e) => setEdit((s) => ({ ...s, phone: e.target.value }))} />
             </div>
-
             <div className="space-y-1.5">
               <Label>Bio</Label>
-              <Textarea
-                placeholder="A short intro about your squash game…"
-                value={edit.bio}
-                onChange={(e) => setEdit((s) => ({ ...s, bio: e.target.value }))}
-              />
+              <Textarea placeholder="A short intro about your squash game…" value={edit.bio} onChange={(e) => setEdit((s) => ({ ...s, bio: e.target.value }))} />
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Location</Label>
                 <Input value={edit.location} onChange={(e) => setEdit((s) => ({ ...s, location: e.target.value }))} />
@@ -870,17 +647,11 @@ export default function Profile() {
                 <Input value={edit.home_club} onChange={(e) => setEdit((s) => ({ ...s, home_club: e.target.value }))} />
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Dominant hand</Label>
-                <Select
-                  value={edit.dominant_hand}
-                  onValueChange={(v) => setEdit((s) => ({ ...s, dominant_hand: v as EditableProfileFields["dominant_hand"] }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
+                <Select value={edit.dominant_hand} onValueChange={(v) => setEdit((s) => ({ ...s, dominant_hand: v as EditableProfileFields["dominant_hand"] }))}>
+                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="right">Right</SelectItem>
                     <SelectItem value="left">Left</SelectItem>
@@ -890,290 +661,129 @@ export default function Profile() {
               </div>
               <div className="space-y-1.5">
                 <Label>Years playing</Label>
-                <Input
-                  inputMode="numeric"
-                  placeholder="e.g. 3"
-                  value={edit.years_playing}
-                  onChange={(e) => setEdit((s) => ({ ...s, years_playing: e.target.value }))}
-                />
+                <Input inputMode="numeric" placeholder="e.g. 3" value={edit.years_playing} onChange={(e) => setEdit((s) => ({ ...s, years_playing: e.target.value }))} />
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Playing style</Label>
-                <Input
-                  placeholder="e.g. Aggressive / Defensive"
-                  value={edit.playing_style}
-                  onChange={(e) => setEdit((s) => ({ ...s, playing_style: e.target.value }))}
-                />
+                <Input placeholder="e.g. Aggressive" value={edit.playing_style} onChange={(e) => setEdit((s) => ({ ...s, playing_style: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Favorite shot</Label>
-                <Input
-                  placeholder="e.g. Backhand drop"
-                  value={edit.favorite_shot}
-                  onChange={(e) => setEdit((s) => ({ ...s, favorite_shot: e.target.value }))}
-                />
+                <Input placeholder="e.g. Backhand drop" value={edit.favorite_shot} onChange={(e) => setEdit((s) => ({ ...s, favorite_shot: e.target.value }))} />
               </div>
             </div>
 
+            {/* Availability */}
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Label>Availability</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Add structured time windows so others can see when you usually play.
-                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">When you usually play.</p>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs"
-                  onClick={() =>
-                    setAvailabilityBlocks((prev) => [
-                      ...prev,
-                      { day_of_week: 1, start_time: "18:00", end_time: "19:00" },
-                    ])
-                  }
-                >
+                <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAvailabilityBlocks((prev) => [...prev, { day_of_week: 1, start_time: "18:00", end_time: "19:00" }])}>
                   Add
                 </Button>
               </div>
-
-              {(profile as any)?.availability ? (
-                <div className="rounded-md border p-3">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Summary</p>
-                  <p className="text-sm mt-1">{String((profile as any).availability)}</p>
-                </div>
-              ) : null}
-
               {availabilityLoading ? (
-                <div className="rounded-md border p-3 text-sm text-muted-foreground">Loading availability…</div>
+                <div className="rounded-md border border-border p-3 text-sm text-muted-foreground">Loading…</div>
               ) : availabilityBlocks.length === 0 ? (
-                <div className="rounded-md border p-3 text-sm text-muted-foreground">
-                  No availability set yet. Tap “Add” to add a time window.
-                </div>
+                <div className="rounded-md border border-border p-3 text-sm text-muted-foreground">No availability set.</div>
               ) : (
                 <div className="space-y-2">
                   {availabilityBlocks.map((b, idx) => (
-                    <div key={`${b.day_of_week}-${b.start_time}-${idx}`} className="rounded-md border p-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">Day</Label>
-                          <Select
-                            value={String(b.day_of_week)}
-                            onValueChange={(v) =>
-                              setAvailabilityBlocks((prev) =>
-                                prev.map((x, i) => (i === idx ? { ...x, day_of_week: Number(v) } : x))
-                              )
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {dayOptions.map((d) => (
-                                <SelectItem key={d.value} value={String(d.value)}>
-                                  {d.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">Start</Label>
-                          <Input
-                            type="time"
-                            step={1800}
-                            value={b.start_time}
-                            onChange={(e) =>
-                              setAvailabilityBlocks((prev) =>
-                                prev.map((x, i) => (i === idx ? { ...x, start_time: e.target.value } : x))
-                              )
-                            }
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">End</Label>
-                          <Input
-                            type="time"
-                            step={1800}
-                            value={b.end_time}
-                            onChange={(e) =>
-                              setAvailabilityBlocks((prev) =>
-                                prev.map((x, i) => (i === idx ? { ...x, end_time: e.target.value } : x))
-                              )
-                            }
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-10 sm:h-9 text-xs"
-                          onClick={() => setAvailabilityBlocks((prev) => prev.filter((_, i) => i !== idx))}
-                        >
-                          Remove
-                        </Button>
+                    <div key={`${b.day_of_week}-${idx}`} className="rounded-md border border-border p-3 grid grid-cols-4 gap-2 items-end">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Day</Label>
+                        <Select value={String(b.day_of_week)} onValueChange={(v) => setAvailabilityBlocks((prev) => prev.map((x, i) => (i === idx ? { ...x, day_of_week: Number(v) } : x)))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>{dayOptions.map((d) => <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>)}</SelectContent>
+                        </Select>
                       </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Start</Label>
+                        <Input type="time" value={b.start_time} onChange={(e) => setAvailabilityBlocks((prev) => prev.map((x, i) => (i === idx ? { ...x, start_time: e.target.value } : x)))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">End</Label>
+                        <Input type="time" value={b.end_time} onChange={(e) => setAvailabilityBlocks((prev) => prev.map((x, i) => (i === idx ? { ...x, end_time: e.target.value } : x)))} />
+                      </div>
+                      <Button type="button" size="sm" variant="outline" className="h-9 text-xs" onClick={() => setAvailabilityBlocks((prev) => prev.filter((_, i) => i !== idx))}>✕</Button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <Separator className="my-2" />
+            <Separator />
 
+            {/* Privacy */}
             <div className="space-y-2">
-              <div>
-                <p className="text-sm font-semibold font-heading">Public profile</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Control what other players can see when viewing your profile.
-                </p>
-              </div>
-
-              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">About section</p>
-                  <p className="text-[11px] text-muted-foreground">Bio + playing style details</p>
+              <p className="text-sm font-semibold font-heading">Public profile</p>
+              {[
+                { key: "privacy_show_about", label: "About section", desc: "Bio + style" },
+                { key: "privacy_show_availability", label: "Availability", desc: "Weekly windows" },
+                { key: "privacy_show_recent_matches", label: "Recent matches", desc: "H2H + results" },
+                { key: "privacy_show_training", label: "Training stats", desc: "Strava totals" },
+                { key: "privacy_show_advanced_stats", label: "Advanced stats", desc: "Streaks, points" },
+              ].map(({ key, label, desc }) => (
+                <div key={key} className="rounded-md border border-border p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className="text-[11px] text-muted-foreground">{desc}</p>
+                  </div>
+                  <Switch checked={(edit as any)[key]} onCheckedChange={(checked) => setEdit((s) => ({ ...s, [key]: checked }))} />
                 </div>
-                <Switch
-                  checked={edit.privacy_show_about}
-                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_about: checked }))}
-                />
-              </div>
-
-              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Availability</p>
-                  <p className="text-[11px] text-muted-foreground">Your weekly time windows</p>
-                </div>
-                <Switch
-                  checked={edit.privacy_show_availability}
-                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_availability: checked }))}
-                />
-              </div>
-
-              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Recent matches</p>
-                  <p className="text-[11px] text-muted-foreground">Head-to-head + recent results list</p>
-                </div>
-                <Switch
-                  checked={edit.privacy_show_recent_matches}
-                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_recent_matches: checked }))}
-                />
-              </div>
-
-              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Training stats</p>
-                  <p className="text-[11px] text-muted-foreground">Strava totals + activities</p>
-                </div>
-                <Switch
-                  checked={edit.privacy_show_training}
-                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_training: checked }))}
-                />
-              </div>
-
-              <div className="rounded-md border p-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Advanced squash stats</p>
-                  <p className="text-[11px] text-muted-foreground">Streaks, points/sets, averages</p>
-                </div>
-                <Switch
-                  checked={edit.privacy_show_advanced_stats}
-                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, privacy_show_advanced_stats: checked }))}
-                />
-              </div>
+              ))}
             </div>
           </div>
 
-          <div className="p-6 pt-4 border-t bg-background">
+          <div className="p-6 pt-4 border-t border-border bg-background">
             <DialogFooter>
               <Button
                 onClick={async () => {
                   try {
                     if (!user?.id) throw new Error("You must be logged in");
                     setEditSaving(true);
-
                     const phoneRaw = edit.phone.trim();
                     const digitsOnly = phoneRaw.replace(/\D/g, "");
-                    if (!phoneRaw) throw new Error("Please enter your cell number to complete your profile");
-                    if (digitsOnly.length < 9 || digitsOnly.length > 15) {
-                      throw new Error("Please enter a valid cell number (include country code if possible)");
-                    }
-
+                    if (!phoneRaw) throw new Error("Please enter your cell number");
+                    if (digitsOnly.length < 9 || digitsOnly.length > 15) throw new Error("Please enter a valid cell number");
                     const years = edit.years_playing.trim() ? Number(edit.years_playing) : null;
-                    if (years != null && (!Number.isFinite(years) || years < 0 || years > 80)) {
-                      throw new Error("Years playing must be between 0 and 80");
-                    }
+                    if (years != null && (!Number.isFinite(years) || years < 0 || years > 80)) throw new Error("Years playing must be 0–80");
 
-                    const { error } = await supabase
-                      .from("profiles")
-                      .update({
-                        name: edit.name.trim(),
-                        phone: phoneRaw,
-                        bio: edit.bio.trim() || null,
-                        location: edit.location.trim() || null,
-                        home_club: edit.home_club.trim() || null,
-                        dominant_hand: edit.dominant_hand || null,
-                        years_playing: years == null ? null : Math.trunc(years),
-                        playing_style: edit.playing_style.trim() || null,
-                        favorite_shot: edit.favorite_shot.trim() || null,
-                        privacy_show_about: !!edit.privacy_show_about,
-                        privacy_show_availability: !!edit.privacy_show_availability,
-                        privacy_show_recent_matches: !!edit.privacy_show_recent_matches,
-                        privacy_show_training: !!edit.privacy_show_training,
-                        privacy_show_advanced_stats: !!edit.privacy_show_advanced_stats,
-                      } as any)
-                      .eq("id", user.id);
+                    const { error } = await supabase.from("profiles").update({
+                      name: edit.name.trim(), phone: phoneRaw,
+                      bio: edit.bio.trim() || null, location: edit.location.trim() || null,
+                      home_club: edit.home_club.trim() || null, dominant_hand: edit.dominant_hand || null,
+                      years_playing: years == null ? null : Math.trunc(years),
+                      playing_style: edit.playing_style.trim() || null, favorite_shot: edit.favorite_shot.trim() || null,
+                      privacy_show_about: !!edit.privacy_show_about, privacy_show_availability: !!edit.privacy_show_availability,
+                      privacy_show_recent_matches: !!edit.privacy_show_recent_matches, privacy_show_training: !!edit.privacy_show_training,
+                      privacy_show_advanced_stats: !!edit.privacy_show_advanced_stats,
+                    } as any).eq("id", user.id);
                     if (error) throw error;
 
                     const cleanedBlocks = availabilityBlocks
-                      .map((b) => ({
-                        day_of_week: Number(b.day_of_week),
-                        start_time: String(b.start_time || "").trim(),
-                        end_time: String(b.end_time || "").trim(),
-                      }))
+                      .map((b) => ({ day_of_week: Number(b.day_of_week), start_time: String(b.start_time || "").trim(), end_time: String(b.end_time || "").trim() }))
                       .filter((b) => b.start_time && b.end_time);
-
                     for (const b of cleanedBlocks) {
-                      if (!Number.isFinite(b.day_of_week) || b.day_of_week < 1 || b.day_of_week > 7) {
-                        throw new Error("Availability day must be between Monday and Sunday");
-                      }
-                      if (b.start_time.length !== 5 || b.end_time.length !== 5) {
-                        throw new Error("Availability times must be HH:MM");
-                      }
-                      if (b.end_time <= b.start_time) {
-                        throw new Error("Availability end time must be after start time");
-                      }
+                      if (b.day_of_week < 1 || b.day_of_week > 7) throw new Error("Invalid day");
+                      if (b.end_time <= b.start_time) throw new Error("End time must be after start");
                     }
-
-                    const { error: availabilityError } = await (supabase.rpc as any)("set_my_availability", {
-                      blocks: cleanedBlocks,
-                    });
+                    const { error: availabilityError } = await (supabase.rpc as any)("set_my_availability", { blocks: cleanedBlocks });
                     if (availabilityError) throw availabilityError;
 
                     await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
                     await queryClient.invalidateQueries({ queryKey: ["player-profile", user.id] });
-                    await queryClient.invalidateQueries({ queryKey: ["bookings"] });
                     toast.success("Profile updated");
                     setEditOpen(false);
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to update profile");
-                  } finally {
-                    setEditSaving(false);
-                  }
+                  } catch (e: any) { toast.error(e.message || "Failed"); } finally { setEditSaving(false); }
                 }}
                 disabled={editSaving}
               >
                 {editSaving ? "Saving…" : "Save"}
-              </Button>
-              <Button variant="outline" onClick={() => setEditOpen(false)}>
-                Cancel
               </Button>
             </DialogFooter>
           </div>

@@ -9,6 +9,7 @@ import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
+import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
 import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";

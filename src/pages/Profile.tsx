@@ -1,3 +1,4 @@
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { Card, CardContent } from "@/components/ui/card";

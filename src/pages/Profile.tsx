@@ -780,13 +780,13 @@ export default function Profile() {
 
           if (open && user?.id) {
             setAvailabilityLoading(true);
-            supabase
+            (supabase as any)
               .from("player_availability")
               .select("day_of_week,start_time,end_time")
               .eq("user_id", user.id)
               .order("day_of_week", { ascending: true })
               .order("start_time", { ascending: true })
-              .then(({ data, error }) => {
+              .then(({ data, error }: any) => {
                 if (error) throw error;
                 const blocks = (data || []).map((b: any) => ({
                   day_of_week: Number(b.day_of_week),

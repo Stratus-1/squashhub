@@ -10,7 +10,6 @@ const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
 import { AppRole, useMyRoles } from "@/hooks/use-data";
 import { SEO } from "@/components/SEO";
-import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,10 +18,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import {
+  Users, Swords, Trophy, CalendarDays, Shield, AlertTriangle,
+  BarChart3, Megaphone, Clock, ChevronRight, Activity, BookOpen,
+  Calendar, Wrench, Download, Upload, UserCog, ClipboardList
+} from "lucide-react";
 
 type ProfileRow = {
   id: string;

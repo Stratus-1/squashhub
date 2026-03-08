@@ -875,6 +875,7 @@ export default function Admin() {
     onError: (err: any) => toast.error(err.message || "Failed to update player"),
   });
 
+  const openEdit = (p: ProfileRow) => {
     setEditUser({
       open: true,
       profile: p,

@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIntegrations } from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
+const fromExt = (table: string) => (supabase as any).from(table);
 import { Loader2, Play, Square, ExternalLink, Link2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";

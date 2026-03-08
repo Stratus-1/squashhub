@@ -104,7 +104,7 @@ export default function Dashboard() {
 
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications />
+      <SEO title="Dashboard" description="Your squash dashboard — stats, bookings, and challenges." path="/dashboard" noIndex />
 
       {/* Quick Stats */}
       <motion.div

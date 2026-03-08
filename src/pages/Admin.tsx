@@ -675,8 +675,7 @@ export default function Admin() {
         .single();
       if (bookingError) throw bookingError;
 
-      const { data: scheduled, error: scheduledError } = await supabase
-        .from("scheduled_matches")
+      const { data: scheduled, error: scheduledError } = await fromExt("scheduled_matches")
         .insert({
           booking_id: booking.id,
           player_a: payload.playerA,

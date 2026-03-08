@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Calendar, Trophy, Swords, ClipboardList,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,
-  Clock, Users, LogIn, Shield, UserRound
+  Clock, Users, LogIn, Shield, UserRound, Leaf, Sun, Snowflake, Flower2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -194,8 +194,8 @@ export default function Home() {
   const createSocial = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not logged in");
+      if (!canOpenAdmin) throw new Error("Only admins can create socials");
       if (!activeSeason?.id) throw new Error("No active season");
-      if (!joinedActiveSeason) throw new Error("Join the season first");
       const title = socialDraft.title.trim();
       if (!title) throw new Error("Please enter a title");
       const startsAt = new Date(`${socialDraft.date}T${socialDraft.startTime}:00`);
@@ -235,6 +235,50 @@ export default function Home() {
     onError: (e: any) => toast.error(e?.message || "Could not create social"),
   });
 
+  const [socialRequestOpen, setSocialRequestOpen] = useState(false);
+  const [socialRequestDraft, setSocialRequestDraft] = useState({
+    title: "",
+    description: "",
+    preferredDate: format(new Date(), "yyyy-MM-dd"),
+    preferredTime: "18:00",
+  });
+
+  const requestSocial = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error("Not logged in");
+      if (!activeSeason?.id) throw new Error("No active season");
+      const title = socialRequestDraft.title.trim();
+      if (!title) throw new Error("Please enter a title");
+      const { error } = await (supabase as any)
+        .from("event_requests")
+        .insert({
+          user_id: user.id,
+          season_id: activeSeason.id,
+          kind: "social",
+          title,
+          description: socialRequestDraft.description.trim() || null,
+          preferred_date: socialRequestDraft.preferredDate || null,
+          preferred_time: socialRequestDraft.preferredTime || null,
+          visibility: "members",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Request sent to admins");
+      setSocialRequestOpen(false);
+      setSocialRequestDraft((s) => ({ ...s, title: "", description: "" }));
+    },
+    onError: (e: any) => {
+      if ((e as any)?.code === "42P01") {
+        toast.error("Event requests are not enabled yet (database not updated).");
+        return;
+      }
+      toast.error(e?.message || "Could not send request");
+    },
+  });
+
   const topPlayers = (user ? ladder?.slice(0, 5) : publicLeaderboard?.slice(0, 5)) || [];
   const spotlight = topPlayers.length > 0 ? topPlayers[0] : null;
 
@@ -261,6 +305,52 @@ export default function Home() {
   const canOpenAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
   const seasonStartDate = activeSeason?.starts_on ? new Date(`${activeSeason.starts_on}T00:00:00`) : null;
   const isNewSeason = seasonStartDate ? Math.abs(differenceInCalendarDays(new Date(), seasonStartDate)) <= 7 : false;
+  const seasonTheme = (() => {
+    const name = (activeSeason?.name || "").toLowerCase();
+    if (name.includes("autumn") || name.includes("fall")) {
+      return {
+        label: "Autumn",
+        Icon: Leaf,
+        cardClass: "border-amber-500/25 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-background",
+        glowClass: "bg-amber-500/20",
+        iconClass: "text-amber-500/30",
+      };
+    }
+    if (name.includes("winter")) {
+      return {
+        label: "Winter",
+        Icon: Snowflake,
+        cardClass: "border-sky-500/25 bg-gradient-to-br from-sky-500/15 via-indigo-500/10 to-background",
+        glowClass: "bg-sky-500/18",
+        iconClass: "text-sky-500/30",
+      };
+    }
+    if (name.includes("spring")) {
+      return {
+        label: "Spring",
+        Icon: Flower2,
+        cardClass: "border-emerald-500/25 bg-gradient-to-br from-emerald-500/15 via-pink-500/10 to-background",
+        glowClass: "bg-emerald-500/16",
+        iconClass: "text-emerald-500/30",
+      };
+    }
+    if (name.includes("summer")) {
+      return {
+        label: "Summer",
+        Icon: Sun,
+        cardClass: "border-yellow-500/25 bg-gradient-to-br from-yellow-500/15 via-sky-500/10 to-background",
+        glowClass: "bg-yellow-500/18",
+        iconClass: "text-yellow-500/30",
+      };
+    }
+    return {
+      label: "Season",
+      Icon: Trophy,
+      cardClass: "border-primary/20 bg-primary/5",
+      glowClass: "bg-primary/10",
+      iconClass: "text-primary/25",
+    };
+  })();
 
   return (
     <div className="min-h-screen bg-background bottom-nav-safe">
@@ -411,8 +501,15 @@ export default function Home() {
           </div>
 
           {activeSeason && (
-            <Card className="mb-3 border-primary/20 bg-primary/5">
+            <Card className={["mb-3 relative overflow-hidden border", seasonTheme.cardClass].join(" ")}>
               <CardContent className="p-4">
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className={["absolute -top-10 -right-10 w-48 h-48 rounded-full blur-3xl", seasonTheme.glowClass].join(" ")} />
+                  <div className={["absolute -bottom-12 -left-12 w-56 h-56 rounded-full blur-3xl", seasonTheme.glowClass].join(" ")} />
+                  <seasonTheme.Icon className={["absolute top-4 right-4 w-12 h-12 rotate-12", seasonTheme.iconClass].join(" ")} />
+                  <seasonTheme.Icon className={["absolute bottom-4 left-5 w-10 h-10 -rotate-12", seasonTheme.iconClass].join(" ")} />
+                </div>
+
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Season</p>
@@ -428,6 +525,9 @@ export default function Home() {
                     ) : null}
                   </div>
                   <div className="shrink-0 flex flex-col items-end gap-2">
+                    <Badge variant="secondary" className="text-[10px] bg-background/50 border border-border/50">
+                      {seasonTheme.label}
+                    </Badge>
                     {joinedActiveSeason ? (
                       <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-0 text-[10px]">
                         Joined
@@ -443,13 +543,23 @@ export default function Home() {
                   </div>
                 </div>
 
-                {joinedActiveSeason && (
+                {canOpenAdmin && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => setSocialCreateOpen(true)}>
                       Create social
                     </Button>
                     <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/events")}>
                       View socials
+                    </Button>
+                  </div>
+                )}
+                {!canOpenAdmin && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => setSocialRequestOpen(true)}>
+                      Request a social
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/events")}>
+                      View events
                     </Button>
                   </div>
                 )}
@@ -645,6 +755,46 @@ export default function Home() {
             <Button variant="outline" onClick={() => setSocialCreateOpen(false)}>Cancel</Button>
             <Button onClick={() => createSocial.mutate()} disabled={createSocial.isPending}>
               {createSocial.isPending ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Request social dialog */}
+      <Dialog open={socialRequestOpen} onOpenChange={setSocialRequestOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Request a season social</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Card className="p-3 bg-muted/30">
+              <p className="text-xs text-muted-foreground">
+                Your request goes to the club admins. If approved, they’ll publish it as an official event you can RSVP to.
+              </p>
+            </Card>
+            <div className="space-y-1.5">
+              <Label>Title</Label>
+              <Input value={socialRequestDraft.title} onChange={(e) => setSocialRequestDraft((s) => ({ ...s, title: e.target.value }))} placeholder="e.g. Autumn braai + friendly games" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea value={socialRequestDraft.description} onChange={(e) => setSocialRequestDraft((s) => ({ ...s, description: e.target.value }))} placeholder="Optional details…" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Preferred date</Label>
+                <Input type="date" value={socialRequestDraft.preferredDate} onChange={(e) => setSocialRequestDraft((s) => ({ ...s, preferredDate: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Preferred time</Label>
+                <Input type="time" value={socialRequestDraft.preferredTime} onChange={(e) => setSocialRequestDraft((s) => ({ ...s, preferredTime: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSocialRequestOpen(false)}>Cancel</Button>
+            <Button onClick={() => requestSocial.mutate()} disabled={requestSocial.isPending}>
+              {requestSocial.isPending ? "Sending…" : "Send request"}
             </Button>
           </DialogFooter>
         </DialogContent>

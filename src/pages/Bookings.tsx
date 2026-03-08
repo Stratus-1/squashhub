@@ -666,6 +666,8 @@ export default function Bookings() {
                   const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
                   const b = (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
                   const isMine = booking && (booking as any).user_id === user?.id;
+                  const isBlocked = !!(booking as any)?.is_blocked;
+                  const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";
 
                   return (
                     <motion.div
@@ -688,10 +690,14 @@ export default function Bookings() {
                         <div className="px-1.5 min-w-0 text-center leading-tight">
                           <p className={cn(
                             "font-semibold text-[11px] truncate",
-                            isMine ? "text-primary" : "text-foreground/70"
+                            isBlocked
+                              ? "text-destructive"
+                              : isMine
+                                ? "text-primary"
+                                : "text-foreground/70"
                           )}>
-                            {a || "Booked"}
-                            {b ? ` vs ${b}` : ""}
+                            {isBlocked ? (blockReason || "Blocked") : (a || "Booked")}
+                            {!isBlocked && b ? ` vs ${b}` : ""}
                           </p>
                         </div>
                       ) : (
@@ -730,14 +736,25 @@ export default function Bookings() {
                   variant="secondary"
                   className={cn(
                     "text-[10px]",
-                    bookingDetails.is_friendly
+                    (bookingDetails as any).is_blocked
+                      ? "bg-destructive/15 text-destructive border-0"
+                      : bookingDetails.is_friendly
                       ? "bg-muted text-muted-foreground"
                       : "bg-primary/15 text-primary border-0"
                   )}
                 >
-                  {bookingDetails.is_friendly ? "Friendly" : "Ladder"}
+                  {(bookingDetails as any).is_blocked ? "Blocked" : bookingDetails.is_friendly ? "Friendly" : "Ladder"}
                 </Badge>
               </div>
+
+              {(bookingDetails as any).is_blocked && (
+                <Card className="p-3 border-destructive/20 bg-destructive/5">
+                  <p className="text-sm font-semibold">Court blocked</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Reason: {String((bookingDetails as any).block_reason || "Maintenance")}
+                  </p>
+                </Card>
+              )}
 
               <div className="rounded-xl border p-3 space-y-2.5">
                 <div className="flex items-center justify-between text-sm">
@@ -749,15 +766,17 @@ export default function Bookings() {
                     {typeof bookingDetails.player_rank === "number" ? ` (#${bookingDetails.player_rank})` : ""}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Swords className="w-3.5 h-3.5" /> Opponent
-                  </span>
-                  <span className="font-medium">
-                    {bookingDetails.opponent_name || "Not selected"}
-                    {typeof bookingDetails.opponent_rank === "number" ? ` (#${bookingDetails.opponent_rank})` : ""}
-                  </span>
-                </div>
+                {!(bookingDetails as any).is_blocked && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <Swords className="w-3.5 h-3.5" /> Opponent
+                    </span>
+                    <span className="font-medium">
+                      {bookingDetails.opponent_name || "Not selected"}
+                      {typeof bookingDetails.opponent_rank === "number" ? ` (#${bookingDetails.opponent_rank})` : ""}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {bookingDetails.created_at && (

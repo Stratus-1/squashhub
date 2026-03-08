@@ -141,6 +141,24 @@ type CourtPresenceRow = {
   created_at: string;
 };
 
+type EventRequestRow = {
+  id: string;
+  user_id: string;
+  season_id: string | null;
+  kind: "social" | "club" | string;
+  title: string;
+  description: string | null;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  visibility: "public" | "members";
+  status: "pending" | "approved" | "declined" | string;
+  admin_notes: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type EditUserState = {
   open: boolean;
   profile: ProfileRow | null;
@@ -428,6 +446,57 @@ export default function Admin() {
     enabled: isAdmin || isManager,
   });
 
+  const { data: eventRequests, isLoading: eventRequestsLoading } = useQuery({
+    queryKey: ["admin", "event-requests"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("event_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) {
+        if ((error as any).code === "42P01") return [] as EventRequestRow[];
+        throw error;
+      }
+      return (data || []) as unknown as EventRequestRow[];
+    },
+    enabled: isAdmin || isManager,
+  });
+
+  const decideEventRequest = useMutation({
+    mutationFn: async (payload: { id: string; status: "approved" | "declined"; adminNotes?: string }) => {
+      const patch: any = {
+        status: payload.status,
+        admin_notes: payload.adminNotes?.trim() || null,
+        decided_by: user?.id || null,
+        decided_at: new Date().toISOString(),
+      };
+      const { error } = await fromExt("event_requests").update(patch).eq("id", payload.id);
+      if (error) throw error;
+
+      // notify requester
+      const req = (eventRequests || []).find((r) => r.id === payload.id);
+      if (req?.user_id) {
+        const title = payload.status === "approved" ? "Event request approved" : "Event request declined";
+        const msg = payload.status === "approved"
+          ? `Your request "${req.title}" was approved. Watch Events for the published event.`
+          : `Your request "${req.title}" was declined.${payload.adminNotes?.trim() ? ` Note: ${payload.adminNotes.trim()}` : ""}`;
+        await supabase.from("notifications").insert({
+          user_id: req.user_id,
+          title,
+          message: msg,
+          type: "admin",
+          url: "/events",
+          data: { event_request_id: req.id, status: payload.status },
+        } as any);
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "event-requests"] });
+      toast.success("Request updated");
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to update request"),
+  });
+
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin", "events"],
     queryFn: async () => {
@@ -495,6 +564,8 @@ export default function Admin() {
       return (data || []) as Array<{
         id: string; court_id: number; user_id: string; date: string;
         start_time: string; end_time: string; status: string; created_at: string;
+        is_blocked?: boolean;
+        block_reason?: string | null;
       }>;
     },
     enabled: isAdmin || isManager,
@@ -961,14 +1032,30 @@ export default function Admin() {
   const blockCourt = useMutation({
     mutationFn: async (payload: { courtId: number; date: string; startTime: string; endTime: string; reason: string }) => {
       if (!user) throw new Error("Must be logged in");
-      const { error } = await supabase.from("bookings").insert({
+      const baseRow: any = {
         court_id: payload.courtId,
         user_id: user.id,
+        opponent_id: null,
+        is_friendly: true,
+        challenge_id: null,
         date: payload.date,
         start_time: payload.startTime,
         end_time: payload.endTime,
         status: "active",
-      } as any);
+      };
+      const blockRow: any = {
+        ...baseRow,
+        is_blocked: true,
+        block_reason: payload.reason?.trim() || "Maintenance",
+        blocked_by: user.id,
+        blocked_at: new Date().toISOString(),
+      };
+
+      let { error } = await supabase.from("bookings").insert(blockRow as any);
+      // If DB isn't migrated yet, fallback to plain booking insert.
+      if (error?.code === "42703") {
+        ({ error } = await supabase.from("bookings").insert(baseRow as any));
+      }
       if (error) {
         if (error.code === "23505") throw new Error("That slot is already booked");
         throw error;
@@ -981,6 +1068,27 @@ export default function Admin() {
       setCourtBlock((s) => ({ ...s, open: false }));
     },
     onError: (err: any) => toast.error(err.message || "Failed to block court"),
+  });
+
+  const unblockCourt = useMutation({
+    mutationFn: async (bookingId: string) => {
+      if (!user?.id) throw new Error("Must be logged in");
+      const patch: any = {
+        status: "cancelled",
+        cancel_kind: "cancel",
+        cancel_reason: "Unblocked by admin",
+        cancelled_by: user.id,
+        cancelled_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from("bookings").update(patch).eq("id", bookingId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("Court unblocked");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to unblock court"),
   });
 
   // Resolve disputed match
@@ -1211,9 +1319,11 @@ export default function Admin() {
                     <Wrench className="w-4 h-4 text-primary" />
                     <span className="text-xs">Block Court</span>
                   </Button>
-                  <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" onClick={() => openEventEditor(null)}>
+                  <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" asChild>
+                    <Link to="/admin/events/new">
                     <Megaphone className="w-4 h-4 text-primary" />
                     <span className="text-xs">New Event</span>
+                    </Link>
                   </Button>
                   <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" onClick={() => setSeasonStart(s => ({ ...s, open: true }))}>
                     <Calendar className="w-4 h-4 text-primary" />
@@ -1584,21 +1694,50 @@ export default function Admin() {
                     ) : (
                       filteredBookings.slice(0, 100).map(b => {
                         const playerName = profileMap.get(b.user_id)?.name || "Unknown";
+                        const isBlocked = !!(b as any).is_blocked;
+                        const blockReason = (b as any).block_reason ? String((b as any).block_reason) : "";
                         return (
                           <TableRow key={b.id} className="hover:bg-muted/20">
                             <TableCell className="p-3 text-xs text-muted-foreground">{b.date}</TableCell>
                             <TableCell className="p-3 text-xs">{b.start_time?.slice(0, 5)}–{b.end_time?.slice(0, 5)}</TableCell>
                             <TableCell className="p-3 text-sm">Court {b.court_id}</TableCell>
-                            <TableCell className="p-3 text-sm font-medium">{playerName}</TableCell>
+                            <TableCell className="p-3 text-sm font-medium">
+                              {isBlocked ? (
+                                <div className="space-y-0.5">
+                                  <p className="text-sm font-semibold">Blocked</p>
+                                  <p className="text-[11px] text-muted-foreground truncate">{blockReason || "Maintenance"}</p>
+                                </div>
+                              ) : (
+                                playerName
+                              )}
+                            </TableCell>
                             <TableCell className="p-3">
                               <Badge variant="secondary" className={cn("capitalize text-[10px]", b.status === "cancelled" && "bg-destructive/15 text-destructive", b.status === "active" && "bg-primary/15 text-primary")}>
-                                {b.status}
+                                {isBlocked && b.status === "active" ? "blocked" : b.status}
                               </Badge>
                             </TableCell>
                             <TableCell className="p-3 text-right">
-                              <Button size="sm" variant="outline" className="h-7 text-xs" disabled={b.status === "cancelled" || adminCancelBooking.isPending} onClick={() => { if (confirm(`Cancel booking for ${playerName} on ${b.date}?`)) adminCancelBooking.mutate(b.id); }}>
-                                Cancel
-                              </Button>
+                              {isBlocked ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  disabled={b.status === "cancelled" || unblockCourt.isPending}
+                                  onClick={() => { if (confirm(`Unblock Court ${b.court_id} on ${b.date} ${b.start_time?.slice(0, 5)}–${b.end_time?.slice(0, 5)}?`)) unblockCourt.mutate(b.id); }}
+                                >
+                                  Unblock
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  disabled={b.status === "cancelled" || adminCancelBooking.isPending}
+                                  onClick={() => { if (confirm(`Cancel booking for ${playerName} on ${b.date}?`)) adminCancelBooking.mutate(b.id); }}
+                                >
+                                  Cancel
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         );
@@ -1810,8 +1949,81 @@ export default function Admin() {
                     <p className="text-sm font-semibold font-heading">Events</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Create events and manage RSVPs.</p>
                   </div>
-                  <Button size="sm" className="h-8 text-xs shrink-0" onClick={() => openEventEditor(null)}>New Event</Button>
+                  <Button size="sm" className="h-8 text-xs shrink-0" asChild>
+                    <Link to="/admin/events/new">New Event</Link>
+                  </Button>
                 </div>
+
+                <div className="rounded-lg border border-border p-3 mb-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold font-heading">Event requests</p>
+                      <p className="text-[11px] text-muted-foreground">Members can request a social/event for a season.</p>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {(eventRequests || []).filter((r) => r.status === "pending").length} pending
+                    </Badge>
+                  </div>
+
+                  {eventRequestsLoading ? (
+                    <p className="text-sm text-muted-foreground mt-2">Loading…</p>
+                  ) : (eventRequests || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground mt-2">No requests yet.</p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {(eventRequests || []).slice(0, 5).map((r) => {
+                        const who = profileMap.get(r.user_id)?.name || r.user_id.slice(0, 8);
+                        const when = r.created_at ? format(new Date(r.created_at), "d MMM HH:mm") : "—";
+                        const pref = r.preferred_date ? `${r.preferred_date}${r.preferred_time ? ` ${String(r.preferred_time).slice(0, 5)}` : ""}` : "—";
+                        return (
+                          <div key={r.id} className="flex items-start justify-between gap-3 rounded-lg border border-border/60 p-3 bg-background">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-[10px] capitalize">{r.kind}</Badge>
+                                <Badge variant="secondary" className="text-[10px] capitalize">{r.status}</Badge>
+                              </div>
+                              <p className="text-sm font-medium mt-1 truncate">{r.title}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {who} · {when} · Preferred {pref}
+                              </p>
+                              {r.description ? (
+                                <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 whitespace-pre-line">{r.description}</p>
+                              ) : null}
+                            </div>
+                            <div className="shrink-0 flex flex-col items-end gap-2">
+                              <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                                <Link to={`/admin/events/new?requestId=${r.id}`}>Create event</Link>
+                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  disabled={decideEventRequest.isPending || r.status !== "pending"}
+                                  onClick={() => decideEventRequest.mutate({ id: r.id, status: "approved" })}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  disabled={decideEventRequest.isPending || r.status !== "pending"}
+                                  onClick={() => decideEventRequest.mutate({ id: r.id, status: "declined" })}
+                                >
+                                  Decline
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(eventRequests || []).length > 5 && (
+                        <p className="text-[11px] text-muted-foreground">Showing 5 of {(eventRequests || []).length}.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   {eventsLoading ? (
                     <p className="text-sm text-muted-foreground">Loading…</p>
@@ -1837,7 +2049,9 @@ export default function Admin() {
                                 <SelectItem value="cancelled">cancelled</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEventEditor(e)}>Edit</Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                              <Link to={`/admin/events/${e.id}`}>Edit</Link>
+                            </Button>
                           </div>
                         </div>
                       );

@@ -35,6 +35,7 @@ import Feed from "./pages/Feed";
 import Availability from "./pages/Availability";
 import Analytics from "./pages/Analytics";
 import Seasons from "./pages/Seasons";
+import AdminEventEditor from "./pages/AdminEventEditor";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 
@@ -109,6 +110,8 @@ function AppRoutes() {
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/seasons" element={<ProtectedRoute><Seasons /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+        <Route path="/admin/events/new" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
+        <Route path="/admin/events/:id" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />

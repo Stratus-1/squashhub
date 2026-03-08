@@ -89,7 +89,7 @@ export default function Availability() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <PageHeader title="My Availability" backTo="/profile" />
+      <PageHeader title="My Availability" />
 
       <div className="px-4 space-y-5 max-w-lg mx-auto">
         {/* Info */}

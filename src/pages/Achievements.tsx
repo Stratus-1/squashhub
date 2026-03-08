@@ -135,7 +135,7 @@ export default function Achievements() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <PageHeader title="Achievements" backTo="/dashboard" />
+      <PageHeader title="Achievements" />
 
       <div className="px-4 space-y-5 max-w-lg mx-auto">
         {/* XP & Level Hero */}

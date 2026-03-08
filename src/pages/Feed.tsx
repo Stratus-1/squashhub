@@ -216,7 +216,7 @@ export default function Feed() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <PageHeader title="Club Feed" backTo="/dashboard" />
+      <PageHeader title="Club Feed" />
 
       <div className="px-4 space-y-4 max-w-lg mx-auto">
         {/* Compose */}

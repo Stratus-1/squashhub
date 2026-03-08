@@ -96,6 +96,21 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // Onboarding: show wizard if profile name is empty/default
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && profile) {
+      const needsOnboarding =
+        !profile.name || profile.name === "" || profile.name === "New Player";
+      const alreadyCompleted = (profile as any).onboarding_completed === true;
+      if (needsOnboarding && !alreadyCompleted && !onboardingDone) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isLoading, profile, onboardingDone]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -107,6 +122,16 @@ export default function Dashboard() {
   return (
     <div className="bottom-nav-safe">
       <SEO title="Dashboard" description="Your squash dashboard — stats, bookings, and challenges." path="/dashboard" noIndex />
+
+      <OnboardingWizard
+        open={showOnboarding}
+        onComplete={() => {
+          setShowOnboarding(false);
+          setOnboardingDone(true);
+        }}
+      />
+      <DashboardTutorial />
+
       <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications />
 
       {/* Quick Stats */}

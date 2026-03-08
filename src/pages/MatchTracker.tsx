@@ -410,8 +410,7 @@ export default function MatchTracker() {
                             if (!session || !selectedActivityId) return;
                             const picked = recent.find((a) => a.id === selectedActivityId);
                             if (!picked) throw new Error("Please select an activity");
-                            const { data, error } = await supabase
-                              .from("game_sessions")
+                            const { data, error } = await fromExt("game_sessions")
                               .update({
                                 strava_activity_id: picked.id,
                                 strava_name: picked.name,

@@ -45,7 +45,7 @@ export default function PlayerProfile() {
     queryKey: ["player-matches", id],
     queryFn: async () => {
       if (!id) return [];
-      const { data: matches, error } = await supabase
+      const { data: matches, error } = await (supabase as any)
         .from("matches")
         .select("*")
         .or(`player_a.eq.${id},player_b.eq.${id}`)

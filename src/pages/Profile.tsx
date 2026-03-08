@@ -1107,9 +1107,9 @@ export default function Profile() {
                       }
                     }
 
-                    const { error: availabilityError } = await supabase.rpc("set_my_availability", {
+                    const { error: availabilityError } = await (supabase.rpc as any)("set_my_availability", {
                       blocks: cleanedBlocks,
-                    } as any);
+                    });
                     if (availabilityError) throw availabilityError;
 
                     await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });

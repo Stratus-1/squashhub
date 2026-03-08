@@ -1578,7 +1578,7 @@ export default function Admin() {
                       .map((p) => p.id);
                   }
                   if (broadcast.audience === "strava") ids = (profiles || []).filter((p) => !!(p as any).strava_connected).map((p) => p.id);
-                  if (broadcast.audience === "rsvp_event") ids = rsvpAudienceUserIds || [];
+                  if (broadcast.audience === "rsvp_event") ids = (rsvpAudienceUserIds || []) as string[];
 
                   const count = ids.length;
                   return (

@@ -481,7 +481,7 @@ export default function Admin() {
   const mergeDuplicateUsers = useMutation({
     mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
       if (!looksLikeUuid(sourceId) || !looksLikeUuid(targetId)) throw new Error("Select two users to merge");
-      const { error } = await supabase.rpc("admin_merge_users", {
+      const { error } = await rpcExt("admin_merge_users", {
         source_user_id: sourceId,
         target_user_id: targetId,
       } as any);

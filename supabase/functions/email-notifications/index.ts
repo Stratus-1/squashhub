@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     const result = await sendViaResend({ to: email, subject, html, text });
 
     if (!result.ok) {
-      return new Response(JSON.stringify({ ok: false, ...result }), {
+      return new Response(JSON.stringify(result), {
         status: result.skipped ? 200 : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Email notifications error:", error);
-    return new Response(JSON.stringify({ error: error.message || String(error) }), {
+    return new Response(JSON.stringify({ error: (error as Error).message || String(error) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

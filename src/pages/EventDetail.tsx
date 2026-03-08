@@ -74,14 +74,13 @@ export default function EventDetail() {
     queryKey: ["event-rsvp", id, user?.id],
     queryFn: async () => {
       if (!id || !user?.id) return null;
-      const { data, error } = await supabase
-        .from("event_rsvps")
+      const { data, error } = await fromExt("event_rsvps")
         .select("*")
         .eq("event_id", id)
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
-      return (data || null) as MyRsvpRow | null;
+      return (data || null) as unknown as MyRsvpRow | null;
     },
     enabled: !!id && !!user?.id && !!event,
   });

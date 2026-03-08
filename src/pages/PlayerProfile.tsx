@@ -55,7 +55,7 @@ export default function PlayerProfile() {
         .limit(50) as any;
       if (error) throw error;
 
-      const opponentIds = [...new Set((matches || []).flatMap((m: any) => [m.player_a, m.player_b]).filter((x: string) => x !== id))];
+      const opponentIds = [...new Set((matches || []).flatMap((m: any) => [m.player_a, m.player_b]).filter((x: string) => x !== id))] as string[];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id,name")

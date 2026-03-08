@@ -26,7 +26,7 @@ import { motion } from "framer-motion";
 import {
   Users, Swords, Trophy, CalendarDays, Shield, AlertTriangle,
   BarChart3, Megaphone, Clock, ChevronRight, Activity, BookOpen,
-  Calendar, Wrench, Download, Upload, UserCog, ClipboardList
+  Calendar, Wrench, Download, Upload, UserCog, ClipboardList, Plus, MapPin
 } from "lucide-react";
 
 type ProfileRow = {
@@ -124,6 +124,20 @@ type AuditLogRow = {
   entity_id: string | null;
   summary: string | null;
   details: any;
+  created_at: string;
+};
+
+type CourtPresenceRow = {
+  id: string;
+  user_id: string;
+  observed_at: string;
+  source: "web" | "native" | string;
+  accuracy_m: number | null;
+  distance_m: number;
+  radius_m: number;
+  at_court: boolean;
+  had_booking: boolean;
+  booking_id: string | null;
   created_at: string;
 };
 
@@ -240,6 +254,38 @@ export default function Admin() {
     winnerId: string;
     notes: string;
   }>({ open: false, matchId: "", winnerId: "", notes: "" });
+
+  const [manualMatch, setManualMatch] = useState<{
+    open: boolean;
+    playerA: string;
+    playerB: string;
+    winnerId: string;
+    matchDate: string;
+    courtId: string;
+    durationMin: string;
+    isFriendly: boolean;
+    autoConfirm: boolean;
+    score: string;
+    setScores: string;
+    bestOf: string;
+    pointsTo: string;
+    notes: string;
+  }>({
+    open: false,
+    playerA: "",
+    playerB: "",
+    winnerId: "",
+    matchDate: format(new Date(), "yyyy-MM-dd"),
+    courtId: "1",
+    durationMin: "30",
+    isFriendly: false,
+    autoConfirm: true,
+    score: "",
+    setScores: "",
+    bestOf: "5",
+    pointsTo: "15",
+    notes: "",
+  });
 
   const [bookingSearch, setBookingSearch] = useState("");
   const [courtBlock, setCourtBlock] = useState<{
@@ -361,6 +407,25 @@ export default function Admin() {
       if (error) throw error;
       return (data || []) as MatchRow[];
     },
+  });
+
+  const { data: unbookedCourtPresence, isLoading: unbookedCourtPresenceLoading } = useQuery({
+    queryKey: ["admin", "court-presence", "unbooked"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("court_presence_events")
+        .select("*")
+        .eq("at_court", true)
+        .eq("had_booking", false)
+        .order("observed_at", { ascending: false })
+        .limit(50);
+      if (error) {
+        // If the DB hasn't been migrated yet, don't break the whole admin page.
+        if ((error as any).code === "42P01") return [] as CourtPresenceRow[];
+        throw error;
+      }
+      return (data || []) as unknown as CourtPresenceRow[];
+    },
+    enabled: isAdmin || isManager,
   });
 
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -528,6 +593,91 @@ export default function Admin() {
       toast.success("Match confirmed");
     },
     onError: (err: any) => toast.error(err.message || "Failed to confirm match"),
+  });
+
+  const recordManualMatch = useMutation({
+    mutationFn: async () => {
+      if (!manualMatch.playerA || !manualMatch.playerB) throw new Error("Select two players");
+      if (manualMatch.playerA === manualMatch.playerB) throw new Error("Players must be different");
+      if (!manualMatch.winnerId) throw new Error("Select the winner");
+      if (manualMatch.winnerId !== manualMatch.playerA && manualMatch.winnerId !== manualMatch.playerB) {
+        throw new Error("Winner must be one of the players");
+      }
+      if (!manualMatch.matchDate) throw new Error("Match date is required");
+
+      const durationMin = toIntOrNull(manualMatch.durationMin);
+      const durationS = durationMin != null ? Math.max(0, durationMin) * 60 : null;
+
+      const bestOf = toIntOrNull(manualMatch.bestOf) ?? 5;
+      const pointsTo = toIntOrNull(manualMatch.pointsTo) ?? 15;
+      if (bestOf !== 3 && bestOf !== 5) throw new Error("Best of must be 3 or 5");
+      if (!Number.isFinite(pointsTo) || pointsTo < 1 || pointsTo > 99) throw new Error("Points-to must be 1–99");
+
+      const parseSets = (raw: string) => {
+        const lines = raw
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean);
+        const sets: Array<{ a: number; b: number }> = [];
+        for (const line of lines) {
+          const cleaned = line.replace(/\s+/g, "");
+          const m = cleaned.match(/^(\d+)[-:](\d+)$/);
+          if (!m) throw new Error(`Invalid set score: "${line}" (use e.g. 15-10)`);
+          const a = Number(m[1]);
+          const b = Number(m[2]);
+          if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b < 0) throw new Error("Set scores must be >= 0");
+          sets.push({ a: Math.trunc(a), b: Math.trunc(b) });
+        }
+        return sets;
+      };
+
+      const sets = manualMatch.setScores.trim() ? parseSets(manualMatch.setScores) : [];
+
+      let score = manualMatch.score.trim();
+      let gameScores: any = null;
+      if (sets.length > 0) {
+        const aSetsWon = sets.filter((s) => s.a > s.b).length;
+        const bSetsWon = sets.filter((s) => s.b > s.a).length;
+        if (!score) score = `${aSetsWon}-${bSetsWon}`;
+        gameScores = { format: { best_of: bestOf, points_to: pointsTo }, sets };
+      }
+
+      const { data, error } = await rpcExt("admin_record_manual_match", {
+        player_a: manualMatch.playerA,
+        player_b: manualMatch.playerB,
+        winner_id: manualMatch.winnerId,
+        match_date: manualMatch.matchDate,
+        score: score || null,
+        game_scores: gameScores,
+        court_id: toIntOrNull(manualMatch.courtId),
+        duration_s: durationS,
+        notes: manualMatch.notes.trim() || null,
+        is_friendly: manualMatch.isFriendly,
+        auto_confirm: manualMatch.autoConfirm,
+      } as any);
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Match recorded");
+      setManualMatch((s) => ({
+        ...s,
+        open: false,
+        playerA: "",
+        playerB: "",
+        winnerId: "",
+        score: "",
+        setScores: "",
+        notes: "",
+        isFriendly: false,
+        autoConfirm: true,
+      }));
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to record match"),
   });
 
   const mergeDuplicateUsers = useMutation({
@@ -1129,6 +1279,48 @@ export default function Admin() {
                   </div>
                 )}
               </Card>
+
+              {/* Court presence: users at courts without bookings */}
+              <Card className="p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-semibold font-heading">Unbooked Court Visits</p>
+                  </div>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {(unbookedCourtPresence || []).length}
+                  </Badge>
+                </div>
+
+                {unbookedCourtPresenceLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : (unbookedCourtPresence || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No unbooked visits detected recently.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(unbookedCourtPresence || []).slice(0, 5).map((row) => {
+                      const who = profileMap.get(row.user_id)?.name || "Unknown";
+                      const when = row.observed_at ? format(new Date(row.observed_at), "MMM d, HH:mm") : "—";
+                      const dist = Number.isFinite(row.distance_m) ? `${Math.round(row.distance_m)}m` : "—";
+                      const acc = row.accuracy_m != null && Number.isFinite(row.accuracy_m) ? `±${Math.round(row.accuracy_m)}m` : "—";
+                      return (
+                        <div key={row.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{who}</p>
+                            <p className="text-[11px] text-muted-foreground">{when} · {dist} · {acc} · {row.source}</p>
+                          </div>
+                          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setActiveSection("bookings")}>
+                            View bookings
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    {(unbookedCourtPresence || []).length > 5 && (
+                      <p className="text-[11px] text-muted-foreground">Showing 5 of {(unbookedCourtPresence || []).length}.</p>
+                    )}
+                  </div>
+                )}
+              </Card>
             </motion.div>
           )}
 
@@ -1267,6 +1459,23 @@ export default function Admin() {
           {activeSection === "matches" && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
               <SectionHeader title="Match Management" subtitle={`${disputedMatches} disputed · ${unconfirmedMatches} unconfirmed`} />
+
+              <Card className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold font-heading">Record a match (manual)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Use this if players played but forgot to book/track the match in the app.
+                    </p>
+                  </div>
+                  <Button size="sm" className="h-8 text-xs gap-1 shrink-0" onClick={() => setManualMatch((s) => ({ ...s, open: true }))}>
+                    <Plus className="w-3 h-3" /> Add match
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Note: competitive matches without a linked challenge will update player stats, but won’t automatically move ladder ranks. Use the Players section to adjust ranks if needed.
+                </p>
+              </Card>
 
               <div className="grid grid-cols-3 gap-3">
                 <Card className="p-3 text-center">
@@ -2315,6 +2524,146 @@ export default function Admin() {
             </Button>
             <Button variant="outline" onClick={() => setSchedule((s) => ({ ...s, open: false }))}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={manualMatch.open} onOpenChange={(open) => setManualMatch((s) => ({ ...s, open }))}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Record manual match</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Player A</Label>
+                <Select value={manualMatch.playerA} onValueChange={(v) => setManualMatch((s) => ({ ...s, playerA: v, winnerId: s.winnerId || v }))}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+                  <SelectContent>
+                    {(profiles || []).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name || "—"} {p.email ? `(${p.email})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Player B</Label>
+                <Select value={manualMatch.playerB} onValueChange={(v) => setManualMatch((s) => ({ ...s, playerB: v }))}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+                  <SelectContent>
+                    {(profiles || []).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name || "—"} {p.email ? `(${p.email})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Winner</Label>
+                <Select value={manualMatch.winnerId} onValueChange={(v) => setManualMatch((s) => ({ ...s, winnerId: v }))}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+                  <SelectContent>
+                    {manualMatch.playerA ? <SelectItem value={manualMatch.playerA}>Player A</SelectItem> : null}
+                    {manualMatch.playerB ? <SelectItem value={manualMatch.playerB}>Player B</SelectItem> : null}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={manualMatch.matchDate} onChange={(e) => setManualMatch((s) => ({ ...s, matchDate: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Court</Label>
+                <Select value={manualMatch.courtId} onValueChange={(v) => setManualMatch((s) => ({ ...s, courtId: v }))}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Court 1</SelectItem>
+                    <SelectItem value="2">Court 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Duration (min)</Label>
+                <Input inputMode="numeric" value={manualMatch.durationMin} onChange={(e) => setManualMatch((s) => ({ ...s, durationMin: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Best of</Label>
+                <Select value={manualMatch.bestOf} onValueChange={(v) => setManualMatch((s) => ({ ...s, bestOf: v }))}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Points to</Label>
+                <Input inputMode="numeric" value={manualMatch.pointsTo} onChange={(e) => setManualMatch((s) => ({ ...s, pointsTo: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Score (sets) (optional)</Label>
+              <Input placeholder="e.g. 3-1" value={manualMatch.score} onChange={(e) => setManualMatch((s) => ({ ...s, score: e.target.value }))} />
+              <p className="text-[11px] text-muted-foreground">
+                If you enter set scores below, the score can be left blank.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Set scores (optional)</Label>
+              <Textarea
+                className="min-h-[90px] text-xs font-mono"
+                placeholder={"Player A - Player B\n15-6\n15-8\n15-6"}
+                value={manualMatch.setScores}
+                onChange={(e) => setManualMatch((s) => ({ ...s, setScores: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Notes (optional)</Label>
+              <Textarea className="min-h-[70px]" value={manualMatch.notes} onChange={(e) => setManualMatch((s) => ({ ...s, notes: e.target.value }))} />
+            </div>
+
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Friendly match</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Friendly matches never affect ladder/stats.
+                  </p>
+                </div>
+                <Switch checked={manualMatch.isFriendly} onCheckedChange={(checked) => setManualMatch((s) => ({ ...s, isFriendly: checked }))} />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Auto-confirm (admin)</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    If enabled, stats update immediately and players get a “confirmed” notification.
+                  </p>
+                </div>
+                <Switch checked={manualMatch.autoConfirm} onCheckedChange={(checked) => setManualMatch((s) => ({ ...s, autoConfirm: checked }))} />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManualMatch((s) => ({ ...s, open: false }))}>
+              Cancel
+            </Button>
+            <Button disabled={recordManualMatch.isPending} onClick={() => recordManualMatch.mutate()}>
+              {recordManualMatch.isPending ? "Saving…" : "Record match"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -58,5 +58,8 @@
 			</array>
 		</dict>
 	</array>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your location to detect when you’re at the courts and remind you to book your session.</string>
 </dict>
 </plist>

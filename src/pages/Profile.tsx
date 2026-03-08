@@ -24,7 +24,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Link } from "react-router-dom";
 
@@ -51,6 +51,7 @@ type EditableProfileFields = {
   years_playing: string;
   playing_style: string;
   favorite_shot: string;
+  court_checkins_enabled: boolean;
   privacy_show_about: boolean;
   privacy_show_availability: boolean;
   privacy_show_recent_matches: boolean;
@@ -137,11 +138,14 @@ export default function Profile() {
   const [edit, setEdit] = useState<EditableProfileFields>({
     name: "", phone: "", bio: "", location: "", home_club: "",
     dominant_hand: "", years_playing: "", playing_style: "", favorite_shot: "",
+    court_checkins_enabled: false,
     privacy_show_about: true, privacy_show_availability: true,
     privacy_show_recent_matches: true, privacy_show_training: true, privacy_show_advanced_stats: true,
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
+  const didHydrateEditRef = useRef(false);
+  const didLoadAvailabilityRef = useRef(false);
 
   const strava = useMemo(() => integrations?.find((i) => i.provider === "strava") || null, [integrations]);
 
@@ -178,6 +182,65 @@ export default function Profile() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient, user?.id]);
+
+  useEffect(() => {
+    if (!editOpen) {
+      didHydrateEditRef.current = false;
+      didLoadAvailabilityRef.current = false;
+      return;
+    }
+
+    if (!didHydrateEditRef.current && profile) {
+      didHydrateEditRef.current = true;
+      setEdit({
+        name: profile.name || "",
+        phone: (profile.phone as any) || "",
+        bio: (profile as any).bio || "",
+        location: (profile as any).location || "",
+        home_club: (profile as any).home_club || "",
+        dominant_hand: ((profile as any).dominant_hand as EditableProfileFields["dominant_hand"]) || "",
+        years_playing: (profile as any).years_playing != null ? String((profile as any).years_playing) : "",
+        playing_style: (profile as any).playing_style || "",
+        favorite_shot: (profile as any).favorite_shot || "",
+        court_checkins_enabled: (profile as any).court_checkins_enabled ?? false,
+        privacy_show_about: (profile as any).privacy_show_about ?? true,
+        privacy_show_availability: (profile as any).privacy_show_availability ?? true,
+        privacy_show_recent_matches: (profile as any).privacy_show_recent_matches ?? true,
+        privacy_show_training: (profile as any).privacy_show_training ?? true,
+        privacy_show_advanced_stats: (profile as any).privacy_show_advanced_stats ?? true,
+      });
+    }
+
+    if (!didLoadAvailabilityRef.current && user?.id) {
+      didLoadAvailabilityRef.current = true;
+      let cancelled = false;
+      setAvailabilityLoading(true);
+      (supabase as any)
+        .from("player_availability")
+        .select("day_of_week,start_time,end_time")
+        .eq("user_id", user.id)
+        .order("day_of_week", { ascending: true })
+        .order("start_time", { ascending: true })
+        .then(({ data, error }: any) => {
+          if (cancelled) return;
+          if (error) throw error;
+          setAvailabilityBlocks((data || []).map((b: any) => ({
+            day_of_week: Number(b.day_of_week),
+            start_time: String(b.start_time || "").slice(0, 5),
+            end_time: String(b.end_time || "").slice(0, 5),
+          })));
+        })
+        .catch((e: any) => {
+          if (cancelled) return;
+          toast.error(e.message || "Failed to load availability");
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setAvailabilityLoading(false);
+        });
+      return () => { cancelled = true; };
+    }
+  }, [editOpen, profile, user?.id]);
 
   if (isLoading) {
     return (
@@ -602,43 +665,6 @@ export default function Profile() {
         open={editOpen}
         onOpenChange={(open) => {
           setEditOpen(open);
-          if (open && profile) {
-            setEdit({
-              name: profile.name || "",
-              phone: (profile.phone as any) || "",
-              bio: (profile as any).bio || "",
-              location: (profile as any).location || "",
-              home_club: (profile as any).home_club || "",
-              dominant_hand: ((profile as any).dominant_hand as EditableProfileFields["dominant_hand"]) || "",
-              years_playing: (profile as any).years_playing != null ? String((profile as any).years_playing) : "",
-              playing_style: (profile as any).playing_style || "",
-              favorite_shot: (profile as any).favorite_shot || "",
-              privacy_show_about: (profile as any).privacy_show_about ?? true,
-              privacy_show_availability: (profile as any).privacy_show_availability ?? true,
-              privacy_show_recent_matches: (profile as any).privacy_show_recent_matches ?? true,
-              privacy_show_training: (profile as any).privacy_show_training ?? true,
-              privacy_show_advanced_stats: (profile as any).privacy_show_advanced_stats ?? true,
-            });
-          }
-          if (open && user?.id) {
-            setAvailabilityLoading(true);
-            (supabase as any)
-              .from("player_availability")
-              .select("day_of_week,start_time,end_time")
-              .eq("user_id", user.id)
-              .order("day_of_week", { ascending: true })
-              .order("start_time", { ascending: true })
-              .then(({ data, error }: any) => {
-                if (error) throw error;
-                setAvailabilityBlocks((data || []).map((b: any) => ({
-                  day_of_week: Number(b.day_of_week),
-                  start_time: String(b.start_time || "").slice(0, 5),
-                  end_time: String(b.end_time || "").slice(0, 5),
-                })));
-              })
-              .catch((e: any) => toast.error(e.message || "Failed to load availability"))
-              .finally(() => setAvailabilityLoading(false));
-          }
         }}
       >
         <DialogContent className="flex flex-col max-h-[90vh] overflow-hidden p-0 gap-0">
@@ -740,6 +766,28 @@ export default function Profile() {
 
             <Separator />
 
+            {/* Court check-ins */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold font-heading">Court check-in reminders</p>
+              <div className="rounded-md border border-border p-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Detect unbooked sessions</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Uses your location to detect when you’re at the courts so we can remind you to book.
+                  </p>
+                </div>
+                <Switch
+                  checked={edit.court_checkins_enabled}
+                  onCheckedChange={(checked) => setEdit((s) => ({ ...s, court_checkins_enabled: checked }))}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                You can disable this anytime. Location is only checked when you open the booking screen.
+              </p>
+            </div>
+
+            <Separator />
+
             {/* Privacy */}
             <div className="space-y-2">
               <p className="text-sm font-semibold font-heading">Public profile</p>
@@ -775,16 +823,24 @@ export default function Profile() {
                     const years = edit.years_playing.trim() ? Number(edit.years_playing) : null;
                     if (years != null && (!Number.isFinite(years) || years < 0 || years > 80)) throw new Error("Years playing must be 0–80");
 
-                    const { error } = await supabase.from("profiles").update({
+                    const updatePayload: any = {
                       name: edit.name.trim(), phone: phoneRaw,
                       bio: edit.bio.trim() || null, location: edit.location.trim() || null,
                       home_club: edit.home_club.trim() || null, dominant_hand: edit.dominant_hand || null,
                       years_playing: years == null ? null : Math.trunc(years),
                       playing_style: edit.playing_style.trim() || null, favorite_shot: edit.favorite_shot.trim() || null,
+                      court_checkins_enabled: !!edit.court_checkins_enabled,
                       privacy_show_about: !!edit.privacy_show_about, privacy_show_availability: !!edit.privacy_show_availability,
                       privacy_show_recent_matches: !!edit.privacy_show_recent_matches, privacy_show_training: !!edit.privacy_show_training,
                       privacy_show_advanced_stats: !!edit.privacy_show_advanced_stats,
-                    } as any).eq("id", user.id);
+                    };
+
+                    let { error } = await supabase.from("profiles").update(updatePayload).eq("id", user.id);
+                    // If the DB hasn't been migrated yet, retry without new columns instead of blocking profile edits.
+                    if (error?.code === "42703") {
+                      delete updatePayload.court_checkins_enabled;
+                      ({ error } = await supabase.from("profiles").update(updatePayload).eq("id", user.id));
+                    }
                     if (error) throw error;
 
                     const cleanedBlocks = availabilityBlocks

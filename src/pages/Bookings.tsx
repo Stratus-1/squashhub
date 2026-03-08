@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { enqueueOutbox } from "@/lib/outbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 
 function timeToMinutes(t: string) {
   const [hh, mm] = t.split(":").map((x) => Number(x));
@@ -235,6 +237,63 @@ export default function Bookings() {
   }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
   const { user } = useAuth();
   const { data: me } = useProfile();
+  const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!courtCheckinsEnabled) return;
+    if (!isToday(selectedDate)) return;
+
+    const lastAtMs = Number(localStorage.getItem("courtPresence:lastAtMs") || "0");
+    if (Number.isFinite(lastAtMs) && Date.now() - lastAtMs < 15 * 60 * 1000) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const perm = await Geolocation.checkPermissions().catch(() => null as any);
+        const loc = perm?.location as string | undefined;
+        if (loc === "denied") return;
+
+        if (loc !== "granted") {
+          // Only request once (avoid repeatedly prompting on refresh).
+          const asked = localStorage.getItem("courtPresence:asked");
+          if (asked) return;
+          localStorage.setItem("courtPresence:asked", "1");
+
+          const req = await Geolocation.requestPermissions().catch(() => null as any);
+          const reqLoc = req?.location as string | undefined;
+          if (reqLoc !== "granted") return;
+        }
+
+        const pos = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10_000,
+          maximumAge: 60_000,
+        });
+        if (cancelled) return;
+
+        localStorage.setItem("courtPresence:lastAtMs", String(Date.now()));
+
+        const { data, error } = await (supabase.rpc as any)("record_court_presence", {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy_m: pos.coords.accuracy,
+          source: Capacitor.isNativePlatform() ? "native" : "web",
+        });
+        if (error) throw error;
+
+        if (data?.at_court && data?.had_booking === false) {
+          toast.info("Looks like you’re at the courts but no booking was found — book a slot so your game is tracked.");
+        }
+      } catch {
+        // Silent: court check-ins are best-effort.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courtCheckinsEnabled, selectedDate, user?.id]);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const { data: bookings, isLoading } = useBookings(dateStr);

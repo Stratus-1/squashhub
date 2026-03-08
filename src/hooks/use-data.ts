@@ -312,8 +312,7 @@ export function useMyScheduledMatches() {
     queryFn: async () => {
       if (!user) return [];
       const today = new Date().toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("scheduled_matches")
+      const { data, error } = await fromAny("scheduled_matches")
         .select("*")
         .or(`player_a.eq.${user.id},player_b.eq.${user.id}`)
         .eq("status", "scheduled")

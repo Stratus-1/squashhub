@@ -96,8 +96,7 @@ export default function EventDetail() {
       const g = guests.trim() ? Number(guests) : 0;
       if (!Number.isFinite(g) || g < 0 || g > 20) throw new Error("Guests must be 0–20");
 
-      const { error } = await supabase
-        .from("event_rsvps")
+      const { error } = await fromExt("event_rsvps")
         .upsert(
           {
             event_id: id,

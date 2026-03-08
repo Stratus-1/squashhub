@@ -135,7 +135,7 @@ export default function Dashboard() {
       />
       <DashboardTutorial />
 
-      <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications />
+      <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
 
       <WelcomeBanner />
 

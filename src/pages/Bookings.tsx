@@ -203,6 +203,7 @@ export default function Bookings() {
 
         setCalendarPrompt({
           open: true,
+          bookingId,
           courtId: bookingDialog.courtId,
           dateStr,
           startTime: bookingDialog.time,

@@ -257,8 +257,7 @@ export default function MatchTracker() {
                     const endedAt = new Date().toISOString();
                     const startedAtMs = new Date(session.started_at).getTime();
                     const duration = Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
-                    const { data, error } = await supabase
-                      .from("game_sessions")
+                    const { data, error } = await fromExt("game_sessions")
                       .update({ ended_at: endedAt, duration_s: duration })
                       .eq("id", session.id)
                       .select("*")

@@ -229,6 +229,23 @@ export default function Admin() {
     targetId: "",
   });
 
+  const [disputeResolve, setDisputeResolve] = useState<{
+    open: boolean;
+    matchId: string;
+    winnerId: string;
+    notes: string;
+  }>({ open: false, matchId: "", winnerId: "", notes: "" });
+
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [courtBlock, setCourtBlock] = useState<{
+    open: boolean;
+    courtId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    reason: string;
+  }>({ open: false, courtId: "1", date: format(new Date(), "yyyy-MM-dd"), startTime: "06:00", endTime: "22:00", reason: "Maintenance" });
+
   const [eventEdit, setEventEdit] = useState<{
     open: boolean;
     event: AdminEventRow | null;

@@ -94,19 +94,17 @@ export default function Seasons() {
       const from = viewingSeason.starts_on as string;
       const to = (viewingSeason.ends_on as string | null) || new Date().toISOString().slice(0, 10);
 
-      const withSeasonFilters = (q: any) =>
+      const applySeasonFilters = (q: any) =>
         q.eq("is_friendly", false)
           .gte("match_date", from)
           .lte("match_date", to);
 
-      const { count, error: countError } = await withSeasonFilters((supabase as any).from("matches")).select("id", {
-        count: "exact",
-        head: true,
-      });
+      const { count, error: countError } = await applySeasonFilters(
+        (supabase as any).from("matches").select("id", { count: "exact", head: true })
+      );
       if (countError) throw countError;
 
-      const { data: matches, error } = await withSeasonFilters((supabase as any).from("matches"))
-        .select("*")
+      const { data: matches, error } = await applySeasonFilters((supabase as any).from("matches").select("*"))
         .order("match_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(250);

@@ -227,8 +227,7 @@ export default function MatchTracker() {
                   try {
                     if (!user) throw new Error("You must be logged in");
                     const startedAt = new Date().toISOString();
-                    const { data, error } = await supabase
-                      .from("game_sessions")
+                    const { data, error } = await fromExt("game_sessions")
                       .insert({
                         user_id: user.id,
                         booking_id: booking.id,

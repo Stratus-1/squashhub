@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 const fromExt = (table: string) => (supabase as any).from(table);
 import { useQuery } from "@tanstack/react-query";
@@ -42,6 +43,17 @@ export default function Events() {
 
   return (
     <div className="bottom-nav-safe">
+      <SEO
+        title="Events"
+        description="Upcoming squash events, socials, and tournaments at Gordon's Bay Squash Club."
+        path="/events"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Events — Gordon's Bay Squash Club",
+          description: "Upcoming squash events, socials, and tournaments.",
+        }}
+      />
       <PageHeader title="Events" subtitle="Upcoming club events" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-3 mb-20">

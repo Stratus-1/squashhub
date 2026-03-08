@@ -4,6 +4,7 @@ import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Swords, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,7 @@ export default function Ladder() {
 
   return (
     <div className="bottom-nav-safe">
+      <SEO title="Player Ladder" description="See the latest squash ladder rankings at Gordon's Bay Squash Club." path="/ladder" noIndex />
       <PageHeader
         title="Player Ladder"
         subtitle={`${players?.length || 0} players ranked`}

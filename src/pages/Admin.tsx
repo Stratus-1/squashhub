@@ -9,6 +9,7 @@ const fromExt = (table: string) => (supabase as any).from(table);
 const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
 import { AppRole, useMyRoles } from "@/hooks/use-data";
+import { SEO } from "@/components/SEO";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -228,6 +229,23 @@ export default function Admin() {
     targetId: "",
   });
 
+  const [disputeResolve, setDisputeResolve] = useState<{
+    open: boolean;
+    matchId: string;
+    winnerId: string;
+    notes: string;
+  }>({ open: false, matchId: "", winnerId: "", notes: "" });
+
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [courtBlock, setCourtBlock] = useState<{
+    open: boolean;
+    courtId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    reason: string;
+  }>({ open: false, courtId: "1", date: format(new Date(), "yyyy-MM-dd"), startTime: "06:00", endTime: "22:00", reason: "Maintenance" });
+
   const [eventEdit, setEventEdit] = useState<{
     open: boolean;
     event: AdminEventRow | null;
@@ -392,6 +410,35 @@ export default function Admin() {
       return (data || []) as unknown as ScheduledMatchRow[];
     },
   });
+
+  // All bookings for admin management
+  const { data: allBookings, isLoading: bookingsLoading } = useQuery({
+    queryKey: ["admin", "bookings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .order("date", { ascending: false })
+        .order("start_time", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string; court_id: number; user_id: string; date: string;
+        start_time: string; end_time: string; status: string; created_at: string;
+      }>;
+    },
+    enabled: isAdmin || isManager,
+  });
+
+  const filteredBookings = useMemo(() => {
+    const q = bookingSearch.trim().toLowerCase();
+    const list = allBookings || [];
+    if (!q) return list;
+    return list.filter((b) => {
+      const playerName = profileMap.get(b.user_id)?.name || "";
+      return `${playerName} ${b.date} ${b.court_id}`.toLowerCase().includes(q);
+    });
+  }, [allBookings, bookingSearch, profileMap]);
 
   const { data: seasons } = useQuery({
     queryKey: ["admin", "seasons"],
@@ -741,6 +788,93 @@ export default function Admin() {
     onError: (err: any) => toast.error(err.message || "Failed to cancel schedule"),
   });
 
+  // Admin cancel any booking
+  const adminCancelBooking = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("Booking cancelled");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to cancel booking"),
+  });
+
+  // Block court for maintenance (creates a booking under the admin's account)
+  const blockCourt = useMutation({
+    mutationFn: async (payload: { courtId: number; date: string; startTime: string; endTime: string; reason: string }) => {
+      if (!user) throw new Error("Must be logged in");
+      const { error } = await supabase.from("bookings").insert({
+        court_id: payload.courtId,
+        user_id: user.id,
+        date: payload.date,
+        start_time: payload.startTime,
+        end_time: payload.endTime,
+        status: "active",
+      } as any);
+      if (error) {
+        if (error.code === "23505") throw new Error("That slot is already booked");
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("Court blocked for maintenance");
+      setCourtBlock((s) => ({ ...s, open: false }));
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to block court"),
+  });
+
+  // Resolve disputed match
+  const resolveDispute = useMutation({
+    mutationFn: async ({ matchId, winnerId, notes }: { matchId: string; winnerId: string; notes: string }) => {
+      // Update the match winner and mark as undisputed + confirmed
+      const { error } = await supabase.from("matches").update({
+        winner_id: winnerId,
+        disputed: false,
+        confirmed: true,
+      }).eq("id", matchId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Dispute resolved");
+      setDisputeResolve((s) => ({ ...s, open: false }));
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to resolve dispute"),
+  });
+
+  // Suspend/unsuspend player
+  const toggleSuspend = useMutation({
+    mutationFn: async ({ userId, suspend }: { userId: string; suspend: boolean }) => {
+      const patch: any = suspend ? { rank: null } : {};
+      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      if (error) throw error;
+      // Notify user
+      const msg = suspend
+        ? "Your account has been suspended by an admin. Contact the club for details."
+        : "Your account has been reinstated by an admin.";
+      await supabase.from("notifications").insert({
+        user_id: userId,
+        title: suspend ? "Account Suspended" : "Account Reinstated",
+        message: msg,
+        type: "admin",
+      } as any);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Player status updated");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to update player"),
+  });
+
   const openEdit = (p: ProfileRow) => {
     setEditUser({
       open: true,
@@ -784,6 +918,7 @@ export default function Admin() {
 
   return (
     <div className="bottom-nav-safe">
+      <SEO title="Admin" description="Admin panel — manage players, bookings, matches, and club operations." path="/admin" noIndex />
       <PageHeader title="Admin" subtitle="Manage players, challenges, matches & schedules" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3">
@@ -804,10 +939,11 @@ export default function Admin() {
       </div>
 
       <Tabs defaultValue="users" className="px-4 sm:px-6 lg:px-[5%] mt-3">
-        <TabsList className="w-full">
+        <TabsList className="w-full overflow-x-auto">
           <TabsTrigger value="users" className="flex-1">Users</TabsTrigger>
           <TabsTrigger value="challenges" className="flex-1">Challenges</TabsTrigger>
           <TabsTrigger value="matches" className="flex-1">Matches</TabsTrigger>
+          <TabsTrigger value="bookings" className="flex-1">Bookings</TabsTrigger>
           <TabsTrigger value="schedule" className="flex-1">Schedule</TabsTrigger>
           <TabsTrigger value="seasons" className="flex-1">Seasons</TabsTrigger>
           <TabsTrigger value="clubops" className="flex-1">Club Ops</TabsTrigger>
@@ -1019,6 +1155,21 @@ export default function Admin() {
                         </TableCell>
                         <TableCell className="p-3 text-right">
                           <div className="flex justify-end gap-2">
+                            {m.disputed && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 text-xs bg-accent text-accent-foreground hover:bg-accent/90"
+                                onClick={() => setDisputeResolve({
+                                  open: true,
+                                  matchId: m.id,
+                                  winnerId: m.winner_id || m.player_a,
+                                  notes: "",
+                                })}
+                              >
+                                Resolve
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -1026,7 +1177,7 @@ export default function Admin() {
                               onClick={() =>
                                 updateMatch.mutate({
                                   matchId: m.id,
-                                  patch: { disputed: !m.disputed, ...(m.disputed ? {} : {}) },
+                                  patch: { disputed: !m.disputed },
                                 })
                               }
                             >
@@ -1041,6 +1192,79 @@ export default function Admin() {
                               Confirm
                             </Button>
                           </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+        {/* Bookings tab */}
+        <TabsContent value="bookings" className="mt-3 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              placeholder="Search player, date, court…"
+              value={bookingSearch}
+              onChange={(e) => setBookingSearch(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={() => setCourtBlock((s) => ({ ...s, open: true }))}>
+              Block court
+            </Button>
+          </div>
+
+          <Card className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Court</TableHead>
+                  <TableHead>Player</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bookingsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-sm text-muted-foreground">Loading…</TableCell>
+                  </TableRow>
+                ) : filteredBookings.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-sm text-muted-foreground">No bookings found.</TableCell>
+                  </TableRow>
+                ) : (
+                  filteredBookings.slice(0, 100).map((b) => {
+                    const playerName = profileMap.get(b.user_id)?.name || "Unknown";
+                    return (
+                      <TableRow key={b.id}>
+                        <TableCell className="p-3 text-xs text-muted-foreground">{b.date}</TableCell>
+                        <TableCell className="p-3 text-xs">{b.start_time?.slice(0, 5)}–{b.end_time?.slice(0, 5)}</TableCell>
+                        <TableCell className="p-3 text-sm">Court {b.court_id}</TableCell>
+                        <TableCell className="p-3 text-sm">{playerName}</TableCell>
+                        <TableCell className="p-3">
+                          <Badge variant="secondary" className={cn("capitalize", b.status === "cancelled" && "bg-destructive/15 text-destructive")}>
+                            {b.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="p-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            disabled={b.status === "cancelled" || adminCancelBooking.isPending}
+                            onClick={() => {
+                              if (confirm(`Cancel booking for ${playerName} on ${b.date}?`)) {
+                                adminCancelBooking.mutate(b.id);
+                              }
+                            }}
+                          >
+                            Cancel
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -2058,6 +2282,31 @@ export default function Admin() {
                   Save stats
                 </Button>
               </div>
+
+              <SeparatorBlock />
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-destructive">Actions</p>
+                <Button
+                  variant="outline"
+                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
+                  disabled={!isAdmin || toggleSuspend.isPending}
+                  onClick={() => {
+                    const isSuspending = selected.rank != null;
+                    if (confirm(isSuspending
+                      ? `Suspend ${selected.name}? This will remove their rank and notify them.`
+                      : `Reinstate ${selected.name}?`
+                    )) {
+                      toggleSuspend.mutate({ userId: selected.id, suspend: isSuspending });
+                    }
+                  }}
+                >
+                  {selected.rank != null ? "Suspend player" : "Reinstate player"}
+                </Button>
+                {!isAdmin && (
+                  <p className="text-[11px] text-muted-foreground">Only admins can suspend players.</p>
+                )}
+              </div>
             </div>
           )}
 
@@ -2188,6 +2437,119 @@ export default function Admin() {
             </Button>
             <Button variant="outline" onClick={() => setSchedule((s) => ({ ...s, open: false }))}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dispute Resolution Dialog */}
+      <Dialog open={disputeResolve.open} onOpenChange={(open) => setDisputeResolve((s) => ({ ...s, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resolve Dispute</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {(() => {
+              const m = (matches || []).find((m) => m.id === disputeResolve.matchId);
+              if (!m) return <p className="text-sm text-muted-foreground">Match not found.</p>;
+              const aName = profileMap.get(m.player_a)?.name || "Player A";
+              const bName = profileMap.get(m.player_b)?.name || "Player B";
+              return (
+                <>
+                  <p className="text-sm">
+                    <strong>{aName}</strong> vs <strong>{bName}</strong> — {m.score || "no score"}
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label>Winner</Label>
+                    <Select value={disputeResolve.winnerId} onValueChange={(v) => setDisputeResolve((s) => ({ ...s, winnerId: v }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={m.player_a}>{aName}</SelectItem>
+                        <SelectItem value={m.player_b}>{bName}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Resolution notes</Label>
+                    <Textarea
+                      value={disputeResolve.notes}
+                      onChange={(e) => setDisputeResolve((s) => ({ ...s, notes: e.target.value }))}
+                      placeholder="Describe the resolution…"
+                    />
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDisputeResolve((s) => ({ ...s, open: false }))}>Cancel</Button>
+            <Button
+              disabled={resolveDispute.isPending}
+              onClick={() => resolveDispute.mutate({
+                matchId: disputeResolve.matchId,
+                winnerId: disputeResolve.winnerId,
+                notes: disputeResolve.notes,
+              })}
+            >
+              {resolveDispute.isPending ? "Resolving…" : "Resolve & Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Court Dialog */}
+      <Dialog open={courtBlock.open} onOpenChange={(open) => setCourtBlock((s) => ({ ...s, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Block Court for Maintenance</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Court</Label>
+                <Select value={courtBlock.courtId} onValueChange={(v) => setCourtBlock((s) => ({ ...s, courtId: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Court 1</SelectItem>
+                    <SelectItem value="2">Court 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Date</Label>
+                <Input type="date" value={courtBlock.date} onChange={(e) => setCourtBlock((s) => ({ ...s, date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start time</Label>
+                <Input type="time" value={courtBlock.startTime} onChange={(e) => setCourtBlock((s) => ({ ...s, startTime: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End time</Label>
+                <Input type="time" value={courtBlock.endTime} onChange={(e) => setCourtBlock((s) => ({ ...s, endTime: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Reason</Label>
+              <Input value={courtBlock.reason} onChange={(e) => setCourtBlock((s) => ({ ...s, reason: e.target.value }))} placeholder="Maintenance" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCourtBlock((s) => ({ ...s, open: false }))}>Cancel</Button>
+            <Button
+              disabled={blockCourt.isPending}
+              onClick={() => blockCourt.mutate({
+                courtId: Number(courtBlock.courtId) || 1,
+                date: courtBlock.date,
+                startTime: courtBlock.startTime,
+                endTime: courtBlock.endTime,
+                reason: courtBlock.reason,
+              })}
+            >
+              {blockCourt.isPending ? "Blocking…" : "Block Court"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1155,6 +1155,21 @@ export default function Admin() {
                         </TableCell>
                         <TableCell className="p-3 text-right">
                           <div className="flex justify-end gap-2">
+                            {m.disputed && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 text-xs bg-accent text-accent-foreground hover:bg-accent/90"
+                                onClick={() => setDisputeResolve({
+                                  open: true,
+                                  matchId: m.id,
+                                  winnerId: m.winner_id || m.player_a,
+                                  notes: "",
+                                })}
+                              >
+                                Resolve
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -1162,7 +1177,7 @@ export default function Admin() {
                               onClick={() =>
                                 updateMatch.mutate({
                                   matchId: m.id,
-                                  patch: { disputed: !m.disputed, ...(m.disputed ? {} : {}) },
+                                  patch: { disputed: !m.disputed },
                                 })
                               }
                             >

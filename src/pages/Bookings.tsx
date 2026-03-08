@@ -1,13 +1,25 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Loader2, Mail, MessageCircle } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Calendar as CalendarIcon,
+  Clock,
+  MapPin,
+  Users,
+  Swords,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { format, addDays, subDays, getISODay } from "date-fns";
-import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile } from "@/hooks/use-data";
+import { motion, AnimatePresence } from "framer-motion";
+import { format, addDays, subDays, getISODay, isToday, isTomorrow, isPast, parseISO } from "date-fns";
+import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile, useMyBookings } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
@@ -31,6 +43,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { enqueueOutbox } from "@/lib/outbox";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 function timeToMinutes(t: string) {
   const [hh, mm] = t.split(":").map((x) => Number(x));
@@ -47,10 +60,18 @@ function addMinutesToTime(t: string, delta: number) {
   return minutesToTime(timeToMinutes(t) + delta);
 }
 
+function formatTimeDisplay(t: string) {
+  const [hh, mm] = t.split(":");
+  const h = parseInt(hh);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${mm} ${ampm}`;
+}
+
 const timeSlots = (() => {
   const slots: string[] = [];
-  const start = 6 * 60; // 06:00
-  const end = 22 * 60; // 22:00 (exclusive)
+  const start = 6 * 60;
+  const end = 22 * 60;
   for (let m = start; m < end; m += 30) {
     slots.push(minutesToTime(m));
   }
@@ -58,6 +79,120 @@ const timeSlots = (() => {
 })();
 
 const courts = [1, 2];
+
+function getDateLabel(date: Date) {
+  if (isToday(date)) return "Today";
+  if (isTomorrow(date)) return "Tomorrow";
+  return format(date, "EEEE");
+}
+
+// Quick date chips for the next 7 days
+function DateChips({ selectedDate, onSelect }: { selectedDate: Date; onSelect: (d: Date) => void }) {
+  const today = new Date();
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
+
+  return (
+    <div className="flex gap-1.5 overflow-x-auto pb-1 px-4 scrollbar-hide">
+      {days.map((day) => {
+        const isSelected = format(day, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd");
+        return (
+          <button
+            key={day.toISOString()}
+            onClick={() => onSelect(day)}
+            className={cn(
+              "flex flex-col items-center min-w-[3.2rem] px-2 py-2 rounded-xl text-xs font-medium transition-all",
+              isSelected
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                : "bg-card hover:bg-secondary border border-border/50"
+            )}
+          >
+            <span className={cn("text-[10px] uppercase tracking-wider", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+              {format(day, "EEE")}
+            </span>
+            <span className="text-base font-bold mt-0.5">{format(day, "d")}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Upcoming games card
+function UpcomingGamesSection() {
+  const { data: myBookings, isLoading } = useMyBookings();
+
+  if (isLoading) return null;
+  if (!myBookings || myBookings.length === 0) return null;
+
+  const upcoming = myBookings.slice(0, 3);
+
+  return (
+    <div className="px-4 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center">
+          <Sparkles className="w-3.5 h-3.5 text-accent-foreground" />
+        </div>
+        <h2 className="text-sm font-semibold font-heading">Upcoming Games</h2>
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          {myBookings.length}
+        </Badge>
+      </div>
+      <div className="space-y-2">
+        {upcoming.map((booking: any, i: number) => (
+          <motion.div
+            key={booking.id}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.05 }}
+          >
+            <Card className="overflow-hidden border-border/50 bg-card/80 backdrop-blur-sm">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0",
+                  "bg-primary/10 text-primary"
+                )}>
+                  <span className="text-[10px] font-medium uppercase">
+                    {format(parseISO(booking.date), "MMM")}
+                  </span>
+                  <span className="text-lg font-bold leading-none">
+                    {format(parseISO(booking.date), "d")}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold truncate">
+                      {booking.court_name}
+                    </span>
+                    {booking.is_friendly ? (
+                      <Badge variant="secondary" className="text-[9px] px-1 py-0">Friendly</Badge>
+                    ) : (
+                      <Badge className="text-[9px] px-1 py-0 bg-primary/15 text-primary border-0">Ladder</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {String(booking.start_time || "").slice(0, 5)} - {String(booking.end_time || "").slice(0, 5)}
+                    </span>
+                    {booking.opponent_name && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Swords className="w-3 h-3" />
+                        vs {booking.opponent_name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-win animate-pulse" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -153,6 +288,11 @@ export default function Bookings() {
     });
   };
 
+  // Count bookings per court for stats
+  const court1Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 1).length || 0;
+  const court2Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 2).length || 0;
+  const totalSlots = timeSlots.length;
+
   const handleBook = async () => {
     if (!bookingDialog) return;
     const endTime = addMinutesToTime(bookingDialog.time, 30);
@@ -162,11 +302,10 @@ export default function Bookings() {
       const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
       if (!isOnline) {
         if (!user?.id) throw new Error("Must be logged in");
-
         const needsChallenge = !!bookingDialog.opponentId && !bookingDialog.isFriendly;
         const challengeId = needsChallenge ? crypto.randomUUID() : null;
         const opponent = bookingDialog.opponentId
-          ? (availablePlayers || []).find((p) => p.id === bookingDialog.opponentId) || null
+          ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
           : null;
 
         enqueueOutbox({
@@ -198,7 +337,7 @@ export default function Bookings() {
         });
 
         toast.message("Saved offline", {
-          description: "Your booking will sync automatically when you’re back online.",
+          description: "Your booking will sync automatically when you're back online.",
         });
 
         setCalendarPrompt({
@@ -228,7 +367,7 @@ export default function Bookings() {
       });
 
       const opponent = bookingDialog.opponentId
-        ? (availablePlayers || []).find((p) => p.id === bookingDialog.opponentId) || null
+        ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
         : null;
 
       if (bookingDialog.opponentId && !bookingDialog.isFriendly) {
@@ -308,7 +447,7 @@ export default function Bookings() {
         });
 
         toast.message("Network issue — saved offline", {
-          description: "We’ll retry syncing your booking automatically.",
+          description: "We'll retry syncing your booking automatically.",
         });
         setBookingDialog(null);
         return;
@@ -319,7 +458,7 @@ export default function Bookings() {
   };
 
   const eligibleOpponents = (() => {
-    const list = (availablePlayers || []).filter((p) => p.id !== user?.id);
+    const list = (availablePlayers || []).filter((p: any) => p.id !== user?.id);
     const myRank = me?.rank ?? null;
 
     if (!bookingDialog) return [] as typeof list;
@@ -328,7 +467,7 @@ export default function Bookings() {
 
     const availableSet = availableForSlotUserIds ? new Set(availableForSlotUserIds) : null;
     return list.filter(
-      (p) =>
+      (p: any) =>
         typeof p.rank === "number" &&
         myRank - p.rank >= 1 &&
         myRank - p.rank <= 2 &&
@@ -337,90 +476,174 @@ export default function Bookings() {
   })();
 
   const selectedOpponent = bookingDialog?.opponentId
-    ? (availablePlayers || []).find((p) => p.id === bookingDialog.opponentId) || null
+    ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
     : null;
 
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="Court Bookings" subtitle="Book your court" />
-
-      {/* Date Selector */}
-      <div className="flex items-center justify-between px-4 mt-2">
-        <Button variant="ghost" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))}>
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <span className="text-sm font-semibold font-heading">
-          {format(selectedDate, "EEEE, d MMM")}
-        </span>
-        <Button variant="ghost" size="icon" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
-          <ChevronRight className="w-5 h-5" />
-        </Button>
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold font-heading tracking-tight">Courts</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {getDateLabel(selectedDate)} · {format(selectedDate, "d MMM")}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Court Headers */}
-      <div className="grid grid-cols-[60px_1fr_1fr] gap-2 px-4 mt-4 mb-2">
+      {/* Date chips */}
+      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} />
+
+      {/* Upcoming games */}
+      <div className="mt-4">
+        <UpcomingGamesSection />
+      </div>
+
+      {/* Court availability stats */}
+      {!isLoading && (
+        <div className="px-4 mb-3">
+          <div className="grid grid-cols-2 gap-2">
+            {courts.map((courtId) => {
+              const count = courtId === 1 ? court1Count : court2Count;
+              const pct = Math.round((count / totalSlots) * 100);
+              return (
+                <Card key={courtId} className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-xs font-semibold font-heading">Court {courtId}</span>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[9px] px-1.5 py-0",
+                          pct > 70 ? "bg-destructive/15 text-destructive" : pct > 40 ? "bg-accent/20 text-accent-foreground" : "bg-win/15 text-win"
+                        )}
+                      >
+                        {pct > 70 ? "Busy" : pct > 40 ? "Moderate" : "Available"}
+                      </Badge>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                      <motion.div
+                        className={cn(
+                          "h-full rounded-full",
+                          pct > 70 ? "bg-destructive" : pct > 40 ? "bg-accent" : "bg-primary"
+                        )}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1.5">{count}/{totalSlots} slots booked</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Time Grid */}
+      <div className="px-4 mb-2">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[52px_1fr_1fr] gap-x-1.5 px-4 mb-2">
         <div />
         {courts.map((c) => (
-          <div key={c} className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest pb-1">
             Court {c}
           </div>
         ))}
       </div>
 
-      {/* Time Grid */}
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : (
         <motion.div
-          className="px-4 space-y-1 mb-20"
+          className="px-4 space-y-[3px] mb-20"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {timeSlots.map((time) => (
-            <div key={time} className="grid grid-cols-[60px_1fr_1fr] gap-2">
-              <div className="text-xs text-muted-foreground flex items-center justify-end pr-2 font-medium">
-                {time}
-              </div>
-              {courts.map((courtId) => {
-                const booking = getBooking(courtId, time);
-                const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
-                const b = (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
+          {timeSlots.map((time, idx) => {
+            const isHour = time.endsWith(":00");
+            return (
+              <div key={time} className="grid grid-cols-[52px_1fr_1fr] gap-x-1.5">
+                <div className={cn(
+                  "text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",
+                  isHour ? "text-foreground/70" : "text-muted-foreground/40"
+                )}>
+                  {isHour ? formatTimeDisplay(time) : ""}
+                </div>
+                {courts.map((courtId) => {
+                  const booking = getBooking(courtId, time);
+                  const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
+                  const b = (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
+                  const isMine = booking && (booking as any).user_id === user?.id;
 
-                return (
-                  <Card
-                    key={courtId}
-                    className={cn(
-                      "h-12 flex items-center justify-center text-xs cursor-pointer transition-colors",
-                      booking
-                        ? "bg-primary/10 border-primary/30"
-                        : "hover:bg-secondary/80 border-dashed"
-                    )}
-                    onClick={() => {
-                      if (booking) setBookingDetails(booking);
-                      else setBookingDialog({ courtId, time, opponentId: "", isFriendly: false });
-                    }}
-                  >
-                    {booking ? (
-                      <div className="px-1 min-w-0 text-center leading-tight">
-                        <p className="font-medium text-primary text-[11px] truncate">
-                          {a || "Booked"}
-                          {b ? ` vs ${b}` : ""}
-                        </p>
-                        {(booking as any).is_friendly ? (
-                          <p className="text-[10px] text-muted-foreground">Friendly</p>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground/50 text-[10px]">Available</span>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          ))}
+                  return (
+                    <motion.div
+                      key={courtId}
+                      whileTap={{ scale: 0.97 }}
+                      className={cn(
+                        "h-10 rounded-lg flex items-center justify-center text-xs cursor-pointer transition-all border",
+                        booking
+                          ? isMine
+                            ? "bg-primary/15 border-primary/40 hover:bg-primary/20"
+                            : "bg-secondary/80 border-border/50 hover:bg-secondary"
+                          : "border-border/30 hover:border-primary/30 hover:bg-primary/5 border-dashed"
+                      )}
+                      onClick={() => {
+                        if (booking) setBookingDetails(booking);
+                        else setBookingDialog({ courtId, time, opponentId: "", isFriendly: false });
+                      }}
+                    >
+                      {booking ? (
+                        <div className="px-1.5 min-w-0 text-center leading-tight">
+                          <p className={cn(
+                            "font-semibold text-[11px] truncate",
+                            isMine ? "text-primary" : "text-foreground/70"
+                          )}>
+                            {a || "Booked"}
+                            {b ? ` vs ${b}` : ""}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/30 text-[10px]">·</span>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </motion.div>
       )}
 
@@ -428,71 +651,61 @@ export default function Bookings() {
       <Dialog open={!!bookingDetails} onOpenChange={() => setBookingDetails(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-heading">Booking details</DialogTitle>
+            <DialogTitle className="font-heading">Booking Details</DialogTitle>
           </DialogHeader>
           {bookingDetails && (
             <div className="space-y-3 py-2">
-              <div className="flex items-start justify-between gap-3 rounded-md border p-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">
+              <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/20 p-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <MapPin className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">
                     Court {bookingDetails.court_id} · {format(selectedDate, "d MMM yyyy")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {String(bookingDetails.start_time || "").slice(0, 5)} - {String(bookingDetails.end_time || "").slice(0, 5)}
-                    {bookingDetails.is_friendly ? " · Friendly" : " · Ladder"}
                   </p>
                 </div>
-                <Badge variant="secondary" className={bookingDetails.is_friendly ? "bg-muted text-muted-foreground" : "bg-primary/15 text-primary"}>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "text-[10px]",
+                    bookingDetails.is_friendly
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-primary/15 text-primary border-0"
+                  )}
+                >
                   {bookingDetails.is_friendly ? "Friendly" : "Ladder"}
                 </Badge>
               </div>
 
-              <div className="rounded-md border p-3 space-y-2">
-                <div className="flex items-start justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">Booked by</span>
-                  <span className="font-medium text-right">
+              <div className="rounded-xl border p-3 space-y-2.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" /> Booked by
+                  </span>
+                  <span className="font-medium">
                     {bookingDetails.player_name || "Unknown"}
-                    {typeof bookingDetails.player_rank === "number" ? ` (Rank #${bookingDetails.player_rank})` : ""}
+                    {typeof bookingDetails.player_rank === "number" ? ` (#${bookingDetails.player_rank})` : ""}
                   </span>
                 </div>
-                <div className="flex items-start justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">Opponent</span>
-                  <span className="font-medium text-right">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Swords className="w-3.5 h-3.5" /> Opponent
+                  </span>
+                  <span className="font-medium">
                     {bookingDetails.opponent_name || "Not selected"}
-                    {typeof bookingDetails.opponent_rank === "number" ? ` (Rank #${bookingDetails.opponent_rank})` : ""}
+                    {typeof bookingDetails.opponent_rank === "number" ? ` (#${bookingDetails.opponent_rank})` : ""}
                   </span>
                 </div>
-                {bookingDetails.challenge_id ? (
-                  <div className="flex items-start justify-between gap-3 text-sm">
-                    <span className="text-muted-foreground">Challenge</span>
-                    <span className="font-medium text-right">Linked</span>
-                  </div>
-                ) : null}
               </div>
 
-              {(bookingDetails.player_availability || bookingDetails.opponent_availability) && (
-                <div className="rounded-md border p-3 space-y-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</p>
-                  {bookingDetails.player_availability ? (
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">{(bookingDetails.player_name || "Booked by").split(" ")[0]}:</span>{" "}
-                      {bookingDetails.player_availability}
-                    </p>
-                  ) : null}
-                  {bookingDetails.opponent_availability ? (
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">{(bookingDetails.opponent_name || "Opponent").split(" ")[0]}:</span>{" "}
-                      {bookingDetails.opponent_availability}
-                    </p>
-                  ) : null}
-                </div>
-              )}
-
-              {bookingDetails.created_at ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Created: {new Date(bookingDetails.created_at).toLocaleString()}
+              {bookingDetails.created_at && (
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Created {new Date(bookingDetails.created_at).toLocaleString()}
                 </p>
-              ) : null}
+              )}
             </div>
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -519,7 +732,8 @@ export default function Bookings() {
                   <Mail className="w-3.5 h-3.5" /> Share
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="destructive"
+                  size="sm"
                   disabled={cancelBooking.isPending}
                   onClick={async () => {
                     try {
@@ -531,11 +745,11 @@ export default function Bookings() {
                     }
                   }}
                 >
-                  {cancelBooking.isPending ? "Cancelling..." : "Cancel booking"}
+                  {cancelBooking.isPending ? "Cancelling..." : "Cancel"}
                 </Button>
               </>
             )}
-            <Button onClick={() => setBookingDetails(null)}>Close</Button>
+            <Button variant="outline" onClick={() => setBookingDetails(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -544,30 +758,29 @@ export default function Bookings() {
       <Dialog open={!!bookingDialog} onOpenChange={() => setBookingDialog(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-heading">Confirm Booking</DialogTitle>
+            <DialogTitle className="font-heading">Book Court</DialogTitle>
           </DialogHeader>
           {bookingDialog && (
             <div className="space-y-3 py-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Court</span>
-                <span className="font-medium">Court {bookingDialog.courtId}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Date</span>
-                <span className="font-medium">{format(selectedDate, "d MMM yyyy")}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Time</span>
-                <span className="font-medium">
-                  {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, 30)}
-                </span>
+              <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Court {bookingDialog.courtId}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(selectedDate, "d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, 30)}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="flex items-center justify-between rounded-xl border p-3">
                 <div className="min-w-0">
-                  <Label className="text-xs">Friendly</Label>
+                  <Label className="text-xs font-semibold">Friendly Match</Label>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Friendly matches can be booked with anyone, but don’t count toward the ladder.
+                    Won't count toward ladder rankings
                   </p>
                 </div>
                 <Switch
@@ -579,13 +792,13 @@ export default function Bookings() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Opponent (optional)</Label>
+                <Label className="text-xs font-semibold">Opponent (optional)</Label>
                 <Select
                   value={bookingDialog.opponentId}
                   onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, opponentId: v } : s))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={bookingDialog.isFriendly ? "Choose anyone" : "Choose someone you can challenge"} />
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder={bookingDialog.isFriendly ? "Choose anyone" : "Choose eligible opponent"} />
                   </SelectTrigger>
                   <SelectContent>
                     {eligibleOpponents.length === 0 ? (
@@ -593,45 +806,27 @@ export default function Bookings() {
                         {bookingDialog.isFriendly
                           ? "No other players found."
                           : !me?.rank
-                            ? "You need a ladder rank to book a ladder match. Toggle Friendly to book anyone."
+                            ? "You need a ladder rank first. Toggle Friendly to book anyone."
                             : availableForSlotUserIds
-                              ? "No eligible opponents are available for this 30-minute slot. Toggle Friendly to book anyone."
+                              ? "No eligible opponents available. Toggle Friendly to book anyone."
                               : "Loading availability…"}
                       </div>
                     ) : (
-                      eligibleOpponents.map((p) => (
+                      eligibleOpponents.map((p: any) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} {typeof p.rank === "number" ? `(Rank #${p.rank})` : "(Unranked)"}
+                          {p.name} {typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}
                         </SelectItem>
                       ))
                     )}
                   </SelectContent>
                 </Select>
-
-                {selectedOpponent ? (
-                  <div className="rounded-md border p-3">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</p>
-                    {selectedOpponent.availability ? (
-                      <p className="text-sm mt-1">{selectedOpponent.availability}</p>
-                    ) : (
-                      <p className="text-sm mt-1 text-muted-foreground">No availability set.</p>
-                    )}
-                    {availableForSlotUserIds ? (
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        {availableForSlotUserIds.includes(selectedOpponent.id)
-                          ? "Available for this slot."
-                          : "Not available for this slot (based on their availability blocks)."}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setBookingDialog(null)}>Cancel</Button>
             <Button onClick={handleBook} disabled={createBooking.isPending || createChallenge.isPending}>
-              {createBooking.isPending || createChallenge.isPending ? "Booking..." : "Book Court"}
+              {createBooking.isPending || createChallenge.isPending ? "Booking..." : "Confirm Booking"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -644,43 +839,26 @@ export default function Bookings() {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-heading">Add to Google Calendar?</DialogTitle>
+            <DialogTitle className="font-heading">Add to Calendar?</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
-            <div className="rounded-md border p-3 space-y-1">
-              <p className="text-sm font-medium">
+            <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1">
+              <p className="text-sm font-semibold">
                 Court {calendarPrompt.courtId} · {calendarPrompt.dateStr}
               </p>
               <p className="text-xs text-muted-foreground">
                 {calendarPrompt.startTime} - {calendarPrompt.endTime}
                 {calendarPrompt.opponentName ? ` · vs ${calendarPrompt.opponentName}` : ""}
-                {calendarPrompt.isFriendly ? " · Friendly" : ""}
               </p>
             </div>
 
-            {calendarPrompt.opponentEmail ? (
-              <p className="text-xs text-muted-foreground">
-                We'll add <span className="text-foreground font-medium">{calendarPrompt.opponentEmail}</span> as a guest.
-              </p>
-            ) : calendarPrompt.opponentName ? (
-              <p className="text-xs text-muted-foreground">
-                No email found for {calendarPrompt.opponentName}, so we can’t prefill a guest invite.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                You can add an opponent later from Google Calendar.
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 rounded-md border p-3">
-              <p className="text-xs text-muted-foreground flex-1">Invite someone to this booking?</p>
+            <div className="flex items-center gap-2 rounded-xl border p-3">
+              <p className="text-xs text-muted-foreground flex-1">Share this booking?</p>
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1.5"
+                className="gap-1.5 rounded-lg"
                 onClick={() => {
                   setCalendarPrompt((s) => ({ ...s, open: false }));
                   setShareDialog({
@@ -699,7 +877,7 @@ export default function Bookings() {
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1.5"
+                className="gap-1.5 rounded-lg"
                 onClick={() => {
                   const msg = encodeURIComponent(
                     `🏸 Squash booking!\n\nCourt ${calendarPrompt.courtId} on ${calendarPrompt.dateStr} from ${calendarPrompt.startTime} to ${calendarPrompt.endTime}.\n\nJoin me!`
@@ -724,7 +902,7 @@ export default function Bookings() {
                   ? `Squash: vs ${calendarPrompt.opponentName}`
                   : "Squash booking";
                 const details = [
-                  calendarPrompt.isFriendly ? "Friendly match (not ladder-recordable)." : "Ladder match booking.",
+                  calendarPrompt.isFriendly ? "Friendly match." : "Ladder match.",
                   `Court ${calendarPrompt.courtId}`,
                   `Time: ${calendarPrompt.startTime}-${calendarPrompt.endTime}`,
                   "Booked via Gordon's Bay Squash Hub.",
@@ -741,6 +919,7 @@ export default function Bookings() {
                 setCalendarPrompt((s) => ({ ...s, open: false }));
               }}
             >
+              <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
               Add to Calendar
             </Button>
           </DialogFooter>

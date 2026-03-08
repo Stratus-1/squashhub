@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Email notifications error:", error);
-    return new Response(JSON.stringify({ error: error.message || String(error) }), {
+    return new Response(JSON.stringify({ error: (error as Error).message || String(error) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

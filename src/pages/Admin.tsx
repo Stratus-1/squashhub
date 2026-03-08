@@ -788,7 +788,93 @@ export default function Admin() {
     onError: (err: any) => toast.error(err.message || "Failed to cancel schedule"),
   });
 
-  const openEdit = (p: ProfileRow) => {
+  // Admin cancel any booking
+  const adminCancelBooking = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("Booking cancelled");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to cancel booking"),
+  });
+
+  // Block court for maintenance (creates a booking under the admin's account)
+  const blockCourt = useMutation({
+    mutationFn: async (payload: { courtId: number; date: string; startTime: string; endTime: string; reason: string }) => {
+      if (!user) throw new Error("Must be logged in");
+      const { error } = await supabase.from("bookings").insert({
+        court_id: payload.courtId,
+        user_id: user.id,
+        date: payload.date,
+        start_time: payload.startTime,
+        end_time: payload.endTime,
+        status: "active",
+      } as any);
+      if (error) {
+        if (error.code === "23505") throw new Error("That slot is already booked");
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("Court blocked for maintenance");
+      setCourtBlock((s) => ({ ...s, open: false }));
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to block court"),
+  });
+
+  // Resolve disputed match
+  const resolveDispute = useMutation({
+    mutationFn: async ({ matchId, winnerId, notes }: { matchId: string; winnerId: string; notes: string }) => {
+      // Update the match winner and mark as undisputed + confirmed
+      const { error } = await supabase.from("matches").update({
+        winner_id: winnerId,
+        disputed: false,
+        confirmed: true,
+      }).eq("id", matchId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Dispute resolved");
+      setDisputeResolve((s) => ({ ...s, open: false }));
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to resolve dispute"),
+  });
+
+  // Suspend/unsuspend player
+  const toggleSuspend = useMutation({
+    mutationFn: async ({ userId, suspend }: { userId: string; suspend: boolean }) => {
+      const patch: any = suspend ? { rank: null } : {};
+      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      if (error) throw error;
+      // Notify user
+      const msg = suspend
+        ? "Your account has been suspended by an admin. Contact the club for details."
+        : "Your account has been reinstated by an admin.";
+      await supabase.from("notifications").insert({
+        user_id: userId,
+        title: suspend ? "Account Suspended" : "Account Reinstated",
+        message: msg,
+        type: "admin",
+      } as any);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      toast.success("Player status updated");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to update player"),
+  });
+
     setEditUser({
       open: true,
       profile: p,

@@ -80,7 +80,7 @@ export default function Dashboard() {
   const { data: availablePlayers } = useQuery({
     queryKey: ["dashboard-available-players"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("profiles")
         .select("id,name,rank,availability")
         .not("availability", "is", null)

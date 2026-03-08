@@ -100,11 +100,11 @@ export default function Bookings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,name,rank,availability,email")
+        .select("id,name,rank,email")
         .order("rank", { ascending: true })
         .limit(100);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; name: string; rank: number | null; availability: string | null; email: string | null }>;
+      return (data || []) as Array<{ id: string; name: string; rank: number | null; email: string | null }> as any;
     },
     enabled: !!user,
   });

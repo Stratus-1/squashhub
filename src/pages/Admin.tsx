@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
 import { supabase } from "@/integrations/supabase/client";
+const fromExt = (table: string) => (supabase as any).from(table);
+const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
 import { AppRole, useMyRoles } from "@/hooks/use-data";
 import { PageHeader } from "@/components/PageHeader";

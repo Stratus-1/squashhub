@@ -420,13 +420,12 @@ export function useChallengeSchedulesByChallengeIds(challengeIds: string[]) {
     queryKey: ["challenge-schedules", user?.id, challengeIds.join(",")],
     queryFn: async () => {
       if (!user || challengeIds.length === 0) return [] as ChallengeSchedule[];
-      const { data, error } = await supabase
-        .from("challenge_schedules")
+      const { data, error } = await fromAny("challenge_schedules")
         .select("*")
         .in("challenge_id", challengeIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as ChallengeSchedule[];
+      return (data || []) as unknown as ChallengeSchedule[];
     },
     enabled: !!user && challengeIds.length > 0,
   });

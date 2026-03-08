@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
+import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -133,6 +134,8 @@ export default function Dashboard() {
       <DashboardTutorial />
 
       <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications />
+
+      <WelcomeBanner />
 
       {/* Quick Stats */}
       <motion.div

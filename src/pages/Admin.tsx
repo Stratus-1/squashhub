@@ -587,7 +587,7 @@ export default function Admin() {
     mutationFn: async ({ name, startsOn }: { name: string; startsOn: string }) => {
       const trimmed = name.trim();
       if (!trimmed) throw new Error("Season name is required");
-      const { error } = await supabase.rpc("admin_start_season", {
+      const { error } = await rpcExt("admin_start_season", {
         season_name: trimmed,
         starts_on: startsOn,
       } as any);

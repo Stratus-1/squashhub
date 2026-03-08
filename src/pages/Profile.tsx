@@ -40,6 +40,7 @@ type StravaActivityPreview = {
 
 type EditableProfileFields = {
   name: string;
+  phone: string;
   bio: string;
   location: string;
   home_club: string;
@@ -126,6 +127,7 @@ export default function Profile() {
   const [editSaving, setEditSaving] = useState(false);
   const [edit, setEdit] = useState<EditableProfileFields>({
     name: "",
+    phone: "",
     bio: "",
     location: "",
     home_club: "",
@@ -192,6 +194,8 @@ export default function Profile() {
   const winRate = profile && profile.matches_played > 0
     ? Math.round((profile.wins / profile.matches_played) * 100)
     : 0;
+
+  const phoneMissing = !profile?.phone || String(profile.phone).trim().length === 0;
 
   const initials = profile?.name
     ? profile.name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
@@ -265,6 +269,20 @@ export default function Profile() {
         <StatCard label="Wins" value={profile?.wins || 0} variant="win" />
         <StatCard label="Win %" value={`${winRate}%`} icon={<TrendingUp className="w-4 h-4" />} />
       </div>
+
+      {phoneMissing && (
+        <div className="px-4 mt-3">
+          <Card className="p-4 border-accent/40 bg-accent/5">
+            <p className="text-sm font-semibold font-heading">Complete your profile</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Please add your cell number so the club can contact you about challenges and bookings.
+            </p>
+            <Button className="h-8 text-xs mt-3" onClick={() => setEditOpen(true)}>
+              Add cell number
+            </Button>
+          </Card>
+        </div>
+      )}
 
       <div className="px-4 mt-3">
         <Card className="p-4">
@@ -763,6 +781,7 @@ export default function Profile() {
           if (open && profile) {
             setEdit({
               name: profile.name || "",
+              phone: (profile.phone as any) || "",
               bio: (profile as any).bio || "",
               location: (profile as any).location || "",
               home_club: (profile as any).home_club || "",
@@ -813,6 +832,23 @@ export default function Profile() {
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input value={edit.name} onChange={(e) => setEdit((s) => ({ ...s, name: e.target.value }))} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>
+                Cell number <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="e.g. +27 82 123 4567"
+                value={edit.phone}
+                onChange={(e) => setEdit((s) => ({ ...s, phone: e.target.value }))}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Required to complete your profile.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -1062,6 +1098,14 @@ export default function Profile() {
                   try {
                     if (!user?.id) throw new Error("You must be logged in");
                     setEditSaving(true);
+
+                    const phoneRaw = edit.phone.trim();
+                    const digitsOnly = phoneRaw.replace(/\D/g, "");
+                    if (!phoneRaw) throw new Error("Please enter your cell number to complete your profile");
+                    if (digitsOnly.length < 9 || digitsOnly.length > 15) {
+                      throw new Error("Please enter a valid cell number (include country code if possible)");
+                    }
+
                     const years = edit.years_playing.trim() ? Number(edit.years_playing) : null;
                     if (years != null && (!Number.isFinite(years) || years < 0 || years > 80)) {
                       throw new Error("Years playing must be between 0 and 80");
@@ -1071,6 +1115,7 @@ export default function Profile() {
                       .from("profiles")
                       .update({
                         name: edit.name.trim(),
+                        phone: phoneRaw,
                         bio: edit.bio.trim() || null,
                         location: edit.location.trim() || null,
                         home_club: edit.home_club.trim() || null,

@@ -135,6 +135,8 @@ export default function Dashboard() {
 
       <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications />
 
+      <WelcomeBanner />
+
       {/* Quick Stats */}
       <motion.div
         className="grid grid-cols-4 gap-2 px-4 mt-3"

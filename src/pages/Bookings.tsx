@@ -495,24 +495,46 @@ export default function Bookings() {
               ) : null}
             </div>
           )}
-          <DialogFooter>
-            {bookingDetails && bookingDetails.user_id === user?.id ? (
-              <Button
-                variant="outline"
-                disabled={cancelBooking.isPending}
-                onClick={async () => {
-                  try {
-                    await cancelBooking.mutateAsync(String(bookingDetails.id));
-                    toast.success("Booking cancelled");
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {bookingDetails && bookingDetails.user_id === user?.id && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    const bd = bookingDetails;
                     setBookingDetails(null);
-                  } catch (e: any) {
-                    toast.error(e.message || "Failed to cancel booking");
-                  }
-                }}
-              >
-                {cancelBooking.isPending ? "Cancelling..." : "Cancel booking"}
-              </Button>
-            ) : null}
+                    setShareDialog({
+                      open: true,
+                      bookingId: bd.id,
+                      courtId: bd.court_id,
+                      dateStr: String(bd.date),
+                      startTime: String(bd.start_time || "").slice(0, 5),
+                      endTime: String(bd.end_time || "").slice(0, 5),
+                      opponentName: bd.opponent_name || null,
+                    });
+                  }}
+                >
+                  <Mail className="w-3.5 h-3.5" /> Share
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={cancelBooking.isPending}
+                  onClick={async () => {
+                    try {
+                      await cancelBooking.mutateAsync(String(bookingDetails.id));
+                      toast.success("Booking cancelled");
+                      setBookingDetails(null);
+                    } catch (e: any) {
+                      toast.error(e.message || "Failed to cancel booking");
+                    }
+                  }}
+                >
+                  {cancelBooking.isPending ? "Cancelling..." : "Cancel booking"}
+                </Button>
+              </>
+            )}
             <Button onClick={() => setBookingDetails(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>

@@ -122,7 +122,7 @@ export default function Achievements() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background pb-24">
-        <PageHeader title="Achievements" backTo="/dashboard" />
+        <PageHeader title="Achievements" />
         <div className="px-4 space-y-4">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
         </div>

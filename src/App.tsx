@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
@@ -36,6 +36,8 @@ import Availability from "./pages/Availability";
 import Analytics from "./pages/Analytics";
 import Seasons from "./pages/Seasons";
 import AdminEventEditor from "./pages/AdminEventEditor";
+import Support from "./pages/Support";
+import AdminSupport from "./pages/AdminSupport";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 
@@ -43,6 +45,7 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -50,8 +53,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    const redirectTo = `${location.pathname}${location.search || ""}`;
+    return <Navigate to={`/auth?redirectTo=${encodeURIComponent(redirectTo)}`} replace />;
+  }
   return <>{children}</>;
+}
+
+function AuthGate() {
+  const { user } = useAuth();
+  const [params] = useSearchParams();
+  const redirectTo = (params.get("redirectTo") || "").trim();
+
+  if (!user) return <Auth />;
+
+  const safeRedirect =
+    redirectTo.startsWith("/") && !redirectTo.startsWith("//")
+      ? redirectTo
+      : "/dashboard";
+  return <Navigate to={safeRedirect} replace />;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -93,7 +113,7 @@ function AppRoutes() {
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <Auth />} />
+        <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
@@ -110,10 +130,12 @@ function AppRoutes() {
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/seasons" element={<ProtectedRoute><Seasons /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+        <Route path="/admin/support" element={<AdminRoute><AdminSupport /></AdminRoute>} />
         <Route path="/admin/events/new" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
         <Route path="/admin/events/:id" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {user && <BottomNav />}

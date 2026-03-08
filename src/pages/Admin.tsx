@@ -26,7 +26,7 @@ import { motion } from "framer-motion";
 import {
   Users, Swords, Trophy, CalendarDays, Shield, AlertTriangle,
   BarChart3, Megaphone, Clock, ChevronRight, Activity, BookOpen,
-  Calendar, Wrench, Download, Upload, UserCog, ClipboardList, Plus, MapPin
+  Calendar, Wrench, Download, Upload, UserCog, ClipboardList, Plus, MapPin, LifeBuoy
 } from "lucide-react";
 
 type ProfileRow = {
@@ -1359,6 +1359,12 @@ export default function Admin() {
                     <Link to="/admin/events/new">
                     <Megaphone className="w-4 h-4 text-primary" />
                     <span className="text-xs">New Event</span>
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" asChild>
+                    <Link to="/admin/support">
+                      <LifeBuoy className="w-4 h-4 text-primary" />
+                      <span className="text-xs">Support Inbox</span>
                     </Link>
                   </Button>
                   <Button variant="outline" className="h-auto py-3 flex-col gap-1.5" onClick={() => setSeasonStart(s => ({ ...s, open: true }))}>

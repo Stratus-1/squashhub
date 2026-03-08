@@ -30,7 +30,7 @@ export default function PlayerProfile() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: me } = useProfile();
-  const { data: player, isLoading } = usePlayerProfile(id);
+  const { data: player, isLoading, error: playerError } = usePlayerProfile(id);
   const isSelf = !!id && user?.id === id;
   const showRecentMatches = isSelf || (!!player && (((player as any)?.privacy_show_recent_matches) ?? true));
   const showTraining = isSelf || (!!player && (((player as any)?.privacy_show_training) ?? true));
@@ -168,6 +168,20 @@ export default function PlayerProfile() {
     );
   }
 
+  if (playerError) {
+    return (
+      <div className="bottom-nav-safe">
+        <PageHeader title="Player" />
+        <div className="px-4 mt-4 space-y-3">
+          <Card className="p-4 text-sm text-muted-foreground">
+            Could not load this player profile. {String((playerError as any)?.message || "")}
+          </Card>
+          <Button variant="outline" onClick={() => navigate("/ladder")}>Back to ladder</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!player) {
     return (
       <div className="bottom-nav-safe">
@@ -188,6 +202,12 @@ export default function PlayerProfile() {
   const playingStyle = ((player as any).playing_style as string | null) || null;
   const favoriteShot = ((player as any).favorite_shot as string | null) || null;
   const availability = ((player as any).availability as string | null) || null;
+  const availabilityParts = availability
+    ? availability
+        .split(";")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
 
   return (
     <div className="bottom-nav-safe">
@@ -409,7 +429,16 @@ export default function PlayerProfile() {
             {showAvailability && availability ? (
               <div className="rounded-md border p-3">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Availability</p>
-                <p className="text-sm mt-1">{availability}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {availabilityParts.map((part) => (
+                    <Badge key={part} variant="secondary" className="text-[11px]">
+                      {part}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                  {availability}
+                </p>
               </div>
             ) : !showAvailability ? (
               <p className="text-sm text-muted-foreground">Availability is hidden.</p>

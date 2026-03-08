@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Check,
   Clock,
@@ -154,6 +154,7 @@ function addMinutesToTime(t: string, delta: number) {
 
 export default function Challenges() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { data: challenges, isLoading: challengesLoading } = useChallenges();
   const { data: matches, isLoading: matchesLoading } = useMatches();
@@ -165,6 +166,14 @@ export default function Challenges() {
   const proposeSchedule = useProposeChallengeSchedule();
   const respondSchedule = useRespondChallengeSchedule();
   const acceptSchedule = useAcceptChallengeSchedule();
+
+  const deeplinkChallengeId = (searchParams.get("challengeId") || "").trim();
+  const deeplinkIntent = (searchParams.get("intent") || "").trim(); // optional: accept/decline
+  const deeplinkChallenge = useMemo(
+    () => (deeplinkChallengeId ? (challenges || []).find((c) => c.id === deeplinkChallengeId) || null : null),
+    [challenges, deeplinkChallengeId]
+  );
+  const [deeplinkOpen, setDeeplinkOpen] = useState(false);
 
   const matchByChallengeId = useMemo(() => {
     const map = new Map<string, MatchWithProfiles>();
@@ -201,6 +210,24 @@ export default function Challenges() {
     durationMinutes: "60",
     courtId: "1",
   }));
+
+  useEffect(() => {
+    if (!deeplinkChallengeId) return;
+    if (challengesLoading) return;
+
+    if (!deeplinkChallenge) {
+      toast.error("That challenge link is invalid or no longer available.");
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("challengeId");
+        next.delete("intent");
+        return next;
+      }, { replace: true });
+      return;
+    }
+
+    setDeeplinkOpen(true);
+  }, [challengesLoading, deeplinkChallenge, deeplinkChallengeId, setSearchParams]);
 
   const openRecord = (challenge: ChallengeWithProfiles) => {
     const existing = matchByChallengeId.get(challenge.id);
@@ -240,6 +267,15 @@ export default function Challenges() {
   };
 
   const closePropose = () => setPropose((s) => ({ ...s, open: false, challenge: null }));
+
+  const acceptChallenge = async (challengeId: string) => {
+    try {
+      await updateChallenge.mutateAsync({ challengeId, status: "accepted" });
+      toast.success("Challenge accepted");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update challenge");
+    }
+  };
 
   const declineChallenge = async (challengeId: string) => {
     try {
@@ -451,6 +487,100 @@ export default function Challenges() {
   return (
     <div className="bottom-nav-safe">
       <PageHeader title="Challenges" subtitle="Challenge & compete" />
+
+      <Dialog
+        open={deeplinkOpen}
+        onOpenChange={(open) => {
+          setDeeplinkOpen(open);
+          if (!open) {
+            setSearchParams((prev) => {
+              const next = new URLSearchParams(prev);
+              next.delete("challengeId");
+              next.delete("intent");
+              return next;
+            }, { replace: true });
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Challenge response</DialogTitle>
+          </DialogHeader>
+
+          {!deeplinkChallenge ? (
+            <Card className="p-3 text-sm text-muted-foreground">Loading…</Card>
+          ) : (() => {
+            const challenge = deeplinkChallenge as any as ChallengeWithProfiles;
+            const isIncoming = user?.id === challenge.opponent_id;
+            const canRespond = challenge.status === "pending" && isIncoming;
+            const summary = isIncoming
+              ? `From ${challenge.challenger_name}`
+              : `Vs ${challenge.opponent_name}`;
+
+            return (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
+                  <p className="text-sm font-semibold">{summary}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Status: <span className="font-medium capitalize">{challenge.status}</span>
+                    {challenge.proposed_date ? ` · Proposed: ${challenge.proposed_date}` : ""}
+                  </p>
+                </div>
+
+                {!canRespond ? (
+                  <p className="text-sm text-muted-foreground">
+                    You can’t respond to this challenge from this account.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Accept to schedule your match, or decline if you can’t play.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeeplinkOpen(false);
+                navigate("/challenges");
+              }}
+            >
+              View challenges
+            </Button>
+            {deeplinkChallenge && user?.id === (deeplinkChallenge as any).opponent_id && (deeplinkChallenge as any).status === "pending" ? (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={updateChallenge.isPending}
+                  onClick={async () => {
+                    await declineChallenge(deeplinkChallenge.id);
+                    setDeeplinkOpen(false);
+                  }}
+                >
+                  Decline
+                </Button>
+                <Button
+                  disabled={updateChallenge.isPending}
+                  onClick={async () => {
+                    await acceptChallenge(deeplinkChallenge.id);
+                    setDeeplinkOpen(false);
+                    // If email link suggested an intent, help users reach the right next step.
+                    if (deeplinkIntent === "accept") {
+                      // Stay on challenges so they can propose/accept times.
+                      navigate("/challenges");
+                    }
+                  }}
+                >
+                  Accept
+                </Button>
+              </>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-2">
         <Button className="w-full" onClick={() => navigate("/challenges/new")}>
@@ -681,7 +811,7 @@ export default function Challenges() {
                     )}
 
                     {canRespond && (
-                      <div className="mt-2">
+                      <div className="mt-2 grid grid-cols-2 gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -689,7 +819,15 @@ export default function Challenges() {
                           disabled={updateChallenge.isPending}
                           onClick={() => declineChallenge(challenge.id)}
                         >
-                          Decline challenge
+                          Decline
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          disabled={updateChallenge.isPending}
+                          onClick={() => acceptChallenge(challenge.id)}
+                        >
+                          Accept
                         </Button>
                       </div>
                     )}

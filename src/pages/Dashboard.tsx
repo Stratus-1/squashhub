@@ -10,7 +10,7 @@ import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
-import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2 } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2, LifeBuoy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
@@ -168,7 +168,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-2 px-4 mt-4">
+      <div className="grid grid-cols-4 gap-2 px-4 mt-4">
         <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/bookings")}>
           <Calendar className="w-5 h-5 text-primary" />
           <span className="text-[11px]">Book Court</span>
@@ -180,6 +180,10 @@ export default function Dashboard() {
         <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/challenges/new")}>
           <Swords className="w-5 h-5 text-primary" />
           <span className="text-[11px]">Challenge</span>
+        </Button>
+        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/support")}>
+          <LifeBuoy className="w-5 h-5 text-primary" />
+          <span className="text-[11px]">Support</span>
         </Button>
       </div>
 

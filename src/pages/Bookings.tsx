@@ -10,6 +10,7 @@ import {
   Mail,
   MessageCircle,
   Calendar as CalendarIcon,
+  CalendarCheck,
   Clock,
   MapPin,
   Users,
@@ -351,6 +352,7 @@ export default function Bookings() {
   const court1Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 1).length || 0;
   const court2Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 2).length || 0;
   const totalSlots = timeSlots.length;
+  const dayBookingsCount = (bookings as any[] | undefined)?.length || 0;
 
   const handleBook = async () => {
     if (!bookingDialog) return;
@@ -571,6 +573,15 @@ export default function Bookings() {
       </div>
 
       {/* Date chips */}
+      {!isLoading && (
+        <div className="px-4 mt-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/80 backdrop-blur-sm px-3 py-1 text-xs">
+            <CalendarCheck className="w-3.5 h-3.5 text-primary" />
+            <span className="font-semibold tabular-nums">{dayBookingsCount}</span>
+            <span className="text-muted-foreground">bookings</span>
+          </div>
+        </div>
+      )}
       <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} />
 
       {/* Upcoming games */}

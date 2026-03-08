@@ -76,12 +76,16 @@ Deno.serve(async (req) => {
     const courtId = (booking as any).court_id;
     const inviterName = inviter?.name || "A player";
 
+    const challengeId = (booking as any).challenge_id ? String((booking as any).challenge_id) : "";
+    const challengeAcceptUrl = challengeId ? `${siteUrl}/challenges?challengeId=${challengeId}&intent=accept` : "";
+    const challengeDeclineUrl = challengeId ? `${siteUrl}/challenges?challengeId=${challengeId}&intent=decline` : "";
+
     if (channel === "whatsapp") {
       // Return WhatsApp deep link for client to open
       const msg = encodeURIComponent(
         `🏸 You're invited to play squash!\n\n` +
         `${inviterName} has booked Court ${courtId} on ${dateStr} from ${startTime} to ${endTime}.\n\n` +
-        `Accept: ${acceptUrl}\nDecline: ${declineUrl}`
+        `Accept: ${challengeAcceptUrl || acceptUrl}\nDecline: ${challengeDeclineUrl || declineUrl}`
       );
       const whatsappUrl = inviteeEmail
         ? `https://wa.me/?text=${msg}`
@@ -118,10 +122,10 @@ Deno.serve(async (req) => {
             <p style="margin:0;font-size:14px"><strong>🏟️ Court:</strong> Court ${courtId}</p>
           </div>
           <div style="text-align:center;margin:24px 0">
-            <a href="${acceptUrl}" style="display:inline-block;padding:12px 28px;background:#1a5c3a;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;margin:0 8px 8px 0">
+            <a href="${challengeAcceptUrl || acceptUrl}" style="display:inline-block;padding:12px 28px;background:#1a5c3a;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;margin:0 8px 8px 0">
               ✅ Accept
             </a>
-            <a href="${declineUrl}" style="display:inline-block;padding:12px 28px;background:#dc2626;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;margin:0 0 8px 0">
+            <a href="${challengeDeclineUrl || declineUrl}" style="display:inline-block;padding:12px 28px;background:#dc2626;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;margin:0 0 8px 0">
               ❌ Decline
             </a>
           </div>
@@ -132,7 +136,7 @@ Deno.serve(async (req) => {
       </div>
     `.trim();
 
-    const text = `Squash Invitation from ${inviterName}\n\nDate: ${dateStr}\nTime: ${startTime}-${endTime}\nCourt: Court ${courtId}\n\nAccept: ${acceptUrl}\nDecline: ${declineUrl}`;
+    const text = `Squash Invitation from ${inviterName}\n\nDate: ${dateStr}\nTime: ${startTime}-${endTime}\nCourt: Court ${courtId}\n\nAccept: ${challengeAcceptUrl || acceptUrl}\nDecline: ${challengeDeclineUrl || declineUrl}`;
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

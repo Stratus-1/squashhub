@@ -187,6 +187,40 @@ function toIntOrNull(value: string) {
   return Math.trunc(n);
 }
 
+function timeToMinutes(t: string) {
+  const [hhRaw, mmRaw] = String(t || "").split(":");
+  const hh = Number(hhRaw);
+  const mm = Number(mmRaw);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  return hh * 60 + mm;
+}
+
+function minutesToTime(m: number) {
+  const mm = ((m % 60) + 60) % 60;
+  const hh = Math.floor(m / 60);
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+function snapMinutesTo30(m: number, mode: "floor" | "ceil") {
+  return mode === "floor" ? Math.floor(m / 30) * 30 : Math.ceil(m / 30) * 30;
+}
+
+function normalizeBookingTimes(startTime: string, endTime: string) {
+  const minM = 6 * 60;
+  const maxM = 22 * 60;
+
+  const s0 = timeToMinutes(startTime);
+  const e0 = timeToMinutes(endTime);
+
+  let s = s0 == null ? minM : snapMinutesTo30(s0, "floor");
+  let e = e0 == null ? maxM : snapMinutesTo30(e0, "ceil");
+
+  s = Math.max(minM, Math.min(maxM - 30, s));
+  e = Math.max(s + 30, Math.min(maxM, e));
+
+  return { start: minutesToTime(s), end: minutesToTime(e) };
+}
+
 function escapeCsvValue(value: any) {
   const s = value == null ? "" : String(value);
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
@@ -1032,6 +1066,7 @@ export default function Admin() {
   const blockCourt = useMutation({
     mutationFn: async (payload: { courtId: number; date: string; startTime: string; endTime: string; reason: string }) => {
       if (!user) throw new Error("Must be logged in");
+      const norm = normalizeBookingTimes(payload.startTime, payload.endTime);
       const baseRow: any = {
         court_id: payload.courtId,
         user_id: user.id,
@@ -1039,8 +1074,8 @@ export default function Admin() {
         is_friendly: true,
         challenge_id: null,
         date: payload.date,
-        start_time: payload.startTime,
-        end_time: payload.endTime,
+        start_time: norm.start,
+        end_time: norm.end,
         status: "active",
       };
       const blockRow: any = {
@@ -1058,6 +1093,7 @@ export default function Admin() {
       }
       if (error) {
         if (error.code === "23505") throw new Error("That slot is already booked");
+        if (error.code === "23514") throw new Error("Times must be on 30-minute boundaries (e.g. 10:00 or 10:30)");
         throw error;
       }
     },
@@ -2260,12 +2296,15 @@ export default function Admin() {
               </div>
               <div className="space-y-1.5">
                 <Label>Court (optional)</Label>
-                <Select value={eventEdit.courtId} onValueChange={(v) => setEventEdit((s) => ({ ...s, courtId: v }))}>
+                <Select
+                  value={eventEdit.courtId || "__none__"}
+                  onValueChange={(v) => setEventEdit((s) => ({ ...s, courtId: v === "__none__" ? "" : v }))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select court" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">—</SelectItem>
+                    <SelectItem value="__none__">—</SelectItem>
                     <SelectItem value="1">Court 1</SelectItem>
                     <SelectItem value="2">Court 2</SelectItem>
                   </SelectContent>
@@ -2966,11 +3005,21 @@ export default function Admin() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Start time</Label>
-                <Input type="time" value={courtBlock.startTime} onChange={(e) => setCourtBlock((s) => ({ ...s, startTime: e.target.value }))} />
+                <Input
+                  type="time"
+                  step={1800}
+                  value={courtBlock.startTime}
+                  onChange={(e) => setCourtBlock((s) => ({ ...s, startTime: e.target.value }))}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>End time</Label>
-                <Input type="time" value={courtBlock.endTime} onChange={(e) => setCourtBlock((s) => ({ ...s, endTime: e.target.value }))} />
+                <Input
+                  type="time"
+                  step={1800}
+                  value={courtBlock.endTime}
+                  onChange={(e) => setCourtBlock((s) => ({ ...s, endTime: e.target.value }))}
+                />
               </div>
             </div>
             <div className="space-y-1.5">

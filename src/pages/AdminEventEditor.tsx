@@ -49,6 +49,8 @@ function toLocalInput(iso: string | null) {
   }
 }
 
+const NONE = "__none__";
+
 export default function AdminEventEditor() {
   const navigate = useNavigate();
   const locationObj = useLocation();
@@ -307,10 +309,13 @@ export default function AdminEventEditor() {
               </div>
               <div className="space-y-1.5">
                 <Label>Court (optional)</Label>
-                <Select value={courtId} onValueChange={setCourtId}>
+                <Select
+                  value={courtId || NONE}
+                  onValueChange={(v) => setCourtId(v === NONE ? "" : v)}
+                >
                   <SelectTrigger><SelectValue placeholder="Select court" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">—</SelectItem>
+                    <SelectItem value={NONE}>—</SelectItem>
                     <SelectItem value="1">Court 1</SelectItem>
                     <SelectItem value="2">Court 2</SelectItem>
                   </SelectContent>
@@ -385,10 +390,13 @@ export default function AdminEventEditor() {
             {isSeasonEvent && (
               <div className="space-y-1.5">
                 <Label>Season</Label>
-                <Select value={seasonId} onValueChange={setSeasonId}>
+                <Select
+                  value={seasonId || NONE}
+                  onValueChange={(v) => setSeasonId(v === NONE ? "" : v)}
+                >
                   <SelectTrigger><SelectValue placeholder="Select season" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">—</SelectItem>
+                    <SelectItem value={NONE}>—</SelectItem>
                     {(seasons || []).map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}{s.is_active ? " (active)" : ""}

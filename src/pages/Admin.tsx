@@ -409,7 +409,7 @@ export default function Admin() {
 
   const setRank = useMutation({
     mutationFn: async ({ userId, newRank }: { userId: string; newRank: number | null }) => {
-      const { error } = await supabase.rpc("admin_set_rank", {
+      const { error } = await rpcExt("admin_set_rank", {
         target_user_id: userId,
         new_rank: newRank,
       });

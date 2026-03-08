@@ -98,9 +98,9 @@ export function useHomeInsights(daysBack = 30) {
   return useQuery({
     queryKey: ["home-insights", user?.id, daysBack],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_home_insights", { days_back: daysBack } as any);
+      const { data, error } = await rpc("get_home_insights", { days_back: daysBack });
       if (error) throw error;
-      return data as HomeInsights;
+      return data as unknown as HomeInsights;
     },
     enabled: !!user,
   });

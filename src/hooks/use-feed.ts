@@ -71,7 +71,7 @@ export function useFeedPosts() {
 
       // Get comments
       const { data: comments } = await fromAny("feed_comments").select("*").in("post_id", postIds).order("created_at", { ascending: true });
-      const commentUserIds = [...new Set((comments || []).map((c: any) => c.user_id))];
+      const commentUserIds = [...new Set((comments || []).map((c: any) => c.user_id as string))] as string[];
       let commentProfileMap = new Map<string, any>();
       if (commentUserIds.length > 0) {
         const { data: cp } = await supabase.from("profiles").select("id, name, avatar_url").in("id", commentUserIds);

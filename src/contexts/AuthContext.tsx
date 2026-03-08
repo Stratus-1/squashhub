@@ -39,12 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, name: string, phone?: string) => {
+    const metadata: Record<string, string> = { name };
+    if (phone) metadata.phone = phone;
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name },
+        data: metadata,
         emailRedirectTo: `${publicBaseUrl}/auth/callback`,
       },
     });

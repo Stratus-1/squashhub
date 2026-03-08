@@ -357,11 +357,10 @@ export default function Admin() {
     queryKey: ["admin", "event-rsvp-audience", broadcast.eventId],
     queryFn: async () => {
       if (!broadcast.eventId) return [] as string[];
-      const { data, error } = await supabase
-        .from("event_rsvps")
+      const { data, error } = await fromExt("event_rsvps")
         .select("user_id,status")
         .eq("event_id", broadcast.eventId)
-        .in("status", ["going", "maybe"] as any);
+        .in("status", ["going", "maybe"]);
       if (error) throw error;
       return [...new Set((data || []).map((r: any) => String(r.user_id)))];
     },

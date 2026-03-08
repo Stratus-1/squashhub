@@ -2,7 +2,11 @@ import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, Swords, X } from "lucide-react";
+import {
+  Loader2, Swords, X, TrendingUp, Target, Trophy, ChevronRight,
+  Shield, Flame, BarChart3, Info,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { PageHeader } from "@/components/PageHeader";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -10,31 +14,42 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip, TooltipContent, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useCreateChallenge, useLadder, useProfile, useProposeChallengeSchedule } from "@/hooks/use-data";
+import {
+  useCreateChallenge, useLadder, useProfile,
+  useProposeChallengeSchedule, useHeadToHead,
+} from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 
+/* ── helpers ────────────────────────────────────────────────── */
+
 function timeToMinutes(t: string) {
-  const [hh, mm] = t.split(":").map((x) => Number(x));
+  const [hh, mm] = t.split(":").map(Number);
   return hh * 60 + mm;
 }
-
 function minutesToTime(m: number) {
-  const mm = ((m % 60) + 60) % 60;
-  const hh = Math.floor(m / 60);
-  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(((m % 60) + 60) % 60).padStart(2, "0")}`;
 }
-
 function addMinutesToTime(t: string, delta: number) {
   return minutesToTime(timeToMinutes(t) + delta);
 }
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+function winRate(w: number, total: number) {
+  return total > 0 ? Math.round((w / total) * 100) : 0;
+}
+
+/* ── component ──────────────────────────────────────────────── */
 
 export default function NewChallenge() {
   const navigate = useNavigate();
@@ -42,6 +57,7 @@ export default function NewChallenge() {
   const { user } = useAuth();
   const { data: ladder, isLoading } = useLadder();
   const { data: profile } = useProfile();
+  const { data: h2hData } = useHeadToHead(user?.id, 50);
   const createChallenge = useCreateChallenge();
   const proposeSchedule = useProposeChallengeSchedule();
 
@@ -51,53 +67,67 @@ export default function NewChallenge() {
 
   const initialOpponent = params.get("opponent") || "";
   const [opponentId, setOpponentId] = useState(initialOpponent);
-  const [proposedDate, setProposedDate] = useState<string>(defaultProposed);
-  const [startTime, setStartTime] = useState<string>("18:00");
-  const [durationMinutes, setDurationMinutes] = useState<string>("60");
-  const [courtId, setCourtId] = useState<string>("1");
+  const [proposedDate, setProposedDate] = useState(defaultProposed);
+  const [startTime, setStartTime] = useState("18:00");
+  const [durationMinutes, setDurationMinutes] = useState("60");
+  const [courtId, setCourtId] = useState("1");
   const [query, setQuery] = useState("");
-
-  const opponentProfile = useMemo(() => {
-    if (!ladder || !opponentId) return null;
-    return ladder.find((p) => p.id === opponentId) || null;
-  }, [ladder, opponentId]);
+  const [listTab, setListTab] = useState("eligible");
 
   const myRank = profile?.rank ?? null;
-  const isEligibleOpponent = (opponentRank: number | null) => {
-    if (!myRank || !opponentRank) return false;
-    const diff = myRank - opponentRank;
+
+  const isEligible = (rank: number | null) => {
+    if (!myRank || !rank) return false;
+    const diff = myRank - rank;
     return diff >= 1 && diff <= 2;
   };
 
-  const selectedEligible = isEligibleOpponent(opponentProfile?.rank ?? null);
+  const opponentProfile = useMemo(
+    () => (ladder || []).find((p) => p.id === opponentId) || null,
+    [ladder, opponentId],
+  );
 
-  const filtered = useMemo(() => {
-    const list = ladder || [];
+  const selectedEligible = isEligible(opponentProfile?.rank ?? null);
+
+  /* head-to-head map for quick lookup */
+  const h2hMap = useMemo(() => {
+    const m = new Map<string, { wins: number; losses: number; matches: number }>();
+    (h2hData || []).forEach((r) =>
+      m.set(r.opponent_id, { wins: r.wins, losses: r.losses, matches: r.matches }),
+    );
+    return m;
+  }, [h2hData]);
+
+  /* path to #1 calculation */
+  const pathToTop = useMemo(() => {
+    if (!myRank || !ladder) return [];
+    const steps: typeof ladder = [];
+    let currentRank = myRank;
+    while (currentRank > 1) {
+      const target = ladder.find(
+        (p) => p.rank !== null && p.rank >= Math.max(1, currentRank - 2) && p.rank < currentRank,
+      );
+      if (!target || target.rank === null) break;
+      steps.push(target);
+      currentRank = target.rank;
+    }
+    return steps;
+  }, [myRank, ladder]);
+
+  /* filtered & sorted player lists */
+  const { eligible, allPlayers } = useMemo(() => {
+    const list = (ladder || []).filter((p) => p.id !== user?.id);
     const q = query.trim().toLowerCase();
-    return list.filter((p) => {
-      if (p.id === user?.id) return false;
-      if (!q) return true;
-      return (p.name || "").toLowerCase().includes(q);
-    });
-  }, [ladder, query, user?.id]);
-
-  const getInitials = (name: string) =>
-    name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+    const searched = q ? list.filter((p) => (p.name || "").toLowerCase().includes(q)) : list;
+    return {
+      eligible: searched.filter((p) => isEligible(p.rank)),
+      allPlayers: searched,
+    };
+  }, [ladder, query, user?.id, myRank]);
 
   const onSend = async () => {
-    if (!myRank) {
-      toast.error("You need a ladder position to challenge players");
-      return;
-    }
-    if (!selectedEligible) {
-      toast.error("You can only challenge up to 2 positions above you");
-      return;
-    }
+    if (!myRank) return toast.error("You need a ladder position to challenge players");
+    if (!selectedEligible) return toast.error("You can only challenge up to 2 positions above you");
 
     try {
       const challenge = await createChallenge.mutateAsync({
@@ -106,16 +136,13 @@ export default function NewChallenge() {
       });
 
       try {
-        const minutes = durationMinutes.trim() ? Number(durationMinutes) : 60;
-        if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 240) {
-          throw new Error("Duration must be between 30 and 240 minutes");
-        }
-        const endTime = addMinutesToTime(startTime, minutes);
+        const minutes = Number(durationMinutes) || 60;
+        if (minutes <= 0 || minutes > 240) throw new Error("Invalid duration");
         await proposeSchedule.mutateAsync({
           challengeId: (challenge as any).id,
           proposedDate,
           startTime: `${startTime}:00`,
-          endTime: `${endTime}:00`,
+          endTime: `${addMinutesToTime(startTime, minutes)}:00`,
           courtId: Number(courtId) || 1,
         });
       } catch (e: any) {
@@ -129,93 +156,331 @@ export default function NewChallenge() {
     }
   };
 
+  /* ── render helpers ─────────────────────────────────── */
+
+  function PlayerCard({ p, compact }: { p: (typeof ladder extends (infer U)[] | undefined ? U : never); compact?: boolean }) {
+    const isSelected = p.id === opponentId;
+    const canChallenge = isEligible(p.rank);
+    const wr = winRate(p.wins, p.matches_played);
+    const h2h = h2hMap.get(p.id);
+    const rankDiff = myRank && p.rank ? myRank - p.rank : null;
+
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+      >
+        <Card
+          className={cn(
+            "p-3 transition-all",
+            canChallenge ? "cursor-pointer hover:bg-muted/40 hover:shadow-sm" : "opacity-50 cursor-not-allowed",
+            isSelected && "border-primary/50 bg-primary/5 shadow-sm",
+          )}
+          onClick={() => canChallenge && setOpponentId(p.id)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <PlayerAvatar initials={getInitials(p.name)} size="sm" />
+              {p.rank && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                  {p.rank}
+                </span>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold truncate">{p.name}</p>
+                {canChallenge && (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">
+                    Eligible
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 mt-0.5">
+                <span className="text-[11px] text-muted-foreground">
+                  {p.wins}W-{p.losses}L
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {wr}% WR
+                </span>
+                {rankDiff !== null && rankDiff > 0 && (
+                  <span className="text-[11px] text-primary font-medium">
+                    {rankDiff} rank{rankDiff > 1 ? "s" : ""} above
+                  </span>
+                )}
+              </div>
+
+              {!compact && h2h && h2h.matches > 0 && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">H2H</span>
+                  <div className="flex-1 max-w-[120px]">
+                    <Progress value={h2h.matches > 0 ? (h2h.wins / h2h.matches) * 100 : 50} className="h-1.5" />
+                  </div>
+                  <span className="text-[10px] font-medium">
+                    {h2h.wins}-{h2h.losses}
+                  </span>
+                  {h2h.wins > h2h.losses && (
+                    <Flame className="w-3 h-3 text-orange-500" />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div
+              className={cn(
+                "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                isSelected ? "border-primary bg-primary" : "border-muted-foreground/30",
+              )}
+            >
+              {isSelected && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
+            </div>
+          </div>
+        </Card>
+      </motion.div>
+    );
+  }
+
   return (
     <div className="bottom-nav-safe">
       <PageHeader title="New Challenge" subtitle="Choose an opponent and propose a time" />
 
-      <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-4">
-        {!myRank && (
-          <Card className="p-4 border-destructive/30 bg-destructive/5">
-            <p className="text-sm font-semibold">Not ranked yet</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              You’ll be added from the bottom of the ladder. Once you have a position, you can start challenging up to 2 ranks above.
+      <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-4 pb-4">
+
+        {/* Your Position */}
+        {profile && (
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Shield className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold font-heading">{profile.name}</p>
+                <div className="flex items-center gap-3 mt-0.5">
+                  {myRank ? (
+                    <Badge className="bg-primary/15 text-primary border-primary/30">Rank #{myRank}</Badge>
+                  ) : (
+                    <Badge variant="secondary">Unranked</Badge>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {profile.wins}W-{profile.losses}L · {winRate(profile.wins, profile.matches_played)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {!myRank && (
+              <div className="mt-3 p-3 rounded-md bg-destructive/5 border border-destructive/20">
+                <p className="text-xs text-destructive font-medium">
+                  You need a ladder rank before you can challenge. Play a match to get ranked.
+                </p>
+              </div>
+            )}
+
+            {myRank && myRank > 1 && (
+              <div className="mt-3 p-3 rounded-md bg-muted/50 border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
+                    Eligible to challenge
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  You can challenge ranks <strong className="text-foreground">{Math.max(1, myRank - 2)}</strong>
+                  {myRank - 2 !== myRank - 1 && <> to <strong className="text-foreground">{myRank - 1}</strong></>}
+                  {" "}(up to 2 positions above you). Win to take their spot!
+                </p>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Path to #1 */}
+        {pathToTop.length > 0 && (
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <p className="text-sm font-semibold font-heading">Path to #1</p>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[200px]">
+                    The fewest challenges to reach #1, assuming you win each one. Beat higher-ranked players to swap positions.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex items-center gap-1 overflow-x-auto pb-1">
+              <div className="shrink-0 flex flex-col items-center">
+                <span className="text-[10px] text-muted-foreground">You</span>
+                <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
+                  #{myRank}
+                </div>
+              </div>
+              {pathToTop.map((step, i) => {
+                const h2h = h2hMap.get(step.id);
+                return (
+                  <div key={step.id} className="flex items-center gap-1 shrink-0">
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
+                    <div
+                      className={cn(
+                        "flex flex-col items-center cursor-pointer hover:opacity-80",
+                        isEligible(step.rank) && "ring-2 ring-primary/30 rounded-lg p-1",
+                      )}
+                      onClick={() => isEligible(step.rank) && setOpponentId(step.id)}
+                    >
+                      <span className="text-[9px] text-muted-foreground truncate max-w-[60px]">
+                        {step.name.split(" ")[0]}
+                      </span>
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                        #{step.rank}
+                      </div>
+                      {h2h && h2h.matches > 0 && (
+                        <span className={cn(
+                          "text-[9px] font-medium",
+                          h2h.wins > h2h.losses ? "text-primary" : "text-destructive",
+                        )}>
+                          {h2h.wins}-{h2h.losses}
+                        </span>
+                      )}
+                      {isEligible(step.rank) && (
+                        <Badge className="text-[8px] px-1 py-0 mt-0.5 bg-primary/15 text-primary border-0">
+                          Challenge
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex items-center gap-1 shrink-0">
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
+                <div className="flex flex-col items-center">
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  <div className="w-8 h-8 rounded-full bg-yellow-500/15 flex items-center justify-center text-xs font-bold text-yellow-600">
+                    #1
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              {pathToTop.length} challenge{pathToTop.length !== 1 ? "s" : ""} needed to reach #1
+              {pathToTop.length > 0 && " (best case)"}
             </p>
           </Card>
         )}
 
-        <Card className="p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold font-heading">Opponent</p>
-              <p className="text-xs text-muted-foreground">
-                Select a player from the ladder
-              </p>
-            </div>
+        {/* Selected Opponent Detail */}
+        <AnimatePresence>
+          {opponentProfile && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <Card className="p-4 border-primary/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <PlayerAvatar initials={getInitials(opponentProfile.name)} size="md" />
+                    <div>
+                      <p className="text-sm font-semibold font-heading">{opponentProfile.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">
+                          Rank #{opponentProfile.rank}
+                        </Badge>
+                        {!selectedEligible && (
+                          <Badge variant="destructive" className="text-[10px]">Not eligible</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={() => setOpponentId("")}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
 
-            {opponentProfile ? (
-              <div className="flex items-center gap-2">
-                <PlayerAvatar initials={getInitials(opponentProfile.name)} size="sm" />
-                <span className="text-sm font-medium truncate max-w-[160px]">
-                  {opponentProfile.name}
-                </span>
-                {!selectedEligible && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    Not eligible
-                  </span>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-md bg-muted/50 p-2">
+                    <p className="text-lg font-bold">{opponentProfile.matches_played}</p>
+                    <p className="text-[10px] text-muted-foreground">Matches</p>
+                  </div>
+                  <div className="rounded-md bg-muted/50 p-2">
+                    <p className="text-lg font-bold text-primary">{opponentProfile.wins}</p>
+                    <p className="text-[10px] text-muted-foreground">Wins</p>
+                  </div>
+                  <div className="rounded-md bg-muted/50 p-2">
+                    <p className="text-lg font-bold">{winRate(opponentProfile.wins, opponentProfile.matches_played)}%</p>
+                    <p className="text-[10px] text-muted-foreground">Win Rate</p>
+                  </div>
+                </div>
+
+                {(() => {
+                  const h2h = h2hMap.get(opponentProfile.id);
+                  if (!h2h || h2h.matches === 0) return (
+                    <div className="mt-3 p-3 rounded-md bg-muted/30 border border-dashed text-center">
+                      <p className="text-xs text-muted-foreground">No previous matches — this will be your first encounter! 🎯</p>
+                    </div>
+                  );
+
+                  const yourWr = winRate(h2h.wins, h2h.matches);
+                  return (
+                    <div className="mt-3 p-3 rounded-md bg-muted/50 border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <BarChart3 className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
+                          Head to Head
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-primary">{h2h.wins}</span>
+                        <Progress value={yourWr} className="flex-1 h-2" />
+                        <span className="text-sm font-bold text-destructive">{h2h.losses}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {h2h.wins > h2h.losses
+                          ? `You lead ${h2h.wins}-${h2h.losses}. Keep the momentum going! 🔥`
+                          : h2h.wins < h2h.losses
+                            ? `They lead ${h2h.losses}-${h2h.wins}. Time for revenge! 💪`
+                            : `It's tied ${h2h.wins}-${h2h.losses}. Time to break the deadlock!`}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {selectedEligible && (
+                  <div className="mt-3 p-3 rounded-md bg-primary/5 border border-primary/20">
+                    <p className="text-xs text-primary font-medium">
+                      ✅ Win this challenge to move from #{myRank} → #{opponentProfile.rank}
+                    </p>
+                  </div>
                 )}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={() => setOpponentId("")}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <span className="text-xs text-muted-foreground">None selected</span>
-            )}
-          </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Scheduling */}
+        <Card className="p-4">
+          <p className="text-sm font-semibold font-heading mb-3">Propose a Time</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="challenge-search">Search</Label>
-              <Input
-                id="challenge-search"
-                placeholder="Type a name…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              <Label htmlFor="proposed-date">Date</Label>
+              <Input id="proposed-date" type="date" min={todayStr} value={proposedDate} onChange={(e) => setProposedDate(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="proposed-date">Proposed date</Label>
-              <Input
-                id="proposed-date"
-                type="date"
-                min={todayStr}
-                value={proposedDate}
-                onChange={(e) => setProposedDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label>Start time</Label>
-              <Input
-                type="time"
-                step={1800}
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
+              <Input type="time" step={1800} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Duration</Label>
               <Select value={durationMinutes} onValueChange={setDurationMinutes}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Duration" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="30">30 min</SelectItem>
                   <SelectItem value="60">60 min</SelectItem>
@@ -226,9 +491,7 @@ export default function NewChallenge() {
             <div className="space-y-1.5">
               <Label>Court</Label>
               <Select value={courtId} onValueChange={setCourtId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Court" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">Court 1</SelectItem>
                   <SelectItem value="2">Court 2</SelectItem>
@@ -236,87 +499,87 @@ export default function NewChallenge() {
               </Select>
             </div>
           </div>
-
-          <div className="mt-3 rounded-md border p-3">
+          <div className="mt-3 rounded-md border p-3 bg-muted/30">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Preview</p>
             <p className="text-sm font-medium mt-1">
-              {proposedDate} · {startTime}-{addMinutesToTime(startTime, Number(durationMinutes || "60"))} · Court {courtId}
+              {proposedDate} · {startTime}–{addMinutesToTime(startTime, Number(durationMinutes || "60"))} · Court {courtId}
             </p>
           </div>
         </Card>
 
+        {/* Player List */}
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold font-heading">Players</p>
-          <Button variant="outline" onClick={() => navigate("/ladder")}>
-            View Ladder
+          <p className="text-sm font-semibold font-heading">Choose Opponent</p>
+          <Button variant="outline" size="sm" onClick={() => navigate("/ladder")}>
+            Full Ladder
           </Button>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map((p) => {
-              const isSelected = p.id === opponentId;
-              const eligible = isEligibleOpponent(p.rank ?? null);
-              const winRate =
-                p.matches_played > 0
-                  ? Math.round((p.wins / p.matches_played) * 100)
-                  : 0;
+        <Input
+          placeholder="Search players…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
 
-              return (
-                <Card
-                  key={p.id}
-                  className={cn(
-                    "p-3 flex items-center gap-3 transition-colors",
-                    eligible ? "cursor-pointer hover:bg-muted/40" : "opacity-60 cursor-not-allowed",
-                    isSelected ? "border-primary/50 bg-primary/5" : "border-border"
-                  )}
-                  onClick={() => {
-                    if (eligible) setOpponentId(p.id);
-                  }}
-                >
-                  <PlayerAvatar initials={getInitials(p.name)} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">
-                      {p.name}
-                      {p.id === user?.id && (
-                        <span className="ml-2 text-[10px] text-muted-foreground font-medium">
-                          (You)
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {p.wins}W - {p.losses}L · {winRate}%
-                    </p>
-                  </div>
-                  <div
-                    className={cn(
-                      "w-4 h-4 rounded-full border",
-                      isSelected ? "border-primary bg-primary" : "border-muted-foreground/40"
-                    )}
-                  />
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        <Tabs value={listTab} onValueChange={setListTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="eligible" className="gap-1.5 text-xs">
+              <Target className="w-3.5 h-3.5" /> Eligible ({eligible.length})
+            </TabsTrigger>
+            <TabsTrigger value="all" className="gap-1.5 text-xs">
+              <BarChart3 className="w-3.5 h-3.5" /> All Players ({allPlayers.length})
+            </TabsTrigger>
+          </TabsList>
 
+          <TabsContent value="eligible" className="mt-3 space-y-2">
+            {isLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : eligible.length === 0 ? (
+              <Card className="p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {myRank
+                    ? myRank === 1
+                      ? "You're #1! No one to challenge above you. 👑"
+                      : "No eligible opponents found. Try the All Players tab."
+                    : "Get ranked first to see eligible opponents."}
+                </p>
+              </Card>
+            ) : (
+              <AnimatePresence>
+                {eligible.map((p) => (
+                  <PlayerCard key={p.id} p={p} />
+                ))}
+              </AnimatePresence>
+            )}
+          </TabsContent>
+
+          <TabsContent value="all" className="mt-3 space-y-2">
+            {isLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <AnimatePresence>
+                {allPlayers.map((p) => (
+                  <PlayerCard key={p.id} p={p} compact />
+                ))}
+              </AnimatePresence>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Send */}
         <Button
           className="w-full"
           disabled={!myRank || !opponentId || !selectedEligible || createChallenge.isPending || proposeSchedule.isPending}
           onClick={onSend}
         >
           {createChallenge.isPending || proposeSchedule.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…
-            </>
+            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</>
           ) : (
-            <>
-              <Swords className="w-4 h-4 mr-2" /> Send Challenge
-            </>
+            <><Swords className="w-4 h-4 mr-2" /> Send Challenge</>
           )}
         </Button>
       </div>

@@ -111,8 +111,7 @@ export default function MatchTracker() {
         }
         setBooking(b);
 
-        const { data: sessionRows, error: sessionError } = await supabase
-          .from("game_sessions")
+        const { data: sessionRows, error: sessionError } = await fromExt("game_sessions")
           .select("*")
           .eq("booking_id", bookingId)
           .eq("user_id", user.id)

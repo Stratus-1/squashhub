@@ -1,6 +1,6 @@
 {
   "nodeModulesDir": "auto",
   "imports": {
-    "npm:web-push@3.6.7": "npm:web-push@3.6.7"
+    "web-push": "npm:web-push@3.6.7"
   }
 }

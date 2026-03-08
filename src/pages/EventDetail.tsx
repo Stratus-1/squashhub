@@ -63,7 +63,7 @@ export default function EventDetail() {
     queryKey: ["event-rsvp-counts", id, user?.id ? "authed" : "anon"],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase.rpc("get_event_rsvp_counts", { target_event_id: id } as any);
+      const { data, error } = await rpcExt("get_event_rsvp_counts", { target_event_id: id });
       if (error) throw error;
       return data as any;
     },

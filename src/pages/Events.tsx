@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 const fromExt = (table: string) => (supabase as any).from(table);
 import { useQuery } from "@tanstack/react-query";

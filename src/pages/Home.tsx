@@ -63,6 +63,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background bottom-nav-safe">
+      <SEO
+        path="/"
+        description="Gordon's Bay Squash Club — book courts, challenge players, and climb the social league ladder."
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "SportsClub",
+          name: "Gordon's Bay Squash Club",
+          url: "https://gordon-s-bay-squash-hub.vercel.app/",
+          sport: "Squash",
+          logo: "https://gordon-s-bay-squash-hub.vercel.app/pwa-512x512.png",
+          address: { "@type": "PostalAddress", addressLocality: "Gordon's Bay", addressCountry: "ZA" },
+        }}
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">

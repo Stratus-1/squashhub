@@ -2439,3 +2439,36 @@ export default function Admin() {
 function SeparatorBlock() {
   return <div className="h-px bg-border" />;
 }
+
+function KpiCard({ label, value, icon, color, onClick }: { label: string; value: number; icon: React.ReactNode; color: "primary" | "accent" | "destructive"; onClick?: () => void }) {
+  const colorClasses = {
+    primary: "bg-primary/10 text-primary",
+    accent: "bg-accent/15 text-accent-foreground",
+    destructive: "bg-destructive/10 text-destructive",
+  };
+  return (
+    <Card
+      className={cn("p-4 cursor-pointer hover:shadow-md transition-shadow border-border", onClick && "hover:border-primary/30")}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-2xl font-bold font-heading tabular-nums">{value}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{label}</p>
+        </div>
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", colorClasses[color])}>
+          {icon}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-1">
+      <h2 className="text-lg font-bold font-heading tracking-tight">{title}</h2>
+      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    </div>
+  );
+}

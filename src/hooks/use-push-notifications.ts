@@ -82,7 +82,7 @@ export function usePushNotifications() {
       setLoading(false);
       return true;
     } catch (error) {
-      console.error("Push subscription failed:", error);
+      if (import.meta.env.DEV) console.error("Push subscription failed:", error);
       setLoading(false);
       return false;
     }
@@ -117,7 +117,7 @@ export function usePushNotifications() {
 
       setIsSubscribed(false);
     } catch (error) {
-      console.error("Push unsubscribe failed:", error);
+      if (import.meta.env.DEV) console.error("Push unsubscribe failed:", error);
     }
     setLoading(false);
   }, [user]);

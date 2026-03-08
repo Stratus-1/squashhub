@@ -119,7 +119,7 @@ export function useNativePushNotifications() {
       setLoading(false);
       return true;
     } catch (error) {
-      console.error("Native push subscription failed:", error);
+      if (import.meta.env.DEV) console.error("Native push subscription failed:", error);
       setLoading(false);
       return false;
     }
@@ -150,7 +150,7 @@ export function useNativePushNotifications() {
       localStorage.removeItem(NATIVE_TOKEN_KEY);
       setIsSubscribed(false);
     } catch (error) {
-      console.error("Native push unsubscribe failed:", error);
+      if (import.meta.env.DEV) console.error("Native push unsubscribe failed:", error);
     }
     setLoading(false);
   }, [platform]);

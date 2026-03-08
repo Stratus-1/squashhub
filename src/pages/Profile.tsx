@@ -221,6 +221,10 @@ export default function Profile() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
+        {/* Theme Toggle */}
+        <div className="absolute top-3 right-3">
+          <ThemeToggle />
+        </div>
         <div className="flex flex-col items-center px-4">
           <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200 }}>
             <PlayerAvatar initials={initials} rank={profile?.rank} size="lg" />

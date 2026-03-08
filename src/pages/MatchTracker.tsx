@@ -100,13 +100,12 @@ export default function MatchTracker() {
         if (bookingError) throw bookingError;
         const b = bookingRow as unknown as BookingRow;
         if (b.user_id !== user.id && b.opponent_id !== user.id) {
-          const { data: scheduled, error: scheduledError } = await supabase
-            .from("scheduled_matches")
+          const { data: scheduled, error: scheduledError } = await fromExt("scheduled_matches")
             .select("id,player_a,player_b")
             .eq("booking_id", bookingId)
             .limit(1);
           if (scheduledError) throw scheduledError;
-          const sm = scheduled?.[0];
+          const sm = scheduled?.[0] as any;
           const isParticipant = !!sm && (sm.player_a === user.id || sm.player_b === user.id);
           if (!isParticipant) throw new Error("You can only track bookings you are playing in");
         }

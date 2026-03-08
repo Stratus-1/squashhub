@@ -652,6 +652,44 @@ export default function Bookings() {
             )}
           </div>
 
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 rounded-md border p-3">
+              <p className="text-xs text-muted-foreground flex-1">Invite someone to this booking?</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  setCalendarPrompt((s) => ({ ...s, open: false }));
+                  setShareDialog({
+                    open: true,
+                    bookingId: calendarPrompt.bookingId,
+                    courtId: calendarPrompt.courtId,
+                    dateStr: calendarPrompt.dateStr,
+                    startTime: calendarPrompt.startTime,
+                    endTime: calendarPrompt.endTime,
+                    opponentName: calendarPrompt.opponentName,
+                  });
+                }}
+              >
+                <Mail className="w-3.5 h-3.5" /> Email
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  const msg = encodeURIComponent(
+                    `🏸 Squash booking!\n\nCourt ${calendarPrompt.courtId} on ${calendarPrompt.dateStr} from ${calendarPrompt.startTime} to ${calendarPrompt.endTime}.\n\nJoin me!`
+                  );
+                  window.open(`https://wa.me/?text=${msg}`, "_blank");
+                }}
+              >
+                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+              </Button>
+            </div>
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setCalendarPrompt((s) => ({ ...s, open: false }))}>
               Not now
@@ -686,6 +724,19 @@ export default function Bookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Share Booking Dialog */}
+      <ShareBookingDialog
+        open={shareDialog.open}
+        onOpenChange={(open) => setShareDialog((s) => ({ ...s, open }))}
+        bookingId={shareDialog.bookingId}
+        courtId={shareDialog.courtId}
+        dateStr={shareDialog.dateStr}
+        startTime={shareDialog.startTime}
+        endTime={shareDialog.endTime}
+        opponentName={shareDialog.opponentName}
+        inviterName={me?.name || undefined}
+      />
     </div>
   );
 }

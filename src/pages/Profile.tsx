@@ -148,6 +148,14 @@ export default function Profile() {
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()?.replace(/\/+$/, "");
   const supabaseKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim();
 
+  const rivals = useMemo(() => {
+    const rows = (headToHead || []) as HeadToHeadRow[];
+    return rows
+      .filter((r) => r.matches >= 2)
+      .sort((a, b) => b.matches !== a.matches ? b.matches - a.matches : Math.abs(a.win_rate - 50) - Math.abs(b.win_rate - 50))
+      .slice(0, 3);
+  }, [headToHead]);
+
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
@@ -182,14 +190,6 @@ export default function Profile() {
   const stravaElevationM = stravaElevationRaw != null ? Math.round(stravaElevationRaw * 10) / 10 : null;
   const stravaActivitiesCount = typeof (profile as any)?.strava_activities_count === "number" ? ((profile as any).strava_activities_count as number) : null;
   const stravaLastSync = (profile as any)?.strava_last_sync_at ? new Date((profile as any).strava_last_sync_at as string) : null;
-
-  const rivals = useMemo(() => {
-    const rows = (headToHead || []) as HeadToHeadRow[];
-    return rows
-      .filter((r) => r.matches >= 2)
-      .sort((a, b) => b.matches !== a.matches ? b.matches - a.matches : Math.abs(a.win_rate - 50) - Math.abs(b.win_rate - 50))
-      .slice(0, 3);
-  }, [headToHead]);
 
   /* ─── Strava helpers ─── */
   const getStravaAuth = async () => {

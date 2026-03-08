@@ -543,7 +543,7 @@ export default function Admin() {
         created_by: user?.id || null,
       };
 
-      const { error } = await supabase.from("events").upsert(row, { onConflict: "id" });
+      const { error } = await fromExt("events").upsert(row, { onConflict: "id" });
       if (error) throw error;
     },
     onSuccess: async () => {

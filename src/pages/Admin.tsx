@@ -720,8 +720,7 @@ export default function Admin() {
 
   const cancelSchedule = useMutation({
     mutationFn: async ({ scheduleId, bookingId }: { scheduleId: string; bookingId: string | null }) => {
-      const { error: schedError } = await supabase
-        .from("scheduled_matches")
+      const { error: schedError } = await fromExt("scheduled_matches")
         .update({ status: "cancelled" })
         .eq("id", scheduleId);
       if (schedError) throw schedError;

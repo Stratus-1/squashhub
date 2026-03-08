@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Bypass strict typing for tables/functions that exist in the external Supabase
+// but aren't reflected in the auto-generated Lovable Cloud types.
+const rpc: any = supabase.rpc.bind(supabase);
+const fromAny = (table: string) => (supabase as any).from(table);
+
 export type CourtBusynessRow = { slot: string; bookings_count: number };
 
 export type SquashTotals = {

@@ -1275,6 +1275,7 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="schedule" className="mt-3 space-y-3">
           <div className="flex gap-2">
             <Button className="w-full sm:w-auto" onClick={() => setSchedule((s) => ({ ...s, open: true }))}>
               New scheduled match

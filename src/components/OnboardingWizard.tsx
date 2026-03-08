@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Racquet, MapPin, ChevronRight, ChevronLeft, Check, Loader2 } from "lucide-react";
+import { User, ChevronRight, ChevronLeft, Check, Loader2 } from "lucide-react";
 
 const STEPS = [
   { id: "welcome", label: "Welcome" },

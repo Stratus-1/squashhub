@@ -918,6 +918,7 @@ export default function Admin() {
 
   return (
     <div className="bottom-nav-safe">
+      <SEO title="Admin" description="Admin panel — manage players, bookings, matches, and club operations." path="/admin" noIndex />
       <PageHeader title="Admin" subtitle="Manage players, challenges, matches & schedules" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3">
@@ -938,10 +939,11 @@ export default function Admin() {
       </div>
 
       <Tabs defaultValue="users" className="px-4 sm:px-6 lg:px-[5%] mt-3">
-        <TabsList className="w-full">
+        <TabsList className="w-full overflow-x-auto">
           <TabsTrigger value="users" className="flex-1">Users</TabsTrigger>
           <TabsTrigger value="challenges" className="flex-1">Challenges</TabsTrigger>
           <TabsTrigger value="matches" className="flex-1">Matches</TabsTrigger>
+          <TabsTrigger value="bookings" className="flex-1">Bookings</TabsTrigger>
           <TabsTrigger value="schedule" className="flex-1">Schedule</TabsTrigger>
           <TabsTrigger value="seasons" className="flex-1">Seasons</TabsTrigger>
           <TabsTrigger value="clubops" className="flex-1">Club Ops</TabsTrigger>

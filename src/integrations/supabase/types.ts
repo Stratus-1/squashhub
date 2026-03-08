@@ -371,6 +371,50 @@ export type Database = {
         }
         Relationships: []
       }
+      match_disputes: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          raised_by: string
+          reason: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          raised_by: string
+          reason?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          raised_by?: string
+          reason?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_disputes_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           challenge_id: string | null
@@ -560,6 +604,112 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_bookings: {
+        Row: {
+          active: boolean
+          court_id: number
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          court_id: number
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          court_id?: number
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_bookings_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      season_awards: {
+        Row: {
+          award_label: string
+          award_type: string
+          created_at: string
+          id: string
+          season_id: string
+          stat_value: string | null
+          user_id: string
+        }
+        Insert: {
+          award_label?: string
+          award_type: string
+          created_at?: string
+          id?: string
+          season_id: string
+          stat_value?: string | null
+          user_id: string
+        }
+        Update: {
+          award_label?: string
+          award_type?: string
+          created_at?: string
+          id?: string
+          season_id?: string
+          stat_value?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_awards_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasons: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          name: string
+          start_date: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          name: string
+          start_date: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          name?: string
+          start_date?: string
+          status?: string
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           badge_id: string
@@ -672,6 +822,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_club_analytics: { Args: { days_back?: number }; Returns: Json }
+      get_match_of_the_week: {
+        Args: never
+        Returns: {
+          closeness_score: number
+          game_scores: string
+          match_date: string
+          match_id: string
+          player_a: string
+          player_a_name: string
+          player_b: string
+          player_b_name: string
+          score: string
+          winner_id: string
+        }[]
+      }
+      get_personal_analytics: {
+        Args: { days_back?: number; target_user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

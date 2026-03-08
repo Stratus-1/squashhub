@@ -32,6 +32,8 @@ import BookingResponse from "./pages/BookingResponse";
 import Achievements from "./pages/Achievements";
 import Feed from "./pages/Feed";
 import Availability from "./pages/Availability";
+import Analytics from "./pages/Analytics";
+import Seasons from "./pages/Seasons";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 
@@ -103,6 +105,8 @@ function AppRoutes() {
         <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
         <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
         <Route path="/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/seasons" element={<ProtectedRoute><Seasons /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />

@@ -8,6 +8,8 @@ import { SEO } from "@/components/SEO";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
+import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
 import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -137,7 +139,23 @@ export default function Dashboard() {
 
       <WelcomeBanner />
 
-      {/* Quick Stats */}
+      {/* Profile Completion */}
+      <div className="px-4 mt-2">
+        <ProfileCompletionMeter
+          profile={profile}
+          onAction={(action) => {
+            if (action === "edit") navigate("/profile");
+            if (action === "avatar") navigate("/profile");
+            if (action === "availability") navigate("/availability");
+          }}
+        />
+      </div>
+
+      {/* Match of the Week */}
+      <div className="px-4 mt-3">
+        <MatchOfTheWeekCard />
+      </div>
+
       <motion.div
         className="grid grid-cols-4 gap-2 px-4 mt-3"
         initial={{ opacity: 0, y: 10 }}

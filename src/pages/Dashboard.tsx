@@ -5,13 +5,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -94,6 +96,21 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
+  // Onboarding: show wizard if profile name is empty/default
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && profile) {
+      const needsOnboarding =
+        !profile.name || profile.name === "" || profile.name === "New Player";
+      const alreadyCompleted = (profile as any).onboarding_completed === true;
+      if (needsOnboarding && !alreadyCompleted && !onboardingDone) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isLoading, profile, onboardingDone]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -105,6 +122,16 @@ export default function Dashboard() {
   return (
     <div className="bottom-nav-safe">
       <SEO title="Dashboard" description="Your squash dashboard — stats, bookings, and challenges." path="/dashboard" noIndex />
+
+      <OnboardingWizard
+        open={showOnboarding}
+        onComplete={() => {
+          setShowOnboarding(false);
+          setOnboardingDone(true);
+        }}
+      />
+      <DashboardTutorial />
+
       <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications />
 
       {/* Quick Stats */}

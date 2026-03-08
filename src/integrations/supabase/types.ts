@@ -118,6 +118,81 @@ export type Database = {
         }
         Relationships: []
       }
+      integrations_accounts: {
+        Row: {
+          connected_at: string
+          display_name: string | null
+          id: string
+          provider: Database["public"]["Enums"]["integration_provider"]
+          provider_user_id: string | null
+          scopes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string
+          display_name?: string | null
+          id?: string
+          provider: Database["public"]["Enums"]["integration_provider"]
+          provider_user_id?: string | null
+          scopes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string
+          display_name?: string | null
+          id?: string
+          provider?: Database["public"]["Enums"]["integration_provider"]
+          provider_user_id?: string | null
+          scopes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      integrations_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          provider: Database["public"]["Enums"]["integration_provider"]
+          raw: Json | null
+          refresh_token: string | null
+          token_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          provider: Database["public"]["Enums"]["integration_provider"]
+          raw?: Json | null
+          refresh_token?: string | null
+          token_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          provider?: Database["public"]["Enums"]["integration_provider"]
+          raw?: Json | null
+          refresh_token?: string | null
+          token_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       matches: {
         Row: {
           challenge_id: string | null
@@ -313,6 +388,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      integration_provider:
+        | "strava"
+        | "apple_health"
+        | "samsung_health"
+        | "garmin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -441,6 +521,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      integration_provider: [
+        "strava",
+        "apple_health",
+        "samsung_health",
+        "garmin",
+      ],
     },
   },
 } as const

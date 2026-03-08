@@ -22,32 +22,37 @@ registerRoute(
   })
 );
 
-// Web Push notifications (PWA / Chrome on Android)
+// ─── Web Push notifications (PWA / Chrome on Android / Safari on iOS 16.4+) ───
+// This fires even when the browser tab is closed (background delivery).
+// On iOS PWA, the app MUST be installed to Home Screen for push to work.
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
-  let data: any = null;
+  let data: Record<string, unknown> = {};
   try {
     data = event.data.json();
   } catch {
     data = { title: "GB Squash", body: event.data.text() };
   }
 
-  const title = data?.title || "GB Squash";
-  const options: any = {
-    body: data?.body || "",
-    icon: data?.icon || "/pwa-192x192.png",
-    badge: data?.badge || "/pwa-192x192.png",
-    data: { url: data?.url || "/notifications" },
+  const title = (data?.title as string) || "GB Squash";
+  const options: NotificationOptions & { data?: unknown } = {
+    body: (data?.body as string) || "",
+    icon: (data?.icon as string) || "/pwa-192x192.png",
+    badge: (data?.badge as string) || "/pwa-192x192.png",
+    data: { url: (data?.url as string) || "/notifications" },
     vibrate: [100, 50, 100],
-    tag: data?.tag || "gb-squash-notification",
+    tag: (data?.tag as string) || "gb-squash-notification",
     renotify: true,
+    // Keep notification visible until user interacts (critical for background delivery)
+    requireInteraction: true,
     actions: [{ action: "open", title: "Open" }],
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+// Tap handler — works on Android Chrome + iOS Safari PWA
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -57,15 +62,35 @@ self.addEventListener("notificationclick", (event) => {
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clients) => {
+        // Try to focus an existing window
         for (const client of clients) {
-          // Focus existing window if available
           if ("navigate" in client && "focus" in client) {
             (client as WindowClient).navigate(url);
             return (client as WindowClient).focus();
           }
         }
+        // No existing window — open a new one
         return self.clients.openWindow(url);
       })
   );
 });
 
+// Keep the service worker alive for push events (helps on some Android devices)
+self.addEventListener("pushsubscriptionchange", (event: any) => {
+  // Re-subscribe if the browser revokes the subscription
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe(event.oldSubscription?.options ?? { userVisibleOnly: true })
+      .then((newSub) => {
+        // Post to clients so the app can update the server
+        return self.clients.matchAll().then((clients) => {
+          for (const client of clients) {
+            client.postMessage({
+              type: "PUSH_SUBSCRIPTION_CHANGED",
+              subscription: newSub.toJSON(),
+            });
+          }
+        });
+      })
+  );
+});

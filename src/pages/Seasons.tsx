@@ -1,11 +1,16 @@
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Loader2, Trophy, Medal, Star, Crown, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSeasons, useSeasonAwards } from "@/hooks/use-analytics";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const AWARD_ICONS: Record<string, any> = {
   champion: Crown,
@@ -23,14 +28,48 @@ const AWARD_COLORS: Record<string, string> = {
 };
 
 export default function Seasons() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: seasons, isLoading } = useSeasons();
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
 
-  const activeSeason = (seasons || []).find((s: any) => s.status === "active");
-  const pastSeasons = (seasons || []).filter((s: any) => s.status === "completed");
+  const activeSeason = (seasons || []).find((s: any) => !!s.is_active);
+  const pastSeasons = (seasons || []).filter((s: any) => !s.is_active);
   const viewingId = selectedSeasonId || activeSeason?.id || pastSeasons[0]?.id;
 
   const { data: awards, isLoading: awardsLoading } = useSeasonAwards(viewingId);
+
+  const { data: joinedActiveSeason } = useQuery({
+    queryKey: ["season-membership", user?.id, activeSeason?.id],
+    queryFn: async () => {
+      if (!user || !activeSeason) return false;
+      const { data, error } = await (supabase as any)
+        .from("season_memberships")
+        .select("season_id")
+        .eq("season_id", activeSeason.id)
+        .eq("user_id", user.id)
+        .limit(1);
+      if (error) {
+        if ((error as any).code === "42P01") return false;
+        throw error;
+      }
+      return (data || []).length > 0;
+    },
+    enabled: !!user && !!activeSeason?.id,
+  });
+
+  const joinSeason = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("join_active_season");
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: async () => {
+      toast.success("Joined the season");
+      await queryClient.invalidateQueries({ queryKey: ["season-membership", user?.id, activeSeason?.id] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not join season"),
+  });
 
   if (isLoading) {
     return (
@@ -60,7 +99,7 @@ export default function Seasons() {
                 )}
               >
                 {season.name}
-                {season.status === "active" && (
+                {season.is_active && (
                   <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-accent inline-block" />
                 )}
               </button>
@@ -78,22 +117,39 @@ export default function Seasons() {
                     <div>
                       <h2 className="text-base font-bold font-heading">{season.name}</h2>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {season.start_date} → {season.end_date}
+                        {season.starts_on} → {season.ends_on || "—"}
                       </p>
                     </div>
                     <Badge
                       className={cn(
                         "text-[10px]",
-                        season.status === "active"
+                        season.is_active
                           ? "bg-accent/20 text-accent-foreground border-0"
-                          : season.status === "completed"
+                          : season.ends_on
                             ? "bg-primary/15 text-primary border-0"
                             : "bg-muted text-muted-foreground"
                       )}
                     >
-                      {season.status === "active" ? "🔴 Live" : season.status === "completed" ? "✅ Completed" : "Upcoming"}
+                      {season.is_active ? "🔴 Live" : season.ends_on ? "✅ Completed" : "Ended"}
                     </Badge>
                   </div>
+
+                  {season.is_active && (
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="text-xs text-muted-foreground">
+                        Join the season to take part in season socials and competitions.
+                      </p>
+                      {joinedActiveSeason ? (
+                        <Badge variant="secondary" className="text-[10px] bg-accent/20 text-accent-foreground border-0">
+                          Joined
+                        </Badge>
+                      ) : (
+                        <Button size="sm" className="h-8 text-xs" onClick={() => joinSeason.mutate()} disabled={joinSeason.isPending}>
+                          {joinSeason.isPending ? "Joining…" : "Join season"}
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

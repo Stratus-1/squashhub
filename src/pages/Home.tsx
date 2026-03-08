@@ -4,6 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { SEO } from "@/components/SEO";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Calendar, Trophy, Swords, ClipboardList,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,
@@ -12,19 +16,50 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBookings, useChallenges, useCourtBusyness, useHomeInsights, useLadder, useMyBookings, useMyRoles, useProfile, usePublicLeaderboard } from "@/hooks/use-data";
-import { format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
 import clubLogo from "@/assets/club-logo.png";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useState } from "react";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
 };
 
+type SeasonRow = {
+  id: string;
+  name: string;
+  starts_on: string;
+  ends_on: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+type EventRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  location: string | null;
+  court_id: number | null;
+  capacity: number | null;
+  rsvp_deadline: string | null;
+  visibility: "public" | "members";
+  status: "draft" | "published" | "cancelled";
+  kind?: "club" | "social" | string;
+  season_id?: string | null;
+  created_by?: string | null;
+};
+
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: ladder } = useLadder();
   const { data: publicLeaderboard } = usePublicLeaderboard(10);
   const { data: me } = useProfile();
@@ -35,6 +70,170 @@ export default function Home() {
   const { data: busyness } = useCourtBusyness(30);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
+
+  const { data: activeSeason } = useQuery({
+    queryKey: ["active-season"],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await (supabase as any)
+        .from("seasons")
+        .select("id,name,starts_on,ends_on,is_active,created_at")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) {
+        if ((error as any).code === "42P01") return null;
+        throw error;
+      }
+      const row = (data || [])[0] as SeasonRow | undefined;
+      return row || null;
+    },
+    enabled: !!user,
+  });
+
+  const { data: joinedActiveSeason } = useQuery({
+    queryKey: ["season-membership", user?.id, activeSeason?.id],
+    queryFn: async () => {
+      if (!user || !activeSeason) return false;
+      const { data, error } = await (supabase as any)
+        .from("season_memberships")
+        .select("season_id")
+        .eq("season_id", activeSeason.id)
+        .eq("user_id", user.id)
+        .limit(1);
+      if (error) {
+        if ((error as any).code === "42P01") return false;
+        throw error;
+      }
+      return (data || []).length > 0;
+    },
+    enabled: !!user && !!activeSeason?.id,
+  });
+
+  const { data: seasonSocials } = useQuery({
+    queryKey: ["season-socials", activeSeason?.id],
+    queryFn: async () => {
+      if (!activeSeason) return [] as EventRow[];
+      const { data, error } = await (supabase as any)
+        .from("events")
+        .select("*")
+        .eq("status", "published")
+        .eq("visibility", "members")
+        .eq("kind", "social")
+        .eq("season_id", activeSeason.id)
+        .gte("starts_at", new Date().toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(10);
+      if (error) {
+        if ((error as any).code === "42703") return [] as EventRow[];
+        throw error;
+      }
+      return (data || []) as EventRow[];
+    },
+    enabled: !!user && !!activeSeason?.id,
+  });
+
+  const socialIds = (seasonSocials || []).map((e) => e.id);
+  const { data: mySocialRsvps } = useQuery({
+    queryKey: ["my-social-rsvps", user?.id, activeSeason?.id, socialIds.join(",")],
+    queryFn: async () => {
+      if (!user || socialIds.length === 0) return new Map<string, string>();
+      const { data, error } = await (supabase as any)
+        .from("event_rsvps")
+        .select("event_id,status")
+        .eq("user_id", user.id)
+        .in("event_id", socialIds);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const r of data || []) map.set(String(r.event_id), String(r.status));
+      return map;
+    },
+    enabled: !!user && socialIds.length > 0,
+  });
+
+  const joinSeason = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("join_active_season");
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: async () => {
+      toast.success("Joined the season");
+      await queryClient.invalidateQueries({ queryKey: ["season-membership", user?.id, activeSeason?.id] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not join season"),
+  });
+
+  const rsvpGoing = useMutation({
+    mutationFn: async (eventId: string) => {
+      if (!user) throw new Error("Not logged in");
+      const { error } = await (supabase as any)
+        .from("event_rsvps")
+        .upsert({ event_id: eventId, user_id: user.id, status: "going", guests: 0 }, { onConflict: "event_id,user_id" });
+      if (error) throw error;
+      return eventId;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["my-social-rsvps", user?.id, activeSeason?.id, socialIds.join(",")] });
+      toast.success("Joined social");
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not RSVP"),
+  });
+
+  const [socialCreateOpen, setSocialCreateOpen] = useState(false);
+  const [socialDraft, setSocialDraft] = useState({
+    title: "",
+    description: "",
+    date: format(new Date(), "yyyy-MM-dd"),
+    startTime: "18:00",
+    endTime: "19:00",
+    location: "Gordon's Bay Squash Club",
+    capacity: "",
+  });
+
+  const createSocial = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Not logged in");
+      if (!activeSeason?.id) throw new Error("No active season");
+      if (!joinedActiveSeason) throw new Error("Join the season first");
+      const title = socialDraft.title.trim();
+      if (!title) throw new Error("Please enter a title");
+      const startsAt = new Date(`${socialDraft.date}T${socialDraft.startTime}:00`);
+      const endsAt = socialDraft.endTime.trim() ? new Date(`${socialDraft.date}T${socialDraft.endTime}:00`) : null;
+      if (!Number.isFinite(startsAt.getTime())) throw new Error("Invalid start time");
+      if (endsAt && endsAt.getTime() < startsAt.getTime()) throw new Error("End time must be after start time");
+      const capacity = socialDraft.capacity.trim() ? Number(socialDraft.capacity.trim()) : null;
+      if (capacity != null && (!Number.isFinite(capacity) || capacity < 1 || capacity > 200)) throw new Error("Capacity must be 1–200");
+
+      const { data, error } = await (supabase as any)
+        .from("events")
+        .insert({
+          title,
+          description: socialDraft.description.trim() || null,
+          starts_at: startsAt.toISOString(),
+          ends_at: endsAt ? endsAt.toISOString() : null,
+          location: socialDraft.location.trim() || null,
+          capacity: capacity == null ? null : Math.trunc(capacity),
+          visibility: "members",
+          status: "published",
+          created_by: user.id,
+          season_id: activeSeason.id,
+          kind: "social",
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data as EventRow;
+    },
+    onSuccess: async (row) => {
+      toast.success("Social created");
+      setSocialCreateOpen(false);
+      setSocialDraft((s) => ({ ...s, title: "", description: "" }));
+      await queryClient.invalidateQueries({ queryKey: ["season-socials", activeSeason?.id] });
+      navigate(`/events/${row.id}`);
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not create social"),
+  });
 
   const topPlayers = (user ? ladder?.slice(0, 5) : publicLeaderboard?.slice(0, 5)) || [];
   const spotlight = topPlayers.length > 0 ? topPlayers[0] : null;
@@ -60,6 +259,8 @@ export default function Home() {
 
   const nextBooking = (myBookings || [])[0] || null;
   const canOpenAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
+  const seasonStartDate = activeSeason?.starts_on ? new Date(`${activeSeason.starts_on}T00:00:00`) : null;
+  const isNewSeason = seasonStartDate ? Math.abs(differenceInCalendarDays(new Date(), seasonStartDate)) <= 7 : false;
 
   return (
     <div className="min-h-screen bg-background bottom-nav-safe">
@@ -209,6 +410,114 @@ export default function Home() {
             </Button>
           </div>
 
+          {activeSeason && (
+            <Card className="mb-3 border-primary/20 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Season</p>
+                    <p className="font-heading font-bold text-base mt-1 truncate">{activeSeason.name}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Started {activeSeason.starts_on}
+                      {activeSeason.ends_on ? ` · Ends ${activeSeason.ends_on}` : ""}
+                    </p>
+                    {isNewSeason && !joinedActiveSeason ? (
+                      <p className="text-[11px] text-primary mt-2">
+                        New season just started — join now to take part.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0 flex flex-col items-end gap-2">
+                    {joinedActiveSeason ? (
+                      <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-0 text-[10px]">
+                        Joined
+                      </Badge>
+                    ) : (
+                      <Button size="sm" className="h-8 text-xs" onClick={() => joinSeason.mutate()} disabled={joinSeason.isPending}>
+                        {joinSeason.isPending ? "Joining…" : "Join season"}
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-primary px-2" onClick={() => navigate("/seasons")}>
+                      View seasons <ChevronRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+
+                {joinedActiveSeason && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => setSocialCreateOpen(true)}>
+                      Create social
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/events")}>
+                      View socials
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSeason && (seasonSocials || []).length > 0 && (
+            <Card className="mb-3">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold font-heading">Season socials</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Small club meetups created by members</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-primary" onClick={() => navigate("/events")}>
+                    See all <ChevronRight className="w-3 h-3 ml-1" />
+                  </Button>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {(seasonSocials || []).slice(0, 3).map((e) => {
+                    const starts = new Date(e.starts_at);
+                    const ends = e.ends_at ? new Date(e.ends_at) : null;
+                    const myStatus = mySocialRsvps?.get(e.id) || null;
+                    return (
+                      <div key={e.id} className="rounded-lg border border-border p-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{e.title}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {format(starts, "EEE, d MMM · HH:mm")}
+                            {ends ? ` – ${format(ends, "HH:mm")}` : ""}
+                            {e.location ? ` · ${e.location}` : ""}
+                          </p>
+                          {e.description ? (
+                            <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2 whitespace-pre-line">
+                              {e.description}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="shrink-0 flex flex-col items-end gap-2">
+                          {myStatus ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {myStatus === "going" ? "Going" : myStatus === "maybe" ? "Maybe" : "Not going"}
+                            </Badge>
+                          ) : null}
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate(`/events/${e.id}`)}>
+                              Details
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs"
+                              disabled={!joinedActiveSeason || rsvpGoing.isPending}
+                              onClick={() => rsvpGoing.mutate(e.id)}
+                            >
+                              {joinedActiveSeason ? "Join" : "Join season"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/ladder")}>
               <CardContent className="p-4">
@@ -291,6 +600,55 @@ export default function Home() {
           </div>
         </motion.section>
       )}
+
+      {/* Create social dialog */}
+      <Dialog open={socialCreateOpen} onOpenChange={setSocialCreateOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create a season social</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Title</Label>
+              <Input value={socialDraft.title} onChange={(e) => setSocialDraft((s) => ({ ...s, title: e.target.value }))} placeholder="e.g. Friday evening social" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea value={socialDraft.description} onChange={(e) => setSocialDraft((s) => ({ ...s, description: e.target.value }))} placeholder="Optional details…" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Date</Label>
+                <Input type="date" value={socialDraft.date} onChange={(e) => setSocialDraft((s) => ({ ...s, date: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Capacity</Label>
+                <Input value={socialDraft.capacity} onChange={(e) => setSocialDraft((s) => ({ ...s, capacity: e.target.value }))} placeholder="Optional" inputMode="numeric" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start</Label>
+                <Input type="time" value={socialDraft.startTime} onChange={(e) => setSocialDraft((s) => ({ ...s, startTime: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End</Label>
+                <Input type="time" value={socialDraft.endTime} onChange={(e) => setSocialDraft((s) => ({ ...s, endTime: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Location</Label>
+              <Input value={socialDraft.location} onChange={(e) => setSocialDraft((s) => ({ ...s, location: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSocialCreateOpen(false)}>Cancel</Button>
+            <Button onClick={() => createSocial.mutate()} disabled={createSocial.isPending}>
+              {createSocial.isPending ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Club Insights */}
       {user && (

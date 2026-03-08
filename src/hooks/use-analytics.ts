@@ -88,7 +88,7 @@ export function useSeasons() {
       const { data, error } = await (supabase as any)
         .from("seasons")
         .select("*")
-        .order("start_date", { ascending: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },

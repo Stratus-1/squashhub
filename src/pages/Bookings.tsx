@@ -70,6 +70,7 @@ export default function Bookings() {
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;
+    bookingId: string;
     courtId: number;
     dateStr: string;
     startTime: string;
@@ -79,6 +80,7 @@ export default function Bookings() {
     opponentEmail: string | null;
   }>({
     open: false,
+    bookingId: "",
     courtId: 1,
     dateStr: "",
     startTime: "",

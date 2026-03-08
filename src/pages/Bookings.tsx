@@ -3,13 +3,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Mail, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { format, addDays, subDays, getISODay } from "date-fns";
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { ShareBookingDialog } from "@/components/ShareBookingDialog";
 import {
   Dialog,
   DialogContent,

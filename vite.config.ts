@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       strategies: "injectManifest",
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico"],
+      includeAssets: ["favicon.ico", "pwa-192x192.png", "pwa-512x512.png"],
       srcDir: "src",
       filename: "sw.ts",
       manifest: {

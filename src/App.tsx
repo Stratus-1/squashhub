@@ -32,6 +32,8 @@ import BookingResponse from "./pages/BookingResponse";
 import Achievements from "./pages/Achievements";
 import Feed from "./pages/Feed";
 import Availability from "./pages/Availability";
+import Analytics from "./pages/Analytics";
+import Seasons from "./pages/Seasons";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 

@@ -396,13 +396,12 @@ export default function Admin() {
   const { data: seasons } = useQuery({
     queryKey: ["admin", "seasons"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("seasons")
+      const { data, error } = await fromExt("seasons")
         .select("*")
         .order("starts_on", { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []) as SeasonRow[];
+      return (data || []) as unknown as SeasonRow[];
     },
   });
 

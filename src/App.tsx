@@ -29,6 +29,9 @@ import MatchTracker from "./pages/MatchTracker";
 import PlayerProfile from "./pages/PlayerProfile";
 import Admin from "./pages/Admin";
 import BookingResponse from "./pages/BookingResponse";
+import Achievements from "./pages/Achievements";
+import Feed from "./pages/Feed";
+import Availability from "./pages/Availability";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 

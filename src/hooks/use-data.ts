@@ -868,12 +868,11 @@ export function useIntegrations() {
     queryKey: ["integrations", user?.id],
     queryFn: async () => {
       if (!user) return [] as IntegrationAccount[];
-      const { data, error } = await supabase
-        .from("integrations_accounts")
+      const { data, error } = await fromAny("integrations_accounts")
         .select("*")
         .eq("user_id", user.id);
       if (error) throw error;
-      return (data || []) as IntegrationAccount[];
+      return (data || []) as unknown as IntegrationAccount[];
     },
     enabled: !!user,
   });

@@ -501,7 +501,7 @@ export default function Admin() {
 
   const bulkSetRanks = useMutation({
     mutationFn: async ({ assignments }: { assignments: Array<{ user_id: string; rank: number }> }) => {
-      const { error } = await supabase.rpc("admin_bulk_set_ranks", { assignments } as any);
+      const { error } = await rpcExt("admin_bulk_set_ranks", { assignments });
       if (error) throw error;
     },
     onSuccess: async () => {

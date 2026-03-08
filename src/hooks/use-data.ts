@@ -444,8 +444,7 @@ export function useProposeChallengeSchedule() {
       courtId: number;
     }) => {
       if (!user) throw new Error("Must be logged in");
-      const { data, error } = await supabase
-        .from("challenge_schedules")
+      const { data, error } = await fromAny("challenge_schedules")
         .insert({
           challenge_id: payload.challengeId,
           proposed_by: user.id,
@@ -454,11 +453,11 @@ export function useProposeChallengeSchedule() {
           end_time: payload.endTime,
           court_id: payload.courtId,
           status: "proposed",
-        } as any)
+        })
         .select()
         .single();
       if (error) throw error;
-      return data as ChallengeSchedule;
+      return data as unknown as ChallengeSchedule;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["challenge-schedules"] });

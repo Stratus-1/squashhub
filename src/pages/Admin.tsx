@@ -370,13 +370,12 @@ export default function Admin() {
   const { data: auditLog, isLoading: auditLoading } = useQuery({
     queryKey: ["admin", "audit-log"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("admin_audit_log")
+      const { data, error } = await fromExt("admin_audit_log")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(250);
       if (error) throw error;
-      return (data || []) as AuditLogRow[];
+      return (data || []) as unknown as AuditLogRow[];
     },
     enabled: isAdmin || isManager,
   });

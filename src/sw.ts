@@ -36,7 +36,7 @@ self.addEventListener("push", (event) => {
   }
 
   const title = (data?.title as string) || "GB Squash";
-  const options: NotificationOptions & { data?: unknown } = {
+  const options: any = {
     body: (data?.body as string) || "",
     icon: (data?.icon as string) || "/pwa-192x192.png",
     badge: (data?.badge as string) || "/pwa-192x192.png",

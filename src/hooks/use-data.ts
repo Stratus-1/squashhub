@@ -31,9 +31,9 @@ export function useSquashTotals(playerId?: string | null) {
     queryKey: ["squash-totals", playerId],
     queryFn: async () => {
       if (!playerId) return null;
-      const { data, error } = await supabase.rpc("get_squash_totals", { target_user_id: playerId } as any);
+      const { data, error } = await rpc("get_squash_totals", { target_user_id: playerId });
       if (error) throw error;
-      return data as SquashTotals;
+      return data as unknown as SquashTotals;
     },
     enabled: !!user && !!playerId,
   });

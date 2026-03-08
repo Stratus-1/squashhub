@@ -411,7 +411,35 @@ export default function Admin() {
     },
   });
 
-  const { data: seasons } = useQuery({
+  // All bookings for admin management
+  const { data: allBookings, isLoading: bookingsLoading } = useQuery({
+    queryKey: ["admin", "bookings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .order("date", { ascending: false })
+        .order("start_time", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string; court_id: number; user_id: string; date: string;
+        start_time: string; end_time: string; status: string; created_at: string;
+      }>;
+    },
+    enabled: isAdmin || isManager,
+  });
+
+  const filteredBookings = useMemo(() => {
+    const q = bookingSearch.trim().toLowerCase();
+    const list = allBookings || [];
+    if (!q) return list;
+    return list.filter((b) => {
+      const playerName = profileMap.get(b.user_id)?.name || "";
+      return `${playerName} ${b.date} ${b.court_id}`.toLowerCase().includes(q);
+    });
+  }, [allBookings, bookingSearch, profileMap]);
+
     queryKey: ["admin", "seasons"],
     queryFn: async () => {
       const { data, error } = await fromExt("seasons")

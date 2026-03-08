@@ -2441,6 +2441,119 @@ export default function Admin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dispute Resolution Dialog */}
+      <Dialog open={disputeResolve.open} onOpenChange={(open) => setDisputeResolve((s) => ({ ...s, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resolve Dispute</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {(() => {
+              const m = (matches || []).find((m) => m.id === disputeResolve.matchId);
+              if (!m) return <p className="text-sm text-muted-foreground">Match not found.</p>;
+              const aName = profileMap.get(m.player_a)?.name || "Player A";
+              const bName = profileMap.get(m.player_b)?.name || "Player B";
+              return (
+                <>
+                  <p className="text-sm">
+                    <strong>{aName}</strong> vs <strong>{bName}</strong> — {m.score || "no score"}
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label>Winner</Label>
+                    <Select value={disputeResolve.winnerId} onValueChange={(v) => setDisputeResolve((s) => ({ ...s, winnerId: v }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={m.player_a}>{aName}</SelectItem>
+                        <SelectItem value={m.player_b}>{bName}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Resolution notes</Label>
+                    <Textarea
+                      value={disputeResolve.notes}
+                      onChange={(e) => setDisputeResolve((s) => ({ ...s, notes: e.target.value }))}
+                      placeholder="Describe the resolution…"
+                    />
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDisputeResolve((s) => ({ ...s, open: false }))}>Cancel</Button>
+            <Button
+              disabled={resolveDispute.isPending}
+              onClick={() => resolveDispute.mutate({
+                matchId: disputeResolve.matchId,
+                winnerId: disputeResolve.winnerId,
+                notes: disputeResolve.notes,
+              })}
+            >
+              {resolveDispute.isPending ? "Resolving…" : "Resolve & Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Court Dialog */}
+      <Dialog open={courtBlock.open} onOpenChange={(open) => setCourtBlock((s) => ({ ...s, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Block Court for Maintenance</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Court</Label>
+                <Select value={courtBlock.courtId} onValueChange={(v) => setCourtBlock((s) => ({ ...s, courtId: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Court 1</SelectItem>
+                    <SelectItem value="2">Court 2</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Date</Label>
+                <Input type="date" value={courtBlock.date} onChange={(e) => setCourtBlock((s) => ({ ...s, date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start time</Label>
+                <Input type="time" value={courtBlock.startTime} onChange={(e) => setCourtBlock((s) => ({ ...s, startTime: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End time</Label>
+                <Input type="time" value={courtBlock.endTime} onChange={(e) => setCourtBlock((s) => ({ ...s, endTime: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Reason</Label>
+              <Input value={courtBlock.reason} onChange={(e) => setCourtBlock((s) => ({ ...s, reason: e.target.value }))} placeholder="Maintenance" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCourtBlock((s) => ({ ...s, open: false }))}>Cancel</Button>
+            <Button
+              disabled={blockCourt.isPending}
+              onClick={() => blockCourt.mutate({
+                courtId: Number(courtBlock.courtId) || 1,
+                date: courtBlock.date,
+                startTime: courtBlock.startTime,
+                endTime: courtBlock.endTime,
+                reason: courtBlock.reason,
+              })}
+            >
+              {blockCourt.isPending ? "Blocking…" : "Block Court"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

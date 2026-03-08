@@ -491,7 +491,7 @@ export function useAcceptChallengeSchedule() {
 
   return useMutation({
     mutationFn: async (scheduleId: string) => {
-      const { error } = await supabase.rpc("accept_challenge_schedule", { target_schedule_id: scheduleId } as any);
+      const { error } = await rpc("accept_challenge_schedule", { target_schedule_id: scheduleId });
       if (error) throw error;
     },
     onSuccess: async () => {

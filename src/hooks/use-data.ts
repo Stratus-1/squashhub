@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Bypass strict typing for tables/functions that exist in the external Supabase
+// but aren't reflected in the auto-generated Lovable Cloud types.
+const rpc: any = supabase.rpc.bind(supabase);
+const fromAny = (table: string) => (supabase as any).from(table);
+
 export type CourtBusynessRow = { slot: string; bookings_count: number };
 
 export type SquashTotals = {
@@ -26,9 +31,9 @@ export function useSquashTotals(playerId?: string | null) {
     queryKey: ["squash-totals", playerId],
     queryFn: async () => {
       if (!playerId) return null;
-      const { data, error } = await supabase.rpc("get_squash_totals", { target_user_id: playerId } as any);
+      const { data, error } = await rpc("get_squash_totals", { target_user_id: playerId });
       if (error) throw error;
-      return data as SquashTotals;
+      return data as unknown as SquashTotals;
     },
     enabled: !!user && !!playerId,
   });
@@ -55,7 +60,7 @@ export function useHeadToHead(playerId?: string | null, limit = 20) {
     queryKey: ["head-to-head", playerId, limit],
     queryFn: async () => {
       if (!playerId) return [] as HeadToHeadRow[];
-      const { data, error } = await supabase.rpc("get_head_to_head", {
+      const { data, error } = await rpc("get_head_to_head", {
         target_user_id: playerId,
         limit_count: limit,
       } as any);
@@ -71,7 +76,7 @@ export function useCourtBusyness(daysBack = 30) {
   return useQuery({
     queryKey: ["court-busyness", user?.id, daysBack],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_court_busyness", { days_back: daysBack } as any);
+      const { data, error } = await rpc("get_court_busyness", { days_back: daysBack });
       if (error) throw error;
       return (data || []) as CourtBusynessRow[];
     },
@@ -93,9 +98,9 @@ export function useHomeInsights(daysBack = 30) {
   return useQuery({
     queryKey: ["home-insights", user?.id, daysBack],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_home_insights", { days_back: daysBack } as any);
+      const { data, error } = await rpc("get_home_insights", { days_back: daysBack });
       if (error) throw error;
-      return data as HomeInsights;
+      return data as unknown as HomeInsights;
     },
     enabled: !!user,
   });
@@ -180,7 +185,7 @@ export function usePublicLeaderboard(limit = 10) {
   return useQuery({
     queryKey: ["public-leaderboard", limit],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_public_leaderboard", { limit_count: limit } as any);
+      const { data, error } = await rpc("get_public_leaderboard", { limit_count: limit });
       if (error) throw error;
       return (data || []) as PublicLeaderboardRow[];
     },
@@ -307,8 +312,7 @@ export function useMyScheduledMatches() {
     queryFn: async () => {
       if (!user) return [];
       const today = new Date().toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("scheduled_matches")
+      const { data, error } = await fromAny("scheduled_matches")
         .select("*")
         .or(`player_a.eq.${user.id},player_b.eq.${user.id}`)
         .eq("status", "scheduled")
@@ -416,13 +420,12 @@ export function useChallengeSchedulesByChallengeIds(challengeIds: string[]) {
     queryKey: ["challenge-schedules", user?.id, challengeIds.join(",")],
     queryFn: async () => {
       if (!user || challengeIds.length === 0) return [] as ChallengeSchedule[];
-      const { data, error } = await supabase
-        .from("challenge_schedules")
+      const { data, error } = await fromAny("challenge_schedules")
         .select("*")
         .in("challenge_id", challengeIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as ChallengeSchedule[];
+      return (data || []) as unknown as ChallengeSchedule[];
     },
     enabled: !!user && challengeIds.length > 0,
   });
@@ -441,8 +444,7 @@ export function useProposeChallengeSchedule() {
       courtId: number;
     }) => {
       if (!user) throw new Error("Must be logged in");
-      const { data, error } = await supabase
-        .from("challenge_schedules")
+      const { data, error } = await fromAny("challenge_schedules")
         .insert({
           challenge_id: payload.challengeId,
           proposed_by: user.id,
@@ -451,11 +453,11 @@ export function useProposeChallengeSchedule() {
           end_time: payload.endTime,
           court_id: payload.courtId,
           status: "proposed",
-        } as any)
+        })
         .select()
         .single();
       if (error) throw error;
-      return data as ChallengeSchedule;
+      return data as unknown as ChallengeSchedule;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["challenge-schedules"] });
@@ -470,9 +472,8 @@ export function useRespondChallengeSchedule() {
 
   return useMutation({
     mutationFn: async ({ scheduleId, status }: { scheduleId: string; status: "accepted" | "declined" | "cancelled" }) => {
-      const { error } = await supabase
-        .from("challenge_schedules")
-        .update({ status } as any)
+      const { error } = await fromAny("challenge_schedules")
+        .update({ status })
         .eq("id", scheduleId);
       if (error) throw error;
     },
@@ -490,7 +491,7 @@ export function useAcceptChallengeSchedule() {
 
   return useMutation({
     mutationFn: async (scheduleId: string) => {
-      const { error } = await supabase.rpc("accept_challenge_schedule", { target_schedule_id: scheduleId } as any);
+      const { error } = await rpc("accept_challenge_schedule", { target_schedule_id: scheduleId });
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -781,7 +782,7 @@ export function useConfirmMatch() {
 
   return useMutation({
     mutationFn: async (matchId: string) => {
-      const { error } = await supabase.rpc("confirm_match", { match_id: matchId } as any);
+      const { error } = await rpc("confirm_match", { match_id: matchId });
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -809,11 +810,11 @@ export function useDisputeMatch() {
       notes?: string | null;
       evidenceUrl?: string | null;
     }) => {
-      const { error } = await supabase.rpc("dispute_match", {
+      const { error } = await rpc("dispute_match", {
         match_id: matchId,
         notes: notes ?? null,
         evidence_url: evidenceUrl ?? null,
-      } as any);
+      });
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -829,7 +830,7 @@ export function useAdminConfirmMatch() {
 
   return useMutation({
     mutationFn: async (matchId: string) => {
-      const { error } = await supabase.rpc("admin_confirm_match", { match_id: matchId } as any);
+      const { error } = await rpc("admin_confirm_match", { match_id: matchId });
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -867,12 +868,11 @@ export function useIntegrations() {
     queryKey: ["integrations", user?.id],
     queryFn: async () => {
       if (!user) return [] as IntegrationAccount[];
-      const { data, error } = await supabase
-        .from("integrations_accounts")
+      const { data, error } = await fromAny("integrations_accounts")
         .select("*")
         .eq("user_id", user.id);
       if (error) throw error;
-      return (data || []) as IntegrationAccount[];
+      return (data || []) as unknown as IntegrationAccount[];
     },
     enabled: !!user,
   });

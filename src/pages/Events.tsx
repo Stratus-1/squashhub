@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+const fromExt = (table: string) => (supabase as any).from(table);
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -29,14 +30,13 @@ export default function Events() {
   const { data: events, isLoading, error } = useQuery({
     queryKey: ["events", user?.id ? "authed" : "anon"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
+      const { data, error } = await fromExt("events")
         .select("*")
         .eq("status", "published")
         .order("starts_at", { ascending: true })
         .limit(50);
       if (error) throw error;
-      return (data || []) as EventRow[];
+      return (data || []) as unknown as EventRow[];
     },
   });
 

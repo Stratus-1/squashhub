@@ -100,11 +100,11 @@ export default function Bookings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,name,rank,availability,email")
+        .select("id,name,rank,email")
         .order("rank", { ascending: true })
         .limit(100);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; name: string; rank: number | null; availability: string | null; email: string | null }>;
+      return (data || []) as Array<{ id: string; name: string; rank: number | null; email: string | null }> as any;
     },
     enabled: !!user,
   });
@@ -116,7 +116,7 @@ export default function Bookings() {
       const dow = getISODay(selectedDate);
       const start = `${bookingDialog.time}:00`;
       const end = `${addMinutesToTime(bookingDialog.time, 30)}:00`;
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("player_availability")
         .select("user_id")
         .eq("day_of_week", dow)

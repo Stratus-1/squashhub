@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIntegrations } from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
+const fromExt = (table: string) => (supabase as any).from(table);
 import { Loader2, Play, Square, ExternalLink, Link2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -99,20 +100,18 @@ export default function MatchTracker() {
         if (bookingError) throw bookingError;
         const b = bookingRow as unknown as BookingRow;
         if (b.user_id !== user.id && b.opponent_id !== user.id) {
-          const { data: scheduled, error: scheduledError } = await supabase
-            .from("scheduled_matches")
+          const { data: scheduled, error: scheduledError } = await fromExt("scheduled_matches")
             .select("id,player_a,player_b")
             .eq("booking_id", bookingId)
             .limit(1);
           if (scheduledError) throw scheduledError;
-          const sm = scheduled?.[0];
+          const sm = scheduled?.[0] as any;
           const isParticipant = !!sm && (sm.player_a === user.id || sm.player_b === user.id);
           if (!isParticipant) throw new Error("You can only track bookings you are playing in");
         }
         setBooking(b);
 
-        const { data: sessionRows, error: sessionError } = await supabase
-          .from("game_sessions")
+        const { data: sessionRows, error: sessionError } = await fromExt("game_sessions")
           .select("*")
           .eq("booking_id", bookingId)
           .eq("user_id", user.id)
@@ -228,8 +227,7 @@ export default function MatchTracker() {
                   try {
                     if (!user) throw new Error("You must be logged in");
                     const startedAt = new Date().toISOString();
-                    const { data, error } = await supabase
-                      .from("game_sessions")
+                    const { data, error } = await fromExt("game_sessions")
                       .insert({
                         user_id: user.id,
                         booking_id: booking.id,
@@ -259,8 +257,7 @@ export default function MatchTracker() {
                     const endedAt = new Date().toISOString();
                     const startedAtMs = new Date(session.started_at).getTime();
                     const duration = Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
-                    const { data, error } = await supabase
-                      .from("game_sessions")
+                    const { data, error } = await fromExt("game_sessions")
                       .update({ ended_at: endedAt, duration_s: duration })
                       .eq("id", session.id)
                       .select("*")
@@ -413,8 +410,7 @@ export default function MatchTracker() {
                             if (!session || !selectedActivityId) return;
                             const picked = recent.find((a) => a.id === selectedActivityId);
                             if (!picked) throw new Error("Please select an activity");
-                            const { data, error } = await supabase
-                              .from("game_sessions")
+                            const { data, error } = await fromExt("game_sessions")
                               .update({
                                 strava_activity_id: picked.id,
                                 strava_name: picked.name,

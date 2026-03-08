@@ -45,17 +45,17 @@ export default function PlayerProfile() {
     queryKey: ["player-matches", id],
     queryFn: async () => {
       if (!id) return [];
-      const { data: matches, error } = await supabase
+      const { data: matches, error } = await (supabase as any)
         .from("matches")
         .select("*")
         .or(`player_a.eq.${id},player_b.eq.${id}`)
         .eq("is_friendly", false)
         .order("match_date", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(50) as any;
       if (error) throw error;
 
-      const opponentIds = [...new Set((matches || []).flatMap((m: any) => [m.player_a, m.player_b]).filter((x: string) => x !== id))];
+      const opponentIds = [...new Set((matches || []).flatMap((m: any) => [m.player_a, m.player_b]).filter((x: string) => x !== id))] as string[];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id,name")

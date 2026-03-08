@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+const fromExt = (table: string) => (supabase as any).from(table);
+const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -50,9 +52,9 @@ export default function EventDetail() {
     queryKey: ["event", id, user?.id ? "authed" : "anon"],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase.from("events").select("*").eq("id", id).single();
+      const { data, error } = await fromExt("events").select("*").eq("id", id).single();
       if (error) throw error;
-      return data as EventRow;
+      return data as unknown as EventRow;
     },
     enabled: !!id,
   });
@@ -61,7 +63,7 @@ export default function EventDetail() {
     queryKey: ["event-rsvp-counts", id, user?.id ? "authed" : "anon"],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase.rpc("get_event_rsvp_counts", { target_event_id: id } as any);
+      const { data, error } = await rpcExt("get_event_rsvp_counts", { target_event_id: id });
       if (error) throw error;
       return data as any;
     },
@@ -72,14 +74,13 @@ export default function EventDetail() {
     queryKey: ["event-rsvp", id, user?.id],
     queryFn: async () => {
       if (!id || !user?.id) return null;
-      const { data, error } = await supabase
-        .from("event_rsvps")
+      const { data, error } = await fromExt("event_rsvps")
         .select("*")
         .eq("event_id", id)
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
-      return (data || null) as MyRsvpRow | null;
+      return (data || null) as unknown as MyRsvpRow | null;
     },
     enabled: !!id && !!user?.id && !!event,
   });
@@ -95,8 +96,7 @@ export default function EventDetail() {
       const g = guests.trim() ? Number(guests) : 0;
       if (!Number.isFinite(g) || g < 0 || g > 20) throw new Error("Guests must be 0–20");
 
-      const { error } = await supabase
-        .from("event_rsvps")
+      const { error } = await fromExt("event_rsvps")
         .upsert(
           {
             event_id: id,
@@ -121,7 +121,7 @@ export default function EventDetail() {
     mutationFn: async () => {
       if (!id) throw new Error("Missing event");
       if (!user?.id) throw new Error("Please log in");
-      const { error } = await supabase.from("event_rsvps").delete().eq("event_id", id).eq("user_id", user.id);
+      const { error } = await fromExt("event_rsvps").delete().eq("event_id", id).eq("user_id", user.id);
       if (error) throw error;
     },
     onSuccess: async () => {

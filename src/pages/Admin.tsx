@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
 import { supabase } from "@/integrations/supabase/client";
+const fromExt = (table: string) => (supabase as any).from(table);
+const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
 import { AppRole, useMyRoles } from "@/hooks/use-data";
 import { PageHeader } from "@/components/PageHeader";
@@ -341,13 +343,12 @@ export default function Admin() {
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin", "events"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
+      const { data, error } = await fromExt("events")
         .select("*")
         .order("starts_at", { ascending: true })
         .limit(200);
       if (error) throw error;
-      return (data || []) as AdminEventRow[];
+      return (data || []) as unknown as AdminEventRow[];
     },
     enabled: isAdmin || isManager,
   });
@@ -356,11 +357,10 @@ export default function Admin() {
     queryKey: ["admin", "event-rsvp-audience", broadcast.eventId],
     queryFn: async () => {
       if (!broadcast.eventId) return [] as string[];
-      const { data, error } = await supabase
-        .from("event_rsvps")
+      const { data, error } = await fromExt("event_rsvps")
         .select("user_id,status")
         .eq("event_id", broadcast.eventId)
-        .in("status", ["going", "maybe"] as any);
+        .in("status", ["going", "maybe"]);
       if (error) throw error;
       return [...new Set((data || []).map((r: any) => String(r.user_id)))];
     },
@@ -370,13 +370,12 @@ export default function Admin() {
   const { data: auditLog, isLoading: auditLoading } = useQuery({
     queryKey: ["admin", "audit-log"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("admin_audit_log")
+      const { data, error } = await fromExt("admin_audit_log")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(250);
       if (error) throw error;
-      return (data || []) as AuditLogRow[];
+      return (data || []) as unknown as AuditLogRow[];
     },
     enabled: isAdmin || isManager,
   });
@@ -384,27 +383,25 @@ export default function Admin() {
   const { data: scheduledMatches, isLoading: scheduledLoading } = useQuery({
     queryKey: ["admin", "scheduled-matches"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("scheduled_matches")
+      const { data, error } = await fromExt("scheduled_matches")
         .select("*")
         .order("scheduled_date", { ascending: false })
         .order("start_time", { ascending: false })
         .limit(250);
       if (error) throw error;
-      return (data || []) as ScheduledMatchRow[];
+      return (data || []) as unknown as ScheduledMatchRow[];
     },
   });
 
   const { data: seasons } = useQuery({
     queryKey: ["admin", "seasons"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("seasons")
+      const { data, error } = await fromExt("seasons")
         .select("*")
         .order("starts_on", { ascending: false })
         .limit(20);
       if (error) throw error;
-      return (data || []) as SeasonRow[];
+      return (data || []) as unknown as SeasonRow[];
     },
   });
 
@@ -412,7 +409,7 @@ export default function Admin() {
 
   const setRank = useMutation({
     mutationFn: async ({ userId, newRank }: { userId: string; newRank: number | null }) => {
-      const { error } = await supabase.rpc("admin_set_rank", {
+      const { error } = await rpcExt("admin_set_rank", {
         target_user_id: userId,
         new_rank: newRank,
       });
@@ -468,7 +465,7 @@ export default function Admin() {
 
   const adminConfirmMatch = useMutation({
     mutationFn: async (matchId: string) => {
-      const { error } = await supabase.rpc("admin_confirm_match", { match_id: matchId } as any);
+      const { error } = await rpcExt("admin_confirm_match", { match_id: matchId });
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -484,7 +481,7 @@ export default function Admin() {
   const mergeDuplicateUsers = useMutation({
     mutationFn: async ({ sourceId, targetId }: { sourceId: string; targetId: string }) => {
       if (!looksLikeUuid(sourceId) || !looksLikeUuid(targetId)) throw new Error("Select two users to merge");
-      const { error } = await supabase.rpc("admin_merge_users", {
+      const { error } = await rpcExt("admin_merge_users", {
         source_user_id: sourceId,
         target_user_id: targetId,
       } as any);
@@ -504,7 +501,7 @@ export default function Admin() {
 
   const bulkSetRanks = useMutation({
     mutationFn: async ({ assignments }: { assignments: Array<{ user_id: string; rank: number }> }) => {
-      const { error } = await supabase.rpc("admin_bulk_set_ranks", { assignments } as any);
+      const { error } = await rpcExt("admin_bulk_set_ranks", { assignments });
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -546,7 +543,7 @@ export default function Admin() {
         created_by: user?.id || null,
       };
 
-      const { error } = await supabase.from("events").upsert(row, { onConflict: "id" });
+      const { error } = await fromExt("events").upsert(row, { onConflict: "id" });
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -590,7 +587,7 @@ export default function Admin() {
     mutationFn: async ({ name, startsOn }: { name: string; startsOn: string }) => {
       const trimmed = name.trim();
       if (!trimmed) throw new Error("Season name is required");
-      const { error } = await supabase.rpc("admin_start_season", {
+      const { error } = await rpcExt("admin_start_season", {
         season_name: trimmed,
         starts_on: startsOn,
       } as any);
@@ -606,7 +603,7 @@ export default function Admin() {
 
   const endSeason = useMutation({
     mutationFn: async ({ resetStats, resetRanks }: { resetStats: boolean; resetRanks: boolean }) => {
-      const { error } = await supabase.rpc("admin_end_active_season", {
+      const { error } = await rpcExt("admin_end_active_season", {
         reset_stats: resetStats,
         reset_ranks: resetRanks,
       } as any);
@@ -678,8 +675,7 @@ export default function Admin() {
         .single();
       if (bookingError) throw bookingError;
 
-      const { data: scheduled, error: scheduledError } = await supabase
-        .from("scheduled_matches")
+      const { data: scheduled, error: scheduledError } = await fromExt("scheduled_matches")
         .insert({
           booking_id: booking.id,
           player_a: payload.playerA,
@@ -724,8 +720,7 @@ export default function Admin() {
 
   const cancelSchedule = useMutation({
     mutationFn: async ({ scheduleId, bookingId }: { scheduleId: string; bookingId: string | null }) => {
-      const { error: schedError } = await supabase
-        .from("scheduled_matches")
+      const { error: schedError } = await fromExt("scheduled_matches")
         .update({ status: "cancelled" })
         .eq("id", scheduleId);
       if (schedError) throw schedError;
@@ -1583,7 +1578,7 @@ export default function Admin() {
                       .map((p) => p.id);
                   }
                   if (broadcast.audience === "strava") ids = (profiles || []).filter((p) => !!(p as any).strava_connected).map((p) => p.id);
-                  if (broadcast.audience === "rsvp_event") ids = rsvpAudienceUserIds || [];
+                  if (broadcast.audience === "rsvp_event") ids = (rsvpAudienceUserIds || []) as string[];
 
                   const count = ids.length;
                   return (

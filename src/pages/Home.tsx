@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
+import { SEO } from "@/components/SEO";
 import {
   Calendar, Trophy, Swords, ClipboardList,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,

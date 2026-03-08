@@ -60,7 +60,7 @@ export function useHeadToHead(playerId?: string | null, limit = 20) {
     queryKey: ["head-to-head", playerId, limit],
     queryFn: async () => {
       if (!playerId) return [] as HeadToHeadRow[];
-      const { data, error } = await supabase.rpc("get_head_to_head", {
+      const { data, error } = await rpc("get_head_to_head", {
         target_user_id: playerId,
         limit_count: limit,
       } as any);

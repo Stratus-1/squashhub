@@ -2,21 +2,34 @@
 -- ==========================================
 -- SEASONS & AWARDS
 -- ==========================================
-CREATE TABLE public.seasons (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  start_date date NOT NULL,
-  end_date date NOT NULL,
-  status text NOT NULL DEFAULT 'upcoming',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+-- Seasons already exist in this project (season management migration).
+-- Keep this migration idempotent to avoid failing when applying out-of-order.
+DO $$
+BEGIN
+  IF to_regclass('public.seasons') IS NULL THEN
+    -- Align with the existing season-management schema used elsewhere in this repo.
+    CREATE TABLE public.seasons (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      name text NOT NULL,
+      starts_on date NOT NULL,
+      ends_on date,
+      is_active boolean NOT NULL DEFAULT true,
+      created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
 
-ALTER TABLE public.seasons ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE public.seasons ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Seasons readable by all authenticated" ON public.seasons
-  FOR SELECT TO authenticated USING (true);
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'seasons' AND policyname = 'Seasons readable by all authenticated'
+    ) THEN
+      CREATE POLICY "Seasons readable by all authenticated" ON public.seasons
+        FOR SELECT TO authenticated USING (true);
+    END IF;
+  END IF;
+END $$;
 
-CREATE TABLE public.season_awards (
+CREATE TABLE IF NOT EXISTS public.season_awards (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   season_id uuid NOT NULL REFERENCES public.seasons(id) ON DELETE CASCADE,
   user_id uuid NOT NULL,
@@ -28,13 +41,20 @@ CREATE TABLE public.season_awards (
 
 ALTER TABLE public.season_awards ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Awards readable by all authenticated" ON public.season_awards
-  FOR SELECT TO authenticated USING (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'season_awards' AND policyname = 'Awards readable by all authenticated'
+  ) THEN
+    CREATE POLICY "Awards readable by all authenticated" ON public.season_awards
+      FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
 
 -- ==========================================
 -- RECURRING BOOKINGS
 -- ==========================================
-CREATE TABLE public.recurring_bookings (
+CREATE TABLE IF NOT EXISTS public.recurring_bookings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
   court_id integer NOT NULL REFERENCES public.courts(id),
@@ -47,22 +67,41 @@ CREATE TABLE public.recurring_bookings (
 
 ALTER TABLE public.recurring_bookings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own recurring bookings" ON public.recurring_bookings
-  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'recurring_bookings' AND policyname = 'Users can view own recurring bookings'
+  ) THEN
+    CREATE POLICY "Users can view own recurring bookings" ON public.recurring_bookings
+      FOR SELECT TO authenticated USING (auth.uid() = user_id);
+  END IF;
 
-CREATE POLICY "Users can create own recurring bookings" ON public.recurring_bookings
-  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'recurring_bookings' AND policyname = 'Users can create own recurring bookings'
+  ) THEN
+    CREATE POLICY "Users can create own recurring bookings" ON public.recurring_bookings
+      FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+  END IF;
 
-CREATE POLICY "Users can update own recurring bookings" ON public.recurring_bookings
-  FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'recurring_bookings' AND policyname = 'Users can update own recurring bookings'
+  ) THEN
+    CREATE POLICY "Users can update own recurring bookings" ON public.recurring_bookings
+      FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+  END IF;
 
-CREATE POLICY "Users can delete own recurring bookings" ON public.recurring_bookings
-  FOR DELETE TO authenticated USING (auth.uid() = user_id);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'recurring_bookings' AND policyname = 'Users can delete own recurring bookings'
+  ) THEN
+    CREATE POLICY "Users can delete own recurring bookings" ON public.recurring_bookings
+      FOR DELETE TO authenticated USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- ==========================================
 -- MATCH DISPUTES
 -- ==========================================
-CREATE TABLE public.match_disputes (
+CREATE TABLE IF NOT EXISTS public.match_disputes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   match_id uuid NOT NULL REFERENCES public.matches(id) ON DELETE CASCADE,
   raised_by uuid NOT NULL,
@@ -76,14 +115,29 @@ CREATE TABLE public.match_disputes (
 
 ALTER TABLE public.match_disputes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Disputes readable by all authenticated" ON public.match_disputes
-  FOR SELECT TO authenticated USING (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'match_disputes' AND policyname = 'Disputes readable by all authenticated'
+  ) THEN
+    CREATE POLICY "Disputes readable by all authenticated" ON public.match_disputes
+      FOR SELECT TO authenticated USING (true);
+  END IF;
 
-CREATE POLICY "Users can raise disputes" ON public.match_disputes
-  FOR INSERT TO authenticated WITH CHECK (auth.uid() = raised_by);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'match_disputes' AND policyname = 'Users can raise disputes'
+  ) THEN
+    CREATE POLICY "Users can raise disputes" ON public.match_disputes
+      FOR INSERT TO authenticated WITH CHECK (auth.uid() = raised_by);
+  END IF;
 
-CREATE POLICY "Admins can update disputes" ON public.match_disputes
-  FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'match_disputes' AND policyname = 'Admins can update disputes'
+  ) THEN
+    CREATE POLICY "Admins can update disputes" ON public.match_disputes
+      FOR UPDATE TO authenticated USING (public.is_admin_or_moderator(auth.uid()));
+  END IF;
+END $$;
 
 -- ==========================================
 -- MATCH OF THE WEEK FUNCTION
@@ -276,5 +330,12 @@ END;
 $$;
 
 -- Enable realtime for new tables
-ALTER PUBLICATION supabase_realtime ADD TABLE public.seasons;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.match_disputes;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'seasons') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.seasons;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'match_disputes') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.match_disputes;
+  END IF;
+END $$;

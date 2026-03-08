@@ -472,9 +472,8 @@ export function useRespondChallengeSchedule() {
 
   return useMutation({
     mutationFn: async ({ scheduleId, status }: { scheduleId: string; status: "accepted" | "declined" | "cancelled" }) => {
-      const { error } = await supabase
-        .from("challenge_schedules")
-        .update({ status } as any)
+      const { error } = await fromAny("challenge_schedules")
+        .update({ status })
         .eq("id", scheduleId);
       if (error) throw error;
     },

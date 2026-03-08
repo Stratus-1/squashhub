@@ -4,6 +4,7 @@ import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SEO } from "@/components/SEO";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Swords, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";

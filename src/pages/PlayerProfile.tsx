@@ -52,7 +52,7 @@ export default function PlayerProfile() {
         .eq("is_friendly", false)
         .order("match_date", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(50) as any;
       if (error) throw error;
 
       const opponentIds = [...new Set((matches || []).flatMap((m: any) => [m.player_a, m.player_b]).filter((x: string) => x !== id))];

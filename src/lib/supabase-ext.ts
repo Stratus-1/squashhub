@@ -1,7 +1,7 @@
 /**
  * Untyped Supabase helpers for tables / RPCs that exist in the external
- * Supabase project but are NOT reflected in the auto-generated Lovable Cloud
- * types file (src/integrations/supabase/types.ts).
+ * Supabase project but are NOT reflected in the generated types file
+ * (src/integrations/supabase/types.ts).
  *
  * Usage:
  *   import { fromExt, rpcExt } from "@/lib/supabase-ext";

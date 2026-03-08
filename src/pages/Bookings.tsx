@@ -87,6 +87,15 @@ export default function Bookings() {
     opponentName: null,
     opponentEmail: null,
   });
+  const [shareDialog, setShareDialog] = useState<{
+    open: boolean;
+    bookingId: string;
+    courtId: number;
+    dateStr: string;
+    startTime: string;
+    endTime: string;
+    opponentName: string | null;
+  }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
   const { user } = useAuth();
   const { data: me } = useProfile();
 

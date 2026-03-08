@@ -430,6 +430,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      respond_to_booking_invite: {
+        Args: { invite_token: string; new_status: string; reason?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

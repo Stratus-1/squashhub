@@ -383,14 +383,13 @@ export default function Admin() {
   const { data: scheduledMatches, isLoading: scheduledLoading } = useQuery({
     queryKey: ["admin", "scheduled-matches"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("scheduled_matches")
+      const { data, error } = await fromExt("scheduled_matches")
         .select("*")
         .order("scheduled_date", { ascending: false })
         .order("start_time", { ascending: false })
         .limit(250);
       if (error) throw error;
-      return (data || []) as ScheduledMatchRow[];
+      return (data || []) as unknown as ScheduledMatchRow[];
     },
   });
 

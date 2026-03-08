@@ -1202,7 +1202,79 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="schedule" className="mt-3 space-y-3">
+        {/* Bookings tab */}
+        <TabsContent value="bookings" className="mt-3 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              placeholder="Search player, date, court…"
+              value={bookingSearch}
+              onChange={(e) => setBookingSearch(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={() => setCourtBlock((s) => ({ ...s, open: true }))}>
+              Block court
+            </Button>
+          </div>
+
+          <Card className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Court</TableHead>
+                  <TableHead>Player</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bookingsLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-sm text-muted-foreground">Loading…</TableCell>
+                  </TableRow>
+                ) : filteredBookings.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-sm text-muted-foreground">No bookings found.</TableCell>
+                  </TableRow>
+                ) : (
+                  filteredBookings.slice(0, 100).map((b) => {
+                    const playerName = profileMap.get(b.user_id)?.name || "Unknown";
+                    return (
+                      <TableRow key={b.id}>
+                        <TableCell className="p-3 text-xs text-muted-foreground">{b.date}</TableCell>
+                        <TableCell className="p-3 text-xs">{b.start_time?.slice(0, 5)}–{b.end_time?.slice(0, 5)}</TableCell>
+                        <TableCell className="p-3 text-sm">Court {b.court_id}</TableCell>
+                        <TableCell className="p-3 text-sm">{playerName}</TableCell>
+                        <TableCell className="p-3">
+                          <Badge variant="secondary" className={cn("capitalize", b.status === "cancelled" && "bg-destructive/15 text-destructive")}>
+                            {b.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="p-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            disabled={b.status === "cancelled" || adminCancelBooking.isPending}
+                            onClick={() => {
+                              if (confirm(`Cancel booking for ${playerName} on ${b.date}?`)) {
+                                adminCancelBooking.mutate(b.id);
+                              }
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
           <div className="flex gap-2">
             <Button className="w-full sm:w-auto" onClick={() => setSchedule((s) => ({ ...s, open: true }))}>
               New scheduled match

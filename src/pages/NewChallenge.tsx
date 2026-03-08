@@ -361,7 +361,7 @@ export default function NewChallenge() {
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />
                 <div className="flex flex-col items-center">
                   <Trophy className="w-4 h-4 text-yellow-500" />
-                  <div className="w-8 h-8 rounded-full bg-yellow-500/15 flex items-center justify-center text-xs font-bold text-yellow-600">
+                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-xs font-bold text-accent-foreground">
                     #1
                   </div>
                 </div>

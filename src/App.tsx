@@ -107,6 +107,7 @@ function AppRoutes() {
         <Route path="/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/seasons" element={<ProtectedRoute><Seasons /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />

@@ -1,12 +1,12 @@
-import { Home, Calendar, Trophy, Swords, User } from "lucide-react";
+import { Home, Calendar, Trophy, MessageCircle, Award, User } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/bookings", icon: Calendar, label: "Courts" },
-  { to: "/ladder", icon: Trophy, label: "Ladder" },
-  { to: "/challenges", icon: Swords, label: "Challenges" },
+  { to: "/feed", icon: MessageCircle, label: "Feed" },
+  { to: "/achievements", icon: Award, label: "Badges" },
   { to: "/profile", icon: User, label: "Profile" },
 ];
 

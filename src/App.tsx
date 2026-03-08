@@ -29,6 +29,9 @@ import MatchTracker from "./pages/MatchTracker";
 import PlayerProfile from "./pages/PlayerProfile";
 import Admin from "./pages/Admin";
 import BookingResponse from "./pages/BookingResponse";
+import Achievements from "./pages/Achievements";
+import Feed from "./pages/Feed";
+import Availability from "./pages/Availability";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 
@@ -97,6 +100,9 @@ function AppRoutes() {
         <Route path="/players/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
         <Route path="/integrations/strava/callback" element={<ProtectedRoute><StravaCallback /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
+        <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+        <Route path="/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />

@@ -810,11 +810,11 @@ export function useDisputeMatch() {
       notes?: string | null;
       evidenceUrl?: string | null;
     }) => {
-      const { error } = await supabase.rpc("dispute_match", {
+      const { error } = await rpc("dispute_match", {
         match_id: matchId,
         notes: notes ?? null,
         evidence_url: evidenceUrl ?? null,
-      } as any);
+      });
       if (error) throw error;
     },
     onSuccess: async () => {

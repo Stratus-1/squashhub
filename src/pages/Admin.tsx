@@ -2282,6 +2282,31 @@ export default function Admin() {
                   Save stats
                 </Button>
               </div>
+
+              <SeparatorBlock />
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-destructive">Actions</p>
+                <Button
+                  variant="outline"
+                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
+                  disabled={!isAdmin || toggleSuspend.isPending}
+                  onClick={() => {
+                    const isSuspending = selected.rank != null;
+                    if (confirm(isSuspending
+                      ? `Suspend ${selected.name}? This will remove their rank and notify them.`
+                      : `Reinstate ${selected.name}?`
+                    )) {
+                      toggleSuspend.mutate({ userId: selected.id, suspend: isSuspending });
+                    }
+                  }}
+                >
+                  {selected.rank != null ? "Suspend player" : "Reinstate player"}
+                </Button>
+                {!isAdmin && (
+                  <p className="text-[11px] text-muted-foreground">Only admins can suspend players.</p>
+                )}
+              </div>
             </div>
           )}
 

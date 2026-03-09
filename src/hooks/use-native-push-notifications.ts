@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type PushPermissionState = "prompt" | "granted" | "denied" | "unsupported";
 
 const NATIVE_TOKEN_KEY = "native-push-token";
+const PUSH_CHANNEL_ID = "gb_alerts";
 const FOREGROUND_CHANNEL_ID = "gb_foreground";
 
 export function useNativePushNotifications() {
@@ -50,9 +51,9 @@ export function useNativePushNotifications() {
       if (platform === "android") {
         try {
           await PushNotifications.createChannel({
-            id: "default_channel_id",
-            name: "General",
-            description: "General updates",
+            id: PUSH_CHANNEL_ID,
+            name: "GB Squash Alerts",
+            description: "Challenges, matches, and reminders",
             importance: 4,
             visibility: 1,
             vibration: true,

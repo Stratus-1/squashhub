@@ -78,7 +78,7 @@ async function sendFcmToUser(args: {
         notification: {
           title: args.title,
           body: args.body,
-          android_channel_id: "default_channel_id",
+          android_channel_id: "gb_alerts",
         },
         data: {
           url: args.url || "/notifications",

@@ -36,11 +36,16 @@ self.addEventListener("push", (event) => {
   }
 
   const title = (data?.title as string) || "GB Squash";
+  const url = (data?.url as string) || "/notifications";
+  const extra =
+    data && typeof (data as any).data === "object" && (data as any).data && !Array.isArray((data as any).data)
+      ? ((data as any).data as Record<string, unknown>)
+      : {};
   const options: any = {
     body: (data?.body as string) || "",
     icon: (data?.icon as string) || "/pwa-192x192.png",
     badge: (data?.badge as string) || "/pwa-192x192.png",
-    data: { url: (data?.url as string) || "/notifications" },
+    data: { ...extra, url },
     vibrate: [100, 50, 100],
     tag: (data?.tag as string) || "gb-squash-notification",
     renotify: true,

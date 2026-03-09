@@ -81,6 +81,25 @@ function escapeHtml(s: string) {
     .replace(/'/g, "&#039;");
 }
 
+function stripHtml(html: string) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<\/(p|div|h1|h2|h3|h4|h5|h6|br|li)>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "- ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function renderTemplate(template: string, vars: Record<string, string>) {
+  return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, key) => {
+    const v = vars[key];
+    return v == null ? "" : String(v);
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });
 
@@ -109,6 +128,8 @@ Deno.serve(async (req) => {
     const title = String(payload?.title || "Notification");
     const body = String(payload?.body || "");
     const notifUrl = String(payload?.url || "/notifications");
+    const type = String(payload?.type || "");
+    const data = payload?.data ?? null;
 
     if (!targetUserId) {
       return new Response(JSON.stringify({ error: "Missing targetUserId" }), {
@@ -134,27 +155,64 @@ Deno.serve(async (req) => {
     const siteUrl = (Deno.env.get("SITE_URL") || "https://gordon-s-bay-squash-hub.vercel.app").trim();
     const link = absoluteUrl(siteUrl, notifUrl);
 
-    const subject = `GB Squash: ${title}`;
-    const safeTitle = escapeHtml(title);
-    const safeBody = escapeHtml(body);
-    const safeLink = escapeHtml(link);
+    const managePrefsUrl = absoluteUrl(siteUrl, "/dashboard");
+    const mergeVars: Record<string, string> = {
+      name: String((profile as any)?.name || ""),
+      email,
+      site_url: siteUrl,
+      link_url: link,
+      unsubscribe_url: managePrefsUrl,
+      campaign_name: String((data as any)?.campaign_name || (data as any)?.campaignName || ""),
+      url: notifUrl,
+      ...(typeof (data as any)?.merge === "object" && (data as any).merge ? (data as any).merge : {}),
+    };
 
-    const html = `
-      <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.4; color:#0f172a">
-        <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
-        <p style="margin:0 0 14px 0; color:#334155">${safeBody}</p>
-        <p style="margin:0 0 18px 0">
-          <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
-            Open in GB Squash
-          </a>
-        </p>
-        <p style="margin:0; font-size:12px; color:#64748b">
-          If you prefer not to receive these emails, you’ll be able to disable transactional emails in your profile settings.
-        </p>
-      </div>
-    `.trim();
+    let subject = `GB Squash: ${title}`;
+    let html = "";
+    let text = "";
 
-    const text = `${title}\n\n${body}\n\nOpen: ${link}\n`;
+    const marketingEmail = type === "marketing" && (data as any)?.email && typeof (data as any).email === "object" ? (data as any).email : null;
+    if (marketingEmail && typeof marketingEmail.html === "string" && marketingEmail.html.trim()) {
+      const subjectTpl = typeof marketingEmail.subject === "string" && marketingEmail.subject.trim() ? marketingEmail.subject : title;
+      subject = renderTemplate(subjectTpl, mergeVars);
+
+      const hasUnsubTag = /{{\s*unsubscribe_url\s*}}/i.test(marketingEmail.html);
+      const rawHtml = renderTemplate(marketingEmail.html, mergeVars).replace(/<script[\s\S]*?<\/script>/gi, "");
+      const footer = `
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:18px 0" />
+        <p style="margin:0;font-size:12px;color:#64748b">
+          You’re receiving this because you opted in to marketing emails. Unsubscribe: <a href="${escapeHtml(mergeVars.unsubscribe_url)}">${escapeHtml(mergeVars.unsubscribe_url)}</a>
+        </p>
+      `.trim();
+      html = hasUnsubTag ? rawHtml : `${rawHtml}\n${footer}`;
+
+      const rawText = typeof marketingEmail.text === "string" ? renderTemplate(marketingEmail.text, mergeVars) : "";
+      text = rawText.trim() ? rawText.trim() : stripHtml(html);
+      if (!text.includes(mergeVars.unsubscribe_url)) {
+        text = `${text}\n\nUnsubscribe: ${mergeVars.unsubscribe_url}\n`;
+      }
+    } else {
+      const safeTitle = escapeHtml(title);
+      const safeBody = escapeHtml(body);
+      const safeLink = escapeHtml(link);
+
+      html = `
+        <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.4; color:#0f172a">
+          <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
+          <p style="margin:0 0 14px 0; color:#334155">${safeBody}</p>
+          <p style="margin:0 0 18px 0">
+            <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
+              Open in GB Squash
+            </a>
+          </p>
+          <p style="margin:0; font-size:12px; color:#64748b">
+            If you prefer not to receive these emails, you’ll be able to disable transactional emails in your profile settings.
+          </p>
+        </div>
+      `.trim();
+
+      text = `${title}\n\n${body}\n\nOpen: ${link}\n`;
+    }
 
     const result = await sendViaResend({ to: email, subject, html, text });
 
@@ -176,4 +234,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-

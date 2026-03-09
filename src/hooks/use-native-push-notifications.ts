@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type PushPermissionState = "prompt" | "granted" | "denied" | "unsupported";
 
 const NATIVE_TOKEN_KEY = "native-push-token";
+const FOREGROUND_CHANNEL_ID = "gb_foreground";
 
 export function useNativePushNotifications() {
   const [permission, setPermission] = useState<PushPermissionState>("prompt");
@@ -58,6 +59,21 @@ export function useNativePushNotifications() {
           } as any);
         } catch {
           // ignore (older Android / already exists)
+        }
+
+        // Local notifications use a separate channel API; ensure it exists too so foreground fallback banners can appear.
+        try {
+          const { LocalNotifications } = await import("@capacitor/local-notifications");
+          await LocalNotifications.createChannel({
+            id: FOREGROUND_CHANNEL_ID,
+            name: "Foreground alerts",
+            description: "Heads-up alerts while the app is open",
+            importance: 5,
+            visibility: 1,
+            vibration: true,
+          } as any);
+        } catch {
+          // ignore
         }
       }
 

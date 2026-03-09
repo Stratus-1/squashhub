@@ -40,6 +40,9 @@ import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +99,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -105,6 +109,14 @@ function AppRoutes() {
     );
   }
 
+  const showFooter = (() => {
+    const p = location.pathname || "/";
+    if (p === "/booking-response") return false;
+    if (p.startsWith("/match-tracker/")) return false;
+    if (p.startsWith("/admin")) return false;
+    return true;
+  })();
+
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       <Routes>
@@ -112,6 +124,8 @@ function AppRoutes() {
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
@@ -138,6 +152,7 @@ function AppRoutes() {
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
       {user && <BottomNav />}
       {user && <OfflineBanner />}
       {user && <PushNotificationPrompt />}

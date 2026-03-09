@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { AdminEmailMarketing } from "@/components/admin/AdminEmailMarketing";
 import {
   Users, Swords, Trophy, CalendarDays, Shield, AlertTriangle,
   BarChart3, Megaphone, Clock, ChevronRight, Activity, BookOpen,
@@ -2648,6 +2649,8 @@ export default function Admin() {
                   </div>
                 </div>
               </Card>
+
+              <AdminEmailMarketing enabled={isAdmin || isManager} />
 
               {/* Audit Log */}
               <Card className="p-0 overflow-hidden">

@@ -1353,12 +1353,6 @@ export default function Home() {
         </motion.section>
       )}
 
-      {/* Footer */}
-      <footer className="px-4 sm:px-6 lg:px-[5%] py-6 text-center border-t border-border mt-8">
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Gordon's Bay Squash Club
-        </p>
-      </footer>
       </div>
     </div>
   );

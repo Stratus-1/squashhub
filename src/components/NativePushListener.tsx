@@ -11,7 +11,9 @@ export function NativePushListener() {
     let actionHandle: any;
     let receiveHandle: any;
     let appStateHandle: any;
+    let localActionHandle: any;
     let isActive = true;
+    const foregroundChannelId = "gb_foreground";
 
     (async () => {
       const { PushNotifications } = await import("@capacitor/push-notifications");
@@ -22,29 +24,47 @@ export function NativePushListener() {
         isActive = !!state?.isActive;
       });
 
-      // When a push arrives while the app is in the foreground, Android often won't display it in the notification shade.
-      // Show a local notification as a best-effort fallback (Android only).
-      if (Capacitor.getPlatform() === "android") {
-        receiveHandle = await PushNotifications.addListener("pushNotificationReceived", async (notification: any) => {
-          if (!isActive) return;
-          try {
-            await LocalNotifications.requestPermissions();
-            await LocalNotifications.schedule({
-              notifications: [
-                {
-                  id: Date.now(),
-                  title: notification?.title || "GB Squash",
-                  body: notification?.body || "",
-                  extra: notification?.data || {},
-                  channelId: "default_channel_id",
-                } as any,
-              ],
-            });
-          } catch {
-            // ignore
+      // When a push arrives while the app is in the foreground, iOS/Android often won't show a banner.
+      // Show a local notification as a best-effort fallback so members *see* the alert immediately.
+      receiveHandle = await PushNotifications.addListener("pushNotificationReceived", async (notification: any) => {
+        if (!isActive) return;
+        try {
+          await LocalNotifications.requestPermissions();
+
+          // Ensure a dedicated foreground channel exists on Android (new channel avoids “importance can’t be changed” issues).
+          if (Capacitor.getPlatform() === "android") {
+            try {
+              await LocalNotifications.createChannel({
+                id: foregroundChannelId,
+                name: "Foreground alerts",
+                description: "Heads-up alerts while the app is open",
+                importance: 5,
+                visibility: 1,
+                vibration: true,
+              } as any);
+            } catch {
+              // ignore
+            }
           }
-        });
-      }
+
+          const url = notification?.data?.url || "/notifications";
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: Date.now(),
+                title: notification?.title || "GB Squash",
+                body: notification?.body || "",
+                extra: { ...(notification?.data || {}), url },
+                ...(Capacitor.getPlatform() === "android" ? { channelId: foregroundChannelId } : {}),
+                // Schedule slightly in the future for more consistent foreground delivery across platforms.
+                schedule: { at: new Date(Date.now() + 250) },
+              } as any,
+            ],
+          });
+        } catch {
+          // ignore
+        }
+      });
 
       actionHandle = await PushNotifications.addListener(
         "pushNotificationActionPerformed",
@@ -53,6 +73,11 @@ export function NativePushListener() {
           navigate(url);
         }
       );
+
+      localActionHandle = await LocalNotifications.addListener("localNotificationActionPerformed", (event: any) => {
+        const url = event?.notification?.extra?.url || "/notifications";
+        navigate(url);
+      });
     })().catch(() => {});
 
     return () => {
@@ -68,6 +93,11 @@ export function NativePushListener() {
       }
       try {
         appStateHandle?.remove?.();
+      } catch {
+        // ignore
+      }
+      try {
+        localActionHandle?.remove?.();
       } catch {
         // ignore
       }

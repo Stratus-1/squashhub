@@ -62,3 +62,6 @@ Deploy the `main` branch to Vercel and configure the required environment variab
 
 Optional (recommended for correct canonical/OG URLs if you use a custom domain):
 - `VITE_PUBLIC_SITE_URL` (example: `https://gbsquash.co.za`)
+
+Optional (privacy / POPIA contact shown in footer and privacy policy):
+- `VITE_PRIVACY_CONTACT_EMAIL` (example: `info@gbsquash.co.za`)

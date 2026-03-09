@@ -19,6 +19,7 @@ import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { DashboardAccountSettings } from "@/components/DashboardAccountSettings";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -365,6 +366,15 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
+
+      <motion.div
+        className="px-4 mt-5 mb-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.22 }}
+      >
+        <DashboardAccountSettings />
+      </motion.div>
     </div>
   );
 }

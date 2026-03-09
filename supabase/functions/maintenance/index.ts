@@ -42,9 +42,39 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (action === "process-email-campaigns") {
+    const limitRaw = url.searchParams.get("limit") || "5";
+    const limit = Math.max(0, Math.min(Number(limitRaw) || 5, 50));
+
+    const { data: secretRow, error: secretErr } = await supabaseAdmin
+      .from("app_settings")
+      .select("value")
+      .eq("key", "email_campaigns_private_internal_secret")
+      .maybeSingle();
+    if (secretErr) {
+      return new Response(JSON.stringify({ error: secretErr.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data, error } = await supabaseAdmin.rpc("process_due_marketing_email_campaigns", {
+      p_limit: limit,
+      p_internal_secret: secretRow?.value ?? null,
+    });
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ ok: true, result: data }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   return new Response(JSON.stringify({ error: "Unknown action" }), {
     status: 400,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
-

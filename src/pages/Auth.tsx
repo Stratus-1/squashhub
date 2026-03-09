@@ -9,6 +9,8 @@ import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Link } from "react-router-dom";
 
 export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth();
@@ -26,6 +28,7 @@ export default function Auth() {
   const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Reset form
   const [resetEmail, setResetEmail] = useState("");
@@ -64,9 +67,17 @@ export default function Auth() {
       toast.error("Please enter a valid phone number");
       return;
     }
+    if (!acceptTerms) {
+      toast.error("Please accept the Terms of Use and Privacy Policy");
+      return;
+    }
 
     setLoading(true);
-    const { error } = await signUp(email, signupPassword, name, phone || undefined);
+    const nowIso = new Date().toISOString();
+    const { error } = await signUp(email, signupPassword, name, phone || undefined, {
+      termsAcceptedAt: nowIso,
+      privacyAcceptedAt: nowIso,
+    });
     if (error) {
       toast.error(error.message);
     } else {
@@ -253,9 +264,24 @@ export default function Auth() {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Creating account..." : "Create Account"}
                 </Button>
-                <p className="text-[10px] text-center text-muted-foreground">
-                  By signing up you agree to our club terms
-                </p>
+                <div className="flex items-start gap-2 pt-1">
+                  <Checkbox
+                    checked={acceptTerms}
+                    onCheckedChange={(v) => setAcceptTerms(v === true)}
+                    aria-label="Accept Terms and Privacy Policy"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    I agree to the{" "}
+                    <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                      Terms of Use
+                    </Link>{" "}
+                    and{" "}
+                    <Link to="/privacy" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </p>
+                </div>
               </form>
             </Card>
           </TabsContent>

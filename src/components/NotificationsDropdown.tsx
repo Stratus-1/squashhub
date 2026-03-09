@@ -148,10 +148,10 @@ export function NotificationsDropdown({
                     onClick={() => {
                       const url = (notif as any).url as string | undefined;
                       if (!notif.read) markRead.mutate(notif.id);
-                      if (url) {
-                        setOpen(false);
-                        navigate(url);
-                      }
+                      const resolvedUrl = url || "/notifications";
+                      const shouldOpenDetail = notif.type === "marketing" || resolvedUrl.startsWith("/notifications");
+                      setOpen(false);
+                      navigate(shouldOpenDetail ? `/notifications?notificationId=${notif.id}` : resolvedUrl);
                     }}
                   >
                     <div

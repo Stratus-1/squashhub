@@ -10,6 +10,7 @@ type NotificationRow = {
   title: string;
   message: string;
   type: string;
+  url?: string | null;
   read: boolean;
   created_at: string;
 };
@@ -40,10 +41,23 @@ export function NotificationListener() {
           // Best-effort: show an OS-level notification when permission is granted (foreground only).
           if (typeof Notification !== "undefined" && Notification.permission === "granted") {
             try {
-              new Notification(row.title || "Gordon's Bay Squash", {
+              const resolvedUrl = String((row as any)?.url || "/notifications");
+              const shouldOpenDetail = row.type === "marketing" || resolvedUrl.startsWith("/notifications");
+              const targetUrl = shouldOpenDetail ? `/notifications?notificationId=${row.id}` : resolvedUrl;
+
+              const n = new Notification(row.title || "Gordon's Bay Squash", {
                 body: row.message,
                 icon: "/pwa-192x192.png",
+                data: { url: targetUrl, notificationId: row.id },
               });
+              n.onclick = () => {
+                try {
+                  window.focus();
+                  window.location.href = targetUrl;
+                } catch {
+                  // ignore
+                }
+              };
             } catch {
               // ignore (some platforms restrict programmatic notifications)
             }

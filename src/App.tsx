@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NativePushListener } from "@/components/NativePushListener";
+import { NotificationDeepLinkHandler } from "@/components/NotificationDeepLinkHandler";
 import { RealtimeSync } from "@/components/RealtimeSync";
 import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -158,6 +159,7 @@ function AppRoutes() {
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
       {user && <NativePushListener />}
+      {user && <NotificationDeepLinkHandler />}
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
       <PwaUpdatePrompt />

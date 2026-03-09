@@ -9,6 +9,7 @@ import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NativePushListener } from "@/components/NativePushListener";
 import { NotificationDeepLinkHandler } from "@/components/NotificationDeepLinkHandler";
+import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import { RealtimeSync } from "@/components/RealtimeSync";
 import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -156,6 +157,7 @@ function AppRoutes() {
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
       {user && <BottomNav />}
       {user && <OfflineBanner />}
+      <InstallAppPrompt />
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
       {user && <NativePushListener />}

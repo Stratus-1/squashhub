@@ -868,6 +868,7 @@ export default function Admin() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "profiles"] });
+      await queryClient.invalidateQueries({ queryKey: ["ladder"] });
       toast.success("Profile updated");
     },
     onError: (err: any) => toast.error(err.message || "Failed to update profile"),

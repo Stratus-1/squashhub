@@ -34,18 +34,35 @@ export function WelcomeBanner() {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // If ranked, find someone 1-3 positions above
-      if (profile?.rank && profile.rank > 1) {
-        const targetRank = Math.max(1, profile.rank - 3);
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, name, rank, wins, losses, matches_played")
-          .neq("id", user.id)
-          .gte("rank", targetRank)
-          .lt("rank", profile.rank)
-          .order("rank", { ascending: false })
-          .limit(1);
-        if (!error && data && data.length > 0) return data[0];
+      // If ranked, suggest someone within 2 ladder positions (prefer above).
+      if (profile?.rank) {
+        const aboveFrom = Math.max(1, profile.rank - 2);
+        const aboveTo = Math.max(1, profile.rank - 1);
+        if (aboveTo >= aboveFrom) {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("id, name, rank, wins, losses, matches_played")
+            .neq("id", user.id)
+            .gte("rank", aboveFrom)
+            .lte("rank", aboveTo)
+            .order("rank", { ascending: false })
+            .limit(1);
+          if (!error && data && data.length > 0) return data[0];
+        }
+
+        const belowFrom = Math.min(20, profile.rank + 1);
+        const belowTo = Math.min(20, profile.rank + 2);
+        if (belowTo >= belowFrom) {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("id, name, rank, wins, losses, matches_played")
+            .neq("id", user.id)
+            .gte("rank", belowFrom)
+            .lte("rank", belowTo)
+            .order("rank", { ascending: true })
+            .limit(1);
+          if (!error && data && data.length > 0) return data[0];
+        }
       }
 
       // Fallback: find any active player with matches

@@ -78,7 +78,7 @@ export default function NewChallenge() {
 
   const isEligible = (rank: number | null) => {
     if (!myRank || !rank) return false;
-    const diff = myRank - rank;
+    const diff = Math.abs(myRank - rank);
     return diff >= 1 && diff <= 2;
   };
 
@@ -127,7 +127,7 @@ export default function NewChallenge() {
 
   const onSend = async () => {
     if (!myRank) return toast.error("You need a ladder position to challenge players");
-    if (!selectedEligible) return toast.error("You can only challenge up to 2 positions above you");
+    if (!selectedEligible) return toast.error("You can only challenge players within 2 ladder positions");
 
     try {
       const challenge = await createChallenge.mutateAsync({
@@ -207,9 +207,9 @@ export default function NewChallenge() {
                 <span className="text-[11px] text-muted-foreground">
                   {wr}% WR
                 </span>
-                {rankDiff !== null && rankDiff > 0 && (
+                {rankDiff !== null && rankDiff !== 0 && (
                   <span className="text-[11px] text-primary font-medium">
-                    {rankDiff} rank{rankDiff > 1 ? "s" : ""} above
+                    {Math.abs(rankDiff)} rank{Math.abs(rankDiff) > 1 ? "s" : ""} {rankDiff > 0 ? "above" : "below"}
                   </span>
                 )}
               </div>
@@ -280,7 +280,7 @@ export default function NewChallenge() {
               </div>
             )}
 
-            {myRank && myRank > 1 && (
+            {myRank && (
               <div className="mt-3 p-3 rounded-md bg-muted/50 border">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-3.5 h-3.5 text-primary" />
@@ -289,9 +289,9 @@ export default function NewChallenge() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  You can challenge ranks <strong className="text-foreground">{Math.max(1, myRank - 2)}</strong>
-                  {myRank - 2 !== myRank - 1 && <> to <strong className="text-foreground">{myRank - 1}</strong></>}
-                  {" "}(up to 2 positions above you). Win to take their spot!
+                  You can challenge players within <strong className="text-foreground">2</strong> ladder positions of your rank
+                  (ranks <strong className="text-foreground">{Math.max(1, myRank - 2)}</strong> to{" "}
+                  <strong className="text-foreground">{Math.min(20, myRank + 2)}</strong>, excluding your own).
                 </p>
               </div>
             )}
@@ -310,7 +310,7 @@ export default function NewChallenge() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="text-xs max-w-[200px]">
-                    The fewest challenges to reach #1, assuming you win each one. Beat higher-ranked players to swap positions.
+                    A suggested set of nearby-rank challenges that could help you climb if you keep winning.
                   </p>
                 </TooltipContent>
               </Tooltip>

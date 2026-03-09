@@ -59,3 +59,6 @@ See `MOBILE.md`.
 ## How can I deploy this project?
 
 Deploy the `main` branch to Vercel and configure the required environment variables (Supabase, Strava, push/email secrets, etc.).
+
+Optional (recommended for correct canonical/OG URLs if you use a custom domain):
+- `VITE_PUBLIC_SITE_URL` (example: `https://gbsquash.co.za`)

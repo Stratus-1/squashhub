@@ -73,7 +73,12 @@ export default function BookingResponse() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <SEO title="Booking Response | GB Squash" description="Respond to a squash court booking invitation" />
+      <SEO
+        title="Booking Response"
+        description="Respond to a squash court booking invitation."
+        path="/booking-response"
+        noIndex
+      />
 
       <Card className="w-full max-w-md p-6 space-y-6">
         {status === "loading" && (

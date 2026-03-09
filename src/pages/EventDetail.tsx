@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SEO } from "@/components/SEO";
+import { absoluteUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 const fromExt = (table: string) => (supabase as any).from(table);
 const rpcExt: any = supabase.rpc.bind(supabase);
@@ -142,6 +144,7 @@ export default function EventDetail() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
+        <SEO title="Event" path={id ? `/events/${id}` : "/events"} noIndex />
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
@@ -150,6 +153,7 @@ export default function EventDetail() {
   if (error || !event) {
     return (
       <div className="bottom-nav-safe">
+        <SEO title="Event" path={id ? `/events/${id}` : "/events"} noIndex />
         <PageHeader title="Event" />
         <div className="px-4 mt-3 space-y-3">
           <Card className="p-4 text-sm text-muted-foreground">
@@ -165,9 +169,57 @@ export default function EventDetail() {
 
   const starts = new Date(event.starts_at);
   const ends = event.ends_at ? new Date(event.ends_at) : null;
+  const isIndexable = event.status === "published" && event.visibility === "public";
+  const seoDescription = (() => {
+    const raw = (event.description || "").replace(/\s+/g, " ").trim();
+    if (raw) return raw.slice(0, 160);
+    return "Upcoming squash event at Gordon's Bay Squash Club.";
+  })();
+  const eventUrlPath = `/events/${event.id}`;
 
   return (
     <div className="bottom-nav-safe">
+      <SEO
+        title={event.title}
+        description={seoDescription}
+        path={eventUrlPath}
+        type="article"
+        noIndex={!isIndexable}
+        jsonLd={
+          isIndexable
+            ? {
+                "@context": "https://schema.org",
+                "@type": "Event",
+                name: event.title,
+                description: seoDescription,
+                startDate: starts.toISOString(),
+                endDate: ends ? ends.toISOString() : undefined,
+                eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+                eventStatus:
+                  event.status === "cancelled"
+                    ? "https://schema.org/EventCancelled"
+                    : "https://schema.org/EventScheduled",
+                location: {
+                  "@type": "Place",
+                  name: event.location || "Gordon's Bay Squash Club",
+                  address: {
+                    "@type": "PostalAddress",
+                    addressLocality: "Gordon's Bay",
+                    addressRegion: "Western Cape",
+                    addressCountry: "ZA",
+                  },
+                },
+                organizer: {
+                  "@type": "SportsClub",
+                  name: "Gordon's Bay Squash Club",
+                  url: absoluteUrl("/"),
+                },
+                url: absoluteUrl(eventUrlPath),
+                image: [absoluteUrl("/pwa-512x512.png")],
+              }
+            : undefined
+        }
+      />
       <PageHeader title="Event" subtitle={event.title} />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-3 mb-20">

@@ -3,13 +3,24 @@ Allow: /
 
 # Keep private/authenticated areas out of search results
 Disallow: /auth
+Disallow: /auth/callback
+Disallow: /booking-response
 Disallow: /dashboard
 Disallow: /bookings
 Disallow: /ladder
 Disallow: /challenges
+Disallow: /match-tracker
+Disallow: /players
 Disallow: /profile
+Disallow: /achievements
+Disallow: /feed
+Disallow: /availability
+Disallow: /analytics
+Disallow: /seasons
 Disallow: /notifications
 Disallow: /reset-password
 Disallow: /integrations
+Disallow: /admin
+Disallow: /support
 
 Sitemap: https://gordon-s-bay-squash-hub.vercel.app/sitemap.xml

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
@@ -90,6 +91,7 @@ export default function Auth() {
   if (showReset) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+        <SEO title="Reset Password" description="Reset your password for Gordon's Bay Squash Hub." path="/auth" noIndex />
         <motion.div
           className="w-full max-w-sm"
           initial={{ opacity: 0, y: 20 }}
@@ -120,6 +122,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <SEO title="Sign In" description="Sign in or create an account for Gordon's Bay Squash Hub." path="/auth" noIndex />
       <motion.div
         className="w-full max-w-sm"
         initial={{ opacity: 0, y: 20 }}

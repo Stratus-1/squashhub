@@ -99,6 +99,12 @@ type SeasonRow = {
   created_at: string;
 };
 
+type SeasonMembershipRow = {
+  season_id: string;
+  user_id: string;
+  joined_at: string;
+};
+
 type AdminEventRow = {
   id: string;
   title: string;
@@ -114,6 +120,8 @@ type AdminEventRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  season_id?: string | null;
+  kind?: "club" | "social" | string;
 };
 
 type AuditLogRow = {
@@ -282,6 +290,8 @@ export default function Admin() {
     resetStats: true,
     resetRanks: false,
   });
+
+  const [seasonViewId, setSeasonViewId] = useState<string | null>(null);
 
   const [schedule, setSchedule] = useState<ScheduleState>(() => ({
     open: false,
@@ -653,6 +663,186 @@ export default function Admin() {
   });
 
   const activeSeason = useMemo(() => (seasons || []).find((s) => s.is_active) || null, [seasons]);
+  const viewingSeasonId = seasonViewId || activeSeason?.id || ((seasons || [])[0]?.id ?? null);
+  const viewingSeason = useMemo(
+    () => (seasons || []).find((s) => s.id === viewingSeasonId) || null,
+    [seasons, viewingSeasonId]
+  );
+
+  const { data: seasonMembershipCounts } = useQuery({
+    queryKey: ["admin", "season-membership-counts", (seasons || []).map((s) => s.id).join(",")],
+    queryFn: async () => {
+      const ids = (seasons || []).map((s) => s.id);
+      if (ids.length === 0) return new Map<string, number>();
+      const { data, error } = await fromExt("season_memberships")
+        .select("season_id,user_id")
+        .in("season_id", ids)
+        .limit(10000);
+      if (error) {
+        if ((error as any).code === "42P01") return new Map<string, number>();
+        throw error;
+      }
+      const map = new Map<string, number>();
+      for (const row of data || []) {
+        const sid = String((row as any).season_id || "");
+        if (!sid) continue;
+        map.set(sid, (map.get(sid) || 0) + 1);
+      }
+      return map;
+    },
+    enabled: (isAdmin || isManager) && !!seasons && seasons.length > 0,
+  });
+
+  const { data: seasonEventCounts } = useQuery({
+    queryKey: ["admin", "season-event-counts", (seasons || []).map((s) => s.id).join(",")],
+    queryFn: async () => {
+      const ids = (seasons || []).map((s) => s.id);
+      if (ids.length === 0) return new Map<string, number>();
+      try {
+        const { data, error } = await fromExt("events")
+          .select("season_id")
+          .in("season_id", ids)
+          .limit(10000);
+        if (error) throw error;
+        const map = new Map<string, number>();
+        for (const row of data || []) {
+          const sid = String((row as any).season_id || "");
+          if (!sid) continue;
+          map.set(sid, (map.get(sid) || 0) + 1);
+        }
+        return map;
+      } catch (e: any) {
+        const code = e?.code || e?.details?.code;
+        const msg = String(e?.message || "");
+        const maybeMissingColumn = code === "42703" || msg.includes("season_id");
+        if (maybeMissingColumn) return new Map<string, number>();
+        throw e;
+      }
+    },
+    enabled: (isAdmin || isManager) && !!seasons && seasons.length > 0,
+  });
+
+  const { data: seasonMemberships, isLoading: seasonMembershipsLoading } = useQuery({
+    queryKey: ["admin", "season-memberships", viewingSeasonId],
+    queryFn: async () => {
+      if (!viewingSeasonId) return [] as SeasonMembershipRow[];
+      const { data, error } = await fromExt("season_memberships")
+        .select("season_id,user_id,joined_at")
+        .eq("season_id", viewingSeasonId)
+        .order("joined_at", { ascending: true })
+        .limit(2000);
+      if (error) {
+        if ((error as any).code === "42P01") return [] as SeasonMembershipRow[];
+        throw error;
+      }
+      return (data || []) as unknown as SeasonMembershipRow[];
+    },
+    enabled: (isAdmin || isManager) && !!viewingSeasonId,
+  });
+
+  const seasonMemberIds = useMemo(
+    () => [...new Set((seasonMemberships || []).map((m) => String(m.user_id)).filter(Boolean))],
+    [seasonMemberships]
+  );
+
+  const { data: seasonSnapshot, isLoading: seasonSnapshotLoading } = useQuery({
+    queryKey: ["admin", "season-snapshot", viewingSeasonId, seasonMemberIds.join(",")],
+    queryFn: async () => {
+      if (!viewingSeasonId) return [] as Array<{ user_id: string; rank: number | null; matches_played: number; wins: number; losses: number }>;
+      if (!seasonMemberIds || seasonMemberIds.length === 0) return [];
+      const { data, error } = await fromExt("season_profiles")
+        .select("season_id,user_id,rank,matches_played,wins,losses")
+        .eq("season_id", viewingSeasonId)
+        .in("user_id", seasonMemberIds.length > 0 ? seasonMemberIds : ["00000000-0000-0000-0000-000000000000"])
+        .order("rank", { ascending: true })
+        .limit(2000);
+      if (error) {
+        if ((error as any).code === "42P01") return [];
+        throw error;
+      }
+      return (data || []) as any[];
+    },
+    enabled: (isAdmin || isManager) && !!viewingSeasonId && !!viewingSeason && !viewingSeason.is_active,
+  });
+
+  const { data: seasonEvents, isLoading: seasonEventsLoading } = useQuery({
+    queryKey: ["admin", "season-events", viewingSeasonId],
+    queryFn: async () => {
+      if (!viewingSeasonId) return [] as AdminEventRow[];
+      try {
+        const { data, error } = await fromExt("events")
+          .select("id,title,starts_at,status,visibility,kind,season_id,created_by,created_at,updated_at,ends_at,location,court_id,capacity,rsvp_deadline,description")
+          .eq("season_id", viewingSeasonId)
+          .order("starts_at", { ascending: true })
+          .limit(250);
+        if (error) throw error;
+        return (data || []) as unknown as AdminEventRow[];
+      } catch (e: any) {
+        const code = e?.code || e?.details?.code;
+        const msg = String(e?.message || "");
+        const maybeMissingColumn = code === "42703" || msg.includes("season_id");
+        if (!maybeMissingColumn) throw e;
+
+        // Fallback: if season_id doesn't exist (older DB), approximate by date range.
+        const from = viewingSeason?.starts_on as string | undefined;
+        const to = (viewingSeason?.ends_on as string | null) || new Date().toISOString().slice(0, 10);
+        if (!from) return [] as AdminEventRow[];
+        const { data, error } = await fromExt("events")
+          .select("*")
+          .gte("starts_at", `${from}T00:00:00.000Z`)
+          .lte("starts_at", `${to}T23:59:59.999Z`)
+          .order("starts_at", { ascending: true })
+          .limit(250);
+        if (error) throw error;
+        return (data || []) as unknown as AdminEventRow[];
+      }
+    },
+    enabled: (isAdmin || isManager) && !!viewingSeasonId,
+  });
+
+  const seasonMemberRows = useMemo(() => {
+    const byUserId = new Map((seasonSnapshot || []).map((r: any) => [String(r.user_id), r]));
+    const rows = (seasonMemberships || []).map((m) => {
+      const userId = String(m.user_id);
+      const profile = profileMap.get(userId) || null;
+      const snap = byUserId.get(userId) || null;
+      const statsFrom = viewingSeason?.is_active ? profile : snap;
+      const matchesPlayed = Number((statsFrom as any)?.matches_played || 0);
+      const wins = Number((statsFrom as any)?.wins || 0);
+      const losses = Number((statsFrom as any)?.losses || 0);
+      const rank = (statsFrom as any)?.rank ?? null;
+      const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : null;
+      return {
+        user_id: userId,
+        joined_at: m.joined_at,
+        name: (profile?.name || "").trim() || "Unknown",
+        rank: typeof rank === "number" ? rank : null,
+        matches_played: matchesPlayed,
+        wins,
+        losses,
+        win_rate: winRate,
+      };
+    });
+
+    rows.sort((a, b) => {
+      const ar = a.rank == null ? 1e9 : a.rank;
+      const br = b.rank == null ? 1e9 : b.rank;
+      if (ar !== br) return ar - br;
+      if (a.matches_played !== b.matches_played) return b.matches_played - a.matches_played;
+      return a.name.localeCompare(b.name);
+    });
+    return rows;
+  }, [profileMap, seasonMemberships, seasonSnapshot, viewingSeason?.is_active]);
+
+  const seasonMemberSummary = useMemo(() => {
+    const memberCount = seasonMemberRows.length;
+    const activeCount = seasonMemberRows.filter((r) => r.matches_played > 0).length;
+    const totalPlayed = seasonMemberRows.reduce((acc, r) => acc + (Number.isFinite(r.matches_played) ? r.matches_played : 0), 0);
+    const totalWins = seasonMemberRows.reduce((acc, r) => acc + (Number.isFinite(r.wins) ? r.wins : 0), 0);
+    const totalLosses = seasonMemberRows.reduce((acc, r) => acc + (Number.isFinite(r.losses) ? r.losses : 0), 0);
+    const approxMatches = totalPlayed > 0 ? Math.round(totalPlayed / 2) : 0;
+    return { memberCount, activeCount, totalPlayed, totalWins, totalLosses, approxMatches };
+  }, [seasonMemberRows]);
 
   const setRank = useMutation({
     mutationFn: async ({ userId, newRank }: { userId: string; newRank: number | null }) => {
@@ -1895,36 +2085,222 @@ export default function Admin() {
                     )}
                   </div>
                 </div>
+                {activeSeason && (
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      View season members, ladder stats, and season events.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 text-xs"
+                      onClick={() => setSeasonViewId(activeSeason.id)}
+                    >
+                      View
+                    </Button>
+                  </div>
+                )}
               </Card>
 
-              {(seasons || []).length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <Card className="p-0 overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
                         <TableHead className="font-semibold">Season</TableHead>
-                        <TableHead className="font-semibold">Started</TableHead>
-                        <TableHead className="font-semibold">Ended</TableHead>
+                        <TableHead className="font-semibold">Dates</TableHead>
+                        <TableHead className="font-semibold">Members</TableHead>
+                        <TableHead className="font-semibold">Events</TableHead>
                         <TableHead className="font-semibold">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(seasons || []).map(s => (
-                        <TableRow key={s.id}>
-                          <TableCell className="p-3 text-sm font-medium">{s.name}</TableCell>
-                          <TableCell className="p-3 text-xs text-muted-foreground">{s.starts_on}</TableCell>
-                          <TableCell className="p-3 text-xs text-muted-foreground">{s.ends_on || "—"}</TableCell>
-                          <TableCell className="p-3">
-                            <Badge variant="secondary" className={cn("text-[10px]", s.is_active && "bg-primary/15 text-primary")}>
-                              {s.is_active ? "Active" : "Ended"}
-                            </Badge>
+                      {(seasons || []).length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="p-4 text-sm text-muted-foreground text-center">
+                            No seasons yet.
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        (seasons || []).map((s) => {
+                          const isSelected = !!viewingSeasonId && s.id === viewingSeasonId;
+                          const members = seasonMembershipCounts?.get(s.id) ?? 0;
+                          const evs = seasonEventCounts?.get(s.id) ?? 0;
+                          return (
+                            <TableRow
+                              key={s.id}
+                              className={cn("cursor-pointer", isSelected && "bg-primary/5")}
+                              onClick={() => setSeasonViewId(s.id)}
+                            >
+                              <TableCell className="p-3 text-sm font-medium">{s.name}</TableCell>
+                              <TableCell className="p-3 text-xs text-muted-foreground">
+                                {s.starts_on} → {s.ends_on || "—"}
+                              </TableCell>
+                              <TableCell className="p-3 text-xs">{members}</TableCell>
+                              <TableCell className="p-3 text-xs">{evs}</TableCell>
+                              <TableCell className="p-3">
+                                <Badge variant="secondary" className={cn("text-[10px]", s.is_active && "bg-primary/15 text-primary")}>
+                                  {s.is_active ? "Active" : "Ended"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
                     </TableBody>
                   </Table>
                 </Card>
-              )}
+
+                <div className="space-y-3">
+                  {!viewingSeason ? (
+                    <Card className="p-4">
+                      <p className="text-sm text-muted-foreground">Select a season to view details.</p>
+                    </Card>
+                  ) : (
+                    <>
+                      <Card className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold font-heading truncate">{viewingSeason.name}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {viewingSeason.starts_on} → {viewingSeason.ends_on || "—"}
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-2">
+                            <Badge variant="secondary" className={cn("text-[10px]", viewingSeason.is_active && "bg-primary/15 text-primary")}>
+                              {viewingSeason.is_active ? "Active" : "Ended"}
+                            </Badge>
+                            <Button size="sm" className="h-7 text-xs" asChild>
+                              <Link to={`/admin/events/new?seasonId=${encodeURIComponent(viewingSeason.id)}`}>New season event</Link>
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                          <div className="rounded-md border p-2">
+                            <p className="text-[10px] text-muted-foreground">Members</p>
+                            <p className="text-sm font-semibold">{seasonMemberSummary.memberCount}</p>
+                          </div>
+                          <div className="rounded-md border p-2">
+                            <p className="text-[10px] text-muted-foreground">Active</p>
+                            <p className="text-sm font-semibold">{seasonMemberSummary.activeCount}</p>
+                          </div>
+                          <div className="rounded-md border p-2">
+                            <p className="text-[10px] text-muted-foreground">Approx matches</p>
+                            <p className="text-sm font-semibold">{seasonMemberSummary.approxMatches}</p>
+                          </div>
+                          <div className="rounded-md border p-2">
+                            <p className="text-[10px] text-muted-foreground">Season events</p>
+                            <p className="text-sm font-semibold">{(seasonEvents || []).length}</p>
+                          </div>
+                        </div>
+                      </Card>
+
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold font-heading">Season members</p>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {seasonMemberSummary.memberCount} total
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          {viewingSeason.is_active ? "Stats are live from profiles." : "Stats are from the season snapshot (end of season)."}
+                        </p>
+
+                        {seasonMembershipsLoading || seasonSnapshotLoading ? (
+                          <p className="text-sm text-muted-foreground mt-3">Loading…</p>
+                        ) : seasonMemberRows.length === 0 ? (
+                          <p className="text-sm text-muted-foreground mt-3">No members have joined this season yet.</p>
+                        ) : (
+                          <div className="mt-3 overflow-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/30">
+                                  <TableHead className="font-semibold">Player</TableHead>
+                                  <TableHead className="font-semibold">Joined</TableHead>
+                                  <TableHead className="font-semibold">Rank</TableHead>
+                                  <TableHead className="font-semibold">P</TableHead>
+                                  <TableHead className="font-semibold">W</TableHead>
+                                  <TableHead className="font-semibold">L</TableHead>
+                                  <TableHead className="font-semibold">WR</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {seasonMemberRows.slice(0, 100).map((r) => {
+                                  const joined = r.joined_at ? format(new Date(r.joined_at), "d MMM yyyy") : "—";
+                                  return (
+                                    <TableRow key={r.user_id} className="hover:bg-muted/20">
+                                      <TableCell className="p-3 text-sm font-medium">
+                                        <Link to={`/players/${r.user_id}`} className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                                          {r.name}
+                                        </Link>
+                                      </TableCell>
+                                      <TableCell className="p-3 text-xs text-muted-foreground">{joined}</TableCell>
+                                      <TableCell className="p-3 text-xs">{r.rank ?? "—"}</TableCell>
+                                      <TableCell className="p-3 text-xs">{r.matches_played}</TableCell>
+                                      <TableCell className="p-3 text-xs">{r.wins}</TableCell>
+                                      <TableCell className="p-3 text-xs">{r.losses}</TableCell>
+                                      <TableCell className="p-3 text-xs">{r.win_rate == null ? "—" : `${r.win_rate}%`}</TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                            {seasonMemberRows.length > 100 && (
+                              <p className="text-[11px] text-muted-foreground mt-2">
+                                Showing 100 of {seasonMemberRows.length}.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </Card>
+
+                      <Card className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold font-heading">Season events</p>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                            <Link to="/events">View events</Link>
+                          </Button>
+                        </div>
+
+                        {seasonEventsLoading ? (
+                          <p className="text-sm text-muted-foreground mt-3">Loading…</p>
+                        ) : !seasonEvents || seasonEvents.length === 0 ? (
+                          <p className="text-sm text-muted-foreground mt-3">No events linked to this season yet.</p>
+                        ) : (
+                          <div className="mt-3 space-y-2">
+                            {seasonEvents.slice(0, 10).map((e) => {
+                              const starts = e.starts_at ? format(new Date(e.starts_at), "d MMM yyyy HH:mm") : "—";
+                              return (
+                                <div key={e.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium truncate">{e.title}</p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {starts} · <Badge variant="secondary" className="text-[10px] capitalize">{e.status}</Badge>
+                                      {(e as any).kind ? <> · <Badge variant="secondary" className="text-[10px] capitalize">{String((e as any).kind)}</Badge></> : null}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                                      <Link to={`/events/${e.id}`}>Open</Link>
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                                      <Link to={`/admin/events/${e.id}`}>Edit</Link>
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {seasonEvents.length > 10 && (
+                              <p className="text-[11px] text-muted-foreground">Showing 10 of {seasonEvents.length}.</p>
+                            )}
+                          </div>
+                        )}
+                      </Card>
+                    </>
+                  )}
+                </div>
+              </div>
             </motion.div>
           )}
 

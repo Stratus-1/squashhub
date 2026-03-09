@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
+import { absoluteUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 const fromExt = (table: string) => (supabase as any).from(table);
 import { useQuery } from "@tanstack/react-query";
@@ -52,6 +53,8 @@ export default function Events() {
           "@type": "CollectionPage",
           name: "Events — Gordon's Bay Squash Club",
           description: "Upcoming squash events, socials, and tournaments.",
+          url: absoluteUrl("/events"),
+          isPartOf: { "@type": "WebSite", name: "Gordon's Bay Squash Club", url: absoluteUrl("/") },
         }}
       />
       <PageHeader title="Events" subtitle="Upcoming club events" />
@@ -118,4 +121,3 @@ export default function Events() {
     </div>
   );
 }
-

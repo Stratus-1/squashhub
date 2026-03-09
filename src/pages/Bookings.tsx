@@ -543,15 +543,25 @@ export default function Bookings() {
   return (
     <div className="bottom-nav-safe">
       {/* Header */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between">
+      <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold font-heading tracking-tight">Courts</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               {getDateLabel(selectedDate)} · {format(selectedDate, "d MMM")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!isToday(selectedDate) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 px-3 text-xs"
+                onClick={() => setSelectedDate(new Date())}
+              >
+                Today
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -592,7 +602,7 @@ export default function Bookings() {
       {/* Court availability stats */}
       {!isLoading && (
         <div className="px-4 mb-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {courts.map((courtId) => {
               const count = courtId === 1 ? court1Count : court2Count;
               const pct = Math.round((count / totalSlots) * 100);
@@ -635,20 +645,35 @@ export default function Bookings() {
       )}
 
       {/* Time Grid */}
-      <div className="px-4 mb-2">
-        <div className="flex items-center gap-2 mb-2">
-          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-[52px_1fr_1fr] gap-x-1.5 px-4 mb-2">
-        <div />
-        {courts.map((c) => (
-          <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest pb-1">
-            Court {c}
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-y border-border/50 pt-[env(safe-area-inset-top)]">
+        <div className="px-4 py-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Schedule</span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-primary/70" /> You
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50" /> Booked
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full border border-border/70 bg-background" /> Open
+              </span>
+            </div>
           </div>
-        ))}
+        </div>
+
+        <div className="grid grid-cols-[60px_1fr_1fr] sm:grid-cols-[72px_1fr_1fr] gap-x-1.5 px-4 pb-2">
+          <div />
+          {courts.map((c) => (
+            <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              Court {c}
+            </div>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
@@ -665,7 +690,13 @@ export default function Bookings() {
           {timeSlots.map((time, idx) => {
             const isHour = time.endsWith(":00");
             return (
-              <div key={time} className="grid grid-cols-[52px_1fr_1fr] gap-x-1.5">
+              <div
+                key={time}
+                className={cn(
+                  "grid grid-cols-[60px_1fr_1fr] sm:grid-cols-[72px_1fr_1fr] gap-x-1.5",
+                  isHour && idx !== 0 && "pt-1.5 mt-1.5 border-t border-border/40"
+                )}
+              >
                 <div className={cn(
                   "text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",
                   isHour ? "text-foreground/70" : "text-muted-foreground/40"

@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "/(auth|dashboard|bookings|ladder|challenges|profile|notifications|reset-password|integrations)(/.*)?",
+      "source": "/(auth|booking-response|dashboard|bookings|ladder|challenges|match-tracker|players|integrations|profile|achievements|feed|availability|analytics|seasons|notifications|reset-password|admin|support)(/.*)?",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],

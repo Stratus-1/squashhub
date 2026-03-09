@@ -58,6 +58,7 @@ export default function AdminEventEditor() {
   const queryClient = useQueryClient();
   const eventId = params.id || null;
   const requestId = useMemo(() => new URLSearchParams(locationObj.search).get("requestId"), [locationObj.search]);
+  const preselectSeasonId = useMemo(() => new URLSearchParams(locationObj.search).get("seasonId"), [locationObj.search]);
 
   const { data: seasons } = useQuery({
     queryKey: ["admin-event-editor", "seasons"],
@@ -183,6 +184,20 @@ export default function AdminEventEditor() {
     const pt = requestRow.preferred_time ? String(requestRow.preferred_time).slice(0, 5) : "18:00";
     if (pd) setStartsAtLocal(`${pd}T${pt}`);
   }, [activeSeason?.id, eventId, requestId, requestRow]);
+
+  const didHydrateFromSeasonParamRef = useRef(false);
+  useEffect(() => {
+    didHydrateFromSeasonParamRef.current = false;
+  }, [preselectSeasonId, eventId, requestId]);
+  useEffect(() => {
+    if (eventId) return;
+    if (requestId) return;
+    if (!preselectSeasonId) return;
+    if (didHydrateFromSeasonParamRef.current) return;
+    didHydrateFromSeasonParamRef.current = true;
+    setIsSeasonEvent(true);
+    setSeasonId(String(preselectSeasonId));
+  }, [eventId, preselectSeasonId, requestId]);
 
   const save = useMutation({
     mutationFn: async () => {

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { SEO } from "@/components/SEO";
+import { absoluteUrl } from "@/lib/site";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -476,11 +477,18 @@ export default function Home() {
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "SportsClub",
+          "@id": `${absoluteUrl("/")}#sportsclub`,
           name: "Gordon's Bay Squash Club",
-          url: "https://gordon-s-bay-squash-hub.vercel.app/",
+          url: absoluteUrl("/"),
           sport: "Squash",
-          logo: "https://gordon-s-bay-squash-hub.vercel.app/pwa-512x512.png",
-          address: { "@type": "PostalAddress", addressLocality: "Gordon's Bay", addressCountry: "ZA" },
+          logo: absoluteUrl("/pwa-512x512.png"),
+          image: absoluteUrl("/pwa-512x512.png"),
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: "Gordon's Bay",
+            addressRegion: "Western Cape",
+            addressCountry: "ZA",
+          },
         }}
       />
       {/* Hero Section */}

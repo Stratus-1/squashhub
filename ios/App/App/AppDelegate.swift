@@ -1,13 +1,37 @@
 import UIKit
+import UserNotifications
+#if canImport(FirebaseCore)
+import FirebaseCore
+#endif
+#if canImport(FirebaseMessaging)
+import FirebaseMessaging
+#endif
 import Capacitor
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+
+        // Configure Firebase and Notifications (if Firebase is available)
+        #if canImport(FirebaseCore)
+        NotificationManager.shared.configureFirebaseAndNotifications(application: application)
+        #else
+        // Fallback: configure notifications without Firebase (if your NotificationManager supports it)
+        // If not, you can safely remove this call or implement a non-Firebase path in NotificationManager.
+        #if DEBUG
+        print("[Push] Firebase not available at compile time. Skipping Firebase configuration.")
+        #endif
+        #endif
+        
+        // Optionally request permission early; you can also trigger this from the web layer
+        NotificationManager.shared.requestNotificationAuthorization { granted in
+            print("[Push] Notification permission granted: \(granted)")
+        }
+
         return true
     }
 
@@ -44,6 +68,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        #if canImport(FirebaseCore)
+        NotificationManager.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+        #else
+        #if DEBUG
+        print("[Push] Firebase not available. Device token received but Firebase messaging is not configured.")
+        #endif
+        #endif
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        #if canImport(FirebaseCore)
+        NotificationManager.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+        #else
+        #if DEBUG
+        print("[Push] Failed to register for remote notifications: \(error)")
+        #endif
+        #endif
     }
 
 }

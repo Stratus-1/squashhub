@@ -7,18 +7,36 @@ import FirebaseCore
 import FirebaseMessaging
 #endif
 import Capacitor
+import HealthKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     var window: UIWindow?
+    let healthKitManager = HealthKitManager()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
+        // Set UNUserNotificationCenter delegate and request authorization
+        UNUserNotificationCenter.current().delegate = self
+        NotificationManager.shared.requestNotificationAuthorization { granted in
+            DispatchQueue.main.async {
+                if granted {
+                    application.registerForRemoteNotifications()
+                }
+            }
+            #if DEBUG
+            print("[Push] Notification permission granted: \(granted)")
+            #endif
+        }
+
         // Configure Firebase and Notifications (if Firebase is available)
         #if canImport(FirebaseCore)
         NotificationManager.shared.configureFirebaseAndNotifications(application: application)
+        #if canImport(FirebaseMessaging)
+        Messaging.messaging().delegate = NotificationManager.shared
+        #endif
         #else
         // Fallback: configure notifications without Firebase (if your NotificationManager supports it)
         // If not, you can safely remove this call or implement a non-Firebase path in NotificationManager.
@@ -26,11 +44,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         print("[Push] Firebase not available at compile time. Skipping Firebase configuration.")
         #endif
         #endif
-        
-        // Optionally request permission early; you can also trigger this from the web layer
-        NotificationManager.shared.requestNotificationAuthorization { granted in
-            print("[Push] Notification permission granted: \(granted)")
-        }
+
+        // MARK: - HealthKit initialization placeholder
+        // HealthKit permissions can be triggered from JS via a plugin.
+        // Optionally prepare HealthKit here if desired on launch:
+        // healthKitManager.prepareIfAvailable()
 
         return true
     }
@@ -71,6 +89,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        // APNs device token received, FCM/APNs mapping handled by NotificationManager
         #if canImport(FirebaseCore)
         NotificationManager.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
         #else
@@ -81,6 +100,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        // APNs registration failed, NotificationManager handles reporting
         #if canImport(FirebaseCore)
         NotificationManager.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
         #else
@@ -90,4 +110,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         #endif
     }
 
+    // MARK: - UNUserNotificationCenterDelegate
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Show banner/sound/badge while app is in foreground
+        completionHandler([.banner, .sound, .badge])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Handle notification tap/open here if needed, then call completion
+        completionHandler()
+    }
+
+    // MARK: - HealthKit (placeholder)
+    // HealthKit permissions and usage can be triggered via JS through a plugin.
 }

@@ -110,6 +110,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         #endif
     }
 
+    // Handle background/silent remote notifications
+    func application(_ application: UIApplication,
+                     didReceiveRemoteNotification userInfo: [AnyHashable : Any],
+                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        #if DEBUG
+        print("[Push] didReceiveRemoteNotification (background): \(userInfo)")
+        #endif
+        #if canImport(FirebaseCore)
+        // Forward to your NotificationManager if it coordinates FCM/APNs payload handling
+        if NotificationManager.shared.application?(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler) == true {
+            return
+        }
+        #endif
+        // Perform minimal background work here if needed.
+        completionHandler(.noData)
+    }
+
     // MARK: - UNUserNotificationCenterDelegate
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         // Show banner/sound/badge while app is in foreground
@@ -124,3 +141,4 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     // MARK: - HealthKit (placeholder)
     // HealthKit permissions and usage can be triggered via JS through a plugin.
 }
+

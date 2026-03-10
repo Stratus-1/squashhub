@@ -161,6 +161,7 @@ function AppRoutes() {
       <InstallAppPrompt />
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
+      {user && <NotificationActionModal />}
       {user && <NativePushListener />}
       {user && <NotificationDeepLinkHandler />}
       {user && <RealtimeSync />}

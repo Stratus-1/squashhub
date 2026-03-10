@@ -20,8 +20,12 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
     }
     compileOptions {
@@ -68,3 +72,11 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+tasks.register("collectPlayArtifactsRelease", Copy) {
+    dependsOn("bundleRelease")
+    from("$buildDir/outputs/mapping/release") { include("mapping.txt") }
+    from("$buildDir/outputs/native-debug-symbols/release") { include("**/*.zip") }
+    from("$buildDir/outputs/bundle/release") { include("*.aab") }
+    into("$buildDir/outputs/play/release")
+}

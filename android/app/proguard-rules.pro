@@ -5,6 +5,16 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+# Keep source/line info for better crash traces (and for Play deobfuscation).
+-keepattributes SourceFile,LineNumberTable
+-keepattributes *Annotation*
+
+# Capacitor / Cordova (avoid stripping plugin entrypoints used by reflection/bridging).
+-keep class com.getcapacitor.** { *; }
+-dontwarn com.getcapacitor.**
+-keep class org.apache.cordova.** { *; }
+-dontwarn org.apache.cordova.**
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:

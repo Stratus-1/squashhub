@@ -99,3 +99,24 @@ Note: native push won’t show in the Android notification bar until Firebase is
 2. Tap **Enable Notifications** in-app (stores a token in `device_push_tokens`).
 3. Put the app fully in the background.
 4. Insert a row into `public.notifications` for your user (Admin dashboard already has a “send notification” action) and confirm it appears in the OS notification tray.
+
+## Google Play crash deobfuscation + native symbols (Android)
+
+Play Console warnings like:
+
+- “There is no deobfuscation file associated with this App Bundle…”
+- “This App Bundle contains native code, and you've not uploaded debug symbols…”
+
+are fixed by uploading these build outputs for each **release**:
+
+- R8 mapping file: `android/app/build/outputs/mapping/release/mapping.txt`
+- Native debug symbols zip: `android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip`
+
+This repo includes a helper task that bundles both into one folder:
+
+- `cd android && ./gradlew :app:collectPlayArtifactsRelease`
+- Output: `android/app/build/outputs/play/release/`
+
+Upload those files in Play Console for the corresponding release (same versionCode) to improve Java/Kotlin deobfuscation and native crash/ANR symbolication.
+
+Note: this Android project targets Java/Kotlin 21, so build with a compatible JDK (Android Studio’s embedded JDK is usually easiest). If your shell `java -version` is Java 25, Gradle 8.x may fail with “Unsupported class file major version 69” — set `JAVA_HOME` to a JDK 21–24 before running `./gradlew`.

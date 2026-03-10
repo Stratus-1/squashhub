@@ -13,20 +13,13 @@ final class NotificationManager: NSObject {
     private override init() { super.init() }
 
     func configureFirebaseAndNotifications(application: UIApplication) {
-        // Configure UNUserNotificationCenter delegate
-        UNUserNotificationCenter.current().delegate = application.delegate as? UNUserNotificationCenterDelegate
-
         #if canImport(FirebaseCore)
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
         #if canImport(FirebaseMessaging)
         Messaging.messaging().delegate = self
-        application.registerForRemoteNotifications()
         #endif
-        #else
-        // Even without Firebase, we can still register for APNs if desired
-        application.registerForRemoteNotifications()
         #endif
     }
 

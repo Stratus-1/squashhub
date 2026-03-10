@@ -10,39 +10,14 @@ import Capacitor
 import HealthKit
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     let healthKitManager = HealthKitManager()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
-
-        // Set UNUserNotificationCenter delegate and request authorization
-        UNUserNotificationCenter.current().delegate = self
-        NotificationManager.shared.requestNotificationAuthorization { granted in
-            DispatchQueue.main.async {
-                if granted {
-                    application.registerForRemoteNotifications()
-                }
-            }
-            #if DEBUG
-            print("[Push] Notification permission granted: \(granted)")
-            #endif
-        }
-
-        // Configure Firebase and Notifications (if Firebase is available)
         #if canImport(FirebaseCore)
         NotificationManager.shared.configureFirebaseAndNotifications(application: application)
-        #if canImport(FirebaseMessaging)
-        Messaging.messaging().delegate = NotificationManager.shared
-        #endif
-        #else
-        // Fallback: configure notifications without Firebase (if your NotificationManager supports it)
-        // If not, you can safely remove this call or implement a non-Firebase path in NotificationManager.
-        #if DEBUG
-        print("[Push] Firebase not available at compile time. Skipping Firebase configuration.")
-        #endif
         #endif
 
         // MARK: - HealthKit initialization placeholder
@@ -89,56 +64,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        // APNs device token received, FCM/APNs mapping handled by NotificationManager
-        #if canImport(FirebaseCore)
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
         NotificationManager.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-        #else
-        #if DEBUG
-        print("[Push] Firebase not available. Device token received but Firebase messaging is not configured.")
-        #endif
-        #endif
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        // APNs registration failed, NotificationManager handles reporting
-        #if canImport(FirebaseCore)
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
         NotificationManager.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
-        #else
-        #if DEBUG
-        print("[Push] Failed to register for remote notifications: \(error)")
-        #endif
-        #endif
     }
 
     // Handle background/silent remote notifications
     func application(_ application: UIApplication,
                      didReceiveRemoteNotification userInfo: [AnyHashable : Any],
                      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        #if canImport(FirebaseMessaging)
+        Messaging.messaging().appDidReceiveMessage(userInfo)
+        #endif
         #if DEBUG
         print("[Push] didReceiveRemoteNotification (background): \(userInfo)")
         #endif
-        #if canImport(FirebaseCore)
-        // Forward to your NotificationManager if it coordinates FCM/APNs payload handling
-        if NotificationManager.shared.application?(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler) == true {
-            return
-        }
-        #endif
-        // Perform minimal background work here if needed.
         completionHandler(.noData)
-    }
-
-    // MARK: - UNUserNotificationCenterDelegate
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // Show banner/sound/badge while app is in foreground
-        completionHandler([.banner, .sound, .badge])
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Handle notification tap/open here if needed, then call completion
-        completionHandler()
     }
 
     // MARK: - HealthKit (placeholder)
     // HealthKit permissions and usage can be triggered via JS through a plugin.
 }
-

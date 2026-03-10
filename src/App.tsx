@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
+import { NotificationActionModal } from "@/components/NotificationActionModal";
 import { NativePushListener } from "@/components/NativePushListener";
 import { NotificationDeepLinkHandler } from "@/components/NotificationDeepLinkHandler";
 import { InstallAppPrompt } from "@/components/InstallAppPrompt";
@@ -160,6 +161,7 @@ function AppRoutes() {
       <InstallAppPrompt />
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
+      {user && <NotificationActionModal />}
       {user && <NativePushListener />}
       {user && <NotificationDeepLinkHandler />}
       {user && <RealtimeSync />}

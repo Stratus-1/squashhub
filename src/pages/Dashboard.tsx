@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
-import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +9,7 @@ import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
-import { Calendar, Trophy, Swords, ChevronRight, Megaphone, Loader2, LifeBuoy } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
@@ -35,7 +34,6 @@ export default function Dashboard() {
   const trackableBooking = useMemo(() => {
     const list = (myBookings || []).filter((b) => b.status === "active");
     const now = new Date();
-
     const candidates = list
       .filter((b) => b.date === todayStr)
       .map((b) => {
@@ -52,7 +50,6 @@ export default function Dashboard() {
       })
       .filter((x) => x.isOngoing || x.isStartingSoon)
       .sort((a, b) => Math.abs(a.msToStart) - Math.abs(b.msToStart));
-
     return candidates[0] ?? null;
   }, [myBookings, todayStr]);
 
@@ -84,23 +81,7 @@ export default function Dashboard() {
     return map;
   }, [opponentProfiles]);
 
-  const { data: availablePlayers } = useQuery({
-    queryKey: ["dashboard-available-players"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("profiles")
-        .select("id,name,rank,availability")
-        .not("availability", "is", null)
-        .neq("availability", "")
-        .order("rank", { ascending: true })
-        .limit(8);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Onboarding: show wizard if profile name is empty/default
+  // Onboarding
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(false);
 
@@ -140,7 +121,7 @@ export default function Dashboard() {
 
       <WelcomeBanner />
 
-      {/* Profile Completion */}
+      {/* Profile Completion — only show if incomplete */}
       <div className="px-4 mt-2">
         <ProfileCompletionMeter
           profile={profile}
@@ -152,11 +133,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Match of the Week */}
-      <div className="px-4 mt-3">
-        <MatchOfTheWeekCard />
-      </div>
-
+      {/* Stats row */}
       <motion.div
         className="grid grid-cols-4 gap-2 px-4 mt-3"
         initial={{ opacity: 0, y: 10 }}
@@ -168,82 +145,40 @@ export default function Dashboard() {
         <StatCard label="Losses" value={profile?.losses || 0} variant="loss" />
       </motion.div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-2 px-4 mt-4">
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/bookings")}>
-          <Calendar className="w-5 h-5 text-primary" />
-          <span className="text-[11px]">Book Court</span>
+      {/* Quick Actions — compact 2×2 grid */}
+      <div className="grid grid-cols-4 gap-2 px-4 mt-3">
+        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/bookings")}>
+          <Calendar className="w-4 h-4 text-primary" />
+          <span className="text-[10px]">Book</span>
         </Button>
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/ladder")}>
-          <Trophy className="w-5 h-5 text-primary" />
-          <span className="text-[11px]">Ladder</span>
+        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/ladder")}>
+          <Trophy className="w-4 h-4 text-primary" />
+          <span className="text-[10px]">Ladder</span>
         </Button>
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/challenges/new")}>
-          <Swords className="w-5 h-5 text-primary" />
-          <span className="text-[11px]">Challenge</span>
+        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/challenges/new")}>
+          <Swords className="w-4 h-4 text-primary" />
+          <span className="text-[10px]">Challenge</span>
         </Button>
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-3 bg-card" onClick={() => navigate("/support")}>
-          <LifeBuoy className="w-5 h-5 text-primary" />
-          <span className="text-[11px]">Support</span>
+        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/support")}>
+          <LifeBuoy className="w-4 h-4 text-primary" />
+          <span className="text-[10px]">Support</span>
         </Button>
       </div>
 
-      {/* Availability */}
-      {availablePlayers && availablePlayers.length > 0 && (
-        <motion.div
-          className="px-4 mt-4"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold font-heading">Who's available</h2>
-            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/ladder")}>
-              View ladder <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {(availablePlayers || []).slice(0, 6).map((p: any) => (
-              <Card
-                key={p.id}
-                className="p-3 cursor-pointer hover:bg-secondary/40 transition-colors"
-                onClick={() => navigate(`/players/${p.id}`)}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {p.name}{" "}
-                      {typeof p.rank === "number" ? (
-                        <span className="text-xs text-muted-foreground">(Rank #{p.rank})</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">(Unranked)</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {p.availability}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
+      {/* Active match tracker */}
       {trackableBooking && (
         <motion.div
-          className="px-4 mt-4"
+          className="px-4 mt-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
         >
-          <Card className="p-4 flex items-center justify-between gap-3">
+          <Card className="p-3 flex items-center justify-between gap-3 border-primary/30 bg-primary/5">
             <div className="min-w-0">
               <p className="text-sm font-semibold font-heading">
                 {trackableBooking.isOngoing ? "Match in progress" : "Match starting soon"}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Track your match with a start/stop timer, then attach the Strava activity after.
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Track your match live
               </p>
             </div>
             <Button
@@ -257,34 +192,38 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+      {/* Match of the Week */}
+      <div className="px-4 mt-3">
+        <MatchOfTheWeekCard />
+      </div>
+
+      {/* Scheduled Matches */}
       {myScheduledMatches && myScheduledMatches.length > 0 && (
         <motion.div
-          className="px-4 mt-5"
-          initial={{ opacity: 0, y: 10 }}
+          className="px-4 mt-4"
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}
         >
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold font-heading">My Scheduled Matches</h2>
+            <h2 className="text-sm font-semibold font-heading">Scheduled Matches</h2>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {myScheduledMatches.slice(0, 3).map((s: any) => {
               const opponentId = user?.id ? (s.player_a === user.id ? s.player_b : s.player_a) : null;
               const opponentName = opponentId ? opponentNameMap.get(opponentId) || "Opponent" : "Opponent";
-              const courtLabel = s.court_id ? `Court ${s.court_id}` : "Court";
               return (
-                <Card key={s.id} className="p-3 flex items-center justify-between gap-3">
+                <Card key={s.id} className="p-2.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">Vs {opponentName}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {s.scheduled_date} · {s.start_time?.slice(0, 5)}–{s.end_time?.slice(0, 5)} · {courtLabel}
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {s.scheduled_date} · {s.start_time?.slice(0, 5)}–{s.end_time?.slice(0, 5)}
                     </p>
                   </div>
-                  {s.booking_id ? (
-                    <Button size="sm" variant="outline" className="shrink-0 h-8 text-xs" onClick={() => navigate(`/match-tracker/${s.booking_id}`)}>
+                  {s.booking_id && (
+                    <Button size="sm" variant="outline" className="shrink-0 h-7 text-[11px]" onClick={() => navigate(`/match-tracker/${s.booking_id}`)}>
                       Track
                     </Button>
-                  ) : null}
+                  )}
                 </Card>
               );
             })}
@@ -294,10 +233,10 @@ export default function Dashboard() {
 
       {/* Today's Bookings */}
       <motion.div
-        className="px-4 mt-5"
-        initial={{ opacity: 0, y: 10 }}
+        className="px-4 mt-4"
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+        transition={{ delay: 0.05 }}
       >
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold font-heading">Today's Bookings</h2>
@@ -306,59 +245,50 @@ export default function Dashboard() {
           </Button>
         </div>
         {todayBookings && todayBookings.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {todayBookings.slice(0, 3).map((booking) => (
-              <Card key={booking.id} className="p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Card key={booking.id} className="p-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-primary">{booking.court_id}</span>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
                       {booking.player_name || "Unknown"}
-                      {(booking as any).opponent_name ? ` vs ${(booking as any).opponent_name}` : ""}
-                      {(booking as any).is_friendly ? " (Friendly)" : ""}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Court {booking.court_id}
-                      {(booking as any).player_availability ? ` · ${(booking as any).player_availability}` : ""}
-                    </p>
+                    <p className="text-[11px] text-muted-foreground">Court {booking.court_id}</p>
                   </div>
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  {booking.start_time?.slice(0, 5)} - {booking.end_time?.slice(0, 5)}
+                <Badge variant="secondary" className="text-[10px] shrink-0">
+                  {booking.start_time?.slice(0, 5)}
                 </Badge>
               </Card>
             ))}
           </div>
         ) : (
-          <Card className="p-4 text-center text-sm text-muted-foreground">
-            No bookings today. Book a court to get started!
+          <Card className="p-3 text-center text-sm text-muted-foreground">
+            No bookings today
           </Card>
         )}
       </motion.div>
 
-      {/* My Upcoming Bookings */}
+      {/* My Upcoming */}
       {myBookings && myBookings.length > 0 && (
         <motion.div
-          className="px-4 mt-5 mb-4"
-          initial={{ opacity: 0, y: 10 }}
+          className="px-4 mt-4"
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.1 }}
         >
           <h2 className="text-sm font-semibold font-heading mb-2">My Upcoming</h2>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {myBookings.slice(0, 3).map((booking) => (
-              <Card key={booking.id} className="p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">{booking.court_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {booking.date}
-                    {(booking as any).opponent_name ? ` · vs ${(booking as any).opponent_name}` : ""}
-                    {(booking as any).is_friendly ? " · Friendly" : ""}
-                  </p>
+              <Card key={booking.id} className="p-2.5 flex items-center justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{booking.court_name}</p>
+                  <p className="text-[11px] text-muted-foreground">{booking.date}</p>
                 </div>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-[10px] shrink-0">
                   {booking.start_time?.slice(0, 5)}
                 </Badge>
               </Card>
@@ -368,10 +298,10 @@ export default function Dashboard() {
       )}
 
       <motion.div
-        className="px-4 mt-5 mb-4"
-        initial={{ opacity: 0, y: 10 }}
+        className="px-4 mt-4 mb-4"
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.22 }}
+        transition={{ delay: 0.15 }}
       >
         <DashboardAccountSettings />
       </motion.div>

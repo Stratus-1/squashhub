@@ -15,6 +15,7 @@ import { RealtimeSync } from "@/components/RealtimeSync";
 import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
+import { FeedbackFab } from "@/components/FeedbackFab";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -175,6 +176,7 @@ function AppRoutes() {
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
       <PwaUpdatePrompt />
+      <FeedbackFab />
     </div>
   );
 }

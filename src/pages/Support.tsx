@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { MessageCircle, Plus, Send } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { useCreateSupportThread, useMySupportThreads, useSendSupportMessage, use
 
 export default function Support() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: threads, isLoading: threadsLoading } = useMySupportThreads();
   const createThread = useCreateSupportThread();
   const send = useSendSupportMessage();
@@ -27,6 +29,22 @@ export default function Support() {
     if (selectedThreadId) return selectedThreadId;
     return threads && threads.length > 0 ? threads[0].id : null;
   }, [selectedThreadId, threads]);
+
+  const threadIdParam = (searchParams.get("threadId") || "").trim();
+  useEffect(() => {
+    if (!threadIdParam) return;
+    setSelectedThreadId(threadIdParam);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("threadId");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams, threadIdParam]);
+
+  const selectedThread = useMemo(() => {
+    if (!effectiveThreadId) return null;
+    return (threads || []).find((t) => t.id === effectiveThreadId) || null;
+  }, [effectiveThreadId, threads]);
 
   const { data: messages, isLoading: messagesLoading } = useSupportMessages(effectiveThreadId, !!effectiveThreadId);
 
@@ -103,7 +121,7 @@ export default function Support() {
               <CardContent className="p-3 flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your chats</p>
-                  <p className="text-sm font-semibold truncate">{(threads || [])[0]?.subject || "Support"}</p>
+                  <p className="text-sm font-semibold truncate">{selectedThread?.subject || (threads || [])[0]?.subject || "Support"}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -204,4 +222,3 @@ export default function Support() {
     </div>
   );
 }
-

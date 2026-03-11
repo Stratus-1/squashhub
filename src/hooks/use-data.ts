@@ -539,6 +539,25 @@ export function useChallenges() {
   });
 }
 
+export function useIncomingChallengesCount() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["challenges", "incoming-count", user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+      const { count, error } = await supabase
+        .from("challenges")
+        .select("id", { count: "exact", head: true })
+        .eq("opponent_id", user.id)
+        .eq("status", "pending");
+      if (error) throw error;
+      return typeof count === "number" ? count : 0;
+    },
+    enabled: !!user,
+  });
+}
+
 export function useCreateChallenge() {
   const queryClient = useQueryClient();
   const { user } = useAuth();

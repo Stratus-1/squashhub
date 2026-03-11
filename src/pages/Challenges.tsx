@@ -169,11 +169,18 @@ export default function Challenges() {
 
   const deeplinkChallengeId = (searchParams.get("challengeId") || "").trim();
   const deeplinkIntent = (searchParams.get("intent") || "").trim(); // optional: accept/decline
+  const viewParam = (searchParams.get("view") || "").trim(); // optional: inbox
   const deeplinkChallenge = useMemo(
     () => (deeplinkChallengeId ? (challenges || []).find((c) => c.id === deeplinkChallengeId) || null : null),
     [challenges, deeplinkChallengeId]
   );
   const [deeplinkOpen, setDeeplinkOpen] = useState(false);
+  const [challengeView, setChallengeView] = useState<"all" | "inbox">(() => (viewParam === "inbox" ? "inbox" : "all"));
+
+  useEffect(() => {
+    if (viewParam === "inbox") setChallengeView("inbox");
+    if (!viewParam) setChallengeView("all");
+  }, [viewParam]);
 
   const matchByChallengeId = useMemo(() => {
     const map = new Map<string, MatchWithProfiles>();
@@ -484,6 +491,27 @@ export default function Challenges() {
     return map;
   }, [schedules]);
 
+  const incomingCount = useMemo(() => {
+    if (!user?.id) return 0;
+    return (challenges || []).filter((c) => c.opponent_id === user.id && c.status === "pending").length;
+  }, [challenges, user?.id]);
+
+  const filteredChallenges = useMemo(() => {
+    const list = challenges || [];
+    if (!user?.id) return list;
+    if (challengeView === "inbox") {
+      const incoming = list.filter((c) => c.opponent_id === user.id && (c.status === "pending" || c.status === "accepted"));
+      // pending first
+      return [...incoming].sort((a, b) => {
+        const ap = a.status === "pending" ? 0 : 1;
+        const bp = b.status === "pending" ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return String(b.created_at).localeCompare(String(a.created_at));
+      });
+    }
+    return list;
+  }, [challengeView, challenges, user?.id]);
+
   return (
     <div className="bottom-nav-safe">
       <PageHeader title="Challenges" subtitle="Challenge & compete" />
@@ -595,16 +623,62 @@ export default function Challenges() {
         </TabsList>
 
         <TabsContent value="challenges" className="mt-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="inline-flex rounded-lg border border-border/60 p-1 bg-muted/20">
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                variant={challengeView === "inbox" ? "default" : "ghost"}
+                onClick={() => {
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.set("view", "inbox");
+                    return next;
+                  }, { replace: true });
+                }}
+              >
+                Inbox
+                {incomingCount > 0 ? (
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[10px] tabular-nums">
+                    {incomingCount}
+                  </span>
+                ) : null}
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                variant={challengeView === "all" ? "default" : "ghost"}
+                onClick={() => {
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.delete("view");
+                    return next;
+                  }, { replace: true });
+                }}
+              >
+                All
+              </Button>
+            </div>
+
+            {challengeView === "inbox" ? (
+              <Badge variant="secondary" className="text-[10px]">
+                Incoming only
+              </Badge>
+            ) : null}
+          </div>
+
           {challengesLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-          ) : (challenges || []).length === 0 ? (
+          ) : filteredChallenges.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">
-              No challenges yet. Create one to get started.
+              {challengeView === "inbox"
+                ? "No incoming challenges to handle right now."
+                : "No challenges yet. Create one to get started."}
             </Card>
           ) : (
-            (challenges || []).map((challenge, i) => {
+            filteredChallenges.map((challenge, i) => {
               const config =
                 statusConfig[challenge.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = config.icon;

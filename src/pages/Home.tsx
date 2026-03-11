@@ -551,6 +551,20 @@ export default function Home() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="relative h-9 w-9 p-0 border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
+                  onClick={() => navigate("/challenges?view=inbox")}
+                  aria-label="Challenges inbox"
+                >
+                  <Swords className="w-4 h-4" />
+                  {incomingPendingCount > 0 ? (
+                    <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold tabular-nums inline-flex items-center justify-center shadow-sm">
+                      {incomingPendingCount > 99 ? "99+" : incomingPendingCount}
+                    </span>
+                  ) : null}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
                   onClick={() => navigate("/dashboard")}
                 >
@@ -826,6 +840,36 @@ export default function Home() {
                 ]}
               />
             </div>
+
+            <Card className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold font-heading">Challenges</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    View incoming challenges and manage active matches.
+                  </p>
+                </div>
+                {incomingPendingCount > 0 ? (
+                  <Badge variant="secondary" className="text-[10px] bg-primary/15 text-primary shrink-0 tabular-nums">
+                    {incomingPendingCount} pending
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] shrink-0 tabular-nums">
+                    {activeChallengesCount} active
+                  </Badge>
+                )}
+              </div>
+
+              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                <Button size="sm" className="h-9 sm:flex-1" onClick={() => navigate("/challenges?view=inbox")}>
+                  <Swords className="w-4 h-4 mr-2" />
+                  Challenges inbox
+                </Button>
+                <Button size="sm" variant="outline" className="h-9 sm:flex-1" onClick={() => navigate("/challenges")}>
+                  View all challenges
+                </Button>
+              </div>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {upcomingGames.length > 0 ? (

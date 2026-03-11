@@ -1,15 +1,17 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, User } from "lucide-react";
+import { ChevronLeft, Swords, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
+import { useIncomingChallengesCount } from "@/hooks/use-data";
 
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
   showNotifications?: boolean;
+  showChallengesInbox?: boolean;
   showProfile?: boolean;
   profileTo?: string;
   showBack?: boolean;
@@ -20,6 +22,7 @@ export function PageHeader({
   title,
   subtitle,
   showNotifications = true,
+  showChallengesInbox = true,
   showProfile = false,
   profileTo = "/profile",
   showBack,
@@ -33,6 +36,7 @@ export function PageHeader({
   const shouldShowBack = showBack ?? !isTopLevel;
   const fallbackTo = backTo || getBackFallback(pathname);
   const canGoBack = typeof window !== "undefined" && window.history.length > 1;
+  const { data: incomingCount } = useIncomingChallengesCount();
 
   return (
     <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">
@@ -58,9 +62,26 @@ export function PageHeader({
           </div>
         </div>
 
-        {user && (showNotifications || showProfile) && (
+        {user && (showNotifications || showChallengesInbox || showProfile) && (
           <div className="flex items-center gap-2">
             {showNotifications && <NotificationsDropdown />}
+            {showChallengesInbox ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9"
+                onClick={() => navigate("/challenges?view=inbox")}
+                aria-label="Challenges inbox"
+              >
+                <Swords className="w-5 h-5" />
+                {(incomingCount ?? 0) > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold tabular-nums inline-flex items-center justify-center shadow-sm">
+                    {(incomingCount ?? 0) > 99 ? "99+" : incomingCount}
+                  </span>
+                ) : null}
+              </Button>
+            ) : null}
             {showProfile && (
               <Button
                 type="button"

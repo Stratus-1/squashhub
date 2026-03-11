@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { AppleStatsCard } from "@/components/AppleStatsCard";
+import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,7 @@ import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
 import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
+import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
+  const { data: challenges } = useChallenges();
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
   const { data: myBookings } = useMyBookings();
@@ -167,6 +169,14 @@ export default function Dashboard() {
         />
       </motion.div>
 
+      <div className="px-4 mt-3">
+        <IncomingChallengesCard
+          userId={user?.id}
+          challenges={challenges}
+          onViewAll={() => navigate("/challenges?view=inbox")}
+        />
+      </div>
+
       {/* Quick Actions */}
       <div className="px-4 mt-5">
         <div className="flex items-end justify-between gap-3 mb-2">
@@ -197,6 +207,14 @@ export default function Dashboard() {
             <span className="inline-flex items-center gap-2">
               <Swords className="w-4 h-4" />
               Create a challenge
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges?view=inbox")}>
+            <span className="inline-flex items-center gap-2">
+              <Swords className="w-4 h-4" />
+              Challenges inbox
             </span>
             <ChevronRight className="w-4 h-4 opacity-70" />
           </Button>

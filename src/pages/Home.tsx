@@ -860,13 +860,10 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                <Button size="sm" className="h-9 sm:flex-1" onClick={() => navigate("/challenges?view=inbox")}>
+              <div className="mt-3">
+                <Button size="sm" className="h-9 w-full" onClick={() => navigate("/challenges")}>
                   <Swords className="w-4 h-4 mr-2" />
-                  Challenges inbox
-                </Button>
-                <Button size="sm" variant="outline" className="h-9 sm:flex-1" onClick={() => navigate("/challenges")}>
-                  View all challenges
+                  View challenges
                 </Button>
               </div>
             </Card>

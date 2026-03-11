@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Calendar, Trophy, Swords,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,
-  Clock, Users, LogIn, Shield, UserRound, Leaf, Sun, Snowflake, Flower2
+  Clock, Users, LogIn, UserRound, Leaf, Sun, Snowflake, Flower2
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -416,7 +416,6 @@ export default function Home() {
   });
 
   const topPlayers = (user ? ladder?.slice(0, 5) : publicLeaderboard?.slice(0, 5)) || [];
-  const spotlight = topPlayers.length > 0 ? topPlayers[0] : null;
 
   const slotsPerCourt = 32; // 06:00–22:00 in 30-min increments
   const bookedCourt1 = (todayBookings || []).filter((b: any) => b.court_id === 1).length;
@@ -724,7 +723,7 @@ export default function Home() {
           {...fadeUp}
           transition={{ delay: 0.28 }}
         >
-          <div className="space-y-6">
+            <div className="space-y-6">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="font-heading font-semibold text-base truncate">
@@ -737,75 +736,6 @@ export default function Home() {
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/profile", { state: { backgroundLocation: location } })}>
                 <UserRound className="w-4 h-4 mr-1.5" /> Profile
               </Button>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold font-heading">Quick actions</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Jump straight to the important stuff.</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button type="button" className="text-left" onClick={() => navigate("/challenges/new")}>
-                  <Card className="h-full hover:shadow-md transition-all">
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Swords className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">Challenge</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          Create a ladder match or friendly game.
-                        </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
-                    </CardContent>
-                  </Card>
-                </button>
-
-                <button type="button" className="text-left" onClick={() => navigate("/ladder")}>
-                  <Card className="h-full hover:shadow-md transition-all">
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Trophy className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">Ladder</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          See rankings and player stats.
-                        </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
-                    </CardContent>
-                  </Card>
-                </button>
-
-                <button
-                  type="button"
-                  className="text-left"
-                  onClick={() => navigate(canOpenAdmin ? "/admin" : "/events")}
-                >
-                  <Card className="h-full hover:shadow-md transition-all">
-                    <CardContent className="p-4 flex items-start gap-3">
-                      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        {canOpenAdmin ? (
-                          <Shield className="w-5 h-5 text-primary" />
-                        ) : (
-                          <Calendar className="w-5 h-5 text-primary" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{canOpenAdmin ? "Admin" : "Events"}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {canOpenAdmin ? "Manage club settings and tools." : "See socials and club events."}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
-                    </CardContent>
-                  </Card>
-                </button>
-              </div>
             </div>
 
             {activeSeason && (seasonSocials || []).length > 0 && (
@@ -894,44 +824,22 @@ export default function Home() {
                   { label: "Losses", value: me?.losses ?? 0, unit: "losses", dotColor: "#ff9500" },
                   { label: "Challenges", value: activeChallengesCount, unit: "active", dotColor: "#af52de" },
                 ]}
-                footer={
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" className="h-9" onClick={() => navigate("/ladder")}>
-                      <Trophy className="w-4 h-4 mr-2" />
-                      Ladder
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9"
-                      onClick={() => navigate("/profile?edit=1", { state: { backgroundLocation: location } })}
-                    >
-                      Profile
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-9" onClick={() => navigate("/challenges")}>
-                      <Swords className="w-4 h-4 mr-2" />
-                      Challenges
-                    </Button>
-                  </div>
-                }
               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <Card className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold font-heading">Upcoming bookings</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Your next scheduled sessions.</p>
+              {upcomingGames.length > 0 ? (
+                <Card className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold font-heading">Upcoming bookings</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Your next scheduled sessions.</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate("/bookings")}>
+                      View
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate("/bookings")}>
-                    View
-                  </Button>
-                </div>
 
-                {upcomingGames.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-3">No upcoming bookings yet.</p>
-                ) : (
                   <div className="mt-3 space-y-2">
                     {upcomingGames.slice(0, 3).map((g: any) => (
                       <div key={g.id} className="rounded-lg border border-border p-3">
@@ -959,10 +867,10 @@ export default function Home() {
                       <p className="text-xs text-muted-foreground">+{upcomingGames.length - 3} more</p>
                     ) : null}
                   </div>
-                )}
-              </Card>
+                </Card>
+              ) : null}
 
-              <Card className="p-4">
+              <Card className={["p-4", upcomingGames.length === 0 ? "lg:col-span-2" : ""].join(" ")}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold font-heading">Recent results</p>
@@ -1121,125 +1029,133 @@ export default function Home() {
           {...fadeUp}
           transition={{ delay: 0.32 }}
         >
-          <div className="flex items-end justify-between gap-3 mb-3">
-            <div className="min-w-0">
-              <h2 className="font-heading font-semibold text-base">Club Insights</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {insights?.range ? `Last ${insights.range.days} days` : "Loading…"}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Sessions</p>
-                <p className="font-heading font-bold text-lg mt-1">{insights?.totals?.sessions ?? "—"}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Bookings played</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg session</p>
-                <p className="font-heading font-bold text-lg mt-1">
-                  {typeof insights?.totals?.avg_session_minutes === "number" ? `${insights.totals.avg_session_minutes}m` : "—"}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">Based on bookings</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Busiest day</p>
-                <p className="font-heading font-bold text-lg mt-1">{insights?.busiest?.day ?? "—"}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {typeof insights?.busiest?.day_count === "number" ? `${insights.busiest.day_count} sessions` : "—"}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Busiest time</p>
-                <p className="font-heading font-bold text-lg mt-1">{insights?.busiest?.slot ?? "—"}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {typeof insights?.busiest?.slot_count === "number" ? `${insights.busiest.slot_count} bookings` : "—"}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="mt-3 overflow-hidden">
+          <Card className="overflow-hidden">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">When the courts are busiest</p>
+                  <h2 className="font-heading font-semibold text-base">Club Insights</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Bookings per 30-min slot (both courts combined)
+                    {insights?.range ? `Last ${insights.range.days} days` : "Loading…"}
                   </p>
                 </div>
-                {insights?.busiest?.slot ? (
-                  <Badge variant="secondary" className="shrink-0">
-                    Peak: {insights.busiest.slot}
+                {insights?.range?.days ? (
+                  <Badge variant="secondary" className="text-[10px] shrink-0">
+                    {insights.range.days}d
                   </Badge>
                 ) : null}
               </div>
 
-              {busyness && busyness.length > 0 ? (
-                <div className="mt-4">
-                  <div className="flex items-end gap-1 overflow-x-auto pb-2">
-                    {(() => {
-                      const max = Math.max(...busyness.map((b) => Number(b.bookings_count || 0)), 1);
-                      return busyness.map((b) => {
-                        const c = Number(b.bookings_count || 0);
-                        const h = Math.max(2, Math.round((c / max) * 64));
-                        const isPeak = insights?.busiest?.slot && b.slot === insights.busiest.slot;
-                        return (
-                          <div key={b.slot} className="shrink-0 flex flex-col items-center gap-1">
-                            <div
-                              title={`${b.slot} — ${c} bookings`}
-                              className={`w-3 rounded-sm ${isPeak ? "bg-accent" : c > 0 ? "bg-primary/60" : "bg-muted"}`}
-                              style={{ height: `${h}px` }}
-                            />
-                            <span className="text-[9px] text-muted-foreground">
-                              {b.slot.endsWith(":00") ? b.slot.slice(0, 2) : ""}
-                            </span>
-                          </div>
-                        );
-                      });
-                    })()}
+              {/* Stats strip (not separate cards) */}
+              <div className="mt-4 rounded-2xl border border-border/70 bg-muted/20 overflow-hidden">
+                <div className="grid grid-cols-2 sm:grid-cols-4">
+                  <div className="p-3">
+                    <p className="text-[10px] uppercase tracking-wide text-foreground/70">Sessions</p>
+                    <p className="font-heading font-bold text-lg mt-1 tabular-nums">
+                      {insights?.totals?.sessions ?? "—"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5">Bookings played</p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-2">
-                    Tip: tap/hover a bar to see the slot and count.
-                  </p>
+                  <div className="p-3 border-l border-border/60">
+                    <p className="text-[10px] uppercase tracking-wide text-foreground/70">Avg session</p>
+                    <p className="font-heading font-bold text-lg mt-1 tabular-nums">
+                      {typeof insights?.totals?.avg_session_minutes === "number" ? `${insights.totals.avg_session_minutes}m` : "—"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5">Minutes</p>
+                  </div>
+                  <div className="p-3 border-t border-border/60 sm:border-t-0 sm:border-l sm:border-border/60">
+                    <p className="text-[10px] uppercase tracking-wide text-foreground/70">Busiest day</p>
+                    <p className="font-heading font-bold text-lg mt-1 truncate">
+                      {insights?.busiest?.day ?? "—"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5 tabular-nums">
+                      {typeof insights?.busiest?.day_count === "number" ? `${insights.busiest.day_count} sessions` : "—"}
+                    </p>
+                  </div>
+                  <div className="p-3 border-t border-border/60 border-l border-border/60 sm:border-t-0">
+                    <p className="text-[10px] uppercase tracking-wide text-foreground/70">Busiest time</p>
+                    <p className="font-heading font-bold text-lg mt-1 tabular-nums">
+                      {insights?.busiest?.slot ?? "—"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5 tabular-nums">
+                      {typeof insights?.busiest?.slot_count === "number" ? `${insights.busiest.slot_count} bookings` : "—"}
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground mt-4">No data yet.</p>
-              )}
+              </div>
+
+              {/* Busyness */}
+              <div className="mt-4 pt-4 border-t border-border/60">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">When the courts are busiest</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Bookings per 30-min slot (both courts combined)
+                    </p>
+                  </div>
+                  {insights?.busiest?.slot ? (
+                    <Badge variant="secondary" className="shrink-0">
+                      Peak: {insights.busiest.slot}
+                    </Badge>
+                  ) : null}
+                </div>
+
+                {busyness && busyness.length > 0 ? (
+                  <div className="mt-4">
+                    <div className="flex items-end gap-1 overflow-x-auto pb-2">
+                      {(() => {
+                        const max = Math.max(...busyness.map((b) => Number(b.bookings_count || 0)), 1);
+                        return busyness.map((b) => {
+                          const c = Number(b.bookings_count || 0);
+                          const h = Math.max(2, Math.round((c / max) * 64));
+                          const isPeak = insights?.busiest?.slot && b.slot === insights.busiest.slot;
+                          return (
+                            <div key={b.slot} className="shrink-0 flex flex-col items-center gap-1">
+                              <div
+                                title={`${b.slot} — ${c} bookings`}
+                                className={`w-3 rounded-sm ${isPeak ? "bg-accent" : c > 0 ? "bg-primary/60" : "bg-muted"}`}
+                                style={{ height: `${h}px` }}
+                              />
+                              <span className="text-[9px] text-muted-foreground">
+                                {b.slot.endsWith(":00") ? b.slot.slice(0, 2) : ""}
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      Tip: tap/hover a bar to see the slot and count.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-4">No data yet.</p>
+                )}
+              </div>
+
+              {/* Most active players */}
+              {(insights?.top_players?.length || 0) > 0 ? (
+                <div className="mt-4 pt-4 border-t border-border/60">
+                  <p className="text-sm font-semibold">Most active players</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Players with the most sessions in the last {insights?.range?.days ?? 30} days
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {insights!.top_players.slice(0, 5).map((p, idx) => (
+                      <div key={p.id} className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground w-5 text-right">{idx + 1}</span>
+                          <span className="text-sm font-medium truncate">{p.name}</span>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0 tabular-nums">
+                          {p.sessions}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
-
-          {(insights?.top_players?.length || 0) > 0 && (
-            <Card className="mt-3">
-              <CardContent className="p-4">
-                <p className="text-sm font-semibold">Most active players</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Players with the most sessions in the last {insights?.range?.days ?? 30} days
-                </p>
-                <div className="mt-3 space-y-2">
-                  {insights!.top_players.slice(0, 5).map((p, idx) => (
-                    <div key={p.id} className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground w-5 text-right">{idx + 1}</span>
-                        <span className="text-sm font-medium truncate">{p.name}</span>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0">
-                        {p.sessions}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </motion.section>
       )}
 
@@ -1367,45 +1283,6 @@ export default function Home() {
               );
             })}
           </div>
-        </motion.section>
-      )}
-
-      {/* Player Spotlight */}
-      {spotlight && (
-        <motion.section
-          className="px-4 sm:px-6 lg:px-[5%] mt-10"
-          {...fadeUp}
-          transition={{ delay: 0.45 }}
-        >
-          <h2 className="font-heading font-semibold text-base mb-3">Player Spotlight</h2>
-          <Card className="overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-primary to-accent" />
-            <CardContent className="p-5 flex items-center gap-4">
-              <PlayerAvatar
-                initials={getInitials(spotlight.name)}
-                rank={spotlight.rank}
-                size="lg"
-                avatarUrl={(spotlight as any)?.avatar_url || null}
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <Star className="w-4 h-4 text-accent" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
-                    Top Ranked Player
-                  </span>
-                </div>
-                <p className="font-heading font-bold text-lg">{spotlight.name}</p>
-                <div className="flex gap-3 mt-1">
-                  <span className="text-xs text-muted-foreground">
-                    {spotlight.wins}W – {spotlight.losses}L
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Rank #{spotlight.rank}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </motion.section>
       )}
 

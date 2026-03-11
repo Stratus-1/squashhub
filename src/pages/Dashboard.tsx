@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
-import { StatCard } from "@/components/StatCard";
+import { AppleStatsCard } from "@/components/AppleStatsCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,10 +7,11 @@ import { SEO } from "@/components/SEO";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import { AvatarFeatureBanner } from "@/components/AvatarFeatureBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
 import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
 import { format } from "date-fns";
@@ -22,6 +23,7 @@ import { DashboardAccountSettings } from "@/components/DashboardAccountSettings"
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -30,6 +32,11 @@ export default function Dashboard() {
   const { data: myScheduledMatches } = useMyScheduledMatches();
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
+  const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
+  const matchesPlayed = profile?.matches_played ?? 0;
+  const wins = profile?.wins ?? 0;
+  const losses = profile?.losses ?? 0;
+  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
 
   const trackableBooking = useMemo(() => {
     const list = (myBookings || []).filter((b) => b.status === "active");
@@ -126,43 +133,82 @@ export default function Dashboard() {
         <ProfileCompletionMeter
           profile={profile}
           onAction={(action) => {
-            if (action === "edit") navigate("/profile");
-            if (action === "avatar") navigate("/profile");
+            if (action === "edit") openProfile("/profile?edit=1");
+            if (action === "avatar") openProfile("/profile?edit=1&focus=avatar");
             if (action === "availability") navigate("/availability");
           }}
         />
       </div>
 
-      {/* Stats row */}
+      <AvatarFeatureBanner />
+
       <motion.div
-        className="grid grid-cols-4 gap-2 px-4 mt-3"
+        className="px-4 mt-4"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <StatCard label="Rank" value={profile?.rank ? `#${profile.rank}` : "—"} />
-        <StatCard label="Played" value={profile?.matches_played || 0} />
-        <StatCard label="Wins" value={profile?.wins || 0} variant="win" />
-        <StatCard label="Losses" value={profile?.losses || 0} variant="loss" />
+        <AppleStatsCard
+          title="Your stats"
+          subtitle="Snapshot of your performance."
+          badgeText={profile?.rank ? `Rank #${profile.rank}` : "Unranked"}
+          ringLabel="Win rate"
+          ringValue={`${winRate}%`}
+          progress={{
+            played: Math.min(1, matchesPlayed / 50),
+            wins: Math.min(1, wins / 25),
+            winPct: Math.min(1, winRate / 100),
+          }}
+          tiles={[
+            { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
+            { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
+            { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
+            { label: "Rank", value: profile?.rank ? `#${profile.rank}` : "—", unit: "ladder", dotColor: "#ff2d55" },
+          ]}
+        />
       </motion.div>
 
-      {/* Quick Actions — compact 2×2 grid */}
-      <div className="grid grid-cols-4 gap-2 px-4 mt-3">
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/bookings")}>
-          <Calendar className="w-4 h-4 text-primary" />
-          <span className="text-[10px]">Book</span>
-        </Button>
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/ladder")}>
-          <Trophy className="w-4 h-4 text-primary" />
-          <span className="text-[10px]">Ladder</span>
-        </Button>
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/challenges/new")}>
-          <Swords className="w-4 h-4 text-primary" />
-          <span className="text-[10px]">Challenge</span>
-        </Button>
-        <Button variant="outline" className="flex flex-col items-center gap-1 h-auto py-2.5 bg-card text-xs" onClick={() => navigate("/support")}>
-          <LifeBuoy className="w-4 h-4 text-primary" />
-          <span className="text-[10px]">Support</span>
-        </Button>
+      {/* Quick Actions */}
+      <div className="px-4 mt-5">
+        <div className="flex items-end justify-between gap-3 mb-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold font-heading">Quick actions</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Tap to open a section.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button className="justify-between h-11 px-3" onClick={() => navigate("/bookings")}>
+            <span className="inline-flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Book a court
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/ladder")}>
+            <span className="inline-flex items-center gap-2">
+              <Trophy className="w-4 h-4" />
+              View ladder
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")}>
+            <span className="inline-flex items-center gap-2">
+              <Swords className="w-4 h-4" />
+              Create a challenge
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/support")}>
+            <span className="inline-flex items-center gap-2">
+              <LifeBuoy className="w-4 h-4" />
+              Support
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+        </div>
       </div>
 
       {/* Active match tracker */}

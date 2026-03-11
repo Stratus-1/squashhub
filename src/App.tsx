@@ -103,6 +103,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const backgroundLocation = (location.state as any)?.backgroundLocation as typeof location | undefined;
 
   if (loading) {
     return (
@@ -112,8 +113,10 @@ function AppRoutes() {
     );
   }
 
+  const routeLocation = backgroundLocation || location;
+
   const showFooter = (() => {
-    const p = location.pathname || "/";
+    const p = routeLocation.pathname || "/";
     if (p === "/booking-response") return false;
     if (p.startsWith("/match-tracker/")) return false;
     if (p.startsWith("/admin")) return false;
@@ -122,7 +125,7 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
-      <Routes>
+      <Routes location={routeLocation}>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
@@ -155,6 +158,11 @@ function AppRoutes() {
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      {backgroundLocation && (
+        <Routes location={location}>
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        </Routes>
+      )}
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
       {user && <BottomNav />}
       {user && <OfflineBanner />}

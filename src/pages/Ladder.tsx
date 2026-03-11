@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, Swords, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useProfile } from "@/hooks/use-data";
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function Ladder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { data: players, isLoading } = useLadder();
   const { data: profile } = useProfile();
@@ -119,13 +120,13 @@ export default function Ladder() {
                 role="button"
                 tabIndex={0}
                 onClick={() => {
-                  if (player.id === user?.id) navigate("/profile");
+                  if (player.id === user?.id) navigate("/profile", { state: { backgroundLocation: location } });
                   else navigate(`/players/${player.id}`);
                 }}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter" && e.key !== " ") return;
                   e.preventDefault();
-                  if (player.id === user?.id) navigate("/profile");
+                  if (player.id === user?.id) navigate("/profile", { state: { backgroundLocation: location } });
                   else navigate(`/players/${player.id}`);
                 }}
                 >
@@ -139,7 +140,7 @@ export default function Ladder() {
                     {player.rank}
                   </div>
 
-                  <PlayerAvatar initials={getInitials(player.name)} size="sm" />
+                  <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={(player as any)?.avatar_url || null} />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">

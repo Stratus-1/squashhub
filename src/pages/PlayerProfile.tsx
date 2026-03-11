@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { StatCard } from "@/components/StatCard";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
@@ -115,6 +115,18 @@ export default function PlayerProfile() {
     return player.matches_played > 0 ? Math.round((player.wins / player.matches_played) * 100) : 0;
   }, [player]);
 
+  const perfProgress = useMemo(() => {
+    const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+    const played = Number(player?.matches_played || 0);
+    const wins = Number(player?.wins || 0);
+    const winPct = Number.isFinite(winRate) ? winRate : 0;
+    return {
+      played: clamp01(played / 50),
+      wins: clamp01(wins / 25),
+      winPct: clamp01(winPct / 100),
+    };
+  }, [player?.matches_played, player?.wins, winRate]);
+
   const rivals = useMemo(() => {
     const rows = headToHead || [];
     return rows
@@ -213,42 +225,166 @@ export default function PlayerProfile() {
     <div className="bottom-nav-safe">
       <PageHeader title="Player Profile" subtitle={player.rank ? `Rank #${player.rank}` : "Unranked"} />
 
-      <div className="px-4 mt-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <PlayerAvatar initials={initials} rank={player.rank} size="md" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{player.name || "Player"}</p>
-                <p className="text-xs text-muted-foreground">
-                  {player.matches_played} played · {player.wins}W {player.losses}L · {winRate}% win
-                </p>
+      <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-4 pb-4">
+        <Card className="overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-primary via-accent to-transparent" />
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <PlayerAvatar initials={initials} rank={player.rank} size="md" avatarUrl={(player as any)?.avatar_url || null} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{player.name || "Player"}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {player.matches_played} played · {player.wins}W {player.losses}L · {winRate}% win
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => navigate("/ladder")}
+                >
+                  View ladder
+                </Button>
+                {canChallenge ? (
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => navigate(`/challenges/new?opponent=${player.id}`)}
+                  >
+                    <Swords className="w-3 h-3 mr-2" />
+                    Challenge
+                  </Button>
+                ) : null}
               </div>
             </div>
-            {canChallenge && (
-              <Button
-                size="sm"
-                className="h-8 text-xs shrink-0"
-                onClick={() => navigate(`/challenges/new?opponent=${player.id}`)}
-              >
-                <Swords className="w-3 h-3 mr-2" />
-                Challenge
-              </Button>
-            )}
+          </CardContent>
+        </Card>
+
+        <Card className="p-4 overflow-hidden border-primary/15 bg-gradient-to-br from-fuchsia-500/10 via-background to-sky-500/10">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold font-heading">Performance</p>
+              <p className="text-xs text-muted-foreground mt-0.5">At-a-glance stats.</p>
+            </div>
+            <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border border-primary/20 shrink-0">
+              {player.rank ? `Rank #${player.rank}` : "Unranked"}
+            </Badge>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3">
+            <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-foreground/70">Win rate</p>
+              <div className="mt-2 flex items-center justify-center">
+                <div className="relative w-28 h-28">
+                  {(() => {
+                  const ring = (radius: number, progress: number) => {
+                    const c = 2 * Math.PI * radius;
+                    const offset = c * (1 - progress);
+                    return { c, offset };
+                  };
+                  const r1 = ring(44, perfProgress.played);
+                  const r2 = ring(30, perfProgress.wins);
+                  const r3 = ring(16, perfProgress.winPct);
+                  return (
+                    <svg viewBox="0 0 120 120" className="w-full h-full">
+                      <circle cx="60" cy="60" r="44" fill="none" stroke="hsl(var(--muted))" strokeWidth="12" opacity="0.35" />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="44"
+                        fill="none"
+                        stroke="#007aff"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={`${r1.c} ${r1.c}`}
+                        strokeDashoffset={r1.offset}
+                        transform="rotate(-90 60 60)"
+                      />
+
+                      <circle cx="60" cy="60" r="30" fill="none" stroke="hsl(var(--muted))" strokeWidth="12" opacity="0.35" />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="30"
+                        fill="none"
+                        stroke="#34c759"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={`${r2.c} ${r2.c}`}
+                        strokeDashoffset={r2.offset}
+                        transform="rotate(-90 60 60)"
+                      />
+
+                      <circle cx="60" cy="60" r="16" fill="none" stroke="hsl(var(--muted))" strokeWidth="12" opacity="0.35" />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="16"
+                        fill="none"
+                        stroke="#ff2d55"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={`${r3.c} ${r3.c}`}
+                        strokeDashoffset={r3.offset}
+                        transform="rotate(-90 60 60)"
+                      />
+                    </svg>
+                  );
+                })()}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-xl font-bold font-heading">{winRate}%</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#007aff]" />
+                  <p className="text-[10px] uppercase tracking-wide text-foreground/70">Played</p>
+                </div>
+                <p className="text-lg font-bold font-heading mt-1">{player.matches_played || 0}</p>
+                <p className="text-[11px] text-muted-foreground -mt-0.5">matches</p>
+              </div>
+
+              <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#34c759]" />
+                  <p className="text-[10px] uppercase tracking-wide text-foreground/70">Wins</p>
+                </div>
+                <p className="text-lg font-bold font-heading mt-1">{player.wins || 0}</p>
+                <p className="text-[11px] text-muted-foreground -mt-0.5">wins</p>
+              </div>
+
+              <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff9500]" />
+                  <p className="text-[10px] uppercase tracking-wide text-foreground/70">Losses</p>
+                </div>
+                <p className="text-lg font-bold font-heading mt-1">{player.losses || 0}</p>
+                <p className="text-[11px] text-muted-foreground -mt-0.5">losses</p>
+              </div>
+
+              <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff2d55]" />
+                  <p className="text-[10px] uppercase tracking-wide text-foreground/70">Rank</p>
+                </div>
+                <p className="text-lg font-bold font-heading mt-1">{player.rank ? `#${player.rank}` : "—"}</p>
+                <p className="text-[11px] text-muted-foreground -mt-0.5">ladder</p>
+              </div>
+            </div>
           </div>
         </Card>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 mt-4">
-        <StatCard label="Rank" value={player.rank ? `#${player.rank}` : "—"} icon={<Trophy className="w-4 h-4" />} />
-        <StatCard label="Played" value={player.matches_played || 0} icon={<Target className="w-4 h-4" />} />
-        <StatCard label="Wins" value={player.wins || 0} variant="win" />
-        <StatCard label="Win %" value={`${winRate}%`} icon={<TrendingUp className="w-4 h-4" />} />
-      </div>
 
       {showAdvanced ? (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 mt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <StatCard
               label="Streak"
               value={squashTotals?.current_streak || (squashTotalsLoading ? "…" : "—")}
@@ -279,7 +415,7 @@ export default function PlayerProfile() {
             />
           </div>
 
-          <div className="px-4 mt-2">
+          <div>
             <Card className="p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
@@ -311,7 +447,7 @@ export default function PlayerProfile() {
       ) : null}
 
       {showRecentMatches ? (
-        <div className="px-4 mt-3">
+        <div>
           <Card className="p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -386,9 +522,9 @@ export default function PlayerProfile() {
         </div>
       ) : null}
 
-      <Separator className="my-5 mx-4" />
+      <Separator className="my-2" />
 
-      <div className="px-4 mb-4">
+      <div>
         <Card className="p-4">
           <p className="text-sm font-semibold font-heading">About</p>
           <div className="mt-2 space-y-3">
@@ -448,7 +584,7 @@ export default function PlayerProfile() {
       </div>
 
       {showRecentMatches ? (
-        <div className="px-4 mb-4">
+        <div>
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold font-heading">Recent Matches</p>
@@ -507,17 +643,17 @@ export default function PlayerProfile() {
           </Card>
         </div>
       ) : (
-        <div className="px-4 mb-4">
+        <div>
           <Card className="p-4 text-sm text-muted-foreground">Match history is hidden.</Card>
         </div>
       )}
 
       {showTraining ? (
-        <div className="px-4 mb-4">
-          <Card className="p-4">
+        <div>
+          <Card className="p-4 overflow-hidden border-primary/15 bg-gradient-to-br from-rose-500/10 via-background to-sky-500/10">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold font-heading">Training Stats</p>
+                <p className="text-sm font-semibold font-heading">Health & training</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {(player as any)?.strava_connected ? "From Strava (last sync)." : "No connected training stats."}
                 </p>
@@ -526,37 +662,83 @@ export default function PlayerProfile() {
             </div>
 
             {(player as any)?.strava_connected ? (
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="rounded-md border p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Distance</p>
-                  <p className="text-sm font-semibold">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3">
+                <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm flex items-center justify-center">
+                  <div className="relative w-28 h-28">
+                    <svg viewBox="0 0 120 120" className="w-full h-full">
+                      <circle cx="60" cy="60" r="44" fill="none" stroke="hsl(var(--muted))" strokeWidth="12" opacity="0.35" />
+                      <circle cx="60" cy="60" r="44" fill="none" stroke="#ff2d55" strokeWidth="12" />
+
+                      <circle cx="60" cy="60" r="30" fill="none" stroke="hsl(var(--muted))" strokeWidth="12" opacity="0.35" />
+                      <circle cx="60" cy="60" r="30" fill="none" stroke="#34c759" strokeWidth="12" />
+
+                      <circle cx="60" cy="60" r="16" fill="none" stroke="hsl(var(--muted))" strokeWidth="12" opacity="0.35" />
+                      <circle cx="60" cy="60" r="16" fill="none" stroke="#007aff" strokeWidth="12" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <p className="text-[10px] uppercase tracking-wide text-foreground/70">Activity</p>
+                      <p className="text-sm font-semibold">{stravaKm != null ? `${stravaKm} km` : "—"}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-md border p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Time</p>
-                  <p className="text-sm font-semibold">{stravaMinutes != null ? `${stravaMinutes} min` : "—"}</p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#ff2d55]" />
+                      <p className="text-[10px] uppercase tracking-wide text-foreground/70">Distance</p>
+                    </div>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaKm != null ? `${stravaKm}` : "—"}</p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5">kilometers</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#34c759]" />
+                      <p className="text-[10px] uppercase tracking-wide text-foreground/70">Time</p>
+                    </div>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaMinutes != null ? `${stravaMinutes}` : "—"}</p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5">minutes</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#007aff]" />
+                      <p className="text-[10px] uppercase tracking-wide text-foreground/70">Elevation</p>
+                    </div>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaElevationM != null ? `${stravaElevationM}` : "—"}</p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5">meters</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#ff9500]" />
+                      <p className="text-[10px] uppercase tracking-wide text-foreground/70">Activities</p>
+                    </div>
+                    <p className="text-lg font-bold font-heading mt-1">{stravaActivitiesCount != null ? stravaActivitiesCount : "—"}</p>
+                    <p className="text-[11px] text-muted-foreground -mt-0.5">count</p>
+                  </div>
+
+                  <div className="col-span-2 rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-foreground/70">Last synced</p>
+                      <p className="text-sm font-medium truncate">
+                        {stravaLastSync ? stravaLastSync.toLocaleString() : "Not synced yet."}
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 text-[10px] bg-primary/10 text-primary border border-primary/20">
+                      Strava
+                    </Badge>
+                  </div>
                 </div>
-                <div className="rounded-md border p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Elevation</p>
-                  <p className="text-sm font-semibold">{stravaElevationM != null ? `${stravaElevationM} m` : "—"}</p>
-                </div>
-                <div className="rounded-md border p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Activities</p>
-                  <p className="text-sm font-semibold">{stravaActivitiesCount != null ? stravaActivitiesCount : "—"}</p>
-                </div>
-                <p className="text-[11px] text-muted-foreground col-span-2 sm:col-span-4">
-                  {stravaLastSync ? `Last synced: ${stravaLastSync.toLocaleString()}` : "Not synced yet."}
-                </p>
               </div>
             ) : null}
           </Card>
         </div>
       ) : (
-        <div className="px-4 mb-4">
+        <div>
           <Card className="p-4 text-sm text-muted-foreground">Training stats are hidden.</Card>
         </div>
       )}
 
-      <div className="px-4 pb-4">
+      <div className="pt-1">
         <Button
           variant="outline"
           className="w-full"
@@ -568,13 +750,15 @@ export default function PlayerProfile() {
           Back
         </Button>
       </div>
+
+      </div>
     </div>
   );
 }
 
 function AboutItem({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="rounded-md border p-3">
+    <div className="rounded-md border bg-muted/20 p-3 cursor-default">
       <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={value ? "text-sm font-medium mt-1" : "text-sm text-muted-foreground mt-1"}>
         {value || "—"}

@@ -45,6 +45,23 @@ export default function Seasons() {
     setShowAllSeasonMatches(false);
   }, [viewingId]);
 
+  const { data: membershipCount } = useQuery({
+    queryKey: ["season-members-count", viewingId],
+    queryFn: async () => {
+      if (!viewingId) return 0;
+      const { count, error } = await (supabase as any)
+        .from("season_memberships")
+        .select("id", { count: "exact", head: true })
+        .eq("season_id", viewingId);
+      if (error) {
+        if ((error as any).code === "42P01") return 0;
+        throw error;
+      }
+      return typeof count === "number" ? count : 0;
+    },
+    enabled: !!viewingId,
+  });
+
   const { data: joinedActiveSeason } = useQuery({
     queryKey: ["season-membership", user?.id, activeSeason?.id],
     queryFn: async () => {
@@ -202,306 +219,341 @@ export default function Seasons() {
 
       {/* Season selector */}
       {seasons && seasons.length > 0 ? (
-        <div className="px-4 mt-3 space-y-4">
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-4 pb-6">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {(seasons || []).map((season: any) => (
               <button
                 key={season.id}
                 onClick={() => setSelectedSeasonId(season.id)}
                 className={cn(
-                  "shrink-0 px-3 py-2 rounded-xl text-xs font-medium transition-all border",
+                  "shrink-0 px-3 py-2 rounded-full text-xs font-medium transition-all border",
                   viewingId === season.id
                     ? "bg-primary text-primary-foreground border-primary shadow-md"
                     : "bg-card border-border/50 hover:bg-secondary"
                 )}
               >
-                {season.name}
-                {season.is_active && (
-                  <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-accent inline-block" />
-                )}
+                <span className="inline-flex items-center gap-2">
+                  <span className="truncate max-w-[180px]">{season.name}</span>
+                  {season.is_active ? (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-accent/20 text-accent-foreground border border-accent/20">
+                      Live
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-muted text-muted-foreground border border-border/40">
+                      Archive
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </div>
 
-          {/* Current season info */}
+          {/* Season spotlight */}
           {viewingId && (() => {
             const season = (seasons || []).find((s: any) => s.id === viewingId);
             if (!season) return null;
             return (
-              <Card className="border-primary/20 bg-primary/5">
+              <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/10 via-background to-accent/10">
+                <div className="h-1 bg-gradient-to-r from-primary via-accent to-transparent" />
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-bold font-heading">{season.name}</h2>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold font-heading truncate">{season.name}</h2>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {season.starts_on} → {season.ends_on || "—"}
                       </p>
-                    </div>
-                    <Badge
-                      className={cn(
-                        "text-[10px]",
-                        season.is_active
-                          ? "bg-accent/20 text-accent-foreground border-0"
-                          : season.ends_on
-                            ? "bg-primary/15 text-primary border-0"
-                            : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {season.is_active ? "🔴 Live" : season.ends_on ? "✅ Completed" : "Ended"}
-                    </Badge>
-                  </div>
-
-                  {season.is_active && (
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <p className="text-xs text-muted-foreground">
-                        Join the season to take part in season socials and competitions.
-                      </p>
-                      {joinedActiveSeason ? (
-                        <Badge variant="secondary" className="text-[10px] bg-accent/20 text-accent-foreground border-0">
-                          Joined
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "text-[10px] border",
+                            season.is_active
+                              ? "bg-accent/15 text-accent-foreground border-accent/20"
+                              : season.ends_on
+                                ? "bg-primary/10 text-primary border-primary/20"
+                                : "bg-muted text-muted-foreground border-border/40"
+                          )}
+                        >
+                          {season.is_active ? "Live" : season.ends_on ? "Completed" : "Ended"}
                         </Badge>
-                      ) : (
-                        <Button size="sm" className="h-8 text-xs" onClick={() => joinSeason.mutate()} disabled={joinSeason.isPending}>
-                          {joinSeason.isPending ? "Joining…" : "Join season"}
-                        </Button>
-                      )}
+                        <Badge variant="secondary" className="text-[10px] bg-background/70 border border-border/60">
+                          <span className="inline-flex items-center gap-1 tabular-nums">
+                            <Users className="w-3 h-3 opacity-70" />
+                            {membershipCount ?? 0} joined
+                          </span>
+                        </Badge>
+                      </div>
                     </div>
-                  )}
+
+                    {season.is_active ? (
+                      <div className="flex flex-col sm:items-end gap-2">
+                        <p className="text-xs text-muted-foreground sm:text-right max-w-[340px]">
+                          Join to take part in season socials and competitions.
+                        </p>
+                        {joinedActiveSeason ? (
+                          <Badge variant="secondary" className="text-[10px] bg-accent/15 text-accent-foreground border border-accent/20">
+                            Joined
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="h-9 text-xs"
+                            onClick={() => joinSeason.mutate()}
+                            disabled={joinSeason.isPending}
+                          >
+                            {joinSeason.isPending ? "Joining…" : "Join season"}
+                          </Button>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
                 </CardContent>
               </Card>
             );
           })()}
 
-          {/* Season overview + matches */}
-          {viewingSeason ? (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold font-heading">Season overview</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Competitive matches only (friendly games excluded).
-                    </p>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {viewingSeason.is_active ? "Live" : "Archive"}
-                  </Badge>
-                </div>
-
-                {seasonMatchesError ? (
-                  <div className="mt-3 rounded-md border p-3 text-sm text-muted-foreground flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                    <p className="min-w-0">Could not load season matches. {String((seasonMatchesError as any)?.message || "")}</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      <div className="rounded-md border p-3">
-                        <div className="flex items-center gap-2">
-                          <Swords className="w-4 h-4 text-primary" />
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Matches</p>
-                        </div>
-                        <p className="text-sm font-semibold mt-1">
-                          {seasonMatchesLoading ? "…" : (seasonMatches?.totalMatches ?? 0)}
-                        </p>
-                      </div>
-                      <div className="rounded-md border p-3">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-accent-foreground" />
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Confirmed</p>
-                        </div>
-                        <p className="text-sm font-semibold mt-1">
-                          {seasonMatchesLoading ? "…" : (seasonMatches?.confirmedMatches ?? 0)}
-                        </p>
-                      </div>
-                      <div className="rounded-md border p-3">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-destructive" />
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Disputes</p>
-                        </div>
-                        <p className="text-sm font-semibold mt-1">
-                          {seasonMatchesLoading ? "…" : (seasonMatches?.disputedMatches ?? 0)}
-                        </p>
-                      </div>
-                      <div className="rounded-md border p-3">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-muted-foreground" />
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Players</p>
-                        </div>
-                        <p className="text-sm font-semibold mt-1">
-                          {seasonMatchesLoading ? "…" : (seasonMatches?.uniquePlayers ?? 0)}
-                        </p>
-                      </div>
-                      <div className="rounded-md border p-3 sm:col-span-1 col-span-2">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total minutes</p>
-                        <p className="text-sm font-semibold mt-1">
-                          {seasonMatchesLoading ? "…" : (seasonMatches?.totalMinutes != null ? `${seasonMatches.totalMinutes}m` : "—")}
-                        </p>
-                      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-4">
+            {/* Season overview + matches */}
+            {viewingSeason ? (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold font-heading">Season overview</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Competitive matches only (friendly games excluded).
+                      </p>
                     </div>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {viewingSeason.is_active ? "Live" : "Archive"}
+                    </Badge>
+                  </div>
 
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold font-heading uppercase tracking-wider text-muted-foreground">
-                          Games played
-                        </p>
-                        {(seasonMatches?.rows?.length || 0) > 10 ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-[11px]"
-                            onClick={() => setShowAllSeasonMatches((v) => !v)}
-                          >
-                            {showAllSeasonMatches ? "Show less" : `Show all (${seasonMatches?.rows?.length || 0})`}
-                          </Button>
-                        ) : null}
+                  {seasonMatchesError ? (
+                    <div className="mt-3 rounded-md border p-3 text-sm text-muted-foreground flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                      <p className="min-w-0">Could not load season matches. {String((seasonMatchesError as any)?.message || "")}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <Swords className="w-4 h-4 text-primary" />
+                            <p className="text-[10px] uppercase tracking-wide text-foreground/70">Matches</p>
+                          </div>
+                          <p className="text-sm font-semibold mt-1 tabular-nums">
+                            {seasonMatchesLoading ? "…" : (seasonMatches?.totalMatches ?? 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-accent-foreground" />
+                            <p className="text-[10px] uppercase tracking-wide text-foreground/70">Confirmed</p>
+                          </div>
+                          <p className="text-sm font-semibold mt-1 tabular-nums">
+                            {seasonMatchesLoading ? "…" : (seasonMatches?.confirmedMatches ?? 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-destructive" />
+                            <p className="text-[10px] uppercase tracking-wide text-foreground/70">Disputes</p>
+                          </div>
+                          <p className="text-sm font-semibold mt-1 tabular-nums">
+                            {seasonMatchesLoading ? "…" : (seasonMatches?.disputedMatches ?? 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-muted-foreground" />
+                            <p className="text-[10px] uppercase tracking-wide text-foreground/70">Players</p>
+                          </div>
+                          <p className="text-sm font-semibold mt-1 tabular-nums">
+                            {seasonMatchesLoading ? "…" : (seasonMatches?.uniquePlayers ?? 0)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/70 backdrop-blur p-3 shadow-sm sm:col-span-1 col-span-2">
+                          <p className="text-[10px] uppercase tracking-wide text-foreground/70">Total minutes</p>
+                          <p className="text-sm font-semibold mt-1 tabular-nums">
+                            {seasonMatchesLoading ? "…" : (seasonMatches?.totalMinutes != null ? `${seasonMatches.totalMinutes}m` : "—")}
+                          </p>
+                        </div>
                       </div>
 
-                      {seasonMatchesLoading ? (
-                        <div className="flex justify-center py-8">
-                          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-semibold font-heading uppercase tracking-wider text-muted-foreground">
+                            Matches
+                          </p>
+                          {(seasonMatches?.rows?.length || 0) > 6 ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-[11px]"
+                              onClick={() => setShowAllSeasonMatches((v) => !v)}
+                            >
+                              {showAllSeasonMatches ? "Show less" : `Show all (${seasonMatches?.rows?.length || 0})`}
+                            </Button>
+                          ) : null}
                         </div>
-                      ) : (seasonMatches?.rows || []).length === 0 ? (
-                        <Card className="mt-2 p-4 text-sm text-muted-foreground">
-                          No competitive matches recorded in this season yet.
-                        </Card>
-                      ) : (
-                        <div className="mt-2 space-y-2">
-                          {(showAllSeasonMatches ? (seasonMatches?.rows || []) : (seasonMatches?.rows || []).slice(0, 10)).map((m: any) => (
-                            <div key={m.id} className="rounded-md border p-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium truncate">
-                                    {m.player_a_name} vs {m.player_b_name}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {m.match_date} · Court {m.court_id || "—"}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 text-right">
-                                  <p className="text-sm font-semibold tabular-nums">{m.score || "—"}</p>
-                                  <div className="mt-1 flex items-center justify-end gap-1">
-                                    {!m.confirmed ? (
-                                      <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground border-0">
-                                        Unconfirmed
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="secondary" className="text-[10px] bg-accent/20 text-accent-foreground border-0">
-                                        Confirmed
-                                      </Badge>
-                                    )}
-                                    {m.disputed ? (
-                                      <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border-0">
-                                        Disputed
-                                      </Badge>
-                                    ) : null}
+
+                        {seasonMatchesLoading ? (
+                          <div className="flex justify-center py-8">
+                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                          </div>
+                        ) : (seasonMatches?.rows || []).length === 0 ? (
+                          <Card className="mt-2 p-4 text-sm text-muted-foreground">
+                            No competitive matches recorded in this season yet.
+                          </Card>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            {(showAllSeasonMatches ? (seasonMatches?.rows || []) : (seasonMatches?.rows || []).slice(0, 6)).map((m: any) => (
+                              <div key={m.id} className="rounded-xl border border-border/70 bg-background/60 p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium truncate">
+                                      {m.player_a_name} vs {m.player_b_name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {m.match_date} · Court {m.court_id || "—"}
+                                    </p>
+                                  </div>
+                                  <div className="shrink-0 text-right">
+                                    <p className="text-sm font-semibold tabular-nums">{m.score || "—"}</p>
+                                    <div className="mt-1 flex items-center justify-end gap-1">
+                                      {!m.confirmed ? (
+                                        <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground border-0">
+                                          Unconfirmed
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="secondary" className="text-[10px] bg-accent/15 text-accent-foreground border border-accent/20">
+                                          Confirmed
+                                        </Badge>
+                                      )}
+                                      {m.disputed ? (
+                                        <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border border-destructive/20">
+                                          Disputed
+                                        </Badge>
+                                      ) : null}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {/* Standings snapshot */}
-          {viewingSeason ? (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold font-heading">
-                      {viewingSeason.is_active ? "Current ladder" : "Final standings"}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {viewingSeason.is_active
-                        ? "Top ranked players right now."
-                        : "Snapshot saved when the season ended."}
-                    </p>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px]">Top 12</Badge>
-                </div>
-
-                {standingsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  </div>
-                ) : (standings || []).length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-3">
-                    {viewingSeason.is_active ? "No ranked players yet." : "No standings snapshot found for this season."}
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    {(standings || []).map((p: any) => (
-                      <div key={p.id} className="rounded-md border p-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            <span className="tabular-nums text-muted-foreground mr-2">#{p.rank}</span>
-                            {p.name || "Player"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {p.matches_played || 0} played · {p.wins || 0}W {p.losses || 0}L
-                          </p>
-                        </div>
-                        <Badge variant="secondary" className="text-[10px] shrink-0">
-                          {p.wins || 0}-{p.losses || 0}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {/* Awards */}
-          {awardsLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            </div>
-          ) : awards && awards.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold font-heading uppercase tracking-wider text-muted-foreground">Awards</p>
-              {awards.map((award: any, i: number) => {
-                const Icon = AWARD_ICONS[award.award_type] || AWARD_ICONS.default;
-                const colorClass = AWARD_COLORS[award.award_type] || AWARD_COLORS.runner_up;
-                return (
-                  <motion.div
-                    key={award.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <Card>
-                      <CardContent className="p-3 flex items-center gap-3">
-                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", colorClass)}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">{award.award_label}</p>
-                          <p className="text-[10px] text-muted-foreground capitalize">{award.award_type.replace(/_/g, " ")}</p>
-                        </div>
-                        {award.stat_value && (
-                          <Badge variant="secondary" className="text-[10px] shrink-0">{award.stat_value}</Badge>
+                            ))}
+                          </div>
                         )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <div className="space-y-4">
+              {/* Standings snapshot */}
+              {viewingSeason ? (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold font-heading">
+                          {viewingSeason.is_active ? "Current ladder" : "Final standings"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {viewingSeason.is_active
+                            ? "Top ranked players right now."
+                            : "Snapshot saved when the season ended."}
+                        </p>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">Top 12</Badge>
+                    </div>
+
+                    {standingsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      </div>
+                    ) : (standings || []).length === 0 ? (
+                      <p className="text-sm text-muted-foreground mt-3">
+                        {viewingSeason.is_active ? "No ranked players yet." : "No standings snapshot found for this season."}
+                      </p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {(standings || []).map((p: any, idx: number) => (
+                          <div
+                            key={p.id}
+                            className={cn(
+                              "rounded-xl border p-3 flex items-center justify-between gap-3",
+                              idx === 0 && "border-primary/25 bg-primary/5"
+                            )}
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                <span className="tabular-nums text-muted-foreground mr-2">#{p.rank}</span>
+                                {p.name || "Player"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {p.matches_played || 0} played · {p.wins || 0}W {p.losses || 0}L
+                              </p>
+                            </div>
+                            <Badge variant="secondary" className="text-[10px] shrink-0 tabular-nums">
+                              {p.wins || 0}-{p.losses || 0}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {/* Awards */}
+              {awardsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                </div>
+              ) : awards && awards.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold font-heading uppercase tracking-wider text-muted-foreground">Awards</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
+                    {awards.map((award: any, i: number) => {
+                      const Icon = AWARD_ICONS[award.award_type] || AWARD_ICONS.default;
+                      const colorClass = AWARD_COLORS[award.award_type] || AWARD_COLORS.runner_up;
+                      return (
+                        <motion.div
+                          key={award.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                        >
+                          <Card className="h-full">
+                            <CardContent className="p-3 flex items-center gap-3">
+                              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", colorClass)}>
+                                <Icon className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold truncate">{award.award_label}</p>
+                                <p className="text-[10px] text-muted-foreground capitalize">{award.award_type.replace(/_/g, " ")}</p>
+                              </div>
+                              {award.stat_value ? (
+                                <Badge variant="secondary" className="text-[10px] shrink-0 tabular-nums">{award.stat_value}</Badge>
+                              ) : null}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <Card className="p-6 text-center">
+                  <Trophy className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                  <p className="text-sm text-muted-foreground mt-2">No awards yet for this season.</p>
+                  <p className="text-xs text-muted-foreground">Awards are given at the end of each quarter.</p>
+                </Card>
+              )}
             </div>
-          ) : (
-            <Card className="p-6 text-center">
-              <Trophy className="w-8 h-8 text-muted-foreground/30 mx-auto" />
-              <p className="text-sm text-muted-foreground mt-2">No awards yet for this season.</p>
-              <p className="text-xs text-muted-foreground">Awards are given at the end of each quarter.</p>
-            </Card>
-          )}
+          </div>
         </div>
       ) : (
         <div className="px-4 mt-8 text-center">

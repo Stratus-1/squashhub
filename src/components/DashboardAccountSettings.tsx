@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
 
@@ -28,6 +29,7 @@ function getPublicWebBaseUrl() {
 
 export function DashboardAccountSettings() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
@@ -150,6 +152,8 @@ export function DashboardAccountSettings() {
   const stravaMovingTimeS = (profile as any)?.strava_moving_time_s != null ? Number((profile as any).strava_moving_time_s) : null;
   const stravaKm = stravaDistanceM != null ? Math.round((stravaDistanceM / 1000) * 10) / 10 : null;
   const stravaMinutes = stravaMovingTimeS != null ? Math.round(stravaMovingTimeS / 60) : null;
+  const privacyVisibleCount = Object.values(privacy).filter(Boolean).length;
+  const emailEnabledCount = Object.values(emailPrefs).filter(Boolean).length;
 
   const getStravaAuth = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -215,7 +219,7 @@ export function DashboardAccountSettings() {
         <Card className="overflow-hidden">
           <button
             className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate("/profile", { state: { backgroundLocation: location } })}
           >
             <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
               <SlidersHorizontal className="w-4 h-4 text-primary" />
@@ -242,40 +246,122 @@ export function DashboardAccountSettings() {
         </Card>
       </div>
 
-      {/* Privacy */}
-      <Card className="p-3 space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
-            <Lock className="w-4 h-4 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">Public profile</p>
-            <p className="text-[11px] text-muted-foreground">Choose what other members can see.</p>
-          </div>
+      {/* User settings */}
+      <Card className="overflow-hidden">
+        <div className="px-4 py-3 border-b border-border/60 bg-muted/20">
+          <p className="text-sm font-semibold font-heading">User settings</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Privacy and email preferences.</p>
         </div>
-        {[
-          { key: "privacy_show_about", label: "About section", desc: "Bio + style" },
-          { key: "privacy_show_availability", label: "Availability", desc: "Weekly windows" },
-          { key: "privacy_show_recent_matches", label: "Recent matches", desc: "H2H + results" },
-          { key: "privacy_show_training", label: "Training stats", desc: "Strava totals" },
-          { key: "privacy_show_advanced_stats", label: "Advanced stats", desc: "Streaks, points" },
-        ].map(({ key, label, desc }) => (
-          <div key={key} className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-medium">{label}</p>
-              <p className="text-[11px] text-muted-foreground">{desc}</p>
-            </div>
-            <Switch
-              checked={(privacy as any)[key]}
-              disabled={saveProfilePrefs.isPending}
-              onCheckedChange={(checked) => {
-                const next = { ...privacy, [key]: checked };
-                setPrivacy(next as any);
-                saveProfilePrefs.mutate({ [key]: checked });
-              }}
-            />
-          </div>
-        ))}
+
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="public-profile" className="border-b border-border/60">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex w-full items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
+                    <Lock className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Public profile</p>
+                    <p className="text-[11px] text-muted-foreground truncate">Choose what other members can see.</p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="shrink-0 text-[10px]">
+                  {privacyVisibleCount}/5 visible
+                </Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <div className="space-y-3">
+                {[
+                  { key: "privacy_show_about", label: "About section", desc: "Bio + style" },
+                  { key: "privacy_show_availability", label: "Availability", desc: "Weekly windows" },
+                  { key: "privacy_show_recent_matches", label: "Recent matches", desc: "H2H + results" },
+                  { key: "privacy_show_training", label: "Training stats", desc: "Strava totals" },
+                  { key: "privacy_show_advanced_stats", label: "Advanced stats", desc: "Streaks, points" },
+                ].map(({ key, label, desc }) => (
+                  <div key={key} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium">{label}</p>
+                      <p className="text-[11px] text-muted-foreground">{desc}</p>
+                    </div>
+                    <Switch
+                      checked={(privacy as any)[key]}
+                      disabled={saveProfilePrefs.isPending}
+                      onCheckedChange={(checked) => {
+                        const next = { ...privacy, [key]: checked };
+                        setPrivacy(next as any);
+                        saveProfilePrefs.mutate({ [key]: checked });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          {emailPrefsResult?.available ? (
+            <AccordionItem value="email-preferences" className="border-b-0">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="flex w-full items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
+                      <Mail className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Email preferences</p>
+                      <p className="text-[11px] text-muted-foreground truncate">Transactional, marketing, and fallback.</p>
+                    </div>
+                  </div>
+                  {emailPrefsLoading ? (
+                    <span className="text-[11px] text-muted-foreground shrink-0">Loading…</span>
+                  ) : (
+                    <Badge variant="secondary" className="shrink-0 text-[10px]">
+                      {emailEnabledCount}/3 enabled
+                    </Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-3">
+                  {[
+                    {
+                      key: "transactional_email_enabled",
+                      label: "Transactional emails",
+                      desc: "Bookings, challenges, match updates.",
+                    },
+                    {
+                      key: "marketing_email_enabled",
+                      label: "Marketing emails",
+                      desc: "Club news and announcements (opt-in).",
+                    },
+                    {
+                      key: "email_fallback_only",
+                      label: "Email fallback only",
+                      desc: "Only email if no push is available.",
+                    },
+                  ].map(({ key, label, desc }) => (
+                    <div key={key} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium">{label}</p>
+                        <p className="text-[11px] text-muted-foreground">{desc}</p>
+                      </div>
+                      <Switch
+                        checked={(emailPrefs as any)[key]}
+                        disabled={emailPrefsLoading || saveEmailPrefs.isPending}
+                        onCheckedChange={(checked) => {
+                          const next = { ...emailPrefs, [key]: checked } as any;
+                          setEmailPrefs(next);
+                          saveEmailPrefs.mutate(next);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ) : null}
+        </Accordion>
       </Card>
 
       {/* Court check-ins */}
@@ -316,56 +402,6 @@ export function DashboardAccountSettings() {
             disabled={pushLoading || permission === "denied"}
             onCheckedChange={(checked) => (checked ? subscribe() : unsubscribe())}
           />
-        </Card>
-      )}
-
-      {/* Email preferences */}
-      {emailPrefsResult?.available && (
-        <Card className="p-3 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
-              <Mail className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Email preferences</p>
-              <p className="text-[11px] text-muted-foreground">Fallback emails and marketing opt-in.</p>
-            </div>
-            {emailPrefsLoading ? <span className="text-[11px] text-muted-foreground">Loading…</span> : null}
-          </div>
-
-          {[
-            {
-              key: "transactional_email_enabled",
-              label: "Transactional emails",
-              desc: "Bookings, challenges, match updates.",
-            },
-            {
-              key: "marketing_email_enabled",
-              label: "Marketing emails",
-              desc: "Club news and announcements (opt-in).",
-            },
-            {
-              key: "email_fallback_only",
-              label: "Email fallback only",
-              desc: "Only email if no push is available.",
-            },
-          ].map(({ key, label, desc }) => (
-            <div key={key} className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-medium">{label}</p>
-                <p className="text-[11px] text-muted-foreground">{desc}</p>
-              </div>
-              <Switch
-                checked={(emailPrefs as any)[key]}
-                disabled={emailPrefsLoading || saveEmailPrefs.isPending}
-                onCheckedChange={(checked) => {
-                  const next = { ...emailPrefs, [key]: checked } as any;
-                  setEmailPrefs(next);
-                  saveEmailPrefs.mutate(next);
-                }}
-              />
-            </div>
-          ))}
         </Card>
       )}
 

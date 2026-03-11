@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 const fromExt = (table: string) => (supabase as any).from(table);
 import { Loader2, Play, Square, ExternalLink, Link2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 type BookingRow = {
@@ -65,6 +65,7 @@ function formatDuration(totalSeconds: number) {
 
 export default function MatchTracker() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { bookingId } = useParams();
   const { user } = useAuth();
   const { data: integrations } = useIntegrations();
@@ -475,7 +476,7 @@ export default function MatchTracker() {
               <Button variant="outline" className="flex-1" onClick={() => navigate("/dashboard")}>
                 Back to Dashboard
               </Button>
-              <Button className="flex-1" onClick={() => navigate("/profile")}>
+              <Button className="flex-1" onClick={() => navigate("/profile", { state: { backgroundLocation: location } })}>
                 View Profile
               </Button>
             </div>

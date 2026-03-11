@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AppleStatsCard } from "@/components/AppleStatsCard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { SEO } from "@/components/SEO";
@@ -10,13 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Calendar, Trophy, Swords, ClipboardList,
+  Calendar, Trophy, Swords,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,
   Clock, Users, LogIn, Shield, UserRound, Leaf, Sun, Snowflake, Flower2
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBookings, useChallenges, useCourtBusyness, useHomeInsights, useLadder, useMyBookings, useMyRoles, useProfile, usePublicLeaderboard } from "@/hooks/use-data";
+import { useBookings, useChallenges, useCourtBusyness, useHomeInsights, useLadder, useMyRoles, useProfile, usePublicLeaderboard } from "@/hooks/use-data";
 import { differenceInCalendarDays, format } from "date-fns";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -59,12 +60,12 @@ type EventRow = {
 
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: ladder } = useLadder();
   const { data: publicLeaderboard } = usePublicLeaderboard(10);
   const { data: me } = useProfile();
-  const { data: myBookings } = useMyBookings();
   const { data: myChallenges } = useChallenges();
   const { data: myRoles } = useMyRoles();
   const { data: insights } = useHomeInsights(30);
@@ -225,6 +226,24 @@ export default function Home() {
       return (data || []).length > 0;
     },
     enabled: !!user && !!activeSeason?.id,
+  });
+
+  const { data: seasonMemberCount, isLoading: seasonMemberCountLoading } = useQuery({
+    queryKey: ["season-members-count", activeSeason?.id],
+    queryFn: async () => {
+      if (!activeSeason?.id) return null as number | null;
+      const { count, error } = await supabase
+        .from("season_memberships")
+        .select("user_id", { count: "exact", head: true })
+        .eq("season_id", activeSeason.id);
+      if (error) {
+        if ((error as any).code === "42P01") return null;
+        throw error;
+      }
+      return count ?? 0;
+    },
+    enabled: !!user && !!activeSeason?.id,
+    staleTime: 30_000,
   });
 
   const { data: seasonSocials } = useQuery({
@@ -418,7 +437,6 @@ export default function Home() {
 
   const activeChallengesCount = (myChallenges || []).filter((c) => c.status === "pending" || c.status === "accepted").length;
 
-  const nextBooking = (myBookings || [])[0] || null;
   const canOpenAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
   const seasonStartDate = activeSeason?.starts_on ? new Date(`${activeSeason.starts_on}T00:00:00`) : null;
   const isNewSeason = seasonStartDate ? Math.abs(differenceInCalendarDays(new Date(), seasonStartDate)) <= 7 : false;
@@ -428,7 +446,8 @@ export default function Home() {
       return {
         label: "Autumn",
         Icon: Leaf,
-        cardClass: "border-amber-500/25 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-background",
+        cardClass: "border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-background",
+        bannerClass: "bg-gradient-to-r from-amber-500/25 via-orange-500/15 to-background",
         glowClass: "bg-amber-500/20",
         iconClass: "text-amber-500/30",
       };
@@ -438,6 +457,7 @@ export default function Home() {
         label: "Winter",
         Icon: Snowflake,
         cardClass: "border-sky-500/25 bg-gradient-to-br from-sky-500/15 via-indigo-500/10 to-background",
+        bannerClass: "bg-gradient-to-r from-sky-500/20 via-indigo-500/12 to-background",
         glowClass: "bg-sky-500/18",
         iconClass: "text-sky-500/30",
       };
@@ -447,6 +467,7 @@ export default function Home() {
         label: "Spring",
         Icon: Flower2,
         cardClass: "border-emerald-500/25 bg-gradient-to-br from-emerald-500/15 via-pink-500/10 to-background",
+        bannerClass: "bg-gradient-to-r from-emerald-500/18 via-pink-500/10 to-background",
         glowClass: "bg-emerald-500/16",
         iconClass: "text-emerald-500/30",
       };
@@ -456,6 +477,7 @@ export default function Home() {
         label: "Summer",
         Icon: Sun,
         cardClass: "border-yellow-500/25 bg-gradient-to-br from-yellow-500/15 via-sky-500/10 to-background",
+        bannerClass: "bg-gradient-to-r from-yellow-500/18 via-sky-500/10 to-background",
         glowClass: "bg-yellow-500/18",
         iconClass: "text-yellow-500/30",
       };
@@ -464,10 +486,17 @@ export default function Home() {
       label: "Season",
       Icon: Trophy,
       cardClass: "border-primary/20 bg-primary/5",
+      bannerClass: "bg-primary/5",
       glowClass: "bg-primary/10",
       iconClass: "text-primary/25",
     };
   })();
+
+  const nextUp = upcomingGames[0] || null;
+  const scrollToLeaderboard = () => {
+    if (typeof document === "undefined") return;
+    document.getElementById("leaderboard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="min-h-screen bg-background bottom-nav-safe">
@@ -557,11 +586,87 @@ export default function Home() {
             <Button
               variant="outline"
               className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
-              onClick={() => navigate(user ? "/ladder" : "/auth")}
+              onClick={() => (user ? navigate("/challenges/new") : scrollToLeaderboard())}
             >
-              <Trophy className="w-4 h-4 mr-1.5" /> View Ladder
+              {user ? (
+                <>
+                  <Swords className="w-4 h-4 mr-1.5" /> Challenge a Player
+                </>
+              ) : (
+                <>
+                  <Trophy className="w-4 h-4 mr-1.5" /> View Leaderboard
+                </>
+              )}
             </Button>
           </motion.div>
+
+          {/* Season prize (coupon style) */}
+          {user && activeSeason ? (
+            <motion.div
+              className="mt-6 flex w-full"
+              {...fadeUp}
+              transition={{ delay: 0.2, duration: 0.5 }}
+            >
+              <Card className="relative w-[300px] h-[200px] max-w-full overflow-hidden border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur-md text-primary-foreground mx-auto sm:mx-0">
+                <div className={["absolute inset-x-0 top-0 h-2", seasonTheme.bannerClass].join(" ")} />
+                <CardContent className="p-4 pt-5 h-full flex flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="relative w-12 h-12 rounded-xl bg-primary-foreground/15 flex items-center justify-center shrink-0">
+                        <Trophy className="w-6 h-6 text-primary-foreground" />
+                        <seasonTheme.Icon className="w-4 h-4 absolute -bottom-1 -right-1 text-primary-foreground/80" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wide text-primary-foreground/70">Season prize</p>
+                        <p className="text-sm font-semibold truncate">{activeSeason.name}</p>
+                        <p className="text-[11px] text-primary-foreground/70 mt-1 truncate">
+                          {activeSeason.ends_on ? `Ends ${activeSeason.ends_on}` : `Started ${activeSeason.starts_on}`}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] bg-accent/25 text-primary-foreground border border-primary-foreground/15 shrink-0">
+                      In play
+                    </Badge>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="text-[11px] text-primary-foreground/70 flex items-center gap-2 min-w-0">
+                      <Users className="w-3.5 h-3.5 shrink-0 text-primary-foreground/70" />
+                      <span className="truncate">
+                        {seasonMemberCountLoading ? "Loading joined…" : typeof seasonMemberCount === "number" ? `${seasonMemberCount} joined` : "—"}
+                      </span>
+                    </div>
+                    {joinedActiveSeason ? (
+                      <Badge variant="secondary" className="bg-primary-foreground/10 text-primary-foreground border border-primary-foreground/15 text-[10px] shrink-0">
+                        Joined
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-auto flex items-center gap-2">
+                    {!joinedActiveSeason ? (
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs bg-accent text-accent-foreground hover:bg-accent/90"
+                        onClick={() => joinSeason.mutate()}
+                        disabled={joinSeason.isPending}
+                      >
+                        {joinSeason.isPending ? "Joining…" : "Join"}
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
+                      onClick={() => navigate("/seasons")}
+                    >
+                      View season
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : null}
 
           {/* Live stats strip */}
           <motion.div
@@ -571,274 +676,253 @@ export default function Home() {
           >
             {user ? (
               <>
-                <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
-                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
+                  <Clock className="w-3.5 h-3.5 text-primary-foreground/80" />
                   <span className="text-xs font-medium text-primary-foreground">
-                    Court 1: {openCourt1} open
+                    {openCourt1 + openCourt2} open slots today
                   </span>
                 </div>
-                <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
-                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-primary-foreground/80" />
                   <span className="text-xs font-medium text-primary-foreground">
-                    Court 2: {openCourt2} open
+                    {nextUp
+                      ? `Next up: ${nextUp.date} · ${nextUp.start_hhmm}`
+                      : "No upcoming bookings"}
                   </span>
                 </div>
               </>
             ) : (
-              <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/70" />
+              <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/80" />
                 <span className="text-xs font-medium text-primary-foreground">
                   Public leaderboard live
                 </span>
               </div>
             )}
-            <div className="flex items-center gap-2 bg-primary-foreground/10 rounded-full px-3.5 py-1.5">
-              <Users className="w-3.5 h-3.5 text-primary-foreground/70" />
+            <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
+              <Users className="w-3.5 h-3.5 text-primary-foreground/80" />
               <span className="text-xs font-medium text-primary-foreground">
                 {user ? (ladder?.length || 0) : (publicLeaderboard?.length || 0)} players
               </span>
             </div>
-          </motion.div>
+            {user && incomingPendingCount > 0 ? (
+              <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
+                <Swords className="w-3.5 h-3.5 text-primary-foreground/80" />
+                <span className="text-xs font-medium text-primary-foreground">
+                  {incomingPendingCount} challenge{incomingPendingCount === 1 ? "" : "s"} to respond
+                </span>
+              </div>
+            ) : null}
+            </motion.div>
         </div>
       </section>
 
-      <div className="w-full">
       {/* Logged-in Overview */}
       {user && (
         <motion.section
-          className="px-4 sm:px-6 lg:px-[5%] -mt-1 relative z-20"
+          className="px-4 sm:px-6 lg:px-[5%] mt-6"
           {...fadeUp}
           transition={{ delay: 0.28 }}
         >
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="min-w-0">
-              <h2 className="font-heading font-semibold text-base truncate">
-                Welcome back{me?.name ? `, ${me.name.split(" ")[0]}` : ""}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Your stats, challenges, and upcoming bookings.
-              </p>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="font-heading font-semibold text-base truncate">
+                  Welcome back{me?.name ? `, ${me.name.split(" ")[0]}` : ""}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  What you need for today — at a glance.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/profile", { state: { backgroundLocation: location } })}>
+                <UserRound className="w-4 h-4 mr-1.5" /> Profile
+              </Button>
             </div>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/profile")}>
-              <UserRound className="w-4 h-4 mr-1.5" /> Profile
-            </Button>
-          </div>
 
-          {activeSeason && (
-            <Card className={["mb-3 relative overflow-hidden border", seasonTheme.cardClass].join(" ")}>
-              <CardContent className="p-4">
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className={["absolute -top-10 -right-10 w-48 h-48 rounded-full blur-3xl", seasonTheme.glowClass].join(" ")} />
-                  <div className={["absolute -bottom-12 -left-12 w-56 h-56 rounded-full blur-3xl", seasonTheme.glowClass].join(" ")} />
-                  <seasonTheme.Icon className={["absolute top-4 right-4 w-12 h-12 rotate-12", seasonTheme.iconClass].join(" ")} />
-                  <seasonTheme.Icon className={["absolute bottom-4 left-5 w-10 h-10 -rotate-12", seasonTheme.iconClass].join(" ")} />
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold font-heading">Quick actions</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Jump straight to the important stuff.</p>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button type="button" className="text-left" onClick={() => navigate("/challenges/new")}>
+                  <Card className="h-full hover:shadow-md transition-all">
+                    <CardContent className="p-4 flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Swords className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">Challenge</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          Create a ladder match or friendly game.
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
+                    </CardContent>
+                  </Card>
+                </button>
 
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Season</p>
-                    <p className="font-heading font-bold text-base mt-1 truncate">{activeSeason.name}</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Started {activeSeason.starts_on}
-                      {activeSeason.ends_on ? ` · Ends ${activeSeason.ends_on}` : ""}
-                    </p>
-                    {isNewSeason && !joinedActiveSeason ? (
-                      <p className="text-[11px] text-primary mt-2">
-                        New season just started — join now to take part.
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="shrink-0 flex flex-col items-end gap-2">
-                    <Badge variant="secondary" className="text-[10px] bg-background/50 border border-border/50">
-                      {seasonTheme.label}
-                    </Badge>
-                    {joinedActiveSeason ? (
-                      <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-0 text-[10px]">
-                        Joined
-                      </Badge>
-                    ) : (
-                      <Button size="sm" className="h-8 text-xs" onClick={() => joinSeason.mutate()} disabled={joinSeason.isPending}>
-                        {joinSeason.isPending ? "Joining…" : "Join season"}
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-7 text-xs text-primary px-2" onClick={() => navigate("/seasons")}>
-                      View seasons <ChevronRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </div>
-                </div>
+                <button type="button" className="text-left" onClick={() => navigate("/ladder")}>
+                  <Card className="h-full hover:shadow-md transition-all">
+                    <CardContent className="p-4 flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Trophy className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">Ladder</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          See rankings and player stats.
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
+                    </CardContent>
+                  </Card>
+                </button>
 
-                {canOpenAdmin && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => setSocialCreateOpen(true)}>
-                      Create social
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/events")}>
-                      View socials
-                    </Button>
-                  </div>
-                )}
-                {!canOpenAdmin && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={() => setSocialRequestOpen(true)}>
-                      Request a social
-                    </Button>
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/events")}>
-                      View events
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                <button
+                  type="button"
+                  className="text-left"
+                  onClick={() => navigate(canOpenAdmin ? "/admin" : "/events")}
+                >
+                  <Card className="h-full hover:shadow-md transition-all">
+                    <CardContent className="p-4 flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                        {canOpenAdmin ? (
+                          <Shield className="w-5 h-5 text-primary" />
+                        ) : (
+                          <Calendar className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{canOpenAdmin ? "Admin" : "Events"}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {canOpenAdmin ? "Manage club settings and tools." : "See socials and club events."}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground mt-1" />
+                    </CardContent>
+                  </Card>
+                </button>
+              </div>
+            </div>
 
-          {activeSeason && (seasonSocials || []).length > 0 && (
-            <Card className="mb-3">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold font-heading">Season socials</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Small club meetups created by members</p>
+            {activeSeason && (seasonSocials || []).length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold font-heading">Season socials</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Small club meetups created by members</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-primary" onClick={() => navigate("/events")}>
+                      See all <ChevronRight className="w-3 h-3 ml-1" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs text-primary" onClick={() => navigate("/events")}>
-                    See all <ChevronRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </div>
 
-                <div className="mt-3 space-y-2">
-                  {(seasonSocials || []).slice(0, 3).map((e) => {
-                    const starts = new Date(e.starts_at);
-                    const ends = e.ends_at ? new Date(e.ends_at) : null;
-                    const myStatus = mySocialRsvps?.get(e.id) || null;
-                    return (
-                      <div key={e.id} className="rounded-lg border border-border p-3 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{e.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {format(starts, "EEE, d MMM · HH:mm")}
-                            {ends ? ` – ${format(ends, "HH:mm")}` : ""}
-                            {e.location ? ` · ${e.location}` : ""}
-                          </p>
-                          {e.description ? (
-                            <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2 whitespace-pre-line">
-                              {e.description}
+                  <div className="mt-3 space-y-2">
+                    {(seasonSocials || []).slice(0, 3).map((e) => {
+                      const starts = new Date(e.starts_at);
+                      const ends = e.ends_at ? new Date(e.ends_at) : null;
+                      const myStatus = mySocialRsvps?.get(e.id) || null;
+                      return (
+                        <div key={e.id} className="rounded-lg border border-border p-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{e.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {format(starts, "EEE, d MMM · HH:mm")}
+                              {ends ? ` – ${format(ends, "HH:mm")}` : ""}
+                              {e.location ? ` · ${e.location}` : ""}
                             </p>
-                          ) : null}
-                        </div>
-                        <div className="shrink-0 flex flex-col items-end gap-2">
-                          {myStatus ? (
-                            <Badge variant="secondary" className="text-[10px]">
-                              {myStatus === "going" ? "Going" : myStatus === "maybe" ? "Maybe" : "Not going"}
-                            </Badge>
-                          ) : null}
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate(`/events/${e.id}`)}>
-                              Details
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-8 text-xs"
-                              disabled={!joinedActiveSeason || rsvpGoing.isPending}
-                              onClick={() => rsvpGoing.mutate(e.id)}
-                            >
-                              {joinedActiveSeason ? "Join" : "Join season"}
-                            </Button>
+                            {e.description ? (
+                              <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2 whitespace-pre-line">
+                                {e.description}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="shrink-0 flex flex-col items-end gap-2">
+                            {myStatus ? (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {myStatus === "going" ? "Going" : myStatus === "maybe" ? "Maybe" : "Not going"}
+                              </Badge>
+                            ) : null}
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate(`/events/${e.id}`)}>
+                                Details
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs"
+                                disabled={!joinedActiveSeason || rsvpGoing.isPending}
+                                onClick={() => rsvpGoing.mutate(e.id)}
+                              >
+                                {joinedActiveSeason ? "Join" : "Join season"}
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/ladder")}>
-              <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rank</p>
-                <p className="font-heading font-bold text-lg mt-1">
-                  {typeof me?.rank === "number" ? `#${me.rank}` : "—"}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {typeof me?.rank === "number" ? "On the ladder" : "Not ranked yet"}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/profile")}>
-              <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Record</p>
-                <p className="font-heading font-bold text-lg mt-1">
-                  {(me?.wins ?? 0)}-{(me?.losses ?? 0)}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {myWinRate}% win · {me?.matches_played ?? 0} played
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/challenges")}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Challenges</p>
-                  {incomingPendingCount > 0 ? (
+            <div>
+              <AppleStatsCard
+                title="Your stats"
+                subtitle="At-a-glance performance."
+                badgeText={typeof me?.rank === "number" ? `Rank #${me.rank}` : "Unranked"}
+                rightHeader={
+                  incomingPendingCount > 0 ? (
                     <Badge variant="secondary" className="text-[10px] bg-primary/15 text-primary">
                       {incomingPendingCount} new
                     </Badge>
-                  ) : null}
-                </div>
-                <p className="font-heading font-bold text-lg mt-1">{activeChallengesCount}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Active (pending/accepted)
-                </p>
-              </CardContent>
-            </Card>
+                  ) : null
+                }
+                ringLabel="Win rate"
+                ringValue={`${myWinRate}%`}
+                progress={{
+                  played: Math.min(1, (me?.matches_played ?? 0) / 50),
+                  wins: Math.min(1, (me?.wins ?? 0) / 25),
+                  winPct: Math.min(1, myWinRate / 100),
+                }}
+                tiles={[
+                  { label: "Played", value: me?.matches_played ?? 0, unit: "matches", dotColor: "#007aff" },
+                  { label: "Wins", value: me?.wins ?? 0, unit: "wins", dotColor: "#34c759" },
+                  { label: "Losses", value: me?.losses ?? 0, unit: "losses", dotColor: "#ff9500" },
+                  { label: "Challenges", value: activeChallengesCount, unit: "active", dotColor: "#af52de" },
+                ]}
+                footer={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" className="h-9" onClick={() => navigate("/ladder")}>
+                      <Trophy className="w-4 h-4 mr-2" />
+                      Ladder
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9"
+                      onClick={() => navigate("/profile?edit=1", { state: { backgroundLocation: location } })}
+                    >
+                      Profile
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-9" onClick={() => navigate("/challenges")}>
+                      <Swords className="w-4 h-4 mr-2" />
+                      Challenges
+                    </Button>
+                  </div>
+                }
+              />
+            </div>
 
-            <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => navigate("/bookings")}>
-              <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Next booking</p>
-                <p className="font-heading font-bold text-lg mt-1">
-                  {nextBooking ? String(nextBooking.start_time || "").slice(0, 5) : "—"}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                  {nextBooking
-                    ? `${nextBooking.court_name || `Court ${nextBooking.court_id}`} · ${nextBooking.date}${nextBooking.opponent_name ? ` · vs ${nextBooking.opponent_name}` : ""}`
-                    : "No upcoming booking"}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-	          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
-            <Button className="justify-start" variant="secondary" onClick={() => navigate("/bookings")}>
-              <Calendar className="w-4 h-4 mr-2" /> Book
-            </Button>
-            <Button className="justify-start" variant="secondary" onClick={() => navigate("/challenges/new")}>
-              <Swords className="w-4 h-4 mr-2" /> Challenge
-            </Button>
-            <Button className="justify-start" variant="secondary" onClick={() => navigate("/ladder")}>
-              <Trophy className="w-4 h-4 mr-2" /> Ladder
-            </Button>
-            <Button className="justify-start" variant="secondary" onClick={() => navigate("/challenges")}>
-              <ClipboardList className="w-4 h-4 mr-2" /> Matches
-            </Button>
-            {canOpenAdmin ? (
-              <Button className="justify-start" variant="secondary" onClick={() => navigate("/admin")}>
-                <Shield className="w-4 h-4 mr-2" /> Admin
-              </Button>
-            ) : (
-              <Button className="justify-start" variant="secondary" onClick={() => navigate("/profile")}>
-                <UserRound className="w-4 h-4 mr-2" /> Me
-              </Button>
-            )}
-	          </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <Card className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold font-heading">Upcoming games</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Your next booked sessions.</p>
+                    <p className="text-sm font-semibold font-heading">Upcoming bookings</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Your next scheduled sessions.</p>
                   </div>
                   <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate("/bookings")}>
                     View
@@ -846,10 +930,10 @@ export default function Home() {
                 </div>
 
                 {upcomingGames.length === 0 ? (
-                  <p className="text-sm text-muted-foreground mt-3">No upcoming games yet.</p>
+                  <p className="text-sm text-muted-foreground mt-3">No upcoming bookings yet.</p>
                 ) : (
                   <div className="mt-3 space-y-2">
-                    {upcomingGames.map((g: any) => (
+                    {upcomingGames.slice(0, 3).map((g: any) => (
                       <div key={g.id} className="rounded-lg border border-border p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -871,6 +955,9 @@ export default function Home() {
                         </div>
                       </div>
                     ))}
+                    {upcomingGames.length > 3 ? (
+                      <p className="text-xs text-muted-foreground">+{upcomingGames.length - 3} more</p>
+                    ) : null}
                   </div>
                 )}
               </Card>
@@ -934,8 +1021,9 @@ export default function Home() {
                 )}
               </Card>
             </div>
-	        </motion.section>
-	      )}
+          </div>
+        </motion.section>
+      )}
 
       {/* Create social dialog */}
       <Dialog open={socialCreateOpen} onOpenChange={setSocialCreateOpen}>
@@ -1029,7 +1117,7 @@ export default function Home() {
       {/* Club Insights */}
       {user && (
         <motion.section
-          className="px-4 sm:px-6 lg:px-[5%] mt-8"
+          className="px-4 sm:px-6 lg:px-[5%] mt-10"
           {...fadeUp}
           transition={{ delay: 0.32 }}
         >
@@ -1159,7 +1247,8 @@ export default function Home() {
 
       {/* Ladder Rankings */}
       <motion.section
-        className="px-4 sm:px-6 lg:px-[5%] mt-8"
+        id="leaderboard"
+        className="px-4 sm:px-6 lg:px-[5%] mt-10"
         {...fadeUp}
         transition={{ delay: 0.35 }}
       >
@@ -1192,7 +1281,7 @@ export default function Home() {
                           </span>
                         ) : player.rank}
                       </span>
-                      <PlayerAvatar initials={getInitials(player.name)} size="sm" />
+                      <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={(player as any)?.avatar_url || null} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{player.name}</p>
                         <p className="text-xs text-muted-foreground">
@@ -1216,22 +1305,12 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {!user && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Button onClick={() => navigate("/auth")} className="w-full">
-              <LogIn className="w-4 h-4 mr-2" /> Sign in
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/auth")} className="w-full">
-              Join & play <ChevronRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        )}
       </motion.section>
 
       {/* Court Availability */}
       {user && (
         <motion.section
-          className="px-4 sm:px-6 lg:px-[5%] mt-8"
+          className="px-4 sm:px-6 lg:px-[5%] mt-10"
           {...fadeUp}
           transition={{ delay: 0.4 }}
         >
@@ -1294,7 +1373,7 @@ export default function Home() {
       {/* Player Spotlight */}
       {spotlight && (
         <motion.section
-          className="px-4 sm:px-6 lg:px-[5%] mt-8"
+          className="px-4 sm:px-6 lg:px-[5%] mt-10"
           {...fadeUp}
           transition={{ delay: 0.45 }}
         >
@@ -1306,6 +1385,7 @@ export default function Home() {
                 initials={getInitials(spotlight.name)}
                 rank={spotlight.rank}
                 size="lg"
+                avatarUrl={(spotlight as any)?.avatar_url || null}
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -1353,7 +1433,6 @@ export default function Home() {
         </motion.section>
       )}
 
-      </div>
     </div>
   );
 }

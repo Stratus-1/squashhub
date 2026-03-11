@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,14 +7,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Pencil, LayoutDashboard } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Loader2, Pencil } from "lucide-react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+function buildDicebearUrl(style: string, seed: string) {
+  const url = new URL(`https://api.dicebear.com/7.x/${style}/svg`);
+  url.searchParams.set("seed", seed);
+  url.searchParams.set("backgroundType", "gradientLinear");
+  return url.toString();
+}
+
+function buildAvatarOptions({ userId, name, batch }: { userId: string; name: string; batch: number }) {
+  const base = `${userId}:${name || "player"}:${batch}`;
+  const styles = ["avataaars-neutral", "adventurer-neutral", "micah", "personas"] as const;
+  const seeds = Array.from({ length: 16 }, (_, i) => `${base}:${i}`);
+  return seeds.map((s, idx) => buildDicebearUrl(styles[idx % styles.length], s));
+}
 
 function initialsFor(name?: string | null) {
   const parts = String(name || "")
@@ -37,21 +50,65 @@ function validatePhone(phone: string) {
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
 
-  const [editOpen, setEditOpen] = useState(false);
+  const [mode, setMode] = useState<"view" | "edit">("view");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarBatch, setAvatarBatch] = useState(0);
+  const [avatarOptions, setAvatarOptions] = useState<string[]>([]);
+  const [didInitFromUrl, setDidInitFromUrl] = useState(false);
+  const [didFocusAvatar, setDidFocusAvatar] = useState(false);
 
-  useEffect(() => {
+  const close = () => {
+    const backgroundLocation = (location.state as any)?.backgroundLocation;
+    if (backgroundLocation) {
+      navigate(-1);
+      return;
+    }
+    navigate("/dashboard");
+  };
+
+  const resetDraft = () => {
     if (!profile) return;
     setName(String((profile as any).name || ""));
     setPhone(String((profile as any).phone || ""));
     setAvatarUrl(String((profile as any).avatar_url || ""));
+    if (user?.id) {
+      setAvatarOptions(buildAvatarOptions({ userId: user.id, name: String((profile as any).name || ""), batch: 0 }));
+      setAvatarBatch(0);
+    }
+  };
+
+  useEffect(() => {
+    resetDraft();
   }, [profile]);
+
+  useEffect(() => {
+    if (didInitFromUrl) return;
+    const edit = searchParams.get("edit") === "1" || searchParams.get("mode") === "edit";
+    if (edit) {
+      setMode("edit");
+      setDidInitFromUrl(true);
+    }
+  }, [didInitFromUrl, searchParams]);
+
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    if (focus !== "avatar") return;
+    if (mode !== "edit") return;
+    if (didFocusAvatar) return;
+    if (typeof window === "undefined") return;
+    setDidFocusAvatar(true);
+    window.setTimeout(() => {
+      document.getElementById("avatar-picker")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }, [didFocusAvatar, mode, searchParams]);
 
   const avatarPreview = useMemo(() => {
     const value = avatarUrl.trim();
@@ -79,80 +136,61 @@ export default function Profile() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       toast.success("Profile updated");
-      setEditOpen(false);
+      setMode("view");
     },
     onError: (e: any) => toast.error(e?.message || "Failed to update profile"),
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="bottom-nav-safe">
-        <SEO title="Profile" description="Your profile details." path="/profile" noIndex />
-        <PageHeader title="Profile" showNotifications={false} />
-        <div className="px-4">
-          <Card className="p-4 text-sm text-muted-foreground">Could not load your profile.</Card>
-        </div>
-      </div>
-    );
-  }
-
-  const email = (profile as any).email as string | null;
-  const rank = typeof (profile as any).rank === "number" ? (profile as any).rank : null;
-
   return (
-    <div className="bottom-nav-safe">
-      <SEO title="Profile" description="Your profile details." path="/profile" noIndex />
+    <Dialog open onOpenChange={(open) => (!open ? close() : null)}>
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-y-auto overscroll-contain p-4 sm:p-6">
+        <SEO title="Profile" description="Your profile details." path="/profile" noIndex />
 
-      <PageHeader title="Profile" subtitle="Your details" showNotifications showProfile={false} />
+        <DialogHeader>
+          <DialogTitle>{mode === "edit" ? "Edit profile" : "Profile details"}</DialogTitle>
+        </DialogHeader>
 
-      <div className="px-4 sm:px-6 lg:px-[5%] pb-20 space-y-3">
-        <Card className="border-border/60">
-          <CardContent className="p-4 flex items-start gap-4">
-            <div className="shrink-0">
-              <PlayerAvatar initials={initialsFor((profile as any).name)} rank={rank} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-semibold font-heading truncate">{(profile as any).name || "—"}</p>
-              <p className="text-xs text-muted-foreground truncate">{email || "—"}</p>
-              <p className="text-xs text-muted-foreground mt-1 truncate">
-                Phone: {(profile as any).phone ? String((profile as any).phone) : "—"}
-              </p>
-              {(profile as any).avatar_url ? (
-                <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                  Avatar URL set
-                </p>
-              ) : (
-                <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                  No avatar URL set
-                </p>
-              )}
-            </div>
-            <div className="shrink-0 flex flex-col gap-2">
-              <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setEditOpen(true)}>
-                <Pencil className="w-3.5 h-3.5" /> Edit
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => navigate("/dashboard")}>
-                <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {isLoading ? (
+          <div className="py-10 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : !profile ? (
+          <Card className="p-4 text-sm text-muted-foreground">Could not load your profile.</Card>
+        ) : mode === "view" ? (
+          (() => {
+            const email = (profile as any).email as string | null;
+            const rank = typeof (profile as any).rank === "number" ? (profile as any).rank : null;
+            return (
+              <div className="space-y-4">
+                <Card className="border-border/60">
+                  <CardContent className="p-4 flex items-start gap-4">
+                    <div className="shrink-0">
+                      <PlayerAvatar initials={initialsFor((profile as any).name)} rank={rank} avatarUrl={(profile as any).avatar_url || null} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-semibold font-heading truncate">{(profile as any).name || "—"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{email || "—"}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        Phone: {(profile as any).phone ? String((profile as any).phone) : "—"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                        {(profile as any).avatar_url ? "Avatar URL set" : "No avatar URL set"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Edit details</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
+                <DialogFooter>
+                  <Button variant="outline" onClick={close}>Done</Button>
+                  <Button className="gap-1.5" onClick={() => setMode("edit")}>
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </Button>
+                </DialogFooter>
+              </div>
+            );
+          })()
+        ) : (
+          <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
@@ -179,15 +217,71 @@ export default function Profile() {
                 </div>
               ) : null}
             </div>
+
+            <div id="avatar-picker" className="rounded-md border border-border/60 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium">Choose an avatar</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Select one to auto-fill the URL.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={() => {
+                    if (!user?.id) return;
+                    const nextBatch = avatarBatch + 1;
+                    setAvatarBatch(nextBatch);
+                    setAvatarOptions(buildAvatarOptions({ userId: user.id, name: name.trim(), batch: nextBatch }));
+                  }}
+                >
+                  More
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 mt-3">
+                {avatarOptions.map((url) => {
+                  const selected = avatarUrl.trim() === url;
+                  return (
+                    <button
+                      key={url}
+                      type="button"
+                      className={[
+                        "rounded-full overflow-hidden border transition-colors w-11 h-11",
+                        selected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-foreground/40",
+                      ].join(" ")}
+                      onClick={() => setAvatarUrl(url)}
+                      aria-label="Select avatar"
+                    >
+                      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Avatars provided by DiceBear.
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  resetDraft();
+                  setMode("view");
+                }}
+                disabled={save.isPending}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => save.mutate()} disabled={save.isPending}>
+                {save.isPending ? "Saving…" : "Save"}
+              </Button>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={save.isPending}>Cancel</Button>
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>
-              {save.isPending ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

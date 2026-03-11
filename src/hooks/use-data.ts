@@ -587,6 +587,17 @@ export function useCreateChallenge() {
         throw new Error("A challenge between you two is already active");
       }
 
+      const { data: oppActive, error: oppActiveError } = await supabase
+        .from("challenges")
+        .select("id")
+        .in("status", ["pending", "accepted"])
+        .or(`challenger_id.eq.${opponentId},opponent_id.eq.${opponentId}`)
+        .limit(1);
+      if (oppActiveError) throw oppActiveError;
+      if ((oppActive || []).length > 0) {
+        throw new Error("That player already has an active challenge. Try again later.");
+      }
+
       const { data, error } = await supabase
         .from("challenges")
         .insert({

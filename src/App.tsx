@@ -16,6 +16,7 @@ import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { FeedbackFab } from "@/components/FeedbackFab";
+import { WhatsNewModal } from "@/components/WhatsNewModal";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -177,6 +178,7 @@ function AppRoutes() {
       {user && <OutboxSync />}
       <PwaUpdatePrompt />
       <FeedbackFab />
+      <WhatsNewModal />
     </div>
   );
 }

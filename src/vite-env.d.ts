@@ -10,3 +10,5 @@ declare module "virtual:pwa-register" {
   }
   export function registerSW(options?: RegisterSWOptions): (reloadPage?: boolean) => Promise<void>;
 }
+
+declare const __GB_BUILD_ID__: string;

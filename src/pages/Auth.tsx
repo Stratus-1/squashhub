@@ -16,6 +16,7 @@ export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
+  const [signupDone, setSignupDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Login form

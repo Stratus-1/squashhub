@@ -5,6 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 export interface Club {
   id: string;
   name: string;
+  subdomain?: string;
   logo_url?: string;
   address?: string;
   email?: string;

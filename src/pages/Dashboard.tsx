@@ -229,6 +229,16 @@ export default function Dashboard() {
             </span>
             <ChevronRight className="w-4 h-4 opacity-70" />
           </Button>
+
+          {isClubAdmin && (
+            <Button variant="outline" className="justify-between h-11 px-3 border-primary/30 bg-primary/5" onClick={() => navigate("/club-admin")}>
+              <span className="inline-flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Club Admin
+              </span>
+              <ChevronRight className="w-4 h-4 opacity-70" />
+            </Button>
+          )}
         </div>
       </div>
 

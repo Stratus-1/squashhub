@@ -65,7 +65,17 @@ export default function RegisterClub() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Club Name *</Label>
-              <Input id="name" value={form.name} onChange={set("name")} placeholder="e.g. CSIR Squash Club" required />
+              <Input id="name" value={form.name} onChange={(e) => {
+                const name = e.target.value;
+                setForm(p => ({ ...p, name, subdomain: generateSubdomain(name) }));
+              }} placeholder="e.g. CSIR Squash Club" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="subdomain">Abbreviation <span className="text-xs text-muted-foreground">(you can edit)</span></Label>
+              <div className="flex items-center gap-2">
+                <Input id="subdomain" value={form.subdomain} onChange={set("subdomain")} placeholder="e.g. gbsq" maxLength={5} className="max-w-[120px]" />
+                <span className="text-sm text-muted-foreground">.squashhub.app</span>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>

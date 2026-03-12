@@ -23,9 +23,6 @@ export function ClubDetailsTab({ club }: { club: Club }) {
     bank_account_number: club.bank_account_number || "",
     bank_branch_code: club.bank_branch_code || "",
     bank_reference: club.bank_reference || "",
-    member_fee_annual: club.member_fee_annual ?? 0,
-    member_fee_due_month: club.member_fee_due_month ?? 1,
-    fee_reminder_days_before: club.fee_reminder_days_before ?? 14,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>

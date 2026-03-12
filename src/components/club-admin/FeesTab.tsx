@@ -21,6 +21,16 @@ export function FeesTab({ clubId }: { clubId: string }) {
   const [editCat, setEditCat] = useState<MemberFeeCategory | null>(null);
   const qc = useQueryClient();
   const club = clubData?.club;
+  const [dueMonth, setDueMonth] = useState(club?.member_fee_due_month ?? 1);
+  const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
+
+  const handleDueSettings = async (field: string, value: number) => {
+    if (field === "member_fee_due_month") setDueMonth(value);
+    else setReminderDays(value);
+    const { error } = await fromExt("clubs").update({ [field]: value }).eq("id", clubId);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["my-club"] });
+  };
 
   const handleDeleteNat = async (id: string) => {
     if (!confirm("Delete this fee entry?")) return;

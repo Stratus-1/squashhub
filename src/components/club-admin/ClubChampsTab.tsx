@@ -102,9 +102,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   // Filter members by gender
   const genderMembers = useMemo(() => {
-    const genderVal = gender === "men" ? "male" : "female";
+    const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members
-      .filter((m) => m.gender?.toLowerCase() === genderVal || m.gender?.toLowerCase() === (gender === "men" ? "m" : "f"))
+      .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()))
       .sort((a, b) => (a.league_player_rank || 999) - (b.league_player_rank || 999));
   }, [members, gender]);
 

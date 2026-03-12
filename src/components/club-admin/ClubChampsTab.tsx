@@ -13,8 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye } from "lucide-react";
-import { format, addDays, eachDayOfInterval, getDay } from "date-fns";
-import { format, addDays, eachDayOfInterval, getDay } from "date-fns";
+import { format, eachDayOfInterval, getDay } from "date-fns";
 
 interface ClubChampsTabProps {
   clubId: string;

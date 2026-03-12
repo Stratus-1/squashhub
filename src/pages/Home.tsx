@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Calendar, Trophy, Swords,
   ChevronRight, Star, TrendingUp, ArrowUp, ArrowDown, Minus,
-  Clock, Users, LogIn, UserRound, Leaf, Sun, Snowflake, Flower2
+  Clock, Users, LogIn, UserRound, Leaf, Sun, Snowflake, Flower2,
+  Building2, Settings
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";

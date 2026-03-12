@@ -680,11 +680,11 @@ export default function Bookings() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[60px_1fr_1fr] sm:grid-cols-[72px_1fr_1fr] gap-x-1.5 px-4 pb-2">
+        <div className="gap-x-1.5 px-4 pb-2" style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}>
           <div />
-          {courts.map((c) => (
+          {courts.map((c: number) => (
             <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Court {c}
+              {getCourtName(c)}
             </div>
           ))}
         </div>

@@ -200,6 +200,7 @@ export type Database = {
           phone: string | null
           plays_league: boolean
           role: Database["public"]["Enums"]["club_member_role"]
+          skill_level: string | null
           updated_at: string
           user_id: string | null
         }
@@ -218,6 +219,7 @@ export type Database = {
           phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
+          skill_level?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -236,6 +238,7 @@ export type Database = {
           phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
+          skill_level?: string | null
           updated_at?: string
           user_id?: string | null
         }

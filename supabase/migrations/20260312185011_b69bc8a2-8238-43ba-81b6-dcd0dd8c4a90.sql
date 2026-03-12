@@ -1,0 +1,1 @@
+ALTER TABLE public.club_members ADD COLUMN skill_level text DEFAULT NULL;

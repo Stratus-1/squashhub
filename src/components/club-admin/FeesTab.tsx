@@ -21,6 +21,16 @@ export function FeesTab({ clubId }: { clubId: string }) {
   const [editCat, setEditCat] = useState<MemberFeeCategory | null>(null);
   const qc = useQueryClient();
   const club = clubData?.club;
+  const [dueMonth, setDueMonth] = useState(club?.member_fee_due_month ?? 1);
+  const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
+
+  const handleDueSettings = async (field: string, value: number) => {
+    if (field === "member_fee_due_month") setDueMonth(value);
+    else setReminderDays(value);
+    const { error } = await fromExt("clubs").update({ [field]: value }).eq("id", clubId);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["my-club"] });
+  };
 
   const handleDeleteNat = async (id: string) => {
     if (!confirm("Delete this fee entry?")) return;
@@ -38,14 +48,22 @@ export function FeesTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
-      {/* Club membership fee summary */}
-      {club && (
-        <Card className="p-4 border-primary/20 bg-primary/5">
-          <h3 className="font-semibold mb-2">Club Membership Fee</h3>
-          <p className="text-lg font-bold">R{club.member_fee_annual ?? 0} <span className="text-sm font-normal text-muted-foreground">per year (default)</span></p>
-          <p className="text-xs text-muted-foreground">Due in {MONTHS[(club.member_fee_due_month ?? 1) - 1]} • Reminders sent {club.fee_reminder_days_before ?? 14} days before</p>
-        </Card>
-      )}
+      {/* Payment due settings */}
+      <Card className="p-4 space-y-3">
+        <h3 className="font-semibold">Payment Due Date</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Due Month</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={dueMonth} onChange={e => handleDueSettings("member_fee_due_month", Number(e.target.value))}>
+              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label>Reminder Days Before</Label>
+            <Input type="number" min={1} max={90} value={reminderDays} onChange={e => handleDueSettings("fee_reminder_days_before", Number(e.target.value))} />
+          </div>
+        </div>
+      </Card>
 
       {/* Member fee categories */}
       <div>

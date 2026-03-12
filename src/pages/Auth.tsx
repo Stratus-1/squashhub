@@ -32,8 +32,21 @@ export default function Auth() {
   const [clubName, setClubName] = useState("");
   const [subdomain, setSubdomain] = useState("");
 
-  const toSubdomain = (name: string) =>
-    name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+  const STOP_WORDS = new Set(["the", "of", "and", "for", "a", "an", "in", "at", "club", "squash", "sports", "centre", "center"]);
+
+  const toSubdomain = (name: string): string => {
+    const words = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return "";
+
+    // If single meaningful word, take first 5 chars
+    const meaningful = words.filter(w => !STOP_WORDS.has(w));
+    if (meaningful.length <= 1) {
+      return (meaningful[0] || words[0] || "").slice(0, 5);
+    }
+
+    // Take first letter of each meaningful word, max 5
+    return meaningful.map(w => w[0]).join("").slice(0, 5);
+  };
 
   const handleClubNameChange = (val: string) => {
     setClubName(val);

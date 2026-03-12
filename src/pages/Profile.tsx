@@ -190,6 +190,36 @@ export default function Profile() {
           .update(memberPatch)
           .eq("id", clubMember.id);
         if (memErr) throw memErr;
+
+        // Save league registration if plays league
+        if (playsLeague && associationId) {
+          // Find a league belonging to this association
+          const targetLeague = leagues.find((l: any) => l.association_id === associationId);
+          if (targetLeague) {
+            if (leagueRegistration?.id) {
+              // Update existing
+              const { error: regErr } = await fromExt("member_league_registrations")
+                .update({
+                  league_id: targetLeague.id,
+                  league_association_number: associationNumber.trim() || null,
+                })
+                .eq("id", leagueRegistration.id);
+              if (regErr) throw regErr;
+            } else {
+              // Insert new
+              const { error: regErr } = await fromExt("member_league_registrations")
+                .insert({
+                  club_member_id: clubMember.id,
+                  league_id: targetLeague.id,
+                  league_association_number: associationNumber.trim() || null,
+                });
+              if (regErr) throw regErr;
+            }
+          }
+        } else if (!playsLeague && leagueRegistration?.id) {
+          // Remove registration if no longer plays league
+          await fromExt("member_league_registrations").delete().eq("id", leagueRegistration.id);
+        }
       }
     },
     onSuccess: async () => {
@@ -197,6 +227,7 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: ["profile", user?.id] }),
         queryClient.invalidateQueries({ queryKey: ["my-club-member"] }),
         queryClient.invalidateQueries({ queryKey: ["club-members"] }),
+        queryClient.invalidateQueries({ queryKey: ["my-league-registration"] }),
       ]);
       toast.success("Profile updated");
       setMode("view");

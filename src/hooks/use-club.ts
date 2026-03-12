@@ -213,6 +213,22 @@ export function useLeagueAssociations(clubId?: string) {
   });
 }
 
+/** Get the current user's league registration (from member_league_registrations) */
+export function useMyLeagueRegistration(clubMemberId?: string) {
+  return useQuery({
+    queryKey: ["my-league-registration", clubMemberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("*")
+        .eq("club_member_id", clubMemberId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; league_id: string; league_association_number: string | null; ssa_number: string | null; is_captain: boolean; player_rank: number | null; club_member_id: string } | null;
+    },
+    enabled: !!clubMemberId,
+  });
+}
+
 /** Get leagues for a club */
 export function useLeagues(clubId?: string) {
   return useQuery({

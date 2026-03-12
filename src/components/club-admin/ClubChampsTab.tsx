@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers, type ClubMember } from "@/hooks/use-club";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2 } from "lucide-react";
-import { format, addDays, eachDayOfInterval, getDay } from "date-fns";
+import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye } from "lucide-react";
+import { format, eachDayOfInterval, getDay } from "date-fns";
 
 interface ClubChampsTabProps {
   clubId: string;
@@ -55,6 +56,7 @@ function generateRoundRobinRounds(playerIds: string[]): [string, string][][] {
 
 export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
 
   // Fetch courts
@@ -242,6 +244,36 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (matchErr) throw matchErr;
       }
 
+      // 4. Auto-book courts for matches with linked user accounts
+      const memberMap = new Map<string, string>(); // club_member_id -> user_id
+      selectedPlayers.forEach((p) => { if (p.user_id) memberMap.set(p.id, p.user_id); });
+
+      const bookings = schedulePreview.allMatches
+        .filter((m) => m.date && m.time && m.courtId && memberMap.has(m.playerA))
+        .map((m) => {
+          const [h, min] = m.time!.split(":").map(Number);
+          const endMins = h * 60 + min + matchDuration;
+          const endH = Math.floor(endMins / 60);
+          const endM = endMins % 60;
+          const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+          return {
+            user_id: memberMap.get(m.playerA)!,
+            opponent_id: memberMap.get(m.playerB) || null,
+            court_id: m.courtId!,
+            date: m.date!,
+            start_time: m.time!,
+            end_time: endTimeStr,
+            status: "active",
+            is_friendly: false,
+            guest_name: !memberMap.has(m.playerB) ? getMemberName(m.playerB) : null,
+          };
+        });
+
+      if (bookings.length > 0) {
+        const { error: bookErr } = await fromExt("bookings").insert(bookings);
+        if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);
+      }
+
       return champ;
     },
     onSuccess: () => {
@@ -324,9 +356,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     </p>
                     <p className="text-xs text-muted-foreground">{c.start_date} to {c.end_date}</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => deleteChamp.mutate(c.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
+                      <Eye className="w-4 h-4 mr-1" /> View
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteChamp.mutate(c.id)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

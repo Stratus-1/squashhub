@@ -165,6 +165,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [phone, setPhone] = useState("+27");
   const [address, setAddress] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
+  const [gender, setGender] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
   const [loading, setLoading] = useState(false);
   const { data: feeCategories = [] } = useFeeCategories(clubId);

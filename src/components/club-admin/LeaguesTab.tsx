@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLeagueAssociations, useLeagues, LeagueAssociation, League } from "@/hooks/use-club";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useLeagueAssociations, useLeagues, useClubMembers, LeagueAssociation, League, ClubMember } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Trophy } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2, GripVertical, Users, X } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
+// ─── Types ───
+interface LeaguePlayer {
+  id: string; // registration id (or temp)
+  club_member_id: string;
+  league_id: string;
+  player_rank: number;
+  member?: ClubMember;
+}
+
+// ─── Main Tab ───
 export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: leagues = [] } = useLeagues(clubId);
+  const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
+  const [manageLeagueId, setManageLeagueId] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -31,8 +43,22 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["leagues"] }); }
   };
 
+  const menLeagues = leagues.filter(l => l.name.toLowerCase().includes("men's") || l.name.toLowerCase().startsWith("men"));
+  const ladiesLeagues = leagues.filter(l => l.name.toLowerCase().includes("ladies") || l.name.toLowerCase().includes("women"));
+  const otherLeagues = leagues.filter(l => !menLeagues.includes(l) && !ladiesLeagues.includes(l));
+
+  const sortLeagues = (list: League[]) =>
+    [...list].sort((a, b) => {
+      const numA = parseInt(a.name.match(/(\d+)/)?.[1] || "99");
+      const numB = parseInt(b.name.match(/(\d+)/)?.[1] || "99");
+      return numA - numB;
+    });
+
+  const leaguePlayers = members.filter(m => m.plays_league);
+
   return (
     <div className="space-y-6 mt-4">
+      {/* Associations */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">League Associations</h3>
@@ -52,30 +78,293 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
       </div>
 
+      {/* Leagues in two columns */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Leagues</h3>
           <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
         </div>
-        <div className="space-y-2">
-          {leagues.map(l => (
-            <Card key={l.id} className="p-3 flex items-center justify-between">
-              <div>
-                <p className="font-medium">{l.name} {l.code ? `(${l.code})` : ""}</p>
-                <p className="text-xs text-muted-foreground">
-                  {associations.find(a => a.id === l.association_id)?.name || "No association"}
-                </p>
-              </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteLeague(l.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-            </Card>
-          ))}
-          {leagues.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No leagues added yet</p>}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Men's ({menLeagues.length})</h4>
+            <div className="space-y-2">
+              {sortLeagues(menLeagues).map(l => (
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} onManage={setManageLeagueId} />
+              ))}
+              {menLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No men's leagues</p>}
+            </div>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Ladies ({ladiesLeagues.length})</h4>
+            <div className="space-y-2">
+              {sortLeagues(ladiesLeagues).map(l => (
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} onManage={setManageLeagueId} />
+              ))}
+              {ladiesLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No ladies leagues</p>}
+            </div>
+          </div>
         </div>
+
+        {otherLeagues.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
+            <div className="space-y-2">
+              {sortLeagues(otherLeagues).map(l => (
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} onManage={setManageLeagueId} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Manage players dialog */}
+      {manageLeagueId && (
+        <ManageLeaguePlayers
+          leagueId={manageLeagueId}
+          league={leagues.find(l => l.id === manageLeagueId)!}
+          clubId={clubId}
+          members={leaguePlayers}
+          open={!!manageLeagueId}
+          onOpenChange={(o) => !o && setManageLeagueId(null)}
+        />
+      )}
     </div>
   );
 }
 
+// ─── League Card ───
+function LeagueCard({ league, associations, onDelete, onManage }: {
+  league: League;
+  associations: LeagueAssociation[];
+  onDelete: (id: string) => void;
+  onManage: (id: string) => void;
+}) {
+  const { data: regs = [] } = useQuery({
+    queryKey: ["league-registrations", league.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("*")
+        .eq("league_id", league.id)
+        .order("player_rank");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  return (
+    <Card className="p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{league.name} {league.code ? `(${league.code})` : ""}</p>
+          <p className="text-xs text-muted-foreground">
+            {associations.find(a => a.id === league.association_id)?.name || "No association"}
+            {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onManage(league.id)} title="Manage players">
+            <Users className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(league.id)}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Manage League Players (drag & drop) ───
+function ManageLeaguePlayers({ leagueId, league, clubId, members, open, onOpenChange }: {
+  leagueId: string;
+  league: League;
+  clubId: string;
+  members: ClubMember[];
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
+  const qc = useQueryClient();
+  const [players, setPlayers] = useState<LeaguePlayer[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
+  // Load existing registrations
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("*")
+        .eq("league_id", leagueId)
+        .order("player_rank");
+      if (!error && data) {
+        setPlayers(data.map((r: any) => ({
+          id: r.id,
+          club_member_id: r.club_member_id,
+          league_id: r.league_id,
+          player_rank: r.player_rank ?? 0,
+          member: members.find(m => m.id === r.club_member_id),
+        })));
+      }
+      setLoaded(true);
+    })();
+  }, [open, leagueId, members]);
+
+  const assignedMemberIds = players.map(p => p.club_member_id);
+
+  // Filter available members based on league gender
+  const isLadies = league.name.toLowerCase().includes("ladies") || league.name.toLowerCase().includes("women");
+  const availableMembers = members.filter(m =>
+    !assignedMemberIds.includes(m.id) &&
+    (isLadies ? m.gender === "Ladies" : m.gender !== "Ladies")
+  );
+
+  const addPlayer = (member: ClubMember) => {
+    setPlayers(prev => [...prev, {
+      id: `new-${Date.now()}-${member.id}`,
+      club_member_id: member.id,
+      league_id: leagueId,
+      player_rank: prev.length + 1,
+      member,
+    }]);
+  };
+
+  const removePlayer = (idx: number) => {
+    setPlayers(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      return next.map((p, i) => ({ ...p, player_rank: i + 1 }));
+    });
+  };
+
+  const handleDragStart = (idx: number) => { dragItem.current = idx; };
+  const handleDragEnter = (idx: number) => { dragOverItem.current = idx; };
+  const handleDragEnd = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    const items = [...players];
+    const dragged = items.splice(dragItem.current, 1)[0];
+    items.splice(dragOverItem.current, 0, dragged);
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setPlayers(items.map((p, i) => ({ ...p, player_rank: i + 1 })));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // Delete all existing registrations for this league
+      await fromExt("member_league_registrations").delete().eq("league_id", leagueId);
+
+      if (players.length > 0) {
+        const { error } = await fromExt("member_league_registrations").insert(
+          players.map((p, i) => ({
+            club_member_id: p.club_member_id,
+            league_id: leagueId,
+            player_rank: i + 1,
+          }))
+        );
+        if (error) throw error;
+      }
+
+      toast.success(`${players.length} player(s) saved`);
+      qc.invalidateQueries({ queryKey: ["league-registrations", leagueId] });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getMemberName = (p: LeaguePlayer) => {
+    if (p.member) return p.member.name || p.member.profiles?.name || "Unknown";
+    const m = members.find(m => m.id === p.club_member_id);
+    return m?.name || m?.profiles?.name || "Unknown";
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-base">{league.name} – Players</DialogTitle>
+        </DialogHeader>
+
+        {!loaded ? (
+          <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        ) : (
+          <div className="space-y-4">
+            {/* Current players – draggable */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                Ranked Players ({players.length}) — drag to reorder
+              </Label>
+              {players.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4 border border-dashed rounded-md">
+                  No players assigned. Add from the list below.
+                </p>
+              )}
+              <div className="space-y-1">
+                {players.map((p, idx) => (
+                  <div
+                    key={p.id}
+                    draggable
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragEnter={() => handleDragEnter(idx)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => e.preventDefault()}
+                    className="flex items-center gap-2 p-2 bg-muted/50 rounded-md cursor-grab active:cursor-grabbing hover:bg-muted border border-transparent hover:border-border transition-colors"
+                  >
+                    <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="w-6 text-xs font-bold text-primary text-center">{idx + 1}</span>
+                    <span className="text-sm flex-1 truncate">{getMemberName(p)}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => removePlayer(idx)}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Available members to add */}
+            {availableMembers.length > 0 && (
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">
+                  Available {isLadies ? "Ladies" : "Men"} ({availableMembers.length}) — click to add
+                </Label>
+                <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
+                  {availableMembers.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => addPlayer(m)}
+                      className="text-left text-xs p-2 rounded-md hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-colors truncate"
+                    >
+                      <Plus className="w-3 h-3 inline mr-1 text-primary" />
+                      {m.name || m.profiles?.name || "Unknown"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Button onClick={handleSave} className="w-full" disabled={saving}>
+              {saving ? "Saving…" : `Save ${players.length} Player(s)`}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Constants ───
+const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
+  const num = i + 1;
+  const suffix = num === 1 ? "st" : num === 2 ? "nd" : num === 3 ? "rd" : "th";
+  return `${num}${suffix}`;
+});
+
+// ─── Association Dialog ───
 function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [form, setForm] = useState({ name: "", abbreviation: "", fee_annual: 0, fee_due_month: 1, fee_payable_to: "", fee_payment_details: "" });
   const qc = useQueryClient();
@@ -108,12 +397,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
   );
 }
 
-const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
-  const num = i + 1;
-  const suffix = num === 1 ? "st" : num === 2 ? "nd" : num === 3 ? "rd" : "th";
-  return `${num}${suffix}`;
-});
-
+// ─── League Dialog (bulk add) ───
 function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
@@ -128,9 +412,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     setter(prev => prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]);
   };
 
-  // Build entries with auto-generated codes: prefix + sequential number (001, 002...) from highest league (1st) to lowest
   const buildEntries = () => {
-    // Sort selected by league number (1st=1, 2nd=2, etc.) ascending so 1st league gets lowest code number
     const parseNum = (l: string) => parseInt(l);
     const sortedMen = [...selectedMen].sort((a, b) => parseNum(a) - parseNum(b));
     const sortedLadies = [...selectedLadies].sort((a, b) => parseNum(a) - parseNum(b));

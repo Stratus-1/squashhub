@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
 import { useIncomingChallengesCount } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 
 interface PageHeaderProps {
   title: string;
@@ -31,6 +32,8 @@ export function PageHeader({
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: clubData } = useMyClub();
+  const clubLogo = clubData?.club?.logo_url;
   const pathname = location.pathname || "/";
   const isTopLevel = pathname === "/" || pathname === "/dashboard" || pathname === "/auth";
   const shouldShowBack = showBack ?? !isTopLevel;
@@ -55,10 +58,15 @@ export function PageHeader({
             </Button>
           ) : null}
 
-          <div className="min-w-0 flex-1">
-            <Breadcrumbs className="hidden md:flex mb-1" />
-            <h1 className="text-xl font-bold font-heading tracking-tight truncate">{title}</h1>
-            {subtitle && <p className="text-sm text-muted-foreground truncate">{subtitle}</p>}
+          <div className="min-w-0 flex-1 flex items-center gap-2">
+            {clubLogo && (
+              <img src={clubLogo} alt="Club logo" className="w-8 h-8 object-contain rounded flex-shrink-0" />
+            )}
+            <div className="min-w-0 flex-1">
+              <Breadcrumbs className="hidden md:flex mb-1" />
+              <h1 className="text-xl font-bold font-heading tracking-tight truncate">{title}</h1>
+              {subtitle && <p className="text-sm text-muted-foreground truncate">{subtitle}</p>}
+            </div>
           </div>
         </div>
 

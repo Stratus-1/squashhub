@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -204,6 +205,8 @@ export default function Bookings() {
     courtId: number;
     time: string;
     opponentId: string;
+    guestName: string;
+    playerMode: "none" | "member" | "guest";
     isFriendly: boolean;
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
@@ -740,7 +743,7 @@ export default function Bookings() {
                       )}
                       onClick={() => {
                         if (booking) setBookingDetails(booking);
-                        else setBookingDialog({ courtId, time, opponentId: "", isFriendly: false });
+                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: false });
                       }}
                     >
                       {booking ? (
@@ -921,40 +924,65 @@ export default function Bookings() {
                 <Switch
                   checked={bookingDialog.isFriendly}
                   onCheckedChange={(checked) =>
-                    setBookingDialog((s) => (s ? { ...s, isFriendly: checked, opponentId: "" } : s))
+                    setBookingDialog((s) => (s ? { ...s, isFriendly: checked, opponentId: "", guestName: "", playerMode: "none" } : s))
                   }
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-semibold">Opponent (optional)</Label>
-                <Select
-                  value={bookingDialog.opponentId}
-                  onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, opponentId: v } : s))}
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder={bookingDialog.isFriendly ? "Choose anyone" : "Choose eligible opponent"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eligibleOpponents.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-muted-foreground">
-                        {bookingDialog.isFriendly
-                          ? "No other players found."
-                          : !me?.rank
-                            ? "You need a ladder rank first. Toggle Friendly to book anyone."
-                            : availableForSlotUserIds
-                              ? "No eligible opponents available. Toggle Friendly to book anyone."
-                              : "Loading availability…"}
-                      </div>
-                    ) : (
-                      eligibleOpponents.map((p: any) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} {typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs font-semibold">2nd Player (optional)</Label>
+                <div className="flex gap-1.5">
+                  {(["none", "member", "guest"] as const).map((mode) => (
+                    <Button
+                      key={mode}
+                      size="sm"
+                      variant={bookingDialog.playerMode === mode ? "default" : "outline"}
+                      className="flex-1 text-xs rounded-lg"
+                      onClick={() => setBookingDialog((s) => s ? { ...s, playerMode: mode, opponentId: "", guestName: "" } : s)}
+                    >
+                      {mode === "none" ? "Solo" : mode === "member" ? "Club Member" : "Guest"}
+                    </Button>
+                  ))}
+                </div>
+
+                {bookingDialog.playerMode === "member" && (
+                  <Select
+                    value={bookingDialog.opponentId}
+                    onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, opponentId: v } : s))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder={bookingDialog.isFriendly ? "Choose anyone" : "Choose eligible opponent"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleOpponents.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          {bookingDialog.isFriendly
+                            ? "No other players found."
+                            : !me?.rank
+                              ? "You need a ladder rank first. Toggle Friendly to book anyone."
+                              : availableForSlotUserIds
+                                ? "No eligible opponents available. Toggle Friendly to book anyone."
+                                : "Loading availability…"}
+                        </div>
+                      ) : (
+                        eligibleOpponents.map((p: any) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} {typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {bookingDialog.playerMode === "guest" && (
+                  <Input
+                    placeholder="Guest name"
+                    value={bookingDialog.guestName}
+                    onChange={(e) => setBookingDialog((s) => s ? { ...s, guestName: e.target.value } : s)}
+                    className="rounded-xl"
+                  />
+                )}
               </div>
             </div>
           )}

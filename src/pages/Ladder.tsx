@@ -63,6 +63,7 @@ export default function Ladder() {
       const diff = Math.abs(myRank - opponentRank);
       if (diff < 1) return "You can't challenge a player with the same rank.";
       if (diff > 2) return "You may only challenge players within 2 ladder positions.";
+      if (myRank <= opponentRank) return "You may only challenge players ranked above you.";
       return null;
     };
   }, [myRank, user?.id]);
@@ -137,7 +138,7 @@ export default function Ladder() {
                     index <= 2 ? "bg-primary/15 text-primary" :
                     "bg-secondary text-muted-foreground"
                   )}>
-                    {player.rank}
+                    {player.rank ?? "—"}
                   </div>
 
                   <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={(player as any)?.avatar_url || null} />

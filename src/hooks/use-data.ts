@@ -332,14 +332,22 @@ export function useLadder() {
   return useQuery({
     queryKey: ["ladder"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .not("rank", "is", null)
-        .lte("rank", 20)
-        .order("rank");
-      if (error) throw error;
-      return data;
+      // Fetch ranked players first, then unranked players alphabetically
+      const [ranked, unranked] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*")
+          .not("rank", "is", null)
+          .order("rank"),
+        supabase
+          .from("profiles")
+          .select("*")
+          .is("rank", null)
+          .order("name"),
+      ]);
+      if (ranked.error) throw ranked.error;
+      if (unranked.error) throw unranked.error;
+      return [...(ranked.data || []), ...(unranked.data || [])];
     },
     enabled: !!user,
   });

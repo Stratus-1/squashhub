@@ -312,8 +312,8 @@ export default function Bookings() {
           court_id,
           scheduled_time,
           scheduled_date,
-          player_a:player_a_member_id(name, profiles:user_id(name)),
-          player_b:player_b_member_id(name, profiles:user_id(name)),
+          player_a:player_a_member_id(name, user_id, profiles:user_id(name)),
+          player_b:player_b_member_id(name, user_id, profiles:user_id(name)),
           champ:champ_id(match_duration_minutes)
         `)
         .eq("scheduled_date", dateStr)
@@ -325,6 +325,8 @@ export default function Bookings() {
       return (data || []).map((m: any) => {
         const playerA = m.player_a?.name || m.player_a?.profiles?.name || "Player A";
         const playerB = m.player_b?.name || m.player_b?.profiles?.name || "Player B";
+        const playerAUserId = m.player_a?.user_id || null;
+        const playerBUserId = m.player_b?.user_id || null;
         const start = String(m.scheduled_time || "").slice(0, 5);
         const duration = Number(m.champ?.match_duration_minutes) || 30;
         const end = addMinutesToTime(start, duration);
@@ -336,9 +338,10 @@ export default function Bookings() {
           start_time: `${start}:00`,
           end_time: `${end}:00`,
           status: "active",
-          user_id: null,
-          opponent_id: null,
+          user_id: playerAUserId,
+          opponent_id: playerBUserId,
           is_friendly: false,
+          is_champ: true,
           guest_name: null,
           player_name: playerA,
           opponent_name: playerB,
@@ -830,7 +833,7 @@ export default function Bookings() {
                   const booking = getBooking(courtId, time);
                   const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
                   const b = (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
-                  const isMine = booking && (booking as any).user_id === user?.id;
+                  const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);
                   const isBlocked = !!(booking as any)?.is_blocked;
                   const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";
 

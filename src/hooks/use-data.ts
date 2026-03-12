@@ -332,44 +332,70 @@ export function useLadder() {
   return useQuery({
     queryKey: ["ladder"],
     queryFn: async () => {
-      // 1. Get all profiles
-      const { data: profiles, error: pErr } = await supabase
-        .from("profiles")
-        .select("*");
-      if (pErr) throw pErr;
+      // 1. Get all club members with their league registrations
+      const { data: members, error: mErr } = await supabase
+        .from("club_members")
+        .select("id, name, email, user_id, gender, skill_level, plays_league, league_player_rank");
+      if (mErr) throw mErr;
 
-      // 2. Get league registrations with player_rank via club_members
+      // 2. Get league registrations for best player_rank per member
       const { data: regs } = await supabase
         .from("member_league_registrations")
-        .select("club_member_id, player_rank, league_id, club_members!inner(user_id)")
+        .select("club_member_id, player_rank")
         .not("player_rank", "is", null)
         .order("player_rank");
 
-      // Build a map: user_id -> best (lowest) league player_rank
+      // Build map: club_member_id -> best (lowest) league player_rank
       const leagueRankMap = new Map<string, number>();
       for (const r of regs || []) {
-        const userId = (r as any).club_members?.user_id;
-        if (userId && r.player_rank != null) {
-          const existing = leagueRankMap.get(userId);
+        if (r.player_rank != null) {
+          const existing = leagueRankMap.get(r.club_member_id);
           if (existing == null || r.player_rank < existing) {
-            leagueRankMap.set(userId, r.player_rank);
+            leagueRankMap.set(r.club_member_id, r.player_rank);
           }
         }
       }
 
-      // Sort: league-ranked players first (by player_rank), then unranked alphabetically
-      return (profiles || []).sort((a, b) => {
-        const aLeague = leagueRankMap.get(a.id) ?? null;
-        const bLeague = leagueRankMap.get(b.id) ?? null;
+      // 3. Get profiles for members that have user_id (for stats like wins/losses)
+      const userIds = (members || []).map(m => m.user_id).filter(Boolean) as string[];
+      let profileMap = new Map<string, any>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", userIds);
+        for (const p of profiles || []) {
+          profileMap.set(p.id, p);
+        }
+      }
 
-        // Both have league rank -> sort by league rank
-        if (aLeague != null && bLeague != null) return aLeague - bLeague;
-        // League-ranked first
-        if (aLeague != null) return -1;
-        if (bLeague != null) return 1;
-        // Neither has league rank -> alphabetical
+      // 4. Build ladder entries
+      const ladder = (members || []).map(m => {
+        const profile = m.user_id ? profileMap.get(m.user_id) : null;
+        const leagueRank = leagueRankMap.get(m.id) ?? null;
+        return {
+          id: m.user_id || m.id,
+          club_member_id: m.id,
+          name: m.name || profile?.name || "Unknown",
+          avatar_url: profile?.avatar_url || null,
+          wins: profile?.wins ?? 0,
+          losses: profile?.losses ?? 0,
+          matches_played: profile?.matches_played ?? 0,
+          rank: profile?.rank ?? null,
+          league_rank: leagueRank,
+          user_id: m.user_id,
+        };
+      });
+
+      // Sort: league-ranked first (by player_rank), then alphabetically
+      ladder.sort((a, b) => {
+        if (a.league_rank != null && b.league_rank != null) return a.league_rank - b.league_rank;
+        if (a.league_rank != null) return -1;
+        if (b.league_rank != null) return 1;
         return (a.name || "").localeCompare(b.name || "");
       });
+
+      return ladder;
     },
     enabled: !!user,
   });

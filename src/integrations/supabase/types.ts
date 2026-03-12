@@ -120,7 +120,10 @@ export type Database = {
           created_at: string
           date: string
           end_time: string
+          guest_name: string | null
           id: string
+          is_friendly: boolean
+          opponent_id: string | null
           start_time: string
           status: string
           user_id: string
@@ -131,7 +134,10 @@ export type Database = {
           created_at?: string
           date: string
           end_time: string
+          guest_name?: string | null
           id?: string
+          is_friendly?: boolean
+          opponent_id?: string | null
           start_time: string
           status?: string
           user_id: string
@@ -142,7 +148,10 @@ export type Database = {
           created_at?: string
           date?: string
           end_time?: string
+          guest_name?: string | null
           id?: string
+          is_friendly?: boolean
+          opponent_id?: string | null
           start_time?: string
           status?: string
           user_id?: string

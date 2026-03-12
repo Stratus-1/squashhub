@@ -54,7 +54,9 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       const { data: urlData } = supabase.storage.from("club-logos").getPublicUrl(path);
       const logoUrl = urlData.publicUrl + "?t=" + Date.now();
       setForm(p => ({ ...p, logo_url: logoUrl }));
-      toast.success("Logo uploaded");
+      // Auto-save logo to database immediately
+      await updateClub.mutateAsync({ id: club.id, logo_url: logoUrl });
+      toast.success("Logo uploaded & saved");
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
     } finally {

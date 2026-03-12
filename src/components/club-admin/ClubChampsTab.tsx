@@ -186,19 +186,47 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       });
     });
 
-    // Assign matches to slots
-    let slotIdx = 0;
-    for (const match of allMatches) {
-      if (slotIdx >= totalSlots) break;
-      const dateIdx = Math.floor(slotIdx / (timeSlots.length * courtIds.length));
-      const remainder = slotIdx % (timeSlots.length * courtIds.length);
-      const timeIdx = Math.floor(remainder / courtIds.length);
-      const courtIdx = remainder % courtIds.length;
+    // Assign matches to slots ensuring each player plays at most once every 2 days
+    // Track the last date each player was scheduled
+    const playerLastDate = new Map<string, string>(); // memberId -> "yyyy-MM-dd"
 
-      match.date = format(allDates[dateIdx], "yyyy-MM-dd");
-      match.time = timeSlots[timeIdx];
-      match.courtId = courtIds[courtIdx];
-      slotIdx++;
+    const canScheduleOn = (playerId: string, dateStr: string): boolean => {
+      const last = playerLastDate.get(playerId);
+      if (!last) return true;
+      const lastDate = new Date(last);
+      const thisDate = new Date(dateStr);
+      const diffDays = Math.round((thisDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 2; // at least every other day (gap of 1 day)
+    };
+
+    // Build a flat list of available slots
+    type Slot = { date: string; time: string; courtId: number };
+    const allSlots: Slot[] = [];
+    for (const d of allDates) {
+      const ds = format(d, "yyyy-MM-dd");
+      for (const ts of timeSlots) {
+        for (const cid of courtIds) {
+          allSlots.push({ date: ds, time: ts, courtId: cid });
+        }
+      }
+    }
+
+    // Greedily assign each match to the earliest available slot where both players can play
+    const usedSlots = new Set<number>();
+    for (const match of allMatches) {
+      for (let si = 0; si < allSlots.length; si++) {
+        if (usedSlots.has(si)) continue;
+        const slot = allSlots[si];
+        if (canScheduleOn(match.playerA, slot.date) && canScheduleOn(match.playerB, slot.date)) {
+          match.date = slot.date;
+          match.time = slot.time;
+          match.courtId = slot.courtId;
+          usedSlots.add(si);
+          playerLastDate.set(match.playerA, slot.date);
+          playerLastDate.set(match.playerB, slot.date);
+          break;
+        }
+      }
     }
 
     return { allMatches, totalSlots, totalMatches: allMatches.length, allDates, timeSlots };

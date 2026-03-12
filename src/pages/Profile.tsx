@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { SEO } from "@/components/SEO";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, Camera, Trash2 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -15,20 +15,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-function buildDicebearUrl(style: string, seed: string) {
-  const url = new URL(`https://api.dicebear.com/7.x/${style}/svg`);
-  url.searchParams.set("seed", seed);
-  url.searchParams.set("backgroundType", "gradientLinear");
-  return url.toString();
-}
-
-function buildAvatarOptions({ userId, name, batch }: { userId: string; name: string; batch: number }) {
-  const base = `${userId}:${name || "player"}:${batch}`;
-  const styles = ["avataaars-neutral", "adventurer-neutral", "micah", "personas"] as const;
-  const seeds = Array.from({ length: 16 }, (_, i) => `${base}:${i}`);
-  return seeds.map((s, idx) => buildDicebearUrl(styles[idx % styles.length], s));
-}
 
 function initialsFor(name?: string | null) {
   const parts = String(name || "")
@@ -55,15 +41,15 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [avatarBatch, setAvatarBatch] = useState(0);
-  const [avatarOptions, setAvatarOptions] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<string | null>(null);
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
-  const [didFocusAvatar, setDidFocusAvatar] = useState(false);
 
   const close = () => {
     const backgroundLocation = (location.state as any)?.backgroundLocation;
@@ -79,10 +65,7 @@ export default function Profile() {
     setName(String((profile as any).name || ""));
     setPhone(String((profile as any).phone || ""));
     setAvatarUrl(String((profile as any).avatar_url || ""));
-    if (user?.id) {
-      setAvatarOptions(buildAvatarOptions({ userId: user.id, name: String((profile as any).name || ""), batch: 0 }));
-      setAvatarBatch(0);
-    }
+    setPreviewFile(null);
   };
 
   useEffect(() => {
@@ -98,22 +81,60 @@ export default function Profile() {
     }
   }, [didInitFromUrl, searchParams]);
 
-  useEffect(() => {
-    const focus = searchParams.get("focus");
-    if (focus !== "avatar") return;
-    if (mode !== "edit") return;
-    if (didFocusAvatar) return;
-    if (typeof window === "undefined") return;
-    setDidFocusAvatar(true);
-    window.setTimeout(() => {
-      document.getElementById("avatar-picker")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
-  }, [didFocusAvatar, mode, searchParams]);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
 
-  const avatarPreview = useMemo(() => {
-    const value = avatarUrl.trim();
-    return value ? value : null;
-  }, [avatarUrl]);
+    // Validate file
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5 MB");
+      return;
+    }
+
+    // Show local preview
+    const localUrl = URL.createObjectURL(file);
+    setPreviewFile(localUrl);
+
+    // Upload to storage
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const filePath = `${user.id}/profile.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("profile-pictures")
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("profile-pictures")
+        .getPublicUrl(filePath);
+
+      // Add cache-buster to force reload
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      setAvatarUrl(publicUrl);
+      toast.success("Photo uploaded");
+    } catch (err: any) {
+      toast.error(err?.message || "Upload failed");
+      setPreviewFile(null);
+    } finally {
+      setUploading(false);
+      // Reset input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setAvatarUrl("");
+    setPreviewFile(null);
+  };
+
+  const displayAvatar = previewFile || avatarUrl.trim() || null;
 
   const save = useMutation({
     mutationFn: async () => {
@@ -137,6 +158,7 @@ export default function Profile() {
       await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
       toast.success("Profile updated");
       setMode("view");
+      setPreviewFile(null);
     },
     onError: (e: any) => toast.error(e?.message || "Failed to update profile"),
   });
@@ -165,16 +187,13 @@ export default function Profile() {
                 <Card className="border-border/60">
                   <CardContent className="p-4 flex items-start gap-4">
                     <div className="shrink-0">
-                      <PlayerAvatar initials={initialsFor((profile as any).name)} rank={rank} avatarUrl={(profile as any).avatar_url || null} />
+                      <PlayerAvatar initials={initialsFor((profile as any).name)} rank={rank} avatarUrl={(profile as any).avatar_url || null} size="lg" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-base font-semibold font-heading truncate">{(profile as any).name || "—"}</p>
                       <p className="text-xs text-muted-foreground truncate">{email || "—"}</p>
                       <p className="text-xs text-muted-foreground mt-1 truncate">
                         Phone: {(profile as any).phone ? String((profile as any).phone) : "—"}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-1 truncate">
-                        {(profile as any).avatar_url ? "Avatar URL set" : "No avatar URL set"}
                       </p>
                     </div>
                   </CardContent>
@@ -191,6 +210,68 @@ export default function Profile() {
           })()
         ) : (
           <div className="space-y-3">
+            {/* Profile picture upload */}
+            <div id="avatar-picker" className="flex flex-col items-center gap-3 py-2">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-muted border-2 border-border flex items-center justify-center">
+                  {displayAvatar ? (
+                    <img src={displayAvatar} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-bold font-heading text-muted-foreground">
+                      {initialsFor(name)}
+                    </span>
+                  )}
+                  {uploading && (
+                    <div className="absolute inset-0 rounded-full bg-background/60 flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  aria-label="Change profile picture"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <Camera className="w-3 h-3 mr-1" />
+                  {displayAvatar ? "Change photo" : "Upload photo"}
+                </Button>
+                {displayAvatar && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-destructive hover:text-destructive"
+                    onClick={handleRemovePhoto}
+                    disabled={uploading}
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
@@ -199,69 +280,6 @@ export default function Profile() {
               <Label>Phone (optional)</Label>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+27 82 123 4567" />
               <p className="text-[10px] text-muted-foreground">Used for match reminders and admin contact.</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Avatar URL (optional)</Label>
-              <Input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." />
-              {avatarPreview ? (
-                <div className="mt-2 rounded-md border border-border/60 p-2 flex items-center gap-3">
-                  <img
-                    src={avatarPreview}
-                    alt="Avatar preview"
-                    className="w-10 h-10 rounded-full object-cover bg-muted"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                  <p className="text-[11px] text-muted-foreground truncate">Preview</p>
-                </div>
-              ) : null}
-            </div>
-
-            <div id="avatar-picker" className="rounded-md border border-border/60 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium">Choose an avatar</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Select one to auto-fill the URL.</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-[11px]"
-                  onClick={() => {
-                    if (!user?.id) return;
-                    const nextBatch = avatarBatch + 1;
-                    setAvatarBatch(nextBatch);
-                    setAvatarOptions(buildAvatarOptions({ userId: user.id, name: name.trim(), batch: nextBatch }));
-                  }}
-                >
-                  More
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 mt-3">
-                {avatarOptions.map((url) => {
-                  const selected = avatarUrl.trim() === url;
-                  return (
-                    <button
-                      key={url}
-                      type="button"
-                      className={[
-                        "rounded-full overflow-hidden border transition-colors w-11 h-11",
-                        selected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-foreground/40",
-                      ].join(" ")}
-                      onClick={() => setAvatarUrl(url)}
-                      aria-label="Select avatar"
-                    >
-                      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-2">
-                Avatars provided by DiceBear.
-              </p>
             </div>
 
             <DialogFooter>
@@ -275,7 +293,7 @@ export default function Profile() {
               >
                 Cancel
               </Button>
-              <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              <Button onClick={() => save.mutate()} disabled={save.isPending || uploading}>
                 {save.isPending ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>

@@ -41,6 +41,7 @@ function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdi
             {isLinked ? "✓ Registered" : "✗ Not registered"}
           </Badge>
           {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
+          {m.skill_level && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
           {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
         </div>
         <p className="text-xs text-muted-foreground truncate">

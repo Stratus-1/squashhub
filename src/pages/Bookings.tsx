@@ -946,7 +946,7 @@ export default function Bookings() {
                   <div>
                     <p className="text-sm font-semibold">Court {bookingDialog.courtId}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(selectedDate, "d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, 30)}
+                      {format(selectedDate, "d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, bookingDialog.duration)}
                     </p>
                   </div>
                 </div>

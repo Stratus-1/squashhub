@@ -312,6 +312,14 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-1"><Label>Full Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
           <div className="space-y-1"><Label>Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
+          <div className="space-y-1">
+            <Label>Gender</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.gender} onChange={e => setForm(p => ({ ...p, gender: e.target.value }))}>
+              <option value="">— Select —</option>
+              <option value="Men">Men</option>
+              <option value="Ladies">Ladies</option>
+            </select>
+          </div>
           <div className="space-y-1"><Label>Member Number</Label><Input value={form.club_member_number} onChange={e => setForm(p => ({ ...p, club_member_number: e.target.value }))} /></div>
           <div className="space-y-1">
             <Label>Role</Label>

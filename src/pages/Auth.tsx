@@ -258,6 +258,7 @@ export default function Auth() {
                       Your club URL: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
                     </p>
                   )}
+                </div>
                 <div>
                   <Label htmlFor="signup-email">Email <span className="text-destructive">*</span></Label>
                   <Input

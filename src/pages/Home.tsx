@@ -1355,15 +1355,15 @@ export default function Home() {
         >
           <Card className="bg-primary text-primary-foreground overflow-hidden">
             <CardContent className="p-6 text-center">
-              <h3 className="font-heading font-bold text-xl mb-2">Join the Club</h3>
+              <h3 className="font-heading font-bold text-xl mb-2">Get Started with SquashHub</h3>
               <p className="text-sm text-primary-foreground/80 mb-5">
-                Sign up to book courts, challenge players, and climb the ladder.
+                Sign up to register your club, manage members, leagues and court bookings.
               </p>
               <Button
                 className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold"
                 onClick={() => navigate("/auth")}
               >
-                Get Started — It's Free
+                Sign Up Free
               </Button>
             </CardContent>
           </Card>

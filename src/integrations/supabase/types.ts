@@ -252,6 +252,7 @@ export type Database = {
           member_fee_due_month: number | null
           name: string
           phone: string | null
+          subdomain: string | null
           updated_at: string
         }
         Insert: {
@@ -271,6 +272,7 @@ export type Database = {
           member_fee_due_month?: number | null
           name: string
           phone?: string | null
+          subdomain?: string | null
           updated_at?: string
         }
         Update: {
@@ -290,6 +292,7 @@ export type Database = {
           member_fee_due_month?: number | null
           name?: string
           phone?: string | null
+          subdomain?: string | null
           updated_at?: string
         }
         Relationships: []

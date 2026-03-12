@@ -182,8 +182,11 @@ export default function Dashboard() {
             {myBookings.slice(0, 3).map((booking) => (
               <Card key={booking.id} className="p-2.5 flex items-center justify-between">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{booking.court_name}</p>
-                  <p className="text-[11px] text-muted-foreground">{booking.date}</p>
+                  <p className="text-sm font-medium truncate">
+                    {booking.court_name}
+                    {booking.opponent_name ? ` — vs ${booking.opponent_name}` : ""}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{booking.date} · {booking.start_time?.slice(0, 5)}</p>
                 </div>
                 <Badge variant="secondary" className="text-[10px] shrink-0">
                   {booking.start_time?.slice(0, 5)}

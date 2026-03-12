@@ -42,6 +42,27 @@ export interface ClubMember {
   updated_at: string;
   profiles?: { name: string; email: string; phone?: string; avatar_url?: string };
   fee_category?: MemberFeeCategory;
+  skill_level?: string;
+}
+
+export const SKILL_LEVELS = [
+  { value: "very_high", label: "Very High", order: 1 },
+  { value: "high", label: "High", order: 2 },
+  { value: "medium_high", label: "Medium High", order: 3 },
+  { value: "medium", label: "Medium", order: 4 },
+  { value: "medium_low", label: "Medium Low", order: 5 },
+  { value: "low", label: "Low", order: 6 },
+  { value: "starter", label: "Starter", order: 7 },
+] as const;
+
+export function getSkillOrder(level?: string | null): number {
+  const found = SKILL_LEVELS.find(s => s.value === level);
+  return found ? found.order : 99;
+}
+
+export function getSkillLabel(level?: string | null): string {
+  const found = SKILL_LEVELS.find(s => s.value === level);
+  return found ? found.label : "";
 }
 
 export interface MemberFeeCategory {

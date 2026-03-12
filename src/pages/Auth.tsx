@@ -56,6 +56,8 @@ export default function Auth() {
     const name = signupName.trim();
     const email = signupEmail.trim();
     const phone = signupPhone.trim();
+    const club = clubName.trim();
+    const sub = subdomain.trim();
 
     if (!name || name.length < 2) {
       toast.error("Please enter your full name (at least 2 characters)");
@@ -63,6 +65,14 @@ export default function Auth() {
     }
     if (name.length > 100) {
       toast.error("Name must be less than 100 characters");
+      return;
+    }
+    if (!club || club.length < 2) {
+      toast.error("Please enter your club name");
+      return;
+    }
+    if (!sub || sub.length < 3 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(sub)) {
+      toast.error("Subdomain must be at least 3 characters (letters, numbers, hyphens)");
       return;
     }
     if (signupPassword.length < 6) {

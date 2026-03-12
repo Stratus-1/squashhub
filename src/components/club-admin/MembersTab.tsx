@@ -135,7 +135,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
                 {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {displayEmail} {m.club_member_number ? `• #${m.club_member_number}` : ""}
+                {displayEmail} {m.gender ? `• ${m.gender}` : ""}
+                {m.club_member_number ? ` • #${m.club_member_number}` : ""}
                 {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
                 {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
               </p>
@@ -165,6 +166,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [phone, setPhone] = useState("+27");
   const [address, setAddress] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
+  const [gender, setGender] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
   const [loading, setLoading] = useState(false);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
@@ -198,12 +200,13 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         phone: phone && phone !== "+27" ? phone : undefined,
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
+        gender: gender || undefined,
         plays_league: playsLeague,
       });
       if (error) throw error;
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
       toast.success(msg);
-      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {
@@ -219,6 +222,14 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-1"><Label>Full Name *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>
           <div className="space-y-1"><Label>Email *</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
+          <div className="space-y-1">
+            <Label>Gender</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={gender} onChange={e => setGender(e.target.value)}>
+              <option value="">— Select —</option>
+              <option value="Men">Men</option>
+              <option value="Ladies">Ladies</option>
+            </select>
+          </div>
           <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Optional" /></div>
           <div className="space-y-1">
             <Label>ID Number</Label>
@@ -269,6 +280,7 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
     plays_league: member.plays_league,
     league_player_rank: member.league_player_rank ?? "",
     id_number: member.id_number || "",
+    gender: member.gender || "",
     phone: member.phone || "+27",
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
@@ -285,6 +297,7 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
       plays_league: form.plays_league,
       league_player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
       id_number: form.id_number || null,
+      gender: form.gender || null,
       phone: form.phone && form.phone !== "+27" ? form.phone : null,
       address: form.address || null,
       fee_category_id: form.fee_category_id || null,
@@ -300,6 +313,14 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-1"><Label>Full Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
           <div className="space-y-1"><Label>Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
+          <div className="space-y-1">
+            <Label>Gender</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.gender} onChange={e => setForm(p => ({ ...p, gender: e.target.value }))}>
+              <option value="">— Select —</option>
+              <option value="Men">Men</option>
+              <option value="Ladies">Ladies</option>
+            </select>
+          </div>
           <div className="space-y-1"><Label>Member Number</Label><Input value={form.club_member_number} onChange={e => setForm(p => ({ ...p, club_member_number: e.target.value }))} /></div>
           <div className="space-y-1">
             <Label>Role</Label>

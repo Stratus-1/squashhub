@@ -1,0 +1,1 @@
+ALTER TABLE public.club_members ADD COLUMN gender text;

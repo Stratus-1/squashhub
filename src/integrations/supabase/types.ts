@@ -191,6 +191,7 @@ export type Database = {
           club_member_number: string | null
           email: string | null
           fee_category_id: string | null
+          gender: string | null
           id: string
           id_number: string | null
           joined_at: string
@@ -208,6 +209,7 @@ export type Database = {
           club_member_number?: string | null
           email?: string | null
           fee_category_id?: string | null
+          gender?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string
@@ -225,6 +227,7 @@ export type Database = {
           club_member_number?: string | null
           email?: string | null
           fee_category_id?: string | null
+          gender?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string

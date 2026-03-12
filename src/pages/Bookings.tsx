@@ -478,6 +478,7 @@ export default function Bookings() {
         endTime: endTime + ":00",
         opponentId: bookingDialog.opponentId || null,
         isFriendly: bookingDialog.isFriendly,
+        guestName: bookingDialog.guestName || null,
       });
 
       const opponent = bookingDialog.opponentId

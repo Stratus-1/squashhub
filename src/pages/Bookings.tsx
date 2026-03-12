@@ -204,6 +204,8 @@ export default function Bookings() {
     courtId: number;
     time: string;
     opponentId: string;
+    guestName: string;
+    playerMode: "none" | "member" | "guest";
     isFriendly: boolean;
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{

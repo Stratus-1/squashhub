@@ -1,0 +1,142 @@
+import { useState } from "react";
+import { useLeagueAssociations, useLeagues, LeagueAssociation, League } from "@/hooks/use-club";
+import { fromExt } from "@/lib/supabase-ext";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Plus, Edit2, Trash2, Trophy } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+
+export function LeaguesTab({ clubId }: { clubId: string }) {
+  const { data: associations = [] } = useLeagueAssociations(clubId);
+  const { data: leagues = [] } = useLeagues(clubId);
+  const [addAssocOpen, setAddAssocOpen] = useState(false);
+  const [addLeagueOpen, setAddLeagueOpen] = useState(false);
+  const qc = useQueryClient();
+
+  const handleDeleteAssoc = async (id: string) => {
+    if (!confirm("Delete this association?")) return;
+    const { error } = await fromExt("league_associations").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+  };
+
+  const handleDeleteLeague = async (id: string) => {
+    if (!confirm("Delete this league?")) return;
+    const { error } = await fromExt("leagues").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+  };
+
+  return (
+    <div className="space-y-6 mt-4">
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">League Associations</h3>
+          <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
+        </div>
+        <div className="space-y-2">
+          {associations.map(a => (
+            <Card key={a.id} className="p-3 flex items-center justify-between">
+              <div>
+                <p className="font-medium">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
+                <p className="text-xs text-muted-foreground">Fee: R{a.fee_annual ?? 0}/year • Due: Month {a.fee_due_month}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAssoc(a.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </Card>
+          ))}
+          {associations.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No associations added yet</p>}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">Leagues</h3>
+          <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
+        </div>
+        <div className="space-y-2">
+          {leagues.map(l => (
+            <Card key={l.id} className="p-3 flex items-center justify-between">
+              <div>
+                <p className="font-medium">{l.name} {l.code ? `(${l.code})` : ""}</p>
+                <p className="text-xs text-muted-foreground">
+                  {associations.find(a => a.id === l.association_id)?.name || "No association"}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteLeague(l.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+            </Card>
+          ))}
+          {leagues.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No leagues added yet</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [form, setForm] = useState({ name: "", abbreviation: "", fee_annual: 0, fee_due_month: 1, fee_payable_to: "", fee_payment_details: "" });
+  const qc = useQueryClient();
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });
+    if (error) toast.error(error.message);
+    else { toast.success("Association added"); onOpenChange(false); setForm({ name: "", abbreviation: "", fee_annual: 0, fee_due_month: 1, fee_payable_to: "", fee_payment_details: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Association</Button></DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add League Association</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Northerns Squash Federation" /></div>
+          <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. NSF" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><Label>Annual Fee (R)</Label><Input type="number" value={form.fee_annual} onChange={e => setForm(p => ({ ...p, fee_annual: Number(e.target.value) }))} /></div>
+            <div className="space-y-1"><Label>Due Month</Label><Input type="number" min={1} max={12} value={form.fee_due_month} onChange={e => setForm(p => ({ ...p, fee_due_month: Number(e.target.value) }))} /></div>
+          </div>
+          <div className="space-y-1"><Label>Payable To</Label><Input value={form.fee_payable_to} onChange={e => setForm(p => ({ ...p, fee_payable_to: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Payment Details</Label><Input value={form.fee_payment_details} onChange={e => setForm(p => ({ ...p, fee_payment_details: e.target.value }))} /></div>
+          <Button onClick={handleSave} className="w-full">Save</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [form, setForm] = useState({ name: "", code: "", association_id: "" });
+  const qc = useQueryClient();
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    const { error } = await fromExt("leagues").insert({ name: form.name, code: form.code || null, association_id: form.association_id || null, club_id: clubId });
+    if (error) toast.error(error.message);
+    else { toast.success("League added"); onOpenChange(false); setForm({ name: "", code: "", association_id: "" }); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add League</Button></DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Add League</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1"><Label>League Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. 7th League" /></div>
+          <div className="space-y-1"><Label>Code</Label><Input value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} placeholder="e.g. CSI006" /></div>
+          <div className="space-y-1">
+            <Label>Association</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.association_id} onChange={e => setForm(p => ({ ...p, association_id: e.target.value }))}>
+              <option value="">None</option>
+              {associations.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+          <Button onClick={handleSave} className="w-full">Save</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

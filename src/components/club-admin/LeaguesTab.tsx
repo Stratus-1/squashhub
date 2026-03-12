@@ -244,6 +244,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             club_member_id: r.club_member_id,
             league_id: r.league_id,
             player_rank: r.player_rank ?? 0,
+            is_captain: r.is_captain ?? false,
             member: members.find(m => m.id === r.club_member_id),
           }));
         } else {

@@ -189,46 +189,52 @@ export type Database = {
           address: string | null
           club_id: string
           club_member_number: string | null
+          email: string | null
           fee_category_id: string | null
           id: string
           id_number: string | null
           joined_at: string
           league_player_rank: number | null
+          name: string | null
           phone: string | null
           plays_league: boolean
           role: Database["public"]["Enums"]["club_member_role"]
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           address?: string | null
           club_id: string
           club_member_number?: string | null
+          email?: string | null
           fee_category_id?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string
           league_player_rank?: number | null
+          name?: string | null
           phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           address?: string | null
           club_id?: string
           club_member_number?: string | null
+          email?: string | null
           fee_category_id?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string
           league_player_rank?: number | null
+          name?: string | null
           phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

@@ -267,17 +267,17 @@ export default function Auth() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="signup-subdomain">Subdomain <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="signup-subdomain">Abbreviation <span className="text-destructive">*</span></Label>
                   <div className="flex items-center gap-0">
                     <Input
                       id="signup-subdomain"
                       type="text"
                       placeholder="csir"
                       value={subdomain}
-                      onChange={(e) => setSubdomain(toSubdomain(e.target.value))}
+                      onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5))}
                       required
-                      maxLength={30}
-                      className="rounded-r-none border-r-0"
+                      maxLength={5}
+                      className="rounded-r-none border-r-0 w-24"
                     />
                     <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-input bg-muted text-muted-foreground text-xs whitespace-nowrap">
                       .squashhub.co.za

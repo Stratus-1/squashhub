@@ -145,7 +145,7 @@ export default function ClubChampsView() {
         </div>
 
         {/* Group Standings */}
-        {groupNumbers.map((gn) => {
+        {groupNumbers.map((gn: number) => {
           const standings = getGroupStandings(gn);
           const groupMatches = matches.filter((m: any) => m.group_number === gn);
 

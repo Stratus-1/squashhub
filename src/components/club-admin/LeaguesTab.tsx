@@ -473,7 +473,17 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
                           <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                           <span className="w-5 text-xs font-bold text-primary text-center">{idx + 1}</span>
                           <span className="text-xs flex-1 truncate">{getMemberName(p)}</span>
+                          {p.is_captain && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Captain</Badge>}
                           <span className="text-[10px] text-muted-foreground">{getMemberSkill(p)}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-5 w-5 flex-shrink-0 ${p.is_captain ? "text-amber-500" : "text-muted-foreground/40 hover:text-amber-500"}`}
+                            onClick={() => toggleCaptain(league.id, idx)}
+                            title={p.is_captain ? "Remove captain" : "Make captain"}
+                          >
+                            <Crown className="w-3 h-3" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => removeFromLeague(league.id, idx)}>
                             <X className="w-2.5 h-2.5" />
                           </Button>

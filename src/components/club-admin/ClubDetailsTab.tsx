@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 
 export function ClubDetailsTab({ club }: { club: Club }) {
   const updateClub = useUpdateClub();

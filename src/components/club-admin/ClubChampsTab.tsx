@@ -325,14 +325,47 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     onError: (err: any) => toast.error(err.message || "Failed to create champs"),
   });
 
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
+
   const deleteChamp = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, withBookings }: { id: string; withBookings: boolean }) => {
+      if (withBookings) {
+        // Get all champ matches to find their court bookings
+        const { data: champMatches } = await fromExt("club_champs_matches")
+          .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
+          .eq("champ_id", id);
+
+        if (champMatches && champMatches.length > 0) {
+          // Get member -> user_id mapping
+          const memberIds = [...new Set(champMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
+          const { data: memberUsers } = await fromExt("club_members")
+            .select("id, user_id")
+            .in("id", memberIds);
+          const memberMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
+
+          // Delete matching bookings
+          for (const m of champMatches) {
+            const userId = memberMap.get(m.player_a_member_id);
+            if (!userId || !m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+            await fromExt("bookings")
+              .delete()
+              .eq("user_id", userId)
+              .eq("date", m.scheduled_date)
+              .eq("start_time", m.scheduled_time)
+              .eq("court_id", m.court_id);
+          }
+        }
+      }
+
       const { error } = await fromExt("club_champs").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Champs deleted");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+      setDeleteConfirm(null);
     },
   });
 

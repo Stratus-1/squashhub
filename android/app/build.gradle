@@ -60,12 +60,6 @@ dependencies {
     implementation platform("com.google.firebase:firebase-bom:${rootProject.ext.firebaseBomVersion}")
     implementation "com.google.firebase:firebase-analytics"
     implementation "com.google.firebase:firebase-messaging"
-
-    // Health Connect
-    implementation "androidx.health.connect:connect-client:${rootProject.ext.healthConnectVersion}"
-
-    // WorkManager for background processing
-    implementation "androidx.work:work-runtime-ktx:${rootProject.ext.workVersion}"
     
     // Kotlin Standard Library
     implementation "org.jetbrains.kotlin:kotlin-stdlib"

@@ -230,6 +230,7 @@ export function useCreateBooking() {
       opponentId,
       isFriendly,
       challengeId,
+      guestName,
     }: {
       bookingId?: string;
       courtId: number;
@@ -239,6 +240,7 @@ export function useCreateBooking() {
       opponentId?: string | null;
       isFriendly?: boolean;
       challengeId?: string | null;
+      guestName?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
       const id = bookingId || crypto.randomUUID();
@@ -254,6 +256,7 @@ export function useCreateBooking() {
           opponent_id: opponentId ?? null,
           is_friendly: !!isFriendly,
           challenge_id: challengeId ?? null,
+          guest_name: guestName ?? null,
         } as any, { onConflict: "id" })
         .select()
         .single();

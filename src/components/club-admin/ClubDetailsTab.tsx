@@ -80,6 +80,55 @@ export function ClubDetailsTab({ club }: { club: Club }) {
       <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">
         {updateClub.isPending ? "Saving..." : "Save Club Details"}
       </Button>
+
+      <CourtsSection clubId={club.id} />
     </div>
+  );
+}
+
+function CourtsSection({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
+  const [newCourt, setNewCourt] = useState("");
+
+  const { data: courts = [], isLoading } = useQuery({
+    queryKey: ["club-courts", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("courts").select("*").eq("club_id", clubId).order("name");
+      if (error) throw error;
+      return data as { id: number; name: string; club_id: string }[];
+    },
+  });
+
+  const handleAdd = async () => {
+    if (!newCourt.trim()) return;
+    const { error } = await fromExt("courts").insert({ name: newCourt.trim(), club_id: clubId });
+    if (error) toast.error(error.message);
+    else { toast.success("Court added"); setNewCourt(""); qc.invalidateQueries({ queryKey: ["club-courts"] }); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Remove this court?")) return;
+    const { error } = await fromExt("courts").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Court removed"); qc.invalidateQueries({ queryKey: ["club-courts"] }); }
+  };
+
+  return (
+    <Card className="p-6 space-y-4">
+      <h3 className="font-semibold">Courts ({courts.length})</h3>
+      <div className="space-y-2">
+        {courts.map(c => (
+          <div key={c.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+            <span className="text-sm">{c.name}</span>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+          </div>
+        ))}
+        {courts.length === 0 && !isLoading && <p className="text-sm text-muted-foreground">No courts added yet</p>}
+      </div>
+      <div className="flex gap-2">
+        <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+        <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
+      </div>
+    </Card>
   );
 }

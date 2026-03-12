@@ -129,10 +129,10 @@ export function WelcomeBanner() {
 
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Badge variant="secondary" className="gap-1">
-                    <Trophy className="w-3 h-3" /> Unranked
+                    <Trophy className="w-3 h-3" /> {profile.rank ? `Rank #${profile.rank}` : "Unranked"}
                   </Badge>
                   <Badge variant="secondary" className="gap-1">
-                    <HandMetal className="w-3 h-3" /> 0 matches
+                    <HandMetal className="w-3 h-3" /> {profile.matches_played} matches
                   </Badge>
                 </div>
               </>

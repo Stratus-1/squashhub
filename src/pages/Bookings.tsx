@@ -208,6 +208,7 @@ export default function Bookings() {
     guestName: string;
     playerMode: "none" | "member" | "guest";
     isFriendly: boolean;
+    duration: 30 | 60;
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;

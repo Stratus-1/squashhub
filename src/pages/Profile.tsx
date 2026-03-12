@@ -13,7 +13,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/use-data";
-import { useMyClubMember, useMyClub, useFeeCategories, useLeagueAssociations, SKILL_LEVELS } from "@/hooks/use-club";
+import { useMyClubMember, useMyClub, useFeeCategories, useLeagueAssociations, useMyLeagueRegistration, useLeagues, SKILL_LEVELS } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { toast } from "sonner";
@@ -57,6 +57,8 @@ export default function Profile() {
   const clubId = clubData?.club?.id;
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
+  const { data: leagues = [] } = useLeagues(clubId);
+  const { data: leagueRegistration } = useMyLeagueRegistration(clubMember?.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<"view" | "edit">("view");
@@ -101,9 +103,19 @@ export default function Profile() {
       setFeeCategoryId(clubMember.fee_category_id || "");
       setPlaysLeague(clubMember.plays_league || false);
     }
+    // League registration fields
+    if (leagueRegistration) {
+      // Derive associationId from the league's association_id
+      const league = leagues.find((l: any) => l.id === leagueRegistration.league_id);
+      setAssociationId(league?.association_id || "");
+      setAssociationNumber(leagueRegistration.league_association_number || "");
+    } else {
+      setAssociationId("");
+      setAssociationNumber("");
+    }
   };
 
-  useEffect(() => { resetDraft(); }, [profile, clubMember]);
+  useEffect(() => { resetDraft(); }, [profile, clubMember, leagueRegistration, leagues]);
 
   useEffect(() => {
     if (didInitFromUrl) return;
@@ -178,6 +190,36 @@ export default function Profile() {
           .update(memberPatch)
           .eq("id", clubMember.id);
         if (memErr) throw memErr;
+
+        // Save league registration if plays league
+        if (playsLeague && associationId) {
+          // Find a league belonging to this association
+          const targetLeague = leagues.find((l: any) => l.association_id === associationId);
+          if (targetLeague) {
+            if (leagueRegistration?.id) {
+              // Update existing
+              const { error: regErr } = await fromExt("member_league_registrations")
+                .update({
+                  league_id: targetLeague.id,
+                  league_association_number: associationNumber.trim() || null,
+                })
+                .eq("id", leagueRegistration.id);
+              if (regErr) throw regErr;
+            } else {
+              // Insert new
+              const { error: regErr } = await fromExt("member_league_registrations")
+                .insert({
+                  club_member_id: clubMember.id,
+                  league_id: targetLeague.id,
+                  league_association_number: associationNumber.trim() || null,
+                });
+              if (regErr) throw regErr;
+            }
+          }
+        } else if (!playsLeague && leagueRegistration?.id) {
+          // Remove registration if no longer plays league
+          await fromExt("member_league_registrations").delete().eq("id", leagueRegistration.id);
+        }
       }
     },
     onSuccess: async () => {
@@ -185,6 +227,7 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: ["profile", user?.id] }),
         queryClient.invalidateQueries({ queryKey: ["my-club-member"] }),
         queryClient.invalidateQueries({ queryKey: ["club-members"] }),
+        queryClient.invalidateQueries({ queryKey: ["my-league-registration"] }),
       ]);
       toast.success("Profile updated");
       setMode("view");

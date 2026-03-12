@@ -409,7 +409,7 @@ export default function Bookings() {
 
   const handleBook = async () => {
     if (!bookingDialog) return;
-    const endTime = addMinutesToTime(bookingDialog.time, 30);
+    const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 
     try {

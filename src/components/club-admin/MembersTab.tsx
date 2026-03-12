@@ -159,11 +159,16 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const age = idNumber ? getAgeFromSaId(idNumber) : null;
 
   const handleAdd = async () => {
-    if (!email.trim()) return;
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
     setLoading(true);
     try {
-      const { data: profile } = await fromExt("profiles").select("id").eq("email", email.trim()).maybeSingle();
-      if (!profile) { toast.error("No account found with that email. They need to sign up first."); return; }
+      const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
+      if (!profile) { toast.error(`No account found for "${trimmedEmail}". They need to sign up first.`); return; }
       const { error } = await fromExt("club_members").insert({
         club_id: clubId,
         user_id: profile.id,

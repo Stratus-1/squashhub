@@ -98,7 +98,7 @@ export default function Auth() {
     const { error } = await signUp(email, signupPassword, name, phone || undefined, {
       termsAcceptedAt: nowIso,
       privacyAcceptedAt: nowIso,
-    });
+    }, { clubName: club, subdomain: sub });
     if (error) {
       toast.error(error.message);
     } else {

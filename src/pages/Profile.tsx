@@ -57,6 +57,8 @@ export default function Profile() {
   const clubId = clubData?.club?.id;
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
+  const { data: leagues = [] } = useLeagues(clubId);
+  const { data: leagueRegistration } = useMyLeagueRegistration(clubMember?.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<"view" | "edit">("view");

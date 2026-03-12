@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = "https://gordon-s-bay-squash-hub.vercel.app";
+const DEFAULT_SITE_URL = "https://squashhub.lovable.app";
 
 function normalizeSiteUrl(input: string): string {
   const trimmed = input.trim();

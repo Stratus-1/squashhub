@@ -1218,6 +1218,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_reorder_ladder: {
+        Args: { gender_filter: string; player_ids: string[] }
+        Returns: undefined
+      }
       get_club_analytics: { Args: { days_back?: number }; Returns: Json }
       get_match_of_the_week: {
         Args: never

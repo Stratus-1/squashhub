@@ -2,11 +2,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
-import { Swords, TrendingUp } from "lucide-react";
+import { GripVertical, Swords, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-interface LadderPlayer {
+export interface LadderPlayer {
   id: string;
   name: string;
   avatar_url: string | null;
@@ -17,18 +19,20 @@ interface LadderPlayer {
   league_rank: number | null;
   user_id: string | null;
   gender: string | null;
+  club_member_id: string;
 }
 
 interface Props {
   player: LadderPlayer;
   index: number;
   isMe: boolean;
+  isAdmin: boolean;
   onNavigate: (playerId: string, isMe: boolean) => void;
   onChallenge: (playerId: string, rank: number | null) => void;
   challengeBlocked: boolean;
 }
 
-export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge, challengeBlocked }: Props) {
+export function LadderPlayerCard({ player, index, isMe, isAdmin, onNavigate, onChallenge, challengeBlocked }: Props) {
   const winRate = player.matches_played > 0
     ? Math.round((player.wins / player.matches_played) * 100)
     : 0;
@@ -36,18 +40,31 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
   const getInitials = (name: string) =>
     name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: player.id, disabled: !isAdmin });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.8 : undefined,
+  };
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.03 }}
-    >
+    <div ref={setNodeRef} style={style}>
       <Card
         className={cn(
           "p-2.5 flex items-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors",
           index === 0 && "border-accent/50 bg-accent/5",
           index === 1 && "border-primary/30 bg-primary/5",
-          index === 2 && "border-primary/20 bg-primary/[0.02]"
+          index === 2 && "border-primary/20 bg-primary/[0.02]",
+          isDragging && "shadow-lg ring-2 ring-primary/30"
         )}
         role="button"
         tabIndex={0}
@@ -58,6 +75,17 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
           onNavigate(player.id, isMe);
         }}
       >
+        {isAdmin && (
+          <div
+            className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+        )}
+
         <div className={cn(
           "w-7 h-7 rounded-full flex items-center justify-center font-heading font-bold text-xs shrink-0",
           index === 0 ? "bg-accent text-accent-foreground" :
@@ -106,6 +134,6 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
           Challenge
         </Button>
       </Card>
-    </motion.div>
+    </div>
   );
 }

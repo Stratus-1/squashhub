@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useClubMembers, useFeeCategories, ClubMember } from "@/hooks/use-club";
+import { useClubMembers, useFeeCategories, ClubMember, MemberFeeCategory } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { UserPlus, Upload, Search, Edit2, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+
+/** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
+function getAgeFromSaId(idNumber: string): number | null {
+  if (!idNumber || idNumber.length < 6) return null;
+  const yy = parseInt(idNumber.substring(0, 2), 10);
+  const mm = parseInt(idNumber.substring(2, 4), 10) - 1;
+  const dd = parseInt(idNumber.substring(4, 6), 10);
+  if (isNaN(yy) || isNaN(mm) || isNaN(dd)) return null;
+  const century = yy >= 0 && yy <= 30 ? 2000 : 1900;
+  const dob = new Date(century + yy, mm, dd);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age >= 0 && age < 150 ? age : null;
+}
 
 export function MembersTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading } = useClubMembers(clubId);
@@ -50,6 +65,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const phoneIdx = headers.indexOf("phone");
     const memberNumIdx = headers.indexOf("member_number");
     const leagueIdx = headers.indexOf("plays_league");
+    const idNumIdx = headers.indexOf("id_number");
 
     let imported = 0;
     for (let i = 1; i < lines.length; i++) {
@@ -57,7 +73,6 @@ export function MembersTab({ clubId }: { clubId: string }) {
       const email = cols[emailIdx];
       if (!email) continue;
 
-      // Find user by email in profiles
       const { data: profile } = await fromExt("profiles").select("id").eq("email", email).maybeSingle();
       if (!profile) {
         toast.error(`No account found for ${email} — they need to sign up first`);
@@ -69,6 +84,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         user_id: profile.id,
         club_member_number: memberNumIdx >= 0 ? cols[memberNumIdx] : undefined,
         plays_league: leagueIdx >= 0 ? cols[leagueIdx]?.toLowerCase() === "true" : false,
+        id_number: idNumIdx >= 0 ? cols[idNumIdx] : undefined,
       }, { onConflict: "club_id,user_id" });
 
       if (!error) imported++;
@@ -123,7 +139,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         {filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No members found</p>}
       </div>
 
-      {editMember && <EditMemberDialog member={editMember} clubId={clubId} feeCategories={feeCategories} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
+      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
     </div>
   );
 }
@@ -166,7 +182,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   );
 }
 
-function EditMemberDialog({ member, onClose }: { member: ClubMember; onClose: () => void }) {
+function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; onClose: () => void }) {
   const [form, setForm] = useState({
     club_member_number: member.club_member_number || "",
     role: member.role,
@@ -174,7 +190,10 @@ function EditMemberDialog({ member, onClose }: { member: ClubMember; onClose: ()
     league_player_rank: member.league_player_rank ?? "",
     id_number: member.id_number || "",
     address: member.address || "",
+    fee_category_id: member.fee_category_id || "",
   });
+
+  const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 
   const handleSave = async () => {
     const { error } = await fromExt("club_members").update({
@@ -184,6 +203,7 @@ function EditMemberDialog({ member, onClose }: { member: ClubMember; onClose: ()
       league_player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
       id_number: form.id_number || null,
       address: form.address || null,
+      fee_category_id: form.fee_category_id || null,
     }).eq("id", member.id);
     if (error) toast.error(error.message);
     else { toast.success("Member updated"); onClose(); }
@@ -210,7 +230,29 @@ function EditMemberDialog({ member, onClose }: { member: ClubMember; onClose: ()
           {form.plays_league && (
             <div className="space-y-1"><Label>Player Rank (1-4)</Label><Input type="number" min={1} max={4} value={form.league_player_rank} onChange={e => setForm(p => ({ ...p, league_player_rank: e.target.value }))} /></div>
           )}
-          <div className="space-y-1"><Label>ID Number</Label><Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value }))} /></div>
+          <div className="space-y-1">
+            <Label>ID Number</Label>
+            <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value }))} placeholder="SA ID number (13 digits)" />
+            {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
+          </div>
+          <div className="space-y-1">
+            <Label>Fee Category</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={form.fee_category_id}
+              onChange={e => setForm(p => ({ ...p, fee_category_id: e.target.value }))}
+            >
+              <option value="">— Select category —</option>
+              {feeCategories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name} (R{cat.annual_fee}/yr)</option>
+              ))}
+            </select>
+            {age !== null && !form.fee_category_id && (
+              <p className="text-xs text-amber-600">
+                💡 Suggestion: {age < 25 ? "Student" : age >= 60 ? "Pensioner" : "Normal member"} based on age
+              </p>
+            )}
+          </div>
           <div className="space-y-1"><Label>Address</Label><Input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></div>
           <Button onClick={handleSave} className="w-full">Save</Button>
         </div>

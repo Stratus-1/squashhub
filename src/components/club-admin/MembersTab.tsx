@@ -100,12 +100,17 @@ export function MembersTab({ clubId }: { clubId: string }) {
         {filtered.map(m => (
           <Card key={m.id} className="p-3 flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-medium truncate">{m.profiles?.name || "—"}</span>
                 <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
                 {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
+                {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
               </div>
-              <p className="text-xs text-muted-foreground truncate">{m.profiles?.email} {m.club_member_number ? `• #${m.club_member_number}` : ""}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {m.profiles?.email} {m.club_member_number ? `• #${m.club_member_number}` : ""}
+                {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
+                {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
+              </p>
             </div>
             <div className="flex gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditMember(m)}><Edit2 className="w-3.5 h-3.5" /></Button>

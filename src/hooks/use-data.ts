@@ -312,7 +312,7 @@ export function useMyBookings() {
       if (opponentIds.length > 0) {
         const { data: oppProfiles } = await supabase
           .from("profiles")
-          .select("id,name,availability,rank")
+          .select("id,name,rank")
           .in("id", opponentIds);
         opponentMap = new Map((oppProfiles || []).map((p: any) => [p.id, p]));
       }

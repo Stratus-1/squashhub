@@ -403,6 +403,13 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             <input type="checkbox" checked={form.plays_league} onChange={e => setForm(p => ({ ...p, plays_league: e.target.checked }))} />
             <Label>Plays League</Label>
           </div>
+          <div className="space-y-1">
+            <Label>Skill Level</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.skill_level} onChange={e => setForm(p => ({ ...p, skill_level: e.target.value }))}>
+              <option value="">— Select —</option>
+              {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
           {form.plays_league && (
             <>
               <div className="space-y-1">

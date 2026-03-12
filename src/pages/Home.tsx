@@ -598,13 +598,7 @@ export default function Home() {
                 >
                   <UserRound className="w-4 h-4 mr-1.5" /> Sign Up / Log In
                 </Button>
-                <Button
-                  variant="outline"
-                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
-                  onClick={() => scrollToLeaderboard()}
-                >
-                  <Trophy className="w-4 h-4 mr-1.5" /> View Leaderboard
-                </Button>
+              
               </>
             ) : (
               <>

@@ -147,6 +147,26 @@ export function useIsClubAdmin() {
   return data?.membership?.role === "captain" || data?.membership?.role === "admin";
 }
 
+/** Get the current user's own club member record */
+export function useMyClubMember() {
+  const { user } = useAuth();
+  const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
+  return useQuery({
+    queryKey: ["my-club-member", user?.id, clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .eq("user_id", user!.id)
+        .eq("club_id", clubId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClubMember | null;
+    },
+    enabled: !!user && !!clubId,
+  });
+}
+
 /** Get club members */
 export function useClubMembers(clubId?: string) {
   return useQuery({

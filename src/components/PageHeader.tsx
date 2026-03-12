@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
 import { useIncomingChallengesCount } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 
 interface PageHeaderProps {
   title: string;

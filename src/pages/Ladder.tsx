@@ -108,6 +108,10 @@ export default function Ladder() {
   const [menOrder, setMenOrder] = useState<LadderPlayer[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderPlayer[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
 
   const menFromData = useMemo(() =>
     (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],

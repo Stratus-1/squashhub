@@ -279,6 +279,7 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
     plays_league: member.plays_league,
     league_player_rank: member.league_player_rank ?? "",
     id_number: member.id_number || "",
+    gender: member.gender || "",
     phone: member.phone || "+27",
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",

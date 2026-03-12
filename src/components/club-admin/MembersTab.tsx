@@ -198,6 +198,11 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
           <div className="space-y-1">
+            <Label>Mobile Number</Label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+27 82 123 4567" />
+            <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
+          </div>
+          <div className="space-y-1">
             <Label>Fee Category</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

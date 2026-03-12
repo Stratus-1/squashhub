@@ -13,7 +13,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/use-data";
-import { useMyClubMember, useMyClub, useFeeCategories, useLeagueAssociations, SKILL_LEVELS } from "@/hooks/use-club";
+import { useMyClubMember, useMyClub, useFeeCategories, useLeagueAssociations, useMyLeagueRegistration, useLeagues, SKILL_LEVELS } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { toast } from "sonner";

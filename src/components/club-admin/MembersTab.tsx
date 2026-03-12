@@ -151,6 +151,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
 }
 
 function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
   const [idNumber, setIdNumber] = useState("");
@@ -166,18 +167,25 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
   const handleAdd = async () => {
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) return;
+    const trimmedName = name.trim();
+    if (!trimmedEmail || !trimmedName) {
+      toast.error("Name and email are required");
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       toast.error("Please enter a valid email address");
       return;
     }
     setLoading(true);
     try {
+      // Check if user already has an account — link them if so
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
-      if (!profile) { toast.error(`No account found for "${trimmedEmail}". They need to sign up first.`); return; }
+
       const { error } = await fromExt("club_members").insert({
         club_id: clubId,
-        user_id: profile.id,
+        user_id: profile?.id || null,
+        name: trimmedName,
+        email: trimmedEmail,
         club_member_number: memberNumber || undefined,
         id_number: idNumber || undefined,
         phone: phone && phone !== "+27" ? phone : undefined,
@@ -186,8 +194,9 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         plays_league: playsLeague,
       });
       if (error) throw error;
-      toast.success("Member added");
-      setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
+      const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
+      toast.success(msg);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {

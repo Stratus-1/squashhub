@@ -341,6 +341,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     phone: member.phone || "+27",
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
+    skill_level: member.skill_level || "",
     association_id: "",
     association_number: "",
   });

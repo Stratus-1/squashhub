@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useClubMembers, useFeeCategories, ClubMember, MemberFeeCategory } from "@/hooks/use-club";
+import { useClubMembers, useFeeCategories, useLeagueAssociations, ClubMember, MemberFeeCategory } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -173,7 +173,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         })}
       </div>
 
-      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
+      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
     </div>
   );
 }
@@ -188,8 +188,11 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [gender, setGender] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
+  const [associationId, setAssociationId] = useState("");
+  const [associationNumber, setAssociationNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
+  const { data: associations = [] } = useLeagueAssociations(clubId);
   const qc = useQueryClient();
 
   const age = idNumber ? getAgeFromSaId(idNumber) : null;
@@ -203,6 +206,14 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       toast.error("Please enter a valid email address");
+      return;
+    }
+    if (playsLeague && !associationId) {
+      toast.error("Please select a league association");
+      return;
+    }
+    if (playsLeague && !associationNumber.trim()) {
+      toast.error("Please enter the association number");
       return;
     }
     setLoading(true);
@@ -284,6 +295,21 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             <input type="checkbox" checked={playsLeague} onChange={e => setPlaysLeague(e.target.checked)} />
             <Label>Plays League</Label>
           </div>
+          {playsLeague && (
+            <>
+              <div className="space-y-1">
+                <Label>League Association *</Label>
+                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
+                  <option value="">— Select Association —</option>
+                  {associations.map(a => <option key={a.id} value={a.id}>{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Association Number *</Label>
+                <Input value={associationNumber} onChange={e => setAssociationNumber(e.target.value)} placeholder="e.g. NSF12345" />
+              </div>
+            </>
+          )}
           <Button onClick={handleAdd} disabled={loading} className="w-full">{loading ? "Adding..." : "Add Member"}</Button>
         </div>
       </DialogContent>
@@ -291,7 +317,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   );
 }
 
-function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; onClose: () => void }) {
+function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; clubId: string; onClose: () => void }) {
+  const { data: associations = [] } = useLeagueAssociations(clubId);
   const [form, setForm] = useState({
     name: member.name || member.profiles?.name || "",
     email: member.email || member.profiles?.email || "",
@@ -304,11 +331,21 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
     phone: member.phone || "+27",
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
+    association_id: "",
+    association_number: "",
   });
 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 
   const handleSave = async () => {
+    if (form.plays_league && !form.association_id) {
+      toast.error("Please select a league association");
+      return;
+    }
+    if (form.plays_league && !form.association_number.trim()) {
+      toast.error("Please enter the association number");
+      return;
+    }
     const { error } = await fromExt("club_members").update({
       name: form.name || null,
       email: form.email || null,
@@ -355,7 +392,20 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
             <Label>Plays League</Label>
           </div>
           {form.plays_league && (
-            <div className="space-y-1"><Label>Player Rank (1-4)</Label><Input type="number" min={1} max={4} value={form.league_player_rank} onChange={e => setForm(p => ({ ...p, league_player_rank: e.target.value }))} /></div>
+            <>
+              <div className="space-y-1">
+                <Label>League Association *</Label>
+                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.association_id} onChange={e => setForm(p => ({ ...p, association_id: e.target.value }))}>
+                  <option value="">— Select Association —</option>
+                  {associations.map(a => <option key={a.id} value={a.id}>{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Association Number *</Label>
+                <Input value={form.association_number} onChange={e => setForm(p => ({ ...p, association_number: e.target.value }))} placeholder="e.g. NSF12345" />
+              </div>
+              <div className="space-y-1"><Label>Player Rank (1-4)</Label><Input type="number" min={1} max={4} value={form.league_player_rank} onChange={e => setForm(p => ({ ...p, league_player_rank: e.target.value }))} /></div>
+            </>
           )}
           <div className="space-y-1">
             <Label>ID Number</Label>

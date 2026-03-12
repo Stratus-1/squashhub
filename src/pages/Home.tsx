@@ -501,22 +501,17 @@ export default function Home() {
     <div className="min-h-screen bg-background bottom-nav-safe">
       <SEO
         path="/"
-        description="Gordon's Bay Squash Club — book courts, challenge players, and climb the social league ladder."
+        description="SquashHub — the multi-club squash management platform. Register your club, manage members, leagues and fees."
         jsonLd={{
           "@context": "https://schema.org",
-          "@type": "SportsClub",
-          "@id": `${absoluteUrl("/")}#sportsclub`,
-          name: "Gordon's Bay Squash Club",
+          "@type": "WebApplication",
+          "@id": `${absoluteUrl("/")}#app`,
+          name: "SquashHub",
           url: absoluteUrl("/"),
-          sport: "Squash",
+          applicationCategory: "SportsApplication",
+          description: "Multi-club squash management platform for courts, leagues, and members.",
           logo: absoluteUrl("/pwa-512x512.png"),
           image: absoluteUrl("/pwa-512x512.png"),
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: "Gordon's Bay",
-            addressRegion: "Western Cape",
-            addressCountry: "ZA",
-          },
         }}
       />
       {/* Hero Section */}
@@ -530,18 +525,22 @@ export default function Home() {
           {/* Nav bar */}
           <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-2">
-              <img src={clubLogo} alt="GB Squash" className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg" />
-              <span className="font-heading font-bold text-sm text-primary-foreground">GB Squash</span>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary flex items-center justify-center">
+                <span className="font-heading font-bold text-sm text-primary-foreground">SH</span>
+              </div>
+              <span className="font-heading font-bold text-sm text-primary-foreground">SquashHub</span>
             </div>
             {!user ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
-                onClick={() => navigate("/auth")}
-              >
-                <LogIn className="w-4 h-4 mr-1" /> Sign In
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10"
+                  onClick={() => navigate("/auth")}
+                >
+                  <LogIn className="w-4 h-4 mr-1" /> Sign In
+                </Button>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <NotificationsDropdown
@@ -577,10 +576,10 @@ export default function Home() {
           {/* Hero content */}
           <motion.div {...fadeUp} transition={{ duration: 0.5 }}>
             <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground leading-tight mb-3">
-              Gordon's Bay<br />Squash Club
+              SquashHub
             </h1>
             <p className="text-primary-foreground/80 text-sm sm:text-base leading-relaxed mb-6 max-w-none w-[92%] sm:w-[70%] lg:w-[55%]">
-              Book courts, challenge players, and track your performance — all in one place.
+              The all-in-one platform for squash clubs. Register your club, manage members, leagues, fees & court bookings.
             </p>
           </motion.div>
 
@@ -590,27 +589,46 @@ export default function Home() {
             {...fadeUp}
             transition={{ delay: 0.15, duration: 0.5 }}
           >
-            <Button
-              className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold w-full sm:w-auto"
-              onClick={() => navigate(user ? "/bookings" : "/auth")}
-            >
-              <Calendar className="w-4 h-4 mr-1.5" /> Book a Court
-            </Button>
-            <Button
-              variant="outline"
-              className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
-              onClick={() => (user ? navigate("/challenges/new") : scrollToLeaderboard())}
-            >
-              {user ? (
-                <>
-                  <Swords className="w-4 h-4 mr-1.5" /> Challenge a Player
-                </>
-              ) : (
-                <>
+            {!user ? (
+              <>
+                <Button
+                  className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold w-full sm:w-auto"
+                  onClick={() => navigate("/auth")}
+                >
+                  <UserRound className="w-4 h-4 mr-1.5" /> Sign Up / Log In
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
+                  onClick={() => scrollToLeaderboard()}
+                >
                   <Trophy className="w-4 h-4 mr-1.5" /> View Leaderboard
-                </>
-              )}
-            </Button>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold w-full sm:w-auto"
+                  onClick={() => navigate("/register-club")}
+                >
+                  <Building2 className="w-4 h-4 mr-1.5" /> Register a Club
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
+                  onClick={() => navigate("/bookings")}
+                >
+                  <Calendar className="w-4 h-4 mr-1.5" /> Book a Court
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
+                  onClick={() => navigate("/club-admin")}
+                >
+                  <Settings className="w-4 h-4 mr-1.5" /> Club Admin
+                </Button>
+              </>
+            )}
           </motion.div>
 
           {/* Season prize (coupon style) */}

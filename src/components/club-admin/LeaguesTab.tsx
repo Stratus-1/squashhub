@@ -178,6 +178,11 @@ function LeagueCard({ league, associations, onDelete, members }: {
           <p className="text-xs text-muted-foreground">
             {associations.find(a => a.id === league.association_id)?.name || "No association"}
             {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
+            {(() => {
+              const captain = regs.find((r: any) => r.is_captain);
+              if (captain) return ` • Capt: ${getMemberName(captain)}`;
+              return "";
+            })()}
           </p>
         </div>
         <div className="flex items-center gap-1">

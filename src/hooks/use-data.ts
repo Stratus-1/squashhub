@@ -384,6 +384,7 @@ export function useLadder() {
           rank: profile?.rank ?? null,
           league_rank: leagueRank,
           user_id: m.user_id,
+          gender: m.gender || null,
         };
       });
 

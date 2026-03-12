@@ -969,7 +969,8 @@ export default function Bookings() {
                 </div>
               </div>
 
-                <div className="flex items-center justify-between rounded-xl border p-3">
+              <div className="flex items-center justify-between rounded-xl border p-3">
+                <div className="min-w-0">
                   <Label className="text-xs font-semibold">Friendly Match</Label>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Won't count toward ladder rankings

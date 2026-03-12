@@ -36,6 +36,7 @@ import PlayerProfile from "./pages/PlayerProfile";
 import Admin from "./pages/Admin";
 import RegisterClub from "./pages/RegisterClub";
 import ClubAdmin from "./pages/ClubAdmin";
+import ClubLanding from "./pages/ClubLanding";
 import BookingResponse from "./pages/BookingResponse";
 import Achievements from "./pages/Achievements";
 import Feed from "./pages/Feed";
@@ -155,6 +156,7 @@ function AppRoutes() {
         <Route path="/seasons" element={<ProtectedRoute><Seasons /></ProtectedRoute>} />
         <Route path="/register-club" element={<ProtectedRoute><RegisterClub /></ProtectedRoute>} />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
+        <Route path="/c/:subdomain" element={<ClubLanding />} />
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/admin/support" element={<AdminRoute><AdminSupport /></AdminRoute>} />
         <Route path="/admin/events/new" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />

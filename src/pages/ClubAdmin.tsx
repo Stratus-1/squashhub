@@ -34,6 +34,11 @@ export default function ClubAdmin() {
           <div>
             <h1 className="text-2xl font-bold font-heading">{club.name}</h1>
             <p className="text-sm text-muted-foreground">Club Administration</p>
+            {club.subdomain && (
+              <p className="text-xs text-primary font-mono mt-0.5">
+                {club.subdomain}.squashhub.app
+              </p>
+            )}
           </div>
         </div>
 

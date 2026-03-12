@@ -232,7 +232,7 @@ export default function Home() {
     queryKey: ["season-members-count", activeSeason?.id],
     queryFn: async () => {
       if (!activeSeason?.id) return null as number | null;
-      const { count, error } = await supabase
+      const { count, error } = await (supabase as any)
         .from("season_memberships")
         .select("user_id", { count: "exact", head: true })
         .eq("season_id", activeSeason.id);

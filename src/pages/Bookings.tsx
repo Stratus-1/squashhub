@@ -707,9 +707,10 @@ export default function Bookings() {
               <div
                 key={time}
                 className={cn(
-                  "grid grid-cols-[60px_1fr_1fr] sm:grid-cols-[72px_1fr_1fr] gap-x-1.5",
+                  "gap-x-1.5",
                   isHour && idx !== 0 && "pt-1.5 mt-1.5 border-t border-border/40"
                 )}
+                style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}
               >
                 <div className={cn(
                   "text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",

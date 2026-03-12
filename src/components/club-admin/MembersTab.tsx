@@ -208,6 +208,14 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       toast.error("Please enter a valid email address");
       return;
     }
+    if (playsLeague && !associationId) {
+      toast.error("Please select a league association");
+      return;
+    }
+    if (playsLeague && !associationNumber.trim()) {
+      toast.error("Please enter the association number");
+      return;
+    }
     setLoading(true);
     try {
       // Check if user already has an account — link them if so

@@ -234,6 +234,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
         gender: gender || undefined,
+        skill_level: skillLevel || undefined,
         plays_league: playsLeague,
       });
       if (error) throw error;

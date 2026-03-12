@@ -20,6 +20,8 @@ export default function Ladder() {
   const { user } = useAuth();
   const { data: players, isLoading } = useLadder();
   const { data: profile } = useProfile();
+  const { data: clubData } = useMyClub();
+  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
   const myRank = profile?.rank ?? null;
   const queryClient = useQueryClient();
   const [blockedChallenge, setBlockedChallenge] = useState<{
@@ -40,6 +42,7 @@ export default function Ladder() {
 
   const getChallengeBlockReason = useMemo(() => {
     return (playerId: string, opponentRank: number | null) => {
+      if (ladderStatus !== "active") return "The ladder is not yet active. Challenges will be enabled once the admin activates the ladder.";
       if (!user?.id) return "You must be logged in to challenge players.";
       if (playerId === user.id) return "You can't challenge yourself.";
       if (!myRank) return "You need a ladder rank before you can challenge players.";
@@ -50,7 +53,7 @@ export default function Ladder() {
       if (myRank <= opponentRank) return "You may only challenge players ranked above you.";
       return null;
     };
-  }, [myRank, user?.id]);
+  }, [myRank, user?.id, ladderStatus]);
 
   const menPlayers = useMemo(() =>
     (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],

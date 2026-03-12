@@ -924,7 +924,7 @@ export default function Bookings() {
                 <Switch
                   checked={bookingDialog.isFriendly}
                   onCheckedChange={(checked) =>
-                    setBookingDialog((s) => (s ? { ...s, isFriendly: checked, opponentId: "" } : s))
+                    setBookingDialog((s) => (s ? { ...s, isFriendly: checked, opponentId: "", guestName: "", playerMode: "none" } : s))
                   }
                 />
               </div>

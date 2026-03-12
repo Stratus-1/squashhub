@@ -30,6 +30,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const { data: clubData } = useMyClub();
+  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
+  const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
   const todayStr = format(new Date(), "yyyy-MM-dd");

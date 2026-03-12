@@ -294,6 +294,13 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             )}
           </div>
           <div className="space-y-1"><Label>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Optional" /></div>
+          <div className="space-y-1">
+            <Label>Skill Level</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={skillLevel} onChange={e => setSkillLevel(e.target.value)}>
+              <option value="">— Select —</option>
+              {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={playsLeague} onChange={e => setPlaysLeague(e.target.checked)} />
             <Label>Plays League</Label>

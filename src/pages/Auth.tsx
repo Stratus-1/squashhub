@@ -28,6 +28,16 @@ export default function Auth() {
   const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
+  const [clubName, setClubName] = useState("");
+  const [subdomain, setSubdomain] = useState("");
+
+  const toSubdomain = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+
+  const handleClubNameChange = (val: string) => {
+    setClubName(val);
+    setSubdomain(toSubdomain(val));
+  };
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Reset form
@@ -46,6 +56,8 @@ export default function Auth() {
     const name = signupName.trim();
     const email = signupEmail.trim();
     const phone = signupPhone.trim();
+    const club = clubName.trim();
+    const sub = subdomain.trim();
 
     if (!name || name.length < 2) {
       toast.error("Please enter your full name (at least 2 characters)");
@@ -53,6 +65,14 @@ export default function Auth() {
     }
     if (name.length > 100) {
       toast.error("Name must be less than 100 characters");
+      return;
+    }
+    if (!club || club.length < 2) {
+      toast.error("Please enter your club name");
+      return;
+    }
+    if (!sub || sub.length < 3 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(sub)) {
+      toast.error("Subdomain must be at least 3 characters (letters, numbers, hyphens)");
       return;
     }
     if (signupPassword.length < 6) {
@@ -203,6 +223,41 @@ export default function Auth() {
                     required
                     maxLength={100}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="signup-club">Club Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="signup-club"
+                    type="text"
+                    placeholder="e.g. CSIR Squash Club"
+                    value={clubName}
+                    onChange={(e) => handleClubNameChange(e.target.value)}
+                    required
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="signup-subdomain">Subdomain <span className="text-destructive">*</span></Label>
+                  <div className="flex items-center gap-0">
+                    <Input
+                      id="signup-subdomain"
+                      type="text"
+                      placeholder="csir"
+                      value={subdomain}
+                      onChange={(e) => setSubdomain(toSubdomain(e.target.value))}
+                      required
+                      maxLength={30}
+                      className="rounded-r-none border-r-0"
+                    />
+                    <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-input bg-muted text-muted-foreground text-xs whitespace-nowrap">
+                      .squashhub.co.za
+                    </span>
+                  </div>
+                  {subdomain && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Your club URL: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="signup-email">Email <span className="text-destructive">*</span></Label>

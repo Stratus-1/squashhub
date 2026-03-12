@@ -221,6 +221,14 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-1"><Label>Full Name *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>
           <div className="space-y-1"><Label>Email *</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
+          <div className="space-y-1">
+            <Label>Gender</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={gender} onChange={e => setGender(e.target.value)}>
+              <option value="">— Select —</option>
+              <option value="Men">Men</option>
+              <option value="Ladies">Ladies</option>
+            </select>
+          </div>
           <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Optional" /></div>
           <div className="space-y-1">
             <Label>ID Number</Label>

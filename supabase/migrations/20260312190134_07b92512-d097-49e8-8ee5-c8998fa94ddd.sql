@@ -1,0 +1,1 @@
+ALTER TABLE public.member_league_registrations ADD COLUMN is_captain boolean NOT NULL DEFAULT false;

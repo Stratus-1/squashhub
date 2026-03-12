@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 // ─── Types ───
@@ -17,6 +17,7 @@ interface LeaguePlayer {
   club_member_id: string;
   league_id: string;
   player_rank: number;
+  is_captain: boolean;
   member?: ClubMember;
 }
 
@@ -177,6 +178,11 @@ function LeagueCard({ league, associations, onDelete, members }: {
           <p className="text-xs text-muted-foreground">
             {associations.find(a => a.id === league.association_id)?.name || "No association"}
             {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
+            {(() => {
+              const captain = regs.find((r: any) => r.is_captain);
+              if (captain) return ` • Capt: ${getMemberName(captain)}`;
+              return "";
+            })()}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -194,6 +200,8 @@ function LeagueCard({ league, associations, onDelete, members }: {
             <div key={r.id} className="flex items-center gap-2 text-xs py-0.5">
               <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
               <span className="truncate">{getMemberName(r)}</span>
+              {r.is_captain && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+              {r.is_captain && <span className="text-[10px] text-amber-600 font-semibold">(C)</span>}
             </div>
           ))}
         </div>
@@ -243,6 +251,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             club_member_id: r.club_member_id,
             league_id: r.league_id,
             player_rank: r.player_rank ?? 0,
+            is_captain: r.is_captain ?? false,
             member: members.find(m => m.id === r.club_member_id),
           }));
         } else {
@@ -280,9 +289,20 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           club_member_id: member.id,
           league_id: leagueId,
           player_rank: current.length + 1,
+          is_captain: false,
           member,
         }],
       };
+    });
+  };
+
+  const toggleCaptain = (leagueId: string, idx: number) => {
+    setLeagueData(prev => {
+      const players = (prev[leagueId] || []).map((p, i) => ({
+        ...p,
+        is_captain: i === idx ? !p.is_captain : false,
+      }));
+      return { ...prev, [leagueId]: players };
     });
   };
 
@@ -369,6 +389,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               club_member_id: p.club_member_id,
               league_id: league.id,
               player_rank: i + 1,
+              is_captain: p.is_captain,
             }))
           );
           if (error) throw error;
@@ -459,7 +480,17 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
                           <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                           <span className="w-5 text-xs font-bold text-primary text-center">{idx + 1}</span>
                           <span className="text-xs flex-1 truncate">{getMemberName(p)}</span>
+                          {p.is_captain && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Captain</Badge>}
                           <span className="text-[10px] text-muted-foreground">{getMemberSkill(p)}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-5 w-5 flex-shrink-0 ${p.is_captain ? "text-amber-500" : "text-muted-foreground/40 hover:text-amber-500"}`}
+                            onClick={() => toggleCaptain(league.id, idx)}
+                            title={p.is_captain ? "Remove captain" : "Make captain"}
+                          >
+                            <Crown className="w-3 h-3" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => removeFromLeague(league.id, idx)}>
                             <X className="w-2.5 h-2.5" />
                           </Button>

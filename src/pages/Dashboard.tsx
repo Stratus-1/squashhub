@@ -129,7 +129,7 @@ export default function Dashboard() {
       />
       <DashboardTutorial />
 
-      <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
+      <PageHeader title={clubData?.club?.name || "SquashHub"} subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
 
       <WelcomeBanner />
 

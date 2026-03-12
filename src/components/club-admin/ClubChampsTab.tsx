@@ -443,6 +443,41 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             ))}
           </div>
         )}
+        {/* Delete confirmation dialog */}
+        <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Championship</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete this championship? This will remove all matches and entries.
+              </p>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="delete-bookings"
+                  checked={deleteConfirm?.withBookings ?? true}
+                  onCheckedChange={(v) => deleteConfirm && setDeleteConfirm({ ...deleteConfirm, withBookings: v })}
+                />
+                <Label htmlFor="delete-bookings" className="text-sm">
+                  Also delete associated court bookings
+                </Label>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleteChamp.isPending}
+                onClick={() => deleteConfirm && deleteChamp.mutate({ id: deleteConfirm.id, withBookings: deleteConfirm.withBookings })}
+              >
+                {deleteChamp.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

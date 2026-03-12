@@ -225,6 +225,40 @@ export default function Auth() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="signup-club">Club Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="signup-club"
+                    type="text"
+                    placeholder="e.g. CSIR Squash Club"
+                    value={clubName}
+                    onChange={(e) => handleClubNameChange(e.target.value)}
+                    required
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="signup-subdomain">Subdomain <span className="text-destructive">*</span></Label>
+                  <div className="flex items-center gap-0">
+                    <Input
+                      id="signup-subdomain"
+                      type="text"
+                      placeholder="csir"
+                      value={subdomain}
+                      onChange={(e) => setSubdomain(toSubdomain(e.target.value))}
+                      required
+                      maxLength={30}
+                      className="rounded-r-none border-r-0"
+                    />
+                    <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-input bg-muted text-muted-foreground text-xs whitespace-nowrap">
+                      .squashhub.co.za
+                    </span>
+                  </div>
+                  {subdomain && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Your club URL: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
+                    </p>
+                  )}
+                <div>
                   <Label htmlFor="signup-email">Email <span className="text-destructive">*</span></Label>
                   <Input
                     id="signup-email"

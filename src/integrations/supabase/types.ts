@@ -184,6 +184,116 @@ export type Database = {
         }
         Relationships: []
       }
+      club_members: {
+        Row: {
+          address: string | null
+          club_id: string
+          club_member_number: string | null
+          id: string
+          id_number: string | null
+          joined_at: string
+          league_player_rank: number | null
+          plays_league: boolean
+          role: Database["public"]["Enums"]["club_member_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          club_id: string
+          club_member_number?: string | null
+          id?: string
+          id_number?: string | null
+          joined_at?: string
+          league_player_rank?: number | null
+          plays_league?: boolean
+          role?: Database["public"]["Enums"]["club_member_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          club_id?: string
+          club_member_number?: string | null
+          id?: string
+          id_number?: string | null
+          joined_at?: string
+          league_player_rank?: number | null
+          plays_league?: boolean
+          role?: Database["public"]["Enums"]["club_member_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubs: {
+        Row: {
+          address: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_branch_code: string | null
+          bank_name: string | null
+          bank_reference: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          fee_reminder_days_before: number | null
+          id: string
+          logo_url: string | null
+          member_fee_annual: number | null
+          member_fee_due_month: number | null
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_branch_code?: string | null
+          bank_name?: string | null
+          bank_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          fee_reminder_days_before?: number | null
+          id?: string
+          logo_url?: string | null
+          member_fee_annual?: number | null
+          member_fee_due_month?: number | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_branch_code?: string | null
+          bank_name?: string | null
+          bank_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          fee_reminder_days_before?: number | null
+          id?: string
+          logo_url?: string | null
+          member_fee_annual?: number | null
+          member_fee_due_month?: number | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       courts: {
         Row: {
           id: number
@@ -371,6 +481,107 @@ export type Database = {
         }
         Relationships: []
       }
+      league_associations: {
+        Row: {
+          abbreviation: string | null
+          club_id: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          fee_annual: number | null
+          fee_due_month: number | null
+          fee_payable_to: string | null
+          fee_payment_details: string | null
+          id: string
+          name: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          abbreviation?: string | null
+          club_id: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          fee_annual?: number | null
+          fee_due_month?: number | null
+          fee_payable_to?: string | null
+          fee_payment_details?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          abbreviation?: string | null
+          club_id?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          fee_annual?: number | null
+          fee_due_month?: number | null
+          fee_payable_to?: string | null
+          fee_payment_details?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_associations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leagues: {
+        Row: {
+          association_id: string | null
+          club_id: string
+          code: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          association_id?: string | null
+          club_id: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string | null
+          club_id?: string
+          code?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leagues_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leagues_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_disputes: {
         Row: {
           created_at: string
@@ -474,6 +685,101 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_league_registrations: {
+        Row: {
+          club_member_id: string
+          created_at: string
+          id: string
+          league_association_number: string | null
+          league_id: string
+          player_rank: number | null
+          ssa_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          club_member_id: string
+          created_at?: string
+          id?: string
+          league_association_number?: string | null
+          league_id: string
+          player_rank?: number | null
+          ssa_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          league_association_number?: string | null
+          league_id?: string
+          player_rank?: number | null
+          ssa_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_league_registrations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_league_registrations_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      national_body_fees: {
+        Row: {
+          abbreviation: string | null
+          body_name: string
+          club_id: string
+          created_at: string
+          fee_annual: number | null
+          fee_due_month: number | null
+          fee_payable_to: string | null
+          fee_payment_details: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          abbreviation?: string | null
+          body_name?: string
+          club_id: string
+          created_at?: string
+          fee_annual?: number | null
+          fee_due_month?: number | null
+          fee_payable_to?: string | null
+          fee_payment_details?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          abbreviation?: string | null
+          body_name?: string
+          club_id?: string
+          created_at?: string
+          fee_annual?: number | null
+          fee_due_month?: number | null
+          fee_payable_to?: string | null
+          fee_payment_details?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "national_body_fees_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -849,6 +1155,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_club_admin: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_club_member: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       respond_to_booking_invite: {
         Args: { invite_token: string; new_status: string; reason?: string }
         Returns: undefined
@@ -856,6 +1170,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      club_member_role: "captain" | "admin" | "member"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -989,6 +1304,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      club_member_role: ["captain", "admin", "member"],
       integration_provider: [
         "strava",
         "apple_health",

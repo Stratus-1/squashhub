@@ -56,6 +56,7 @@ function generateRoundRobinRounds(playerIds: string[]): [string, string][][] {
 
 export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
 
   // Fetch courts

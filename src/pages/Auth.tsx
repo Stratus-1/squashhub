@@ -267,7 +267,7 @@ export default function Auth() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="signup-subdomain">Abbreviation <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="signup-subdomain">Abbreviation <span className="text-destructive">*</span> <span className="text-[10px] font-normal text-muted-foreground">(you can edit)</span></Label>
                   <div className="flex items-center gap-0">
                     <Input
                       id="signup-subdomain"

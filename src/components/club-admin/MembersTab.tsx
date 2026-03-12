@@ -260,6 +260,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
 function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; onClose: () => void }) {
   const [form, setForm] = useState({
+    name: member.name || member.profiles?.name || "",
+    email: member.email || member.profiles?.email || "",
     club_member_number: member.club_member_number || "",
     role: member.role,
     plays_league: member.plays_league,

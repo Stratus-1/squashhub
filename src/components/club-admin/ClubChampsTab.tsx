@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
@@ -323,14 +325,47 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     onError: (err: any) => toast.error(err.message || "Failed to create champs"),
   });
 
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
+
   const deleteChamp = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, withBookings }: { id: string; withBookings: boolean }) => {
+      if (withBookings) {
+        // Get all champ matches to find their court bookings
+        const { data: champMatches } = await fromExt("club_champs_matches")
+          .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
+          .eq("champ_id", id);
+
+        if (champMatches && champMatches.length > 0) {
+          // Get member -> user_id mapping
+          const memberIds = [...new Set(champMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
+          const { data: memberUsers } = await fromExt("club_members")
+            .select("id, user_id")
+            .in("id", memberIds);
+          const memberMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
+
+          // Delete matching bookings
+          for (const m of champMatches) {
+            const userId = memberMap.get(m.player_a_member_id);
+            if (!userId || !m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+            await fromExt("bookings")
+              .delete()
+              .eq("user_id", userId)
+              .eq("date", m.scheduled_date)
+              .eq("start_time", m.scheduled_time)
+              .eq("court_id", m.court_id);
+          }
+        }
+      }
+
       const { error } = await fromExt("club_champs").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Champs deleted");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+      setDeleteConfirm(null);
     },
   });
 
@@ -399,7 +434,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
                       <Eye className="w-4 h-4 mr-1" /> View
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteChamp.mutate(c.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>
@@ -408,6 +443,41 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             ))}
           </div>
         )}
+        {/* Delete confirmation dialog */}
+        <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Championship</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete this championship? This will remove all matches and entries.
+              </p>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="delete-bookings"
+                  checked={deleteConfirm?.withBookings ?? true}
+                  onCheckedChange={(v) => deleteConfirm && setDeleteConfirm({ ...deleteConfirm, withBookings: v })}
+                />
+                <Label htmlFor="delete-bookings" className="text-sm">
+                  Also delete associated court bookings
+                </Label>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleteChamp.isPending}
+                onClick={() => deleteConfirm && deleteChamp.mutate({ id: deleteConfirm.id, withBookings: deleteConfirm.withBookings })}
+              >
+                {deleteChamp.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

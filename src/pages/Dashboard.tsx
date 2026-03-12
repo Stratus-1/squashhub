@@ -28,6 +28,8 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
+  const { data: clubData } = useMyClub();
+  const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);

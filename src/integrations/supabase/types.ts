@@ -605,6 +605,56 @@ export type Database = {
           },
         ]
       }
+      fee_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          fee_label: string
+          fee_type: string
+          id: string
+          paid: boolean
+          paid_at: string | null
+          payment_method: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          fee_label?: string
+          fee_type?: string
+          id?: string
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          fee_label?: string
+          fee_type?: string
+          id?: string
+          paid?: boolean
+          paid_at?: string | null
+          payment_method?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "member_credit_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feed_comments: {
         Row: {
           content: string
@@ -984,6 +1034,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      member_credit_transactions: {
+        Row: {
+          amount: number
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          method: string | null
+          proof_url: string | null
+          reference: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          method?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          status?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          method?: string | null
+          proof_url?: string | null
+          reference?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       member_fee_categories: {
         Row: {

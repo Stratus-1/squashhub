@@ -47,6 +47,7 @@ import Seasons from "./pages/Seasons";
 import AdminEventEditor from "./pages/AdminEventEditor";
 import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
+import MyAccount from "./pages/MyAccount";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 import Terms from "./pages/Terms";
@@ -150,6 +151,7 @@ function AppRoutes() {
         <Route path="/players/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
         <Route path="/integrations/strava/callback" element={<ProtectedRoute><StravaCallback /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/my-account" element={<ProtectedRoute><MyAccount /></ProtectedRoute>} />
         <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
         <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
         <Route path="/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />

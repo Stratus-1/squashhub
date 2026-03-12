@@ -63,19 +63,6 @@ export function ClubDetailsTab({ club }: { club: Club }) {
         </div>
       </Card>
 
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Membership Fees</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1"><Label>Annual Fee (R)</Label><Input type="number" min={0} value={form.member_fee_annual} onChange={set("member_fee_annual")} /></div>
-          <div className="space-y-1">
-            <Label>Due Month</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.member_fee_due_month} onChange={set("member_fee_due_month") as any}>
-              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1"><Label>Reminder Days Before</Label><Input type="number" min={1} max={90} value={form.fee_reminder_days_before} onChange={set("fee_reminder_days_before")} /></div>
-        </div>
-      </Card>
 
       <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">
         {updateClub.isPending ? "Saving..." : "Save Club Details"}

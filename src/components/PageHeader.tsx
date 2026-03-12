@@ -31,6 +31,7 @@ export function PageHeader({
   backTo,
 }: PageHeaderProps) {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: clubData } = useMyClub();
@@ -41,6 +42,17 @@ export function PageHeader({
   const fallbackTo = backTo || getBackFallback(pathname);
   const canGoBack = typeof window !== "undefined" && window.history.length > 1;
   const { data: incomingCount } = useIncomingChallengesCount();
+
+  const avatarUrl = (profile as any)?.avatar_url || null;
+  const playerName = (profile as any)?.name || "";
+  const initials = playerName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p: string) => p[0])
+    .join("")
+    .toUpperCase() || "??";
 
   return (
     <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">

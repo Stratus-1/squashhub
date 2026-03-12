@@ -104,11 +104,9 @@ export function PageHeader({
               </Button>
             ) : null}
             {showProfile && (
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full"
+                className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => {
                   if (profileTo === "/profile") {
                     navigate(profileTo, { state: { backgroundLocation: location } });
@@ -118,8 +116,8 @@ export function PageHeader({
                 }}
                 aria-label="Profile"
               >
-                <User className="w-5 h-5" />
-              </Button>
+                <PlayerAvatar initials={initials} avatarUrl={avatarUrl} size="sm" />
+              </button>
             )}
           </div>
         )}

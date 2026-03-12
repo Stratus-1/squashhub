@@ -138,7 +138,7 @@ export default function Ladder() {
                     index <= 2 ? "bg-primary/15 text-primary" :
                     "bg-secondary text-muted-foreground"
                   )}>
-                    {player.rank ?? "—"}
+                    {index + 1}
                   </div>
 
                   <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={(player as any)?.avatar_url || null} />

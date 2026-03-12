@@ -256,6 +256,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   onOpenChange: (o: boolean) => void;
 }) {
   const qc = useQueryClient();
+  const { data: ladderPlayers } = useLadder();
   const [leagueData, setLeagueData] = useState<Record<string, LeaguePlayer[]>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);

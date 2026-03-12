@@ -185,10 +185,10 @@ export function WelcomeBanner() {
               <Button
                 size="sm"
                 className="w-full"
-                onClick={() => navigate("/ladder")}
+                onClick={() => navigate("/bookings")}
               >
                 <Trophy className="w-4 h-4 mr-1" />
-                View the Ladder
+                Book a Court
               </Button>
             )}
           </div>

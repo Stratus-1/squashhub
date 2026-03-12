@@ -163,6 +163,20 @@ export function LadderTab({ clubId }: { clubId: string }) {
     }
   }, [menOrder, ladiesOrder, queryClient]);
 
+  const handleStatusChange = useCallback(async (newStatus: string) => {
+    setStatusSaving(true);
+    try {
+      const { error } = await fromExt("clubs").update({ ladder_status: newStatus } as any).eq("id", clubId);
+      if (error) throw error;
+      toast.success(`Ladder status changed to ${newStatus === "provisional" ? "Provisionally Ranked" : newStatus === "active" ? "Active — Challenges Enabled" : "Unranked"}`);
+      queryClient.invalidateQueries({ queryKey: ["my-club"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update status");
+    } finally {
+      setStatusSaving(false);
+    }
+  }, [clubId, queryClient]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">

@@ -304,6 +304,9 @@ export type Database = {
           member_fee_annual: number | null
           member_fee_due_month: number | null
           name: string
+          payment_gateway: string | null
+          payment_gateway_public_key: string | null
+          payment_gateway_secret_key: string | null
           phone: string | null
           secretary_member_id: string | null
           subdomain: string | null
@@ -327,6 +330,9 @@ export type Database = {
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
           name: string
+          payment_gateway?: string | null
+          payment_gateway_public_key?: string | null
+          payment_gateway_secret_key?: string | null
           phone?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null
@@ -350,6 +356,9 @@ export type Database = {
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
           name?: string
+          payment_gateway?: string | null
+          payment_gateway_public_key?: string | null
+          payment_gateway_secret_key?: string | null
           phone?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null

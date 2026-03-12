@@ -27,6 +27,9 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
     bank_account_number: club.bank_account_number || "",
     bank_branch_code: club.bank_branch_code || "",
     bank_reference: club.bank_reference || "",
+    payment_gateway: club.payment_gateway || "",
+    payment_gateway_public_key: club.payment_gateway_public_key || "",
+    payment_gateway_secret_key: club.payment_gateway_secret_key || "",
     chairman_member_id: club.chairman_member_id || "",
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
@@ -72,6 +75,9 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       if (!payload.secretary_member_id) payload.secretary_member_id = null;
       if (!payload.club_captain_member_id) payload.club_captain_member_id = null;
       if (!payload.logo_url) payload.logo_url = null;
+      if (!payload.payment_gateway) payload.payment_gateway = null;
+      if (!payload.payment_gateway_public_key) payload.payment_gateway_public_key = null;
+      if (!payload.payment_gateway_secret_key) payload.payment_gateway_secret_key = null;
       await updateClub.mutateAsync({ id: club.id, ...payload });
       toast.success("Club details saved");
     } catch (err: any) {
@@ -171,6 +177,30 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
           <div className="space-y-1"><Label>Account Number</Label><Input value={form.bank_account_number} onChange={set("bank_account_number")} /></div>
           <div className="space-y-1"><Label>Branch Code</Label><Input value={form.bank_branch_code} onChange={set("bank_branch_code")} /></div>
           <div className="space-y-1"><Label>Payment Reference</Label><Input value={form.bank_reference} onChange={set("bank_reference")} /></div>
+        </div>
+      </Card>
+
+      {/* Payment Gateway */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold">Payment Gateway</h3>
+        <p className="text-sm text-muted-foreground">Configure an online payment gateway (e.g. Yoco) for collecting fees.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Gateway Provider</Label>
+            <Select value={form.payment_gateway || "__none__"} onValueChange={setSelect("payment_gateway")}>
+              <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                <SelectItem value="yoco">Yoco</SelectItem>
+                <SelectItem value="payfast">PayFast</SelectItem>
+                <SelectItem value="paystack">Paystack</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div />
+          <div className="space-y-1"><Label>Public / Publishable Key</Label><Input value={form.payment_gateway_public_key} onChange={set("payment_gateway_public_key")} placeholder="pk_live_..." /></div>
+          <div className="space-y-1"><Label>Secret Key</Label><Input type="password" value={form.payment_gateway_secret_key} onChange={set("payment_gateway_secret_key")} placeholder="sk_live_..." /></div>
         </div>
       </Card>
 

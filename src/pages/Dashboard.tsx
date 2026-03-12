@@ -147,16 +147,12 @@ export default function Dashboard() {
 
       <AvatarFeatureBanner />
 
-      {/* Primary Actions — Book, Ladder, Profile */}
+      {/* Primary Actions — Book, Profile */}
       <div className="px-4 mt-4">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
             <span className="text-xs font-medium">Book a Court</span>
-          </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/ladder")}>
-            <Trophy className="w-5 h-5" />
-            <span className="text-xs font-medium">View Ladder</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/30 bg-primary/5" onClick={() => openProfile("/profile?edit=1")}>
             <Settings className="w-5 h-5" />

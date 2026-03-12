@@ -240,7 +240,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       if (error) throw error;
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
       toast.success(msg);
-      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setPlaysLeague(false);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {

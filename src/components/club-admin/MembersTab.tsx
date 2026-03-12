@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function MembersTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading } = useClubMembers(clubId);
+  const { data: feeCategories = [] } = useFeeCategories(clubId);
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);

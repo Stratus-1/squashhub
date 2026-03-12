@@ -28,6 +28,16 @@ export default function Auth() {
   const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirm, setSignupConfirm] = useState("");
+  const [clubName, setClubName] = useState("");
+  const [subdomain, setSubdomain] = useState("");
+
+  const toSubdomain = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+
+  const handleClubNameChange = (val: string) => {
+    setClubName(val);
+    setSubdomain(toSubdomain(val));
+  };
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Reset form

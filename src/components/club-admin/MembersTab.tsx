@@ -199,12 +199,13 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         phone: phone && phone !== "+27" ? phone : undefined,
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
+        gender: gender || undefined,
         plays_league: playsLeague,
       });
       if (error) throw error;
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
       toast.success(msg);
-      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {

@@ -34,6 +34,7 @@ export interface ClubMember {
   plays_league: boolean;
   league_player_rank?: number;
   id_number?: string;
+  gender?: string;
   phone?: string;
   address?: string;
   fee_category_id?: string;

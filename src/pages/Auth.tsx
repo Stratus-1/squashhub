@@ -347,7 +347,7 @@ export default function Auth() {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Create Account"}
+                  {loading ? "Creating club..." : "Create Club"}
                 </Button>
                 <div className="flex items-start gap-2 pt-1">
                   <Checkbox

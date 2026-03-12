@@ -276,6 +276,8 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
 
   const handleSave = async () => {
     const { error } = await fromExt("club_members").update({
+      name: form.name || null,
+      email: form.email || null,
       club_member_number: form.club_member_number || null,
       role: form.role,
       plays_league: form.plays_league,
@@ -292,8 +294,10 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
   return (
     <Dialog open onOpenChange={() => onClose()}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit {member.profiles?.name || "Member"}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        <DialogHeader><DialogTitle>Edit {form.name || member.profiles?.name || "Member"}</DialogTitle></DialogHeader>
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-1"><Label>Full Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
           <div className="space-y-1"><Label>Member Number</Label><Input value={form.club_member_number} onChange={e => setForm(p => ({ ...p, club_member_number: e.target.value }))} /></div>
           <div className="space-y-1">
             <Label>Role</Label>

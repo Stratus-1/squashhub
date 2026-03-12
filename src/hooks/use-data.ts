@@ -332,22 +332,44 @@ export function useLadder() {
   return useQuery({
     queryKey: ["ladder"],
     queryFn: async () => {
-      // Fetch ranked players first, then unranked players alphabetically
-      const [ranked, unranked] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("*")
-          .not("rank", "is", null)
-          .order("rank"),
-        supabase
-          .from("profiles")
-          .select("*")
-          .is("rank", null)
-          .order("name"),
-      ]);
-      if (ranked.error) throw ranked.error;
-      if (unranked.error) throw unranked.error;
-      return [...(ranked.data || []), ...(unranked.data || [])];
+      // 1. Get all profiles
+      const { data: profiles, error: pErr } = await supabase
+        .from("profiles")
+        .select("*");
+      if (pErr) throw pErr;
+
+      // 2. Get league registrations with player_rank via club_members
+      const { data: regs } = await supabase
+        .from("member_league_registrations")
+        .select("club_member_id, player_rank, league_id, club_members!inner(user_id)")
+        .not("player_rank", "is", null)
+        .order("player_rank");
+
+      // Build a map: user_id -> best (lowest) league player_rank
+      const leagueRankMap = new Map<string, number>();
+      for (const r of regs || []) {
+        const userId = (r as any).club_members?.user_id;
+        if (userId && r.player_rank != null) {
+          const existing = leagueRankMap.get(userId);
+          if (existing == null || r.player_rank < existing) {
+            leagueRankMap.set(userId, r.player_rank);
+          }
+        }
+      }
+
+      // Sort: league-ranked players first (by player_rank), then unranked alphabetically
+      return (profiles || []).sort((a, b) => {
+        const aLeague = leagueRankMap.get(a.id) ?? null;
+        const bLeague = leagueRankMap.get(b.id) ?? null;
+
+        // Both have league rank -> sort by league rank
+        if (aLeague != null && bLeague != null) return aLeague - bLeague;
+        // League-ranked first
+        if (aLeague != null) return -1;
+        if (bLeague != null) return 1;
+        // Neither has league rank -> alphabetical
+        return (a.name || "").localeCompare(b.name || "");
+      });
     },
     enabled: !!user,
   });

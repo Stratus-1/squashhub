@@ -244,6 +244,36 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (matchErr) throw matchErr;
       }
 
+      // 4. Auto-book courts for matches with linked user accounts
+      const memberMap = new Map<string, string>(); // club_member_id -> user_id
+      selectedPlayers.forEach((p) => { if (p.user_id) memberMap.set(p.id, p.user_id); });
+
+      const bookings = schedulePreview.allMatches
+        .filter((m) => m.date && m.time && m.courtId && memberMap.has(m.playerA))
+        .map((m) => {
+          const [h, min] = m.time!.split(":").map(Number);
+          const endMins = h * 60 + min + matchDuration;
+          const endH = Math.floor(endMins / 60);
+          const endM = endMins % 60;
+          const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+          return {
+            user_id: memberMap.get(m.playerA)!,
+            opponent_id: memberMap.get(m.playerB) || null,
+            court_id: m.courtId!,
+            date: m.date!,
+            start_time: m.time!,
+            end_time: endTimeStr,
+            status: "active",
+            is_friendly: false,
+            guest_name: !memberMap.has(m.playerB) ? getMemberName(m.playerB) : null,
+          };
+        });
+
+      if (bookings.length > 0) {
+        const { error: bookErr } = await fromExt("bookings").insert(bookings);
+        if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);
+      }
+
       return champ;
     },
     onSuccess: () => {

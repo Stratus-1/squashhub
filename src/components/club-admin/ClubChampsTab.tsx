@@ -99,6 +99,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(30);
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
+  const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
 
   const stepIdx = STEPS.indexOf(step);
 
@@ -110,10 +111,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       .sort((a, b) => (a.league_player_rank || 999) - (b.league_player_rank || 999));
   }, [members, gender]);
 
-  // When entering players step, pre-select all
+  // When entering players step, pre-select all; when entering groups, auto-seed assignments
   const goToStep = (s: WizardStep) => {
     if (s === "players" && step === "gender") {
       setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+    }
+    if (s === "groups") {
+      // Auto-seed group assignments via snake draft
+      const newMap = new Map<string, number>();
+      selectedPlayers.forEach((p, i) => {
+        const cycle = Math.floor(i / numGroups);
+        const idx = cycle % 2 === 0 ? i % numGroups : numGroups - 1 - (i % numGroups);
+        newMap.set(p.id, idx);
+      });
+      setGroupAssignments(newMap);
     }
     setStep(s);
   };
@@ -123,16 +134,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     [genderMembers, selectedPlayerIds]
   );
 
-  // Distribute players into groups (snake draft by rank)
+  // Build groups from assignments map
   const groups = useMemo(() => {
     const g: ClubMember[][] = Array.from({ length: numGroups }, () => []);
-    selectedPlayers.forEach((p, i) => {
-      const cycle = Math.floor(i / numGroups);
-      const idx = cycle % 2 === 0 ? i % numGroups : numGroups - 1 - (i % numGroups);
-      g[idx].push(p);
+    selectedPlayers.forEach((p) => {
+      const gi = groupAssignments.get(p.id) ?? 0;
+      if (gi < numGroups) g[gi].push(p);
     });
     return g;
-  }, [selectedPlayers, numGroups]);
+  }, [selectedPlayers, numGroups, groupAssignments]);
 
   // Generate schedule preview
   const schedulePreview = useMemo(() => {
@@ -309,6 +319,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime("20:00");
     setMatchDuration(30);
     setSelectedCourtIds(new Set());
+    setGroupAssignments(new Map());
   };
 
   const getMemberName = (id: string) => {
@@ -473,7 +484,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           <CardContent className="space-y-4">
             <div>
               <Label>Divide {selectedPlayerIds.size} players into how many groups?</Label>
-              <Select value={String(numGroups)} onValueChange={(v) => setNumGroups(Number(v))}>
+              <Select value={String(numGroups)} onValueChange={(v) => {
+                const n = Number(v);
+                setNumGroups(n);
+                // Re-seed assignments for new group count
+                const newMap = new Map<string, number>();
+                selectedPlayers.forEach((p, i) => {
+                  const cycle = Math.floor(i / n);
+                  const idx = cycle % 2 === 0 ? i % n : n - 1 - (i % n);
+                  newMap.set(p.id, idx);
+                });
+                setGroupAssignments(newMap);
+              }}>
                 <SelectTrigger className="w-32 mt-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -485,21 +507,43 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </Select>
             </div>
             <Separator />
-            <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Players are auto-distributed by ranking. Use the dropdown next to each player to move them between groups.
+            </p>
+            <div className="space-y-4">
               {groups.map((g, gi) => (
-                <div key={gi}>
-                  <h4 className="font-medium text-sm mb-1">Group {gi + 1} ({g.length} players)</h4>
-                  <div className="flex flex-wrap gap-1">
+                <div key={gi} className="border rounded-lg p-3">
+                  <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
+                  <div className="space-y-1">
                     {g.map((p) => (
-                      <Badge key={p.id} variant="outline">{p.name || p.profiles?.name}</Badge>
+                      <div key={p.id} className="flex items-center gap-2 py-1">
+                        <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                        {p.league_player_rank && (
+                          <Badge variant="secondary" className="text-[10px]">#{p.league_player_rank}</Badge>
+                        )}
+                        <Select
+                          value={String(groupAssignments.get(p.id) ?? 0)}
+                          onValueChange={(v) => {
+                            const newMap = new Map(groupAssignments);
+                            newMap.set(p.id, Number(v));
+                            setGroupAssignments(newMap);
+                          }}
+                        >
+                          <SelectTrigger className="w-28 h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: numGroups }, (_, i) => (
+                              <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     ))}
                   </div>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Players are distributed using a snake draft (1-2-3, 3-2-1, …) to balance groups by ranking.
-            </p>
           </CardContent>
         </Card>
       )}

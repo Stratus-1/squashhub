@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLadder } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 import { type LadderPlayer } from "@/components/LadderPlayerCard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Loader2, Save, X } from "lucide-react";
+import { GripVertical, Loader2, Save, X, ShieldCheck, ShieldAlert, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { rpcExt } from "@/lib/supabase-ext";
+import { rpcExt, fromExt } from "@/lib/supabase-ext";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,

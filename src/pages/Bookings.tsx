@@ -567,10 +567,12 @@ export default function Bookings() {
 
   const eligibleOpponents = (() => {
     const list = (availablePlayers || []).filter((p: any) => p.id !== user?.id);
-    const myRank = me?.rank ?? null;
 
     if (!bookingDialog) return [] as typeof list;
-    if (bookingDialog.isFriendly) return list;
+    // Club Member mode or Friendly mode: show all members
+    if (bookingDialog.playerMode === "member" || bookingDialog.isFriendly) return list;
+    
+    const myRank = me?.rank ?? null;
     if (!myRank) return [] as typeof list;
 
     const availableSet = availableForSlotUserIds ? new Set(availableForSlotUserIds) : null;

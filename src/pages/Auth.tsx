@@ -133,7 +133,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-      <SEO title="Sign In" description="Sign in or create an account for Gordon's Bay Squash Hub." path="/auth" noIndex />
+      <SEO title="Sign In" description="Sign in or create an account for SquashHub — the multi-club squash management platform." path="/auth" noIndex />
       <motion.div
         className="w-full max-w-sm"
         initial={{ opacity: 0, y: 20 }}
@@ -141,10 +141,10 @@ export default function Auth() {
       >
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-3">
-            <span className="text-primary-foreground font-heading font-bold text-lg">GB</span>
+            <span className="text-primary-foreground font-heading font-bold text-lg">SH</span>
           </div>
-          <h1 className="text-2xl font-bold font-heading">Gordon's Bay Squash</h1>
-          <p className="text-sm text-muted-foreground mt-1">Book courts, climb the ladder</p>
+          <h1 className="text-2xl font-bold font-heading">SquashHub</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your club, leagues & players</p>
         </div>
 
         <Tabs defaultValue="login">

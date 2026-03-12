@@ -26,7 +26,9 @@ export interface Club {
 export interface ClubMember {
   id: string;
   club_id: string;
-  user_id: string;
+  user_id?: string;
+  name?: string;
+  email?: string;
   role: "captain" | "admin" | "member";
   club_member_number?: string;
   plays_league: boolean;

@@ -116,6 +116,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
           ))}
           {nationalFees.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No national body fees configured</p>}
         </div>
+        {editNat && <NationalFeeDialog clubId={clubId} open onOpenChange={() => setEditNat(null)} existing={editNat} />}
       </div>
 
       <Card className="p-4 bg-muted/50">

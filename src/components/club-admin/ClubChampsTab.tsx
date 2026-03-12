@@ -319,6 +319,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime("20:00");
     setMatchDuration(30);
     setSelectedCourtIds(new Set());
+    setGroupAssignments(new Map());
   };
 
   const getMemberName = (id: string) => {

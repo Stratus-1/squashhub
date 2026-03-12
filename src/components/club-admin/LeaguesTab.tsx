@@ -497,7 +497,19 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Allocate {gender === "men" ? "Men" : "Ladies"} to Leagues</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Allocate {gender === "men" ? "Men" : "Ladies"} to Leagues</DialogTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleReshuffle}
+              disabled={!ladderPlayers || leagues.length === 0}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Reshuffle to Ladder
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions</p>
         </DialogHeader>
 

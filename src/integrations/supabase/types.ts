@@ -203,6 +203,194 @@ export type Database = {
         }
         Relationships: []
       }
+      club_champs: {
+        Row: {
+          club_id: string
+          created_at: string
+          end_date: string
+          end_time: string
+          gender: string
+          id: string
+          match_duration_minutes: number
+          name: string
+          num_groups: number
+          play_days: number[]
+          start_date: string
+          start_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          end_date: string
+          end_time?: string
+          gender: string
+          id?: string
+          match_duration_minutes?: number
+          name: string
+          num_groups?: number
+          play_days?: number[]
+          start_date: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          end_date?: string
+          end_time?: string
+          gender?: string
+          id?: string
+          match_duration_minutes?: number
+          name?: string
+          num_groups?: number
+          play_days?: number[]
+          start_date?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_champs_entries: {
+        Row: {
+          champ_id: string
+          club_member_id: string
+          created_at: string
+          group_number: number
+          id: string
+        }
+        Insert: {
+          champ_id: string
+          club_member_id: string
+          created_at?: string
+          group_number?: number
+          id?: string
+        }
+        Update: {
+          champ_id?: string
+          club_member_id?: string
+          created_at?: string
+          group_number?: number
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_entries_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_entries_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_champs_matches: {
+        Row: {
+          champ_id: string
+          court_id: number | null
+          created_at: string
+          game_scores: string | null
+          group_number: number
+          id: string
+          player_a_member_id: string
+          player_b_member_id: string
+          round_number: number
+          scheduled_date: string | null
+          scheduled_time: string | null
+          score: string | null
+          status: string
+          updated_at: string
+          winner_member_id: string | null
+        }
+        Insert: {
+          champ_id: string
+          court_id?: number | null
+          created_at?: string
+          game_scores?: string | null
+          group_number: number
+          id?: string
+          player_a_member_id: string
+          player_b_member_id: string
+          round_number?: number
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          score?: string | null
+          status?: string
+          updated_at?: string
+          winner_member_id?: string | null
+        }
+        Update: {
+          champ_id?: string
+          court_id?: number | null
+          created_at?: string
+          game_scores?: string | null
+          group_number?: number
+          id?: string
+          player_a_member_id?: string
+          player_b_member_id?: string
+          round_number?: number
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          score?: string | null
+          status?: string
+          updated_at?: string
+          winner_member_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_matches_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_player_a_member_id_fkey"
+            columns: ["player_a_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_player_b_member_id_fkey"
+            columns: ["player_b_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_members: {
         Row: {
           address: string | null

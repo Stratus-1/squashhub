@@ -1,16 +1,12 @@
 import { useState } from "react";
-import { useMyClub, useIsClubAdmin, useUpdateClub, useClubMembers, useLeagueAssociations, useLeagues, useNationalBodyFees } from "@/hooks/use-club";
+import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Building2, Users, Trophy, DollarSign, Settings } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered } from "lucide-react";
 import { ClubDetailsTab } from "@/components/club-admin/ClubDetailsTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
+import { LadderTab } from "@/components/club-admin/LadderTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { FeesTab } from "@/components/club-admin/FeesTab";
 
@@ -43,15 +39,17 @@ export default function ClubAdmin() {
         </div>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details" className="text-xs md:text-sm"><Settings className="w-4 h-4 mr-1 hidden md:inline" />Details</TabsTrigger>
             <TabsTrigger value="members" className="text-xs md:text-sm"><Users className="w-4 h-4 mr-1 hidden md:inline" />Members</TabsTrigger>
+            <TabsTrigger value="ladder" className="text-xs md:text-sm"><ListOrdered className="w-4 h-4 mr-1 hidden md:inline" />Ladder</TabsTrigger>
             <TabsTrigger value="leagues" className="text-xs md:text-sm"><Trophy className="w-4 h-4 mr-1 hidden md:inline" />Leagues</TabsTrigger>
             <TabsTrigger value="fees" className="text-xs md:text-sm"><DollarSign className="w-4 h-4 mr-1 hidden md:inline" />Fees</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details"><ClubDetailsTab club={club} /></TabsContent>
           <TabsContent value="members"><MembersTab clubId={club.id} /></TabsContent>
+          <TabsContent value="ladder"><LadderTab clubId={club.id} /></TabsContent>
           <TabsContent value="leagues"><LeaguesTab clubId={club.id} /></TabsContent>
           <TabsContent value="fees"><FeesTab clubId={club.id} /></TabsContent>
         </Tabs>

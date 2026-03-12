@@ -36,6 +36,7 @@ function SortableLadderColumn({
   onChallenge,
   getChallengeBlockReason,
   onReorder,
+  sensors,
 }: {
   title: string;
   players: LadderPlayer[];
@@ -45,11 +46,8 @@ function SortableLadderColumn({
   onChallenge: (id: string, rank: number | null) => void;
   getChallengeBlockReason: (id: string, rank: number | null) => string | null;
   onReorder: (newOrder: LadderPlayer[]) => void;
+  sensors: any;
 }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
-  );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

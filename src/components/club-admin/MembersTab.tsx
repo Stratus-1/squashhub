@@ -173,7 +173,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         })}
       </div>
 
-      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
+      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
     </div>
   );
 }

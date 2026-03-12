@@ -147,100 +147,56 @@ export default function Dashboard() {
 
       <AvatarFeatureBanner />
 
+      {/* Primary Actions — Book, Ladder, Profile */}
+      <div className="px-4 mt-4">
+        <div className="grid grid-cols-3 gap-2">
+          <Button className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/bookings")}>
+            <Calendar className="w-5 h-5" />
+            <span className="text-xs font-medium">Book a Court</span>
+          </Button>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/ladder")}>
+            <Trophy className="w-5 h-5" />
+            <span className="text-xs font-medium">View Ladder</span>
+          </Button>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/30 bg-primary/5" onClick={() => openProfile("/profile?edit=1")}>
+            <Settings className="w-5 h-5" />
+            <span className="text-xs font-medium">My Profile</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* My Upcoming Bookings */}
       <motion.div
         className="px-4 mt-4"
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <AppleStatsCard
-          title="Your stats"
-          subtitle="Snapshot of your performance."
-          badgeText={profile?.rank ? `Rank #${profile.rank}` : "Unranked"}
-          ringLabel="Win rate"
-          ringValue={`${winRate}%`}
-          progress={{
-            played: Math.min(1, matchesPlayed / 50),
-            wins: Math.min(1, wins / 25),
-            winPct: Math.min(1, winRate / 100),
-          }}
-          tiles={[
-            { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
-            { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
-            { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
-            { label: "Rank", value: profile?.rank ? `#${profile.rank}` : "—", unit: "ladder", dotColor: "#ff2d55" },
-          ]}
-        />
-      </motion.div>
-
-      <div className="px-4 mt-3">
-        <IncomingChallengesCard
-          userId={user?.id}
-          challenges={challenges}
-          onViewAll={() => navigate("/challenges?view=inbox")}
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="px-4 mt-5">
-        <div className="flex items-end justify-between gap-3 mb-2">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold font-heading">Quick actions</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Tap to open a section.</p>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold font-heading">My Upcoming</h2>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/bookings")}>
+            View all <ChevronRight className="w-3 h-3 ml-1" />
+          </Button>
+        </div>
+        {myBookings && myBookings.length > 0 ? (
+          <div className="space-y-1.5">
+            {myBookings.slice(0, 3).map((booking) => (
+              <Card key={booking.id} className="p-2.5 flex items-center justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{booking.court_name}</p>
+                  <p className="text-[11px] text-muted-foreground">{booking.date}</p>
+                </div>
+                <Badge variant="secondary" className="text-[10px] shrink-0">
+                  {booking.start_time?.slice(0, 5)}
+                </Badge>
+              </Card>
+            ))}
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Button className="justify-between h-11 px-3" onClick={() => navigate("/bookings")}>
-            <span className="inline-flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Book a court
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/ladder")}>
-            <span className="inline-flex items-center gap-2">
-              <Trophy className="w-4 h-4" />
-              View ladder
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")}>
-            <span className="inline-flex items-center gap-2">
-              <Swords className="w-4 h-4" />
-              Create a challenge
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges?view=inbox")}>
-            <span className="inline-flex items-center gap-2">
-              <Swords className="w-4 h-4" />
-              Challenges inbox
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/support")}>
-            <span className="inline-flex items-center gap-2">
-              <LifeBuoy className="w-4 h-4" />
-              Support
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-
-          {isClubAdmin && (
-            <Button variant="outline" className="justify-between h-11 px-3 border-primary/30 bg-primary/5" onClick={() => navigate("/club-admin")}>
-              <span className="inline-flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Club Admin
-              </span>
-              <ChevronRight className="w-4 h-4 opacity-70" />
-            </Button>
-          )}
-        </div>
-      </div>
+        ) : (
+          <Card className="p-3 text-center text-sm text-muted-foreground">
+            No upcoming bookings
+          </Card>
+        )}
+      </motion.div>
 
       {/* Active match tracker */}
       {trackableBooking && (
@@ -268,11 +224,6 @@ export default function Dashboard() {
           </Card>
         </motion.div>
       )}
-
-      {/* Match of the Week */}
-      <div className="px-4 mt-3">
-        <MatchOfTheWeekCard />
-      </div>
 
       {/* Scheduled Matches */}
       {myScheduledMatches && myScheduledMatches.length > 0 && (
@@ -307,6 +258,82 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
+
+      <div className="px-4 mt-3">
+        <IncomingChallengesCard
+          userId={user?.id}
+          challenges={challenges}
+          onViewAll={() => navigate("/challenges?view=inbox")}
+        />
+      </div>
+
+      {/* Stats */}
+      <motion.div
+        className="px-4 mt-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <AppleStatsCard
+          title="Your stats"
+          subtitle="Snapshot of your performance."
+          badgeText={profile?.rank ? `Rank #${profile.rank}` : "Unranked"}
+          ringLabel="Win rate"
+          ringValue={`${winRate}%`}
+          progress={{
+            played: Math.min(1, matchesPlayed / 50),
+            wins: Math.min(1, wins / 25),
+            winPct: Math.min(1, winRate / 100),
+          }}
+          tiles={[
+            { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
+            { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
+            { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
+            { label: "Rank", value: profile?.rank ? `#${profile.rank}` : "—", unit: "ladder", dotColor: "#ff2d55" },
+          ]}
+        />
+      </motion.div>
+
+      {/* Match of the Week */}
+      <div className="px-4 mt-3">
+        <MatchOfTheWeekCard />
+      </div>
+
+      {/* More Actions */}
+      <div className="px-4 mt-5">
+        <p className="text-sm font-semibold font-heading mb-2">More</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")}>
+            <span className="inline-flex items-center gap-2">
+              <Swords className="w-4 h-4" />
+              Create Challenge
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges?view=inbox")}>
+            <span className="inline-flex items-center gap-2">
+              <Swords className="w-4 h-4" />
+              Challenges Inbox
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/support")}>
+            <span className="inline-flex items-center gap-2">
+              <LifeBuoy className="w-4 h-4" />
+              Support
+            </span>
+            <ChevronRight className="w-4 h-4 opacity-70" />
+          </Button>
+          {isClubAdmin && (
+            <Button variant="outline" className="justify-between h-11 px-3 border-primary/30 bg-primary/5" onClick={() => navigate("/club-admin")}>
+              <span className="inline-flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Club Admin
+              </span>
+              <ChevronRight className="w-4 h-4 opacity-70" />
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Today's Bookings */}
       <motion.div
@@ -348,31 +375,6 @@ export default function Dashboard() {
           </Card>
         )}
       </motion.div>
-
-      {/* My Upcoming */}
-      {myBookings && myBookings.length > 0 && (
-        <motion.div
-          className="px-4 mt-4"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <h2 className="text-sm font-semibold font-heading mb-2">My Upcoming</h2>
-          <div className="space-y-1.5">
-            {myBookings.slice(0, 3).map((booking) => (
-              <Card key={booking.id} className="p-2.5 flex items-center justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{booking.court_name}</p>
-                  <p className="text-[11px] text-muted-foreground">{booking.date}</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px] shrink-0">
-                  {booking.start_time?.slice(0, 5)}
-                </Badge>
-              </Card>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
       <motion.div
         className="px-4 mt-4 mb-4"

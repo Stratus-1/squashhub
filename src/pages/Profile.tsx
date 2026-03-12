@@ -115,7 +115,7 @@ export default function Profile() {
     }
   };
 
-  useEffect(() => { resetDraft(); }, [profile, clubMember]);
+  useEffect(() => { resetDraft(); }, [profile, clubMember, leagueRegistration, leagues]);
 
   useEffect(() => {
     if (didInitFromUrl) return;

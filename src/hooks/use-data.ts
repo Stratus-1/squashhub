@@ -326,12 +326,22 @@ export function useMyBookings() {
         }
       }
 
-      return data.map((b: any) => ({
-        ...b,
-        court_name: b.court_id === 1 ? "Court 1" : "Court 2",
-        opponent_name: b.guest_name || (b.opponent_id ? (opponentMap.get(b.opponent_id)?.name || "Unknown") : null),
-        opponent_rank: b.opponent_id ? (opponentMap.get(b.opponent_id)?.rank ?? null) : null,
-      }));
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+      const nowTime = now.toTimeString().slice(0, 5); // "HH:MM"
+
+      return data
+        .filter((b: any) => {
+          // For today's bookings, exclude ones where end_time has already passed
+          if (b.date === todayStr && b.end_time && b.end_time.slice(0, 5) <= nowTime) return false;
+          return true;
+        })
+        .map((b: any) => ({
+          ...b,
+          court_name: b.court_id === 1 ? "Court 1" : "Court 2",
+          opponent_name: b.guest_name || (b.opponent_id ? (opponentMap.get(b.opponent_id)?.name || "Unknown") : null),
+          opponent_rank: b.opponent_id ? (opponentMap.get(b.opponent_id)?.rank ?? null) : null,
+        }));
     },
     enabled: !!user,
   });

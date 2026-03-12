@@ -33,9 +33,20 @@ export interface ClubMember {
   league_player_rank?: number;
   id_number?: string;
   address?: string;
+  fee_category_id?: string;
   joined_at: string;
   updated_at: string;
   profiles?: { name: string; email: string; phone?: string; avatar_url?: string };
+  fee_category?: MemberFeeCategory;
+}
+
+export interface MemberFeeCategory {
+  id: string;
+  club_id: string;
+  name: string;
+  description?: string;
+  annual_fee: number;
+  sort_order: number;
 }
 
 export interface LeagueAssociation {

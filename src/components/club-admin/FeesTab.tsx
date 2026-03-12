@@ -108,7 +108,10 @@ export function FeesTab({ clubId }: { clubId: string }) {
                 <p className="text-xs text-muted-foreground">R{f.fee_annual ?? 0}/year • Due: {MONTHS[(f.fee_due_month ?? 1) - 1]}</p>
                 {f.fee_payable_to && <p className="text-xs text-muted-foreground">Payable to: {f.fee_payable_to}</p>}
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteNat(f.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditNat(f)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteNat(f.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              </div>
             </Card>
           ))}
           {nationalFees.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No national body fees configured</p>}

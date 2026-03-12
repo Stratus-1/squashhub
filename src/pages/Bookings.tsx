@@ -952,7 +952,23 @@ export default function Bookings() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border p-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Duration</Label>
+                <div className="flex gap-1.5">
+                  {([30, 60] as const).map((d) => (
+                    <Button
+                      key={d}
+                      size="sm"
+                      variant={bookingDialog.duration === d ? "default" : "outline"}
+                      className="flex-1 text-xs rounded-lg"
+                      onClick={() => setBookingDialog((s) => s ? { ...s, duration: d } : s)}
+                    >
+                      {d} min
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
                 <div className="min-w-0">
                   <Label className="text-xs font-semibold">Friendly Match</Label>
                   <p className="text-[11px] text-muted-foreground mt-0.5">

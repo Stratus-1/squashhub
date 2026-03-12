@@ -238,6 +238,7 @@ export default function Ladder() {
             onChallenge={handleChallenge}
             getChallengeBlockReason={getChallengeBlockReason}
             onReorder={setMenOrder}
+            sensors={sensors}
           />
           <SortableLadderColumn
             title="Ladies' Ladder"
@@ -248,6 +249,7 @@ export default function Ladder() {
             onChallenge={handleChallenge}
             getChallengeBlockReason={getChallengeBlockReason}
             onReorder={setLadiesOrder}
+            sensors={sensors}
           />
         </div>
       )}

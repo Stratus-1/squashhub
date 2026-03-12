@@ -66,6 +66,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const memberNumIdx = headers.indexOf("member_number");
     const leagueIdx = headers.indexOf("plays_league");
     const idNumIdx = headers.indexOf("id_number");
+    const addressIdx = headers.indexOf("address");
 
     let imported = 0;
     for (let i = 1; i < lines.length; i++) {
@@ -73,23 +74,27 @@ export function MembersTab({ clubId }: { clubId: string }) {
       const email = cols[emailIdx];
       if (!email) continue;
 
+      // Try to find existing profile, but don't require it
       const { data: profile } = await fromExt("profiles").select("id").eq("email", email).maybeSingle();
-      if (!profile) {
-        toast.error(`No account found for ${email} — they need to sign up first`);
-        continue;
-      }
+
+      const memberName = nameIdx >= 0 ? cols[nameIdx] : undefined;
 
       const { error } = await fromExt("club_members").upsert({
         club_id: clubId,
-        user_id: profile.id,
+        user_id: profile?.id || null,
+        name: memberName || undefined,
+        email: email,
         club_member_number: memberNumIdx >= 0 ? cols[memberNumIdx] : undefined,
         plays_league: leagueIdx >= 0 ? cols[leagueIdx]?.toLowerCase() === "true" : false,
         id_number: idNumIdx >= 0 ? cols[idNumIdx] : undefined,
-      }, { onConflict: "club_id,user_id" });
+        phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
+        address: addressIdx >= 0 ? cols[addressIdx] : undefined,
+      }, { onConflict: "club_id,email" });
 
       if (!error) imported++;
+      else console.error(`CSV row ${i}: ${error.message}`);
     }
-    toast.success(`Imported ${imported} members`);
+    toast.success(`Imported ${imported} member${imported !== 1 ? "s" : ""}`);
     qc.invalidateQueries({ queryKey: ["club-members"] });
     if (fileRef.current) fileRef.current.value = "";
   };

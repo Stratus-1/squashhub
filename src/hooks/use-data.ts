@@ -356,8 +356,24 @@ export function useProfile() {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) {
+        // Auto-create profile if missing (e.g. repeated signup)
+        const meta = user.user_metadata || {};
+        const { data: created, error: createErr } = await supabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            name: meta.name || "",
+            email: user.email || "",
+            phone: meta.phone || null,
+          })
+          .select()
+          .single();
+        if (createErr) throw createErr;
+        return created;
+      }
       return data;
     },
     enabled: !!user,

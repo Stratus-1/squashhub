@@ -781,6 +781,7 @@ export type Database = {
           club_member_id: string
           created_at: string
           id: string
+          is_captain: boolean
           league_association_number: string | null
           league_id: string
           player_rank: number | null
@@ -791,6 +792,7 @@ export type Database = {
           club_member_id: string
           created_at?: string
           id?: string
+          is_captain?: boolean
           league_association_number?: string | null
           league_id: string
           player_rank?: number | null
@@ -801,6 +803,7 @@ export type Database = {
           club_member_id?: string
           created_at?: string
           id?: string
+          is_captain?: boolean
           league_association_number?: string | null
           league_id?: string
           player_rank?: number | null

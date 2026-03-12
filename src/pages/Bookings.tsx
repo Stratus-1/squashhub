@@ -454,7 +454,7 @@ export default function Bookings() {
 
   const getBooking = (courtId: number, time: string) => {
     const tMin = timeToMinutes(time);
-    return (bookings as any[] | undefined)?.find((b: any) => {
+    return allCourtBookings.find((b: any) => {
       if (b.court_id !== courtId) return false;
       const start = String(b.start_time || "").slice(0, 5);
       const end = String(b.end_time || "").slice(0, 5);
@@ -467,11 +467,11 @@ export default function Bookings() {
 
   // Count bookings per court for stats
   const courtBookingCounts = courts.reduce((acc: Record<number, number>, courtId: number) => {
-    acc[courtId] = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === courtId).length || 0;
+    acc[courtId] = allCourtBookings.filter((b: any) => b.court_id === courtId).length;
     return acc;
   }, {} as Record<number, number>);
   const totalSlots = timeSlots.length;
-  const dayBookingsCount = (bookings as any[] | undefined)?.length || 0;
+  const dayBookingsCount = allCourtBookings.length;
 
   const handleBook = async () => {
     if (!bookingDialog) return;

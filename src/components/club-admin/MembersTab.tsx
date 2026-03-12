@@ -37,8 +37,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const filtered = members.filter(m => {
-    const name = m.profiles?.name || "";
-    const email = m.profiles?.email || "";
+    const name = m.profiles?.name || m.name || "";
+    const email = m.profiles?.email || m.email || "";
     const q = search.toLowerCase();
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q);
   });
@@ -66,6 +66,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const memberNumIdx = headers.indexOf("member_number");
     const leagueIdx = headers.indexOf("plays_league");
     const idNumIdx = headers.indexOf("id_number");
+    const addressIdx = headers.indexOf("address");
 
     let imported = 0;
     for (let i = 1; i < lines.length; i++) {
@@ -73,23 +74,27 @@ export function MembersTab({ clubId }: { clubId: string }) {
       const email = cols[emailIdx];
       if (!email) continue;
 
+      // Try to find existing profile, but don't require it
       const { data: profile } = await fromExt("profiles").select("id").eq("email", email).maybeSingle();
-      if (!profile) {
-        toast.error(`No account found for ${email} — they need to sign up first`);
-        continue;
-      }
+
+      const memberName = nameIdx >= 0 ? cols[nameIdx] : undefined;
 
       const { error } = await fromExt("club_members").upsert({
         club_id: clubId,
-        user_id: profile.id,
+        user_id: profile?.id || null,
+        name: memberName || undefined,
+        email: email,
         club_member_number: memberNumIdx >= 0 ? cols[memberNumIdx] : undefined,
         plays_league: leagueIdx >= 0 ? cols[leagueIdx]?.toLowerCase() === "true" : false,
         id_number: idNumIdx >= 0 ? cols[idNumIdx] : undefined,
-      }, { onConflict: "club_id,user_id" });
+        phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
+        address: addressIdx >= 0 ? cols[addressIdx] : undefined,
+      }, { onConflict: "club_id,email" });
 
       if (!error) imported++;
+      else console.error(`CSV row ${i}: ${error.message}`);
     }
-    toast.success(`Imported ${imported} members`);
+    toast.success(`Imported ${imported} member${imported !== 1 ? "s" : ""}`);
     qc.invalidateQueries({ queryKey: ["club-members"] });
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -113,17 +118,22 @@ export function MembersTab({ clubId }: { clubId: string }) {
       <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? "s" : ""}</p>
 
       <div className="space-y-2">
-        {filtered.map(m => (
+        {filtered.map(m => {
+          const displayName = m.profiles?.name || m.name || "—";
+          const displayEmail = m.profiles?.email || m.email || "";
+          const isLinked = !!m.user_id;
+          return (
           <Card key={m.id} className="p-3 flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium truncate">{m.profiles?.name || "—"}</span>
+                <span className="font-medium truncate">{displayName}</span>
                 <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
+                {!isLinked && <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600">Pending signup</Badge>}
                 {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
                 {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {m.profiles?.email} {m.club_member_number ? `• #${m.club_member_number}` : ""}
+                {displayEmail} {m.club_member_number ? `• #${m.club_member_number}` : ""}
                 {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
                 {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
               </p>
@@ -135,7 +145,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
               )}
             </div>
           </Card>
-        ))}
+          );
+        })}
         {filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No members found</p>}
       </div>
 
@@ -145,6 +156,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
 }
 
 function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
   const [idNumber, setIdNumber] = useState("");
@@ -160,18 +172,25 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
   const handleAdd = async () => {
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) return;
+    const trimmedName = name.trim();
+    if (!trimmedEmail || !trimmedName) {
+      toast.error("Name and email are required");
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       toast.error("Please enter a valid email address");
       return;
     }
     setLoading(true);
     try {
+      // Check if user already has an account — link them if so
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
-      if (!profile) { toast.error(`No account found for "${trimmedEmail}". They need to sign up first.`); return; }
+
       const { error } = await fromExt("club_members").insert({
         club_id: clubId,
-        user_id: profile.id,
+        user_id: profile?.id || null,
+        name: trimmedName,
+        email: trimmedEmail,
         club_member_number: memberNumber || undefined,
         id_number: idNumber || undefined,
         phone: phone && phone !== "+27" ? phone : undefined,
@@ -180,8 +199,9 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         plays_league: playsLeague,
       });
       if (error) throw error;
-      toast.success("Member added");
-      setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
+      const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
+      toast.success(msg);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {
@@ -194,7 +214,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       <DialogTrigger asChild><Button size="sm"><UserPlus className="w-4 h-4 mr-1" />Add Member</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Add Member</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-1"><Label>Full Name *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>
           <div className="space-y-1"><Label>Email *</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
           <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Optional" /></div>
           <div className="space-y-1">
@@ -239,6 +260,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
 function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; onClose: () => void }) {
   const [form, setForm] = useState({
+    name: member.name || member.profiles?.name || "",
+    email: member.email || member.profiles?.email || "",
     club_member_number: member.club_member_number || "",
     role: member.role,
     plays_league: member.plays_league,
@@ -253,6 +276,8 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
 
   const handleSave = async () => {
     const { error } = await fromExt("club_members").update({
+      name: form.name || null,
+      email: form.email || null,
       club_member_number: form.club_member_number || null,
       role: form.role,
       plays_league: form.plays_league,
@@ -269,8 +294,10 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
   return (
     <Dialog open onOpenChange={() => onClose()}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit {member.profiles?.name || "Member"}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        <DialogHeader><DialogTitle>Edit {form.name || member.profiles?.name || "Member"}</DialogTitle></DialogHeader>
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-1"><Label>Full Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
           <div className="space-y-1"><Label>Member Number</Label><Input value={form.club_member_number} onChange={e => setForm(p => ({ ...p, club_member_number: e.target.value }))} /></div>
           <div className="space-y-1">
             <Label>Role</Label>

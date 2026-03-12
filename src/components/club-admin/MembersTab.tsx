@@ -369,6 +369,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       phone: form.phone && form.phone !== "+27" ? form.phone : null,
       address: form.address || null,
       fee_category_id: form.fee_category_id || null,
+      skill_level: form.skill_level || null,
     }).eq("id", member.id);
     if (error) toast.error(error.message);
     else { toast.success("Member updated"); onClose(); }

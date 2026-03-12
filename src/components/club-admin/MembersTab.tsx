@@ -27,6 +27,39 @@ function getAgeFromSaId(idNumber: string): number | null {
   return age >= 0 && age < 150 ? age : null;
 }
 
+function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdit: () => void; onDelete: () => void }) {
+  const displayName = m.profiles?.name || m.name || "—";
+  const displayEmail = m.profiles?.email || m.email || "";
+  const isLinked = !!m.user_id;
+  return (
+    <Card className="p-3 flex items-center justify-between gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium truncate">{displayName}</span>
+          <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
+          <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
+            {isLinked ? "✓ Registered" : "✗ Not registered"}
+          </Badge>
+          {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
+          {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
+        </div>
+        <p className="text-xs text-muted-foreground truncate">
+          {displayEmail}
+          {m.club_member_number ? ` • #${m.club_member_number}` : ""}
+          {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
+          {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
+        </p>
+      </div>
+      <div className="flex gap-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
+        {m.role !== "captain" && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function MembersTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading } = useClubMembers(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
@@ -117,40 +150,27 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
       <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? "s" : ""}</p>
 
-      <div className="space-y-2">
-        {filtered.map(m => {
-          const displayName = m.profiles?.name || m.name || "—";
-          const displayEmail = m.profiles?.email || m.email || "";
-          const isLinked = !!m.user_id;
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {(["Men", "Ladies"] as const).map(gender => {
+          const group = filtered.filter(m => m.gender === gender);
+          const unassigned = gender === "Men" ? filtered.filter(m => !m.gender) : [];
+          const all = [...group, ...unassigned];
           return (
-          <Card key={m.id} className="p-3 flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium truncate">{displayName}</span>
-                <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
-                <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
-                  {isLinked ? "✓ Registered" : "✗ Not registered"}
-                </Badge>
-                {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
-                {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
+            <div key={gender}>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                {gender}
+                <span className="text-xs font-normal text-muted-foreground">({group.length})</span>
+              </h3>
+              <div className="space-y-2">
+                {all.map(m => <MemberCard key={m.id} member={m} onEdit={() => setEditMember(m)} onDelete={() => handleDelete(m.id)} />)}
+                {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
               </div>
-              <p className="text-xs text-muted-foreground truncate">
-                {displayEmail} {m.gender ? `• ${m.gender}` : ""}
-                {m.club_member_number ? ` • #${m.club_member_number}` : ""}
-                {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
-                {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
-              </p>
-            </div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditMember(m)}><Edit2 className="w-3.5 h-3.5" /></Button>
-              {m.role !== "captain" && (
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(m.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              {gender === "Men" && unassigned.length > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">+ {unassigned.length} unassigned gender</p>
               )}
             </div>
-          </Card>
           );
         })}
-        {filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No members found</p>}
       </div>
 
       {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}

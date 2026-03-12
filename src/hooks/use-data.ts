@@ -148,7 +148,11 @@ export function useBookings(date: string) {
             .filter(Boolean)
         ),
       ];
-      if (userIds.length === 0) return [];
+      if (userIds.length === 0) return bookings.map((b: any) => ({
+        ...b,
+        player_name: "Unknown",
+        opponent_name: (b as any).guest_name || null,
+      }));
 
       const { data: profiles } = await supabase
         .from("profiles")
@@ -157,12 +161,32 @@ export function useBookings(date: string) {
 
       const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
 
+      // For IDs not found in profiles, try club_members
+      const unmatchedIds = userIds.filter((id: string) => !profileMap.has(id));
+      let clubMemberMap = new Map<string, any>();
+      if (unmatchedIds.length > 0) {
+        const { data: members } = await (supabase as any)
+          .from("club_members")
+          .select("id, name, user_id")
+          .in("id", unmatchedIds);
+        clubMemberMap = new Map((members || []).map((m: any) => [m.id, m]));
+      }
+
+      const getName = (id: string | null) => {
+        if (!id) return null;
+        const profile = profileMap.get(id);
+        if (profile) return profile.name;
+        const member = clubMemberMap.get(id);
+        if (member) return member.name || "Unknown";
+        return "Unknown";
+      };
+
       return bookings.map(b => ({
         ...b,
-        player_name: (profileMap.get((b as any).user_id) as any)?.name || "Unknown",
+        player_name: getName((b as any).user_id) || "Unknown",
         player_availability: (profileMap.get((b as any).user_id) as any)?.availability || null,
         player_rank: (profileMap.get((b as any).user_id) as any)?.rank ?? null,
-        opponent_name: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.name || "Unknown") : null,
+        opponent_name: (b as any).guest_name || getName((b as any).opponent_id),
         opponent_availability: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.availability || null) : null,
         opponent_rank: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.rank ?? null) : null,
       }));

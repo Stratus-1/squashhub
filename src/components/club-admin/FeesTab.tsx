@@ -17,6 +17,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: clubData } = useMyClub();
   const [addNatOpen, setAddNatOpen] = useState(false);
+  const [editNat, setEditNat] = useState<NationalBodyFee | null>(null);
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [editCat, setEditCat] = useState<MemberFeeCategory | null>(null);
   const qc = useQueryClient();
@@ -107,11 +108,15 @@ export function FeesTab({ clubId }: { clubId: string }) {
                 <p className="text-xs text-muted-foreground">R{f.fee_annual ?? 0}/year • Due: {MONTHS[(f.fee_due_month ?? 1) - 1]}</p>
                 {f.fee_payable_to && <p className="text-xs text-muted-foreground">Payable to: {f.fee_payable_to}</p>}
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteNat(f.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditNat(f)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteNat(f.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+              </div>
             </Card>
           ))}
           {nationalFees.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No national body fees configured</p>}
         </div>
+        {editNat && <NationalFeeDialog clubId={clubId} open onOpenChange={() => setEditNat(null)} existing={editNat} />}
       </div>
 
       <Card className="p-4 bg-muted/50">
@@ -165,22 +170,35 @@ function FeeCategoryDialog({ clubId, open, onOpenChange, existing }: { clubId: s
   );
 }
 
-function NationalFeeDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const [form, setForm] = useState({ body_name: "Squash South Africa", abbreviation: "SSA", fee_annual: 0, fee_due_month: 1, fee_payable_to: "", fee_payment_details: "" });
+function NationalFeeDialog({ clubId, open, onOpenChange, existing }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void; existing?: NationalBodyFee }) {
+  const [form, setForm] = useState({
+    body_name: existing?.body_name || "Squash South Africa",
+    abbreviation: existing?.abbreviation || "SSA",
+    fee_annual: existing?.fee_annual ?? 0,
+    fee_due_month: existing?.fee_due_month ?? 1,
+    fee_payable_to: existing?.fee_payable_to || "",
+    fee_payment_details: existing?.fee_payment_details || "",
+  });
   const qc = useQueryClient();
 
   const handleSave = async () => {
     if (!form.body_name.trim()) return;
-    const { error } = await fromExt("national_body_fees").insert({ ...form, club_id: clubId });
-    if (error) toast.error(error.message);
-    else { toast.success("Added"); onOpenChange(false); qc.invalidateQueries({ queryKey: ["national-body-fees"] }); }
+    if (existing) {
+      const { error } = await fromExt("national_body_fees").update({ ...form }).eq("id", existing.id);
+      if (error) toast.error(error.message);
+      else { toast.success("Updated"); onOpenChange(false); qc.invalidateQueries({ queryKey: ["national-body-fees"] }); }
+    } else {
+      const { error } = await fromExt("national_body_fees").insert({ ...form, club_id: clubId });
+      if (error) toast.error(error.message);
+      else { toast.success("Added"); onOpenChange(false); qc.invalidateQueries({ queryKey: ["national-body-fees"] }); }
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Fee</Button></DialogTrigger>
+      {!existing && <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Fee</Button></DialogTrigger>}
       <DialogContent>
-        <DialogHeader><DialogTitle>Add National Body Fee</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{existing ? "Edit" : "Add"} National Body Fee</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1"><Label>Body Name</Label><Input value={form.body_name} onChange={e => setForm(p => ({ ...p, body_name: e.target.value }))} /></div>
           <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} /></div>
@@ -190,7 +208,7 @@ function NationalFeeDialog({ clubId, open, onOpenChange }: { clubId: string; ope
           </div>
           <div className="space-y-1"><Label>Payable To</Label><Input value={form.fee_payable_to} onChange={e => setForm(p => ({ ...p, fee_payable_to: e.target.value }))} /></div>
           <div className="space-y-1"><Label>Payment Details</Label><Input value={form.fee_payment_details} onChange={e => setForm(p => ({ ...p, fee_payment_details: e.target.value }))} /></div>
-          <Button onClick={handleSave} className="w-full">Save</Button>
+          <Button onClick={handleSave} className="w-full">{existing ? "Update" : "Save"}</Button>
         </div>
       </DialogContent>
     </Dialog>

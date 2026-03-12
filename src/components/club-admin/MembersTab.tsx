@@ -135,7 +135,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
                 {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {displayEmail} {m.club_member_number ? `• #${m.club_member_number}` : ""}
+                {displayEmail} {m.gender ? `• ${m.gender}` : ""}
+                {m.club_member_number ? ` • #${m.club_member_number}` : ""}
                 {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
                 {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
               </p>

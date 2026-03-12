@@ -147,8 +147,15 @@ export function MembersTab({ clubId }: { clubId: string }) {
 function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [email, setEmail] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
+  const [idNumber, setIdNumber] = useState("");
+  const [address, setAddress] = useState("");
+  const [feeCategoryId, setFeeCategoryId] = useState("");
+  const [playsLeague, setPlaysLeague] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { data: feeCategories = [] } = useFeeCategories(clubId);
   const qc = useQueryClient();
+
+  const age = idNumber ? getAgeFromSaId(idNumber) : null;
 
   const handleAdd = async () => {
     if (!email.trim()) return;
@@ -156,10 +163,18 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
     try {
       const { data: profile } = await fromExt("profiles").select("id").eq("email", email.trim()).maybeSingle();
       if (!profile) { toast.error("No account found with that email. They need to sign up first."); return; }
-      const { error } = await fromExt("club_members").insert({ club_id: clubId, user_id: profile.id, club_member_number: memberNumber || undefined });
+      const { error } = await fromExt("club_members").insert({
+        club_id: clubId,
+        user_id: profile.id,
+        club_member_number: memberNumber || undefined,
+        id_number: idNumber || undefined,
+        address: address || undefined,
+        fee_category_id: feeCategoryId || undefined,
+        plays_league: playsLeague,
+      });
       if (error) throw error;
       toast.success("Member added");
-      setEmail(""); setMemberNumber("");
+      setEmail(""); setMemberNumber(""); setIdNumber(""); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {
@@ -172,9 +187,37 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       <DialogTrigger asChild><Button size="sm"><UserPlus className="w-4 h-4 mr-1" />Add Member</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Add Member</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1"><Label>Email</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
+        <div className="space-y-3">
+          <div className="space-y-1"><Label>Email *</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
           <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Optional" /></div>
+          <div className="space-y-1">
+            <Label>ID Number</Label>
+            <Input value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="SA ID number (13 digits)" />
+            {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
+          </div>
+          <div className="space-y-1">
+            <Label>Fee Category</Label>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={feeCategoryId}
+              onChange={e => setFeeCategoryId(e.target.value)}
+            >
+              <option value="">— Select category —</option>
+              {feeCategories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name} (R{cat.annual_fee}/yr)</option>
+              ))}
+            </select>
+            {age !== null && !feeCategoryId && (
+              <p className="text-xs text-amber-600">
+                💡 Suggestion: {age < 25 ? "Student" : age >= 60 ? "Pensioner" : "Normal member"} based on age
+              </p>
+            )}
+          </div>
+          <div className="space-y-1"><Label>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Optional" /></div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={playsLeague} onChange={e => setPlaysLeague(e.target.checked)} />
+            <Label>Plays League</Label>
+          </div>
           <Button onClick={handleAdd} disabled={loading} className="w-full">{loading ? "Adding..." : "Add Member"}</Button>
         </div>
       </DialogContent>

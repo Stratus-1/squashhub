@@ -725,18 +725,12 @@ export default function Home() {
               </>
             ) : (
               <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/80" />
+                <Building2 className="w-3.5 h-3.5 text-primary-foreground/80" />
                 <span className="text-xs font-medium text-primary-foreground">
-                  Public leaderboard live
+                  Multi-club platform
                 </span>
               </div>
             )}
-            <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
-              <Users className="w-3.5 h-3.5 text-primary-foreground/80" />
-              <span className="text-xs font-medium text-primary-foreground">
-                {user ? (ladder?.length || 0) : (publicLeaderboard?.length || 0)} players
-              </span>
-            </div>
             {user && incomingPendingCount > 0 ? (
               <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
                 <Swords className="w-3.5 h-3.5 text-primary-foreground/80" />

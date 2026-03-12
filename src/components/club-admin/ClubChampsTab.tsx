@@ -99,6 +99,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(30);
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
+  const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
 
   const stepIdx = STEPS.indexOf(step);
 

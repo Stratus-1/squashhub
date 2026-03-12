@@ -318,15 +318,50 @@ export default function Bookings() {
   const getCourtName = (id: number) => courtsData?.find((c: any) => c.id === id)?.name || `Court ${id}`;
 
   const { data: availablePlayers } = useQuery({
-    queryKey: ["available-players", dateStr],
+    queryKey: ["available-players-club", dateStr],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get club members with their names
+      const { data: members, error: membersError } = await (supabase as any)
+        .from("club_members")
+        .select("id, name, user_id, email");
+      if (membersError) throw membersError;
+
+      // Also get profiles for registered users
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id,name,rank,email")
         .order("rank", { ascending: true })
         .limit(100);
-      if (error) throw error;
-      return (data || []) as Array<{ id: string; name: string; rank: number | null; email: string | null }> as any;
+      if (profilesError) throw profilesError;
+
+      // Merge: use profiles for linked members, club_members for unlinked
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      const combined: Array<{ id: string; name: string; rank: number | null; email: string | null; memberId: string }> = [];
+      const seen = new Set<string>();
+
+      for (const m of (members || [])) {
+        const key = m.user_id || m.id;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const profile = m.user_id ? profileMap.get(m.user_id) : null;
+        combined.push({
+          id: m.user_id || m.id, // use user_id if linked, else member id
+          name: profile?.name || m.name || m.email || "Unknown",
+          rank: profile?.rank ?? null,
+          email: profile?.email || m.email || null,
+          memberId: m.id,
+        });
+      }
+
+      // Also add profiles not in club_members
+      for (const p of (profiles || [])) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          combined.push({ id: p.id, name: p.name, rank: p.rank, email: p.email, memberId: p.id });
+        }
+      }
+
+      return combined as any;
     },
     enabled: !!user,
   });

@@ -140,7 +140,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
               )}
             </div>
           </Card>
-        ))}
+          );
+        })}
         {filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No members found</p>}
       </div>
 

@@ -194,6 +194,7 @@ export type Database = {
           id_number: string | null
           joined_at: string
           league_player_rank: number | null
+          phone: string | null
           plays_league: boolean
           role: Database["public"]["Enums"]["club_member_role"]
           updated_at: string
@@ -208,6 +209,7 @@ export type Database = {
           id_number?: string | null
           joined_at?: string
           league_player_rank?: number | null
+          phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
           updated_at?: string
@@ -222,6 +224,7 @@ export type Database = {
           id_number?: string | null
           joined_at?: string
           league_player_rank?: number | null
+          phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
           updated_at?: string

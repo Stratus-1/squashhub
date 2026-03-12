@@ -148,6 +148,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [email, setEmail] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
   const [idNumber, setIdNumber] = useState("");
+  const [phone, setPhone] = useState("+27");
   const [address, setAddress] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
@@ -168,13 +169,14 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         user_id: profile.id,
         club_member_number: memberNumber || undefined,
         id_number: idNumber || undefined,
+        phone: phone && phone !== "+27" ? phone : undefined,
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
         plays_league: playsLeague,
       });
       if (error) throw error;
       toast.success("Member added");
-      setEmail(""); setMemberNumber(""); setIdNumber(""); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
+      setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {
@@ -194,6 +196,11 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             <Label>ID Number</Label>
             <Input value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="SA ID number (13 digits)" />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
+          </div>
+          <div className="space-y-1">
+            <Label>Mobile Number</Label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+27 82 123 4567" />
+            <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
             <Label>Fee Category</Label>
@@ -232,6 +239,7 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
     plays_league: member.plays_league,
     league_player_rank: member.league_player_rank ?? "",
     id_number: member.id_number || "",
+    phone: member.phone || "+27",
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
   });
@@ -245,6 +253,7 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
       plays_league: form.plays_league,
       league_player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
       id_number: form.id_number || null,
+      phone: form.phone && form.phone !== "+27" ? form.phone : null,
       address: form.address || null,
       fee_category_id: form.fee_category_id || null,
     }).eq("id", member.id);
@@ -277,6 +286,11 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
             <Label>ID Number</Label>
             <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value }))} placeholder="SA ID number (13 digits)" />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
+          </div>
+          <div className="space-y-1">
+            <Label>Mobile Number</Label>
+            <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="+27 82 123 4567" />
+            <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
             <Label>Fee Category</Label>

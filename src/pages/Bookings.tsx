@@ -81,7 +81,7 @@ const timeSlots = (() => {
   return slots;
 })();
 
-const courts = [1, 2];
+// courts are loaded dynamically from the database
 
 function getDateLabel(date: Date) {
   if (isToday(date)) return "Today";
@@ -302,6 +302,18 @@ export default function Bookings() {
   const createChallenge = useCreateChallenge();
   const cancelBooking = useCancelBooking();
 
+  // Load courts dynamically from database
+  const { data: courtsData } = useQuery({
+    queryKey: ["courts-list"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("courts").select("id, name").order("id");
+      if (error) throw error;
+      return (data || []) as { id: number; name: string }[];
+    },
+  });
+  const courts = (courtsData || []).map((c: any) => c.id);
+  const getCourtName = (id: number) => courtsData?.find((c: any) => c.id === id)?.name || `Court ${id}`;
+
   const { data: availablePlayers } = useQuery({
     queryKey: ["available-players", dateStr],
     queryFn: async () => {
@@ -349,8 +361,10 @@ export default function Bookings() {
   };
 
   // Count bookings per court for stats
-  const court1Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 1).length || 0;
-  const court2Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 2).length || 0;
+  const courtBookingCounts = courts.reduce((acc: Record<number, number>, courtId: number) => {
+    acc[courtId] = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === courtId).length || 0;
+    return acc;
+  }, {} as Record<number, number>);
   const totalSlots = timeSlots.length;
   const dayBookingsCount = (bookings as any[] | undefined)?.length || 0;
 
@@ -602,9 +616,9 @@ export default function Bookings() {
       {/* Court availability stats */}
       {!isLoading && (
         <div className="px-4 mb-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {courts.map((courtId) => {
-              const count = courtId === 1 ? court1Count : court2Count;
+          <div className={cn("grid gap-2", courts.length <= 2 ? "grid-cols-1 sm:grid-cols-2" : courts.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
+            {courts.map((courtId: number) => {
+              const count = courtBookingCounts[courtId] || 0;
               const pct = Math.round((count / totalSlots) * 100);
               return (
                 <Card key={courtId} className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
@@ -612,7 +626,7 @@ export default function Bookings() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs font-semibold font-heading">Court {courtId}</span>
+                        <span className="text-xs font-semibold font-heading">{getCourtName(courtId)}</span>
                       </div>
                       <Badge
                         variant="secondary"
@@ -666,11 +680,11 @@ export default function Bookings() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[60px_1fr_1fr] sm:grid-cols-[72px_1fr_1fr] gap-x-1.5 px-4 pb-2">
+        <div className="gap-x-1.5 px-4 pb-2" style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}>
           <div />
-          {courts.map((c) => (
+          {courts.map((c: number) => (
             <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Court {c}
+              {getCourtName(c)}
             </div>
           ))}
         </div>
@@ -693,9 +707,10 @@ export default function Bookings() {
               <div
                 key={time}
                 className={cn(
-                  "grid grid-cols-[60px_1fr_1fr] sm:grid-cols-[72px_1fr_1fr] gap-x-1.5",
+                  "gap-x-1.5",
                   isHour && idx !== 0 && "pt-1.5 mt-1.5 border-t border-border/40"
                 )}
+                style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}
               >
                 <div className={cn(
                   "text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",

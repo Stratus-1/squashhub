@@ -134,16 +134,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     [genderMembers, selectedPlayerIds]
   );
 
-  // Distribute players into groups (snake draft by rank)
+  // Build groups from assignments map
   const groups = useMemo(() => {
     const g: ClubMember[][] = Array.from({ length: numGroups }, () => []);
-    selectedPlayers.forEach((p, i) => {
-      const cycle = Math.floor(i / numGroups);
-      const idx = cycle % 2 === 0 ? i % numGroups : numGroups - 1 - (i % numGroups);
-      g[idx].push(p);
+    selectedPlayers.forEach((p) => {
+      const gi = groupAssignments.get(p.id) ?? 0;
+      if (gi < numGroups) g[gi].push(p);
     });
     return g;
-  }, [selectedPlayers, numGroups]);
+  }, [selectedPlayers, numGroups, groupAssignments]);
 
   // Generate schedule preview
   const schedulePreview = useMemo(() => {

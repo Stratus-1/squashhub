@@ -1,0 +1,1 @@
+ALTER TABLE public.bookings ADD COLUMN challenge_id uuid REFERENCES public.challenges(id) DEFAULT NULL;

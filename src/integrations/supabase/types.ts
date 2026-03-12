@@ -115,6 +115,7 @@ export type Database = {
       }
       bookings: {
         Row: {
+          challenge_id: string | null
           court_id: number
           created_at: string
           date: string
@@ -125,6 +126,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          challenge_id?: string | null
           court_id: number
           created_at?: string
           date: string
@@ -135,6 +137,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          challenge_id?: string | null
           court_id?: number
           created_at?: string
           date?: string
@@ -145,6 +148,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_court_id_fkey"
             columns: ["court_id"]

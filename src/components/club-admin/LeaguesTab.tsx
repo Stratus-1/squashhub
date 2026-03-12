@@ -150,7 +150,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     if (entries.length === 0) return;
     const { error } = await fromExt("leagues").insert(entries);
     if (error) toast.error(error.message);
-    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
   };
 
   return (

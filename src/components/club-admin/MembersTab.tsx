@@ -123,7 +123,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         {filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No members found</p>}
       </div>
 
-      {editMember && <EditMemberDialog member={editMember} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
+      {editMember && <EditMemberDialog member={editMember} clubId={clubId} feeCategories={feeCategories} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
     </div>
   );
 }

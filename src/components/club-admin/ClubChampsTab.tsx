@@ -111,10 +111,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       .sort((a, b) => (a.league_player_rank || 999) - (b.league_player_rank || 999));
   }, [members, gender]);
 
-  // When entering players step, pre-select all
+  // When entering players step, pre-select all; when entering groups, auto-seed assignments
   const goToStep = (s: WizardStep) => {
     if (s === "players" && step === "gender") {
       setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+    }
+    if (s === "groups") {
+      // Auto-seed group assignments via snake draft
+      const newMap = new Map<string, number>();
+      selectedPlayers.forEach((p, i) => {
+        const cycle = Math.floor(i / numGroups);
+        const idx = cycle % 2 === 0 ? i % numGroups : numGroups - 1 - (i % numGroups);
+        newMap.set(p.id, idx);
+      });
+      setGroupAssignments(newMap);
     }
     setStep(s);
   };

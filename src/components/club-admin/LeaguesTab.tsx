@@ -308,7 +308,6 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     // Get ladder-ordered member IDs (club_member_id)
     const ladderMemberIds = ladderPlayers
       .filter((lp: any) => {
-        // Match gender
         const g = lp.gender?.toLowerCase();
         if (gender === "ladies") return g === "female" || g === "ladies" || g === "f";
         return g !== "female" && g !== "ladies" && g !== "f";
@@ -318,24 +317,30 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     // Only include members who are league-eligible
     const eligibleIds = genderMembers.map(m => m.id);
     const orderedMembers = ladderMemberIds.filter((id: string) => eligibleIds.includes(id));
-    // Add any eligible members not on the ladder at the end
     const remainingEligible = eligibleIds.filter(id => !orderedMembers.includes(id));
     const allOrdered = [...orderedMembers, ...remainingEligible];
 
-    // Distribute evenly: 5 players per league (standard), overflow goes to last league
-    const PLAYERS_PER_LEAGUE = 5;
+    const totalPlayers = allOrdered.length;
+    const numLeagues = leagues.length;
+
+    // Calculate players per league: divide evenly, minimum 4 per league
+    // If not enough players, just spread what we have
+    const basePerLeague = Math.max(4, Math.floor(totalPlayers / numLeagues));
+    const remainder = totalPlayers - basePerLeague * numLeagues;
+
     const newData: Record<string, LeaguePlayer[]> = {};
+    let cursor = 0;
 
     leagues.forEach((league, leagueIdx) => {
-      const start = leagueIdx * PLAYERS_PER_LEAGUE;
-      const isLast = leagueIdx === leagues.length - 1;
-      const slice = isLast
-        ? allOrdered.slice(start)
-        : allOrdered.slice(start, start + PLAYERS_PER_LEAGUE);
+      // Distribute remainder across first leagues (1 extra each)
+      const extraPlayer = leagueIdx < remainder ? 1 : 0;
+      const isLast = leagueIdx === numLeagues - 1;
+      const count = isLast ? totalPlayers - cursor : basePerLeague + extraPlayer;
+      const slice = allOrdered.slice(cursor, cursor + count);
+      cursor += count;
 
       newData[league.id] = slice.map((memberId, i) => {
         const member = members.find(m => m.id === memberId);
-        // Preserve captain status if previously set
         const prevPlayers = leagueData[league.id] || [];
         const wasCaptain = prevPlayers.find(p => p.club_member_id === memberId)?.is_captain ?? false;
         return {
@@ -349,8 +354,9 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       });
     });
 
+    const perLeague = leagues.map(l => newData[l.id]?.length || 0);
     setLeagueData(newData);
-    toast.success("Reshuffled to latest ladder ranking");
+    toast.success(`Reshuffled ${totalPlayers} players across ${numLeagues} leagues (${perLeague.join(", ")} per league)`);
   }, [ladderPlayers, leagues, genderMembers, members, gender, leagueData]);
 
   const getMemberName = (p: LeaguePlayer) => {

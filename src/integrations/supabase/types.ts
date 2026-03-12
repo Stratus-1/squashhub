@@ -274,6 +274,8 @@ export type Database = {
           bank_branch_code: string | null
           bank_name: string | null
           bank_reference: string | null
+          chairman_member_id: string | null
+          club_captain_member_id: string | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -284,6 +286,7 @@ export type Database = {
           member_fee_due_month: number | null
           name: string
           phone: string | null
+          secretary_member_id: string | null
           subdomain: string | null
           updated_at: string
         }
@@ -294,6 +297,8 @@ export type Database = {
           bank_branch_code?: string | null
           bank_name?: string | null
           bank_reference?: string | null
+          chairman_member_id?: string | null
+          club_captain_member_id?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -304,6 +309,7 @@ export type Database = {
           member_fee_due_month?: number | null
           name: string
           phone?: string | null
+          secretary_member_id?: string | null
           subdomain?: string | null
           updated_at?: string
         }
@@ -314,6 +320,8 @@ export type Database = {
           bank_branch_code?: string | null
           bank_name?: string | null
           bank_reference?: string | null
+          chairman_member_id?: string | null
+          club_captain_member_id?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -324,10 +332,33 @@ export type Database = {
           member_fee_due_month?: number | null
           name?: string
           phone?: string | null
+          secretary_member_id?: string | null
           subdomain?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clubs_chairman_member_id_fkey"
+            columns: ["chairman_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubs_club_captain_member_id_fkey"
+            columns: ["club_captain_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubs_secretary_member_id_fkey"
+            columns: ["secretary_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       courts: {
         Row: {

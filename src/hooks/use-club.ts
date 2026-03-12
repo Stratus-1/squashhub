@@ -18,6 +18,9 @@ export interface Club {
   member_fee_annual?: number;
   member_fee_due_month?: number;
   fee_reminder_days_before?: number;
+  chairman_member_id?: string;
+  secretary_member_id?: string;
+  club_captain_member_id?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;

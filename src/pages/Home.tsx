@@ -22,7 +22,7 @@ import { useBookings, useChallenges, useCourtBusyness, useHomeInsights, useLadde
 import { differenceInCalendarDays, format } from "date-fns";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
-import clubLogo from "@/assets/club-logo.png";
+// clubLogo no longer used — now using SH monogram
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

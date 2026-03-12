@@ -195,6 +195,8 @@ function LeagueCard({ league, associations, onDelete, members }: {
             <div key={r.id} className="flex items-center gap-2 text-xs py-0.5">
               <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
               <span className="truncate">{getMemberName(r)}</span>
+              {r.is_captain && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+              {r.is_captain && <span className="text-[10px] text-amber-600 font-semibold">(C)</span>}
             </div>
           ))}
         </div>

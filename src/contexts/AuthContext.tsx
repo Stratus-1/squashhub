@@ -51,12 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     name: string,
     phone?: string,
-    consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string }
+    consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
+    club?: { clubName: string; subdomain: string }
   ) => {
     const metadata: Record<string, string> = { name };
     if (phone) metadata.phone = phone;
     if (consents?.termsAcceptedAt) metadata.terms_accepted_at = consents.termsAcceptedAt;
     if (consents?.privacyAcceptedAt) metadata.privacy_accepted_at = consents.privacyAcceptedAt;
+    if (club?.clubName) metadata.club_name = club.clubName;
+    if (club?.subdomain) metadata.club_subdomain = club.subdomain;
     const { error } = await supabase.auth.signUp({
       email,
       password,

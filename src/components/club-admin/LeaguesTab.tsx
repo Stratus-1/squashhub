@@ -45,8 +45,40 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const handleDeleteLeague = async (id: string) => {
     if (!confirm("Delete this league?")) return;
     const { error } = await fromExt("leagues").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+    if (error) { toast.error(error.message); return; }
+
+    // Renumber codes for remaining leagues in the same gender group
+    const deleted = leagues.find(l => l.id === id);
+    if (deleted?.code) {
+      const prefix = deleted.code.replace(/\d+$/, ""); // e.g. "WCS"
+      const isMen = deleted.name.toLowerCase().includes("men's") || deleted.name.toLowerCase().startsWith("men");
+      const isLadies = deleted.name.toLowerCase().includes("ladies") || deleted.name.toLowerCase().includes("women");
+
+      const sameGroup = leagues
+        .filter(l => l.id !== id && l.code?.startsWith(prefix))
+        .filter(l => {
+          const lName = l.name.toLowerCase();
+          if (isMen) return lName.includes("men's") || lName.startsWith("men");
+          if (isLadies) return lName.includes("ladies") || lName.includes("women");
+          return false;
+        })
+        .sort((a, b) => {
+          const numA = parseInt(a.name.match(/(\d+)/)?.[1] || "99");
+          const numB = parseInt(b.name.match(/(\d+)/)?.[1] || "99");
+          return numA - numB;
+        });
+
+      // Renumber from 001
+      for (let i = 0; i < sameGroup.length; i++) {
+        const newCode = `${prefix}${String(i + 1).padStart(3, "0")}`;
+        if (sameGroup[i].code !== newCode) {
+          await fromExt("leagues").update({ code: newCode }).eq("id", sameGroup[i].id);
+        }
+      }
+    }
+
+    toast.success("Deleted & codes renumbered");
+    qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 
   const menLeagues = leagues.filter(l => l.name.toLowerCase().includes("men's") || l.name.toLowerCase().startsWith("men"));

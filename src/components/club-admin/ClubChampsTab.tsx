@@ -381,8 +381,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       {step === "players" && (
         <Card>
-          <CardHeader>
-            <CardTitle>Select Players — {gender === "men" ? "Men" : "Ladies"}</CardTitle>
+           <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Select Players — {gender === "men" ? "Men" : "Ladies"}</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (selectedPlayerIds.size === genderMembers.length) {
+                    setSelectedPlayerIds(new Set());
+                  } else {
+                    setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+                  }
+                }}
+              >
+                {selectedPlayerIds.size === genderMembers.length ? "Deselect All" : "Select All"}
+              </Button>
+            </div>
             <p className="text-sm text-muted-foreground">
               {selectedPlayerIds.size} of {genderMembers.length} selected. Uncheck to remove.
             </p>

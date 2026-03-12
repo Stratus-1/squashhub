@@ -3,12 +3,13 @@ import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal } from "lucide-react";
 import { ClubDetailsTab } from "@/components/club-admin/ClubDetailsTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
 import { LadderTab } from "@/components/club-admin/LadderTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { FeesTab } from "@/components/club-admin/FeesTab";
+import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 
 export default function ClubAdmin() {
   const { user } = useAuth();

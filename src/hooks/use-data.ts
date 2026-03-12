@@ -156,7 +156,7 @@ export function useBookings(date: string) {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, name, availability, rank")
+        .select("id, name, rank")
         .in("id", userIds);
 
       const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);

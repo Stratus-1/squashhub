@@ -1,8 +1,9 @@
-import { Home, Calendar, BarChart3, MessageCircle, LayoutDashboard } from "lucide-react";
+import { Home, Calendar, BarChart3, MessageCircle, LayoutDashboard, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useIsClubAdmin } from "@/hooks/use-club";
 
-const navItems = [
+const baseItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/bookings", icon: Calendar, label: "Courts" },
   { to: "/analytics", icon: BarChart3, label: "Stats" },
@@ -11,6 +12,12 @@ const navItems = [
 ];
 
 export function BottomNav() {
+  const isAdmin = useIsClubAdmin();
+
+  const navItems = isAdmin
+    ? [...baseItems, { to: "/club-admin", icon: Settings, label: "Admin" }]
+    : baseItems;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md safe-area-inset" style={{ paddingTop: 0 }}>
       <div className="flex items-center justify-around max-w-lg mx-auto">
@@ -21,7 +28,7 @@ export function BottomNav() {
             end={item.to === "/"}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 py-2 px-3 text-[10px] font-medium transition-colors",
+                "flex flex-col items-center gap-0.5 py-2 px-2 text-[10px] font-medium transition-colors",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"

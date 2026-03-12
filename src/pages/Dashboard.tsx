@@ -11,10 +11,11 @@ import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { AvatarFeatureBanner } from "@/components/AvatarFeatureBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
-import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
+import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
@@ -27,6 +28,8 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
+  const { data: clubData } = useMyClub();
+  const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
@@ -126,7 +129,7 @@ export default function Dashboard() {
       />
       <DashboardTutorial />
 
-      <PageHeader title="Gordon's Bay Squash" subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
+      <PageHeader title={clubData?.club?.name || "SquashHub"} subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
 
       <WelcomeBanner />
 
@@ -226,6 +229,16 @@ export default function Dashboard() {
             </span>
             <ChevronRight className="w-4 h-4 opacity-70" />
           </Button>
+
+          {isClubAdmin && (
+            <Button variant="outline" className="justify-between h-11 px-3 border-primary/30 bg-primary/5" onClick={() => navigate("/club-admin")}>
+              <span className="inline-flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Club Admin
+              </span>
+              <ChevronRight className="w-4 h-4 opacity-70" />
+            </Button>
+          )}
         </div>
       </div>
 

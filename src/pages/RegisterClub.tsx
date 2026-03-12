@@ -17,10 +17,17 @@ export default function RegisterClub() {
 
   const [form, setForm] = useState({
     name: "",
+    subdomain: "",
     address: "",
     email: "",
     phone: "",
   });
+
+  const generateSubdomain = (name: string) => {
+    const stopWords = ["squash", "club", "sports", "centre", "center", "the", "and"];
+    const words = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => !stopWords.includes(w) && w.length > 0);
+    return words.map(w => w.slice(0, 3)).join("").slice(0, 5) || name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
+  };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -58,7 +65,17 @@ export default function RegisterClub() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Club Name *</Label>
-              <Input id="name" value={form.name} onChange={set("name")} placeholder="e.g. CSIR Squash Club" required />
+              <Input id="name" value={form.name} onChange={(e) => {
+                const name = e.target.value;
+                setForm(p => ({ ...p, name, subdomain: generateSubdomain(name) }));
+              }} placeholder="e.g. CSIR Squash Club" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="subdomain">Abbreviation <span className="text-xs text-muted-foreground">(you can edit)</span></Label>
+              <div className="flex items-center gap-2">
+                <Input id="subdomain" value={form.subdomain} onChange={set("subdomain")} placeholder="e.g. gbsq" maxLength={5} className="max-w-[120px]" />
+                <span className="text-sm text-muted-foreground">.squashhub.app</span>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>

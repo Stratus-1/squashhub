@@ -103,6 +103,16 @@ export default function Profile() {
       setFeeCategoryId(clubMember.fee_category_id || "");
       setPlaysLeague(clubMember.plays_league || false);
     }
+    // League registration fields
+    if (leagueRegistration) {
+      // Derive associationId from the league's association_id
+      const league = leagues.find((l: any) => l.id === leagueRegistration.league_id);
+      setAssociationId(league?.association_id || "");
+      setAssociationNumber(leagueRegistration.league_association_number || "");
+    } else {
+      setAssociationId("");
+      setAssociationNumber("");
+    }
   };
 
   useEffect(() => { resetDraft(); }, [profile, clubMember]);

@@ -27,6 +27,39 @@ function getAgeFromSaId(idNumber: string): number | null {
   return age >= 0 && age < 150 ? age : null;
 }
 
+function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdit: () => void; onDelete: () => void }) {
+  const displayName = m.profiles?.name || m.name || "—";
+  const displayEmail = m.profiles?.email || m.email || "";
+  const isLinked = !!m.user_id;
+  return (
+    <Card className="p-3 flex items-center justify-between gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium truncate">{displayName}</span>
+          <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
+          <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
+            {isLinked ? "✓ Registered" : "✗ Not registered"}
+          </Badge>
+          {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
+          {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
+        </div>
+        <p className="text-xs text-muted-foreground truncate">
+          {displayEmail}
+          {m.club_member_number ? ` • #${m.club_member_number}` : ""}
+          {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
+          {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
+        </p>
+      </div>
+      <div className="flex gap-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
+        {m.role !== "captain" && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 export function MembersTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading } = useClubMembers(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);

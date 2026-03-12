@@ -117,7 +117,8 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
-  const [code, setCode] = useState("");
+  const [prefix, setPrefix] = useState("");
+  const [startNum, setStartNum] = useState(1);
   const [associationId, setAssociationId] = useState("");
   const qc = useQueryClient();
 
@@ -126,21 +127,35 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     setter(prev => prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]);
   };
 
+  // Build entries with auto-generated codes: prefix + sequential number (001, 002...) from highest league (1st) to lowest
+  const buildEntries = () => {
+    // Sort selected by league number (1st=1, 2nd=2, etc.) ascending so 1st league gets lowest code number
+    const parseNum = (l: string) => parseInt(l);
+    const sortedMen = [...selectedMen].sort((a, b) => parseNum(a) - parseNum(b));
+    const sortedLadies = [...selectedLadies].sort((a, b) => parseNum(a) - parseNum(b));
+    const all = [...sortedMen.map(l => ({ label: l, gender: "Men's" })), ...sortedLadies.map(l => ({ label: l, gender: "Ladies" }))];
+
+    let codeNum = startNum;
+    return all.map(({ label, gender }) => {
+      const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
+      codeNum++;
+      return { name: `${gender} ${label} League`, code, association_id: associationId || null, club_id: clubId };
+    });
+  };
+
+  const entries = buildEntries();
+
   const handleSave = async () => {
-    const entries = [
-      ...selectedMen.map(l => ({ name: `Men's ${l} League`, code: code || null, association_id: associationId || null, club_id: clubId })),
-      ...selectedLadies.map(l => ({ name: `Ladies ${l} League`, code: code || null, association_id: associationId || null, club_id: clubId })),
-    ];
     if (entries.length === 0) return;
     const { error } = await fromExt("leagues").insert(entries);
     if (error) toast.error(error.message);
-    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setCode(""); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Leagues</Button></DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add Leagues</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -167,7 +182,27 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
               </div>
             </div>
           </div>
-          <div className="space-y-1"><Label>Code (optional)</Label><Input value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. CSI006" /></div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Code Prefix</Label>
+              <Input value={prefix} onChange={e => setPrefix(e.target.value.toUpperCase())} placeholder="e.g. WCS" maxLength={10} />
+            </div>
+            <div className="space-y-1">
+              <Label>Start Number</Label>
+              <Input type="number" min={1} value={startNum} onChange={e => setStartNum(Number(e.target.value) || 1)} />
+            </div>
+          </div>
+
+          {prefix && entries.length > 0 && (
+            <div className="bg-muted/50 rounded-md p-3 text-xs space-y-0.5 max-h-32 overflow-y-auto">
+              <p className="font-semibold text-muted-foreground mb-1">Preview codes:</p>
+              {entries.map((e, i) => (
+                <p key={i} className="text-muted-foreground">{e.code} → {e.name}</p>
+              ))}
+            </div>
+          )}
+
           <div className="space-y-1">
             <Label>Association</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
@@ -175,8 +210,8 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
               {associations.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
-          <Button onClick={handleSave} className="w-full" disabled={selectedMen.length + selectedLadies.length === 0}>
-            Add {selectedMen.length + selectedLadies.length} League(s)
+          <Button onClick={handleSave} className="w-full" disabled={entries.length === 0}>
+            Add {entries.length} League(s)
           </Button>
         </div>
       </DialogContent>

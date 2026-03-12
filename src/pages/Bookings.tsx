@@ -616,9 +616,9 @@ export default function Bookings() {
       {/* Court availability stats */}
       {!isLoading && (
         <div className="px-4 mb-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {courts.map((courtId) => {
-              const count = courtId === 1 ? court1Count : court2Count;
+          <div className={cn("grid gap-2", courts.length <= 2 ? "grid-cols-1 sm:grid-cols-2" : courts.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
+            {courts.map((courtId: number) => {
+              const count = courtBookingCounts[courtId] || 0;
               const pct = Math.round((count / totalSlots) * 100);
               return (
                 <Card key={courtId} className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
@@ -626,7 +626,7 @@ export default function Bookings() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs font-semibold font-heading">Court {courtId}</span>
+                        <span className="text-xs font-semibold font-heading">{getCourtName(courtId)}</span>
                       </div>
                       <Badge
                         variant="secondary"

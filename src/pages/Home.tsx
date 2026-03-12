@@ -598,13 +598,7 @@ export default function Home() {
                 >
                   <UserRound className="w-4 h-4 mr-1.5" /> Sign Up / Log In
                 </Button>
-                <Button
-                  variant="outline"
-                  className="border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 w-full sm:w-auto"
-                  onClick={() => scrollToLeaderboard()}
-                >
-                  <Trophy className="w-4 h-4 mr-1.5" /> View Leaderboard
-                </Button>
+              
               </>
             ) : (
               <>
@@ -725,18 +719,12 @@ export default function Home() {
               </>
             ) : (
               <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/80" />
+                <Building2 className="w-3.5 h-3.5 text-primary-foreground/80" />
                 <span className="text-xs font-medium text-primary-foreground">
-                  Public leaderboard live
+                  Multi-club platform
                 </span>
               </div>
             )}
-            <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
-              <Users className="w-3.5 h-3.5 text-primary-foreground/80" />
-              <span className="text-xs font-medium text-primary-foreground">
-                {user ? (ladder?.length || 0) : (publicLeaderboard?.length || 0)} players
-              </span>
-            </div>
             {user && incomingPendingCount > 0 ? (
               <div className="flex items-center gap-2 bg-primary-foreground/18 border border-primary-foreground/20 shadow-sm backdrop-blur-sm rounded-full px-3.5 py-1.5">
                 <Swords className="w-3.5 h-3.5 text-primary-foreground/80" />
@@ -1221,130 +1209,7 @@ export default function Home() {
 
       {/* Public view: hide shortcuts until logged in */}
 
-      {/* Ladder Rankings */}
-      <motion.section
-        id="leaderboard"
-        className="px-4 sm:px-6 lg:px-[5%] mt-10"
-        {...fadeUp}
-        transition={{ delay: 0.35 }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-heading font-semibold text-base">{user ? "Ladder Rankings" : "Leaderboard"}</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7 text-primary"
-            onClick={() => navigate(user ? "/ladder" : "/auth")}
-          >
-            {user ? "View Full Ladder" : "Sign in for full ladder"} <ChevronRight className="w-3 h-3 ml-1" />
-          </Button>
-        </div>
-
-        <Card>
-          <CardContent className="p-0">
-            {topPlayers.length > 0 ? (
-              <div className="divide-y divide-border">
-                {topPlayers.map((player, i) => {
-                  const winPct = player.matches_played > 0
-                    ? Math.round((player.wins / player.matches_played) * 100)
-                    : 0;
-                  return (
-                    <div key={player.id} className="flex items-center gap-3 px-4 py-3">
-                      <span className={`w-7 text-center font-heading font-bold text-sm ${i < 3 ? "text-primary" : "text-muted-foreground"}`}>
-                        {i < 3 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10">
-                            {player.rank}
-                          </span>
-                        ) : player.rank}
-                      </span>
-                      <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={(player as any)?.avatar_url || null} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{player.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {player.matches_played}M · {player.wins}W · {winPct}%
-                        </p>
-                      </div>
-                      {i < 3 && (
-                        <Badge variant="secondary" className="text-[10px] font-semibold">
-                          <Star className="w-3 h-3 mr-0.5" /> Top 3
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                No ranked players yet.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-      </motion.section>
-
-      {/* Court Availability */}
-      {user && (
-        <motion.section
-          className="px-4 sm:px-6 lg:px-[5%] mt-10"
-          {...fadeUp}
-          transition={{ delay: 0.4 }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-heading font-semibold text-base">Today's Courts</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7 text-primary"
-              onClick={() => navigate("/bookings")}
-            >
-              Book Now <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {[1, 2].map((courtId) => {
-              const courtBookings = todayBookings?.filter(b => b.court_id === courtId) || [];
-              return (
-                <Card key={courtId} className="overflow-hidden">
-                  <div className="h-2 bg-primary" />
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-heading font-bold text-sm">Court {courtId}</span>
-                      <Badge
-                        variant={courtBookings.length < 28 ? "secondary" : "destructive"}
-                        className="text-[10px]"
-                      >
-                        {Math.max(0, 32 - courtBookings.length)} open
-                      </Badge>
-                    </div>
-                    {courtBookings.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {courtBookings.slice(0, 3).map((b) => (
-                          <div key={b.id} className="flex items-center gap-2 text-xs">
-                            <Clock className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">
-                              {b.start_time?.slice(0, 5)} — {b.player_name}
-                              {b.opponent_name ? ` vs ${b.opponent_name}` : ""}
-                            </span>
-                          </div>
-                        ))}
-                        {courtBookings.length > 3 && (
-                          <p className="text-[10px] text-muted-foreground">
-                            +{courtBookings.length - 3} more
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">All slots available</p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </motion.section>
-      )}
+      {/* Leaderboard and courts removed — these will be on club-specific pages */}
 
       {/* Join CTA for unauthenticated */}
       {!user && (

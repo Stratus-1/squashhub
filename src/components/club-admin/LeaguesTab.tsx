@@ -505,16 +505,33 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Allocate {gender === "men" ? "Men" : "Ladies"} to Leagues</DialogTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={handleReshuffle}
-              disabled={!ladderPlayers || leagues.length === 0}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Reshuffle to Ladder
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-destructive hover:text-destructive"
+                onClick={() => {
+                  const newData: Record<string, LeaguePlayer[]> = {};
+                  leagues.forEach(l => { newData[l.id] = []; });
+                  setLeagueData(newData);
+                  toast.success("All players unallocated");
+                }}
+                disabled={totalAllocated === 0}
+              >
+                <X className="w-3.5 h-3.5" />
+                Unallocate All
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={handleReshuffle}
+                disabled={!ladderPlayers || leagues.length === 0}
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Reshuffle to Ladder
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions</p>
         </DialogHeader>

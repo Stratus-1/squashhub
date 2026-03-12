@@ -251,6 +251,13 @@ export type Database = {
             referencedRelation: "member_fee_categories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_members_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       clubs: {

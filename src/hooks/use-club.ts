@@ -122,12 +122,28 @@ export function useClubMembers(clubId?: string) {
     queryKey: ["club-members", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("*, profiles:user_id(name, email, phone, avatar_url)")
+        .select("*, profiles:user_id(name, email, phone, avatar_url), fee_category:fee_category_id(id, name, annual_fee)")
         .eq("club_id", clubId!)
         .order("role")
         .order("joined_at");
       if (error) throw error;
       return (data || []) as ClubMember[];
+    },
+    enabled: !!clubId,
+  });
+}
+
+/** Get fee categories for a club */
+export function useFeeCategories(clubId?: string) {
+  return useQuery({
+    queryKey: ["fee-categories", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_fee_categories")
+        .select("*")
+        .eq("club_id", clubId!)
+        .order("sort_order");
+      if (error) throw error;
+      return (data || []) as MemberFeeCategory[];
     },
     enabled: !!clubId,
   });

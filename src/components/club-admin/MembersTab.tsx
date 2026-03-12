@@ -113,17 +113,22 @@ export function MembersTab({ clubId }: { clubId: string }) {
       <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? "s" : ""}</p>
 
       <div className="space-y-2">
-        {filtered.map(m => (
+        {filtered.map(m => {
+          const displayName = m.profiles?.name || m.name || "—";
+          const displayEmail = m.profiles?.email || m.email || "";
+          const isLinked = !!m.user_id;
+          return (
           <Card key={m.id} className="p-3 flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium truncate">{m.profiles?.name || "—"}</span>
+                <span className="font-medium truncate">{displayName}</span>
                 <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
+                {!isLinked && <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600">Pending signup</Badge>}
                 {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
                 {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {m.profiles?.email} {m.club_member_number ? `• #${m.club_member_number}` : ""}
+                {displayEmail} {m.club_member_number ? `• #${m.club_member_number}` : ""}
                 {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
                 {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
               </p>

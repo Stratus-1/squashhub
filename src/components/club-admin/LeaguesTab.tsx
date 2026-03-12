@@ -140,7 +140,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     return all.map(({ label, gender }) => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `${gender} ${label} League`, code, association_id: associationId || null, club_id: clubId };
+      return { name: `${gender} ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
     });
   };
 

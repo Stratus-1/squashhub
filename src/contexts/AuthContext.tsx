@@ -11,7 +11,8 @@ interface AuthContextType {
     password: string,
     name: string,
     phone?: string,
-    consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string }
+    consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
+    club?: { clubName: string; subdomain: string }
   ) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;

@@ -11,7 +11,8 @@ import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { AvatarFeatureBanner } from "@/components/AvatarFeatureBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
-import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Shield, ShieldCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
@@ -29,6 +30,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const { data: clubData } = useMyClub();
+  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
+  const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
   const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -163,6 +166,24 @@ export default function Dashboard() {
             <span className="text-xs font-medium">My Profile</span>
           </Button>
         </div>
+      </div>
+
+      {/* Ladder Status Banner */}
+      <div className={cn(
+        "mx-4 mt-2 p-2.5 rounded-lg border flex items-center gap-2",
+        ladderStatus === "active" ? "bg-green-500/10 border-green-500/30" :
+        ladderStatus === "provisional" ? "bg-amber-500/10 border-amber-500/30" :
+        "bg-muted border-border"
+      )}>
+        {ladderStatus === "active"
+          ? <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
+          : <Shield className={cn("w-4 h-4 shrink-0", ladderStatus === "provisional" ? "text-amber-500" : "text-muted-foreground")} />
+        }
+        <p className="text-xs text-muted-foreground">
+          {ladderStatus === "active" && "Ladder is active — challenge players ranked above you!"}
+          {ladderStatus === "provisional" && "Rankings are provisional. Challenges will open once the admin activates the ladder."}
+          {ladderStatus === "unranked" && "Ladder has not been ranked yet. Check back soon!"}
+        </p>
       </div>
 
       {/* My Upcoming Bookings */}
@@ -305,7 +326,7 @@ export default function Dashboard() {
       <div className="px-4 mt-5">
         <p className="text-sm font-semibold font-heading mb-2">More</p>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")}>
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")} disabled={!ladderActive}>
             <span className="inline-flex items-center gap-2">
               <Swords className="w-4 h-4" />
               Create Challenge

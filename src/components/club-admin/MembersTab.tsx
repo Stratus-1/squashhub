@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useClubMembers, useFeeCategories, ClubMember, MemberFeeCategory } from "@/hooks/use-club";
+import { useClubMembers, useFeeCategories, useLeagueAssociations, ClubMember, MemberFeeCategory } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

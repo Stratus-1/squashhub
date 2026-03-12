@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -302,6 +302,72 @@ export default function Bookings() {
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const { data: bookings, isLoading } = useBookings(dateStr);
+  const { data: champsBookings = [] } = useQuery({
+    queryKey: ["club-champs-bookings", dateStr],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("club_champs_matches")
+        .select(`
+          id,
+          court_id,
+          scheduled_time,
+          scheduled_date,
+          player_a:player_a_member_id(name, profiles:user_id(name)),
+          player_b:player_b_member_id(name, profiles:user_id(name)),
+          champ:champ_id(match_duration_minutes)
+        `)
+        .eq("scheduled_date", dateStr)
+        .not("court_id", "is", null)
+        .not("scheduled_time", "is", null);
+
+      if (error) throw error;
+
+      return (data || []).map((m: any) => {
+        const playerA = m.player_a?.name || m.player_a?.profiles?.name || "Player A";
+        const playerB = m.player_b?.name || m.player_b?.profiles?.name || "Player B";
+        const start = String(m.scheduled_time || "").slice(0, 5);
+        const duration = Number(m.champ?.match_duration_minutes) || 30;
+        const end = addMinutesToTime(start, duration);
+
+        return {
+          id: `champ-${m.id}`,
+          court_id: m.court_id,
+          date: m.scheduled_date,
+          start_time: `${start}:00`,
+          end_time: `${end}:00`,
+          status: "active",
+          user_id: null,
+          opponent_id: null,
+          is_friendly: false,
+          guest_name: null,
+          player_name: playerA,
+          opponent_name: playerB,
+          player_rank: null,
+          opponent_rank: null,
+          created_at: null,
+        };
+      });
+    },
+    enabled: !!dateStr,
+  });
+
+  const allCourtBookings = useMemo(() => {
+    const normalBookings = (bookings as any[] | undefined) || [];
+    const merged = new Map<string, any>();
+
+    for (const b of normalBookings) {
+      const key = `${b.court_id}-${String(b.start_time || "").slice(0, 5)}-${String(b.end_time || "").slice(0, 5)}`;
+      merged.set(key, b);
+    }
+
+    for (const cb of champsBookings as any[]) {
+      const key = `${cb.court_id}-${String(cb.start_time || "").slice(0, 5)}-${String(cb.end_time || "").slice(0, 5)}`;
+      if (!merged.has(key)) merged.set(key, cb);
+    }
+
+    return Array.from(merged.values());
+  }, [bookings, champsBookings]);
+
   const createBooking = useCreateBooking();
   const createChallenge = useCreateChallenge();
   const cancelBooking = useCancelBooking();
@@ -388,7 +454,7 @@ export default function Bookings() {
 
   const getBooking = (courtId: number, time: string) => {
     const tMin = timeToMinutes(time);
-    return (bookings as any[] | undefined)?.find((b: any) => {
+    return allCourtBookings.find((b: any) => {
       if (b.court_id !== courtId) return false;
       const start = String(b.start_time || "").slice(0, 5);
       const end = String(b.end_time || "").slice(0, 5);
@@ -401,11 +467,11 @@ export default function Bookings() {
 
   // Count bookings per court for stats
   const courtBookingCounts = courts.reduce((acc: Record<number, number>, courtId: number) => {
-    acc[courtId] = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === courtId).length || 0;
+    acc[courtId] = allCourtBookings.filter((b: any) => b.court_id === courtId).length;
     return acc;
   }, {} as Record<number, number>);
   const totalSlots = timeSlots.length;
-  const dayBookingsCount = (bookings as any[] | undefined)?.length || 0;
+  const dayBookingsCount = allCourtBookings.length;
 
   const handleBook = async () => {
     if (!bookingDialog) return;

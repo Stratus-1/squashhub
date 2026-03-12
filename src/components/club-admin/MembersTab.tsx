@@ -37,8 +37,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const filtered = members.filter(m => {
-    const name = m.profiles?.name || "";
-    const email = m.profiles?.email || "";
+    const name = m.profiles?.name || m.name || "";
+    const email = m.profiles?.email || m.email || "";
     const q = search.toLowerCase();
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q);
   });

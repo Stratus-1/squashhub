@@ -324,7 +324,7 @@ export default function Home() {
     date: format(new Date(), "yyyy-MM-dd"),
     startTime: "18:00",
     endTime: "19:00",
-    location: "Gordon's Bay Squash Club",
+    location: "",
     capacity: "",
   });
 

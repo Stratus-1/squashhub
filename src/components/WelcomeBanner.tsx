@@ -180,17 +180,6 @@ export function WelcomeBanner() {
               </div>
             )}
 
-            {/* CTA for new players without a suggestion */}
-            {!suggestedPlayer && isNewPlayer && (
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => navigate("/bookings")}
-              >
-                <Trophy className="w-4 h-4 mr-1" />
-                Book a Court
-              </Button>
-            )}
           </div>
         </Card>
       </motion.div>

@@ -128,7 +128,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-medium truncate">{displayName}</span>
                 <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
-                {!isLinked && <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600">Pending signup</Badge>}
+                <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
+                  {isLinked ? "✓ Registered" : "✗ Not registered"}
+                </Badge>
                 {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
                 {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
               </div>

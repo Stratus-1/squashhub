@@ -282,9 +282,20 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           club_member_id: member.id,
           league_id: leagueId,
           player_rank: current.length + 1,
+          is_captain: false,
           member,
         }],
       };
+    });
+  };
+
+  const toggleCaptain = (leagueId: string, idx: number) => {
+    setLeagueData(prev => {
+      const players = (prev[leagueId] || []).map((p, i) => ({
+        ...p,
+        is_captain: i === idx ? !p.is_captain : false,
+      }));
+      return { ...prev, [leagueId]: players };
     });
   };
 

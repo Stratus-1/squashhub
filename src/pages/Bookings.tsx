@@ -455,11 +455,6 @@ export default function Bookings() {
             proposedDate: dateStr,
           });
 
-          await supabase
-            .from("bookings")
-            .update({ challenge_id: (challenge as any).id } as any)
-            .eq("id", (created as any).id);
-
           toast.success("Court booked + challenge sent");
         } catch (e: any) {
           toast.success("Court booked");

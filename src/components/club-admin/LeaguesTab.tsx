@@ -301,6 +301,58 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const assignedMemberIds = Object.values(leagueData).flat().map(p => p.club_member_id);
   const unassignedMembers = genderMembers.filter(m => !assignedMemberIds.includes(m.id));
 
+  // Reshuffle: redistribute all league-eligible members across leagues based on ladder order
+  const handleReshuffle = useCallback(() => {
+    if (!ladderPlayers || leagues.length === 0) return;
+
+    // Get ladder-ordered member IDs (club_member_id)
+    const ladderMemberIds = ladderPlayers
+      .filter((lp: any) => {
+        // Match gender
+        const g = lp.gender?.toLowerCase();
+        if (gender === "ladies") return g === "female" || g === "ladies" || g === "f";
+        return g !== "female" && g !== "ladies" && g !== "f";
+      })
+      .map((lp: any) => lp.club_member_id);
+
+    // Only include members who are league-eligible
+    const eligibleIds = genderMembers.map(m => m.id);
+    const orderedMembers = ladderMemberIds.filter((id: string) => eligibleIds.includes(id));
+    // Add any eligible members not on the ladder at the end
+    const remainingEligible = eligibleIds.filter(id => !orderedMembers.includes(id));
+    const allOrdered = [...orderedMembers, ...remainingEligible];
+
+    // Distribute evenly: 5 players per league (standard), overflow goes to last league
+    const PLAYERS_PER_LEAGUE = 5;
+    const newData: Record<string, LeaguePlayer[]> = {};
+
+    leagues.forEach((league, leagueIdx) => {
+      const start = leagueIdx * PLAYERS_PER_LEAGUE;
+      const isLast = leagueIdx === leagues.length - 1;
+      const slice = isLast
+        ? allOrdered.slice(start)
+        : allOrdered.slice(start, start + PLAYERS_PER_LEAGUE);
+
+      newData[league.id] = slice.map((memberId, i) => {
+        const member = members.find(m => m.id === memberId);
+        // Preserve captain status if previously set
+        const prevPlayers = leagueData[league.id] || [];
+        const wasCaptain = prevPlayers.find(p => p.club_member_id === memberId)?.is_captain ?? false;
+        return {
+          id: `reshuffle-${Date.now()}-${memberId}`,
+          club_member_id: memberId,
+          league_id: league.id,
+          player_rank: i + 1,
+          is_captain: wasCaptain,
+          member,
+        };
+      });
+    });
+
+    setLeagueData(newData);
+    toast.success("Reshuffled to latest ladder ranking");
+  }, [ladderPlayers, leagues, genderMembers, members, gender, leagueData]);
+
   const getMemberName = (p: LeaguePlayer) => {
     if (p.member) return p.member.name || p.member.profiles?.name || "Unknown";
     const m = members.find(m => m.id === p.club_member_id);

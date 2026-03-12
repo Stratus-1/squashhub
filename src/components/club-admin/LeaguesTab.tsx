@@ -119,6 +119,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
   const [prefix, setPrefix] = useState("");
   const [startNum, setStartNum] = useState(1);
+  const [year, setYear] = useState(new Date().getFullYear());
   const [associationId, setAssociationId] = useState("");
   const qc = useQueryClient();
 

@@ -296,18 +296,29 @@ export type Database = {
       }
       courts: {
         Row: {
+          club_id: string | null
           id: number
           name: string
         }
         Insert: {
+          club_id?: string | null
           id?: number
           name: string
         }
         Update: {
+          club_id?: string | null
           id?: number
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "courts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feed_comments: {
         Row: {

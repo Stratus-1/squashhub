@@ -58,7 +58,11 @@ export default function ClubLanding() {
         path={`/c/${subdomain}`}
       />
       <Card className="max-w-md w-full p-8 text-center space-y-4">
-        <Building2 className="w-12 h-12 text-primary mx-auto" />
+        {club.logo_url ? (
+          <img src={club.logo_url} alt={`${club.name} logo`} className="w-20 h-20 object-contain mx-auto rounded-md" />
+        ) : (
+          <Building2 className="w-12 h-12 text-primary mx-auto" />
+        )}
         <h1 className="text-2xl font-bold font-heading">{club.name}</h1>
         <p className="text-sm font-mono text-primary">{club.subdomain}.squashhub.app</p>
         {club.address && <p className="text-sm text-muted-foreground">{club.address}</p>}

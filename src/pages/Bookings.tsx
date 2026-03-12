@@ -302,6 +302,18 @@ export default function Bookings() {
   const createChallenge = useCreateChallenge();
   const cancelBooking = useCancelBooking();
 
+  // Load courts dynamically from database
+  const { data: courtsData } = useQuery({
+    queryKey: ["courts-list"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("courts").select("id, name").order("id");
+      if (error) throw error;
+      return (data || []) as { id: number; name: string }[];
+    },
+  });
+  const courts = (courtsData || []).map((c: any) => c.id);
+  const getCourtName = (id: number) => courtsData?.find((c: any) => c.id === id)?.name || `Court ${id}`;
+
   const { data: availablePlayers } = useQuery({
     queryKey: ["available-players", dateStr],
     queryFn: async () => {
@@ -349,8 +361,10 @@ export default function Bookings() {
   };
 
   // Count bookings per court for stats
-  const court1Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 1).length || 0;
-  const court2Count = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === 2).length || 0;
+  const courtBookingCounts = courts.reduce((acc: Record<number, number>, courtId: number) => {
+    acc[courtId] = (bookings as any[] | undefined)?.filter((b: any) => b.court_id === courtId).length || 0;
+    return acc;
+  }, {} as Record<number, number>);
   const totalSlots = timeSlots.length;
   const dayBookingsCount = (bookings as any[] | undefined)?.length || 0;
 

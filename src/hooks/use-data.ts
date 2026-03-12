@@ -156,7 +156,7 @@ export function useBookings(date: string) {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, name, availability, rank")
+        .select("id, name, rank")
         .in("id", userIds);
 
       const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
@@ -184,10 +184,8 @@ export function useBookings(date: string) {
       return bookings.map(b => ({
         ...b,
         player_name: getName((b as any).user_id) || "Unknown",
-        player_availability: (profileMap.get((b as any).user_id) as any)?.availability || null,
         player_rank: (profileMap.get((b as any).user_id) as any)?.rank ?? null,
         opponent_name: (b as any).guest_name || getName((b as any).opponent_id),
-        opponent_availability: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.availability || null) : null,
         opponent_rank: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.rank ?? null) : null,
       }));
     },

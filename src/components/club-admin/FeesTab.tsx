@@ -17,6 +17,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: clubData } = useMyClub();
   const [addNatOpen, setAddNatOpen] = useState(false);
+  const [editNat, setEditNat] = useState<NationalBodyFee | null>(null);
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [editCat, setEditCat] = useState<MemberFeeCategory | null>(null);
   const qc = useQueryClient();

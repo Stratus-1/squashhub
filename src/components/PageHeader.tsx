@@ -32,6 +32,8 @@ export function PageHeader({
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: clubData } = useMyClub();
+  const clubLogo = clubData?.club?.logo_url;
   const pathname = location.pathname || "/";
   const isTopLevel = pathname === "/" || pathname === "/dashboard" || pathname === "/auth";
   const shouldShowBack = showBack ?? !isTopLevel;

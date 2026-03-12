@@ -177,6 +177,30 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
         </div>
       </Card>
 
+      {/* Payment Gateway */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold">Payment Gateway</h3>
+        <p className="text-sm text-muted-foreground">Configure an online payment gateway (e.g. Yoco) for collecting fees.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Gateway Provider</Label>
+            <Select value={form.payment_gateway || "__none__"} onValueChange={setSelect("payment_gateway")}>
+              <SelectTrigger><SelectValue placeholder="Select provider" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— None —</SelectItem>
+                <SelectItem value="yoco">Yoco</SelectItem>
+                <SelectItem value="payfast">PayFast</SelectItem>
+                <SelectItem value="paystack">Paystack</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div />
+          <div className="space-y-1"><Label>Public / Publishable Key</Label><Input value={form.payment_gateway_public_key} onChange={set("payment_gateway_public_key")} placeholder="pk_live_..." /></div>
+          <div className="space-y-1"><Label>Secret Key</Label><Input type="password" value={form.payment_gateway_secret_key} onChange={set("payment_gateway_secret_key")} placeholder="sk_live_..." /></div>
+        </div>
+      </Card>
+
       <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">
         {updateClub.isPending ? "Saving..." : "Save Club Details"}
       </Button>

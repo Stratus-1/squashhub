@@ -434,7 +434,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
                       <Eye className="w-4 h-4 mr-1" /> View
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteChamp.mutate(c.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>

@@ -306,7 +306,7 @@ export function useMyBookings() {
         .order("start_time");
       if (error) throw error;
 
-      // Map court names
+      // Map court names & opponent names (check profiles first, then club_members)
       const opponentIds = [...new Set((data as any[]).map((b) => b.opponent_id).filter(Boolean))] as string[];
       let opponentMap = new Map<string, any>();
       if (opponentIds.length > 0) {
@@ -314,7 +314,16 @@ export function useMyBookings() {
           .from("profiles")
           .select("id,name,rank")
           .in("id", opponentIds);
-        opponentMap = new Map((oppProfiles || []).map((p: any) => [p.id, p]));
+        (oppProfiles || []).forEach((p: any) => opponentMap.set(p.id, p));
+
+        const unmatchedIds = opponentIds.filter(id => !opponentMap.has(id));
+        if (unmatchedIds.length > 0) {
+          const { data: members } = await (supabase as any)
+            .from("club_members")
+            .select("id,name")
+            .in("id", unmatchedIds);
+          (members || []).forEach((m: any) => opponentMap.set(m.id, m));
+        }
       }
 
       return data.map((b: any) => ({

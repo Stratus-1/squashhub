@@ -253,6 +253,7 @@ function EditMemberDialog({ member, feeCategories, onClose }: { member: ClubMemb
       plays_league: form.plays_league,
       league_player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
       id_number: form.id_number || null,
+      phone: form.phone && form.phone !== "+27" ? form.phone : null,
       address: form.address || null,
       fee_category_id: form.fee_category_id || null,
     }).eq("id", member.id);

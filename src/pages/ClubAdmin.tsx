@@ -41,17 +41,17 @@ export default function ClubAdmin() {
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details" className="text-xs md:text-sm"><Settings className="w-4 h-4 mr-1 hidden md:inline" />Details</TabsTrigger>
+            <TabsTrigger value="fees" className="text-xs md:text-sm"><DollarSign className="w-4 h-4 mr-1 hidden md:inline" />Fees</TabsTrigger>
             <TabsTrigger value="members" className="text-xs md:text-sm"><Users className="w-4 h-4 mr-1 hidden md:inline" />Members</TabsTrigger>
             <TabsTrigger value="ladder" className="text-xs md:text-sm"><ListOrdered className="w-4 h-4 mr-1 hidden md:inline" />Ladder</TabsTrigger>
             <TabsTrigger value="leagues" className="text-xs md:text-sm"><Trophy className="w-4 h-4 mr-1 hidden md:inline" />Leagues</TabsTrigger>
-            <TabsTrigger value="fees" className="text-xs md:text-sm"><DollarSign className="w-4 h-4 mr-1 hidden md:inline" />Fees</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details"><ClubDetailsTab club={club} /></TabsContent>
+          <TabsContent value="details"><ClubDetailsTab club={club} clubId={club.id} /></TabsContent>
+          <TabsContent value="fees"><FeesTab clubId={club.id} /></TabsContent>
           <TabsContent value="members"><MembersTab clubId={club.id} /></TabsContent>
           <TabsContent value="ladder"><LadderTab clubId={club.id} /></TabsContent>
           <TabsContent value="leagues"><LeaguesTab clubId={club.id} /></TabsContent>
-          <TabsContent value="fees"><FeesTab clubId={club.id} /></TabsContent>
         </Tabs>
       </div>
     </div>

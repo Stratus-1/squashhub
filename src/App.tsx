@@ -36,6 +36,7 @@ import PlayerProfile from "./pages/PlayerProfile";
 import Admin from "./pages/Admin";
 import RegisterClub from "./pages/RegisterClub";
 import ClubAdmin from "./pages/ClubAdmin";
+import ClubChampsView from "./pages/ClubChampsView";
 import ClubLanding from "./pages/ClubLanding";
 import BookingResponse from "./pages/BookingResponse";
 import Achievements from "./pages/Achievements";

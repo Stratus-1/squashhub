@@ -295,6 +295,21 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             <input type="checkbox" checked={playsLeague} onChange={e => setPlaysLeague(e.target.checked)} />
             <Label>Plays League</Label>
           </div>
+          {playsLeague && (
+            <>
+              <div className="space-y-1">
+                <Label>League Association *</Label>
+                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
+                  <option value="">— Select Association —</option>
+                  {associations.map(a => <option key={a.id} value={a.id}>{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Association Number *</Label>
+                <Input value={associationNumber} onChange={e => setAssociationNumber(e.target.value)} placeholder="e.g. NSF12345" />
+              </div>
+            </>
+          )}
           <Button onClick={handleAdd} disabled={loading} className="w-full">{loading ? "Adding..." : "Add Member"}</Button>
         </div>
       </DialogContent>

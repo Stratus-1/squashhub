@@ -75,6 +75,9 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       if (!payload.secretary_member_id) payload.secretary_member_id = null;
       if (!payload.club_captain_member_id) payload.club_captain_member_id = null;
       if (!payload.logo_url) payload.logo_url = null;
+      if (!payload.payment_gateway) payload.payment_gateway = null;
+      if (!payload.payment_gateway_public_key) payload.payment_gateway_public_key = null;
+      if (!payload.payment_gateway_secret_key) payload.payment_gateway_secret_key = null;
       await updateClub.mutateAsync({ id: club.id, ...payload });
       toast.success("Club details saved");
     } catch (err: any) {

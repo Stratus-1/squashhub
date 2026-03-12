@@ -32,8 +32,21 @@ export default function Auth() {
   const [clubName, setClubName] = useState("");
   const [subdomain, setSubdomain] = useState("");
 
-  const toSubdomain = (name: string) =>
-    name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+  const STOP_WORDS = new Set(["the", "of", "and", "for", "a", "an", "in", "at", "club", "squash", "sports", "centre", "center"]);
+
+  const toSubdomain = (name: string): string => {
+    const words = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return "";
+
+    // If single meaningful word, take first 5 chars
+    const meaningful = words.filter(w => !STOP_WORDS.has(w));
+    if (meaningful.length <= 1) {
+      return (meaningful[0] || words[0] || "").slice(0, 5);
+    }
+
+    // Take first letter of each meaningful word, max 5
+    return meaningful.map(w => w[0]).join("").slice(0, 5);
+  };
 
   const handleClubNameChange = (val: string) => {
     setClubName(val);
@@ -72,8 +85,8 @@ export default function Auth() {
       toast.error("Please enter your club name");
       return;
     }
-    if (!sub || sub.length < 3 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(sub)) {
-      toast.error("Subdomain must be at least 3 characters (letters, numbers, hyphens)");
+    if (!sub || sub.length < 2 || sub.length > 5 || !/^[a-z0-9]+$/.test(sub)) {
+      toast.error("Subdomain must be 2–5 lowercase letters/numbers, no hyphens");
       return;
     }
     if (signupPassword.length < 6) {
@@ -254,17 +267,17 @@ export default function Auth() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="signup-subdomain">Subdomain <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="signup-subdomain">Abbreviation <span className="text-destructive">*</span></Label>
                   <div className="flex items-center gap-0">
                     <Input
                       id="signup-subdomain"
                       type="text"
                       placeholder="csir"
                       value={subdomain}
-                      onChange={(e) => setSubdomain(toSubdomain(e.target.value))}
+                      onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5))}
                       required
-                      maxLength={30}
-                      className="rounded-r-none border-r-0"
+                      maxLength={5}
+                      className="rounded-r-none border-r-0 w-24"
                     />
                     <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-input bg-muted text-muted-foreground text-xs whitespace-nowrap">
                       .squashhub.co.za

@@ -33,9 +33,20 @@ export interface ClubMember {
   league_player_rank?: number;
   id_number?: string;
   address?: string;
+  fee_category_id?: string;
   joined_at: string;
   updated_at: string;
   profiles?: { name: string; email: string; phone?: string; avatar_url?: string };
+  fee_category?: MemberFeeCategory;
+}
+
+export interface MemberFeeCategory {
+  id: string;
+  club_id: string;
+  name: string;
+  description?: string;
+  annual_fee: number;
+  sort_order: number;
 }
 
 export interface LeagueAssociation {
@@ -111,12 +122,28 @@ export function useClubMembers(clubId?: string) {
     queryKey: ["club-members", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("*, profiles:user_id(name, email, phone, avatar_url)")
+        .select("*, profiles:user_id(name, email, phone, avatar_url), fee_category:fee_category_id(id, name, annual_fee)")
         .eq("club_id", clubId!)
         .order("role")
         .order("joined_at");
       if (error) throw error;
       return (data || []) as ClubMember[];
+    },
+    enabled: !!clubId,
+  });
+}
+
+/** Get fee categories for a club */
+export function useFeeCategories(clubId?: string) {
+  return useQuery({
+    queryKey: ["fee-categories", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_fee_categories")
+        .select("*")
+        .eq("club_id", clubId!)
+        .order("sort_order");
+      if (error) throw error;
+      return (data || []) as MemberFeeCategory[];
     },
     enabled: !!clubId,
   });

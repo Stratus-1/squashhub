@@ -189,6 +189,7 @@ export type Database = {
           address: string | null
           club_id: string
           club_member_number: string | null
+          fee_category_id: string | null
           id: string
           id_number: string | null
           joined_at: string
@@ -202,6 +203,7 @@ export type Database = {
           address?: string | null
           club_id: string
           club_member_number?: string | null
+          fee_category_id?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string
@@ -215,6 +217,7 @@ export type Database = {
           address?: string | null
           club_id?: string
           club_member_number?: string | null
+          fee_category_id?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string
@@ -230,6 +233,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_fee_category_id_fkey"
+            columns: ["fee_category_id"]
+            isOneToOne: false
+            referencedRelation: "member_fee_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -699,6 +709,47 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_fee_categories: {
+        Row: {
+          annual_fee: number
+          club_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          annual_fee?: number
+          club_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          annual_fee?: number
+          club_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_fee_categories_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]

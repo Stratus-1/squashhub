@@ -63,6 +63,7 @@ export default function Ladder() {
       const diff = Math.abs(myRank - opponentRank);
       if (diff < 1) return "You can't challenge a player with the same rank.";
       if (diff > 2) return "You may only challenge players within 2 ladder positions.";
+      if (myRank <= opponentRank) return "You may only challenge players ranked above you.";
       return null;
     };
   }, [myRank, user?.id]);

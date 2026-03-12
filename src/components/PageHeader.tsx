@@ -1,11 +1,12 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Swords, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
-import { useIncomingChallengesCount } from "@/hooks/use-data";
+import { useIncomingChallengesCount, useProfile } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 
 interface PageHeaderProps {
@@ -30,6 +31,7 @@ export function PageHeader({
   backTo,
 }: PageHeaderProps) {
   const { user } = useAuth();
+  const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: clubData } = useMyClub();
@@ -40,6 +42,17 @@ export function PageHeader({
   const fallbackTo = backTo || getBackFallback(pathname);
   const canGoBack = typeof window !== "undefined" && window.history.length > 1;
   const { data: incomingCount } = useIncomingChallengesCount();
+
+  const avatarUrl = (profile as any)?.avatar_url || null;
+  const playerName = (profile as any)?.name || "";
+  const initials = playerName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p: string) => p[0])
+    .join("")
+    .toUpperCase() || "??";
 
   return (
     <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">
@@ -91,11 +104,9 @@ export function PageHeader({
               </Button>
             ) : null}
             {showProfile && (
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full"
+                className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => {
                   if (profileTo === "/profile") {
                     navigate(profileTo, { state: { backgroundLocation: location } });
@@ -105,8 +116,8 @@ export function PageHeader({
                 }}
                 aria-label="Profile"
               >
-                <User className="w-5 h-5" />
-              </Button>
+                <PlayerAvatar initials={initials} avatarUrl={avatarUrl} size="sm" />
+              </button>
             )}
           </div>
         )}

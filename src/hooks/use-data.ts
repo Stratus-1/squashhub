@@ -320,8 +320,7 @@ export function useMyBookings() {
       return data.map((b: any) => ({
         ...b,
         court_name: b.court_id === 1 ? "Court 1" : "Court 2",
-        opponent_name: b.opponent_id ? (opponentMap.get(b.opponent_id)?.name || "Unknown") : null,
-        opponent_availability: b.opponent_id ? (opponentMap.get(b.opponent_id)?.availability || null) : null,
+        opponent_name: b.guest_name || (b.opponent_id ? (opponentMap.get(b.opponent_id)?.name || "Unknown") : null),
         opponent_rank: b.opponent_id ? (opponentMap.get(b.opponent_id)?.rank ?? null) : null,
       }));
     },

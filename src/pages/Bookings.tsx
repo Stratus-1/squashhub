@@ -81,7 +81,7 @@ const timeSlots = (() => {
   return slots;
 })();
 
-const courts = [1, 2];
+// courts are loaded dynamically from the database
 
 function getDateLabel(date: Date) {
   if (isToday(date)) return "Today";

@@ -102,7 +102,7 @@ export default function Auth() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Check your email for the confirmation link!");
+      setSignupDone(true);
     }
     setLoading(false);
   };

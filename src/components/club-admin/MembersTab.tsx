@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useClubMembers, useFeeCategories, useLeagueAssociations, ClubMember, MemberFeeCategory } from "@/hooks/use-club";
+import { useClubMembers, useFeeCategories, useLeagueAssociations, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdi
             {isLinked ? "✓ Registered" : "✗ Not registered"}
           </Badge>
           {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
+          {m.skill_level && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
           {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
         </div>
         <p className="text-xs text-muted-foreground truncate">
@@ -187,6 +188,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [address, setAddress] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [gender, setGender] = useState("");
+  const [skillLevel, setSkillLevel] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
   const [associationId, setAssociationId] = useState("");
   const [associationNumber, setAssociationNumber] = useState("");
@@ -232,12 +234,13 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
         gender: gender || undefined,
+        skill_level: skillLevel || undefined,
         plays_league: playsLeague,
       });
       if (error) throw error;
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
       toast.success(msg);
-      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setPlaysLeague(false);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {
@@ -291,6 +294,13 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             )}
           </div>
           <div className="space-y-1"><Label>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Optional" /></div>
+          <div className="space-y-1">
+            <Label>Skill Level</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={skillLevel} onChange={e => setSkillLevel(e.target.value)}>
+              <option value="">— Select —</option>
+              {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={playsLeague} onChange={e => setPlaysLeague(e.target.checked)} />
             <Label>Plays League</Label>
@@ -331,6 +341,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     phone: member.phone || "+27",
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
+    skill_level: member.skill_level || "",
     association_id: "",
     association_number: "",
   });
@@ -358,6 +369,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       phone: form.phone && form.phone !== "+27" ? form.phone : null,
       address: form.address || null,
       fee_category_id: form.fee_category_id || null,
+      skill_level: form.skill_level || null,
     }).eq("id", member.id);
     if (error) toast.error(error.message);
     else { toast.success("Member updated"); onClose(); }
@@ -390,6 +402,13 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={form.plays_league} onChange={e => setForm(p => ({ ...p, plays_league: e.target.checked }))} />
             <Label>Plays League</Label>
+          </div>
+          <div className="space-y-1">
+            <Label>Skill Level</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.skill_level} onChange={e => setForm(p => ({ ...p, skill_level: e.target.value }))}>
+              <option value="">— Select —</option>
+              {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
           </div>
           {form.plays_league && (
             <>

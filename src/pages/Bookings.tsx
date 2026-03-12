@@ -208,6 +208,7 @@ export default function Bookings() {
     guestName: string;
     playerMode: "none" | "member" | "guest";
     isFriendly: boolean;
+    duration: 30 | 60;
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;
@@ -372,7 +373,7 @@ export default function Bookings() {
       if (!bookingDialog?.time) return [] as string[];
       const dow = getISODay(selectedDate);
       const start = `${bookingDialog.time}:00`;
-      const end = `${addMinutesToTime(bookingDialog.time, 30)}:00`;
+      const end = `${addMinutesToTime(bookingDialog.time, bookingDialog.duration)}:00`;
       const { data, error } = await (supabase as any)
         .from("player_availability")
         .select("user_id")
@@ -408,7 +409,7 @@ export default function Bookings() {
 
   const handleBook = async () => {
     if (!bookingDialog) return;
-    const endTime = addMinutesToTime(bookingDialog.time, 30);
+    const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 
     try {
@@ -780,7 +781,7 @@ export default function Bookings() {
                       )}
                       onClick={() => {
                         if (booking) setBookingDetails(booking);
-                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: false });
+                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: false, duration: 30 });
                       }}
                     >
                       {booking ? (
@@ -945,9 +946,26 @@ export default function Bookings() {
                   <div>
                     <p className="text-sm font-semibold">Court {bookingDialog.courtId}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(selectedDate, "d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, 30)}
+                      {format(selectedDate, "d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, bookingDialog.duration)}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Duration</Label>
+                <div className="flex gap-1.5">
+                  {([30, 60] as const).map((d) => (
+                    <Button
+                      key={d}
+                      size="sm"
+                      variant={bookingDialog.duration === d ? "default" : "outline"}
+                      className="flex-1 text-xs rounded-lg"
+                      onClick={() => setBookingDialog((s) => s ? { ...s, duration: d } : s)}
+                    >
+                      {d} min
+                    </Button>
+                  ))}
                 </div>
               </div>
 

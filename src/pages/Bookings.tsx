@@ -833,7 +833,7 @@ export default function Bookings() {
                   const booking = getBooking(courtId, time);
                   const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
                   const b = (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
-                  const isMine = booking && (booking as any).user_id === user?.id;
+                  const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);
                   const isBlocked = !!(booking as any)?.is_blocked;
                   const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";
 

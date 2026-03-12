@@ -356,9 +356,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     </p>
                     <p className="text-xs text-muted-foreground">{c.start_date} to {c.end_date}</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => deleteChamp.mutate(c.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
+                      <Eye className="w-4 h-4 mr-1" /> View
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteChamp.mutate(c.id)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

@@ -148,6 +148,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [email, setEmail] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
   const [idNumber, setIdNumber] = useState("");
+  const [phone, setPhone] = useState("+27");
   const [address, setAddress] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
@@ -168,13 +169,14 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         user_id: profile.id,
         club_member_number: memberNumber || undefined,
         id_number: idNumber || undefined,
+        phone: phone && phone !== "+27" ? phone : undefined,
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
         plays_league: playsLeague,
       });
       if (error) throw error;
       toast.success("Member added");
-      setEmail(""); setMemberNumber(""); setIdNumber(""); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
+      setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
     } catch (err: any) {

@@ -47,6 +47,7 @@ import Seasons from "./pages/Seasons";
 import AdminEventEditor from "./pages/AdminEventEditor";
 import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
+import MyAccount from "./pages/MyAccount";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 import Terms from "./pages/Terms";

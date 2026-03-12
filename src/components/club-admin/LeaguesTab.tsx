@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useLeagueAssociations, useLeagues, useClubMembers, LeagueAssociation, League, ClubMember, SKILL_LEVELS, getSkillOrder, getSkillLabel } from "@/hooks/use-club";
+import { useLadder } from "@/hooks/use-data";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown } from "lucide-react";
+import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, RefreshCw } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 // ─── Types ───
@@ -255,6 +256,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   onOpenChange: (o: boolean) => void;
 }) {
   const qc = useQueryClient();
+  const { data: ladderPlayers } = useLadder();
   const [leagueData, setLeagueData] = useState<Record<string, LeaguePlayer[]>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -298,6 +300,58 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   // Get all assigned member IDs across all leagues
   const assignedMemberIds = Object.values(leagueData).flat().map(p => p.club_member_id);
   const unassignedMembers = genderMembers.filter(m => !assignedMemberIds.includes(m.id));
+
+  // Reshuffle: redistribute all league-eligible members across leagues based on ladder order
+  const handleReshuffle = useCallback(() => {
+    if (!ladderPlayers || leagues.length === 0) return;
+
+    // Get ladder-ordered member IDs (club_member_id)
+    const ladderMemberIds = ladderPlayers
+      .filter((lp: any) => {
+        // Match gender
+        const g = lp.gender?.toLowerCase();
+        if (gender === "ladies") return g === "female" || g === "ladies" || g === "f";
+        return g !== "female" && g !== "ladies" && g !== "f";
+      })
+      .map((lp: any) => lp.club_member_id);
+
+    // Only include members who are league-eligible
+    const eligibleIds = genderMembers.map(m => m.id);
+    const orderedMembers = ladderMemberIds.filter((id: string) => eligibleIds.includes(id));
+    // Add any eligible members not on the ladder at the end
+    const remainingEligible = eligibleIds.filter(id => !orderedMembers.includes(id));
+    const allOrdered = [...orderedMembers, ...remainingEligible];
+
+    // Distribute evenly: 5 players per league (standard), overflow goes to last league
+    const PLAYERS_PER_LEAGUE = 5;
+    const newData: Record<string, LeaguePlayer[]> = {};
+
+    leagues.forEach((league, leagueIdx) => {
+      const start = leagueIdx * PLAYERS_PER_LEAGUE;
+      const isLast = leagueIdx === leagues.length - 1;
+      const slice = isLast
+        ? allOrdered.slice(start)
+        : allOrdered.slice(start, start + PLAYERS_PER_LEAGUE);
+
+      newData[league.id] = slice.map((memberId, i) => {
+        const member = members.find(m => m.id === memberId);
+        // Preserve captain status if previously set
+        const prevPlayers = leagueData[league.id] || [];
+        const wasCaptain = prevPlayers.find(p => p.club_member_id === memberId)?.is_captain ?? false;
+        return {
+          id: `reshuffle-${Date.now()}-${memberId}`,
+          club_member_id: memberId,
+          league_id: league.id,
+          player_rank: i + 1,
+          is_captain: wasCaptain,
+          member,
+        };
+      });
+    });
+
+    setLeagueData(newData);
+    toast.success("Reshuffled to latest ladder ranking");
+  }, [ladderPlayers, leagues, genderMembers, members, gender, leagueData]);
 
   const getMemberName = (p: LeaguePlayer) => {
     if (p.member) return p.member.name || p.member.profiles?.name || "Unknown";
@@ -443,7 +497,19 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Allocate {gender === "men" ? "Men" : "Ladies"} to Leagues</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Allocate {gender === "men" ? "Men" : "Ladies"} to Leagues</DialogTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleReshuffle}
+              disabled={!ladderPlayers || leagues.length === 0}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Reshuffle to Ladder
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions</p>
         </DialogHeader>
 

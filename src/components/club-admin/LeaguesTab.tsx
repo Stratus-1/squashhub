@@ -1,22 +1,27 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useLeagueAssociations, useLeagues, useClubMembers, LeagueAssociation, League, ClubMember } from "@/hooks/use-club";
+import { useLeagueAssociations, useLeagues, useClubMembers, LeagueAssociation, League, ClubMember, SKILL_LEVELS, getSkillOrder, getSkillLabel } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Users, X } from "lucide-react";
+import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 // ─── Types ───
 interface LeaguePlayer {
-  id: string; // registration id (or temp)
+  id: string;
   club_member_id: string;
   league_id: string;
   player_rank: number;
   member?: ClubMember;
+}
+
+interface LeagueWithPlayers extends League {
+  players: LeaguePlayer[];
 }
 
 // ─── Main Tab ───
@@ -26,7 +31,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
-  const [manageLeagueId, setManageLeagueId] = useState<string | null>(null);
+  const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -54,8 +59,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       return numA - numB;
     });
 
-  const leaguePlayers = members.filter(m => m.plays_league);
-
   return (
     <div className="space-y-6 mt-4">
       {/* Associations */}
@@ -78,11 +81,19 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
       </div>
 
-      {/* Leagues in two columns */}
+      {/* Leagues in two columns with inline players */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Leagues</h3>
-          <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setAllocateGender("men")} disabled={menLeagues.length === 0}>
+              <Users className="w-4 h-4 mr-1" />Allocate Men
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setAllocateGender("ladies")} disabled={ladiesLeagues.length === 0}>
+              <Users className="w-4 h-4 mr-1" />Allocate Ladies
+            </Button>
+            <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -90,7 +101,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             <h4 className="text-sm font-semibold text-muted-foreground mb-2">Men's ({menLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(menLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} onManage={setManageLeagueId} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
               ))}
               {menLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No men's leagues</p>}
             </div>
@@ -99,7 +110,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             <h4 className="text-sm font-semibold text-muted-foreground mb-2">Ladies ({ladiesLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(ladiesLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} onManage={setManageLeagueId} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
               ))}
               {ladiesLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No ladies leagues</p>}
             </div>
@@ -111,35 +122,36 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(otherLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} onManage={setManageLeagueId} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
               ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Manage players dialog */}
-      {manageLeagueId && (
-        <ManageLeaguePlayers
-          leagueId={manageLeagueId}
-          league={leagues.find(l => l.id === manageLeagueId)!}
+      {/* Allocate Players Dialog */}
+      {allocateGender && (
+        <AllocatePlayersDialog
+          gender={allocateGender}
+          leagues={sortLeagues(allocateGender === "men" ? menLeagues : ladiesLeagues)}
+          members={members}
           clubId={clubId}
-          members={leaguePlayers}
-          open={!!manageLeagueId}
-          onOpenChange={(o) => !o && setManageLeagueId(null)}
+          open={!!allocateGender}
+          onOpenChange={(o) => !o && setAllocateGender(null)}
         />
       )}
     </div>
   );
 }
 
-// ─── League Card ───
-function LeagueCard({ league, associations, onDelete, onManage }: {
+// ─── League Card with inline players ───
+function LeagueCard({ league, associations, onDelete, members }: {
   league: League;
   associations: LeagueAssociation[];
   onDelete: (id: string) => void;
-  onManage: (id: string) => void;
+  members: ClubMember[];
 }) {
+  const [expanded, setExpanded] = useState(false);
   const { data: regs = [] } = useQuery({
     queryKey: ["league-registrations", league.id],
     queryFn: async () => {
@@ -152,10 +164,15 @@ function LeagueCard({ league, associations, onDelete, onManage }: {
     },
   });
 
+  const getMemberName = (reg: any) => {
+    const m = members.find(m => m.id === reg.club_member_id);
+    return m?.name || m?.profiles?.name || "Unknown";
+  };
+
   return (
     <Card className="p-3">
       <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(!expanded)}>
           <p className="font-medium text-sm truncate">{league.name} {league.code ? `(${league.code})` : ""}</p>
           <p className="text-xs text-muted-foreground">
             {associations.find(a => a.id === league.association_id)?.name || "No association"}
@@ -163,112 +180,202 @@ function LeagueCard({ league, associations, onDelete, onManage }: {
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onManage(league.id)} title="Manage players">
-            <Users className="w-3.5 h-3.5" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpanded(!expanded)}>
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(league.id)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(league.id)}>
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
+      {expanded && regs.length > 0 && (
+        <div className="mt-2 border-t pt-2 space-y-0.5">
+          {regs.map((r: any) => (
+            <div key={r.id} className="flex items-center gap-2 text-xs py-0.5">
+              <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
+              <span className="truncate">{getMemberName(r)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {expanded && regs.length === 0 && (
+        <p className="mt-2 border-t pt-2 text-xs text-muted-foreground text-center">No players allocated</p>
+      )}
     </Card>
   );
 }
 
-// ─── Manage League Players (drag & drop) ───
-function ManageLeaguePlayers({ leagueId, league, clubId, members, open, onOpenChange }: {
-  leagueId: string;
-  league: League;
-  clubId: string;
+// ─── Allocate Players Dialog (drag & drop across leagues) ───
+function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenChange }: {
+  gender: "men" | "ladies";
+  leagues: League[];
   members: ClubMember[];
+  clubId: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const [players, setPlayers] = useState<LeaguePlayer[]>([]);
+  const [leagueData, setLeagueData] = useState<Record<string, LeaguePlayer[]>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
+  const dragItem = useRef<{ leagueId: string; idx: number } | null>(null);
+  const dragOverItem = useRef<{ leagueId: string; idx: number } | null>(null);
+  const [dragFromPool, setDragFromPool] = useState<string | null>(null);
+
+  // Filter members by gender and league status, sorted by skill level
+  const genderMembers = members
+    .filter(m => m.plays_league && (gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
+    .sort((a, b) => getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level));
 
   // Load existing registrations
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data, error } = await fromExt("member_league_registrations")
-        .select("*")
-        .eq("league_id", leagueId)
-        .order("player_rank");
-      if (!error && data) {
-        setPlayers(data.map((r: any) => ({
-          id: r.id,
-          club_member_id: r.club_member_id,
-          league_id: r.league_id,
-          player_rank: r.player_rank ?? 0,
-          member: members.find(m => m.id === r.club_member_id),
-        })));
+      const allData: Record<string, LeaguePlayer[]> = {};
+      for (const league of leagues) {
+        const { data, error } = await fromExt("member_league_registrations")
+          .select("*")
+          .eq("league_id", league.id)
+          .order("player_rank");
+        if (!error && data) {
+          allData[league.id] = data.map((r: any) => ({
+            id: r.id,
+            club_member_id: r.club_member_id,
+            league_id: r.league_id,
+            player_rank: r.player_rank ?? 0,
+            member: members.find(m => m.id === r.club_member_id),
+          }));
+        } else {
+          allData[league.id] = [];
+        }
       }
+      setLeagueData(allData);
       setLoaded(true);
     })();
-  }, [open, leagueId, members]);
+  }, [open, leagues.length]);
 
-  const assignedMemberIds = players.map(p => p.club_member_id);
+  // Get all assigned member IDs across all leagues
+  const assignedMemberIds = Object.values(leagueData).flat().map(p => p.club_member_id);
+  const unassignedMembers = genderMembers.filter(m => !assignedMemberIds.includes(m.id));
 
-  // Filter available members based on league gender
-  const isLadies = league.name.toLowerCase().includes("ladies") || league.name.toLowerCase().includes("women");
-  const availableMembers = members.filter(m =>
-    !assignedMemberIds.includes(m.id) &&
-    (isLadies ? m.gender === "Ladies" : m.gender !== "Ladies")
-  );
-
-  const addPlayer = (member: ClubMember) => {
-    setPlayers(prev => [...prev, {
-      id: `new-${Date.now()}-${member.id}`,
-      club_member_id: member.id,
-      league_id: leagueId,
-      player_rank: prev.length + 1,
-      member,
-    }]);
+  const getMemberName = (p: LeaguePlayer) => {
+    if (p.member) return p.member.name || p.member.profiles?.name || "Unknown";
+    const m = members.find(m => m.id === p.club_member_id);
+    return m?.name || m?.profiles?.name || "Unknown";
   };
 
-  const removePlayer = (idx: number) => {
-    setPlayers(prev => {
-      const next = prev.filter((_, i) => i !== idx);
-      return next.map((p, i) => ({ ...p, player_rank: i + 1 }));
+  const getMemberSkill = (p: LeaguePlayer) => {
+    const m = p.member || members.find(m => m.id === p.club_member_id);
+    return getSkillLabel(m?.skill_level);
+  };
+
+  // Add from pool to league
+  const addToLeague = (member: ClubMember, leagueId: string) => {
+    setLeagueData(prev => {
+      const current = prev[leagueId] || [];
+      return {
+        ...prev,
+        [leagueId]: [...current, {
+          id: `new-${Date.now()}-${member.id}`,
+          club_member_id: member.id,
+          league_id: leagueId,
+          player_rank: current.length + 1,
+          member,
+        }],
+      };
     });
   };
 
-  const handleDragStart = (idx: number) => { dragItem.current = idx; };
-  const handleDragEnter = (idx: number) => { dragOverItem.current = idx; };
+  const removeFromLeague = (leagueId: string, idx: number) => {
+    setLeagueData(prev => {
+      const next = (prev[leagueId] || []).filter((_, i) => i !== idx);
+      return { ...prev, [leagueId]: next.map((p, i) => ({ ...p, player_rank: i + 1 })) };
+    });
+  };
+
+  // Drag within a league to reorder
+  const handleDragStart = (leagueId: string, idx: number) => {
+    dragItem.current = { leagueId, idx };
+    setDragFromPool(null);
+  };
+
+  const handleDragEnter = (leagueId: string, idx: number) => {
+    dragOverItem.current = { leagueId, idx };
+  };
+
   const handleDragEnd = () => {
-    if (dragItem.current === null || dragOverItem.current === null) return;
-    const items = [...players];
-    const dragged = items.splice(dragItem.current, 1)[0];
-    items.splice(dragOverItem.current, 0, dragged);
+    if (!dragItem.current || !dragOverItem.current) {
+      dragItem.current = null;
+      dragOverItem.current = null;
+      setDragFromPool(null);
+      return;
+    }
+
+    const from = dragItem.current;
+    const to = dragOverItem.current;
+
+    if (from.leagueId === to.leagueId) {
+      // Reorder within same league
+      setLeagueData(prev => {
+        const items = [...(prev[from.leagueId] || [])];
+        const dragged = items.splice(from.idx, 1)[0];
+        items.splice(to.idx, 0, dragged);
+        return { ...prev, [from.leagueId]: items.map((p, i) => ({ ...p, player_rank: i + 1 })) };
+      });
+    } else {
+      // Move between leagues
+      setLeagueData(prev => {
+        const fromItems = [...(prev[from.leagueId] || [])];
+        const toItems = [...(prev[to.leagueId] || [])];
+        const dragged = fromItems.splice(from.idx, 1)[0];
+        dragged.league_id = to.leagueId;
+        toItems.splice(to.idx, 0, dragged);
+        return {
+          ...prev,
+          [from.leagueId]: fromItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
+          [to.leagueId]: toItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
+        };
+      });
+    }
+
     dragItem.current = null;
     dragOverItem.current = null;
-    setPlayers(items.map((p, i) => ({ ...p, player_rank: i + 1 })));
+    setDragFromPool(null);
+  };
+
+  // Drop from pool onto a league
+  const handlePoolDragStart = (memberId: string) => {
+    setDragFromPool(memberId);
+    dragItem.current = null;
+  };
+
+  const handleDropOnLeague = (leagueId: string) => {
+    if (dragFromPool) {
+      const member = members.find(m => m.id === dragFromPool);
+      if (member) addToLeague(member, leagueId);
+      setDragFromPool(null);
+    }
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Delete all existing registrations for this league
-      await fromExt("member_league_registrations").delete().eq("league_id", leagueId);
-
-      if (players.length > 0) {
-        const { error } = await fromExt("member_league_registrations").insert(
-          players.map((p, i) => ({
-            club_member_id: p.club_member_id,
-            league_id: leagueId,
-            player_rank: i + 1,
-          }))
-        );
-        if (error) throw error;
+      for (const league of leagues) {
+        await fromExt("member_league_registrations").delete().eq("league_id", league.id);
+        const players = leagueData[league.id] || [];
+        if (players.length > 0) {
+          const { error } = await fromExt("member_league_registrations").insert(
+            players.map((p, i) => ({
+              club_member_id: p.club_member_id,
+              league_id: league.id,
+              player_rank: i + 1,
+            }))
+          );
+          if (error) throw error;
+        }
       }
-
-      toast.success(`${players.length} player(s) saved`);
-      qc.invalidateQueries({ queryKey: ["league-registrations", leagueId] });
+      toast.success("All allocations saved");
+      leagues.forEach(l => qc.invalidateQueries({ queryKey: ["league-registrations", l.id] }));
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -277,87 +384,104 @@ function ManageLeaguePlayers({ leagueId, league, clubId, members, open, onOpenCh
     }
   };
 
-  const getMemberName = (p: LeaguePlayer) => {
-    if (p.member) return p.member.name || p.member.profiles?.name || "Unknown";
-    const m = members.find(m => m.id === p.club_member_id);
-    return m?.name || m?.profiles?.name || "Unknown";
-  };
+  const totalAllocated = Object.values(leagueData).flat().length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-base">{league.name} – Players</DialogTitle>
+          <DialogTitle>Allocate {gender === "men" ? "Men" : "Ladies"} to Leagues</DialogTitle>
+          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions</p>
         </DialogHeader>
 
         {!loaded ? (
           <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : (
-          <div className="space-y-4">
-            {/* Current players – draggable */}
-            <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">
-                Ranked Players ({players.length}) — drag to reorder
-              </Label>
-              {players.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4 border border-dashed rounded-md">
-                  No players assigned. Add from the list below.
-                </p>
-              )}
-              <div className="space-y-1">
-                {players.map((p, idx) => (
+          <div className="flex gap-4 flex-1 overflow-hidden">
+            {/* Left: Unassigned members pool */}
+            <div className="w-56 flex-shrink-0 border rounded-md overflow-hidden flex flex-col">
+              <div className="bg-muted/50 px-3 py-2 border-b">
+                <p className="text-xs font-semibold">Available Players ({unassignedMembers.length})</p>
+                <p className="text-[10px] text-muted-foreground">Sorted by skill level</p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
+                {unassignedMembers.map(m => (
                   <div
-                    key={p.id}
+                    key={m.id}
                     draggable
-                    onDragStart={() => handleDragStart(idx)}
-                    onDragEnter={() => handleDragEnter(idx)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={(e) => e.preventDefault()}
-                    className="flex items-center gap-2 p-2 bg-muted/50 rounded-md cursor-grab active:cursor-grabbing hover:bg-muted border border-transparent hover:border-border transition-colors"
+                    onDragStart={() => handlePoolDragStart(m.id)}
+                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs rounded cursor-grab active:cursor-grabbing hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors"
                   >
-                    <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className="w-6 text-xs font-bold text-primary text-center">{idx + 1}</span>
-                    <span className="text-sm flex-1 truncate">{getMemberName(p)}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => removePlayer(idx)}>
-                      <X className="w-3 h-3" />
-                    </Button>
+                    <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{m.name || m.profiles?.name || "Unknown"}</p>
+                      <p className="text-[10px] text-muted-foreground">{getSkillLabel(m.skill_level) || "No level"}</p>
+                    </div>
                   </div>
                 ))}
+                {unassignedMembers.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground text-center py-4">All players allocated</p>
+                )}
               </div>
             </div>
 
-            {/* Available members to add */}
-            {availableMembers.length > 0 && (
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">
-                  Available {isLadies ? "Ladies" : "Men"} ({availableMembers.length}) — click to add
-                </Label>
-                <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
-                  {availableMembers.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => addPlayer(m)}
-                      className="text-left text-xs p-2 rounded-md hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-colors truncate"
-                    >
-                      <Plus className="w-3 h-3 inline mr-1 text-primary" />
-                      {m.name || m.profiles?.name || "Unknown"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <Button onClick={handleSave} className="w-full" disabled={saving}>
-              {saving ? "Saving…" : `Save ${players.length} Player(s)`}
-            </Button>
+            {/* Right: League columns */}
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {leagues.map(league => {
+                const players = leagueData[league.id] || [];
+                return (
+                  <Card
+                    key={league.id}
+                    className="p-3"
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={() => handleDropOnLeague(league.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="text-sm font-semibold">{league.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{league.code || ""} • {players.length} player{players.length !== 1 ? "s" : ""}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5 min-h-[32px] border border-dashed rounded-md p-1">
+                      {players.length === 0 && (
+                        <p className="text-[10px] text-muted-foreground text-center py-2">Drop players here</p>
+                      )}
+                      {players.map((p, idx) => (
+                        <div
+                          key={p.id}
+                          draggable
+                          onDragStart={() => handleDragStart(league.id, idx)}
+                          onDragEnter={() => handleDragEnter(league.id, idx)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={e => e.preventDefault()}
+                          className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded cursor-grab active:cursor-grabbing hover:bg-muted border border-transparent hover:border-border transition-colors"
+                        >
+                          <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="w-5 text-xs font-bold text-primary text-center">{idx + 1}</span>
+                          <span className="text-xs flex-1 truncate">{getMemberName(p)}</span>
+                          <span className="text-[10px] text-muted-foreground">{getMemberSkill(p)}</span>
+                          <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => removeFromLeague(league.id, idx)}>
+                            <X className="w-2.5 h-2.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         )}
+
+        <div className="pt-3 border-t">
+          <Button onClick={handleSave} className="w-full" disabled={saving}>
+            {saving ? "Saving…" : `Save All Allocations`}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
-
-// ─── Constants ───
 const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
   const num = i + 1;
   const suffix = num === 1 ? "st" : num === 2 ? "nd" : num === 3 ? "rd" : "th";

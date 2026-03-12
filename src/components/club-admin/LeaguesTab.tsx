@@ -108,33 +108,76 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
   );
 }
 
+const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
+  const num = i + 1;
+  const suffix = num === 1 ? "st" : num === 2 ? "nd" : num === 3 ? "rd" : "th";
+  return `${num}${suffix}`;
+});
+
 function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const [form, setForm] = useState({ name: "", code: "", association_id: "" });
+  const [selectedMen, setSelectedMen] = useState<string[]>([]);
+  const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
+  const [code, setCode] = useState("");
+  const [associationId, setAssociationId] = useState("");
   const qc = useQueryClient();
 
+  const handleToggle = (league: string, gender: "men" | "ladies") => {
+    const setter = gender === "men" ? setSelectedMen : setSelectedLadies;
+    setter(prev => prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]);
+  };
+
   const handleSave = async () => {
-    if (!form.name.trim()) return;
-    const { error } = await fromExt("leagues").insert({ name: form.name, code: form.code || null, association_id: form.association_id || null, club_id: clubId });
+    const entries = [
+      ...selectedMen.map(l => ({ name: `Men's ${l} League`, code: code || null, association_id: associationId || null, club_id: clubId })),
+      ...selectedLadies.map(l => ({ name: `Ladies ${l} League`, code: code || null, association_id: associationId || null, club_id: clubId })),
+    ];
+    if (entries.length === 0) return;
+    const { error } = await fromExt("leagues").insert(entries);
     if (error) toast.error(error.message);
-    else { toast.success("League added"); onOpenChange(false); setForm({ name: "", code: "", association_id: "" }); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setCode(""); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add League</Button></DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Add League</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1"><Label>League Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. 7th League" /></div>
-          <div className="space-y-1"><Label>Code</Label><Input value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} placeholder="e.g. CSI006" /></div>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Leagues</Button></DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Add Leagues</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-2 block font-semibold">Men's Leagues</Label>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {LEAGUE_OPTIONS.map(l => (
+                  <label key={`men-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
+                    <input type="checkbox" checked={selectedMen.includes(l)} onChange={() => handleToggle(l, "men")} className="rounded border-input" />
+                    {l} League
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="mb-2 block font-semibold">Ladies Leagues</Label>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {LEAGUE_OPTIONS.map(l => (
+                  <label key={`ladies-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
+                    <input type="checkbox" checked={selectedLadies.includes(l)} onChange={() => handleToggle(l, "ladies")} className="rounded border-input" />
+                    {l} League
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1"><Label>Code (optional)</Label><Input value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. CSI006" /></div>
           <div className="space-y-1">
             <Label>Association</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.association_id} onChange={e => setForm(p => ({ ...p, association_id: e.target.value }))}>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
               <option value="">None</option>
               {associations.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
-          <Button onClick={handleSave} className="w-full">Save</Button>
+          <Button onClick={handleSave} className="w-full" disabled={selectedMen.length + selectedLadies.length === 0}>
+            Add {selectedMen.length + selectedLadies.length} League(s)
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

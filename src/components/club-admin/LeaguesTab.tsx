@@ -416,14 +416,23 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const parseNum = (l: string) => parseInt(l);
     const sortedMen = [...selectedMen].sort((a, b) => parseNum(a) - parseNum(b));
     const sortedLadies = [...selectedLadies].sort((a, b) => parseNum(a) - parseNum(b));
-    const all = [...sortedMen.map(l => ({ label: l, gender: "Men's" })), ...sortedLadies.map(l => ({ label: l, gender: "Ladies" }))];
 
     let codeNum = startNum;
-    return all.map(({ label, gender }) => {
+    const menEntries = sortedMen.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `${gender} ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
+      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
     });
+
+    // Reset numbering for Ladies
+    codeNum = startNum;
+    const ladiesEntries = sortedLadies.map(label => {
+      const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
+      codeNum++;
+      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
+    });
+
+    return [...menEntries, ...ladiesEntries];
   };
 
   const entries = buildEntries();

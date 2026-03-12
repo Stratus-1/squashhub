@@ -119,6 +119,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
   const [prefix, setPrefix] = useState("");
   const [startNum, setStartNum] = useState(1);
+  const [year, setYear] = useState(new Date().getFullYear());
   const [associationId, setAssociationId] = useState("");
   const qc = useQueryClient();
 
@@ -139,7 +140,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     return all.map(({ label, gender }) => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `${gender} ${label} League`, code, association_id: associationId || null, club_id: clubId };
+      return { name: `${gender} ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
     });
   };
 
@@ -149,7 +150,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     if (entries.length === 0) return;
     const { error } = await fromExt("leagues").insert(entries);
     if (error) toast.error(error.message);
-    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
   };
 
   return (
@@ -183,7 +184,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label>Code Prefix</Label>
               <Input value={prefix} onChange={e => setPrefix(e.target.value.toUpperCase())} placeholder="e.g. WCS" maxLength={10} />
@@ -191,6 +192,10 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
             <div className="space-y-1">
               <Label>Start Number</Label>
               <Input type="number" min={1} value={startNum} onChange={e => setStartNum(Number(e.target.value) || 1)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Year</Label>
+              <Input type="number" min={2020} max={2099} value={year} onChange={e => setYear(Number(e.target.value) || new Date().getFullYear())} />
             </div>
           </div>
 

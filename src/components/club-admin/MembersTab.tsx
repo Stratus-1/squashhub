@@ -188,8 +188,11 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [gender, setGender] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
+  const [associationId, setAssociationId] = useState("");
+  const [associationNumber, setAssociationNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
+  const { data: associations = [] } = useLeagueAssociations(clubId);
   const qc = useQueryClient();
 
   const age = idNumber ? getAgeFromSaId(idNumber) : null;

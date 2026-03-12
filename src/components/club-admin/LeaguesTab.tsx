@@ -17,6 +17,7 @@ interface LeaguePlayer {
   club_member_id: string;
   league_id: string;
   player_rank: number;
+  is_captain: boolean;
   member?: ClubMember;
 }
 

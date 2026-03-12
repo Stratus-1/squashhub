@@ -85,8 +85,8 @@ export default function Auth() {
       toast.error("Please enter your club name");
       return;
     }
-    if (!sub || sub.length < 3 || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(sub)) {
-      toast.error("Subdomain must be at least 3 characters (letters, numbers, hyphens)");
+    if (!sub || sub.length < 2 || sub.length > 5 || !/^[a-z0-9]+$/.test(sub)) {
+      toast.error("Subdomain must be 2–5 lowercase letters/numbers, no hyphens");
       return;
     }
     if (signupPassword.length < 6) {

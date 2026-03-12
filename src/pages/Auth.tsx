@@ -102,7 +102,7 @@ export default function Auth() {
   if (showReset) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <SEO title="Reset Password" description="Reset your password for Gordon's Bay Squash Hub." path="/auth" noIndex />
+        <SEO title="Reset Password" description="Reset your password for SquashHub." path="/auth" noIndex />
         <motion.div
           className="w-full max-w-sm"
           initial={{ opacity: 0, y: 20 }}

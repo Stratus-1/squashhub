@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN ladder_status text NOT NULL DEFAULT 'unranked';

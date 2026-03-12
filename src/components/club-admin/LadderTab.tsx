@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLadder } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 import { type LadderPlayer } from "@/components/LadderPlayerCard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Loader2, Save, X } from "lucide-react";
+import { GripVertical, Loader2, Save, X, ShieldCheck, ShieldAlert, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { rpcExt } from "@/lib/supabase-ext";
+import { rpcExt, fromExt } from "@/lib/supabase-ext";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -85,10 +86,13 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
 
 export function LadderTab({ clubId }: { clubId: string }) {
   const { data: players, isLoading } = useLadder();
+  const { data: clubData } = useMyClub();
+  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderPlayer[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderPlayer[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -159,6 +163,20 @@ export function LadderTab({ clubId }: { clubId: string }) {
     }
   }, [menOrder, ladiesOrder, queryClient]);
 
+  const handleStatusChange = useCallback(async (newStatus: string) => {
+    setStatusSaving(true);
+    try {
+      const { error } = await fromExt("clubs").update({ ladder_status: newStatus } as any).eq("id", clubId);
+      if (error) throw error;
+      toast.success(`Ladder status changed to ${newStatus === "provisional" ? "Provisionally Ranked" : newStatus === "active" ? "Active — Challenges Enabled" : "Unranked"}`);
+      queryClient.invalidateQueries({ queryKey: ["my-club"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update status");
+    } finally {
+      setStatusSaving(false);
+    }
+  }, [clubId, queryClient]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -182,6 +200,56 @@ export function LadderTab({ clubId }: { clubId: string }) {
           </Button>
         </div>
       )}
+
+      {/* Ladder Status Control */}
+      <Card className="p-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            {ladderStatus === "unranked" && <ShieldAlert className="w-4 h-4 text-muted-foreground shrink-0" />}
+            {ladderStatus === "provisional" && <Shield className="w-4 h-4 text-amber-500 shrink-0" />}
+            {ladderStatus === "active" && <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold font-heading">
+                Ladder Status:{" "}
+                <Badge variant={ladderStatus === "active" ? "default" : "secondary"} className={cn(
+                  "text-[10px] ml-1",
+                  ladderStatus === "provisional" && "bg-amber-500/15 text-amber-600 border-amber-500/30",
+                  ladderStatus === "active" && "bg-green-500/15 text-green-600 border-green-500/30",
+                )}>
+                  {ladderStatus === "unranked" ? "Unranked" : ladderStatus === "provisional" ? "Provisionally Ranked" : "Active"}
+                </Badge>
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {ladderStatus === "unranked" && "Rank players above, then publish as provisional."}
+                {ladderStatus === "provisional" && "Players can view rankings. Activate to enable challenges."}
+                {ladderStatus === "active" && "Players can challenge each other based on ladder position."}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {ladderStatus === "unranked" && (
+              <Button size="sm" variant="outline" onClick={() => handleStatusChange("provisional")} disabled={statusSaving} className="gap-1 text-xs">
+                <Shield className="w-3 h-3" /> Publish as Provisional
+              </Button>
+            )}
+            {ladderStatus === "provisional" && (
+              <>
+                <Button size="sm" onClick={() => handleStatusChange("active")} disabled={statusSaving} className="gap-1 text-xs">
+                  <ShieldCheck className="w-3 h-3" /> Activate Challenges
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleStatusChange("unranked")} disabled={statusSaving} className="gap-1 text-xs">
+                  Back to Unranked
+                </Button>
+              </>
+            )}
+            {ladderStatus === "active" && (
+              <Button size="sm" variant="outline" onClick={() => handleStatusChange("provisional")} disabled={statusSaving} className="gap-1 text-xs">
+                <Shield className="w-3 h-3" /> Set Provisional
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
 
       <p className="text-xs text-muted-foreground">
         Drag players to reorder their ladder position. Changes are reflected on the public ladder page after saving.

@@ -3,13 +3,16 @@ import { SEO } from "@/components/SEO";
 import { LadderPlayerCard, type LadderPlayer } from "@/components/LadderPlayerCard";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Shield, ShieldCheck } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useProfile } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 export default function Ladder() {
   const navigate = useNavigate();
@@ -17,6 +20,8 @@ export default function Ladder() {
   const { user } = useAuth();
   const { data: players, isLoading } = useLadder();
   const { data: profile } = useProfile();
+  const { data: clubData } = useMyClub();
+  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
   const myRank = profile?.rank ?? null;
   const queryClient = useQueryClient();
   const [blockedChallenge, setBlockedChallenge] = useState<{
@@ -37,6 +42,7 @@ export default function Ladder() {
 
   const getChallengeBlockReason = useMemo(() => {
     return (playerId: string, opponentRank: number | null) => {
+      if (ladderStatus !== "active") return "The ladder is not yet active. Challenges will be enabled once the admin activates the ladder.";
       if (!user?.id) return "You must be logged in to challenge players.";
       if (playerId === user.id) return "You can't challenge yourself.";
       if (!myRank) return "You need a ladder rank before you can challenge players.";
@@ -47,7 +53,7 @@ export default function Ladder() {
       if (myRank <= opponentRank) return "You may only challenge players ranked above you.";
       return null;
     };
-  }, [myRank, user?.id]);
+  }, [myRank, user?.id, ladderStatus]);
 
   const menPlayers = useMemo(() =>
     (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],
@@ -106,6 +112,29 @@ export default function Ladder() {
         title="Player Ladder"
         subtitle={`${(players || []).length} players ranked`}
       />
+
+      {/* Ladder Status Badge */}
+      {ladderStatus !== "active" && (
+        <div className={cn(
+          "mx-4 mt-2 p-2.5 rounded-lg border flex items-center gap-2",
+          ladderStatus === "provisional"
+            ? "bg-amber-500/10 border-amber-500/30"
+            : "bg-muted border-border"
+        )}>
+          <Shield className={cn("w-4 h-4 shrink-0", ladderStatus === "provisional" ? "text-amber-500" : "text-muted-foreground")} />
+          <p className="text-xs text-muted-foreground">
+            {ladderStatus === "provisional"
+              ? "Rankings are provisional. Challenges will be enabled once the ladder is activated by the admin."
+              : "The ladder has not been ranked yet. Check back soon!"}
+          </p>
+        </div>
+      )}
+      {ladderStatus === "active" && (
+        <div className="mx-4 mt-2 p-2.5 rounded-lg border bg-green-500/10 border-green-500/30 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
+          <p className="text-xs text-muted-foreground">Ladder is active — challenge players ranked above you!</p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12">

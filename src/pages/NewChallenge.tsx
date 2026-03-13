@@ -550,8 +550,8 @@ export default function NewChallenge() {
             ) : eligible.length === 0 ? (
               <Card className="p-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  {myRank
-                    ? myRank === 1
+                  {myLadderPosition
+                    ? myLadderPosition === 1
                       ? "You're #1! No one to challenge above you. 👑"
                       : "No eligible opponents found. Try the All Players tab."
                     : "Get ranked first to see eligible opponents."}

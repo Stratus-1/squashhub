@@ -174,7 +174,7 @@ export default function Ladder() {
             key={player.id}
             player={player}
             index={index}
-            isMe={player.id === user?.id}
+            isMe={player.user_id === user?.id || player.id === user?.id || player.club_member_id === myClubMember?.id}
             isAdmin={false}
             onNavigate={(id, isMe) => {
               if (isMe) navigate("/profile");

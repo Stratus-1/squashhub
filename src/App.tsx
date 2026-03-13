@@ -151,11 +151,13 @@ function AppRoutes() {
 
   const routeLocation = backgroundLocation || location;
 
+  const isAdminRoute = (routeLocation.pathname || "/").startsWith("/admin");
+
   const showFooter = (() => {
     const p = routeLocation.pathname || "/";
     if (p === "/booking-response") return false;
     if (p.startsWith("/match-tracker/")) return false;
-    if (p.startsWith("/admin")) return false;
+    if (isAdminRoute) return false;
     return true;
   })();
 

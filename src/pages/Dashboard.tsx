@@ -115,7 +115,7 @@ export default function Dashboard() {
         !myClubMember.fee_category_id ||
         !myClubMember.club_member_number);
 
-    if (((!alreadyCompleted && legacyNeedsOnboarding) || missingMemberData) && !onboardingDone) {
+    if ((legacyNeedsOnboarding || missingMemberData) && !onboardingDone) {
       setShowOnboarding(true);
     }
   }, [

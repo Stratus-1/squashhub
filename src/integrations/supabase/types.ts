@@ -123,6 +123,7 @@ export type Database = {
           guest_name: string | null
           id: string
           is_friendly: boolean
+          lights_requested: boolean
           opponent_id: string | null
           start_time: string
           status: string
@@ -137,6 +138,7 @@ export type Database = {
           guest_name?: string | null
           id?: string
           is_friendly?: boolean
+          lights_requested?: boolean
           opponent_id?: string | null
           start_time: string
           status?: string
@@ -151,6 +153,7 @@ export type Database = {
           guest_name?: string | null
           id?: string
           is_friendly?: boolean
+          lights_requested?: boolean
           opponent_id?: string | null
           start_time?: string
           status?: string
@@ -995,6 +998,66 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      light_sessions: {
+        Row: {
+          booking_id: string
+          club_id: string
+          court_id: number
+          created_at: string
+          duration_minutes: number | null
+          ended_at: string | null
+          fee_charged: number | null
+          fee_per_hour: number | null
+          id: string
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          club_id: string
+          court_id: number
+          created_at?: string
+          duration_minutes?: number | null
+          ended_at?: string | null
+          fee_charged?: number | null
+          fee_per_hour?: number | null
+          id?: string
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          club_id?: string
+          court_id?: number
+          created_at?: string
+          duration_minutes?: number | null
+          ended_at?: string | null
+          fee_charged?: number | null
+          fee_per_hour?: number | null
+          id?: string
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "light_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "light_sessions_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
             referencedColumns: ["id"]
           },
         ]

@@ -240,7 +240,7 @@ export default function PlayerProfile() {
 
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="Player Profile" subtitle={player.rank ? `Rank #${player.rank}` : "Unranked"} />
+      <PageHeader title="Player Profile" subtitle={playerLadderPosition ? `Rank #${playerLadderPosition}` : "Unranked"} />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-4 pb-4">
         <Card className="overflow-hidden">

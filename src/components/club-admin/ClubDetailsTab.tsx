@@ -8,13 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, Upload, X } from "lucide-react";
+import { Plus, Trash2, Upload, X, Send } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string }) {
+  const { user } = useAuth();
   const updateClub = useUpdateClub();
   const { data: members = [] } = useClubMembers(clubId);
   const [uploading, setUploading] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -105,6 +108,39 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       toast.success("Club details saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!form.sender_email || !form.smtp_host || !form.smtp_user || !form.smtp_pass) {
+      toast.error("Please fill in all SMTP fields before sending a test email");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("email-notifications", {
+        body: {
+          action: "test",
+          clubId,
+          sender_name: form.sender_name || club.name,
+          sender_email: form.sender_email,
+          smtp_host: form.smtp_host,
+          smtp_port: parseInt(String(form.smtp_port)) || 587,
+          smtp_user: form.smtp_user,
+          smtp_pass: form.smtp_pass,
+          to: user?.email,
+        },
+      });
+      if (error) throw error;
+      if (data?.ok) {
+        toast.success(`Test email sent to ${user?.email}`);
+      } else {
+        toast.error(data?.reason || "Failed to send test email");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send test email");
+    } finally {
+      setSendingTest(false);
     }
   };
 
@@ -328,6 +364,18 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
             <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSendTestEmail}
+          disabled={sendingTest || !form.sender_email || !form.smtp_host}
+        >
+          <Send className="w-4 h-4 mr-2" />
+          {sendingTest ? "Sending..." : "Send Test Email"}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Sends a test email to your login address ({user?.email}) to verify your SMTP settings work.
+        </p>
       </Card>
 
       <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">

@@ -152,7 +152,7 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
-  onCreateFee: (fee: ExpectedFee, userId: string) => void;
+  onCreateFee: (fee: ExpectedFee, clubMemberId: string) => void;
 }) {
   const displayName = m.profiles?.name || m.name || "—";
   const displayEmail = m.profiles?.email || m.email || "";
@@ -177,11 +177,7 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
         </p>
       </div>
       <div className="flex items-start gap-3 shrink-0">
-        {m.user_id ? (
-          <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.user_id!)} />
-        ) : (
-          <span className="text-[10px] text-muted-foreground italic">Not registered</span>
-        )}
+        <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
           {m.role !== "captain" && (

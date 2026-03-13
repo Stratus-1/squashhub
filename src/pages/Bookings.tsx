@@ -44,6 +44,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
+import { useMyClub } from "@/hooks/use-club";
+import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Capacitor } from "@capacitor/core";
@@ -209,6 +211,7 @@ export default function Bookings() {
     playerMode: "none" | "member" | "guest";
     isFriendly: boolean;
     duration: 30 | 60;
+    lightsOn: boolean;
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;
@@ -243,6 +246,9 @@ export default function Bookings() {
   const { user } = useAuth();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
+  const { data: myClubData } = useMyClub();
+  const myClub = myClubData?.club;
+  const lightFeePerHour = (myClub as any)?.light_fee_per_hour ?? 0;
 
   useEffect(() => {
     if (!user?.id) return;
@@ -550,6 +556,26 @@ export default function Bookings() {
         guestName: bookingDialog.guestName || null,
       });
 
+      // Deduct light fee from member's account if lights are on
+      if (bookingDialog.lightsOn && lightFeePerHour > 0 && user?.id) {
+        const lightCost = (bookingDialog.duration / 60) * lightFeePerHour;
+        try {
+          await fromExt("member_credit_transactions").insert({
+            user_id: user.id,
+            amount: -lightCost,
+            type: "debit",
+            method: "system",
+            status: "confirmed",
+            confirmed_at: new Date().toISOString(),
+            description: `Court lights – ${bookingDialog.duration}min on Court ${bookingDialog.courtId} (${dateStr})`,
+            reference: (created as any)?.id || bookingId,
+          });
+        } catch (lightErr: any) {
+          console.error("Failed to record light fee:", lightErr);
+          toast.error("Booking created but light fee could not be recorded");
+        }
+      }
+
       const opponent = bookingDialog.opponentId
         ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
         : null;
@@ -705,6 +731,7 @@ export default function Bookings() {
                   playerMode: "none",
                   isFriendly: true,
                   duration: 30,
+                  lightsOn: false,
                 });
               }}
             >
@@ -885,7 +912,7 @@ export default function Bookings() {
                       )}
                       onClick={() => {
                         if (booking) setBookingDetails(booking);
-                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: false, duration: 30 });
+                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: false, duration: 30, lightsOn: false });
                       }}
                     >
                       {booking ? (
@@ -1088,6 +1115,23 @@ export default function Bookings() {
                 />
               </div>
 
+              <div className="flex items-center justify-between rounded-xl border p-3">
+                <div className="min-w-0">
+                  <Label className="text-xs font-semibold">Switch on Lights</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {lightFeePerHour > 0
+                      ? `R${lightFeePerHour}/hr — deducted from your account`
+                      : "No light fee configured"}
+                  </p>
+                </div>
+                <Switch
+                  checked={bookingDialog.lightsOn}
+                  onCheckedChange={(checked) =>
+                    setBookingDialog((s) => (s ? { ...s, lightsOn: checked } : s))
+                  }
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">2nd Player (optional)</Label>
                 <div className="flex gap-1.5">
@@ -1143,6 +1187,13 @@ export default function Bookings() {
                   />
                 )}
               </div>
+
+              {bookingDialog.lightsOn && lightFeePerHour > 0 && (
+                <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-xs">
+                  <span className="font-semibold">💡 Light fee:</span>{" "}
+                  R{((bookingDialog.duration / 60) * lightFeePerHour).toFixed(2)} will be deducted from your account
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>

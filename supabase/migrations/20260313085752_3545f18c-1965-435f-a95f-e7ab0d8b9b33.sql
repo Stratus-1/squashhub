@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS light_fee_per_hour numeric DEFAULT 0;

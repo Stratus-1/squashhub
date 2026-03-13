@@ -391,6 +391,53 @@ export type Database = {
           },
         ]
       }
+      club_member_fee_payments: {
+        Row: {
+          amount: number
+          club_member_id: string
+          created_at: string
+          fee_label: string
+          fee_type: string
+          id: string
+          paid: boolean
+          paid_at: string | null
+          season_year: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          club_member_id: string
+          created_at?: string
+          fee_label: string
+          fee_type: string
+          id?: string
+          paid?: boolean
+          paid_at?: string | null
+          season_year?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          club_member_id?: string
+          created_at?: string
+          fee_label?: string
+          fee_type?: string
+          id?: string
+          paid?: boolean
+          paid_at?: string | null
+          season_year?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_member_fee_payments_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_members: {
         Row: {
           address: string | null

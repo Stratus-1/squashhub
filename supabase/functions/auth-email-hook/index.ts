@@ -116,6 +116,10 @@ function buildConfirmationHtml(
     heading = "Test Email";
     bodyText = `This is a test email from <strong>${clubName}</strong>. If you received this, your SMTP settings are working correctly! 🎉`;
     buttonText = "Visit SquashHub";
+  } else if (emailType === "welcome") {
+    heading = "Welcome! 🎉";
+    bodyText = `Your account with <strong>${clubName}</strong> has been created successfully. You can now log in and start using the platform.`;
+    buttonText = "";
   }
 
   const greeting = recipientName ? `Hi ${escapeHtml(recipientName)},` : "Hi,";
@@ -254,7 +258,52 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Auth hook payload (standard Supabase auth email hook) ──
+    // ── Welcome email action (sent after auto-confirmed signup) ──
+    if (action === "welcome") {
+      const body = await req.json();
+      const recipientEmail = body.to;
+      const recipientName = body.name || "";
+      const subdomain = body.subdomain || null;
+
+      if (!recipientEmail) {
+        return new Response(JSON.stringify({ error: "Missing 'to' field" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let smtpConfig: SmtpConfig | null = null;
+      if (subdomain) {
+        smtpConfig = await getClubBySubdomain(subdomain);
+      }
+      if (!smtpConfig || !hasSmtpConfig(smtpConfig)) {
+        smtpConfig = await getPlatformSmtp();
+      }
+      if (!smtpConfig || !hasSmtpConfig(smtpConfig)) {
+        console.log("[auth-email-hook] No SMTP config for welcome email, skipping");
+        return new Response(JSON.stringify({ skipped: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const subject = `Welcome to ${smtpConfig.name}!`;
+      const html = buildConfirmationHtml(smtpConfig, "", recipientName, "welcome");
+      const text = `Welcome to ${smtpConfig.name}! Your account has been created successfully.`;
+
+      const sendPromise = sendViaSmtp(smtpConfig, recipientEmail, subject, html, text);
+      const timeoutPromise = new Promise<{ ok: false; reason: string }>((resolve) =>
+        setTimeout(() => resolve({ ok: false, reason: "SMTP timeout after 15s" }), 15000),
+      );
+
+      const result = await Promise.race([sendPromise, timeoutPromise]);
+
+      return new Response(JSON.stringify({ success: result.ok, reason: result.ok ? undefined : result.reason }), {
+        status: result.ok ? 200 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     const payload = await req.json();
     const user = payload?.user;
     const emailData = payload?.email_data;

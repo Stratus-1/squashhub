@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (consents?.privacyAcceptedAt) metadata.privacy_accepted_at = consents.privacyAcceptedAt;
     if (club?.clubName) metadata.club_name = club.clubName;
     if (club?.subdomain) metadata.club_subdomain = club.subdomain;
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -68,6 +68,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: `${publicBaseUrl}/auth/callback`,
       },
     });
+
+    // Send branded welcome email via club/platform SMTP (auto-confirm is on, so no default email)
+    if (!error && data?.user && club?.subdomain) {
+      try {
+        await supabase.functions.invoke("auth-email-hook?action=welcome", {
+          body: {
+            to: email,
+            name,
+            subdomain: club.subdomain,
+            source: "club",
+          },
+        });
+      } catch (e) {
+        console.warn("[signUp] Failed to send branded welcome email:", e);
+      }
+    }
+
     return { error: error as Error | null };
   };
 

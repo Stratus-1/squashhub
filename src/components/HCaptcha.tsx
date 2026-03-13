@@ -26,8 +26,10 @@ async function getSiteKey(): Promise<string | null> {
     .select("value")
     .eq("key", "hcaptcha_site_key")
     .maybeSingle();
-  cachedSiteKey = data?.value || null;
-  return cachedSiteKey;
+  const key = data?.value && data.value.trim().length > 0 ? data.value.trim() : null;
+  // Only cache non-empty results; allow retry if key wasn't set yet
+  if (key) cachedSiteKey = key;
+  return key;
 }
 
 export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {

@@ -29,10 +29,12 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { club: contextClub } = useClubContext();
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
-  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
+  const effectiveClub = clubData?.club || contextClub;
+  const ladderStatus = (effectiveClub as any)?.ladder_status || "unranked";
   const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();

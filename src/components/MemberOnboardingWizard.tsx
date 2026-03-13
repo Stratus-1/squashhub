@@ -178,25 +178,19 @@ export function MemberOnboardingWizard({
     }
   }, [idNumber, dateOfBirth, feeCategories, gender, categoryAutoSet]);
 
-  // Auto-generate member number when reaching membership step
+  // Auto-generate member number when reaching membership step (uses DB function to bypass RLS)
   useEffect(() => {
     if (step === 2 && clubId && !memberNumber) {
       (async () => {
-        const prefix = (club as any)?.member_number_prefix || "";
-        const length = (club as any)?.member_number_length || 4;
-        const start = (club as any)?.member_number_start || 1;
-        
-        const { data: existing } = await fromExt("club_members")
-          .select("club_member_number")
-          .eq("club_id", clubId)
-          .not("club_member_number", "is", null);
-        
-        const existingNums = (existing || []).map((r: any) => r.club_member_number || "");
-        const nextNumber = generateMemberNumber(prefix, length, start, existingNums);
-        setMemberNumber(nextNumber);
+        const { data, error } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
+        if (!error && data) {
+          setMemberNumber(data as string);
+        } else {
+          console.warn("Failed to get next member number:", error);
+        }
       })();
     }
-  }, [step, clubId, club, memberNumber]);
+  }, [step, clubId, memberNumber]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
   const dueMonth = (club as any)?.member_fee_due_month || 1;

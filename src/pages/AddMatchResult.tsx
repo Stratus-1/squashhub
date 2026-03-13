@@ -81,9 +81,8 @@ function computeMatchResult(games: GameScore[], format: ScoringFormat) {
 export default function AddMatchResult() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { effectiveClub } = useClubContext();
   const { data: clubData } = useMyClub();
-  const clubId = effectiveClub?.id || clubData?.club?.id;
+  const clubId = clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const createMatch = useCreateMatch();
 

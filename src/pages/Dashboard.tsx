@@ -14,7 +14,7 @@ import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Sh
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
+import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
 import { useClubContext } from "@/contexts/ClubContext";
 import { format } from "date-fns";

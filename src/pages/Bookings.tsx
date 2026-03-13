@@ -982,7 +982,7 @@ export default function Bookings() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">
-                    Court {bookingDetails.court_id} · {format(selectedDate, "d MMM yyyy")}
+                    Court {bookingDetails.court_id} · {format(selectedDate, "EEE d MMM yyyy")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {String(bookingDetails.start_time || "").slice(0, 5)} - {String(bookingDetails.end_time || "").slice(0, 5)}
@@ -1150,7 +1150,7 @@ export default function Bookings() {
                   <div>
                     <p className="text-sm font-semibold">Court {bookingDialog.courtId}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(selectedDate, "d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, bookingDialog.duration)}
+                      {format(selectedDate, "EEE d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, bookingDialog.duration)}
                     </p>
                   </div>
                 </div>

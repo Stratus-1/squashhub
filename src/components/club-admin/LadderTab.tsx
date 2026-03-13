@@ -199,7 +199,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
   }, [menOrder, ladiesOrder, queryClient]);
 
 
-  if (isLoading) {
+  if (isLoading || (membersLoading && (!players || players.length === 0))) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />

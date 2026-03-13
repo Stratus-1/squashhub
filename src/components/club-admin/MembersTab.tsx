@@ -30,7 +30,7 @@ function getAgeFromSaId(idNumber: string): number | null {
 
 interface FeePaymentRow {
   id: string;
-  user_id: string;
+  club_member_id: string;
   fee_type: string;
   fee_label: string;
   amount: number;
@@ -68,8 +68,7 @@ function computeExpectedFees(
   existingPayments: FeePaymentRow[]
 ): ExpectedFee[] {
   const fees: ExpectedFee[] = [];
-  if (!member.user_id) return fees;
-  const memberPayments = existingPayments.filter(p => p.user_id === member.user_id);
+  const memberPayments = existingPayments.filter(p => p.club_member_id === member.id);
 
   // 1. Club membership fee (from fee category, pro-rated for new members)
   if (member.fee_category_id) {

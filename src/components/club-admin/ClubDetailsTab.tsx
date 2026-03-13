@@ -134,7 +134,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       });
       if (error) throw error;
       if (data?.ok) {
-        toast.success(`Test email sent to ${user?.email}`);
+        toast.success(`Test email sent to ${testEmailTo || user?.email}`);
       } else {
         toast.error(data?.reason || "Failed to send test email");
       }

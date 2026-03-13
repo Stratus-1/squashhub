@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
-import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory } from "@/hooks/use-club";
+import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -113,6 +113,7 @@ export function MemberOnboardingWizard({
   const [idNumber, setIdNumber] = useState("");
   const [gender, setGender] = useState("");
   const [address, setAddress] = useState("");
+  const [skillLevel, setSkillLevel] = useState("");
 
   // Membership
   const [feeCategoryId, setFeeCategoryId] = useState("");
@@ -240,6 +241,7 @@ export function MemberOnboardingWizard({
         id_number: idNumber.trim() || null,
         gender: gender || null,
         address: address.trim() || null,
+        skill_level: skillLevel || null,
         fee_category_id: feeCategoryId || null,
         plays_league: playsLeague,
         club_member_number: memberNumber || null,
@@ -392,6 +394,17 @@ export function MemberOnboardingWizard({
                   <div>
                     <Label htmlFor="onb-address">Address</Label>
                     <Input id="onb-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City" />
+                  </div>
+                  <div>
+                    <Label>Skill Level</Label>
+                    <Select value={skillLevel} onValueChange={setSkillLevel}>
+                      <SelectTrigger><SelectValue placeholder="Select skill level" /></SelectTrigger>
+                      <SelectContent>
+                        {SKILL_LEVELS.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </motion.div>

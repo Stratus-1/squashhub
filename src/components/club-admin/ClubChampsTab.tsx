@@ -383,6 +383,46 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(30);
     setSelectedCourtIds(new Set());
     setGroupAssignments(new Map());
+    setEditingChampId(null);
+  };
+
+  // Load existing champ into wizard for editing
+  const loadChampForEdit = async (champ: any) => {
+    resetWizard();
+    setEditingChampId(champ.id);
+    setGender(champ.gender);
+    setChampName(champ.name);
+    setNumGroups(champ.num_groups);
+    setStartDate(champ.start_date);
+    setEndDate(champ.end_date);
+    setPlayDays(new Set(champ.play_days || []));
+    setStartTime(champ.start_time?.slice(0, 5) || "18:00");
+    setEndTime(champ.end_time?.slice(0, 5) || "20:00");
+    setMatchDuration(champ.match_duration_minutes || 30);
+
+    // Load entries to restore player selection and group assignments
+    const { data: entries } = await fromExt("club_champs_entries")
+      .select("*")
+      .eq("champ_id", champ.id);
+
+    if (entries) {
+      setSelectedPlayerIds(new Set(entries.map((e: any) => e.club_member_id)));
+      const assignments = new Map<string, number>();
+      entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
+      setGroupAssignments(assignments);
+    }
+
+    // Pre-select courts from existing matches
+    const { data: champMatches } = await fromExt("club_champs_matches")
+      .select("court_id")
+      .eq("champ_id", champ.id);
+    if (champMatches) {
+      const courtIds = new Set(champMatches.map((m: any) => m.court_id).filter(Boolean) as number[]);
+      setSelectedCourtIds(courtIds);
+    }
+
+    setStep("players");
+    setShowWizard(true);
   };
 
   const getMemberName = (id: string) => {

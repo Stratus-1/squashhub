@@ -239,23 +239,66 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     mutationFn: async () => {
       if (!schedulePreview) throw new Error("No schedule generated");
 
-      // 1. Create champ record
-      const { data: champ, error: champErr } = await fromExt("club_champs")
-        .insert({
-          club_id: clubId,
-          name: champName || `${gender === "men" ? "Men's" : "Ladies'"} Club Champs ${new Date().getFullYear()}`,
-          gender,
-          num_groups: numGroups,
-          start_date: startDate,
-          end_date: endDate,
-          play_days: Array.from(playDays),
-          start_time: startTime,
-          end_time: endTime,
-          match_duration_minutes: matchDuration,
-        })
-        .select()
-        .single();
-      if (champErr) throw champErr;
+      let champId: string;
+
+      if (editingChampId) {
+        // Editing: delete old entries, matches, and bookings first
+        const { data: oldMatches } = await fromExt("club_champs_matches")
+          .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
+          .eq("champ_id", editingChampId);
+
+        if (oldMatches && oldMatches.length > 0) {
+          const memberIds = [...new Set(oldMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
+          const { data: memberUsers } = await fromExt("club_members").select("id, user_id").in("id", memberIds);
+          const memberMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
+          for (const m of oldMatches) {
+            const userId = memberMap.get(m.player_a_member_id);
+            if (!userId || !m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+            await fromExt("bookings").delete()
+              .eq("user_id", userId).eq("date", m.scheduled_date)
+              .eq("start_time", m.scheduled_time).eq("court_id", m.court_id);
+          }
+        }
+
+        await fromExt("club_champs_matches").delete().eq("champ_id", editingChampId);
+        await fromExt("club_champs_entries").delete().eq("champ_id", editingChampId);
+
+        // Update the champ record
+        const { error: updateErr } = await fromExt("club_champs")
+          .update({
+            name: champName || `${gender === "men" ? "Men's" : "Ladies'"} Club Champs ${new Date().getFullYear()}`,
+            gender,
+            num_groups: numGroups,
+            start_date: startDate,
+            end_date: endDate,
+            play_days: Array.from(playDays),
+            start_time: startTime,
+            end_time: endTime,
+            match_duration_minutes: matchDuration,
+          })
+          .eq("id", editingChampId);
+        if (updateErr) throw updateErr;
+        champId = editingChampId;
+      } else {
+        // Creating new
+        const { data: champ, error: champErr } = await fromExt("club_champs")
+          .insert({
+            club_id: clubId,
+            name: champName || `${gender === "men" ? "Men's" : "Ladies'"} Club Champs ${new Date().getFullYear()}`,
+            gender,
+            num_groups: numGroups,
+            start_date: startDate,
+            end_date: endDate,
+            play_days: Array.from(playDays),
+            start_time: startTime,
+            end_time: endTime,
+            match_duration_minutes: matchDuration,
+          })
+          .select()
+          .single();
+        if (champErr) throw champErr;
+        champId = champ.id;
+      }
 
       // 2. Create entries
       const entries = groups.flatMap((groupPlayers, gi) =>

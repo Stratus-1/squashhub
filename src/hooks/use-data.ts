@@ -241,6 +241,42 @@ export function useCreateBooking() {
       guestName?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
+
+      // Auto-merge: check for an adjacent booking on the same court/date by this user
+      const { data: adjacent } = await supabase
+        .from("bookings")
+        .select("id, start_time, end_time")
+        .eq("court_id", courtId)
+        .eq("date", date)
+        .eq("user_id", user.id)
+        .eq("status", "active") as any;
+
+      const existingMerge = (adjacent || []).find((b: any) =>
+        b.end_time === startTime || b.start_time === endTime
+      );
+
+      if (existingMerge) {
+        // Extend the existing booking
+        const newStart = existingMerge.start_time <= startTime ? existingMerge.start_time : startTime;
+        const newEnd = existingMerge.end_time >= endTime ? existingMerge.end_time : endTime;
+        const { data, error } = await supabase
+          .from("bookings")
+          .update({
+            start_time: newStart,
+            end_time: newEnd,
+            opponent_id: opponentId ?? null,
+            is_friendly: !!isFriendly,
+            challenge_id: challengeId ?? null,
+            guest_name: guestName ?? null,
+          } as any)
+          .eq("id", existingMerge.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+
+      // No adjacent booking — create new
       const id = bookingId || crypto.randomUUID();
       const { data, error } = await supabase
         .from("bookings")

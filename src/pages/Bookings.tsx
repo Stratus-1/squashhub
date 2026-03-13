@@ -444,7 +444,7 @@ export default function Bookings() {
         combined.push({
           id: m.user_id || m.id,
           name: profile?.name || m.name || m.email || "Unknown",
-          rank: m.league_player_rank ?? null,
+          rank: m.ladder_position ?? null,
           email: profile?.email || m.email || null,
           memberId: m.id,
         });

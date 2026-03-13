@@ -710,10 +710,10 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             </select>
           </div>
           <div className="space-y-1">
-            <Label>Provisional Ranking</Label>
-            <Input type="number" min={1} value={form.league_player_rank} onChange={e => setForm(p => ({ ...p, league_player_rank: e.target.value }))} placeholder="e.g. 5" />
+            <Label>Ladder Position</Label>
+            <Input type="number" min={1} value={form.ladder_position} onChange={e => setForm(p => ({ ...p, ladder_position: e.target.value }))} placeholder="e.g. 5" />
             <p className="text-xs text-muted-foreground">
-              Current ladder rank: {typeof member.league_player_rank === "number" ? `#${member.league_player_rank}` : "unranked"}
+              Current ladder position: {typeof member.ladder_position === "number" ? `#${member.ladder_position}` : "unranked"}
             </p>
           </div>
           <div className="flex items-center gap-2">

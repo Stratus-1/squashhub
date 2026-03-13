@@ -110,7 +110,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()))
-      .sort((a, b) => (a.league_player_rank || 999) - (b.league_player_rank || 999));
+      .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members, gender]);
 
   // When entering players step, pre-select all; when entering groups, auto-seed assignments

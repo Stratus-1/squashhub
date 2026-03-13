@@ -437,7 +437,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
     try {
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
 
-      const { error } = await fromExt("club_members").insert({
+      const { data: memberData, error } = await fromExt("club_members").insert({
         club_id: clubId,
         user_id: profile?.id || null,
         name: trimmedName,
@@ -450,8 +450,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         gender: gender || undefined,
         skill_level: skillLevel || undefined,
         plays_league: playsLeague,
-      });
-      if (error) throw error;
+      }).select("id").single();
+      if (error || !memberData) throw error || new Error("Failed to create member");
 
       // Auto-create member fee records for the new member
       if (previewFees.length > 0) {

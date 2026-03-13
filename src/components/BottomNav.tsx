@@ -1,4 +1,4 @@
-import { Home, Calendar, BarChart3, MessageCircle, LayoutDashboard, Settings } from "lucide-react";
+import { Home, Calendar, BarChart3, MessageCircle, Settings } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useIsClubAdmin } from "@/hooks/use-club";
@@ -8,7 +8,6 @@ const baseItems = [
   { to: "/bookings", icon: Calendar, label: "Courts" },
   { to: "/analytics", icon: BarChart3, label: "Stats" },
   { to: "/feed", icon: MessageCircle, label: "Feed" },
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
 ];
 
 export function BottomNav() {

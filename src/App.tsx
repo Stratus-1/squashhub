@@ -19,6 +19,7 @@ import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { FeedbackFab } from "@/components/FeedbackFab";
 import { LiveSessionBanner } from "@/components/LiveSessionBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
+import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Bookings from "./pages/Bookings";
@@ -95,8 +96,8 @@ function AuthGate() {
 
   const safeRedirect =
     redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? redirectTo
-      : "/dashboard";
+      ? (redirectTo === "/dashboard" ? "/" : redirectTo)
+      : "/";
   return <Navigate to={safeRedirect} replace />;
 }
 
@@ -115,7 +116,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/auth" replace />;
 
   const allowed = (roles || []).includes("admin") || (roles || []).includes("moderator");
-  if (!allowed) return <Navigate to="/dashboard" replace />;
+  if (!allowed) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
@@ -150,20 +151,21 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
+      {user && <ClubBrandedBackground />}
       <Routes location={routeLocation}>
         <Route path="/" element={
           isClubSubdomain && !user
             ? <ClubLanding hostClub={clubFromHost} />
             : user
-              ? <Navigate to="/dashboard" replace />
+              ? <Dashboard />
               : <Home />
         } />
         <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />

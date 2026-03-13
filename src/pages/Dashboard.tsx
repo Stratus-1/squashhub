@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
+
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
@@ -120,8 +121,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="bottom-nav-safe">
-      <SEO title="Dashboard" description="Your squash dashboard — stats, bookings, and challenges." path="/dashboard" noIndex />
+    <div className="bottom-nav-safe relative">
+      <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
       <OnboardingWizard
         open={showOnboarding}

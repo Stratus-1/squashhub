@@ -69,9 +69,9 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     );
   }
 
-  // If user is logged in, redirect to dashboard
+  // If user is logged in, redirect to home
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (

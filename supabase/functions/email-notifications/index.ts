@@ -179,31 +179,41 @@ async function handleTestEmail(payload: Record<string, unknown>, authHeader: str
     `.trim();
     const textBody = `Email Settings Working!\n\nThis is a test email from ${senderName} (${senderEmail}).\nYour club email configuration is set up correctly.\n`;
 
-    // Send via club's own SMTP
-    const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: smtpPort === 465,
-        auth: { username: smtpUser, password: smtpPass },
-      },
-    });
+    // Send via club's own SMTP with timeout
+    console.log(`[test-email] Attempting SMTP send to ${to} via ${smtpHost}:${smtpPort}`);
+    
+    const smtpPromise = (async () => {
+      const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
+      const client = new SMTPClient({
+        connection: {
+          hostname: smtpHost,
+          port: smtpPort,
+          tls: smtpPort === 465,
+          auth: { username: smtpUser, password: smtpPass },
+        },
+      });
 
-    await client.send({
-      from: `${senderName} <${senderEmail}>`,
-      to: to,
-      subject,
-      content: textBody,
-      html,
-    });
+      await client.send({
+        from: `${senderName} <${senderEmail}>`,
+        to: to,
+        subject,
+        content: textBody,
+        html,
+      });
 
-    await client.close();
+      await client.close();
+      console.log(`[test-email] SMTP send succeeded to ${to}`);
+      return { ok: true };
+    })();
 
-    const result = { ok: true };
+    const timeoutPromise = new Promise<{ ok: false; reason: string }>((resolve) =>
+      setTimeout(() => resolve({ ok: false, reason: "SMTP connection timed out after 15 seconds. Your SMTP server may be unreachable from this environment. Please verify your SMTP host, port, username, and password." }), 15000)
+    );
+
+    const result = await Promise.race([smtpPromise, timeoutPromise]);
 
     return new Response(JSON.stringify(result), {
-      status: result.ok ? 200 : (result.skipped ? 200 : 500),
+      status: result.ok ? 200 : 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

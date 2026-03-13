@@ -75,10 +75,11 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
       if (data?.ok) {
         toast.success(`Test email sent to ${testEmailTo || user?.email}`);
       } else {
-        toast.error(data?.reason || "Failed to send test email");
+        toast.error(data?.reason || data?.error || "Failed to send test email — check your SMTP settings");
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to send test email");
+      const msg = err?.message || err?.context?.body || String(err);
+      toast.error(msg || "Failed to send test email");
     } finally {
       setSendingTest(false);
     }

@@ -9,7 +9,6 @@ import { SEO } from "@/components/SEO";
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
-import { AvatarFeatureBanner } from "@/components/AvatarFeatureBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Shield, ShieldCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -166,7 +165,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <AvatarFeatureBanner />
+      
 
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">

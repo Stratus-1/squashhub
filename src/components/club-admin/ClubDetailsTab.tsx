@@ -111,6 +111,39 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
     }
   };
 
+  const handleSendTestEmail = async () => {
+    if (!form.sender_email || !form.smtp_host || !form.smtp_user || !form.smtp_pass) {
+      toast.error("Please fill in all SMTP fields before sending a test email");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("email-notifications", {
+        body: {
+          action: "test",
+          clubId,
+          sender_name: form.sender_name || club.name,
+          sender_email: form.sender_email,
+          smtp_host: form.smtp_host,
+          smtp_port: parseInt(String(form.smtp_port)) || 587,
+          smtp_user: form.smtp_user,
+          smtp_pass: form.smtp_pass,
+          to: user?.email,
+        },
+      });
+      if (error) throw error;
+      if (data?.ok) {
+        toast.success(`Test email sent to ${user?.email}`);
+      } else {
+        toast.error(data?.reason || "Failed to send test email");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send test email");
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const getMemberLabel = (m: ClubMember) => {
     const name = m.name || m.profiles?.name || "Unknown";
     const phone = m.phone || m.profiles?.phone || "";

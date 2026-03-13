@@ -165,7 +165,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <AvatarFeatureBanner />
+      
 
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">

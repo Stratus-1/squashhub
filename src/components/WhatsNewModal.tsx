@@ -64,15 +64,6 @@ export function WhatsNewModal() {
         visible: !!user,
       },
       {
-        key: "avatars",
-        title: "Sporty avatars",
-        description: "Add an avatar to your profile so players recognize you.",
-        Icon: UserCircle2,
-        cta: "Choose avatar",
-        onClick: () => navigate("/profile?edit=1&focus=avatar", { state: { backgroundLocation: location } }),
-        visible: !!user && !(profile as any)?.avatar_url,
-      },
-      {
         key: "seasons",
         title: "Seasons improvements",
         description: "Seasons are easier to browse with a cleaner layout and joined counts.",

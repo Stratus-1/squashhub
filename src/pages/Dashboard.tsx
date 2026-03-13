@@ -29,7 +29,8 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
-  const { data: clubData } = useMyClub();
+  const { data: clubData, isLoading: isClubLoading } = useMyClub();
+  const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
   const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
   const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();

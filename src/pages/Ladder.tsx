@@ -125,7 +125,7 @@ export default function Ladder() {
   };
 
   const handleChallengeClick = (player: LadderPlayer) => {
-    const reason = canChallenge(player.id);
+    const reason = canChallenge(player);
     if (reason) {
       setBlockedChallenge({ open: true, description: reason });
       return;

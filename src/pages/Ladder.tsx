@@ -128,28 +128,6 @@ export default function Ladder() {
         subtitle={`${(players || []).length} players ranked`}
       />
 
-      {/* Ladder Status Badge */}
-      {ladderStatus !== "active" && (
-        <div className={cn(
-          "mx-4 mt-2 p-2.5 rounded-lg border flex items-center gap-2",
-          ladderStatus === "provisional"
-            ? "bg-amber-500/10 border-amber-500/30"
-            : "bg-muted border-border"
-        )}>
-          <Shield className={cn("w-4 h-4 shrink-0", ladderStatus === "provisional" ? "text-amber-500" : "text-muted-foreground")} />
-          <p className="text-xs text-muted-foreground">
-            {ladderStatus === "provisional"
-              ? "Rankings are provisional. Challenges will be enabled once the ladder is activated by the admin."
-              : "The ladder has not been ranked yet. Check back soon!"}
-          </p>
-        </div>
-      )}
-      {ladderStatus === "active" && (
-        <div className="mx-4 mt-2 p-2.5 rounded-lg border bg-green-500/10 border-green-500/30 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
-          <p className="text-xs text-muted-foreground">Ladder is active — challenge players ranked above you!</p>
-        </div>
-      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12">

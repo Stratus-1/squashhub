@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs DROP COLUMN IF EXISTS ladder_status;

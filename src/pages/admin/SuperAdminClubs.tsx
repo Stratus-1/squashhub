@@ -193,11 +193,6 @@ export default function SuperAdminClubs() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={club.ladder_status === "active" ? "default" : "outline"}>
-                      {club.ladder_status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
                     <span className="text-sm text-muted-foreground">{club.email || "—"}</span>
                   </TableCell>
                   <TableCell className="text-right">

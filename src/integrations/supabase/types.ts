@@ -545,7 +545,6 @@ export type Database = {
           email: string | null
           fee_reminder_days_before: number | null
           id: string
-          ladder_status: string
           light_fee_per_hour: number | null
           logo_url: string | null
           member_fee_annual: number | null
@@ -584,7 +583,6 @@ export type Database = {
           email?: string | null
           fee_reminder_days_before?: number | null
           id?: string
-          ladder_status?: string
           light_fee_per_hour?: number | null
           logo_url?: string | null
           member_fee_annual?: number | null
@@ -623,7 +621,6 @@ export type Database = {
           email?: string | null
           fee_reminder_days_before?: number | null
           id?: string
-          ladder_status?: string
           light_fee_per_hour?: number | null
           logo_url?: string | null
           member_fee_annual?: number | null

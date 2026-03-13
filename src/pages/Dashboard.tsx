@@ -10,7 +10,7 @@ import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
-import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Shield, ShieldCheck, Wallet } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,8 +33,6 @@ export default function Dashboard() {
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
-  const ladderStatus = (effectiveClub as any)?.ladder_status || "unranked";
-  const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
   const clubId = effectiveClub?.id || clubData?.club?.id;
@@ -200,30 +198,16 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Ladder Status Banner */}
-      <div className={cn(
-        "mx-4 mt-2 p-2.5 rounded-lg border flex items-center gap-2",
-        ladderStatus === "active" ? "bg-green-500/10 border-green-500/30" :
-        ladderStatus === "provisional" ? "bg-amber-500/10 border-amber-500/30" :
-        "bg-muted border-border"
-      )}>
-        {ladderStatus === "active"
-          ? <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
-          : <Shield className={cn("w-4 h-4 shrink-0", ladderStatus === "provisional" ? "text-amber-500" : "text-muted-foreground")} />
-        }
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground">
-            {ladderStatus === "active" && "Ladder is active — challenge players ranked above you!"}
-            {ladderStatus === "provisional" && "Rankings are provisional. Challenges will open once the admin activates the ladder."}
-            {ladderStatus === "unranked" && "Ladder has not been ranked yet. Check back soon!"}
-          </p>
-        </div>
-        {myLadderPosition != null && (
+      {/* Ladder Position */}
+      {myLadderPosition != null && (
+        <div className="mx-4 mt-2 p-2.5 rounded-lg border bg-green-500/10 border-green-500/30 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
+          <p className="text-xs text-muted-foreground flex-1">Challenge players ranked above you on the ladder!</p>
           <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-            #{myLadderPosition}{ladderStatus === "provisional" ? " (Prov.)" : ""}
+            #{myLadderPosition}
           </Badge>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* My Upcoming Bookings */}
       <motion.div
@@ -335,7 +319,7 @@ export default function Dashboard() {
       <div className="px-4 mt-5">
         <p className="text-sm font-semibold font-heading mb-2">More</p>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")} disabled={!ladderActive}>
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")}>
             <span className="inline-flex items-center gap-2">
               <Swords className="w-4 h-4" />
               Create Challenge

@@ -20,7 +20,7 @@ type Club = {
   email: string | null;
   phone: string | null;
   logo_url: string | null;
-  ladder_status: string;
+  
   created_at: string;
   member_count?: number;
 };
@@ -37,7 +37,7 @@ export default function SuperAdminClubs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, ladder_status, created_at")
+        .select("id, name, subdomain, address, email, phone, logo_url, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -143,7 +143,7 @@ export default function SuperAdminClubs() {
               <TableHead>Club</TableHead>
               <TableHead>Subdomain</TableHead>
               <TableHead className="text-center">Members</TableHead>
-              <TableHead>Ladder</TableHead>
+              
               <TableHead>Contact</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -190,11 +190,6 @@ export default function SuperAdminClubs() {
                     <Badge variant="secondary" className="gap-1">
                       <Users className="h-3 w-3" />
                       {club.member_count}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={club.ladder_status === "active" ? "default" : "outline"}>
-                      {club.ladder_status}
                     </Badge>
                   </TableCell>
                   <TableCell>

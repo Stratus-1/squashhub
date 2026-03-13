@@ -4,7 +4,7 @@ import { LadderPlayerCard, type LadderPlayer } from "@/components/LadderPlayerCa
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useProfile } from "@/hooks/use-data";
@@ -12,7 +12,7 @@ import { useMyClub } from "@/hooks/use-club";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
+
 
 export default function Ladder() {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function Ladder() {
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
   const { data: profile } = useProfile();
-  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
+  
   const queryClient = useQueryClient();
   const [blockedChallenge, setBlockedChallenge] = useState<{
     open: boolean;
@@ -64,7 +64,6 @@ export default function Ladder() {
 
   const getChallengeBlockReason = useMemo(() => {
     return (playerId: string, opponentPosition: number | null) => {
-      if (ladderStatus !== "active") return "The ladder is not yet active. Challenges will be enabled once the admin activates the ladder.";
       if (!user?.id) return "You must be logged in to challenge players.";
       if (playerId === user.id) return "You can't challenge yourself.";
       if (!myPosition) return "You need a ladder rank before you can challenge players.";
@@ -75,7 +74,7 @@ export default function Ladder() {
       if (diff > challengeLevelsUp) return `You may only challenge players within ${challengeLevelsUp} ladder positions above you.`;
       return null;
     };
-  }, [myPosition, user?.id, ladderStatus, challengeLevelsUp]);
+  }, [myPosition, user?.id, challengeLevelsUp]);
 
   const handleNavigate = (playerId: string, isMe: boolean) => {
     if (isMe) navigate("/profile", { state: { backgroundLocation: location } });
@@ -129,28 +128,6 @@ export default function Ladder() {
         subtitle={`${(players || []).length} players ranked`}
       />
 
-      {/* Ladder Status Badge */}
-      {ladderStatus !== "active" && (
-        <div className={cn(
-          "mx-4 mt-2 p-2.5 rounded-lg border flex items-center gap-2",
-          ladderStatus === "provisional"
-            ? "bg-amber-500/10 border-amber-500/30"
-            : "bg-muted border-border"
-        )}>
-          <Shield className={cn("w-4 h-4 shrink-0", ladderStatus === "provisional" ? "text-amber-500" : "text-muted-foreground")} />
-          <p className="text-xs text-muted-foreground">
-            {ladderStatus === "provisional"
-              ? "Rankings are provisional. Challenges will be enabled once the ladder is activated by the admin."
-              : "The ladder has not been ranked yet. Check back soon!"}
-          </p>
-        </div>
-      )}
-      {ladderStatus === "active" && (
-        <div className="mx-4 mt-2 p-2.5 rounded-lg border bg-green-500/10 border-green-500/30 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
-          <p className="text-xs text-muted-foreground">Ladder is active — challenge players ranked above you!</p>
-        </div>
-      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12">

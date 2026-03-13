@@ -131,10 +131,10 @@ export default function NewChallenge() {
     const q = query.trim().toLowerCase();
     const searched = q ? list.filter((p) => (p.name || "").toLowerCase().includes(q)) : list;
     return {
-      eligible: searched.filter((p) => isEligible(p.rank)),
+      eligible: searched.filter((p) => isEligible(p.ladder_position)),
       allPlayers: searched,
     };
-  }, [ladder, query, user?.id, myRank]);
+  }, [ladder, query, user?.id, myLadderPosition]);
 
   const onSend = async () => {
     if (!myRank) return toast.error("You need a ladder position to challenge players");

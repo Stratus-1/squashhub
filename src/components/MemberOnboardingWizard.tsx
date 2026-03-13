@@ -241,6 +241,7 @@ export function MemberOnboardingWizard({
         id_number: idNumber.trim() || null,
         gender: gender || null,
         address: address.trim() || null,
+        skill_level: skillLevel || null,
         fee_category_id: feeCategoryId || null,
         plays_league: playsLeague,
         club_member_number: memberNumber || null,

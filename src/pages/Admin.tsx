@@ -1703,7 +1703,7 @@ export default function Admin() {
                 <Input placeholder="Search name or email…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="flex-1" />
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
-                    const ladderRows = (profiles || []).filter(p => p.rank != null).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)).map(p => ({ rank: p.rank ?? "", name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
+                    const ladderRows = (profiles || []).sort((a, b) => (a.name || "").localeCompare(b.name || "")).map(p => ({ name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
                     downloadFile(`ladder-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(ladderRows));
                   }}>
                     <Download className="w-3.5 h-3.5" /> Export

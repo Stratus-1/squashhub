@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLadder } from "@/hooks/use-data";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useClubMembers } from "@/hooks/use-club";
 import { type LadderPlayer } from "@/components/LadderPlayerCard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { GripVertical, Loader2, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { rpcExt, fromExt } from "@/lib/supabase-ext";
+import { rpcExt } from "@/lib/supabase-ext";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,

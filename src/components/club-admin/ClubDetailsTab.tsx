@@ -40,6 +40,12 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
     challenge_levels_up: club.challenge_levels_up ?? 2,
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
     shelly_auth_key: club.shelly_auth_key || "",
+    sender_email: (club as any).sender_email || "",
+    sender_name: (club as any).sender_name || "",
+    smtp_host: (club as any).smtp_host || "",
+    smtp_port: (club as any).smtp_port ?? "",
+    smtp_user: (club as any).smtp_user || "",
+    smtp_pass: (club as any).smtp_pass || "",
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>

@@ -23,13 +23,11 @@ export function WelcomeBanner() {
 
   const isNewPlayer = profile && (profile.matches_played === 0);
 
-  // Find player's position on the gender-specific ladder
+  // Find player's ladder_position (only set for ranked players)
   const myLadderPosition = useMemo(() => {
-    if (!ladder || !myClubMember) return null;
-    const gender = (myClubMember as any)?.gender;
-    const genderLadder = gender ? ladder.filter((p: any) => p.gender === gender) : ladder;
-    const idx = genderLadder.findIndex((p: any) => p.club_member_id === myClubMember.id || p.user_id === user?.id);
-    return idx >= 0 ? idx + 1 : null;
+    if (!ladder || !user?.id) return null;
+    const me = ladder.find((p: any) => p.user_id === user.id || p.club_member_id === (myClubMember as any)?.id);
+    return (me as any)?.ladder_position ?? null;
   }, [ladder, myClubMember, user?.id]);
 
   useEffect(() => {

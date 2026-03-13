@@ -9,7 +9,7 @@ export default function Terms() {
     <div className="bottom-nav-safe">
       <SEO
         title="Terms of Use"
-        description="Terms of use for Gordon's Bay Squash Hub."
+        description="Terms of use for SquashHub."
         path="/terms"
       />
 

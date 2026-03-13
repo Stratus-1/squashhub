@@ -201,17 +201,15 @@ export default function EventDetail() {
                     : "https://schema.org/EventScheduled",
                 location: {
                   "@type": "Place",
-                  name: event.location || "Gordon's Bay Squash Club",
+                  name: event.location || "Squash Club",
                   address: {
                     "@type": "PostalAddress",
-                    addressLocality: "Gordon's Bay",
-                    addressRegion: "Western Cape",
                     addressCountry: "ZA",
                   },
                 },
                 organizer: {
-                  "@type": "SportsClub",
-                  name: "Gordon's Bay Squash Club",
+                  "@type": "Organization",
+                  name: "SquashHub",
                   url: absoluteUrl("/"),
                 },
                 url: absoluteUrl(eventUrlPath),

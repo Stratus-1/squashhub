@@ -270,7 +270,7 @@ export default function PlayerProfile() {
                   <Button
                     size="sm"
                     className="h-8 text-xs"
-                    onClick={() => navigate(`/challenges/new?opponent=${player.id}`)}
+                    onClick={() => navigate(`/ladder`)}
                   >
                     <Swords className="w-3 h-3 mr-2" />
                     Challenge

@@ -92,7 +92,7 @@ export function PageHeader({
                 variant="ghost"
                 size="icon"
                 className="relative h-9 w-9"
-                onClick={() => navigate("/challenges?view=inbox")}
+                onClick={() => navigate("/challenges")}
                 aria-label="Challenges inbox"
               >
                 <Swords className="w-5 h-5" />

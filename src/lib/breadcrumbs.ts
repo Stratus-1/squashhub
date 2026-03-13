@@ -76,6 +76,6 @@ export function getBackFallback(pathname: string): string {
   if (clean.startsWith("/events/")) return "/events";
   if (clean.startsWith("/players/")) return "/ladder";
   if (clean.startsWith("/match-tracker/")) return "/";
-  if (clean.startsWith("/challenges/")) return "/challenges";
+  if (clean.startsWith("/challenges")) return "/";
   return "/";
 }

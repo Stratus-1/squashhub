@@ -29,9 +29,10 @@ interface Props {
   onNavigate: (playerId: string, isMe: boolean) => void;
   onChallenge: (playerId: string, rank: number | null) => void;
   challengeBlocked: boolean;
+  highlightChallengeable?: boolean;
 }
 
-export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge, challengeBlocked }: Props) {
+export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge, challengeBlocked, highlightChallengeable }: Props) {
   const winRate = player.matches_played > 0
     ? Math.round((player.wins / player.matches_played) * 100)
     : 0;
@@ -50,7 +51,8 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
           "p-2.5 flex items-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors",
           index === 0 && "border-accent/50 bg-accent/5",
           index === 1 && "border-primary/30 bg-primary/5",
-          index === 2 && "border-primary/20 bg-primary/[0.02]"
+          index === 2 && "border-primary/20 bg-primary/[0.02]",
+          highlightChallengeable && "ring-1 ring-primary/40 bg-primary/5"
         )}
         role="button"
         tabIndex={0}
@@ -92,22 +94,20 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "h-7 text-[10px] shrink-0 gap-0.5 px-2",
-            challengeBlocked && "opacity-50 cursor-not-allowed"
-          )}
-          aria-disabled={challengeBlocked}
-          onClick={(e) => {
-            e.stopPropagation();
-            onChallenge(player.id, player.rank);
-          }}
-        >
-          <Swords className="w-2.5 h-2.5" />
-          Challenge
-        </Button>
+        {!isMe && !challengeBlocked && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[10px] shrink-0 gap-0.5 px-2 border-primary/30 text-primary hover:bg-primary/10"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChallenge(player.id, player.rank);
+            }}
+          >
+            <Swords className="w-2.5 h-2.5" />
+            Challenge
+          </Button>
+        )}
       </Card>
     </motion.div>
   );

@@ -5,8 +5,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, BarChart3, Users, Clock, Trophy, Flame, TrendingUp, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClubAnalytics, usePersonalAnalytics, useMatchOfTheWeek } from "@/hooks/use-analytics";
+import { useProfile } from "@/hooks/use-data";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
+import { AppleStatsCard } from "@/components/AppleStatsCard";
 
 const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -219,12 +221,47 @@ function PersonalTab() {
   );
 }
 
+function PersonalStatsSnapshot() {
+  const { data: profile } = useProfile();
+  const matchesPlayed = profile?.matches_played ?? 0;
+  const wins = profile?.wins ?? 0;
+  const losses = profile?.losses ?? 0;
+  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <AppleStatsCard
+        title="Your stats"
+        subtitle="Snapshot of your performance."
+        badgeText={profile?.rank ? `Rank #${profile.rank}` : "Unranked"}
+        ringLabel="Win rate"
+        ringValue={`${winRate}%`}
+        progress={{
+          played: Math.min(1, matchesPlayed / 50),
+          wins: Math.min(1, wins / 25),
+          winPct: Math.min(1, winRate / 100),
+        }}
+        tiles={[
+          { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
+          { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
+          { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
+          { label: "Rank", value: profile?.rank ? `#${profile.rank}` : "—", unit: "ladder", dotColor: "#ff2d55" },
+        ]}
+      />
+    </motion.div>
+  );
+}
+
 export default function Analytics() {
   return (
     <div className="bottom-nav-safe">
       <PageHeader title="Analytics" subtitle="Club & personal insights" />
 
       <div className="px-4 mt-3 mb-3">
+        <PersonalStatsSnapshot />
+      </div>
+
+      <div className="px-4 mb-3">
         <MatchOfTheWeekCard />
       </div>
 

@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
-import { AppleStatsCard } from "@/components/AppleStatsCard";
+
 import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { AvatarFeatureBanner } from "@/components/AvatarFeatureBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
-import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
 import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Shield, ShieldCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -23,7 +22,7 @@ import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardAccountSettings } from "@/components/DashboardAccountSettings";
+
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -42,10 +41,6 @@ export default function Dashboard() {
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
-  const matchesPlayed = profile?.matches_played ?? 0;
-  const wins = profile?.wins ?? 0;
-  const losses = profile?.losses ?? 0;
-  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
 
   const trackableBooking = useMemo(() => {
     const list = (myBookings || []).filter((b) => b.status === "active");
@@ -296,36 +291,6 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Stats */}
-      <motion.div
-        className="px-4 mt-4"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <AppleStatsCard
-          title="Your stats"
-          subtitle="Snapshot of your performance."
-          badgeText={profile?.rank ? `Rank #${profile.rank}` : "Unranked"}
-          ringLabel="Win rate"
-          ringValue={`${winRate}%`}
-          progress={{
-            played: Math.min(1, matchesPlayed / 50),
-            wins: Math.min(1, wins / 25),
-            winPct: Math.min(1, winRate / 100),
-          }}
-          tiles={[
-            { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
-            { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
-            { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
-            { label: "Rank", value: profile?.rank ? `#${profile.rank}` : "—", unit: "ladder", dotColor: "#ff2d55" },
-          ]}
-        />
-      </motion.div>
-
-      {/* Match of the Week */}
-      <div className="px-4 mt-3">
-        <MatchOfTheWeekCard />
-      </div>
 
       {/* More Actions */}
       <div className="px-4 mt-5">
@@ -405,14 +370,6 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      <motion.div
-        className="px-4 mt-4 mb-4"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-      >
-        <DashboardAccountSettings />
-      </motion.div>
     </div>
   );
 }

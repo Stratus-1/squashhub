@@ -1,4 +1,4 @@
-import { Home, Calendar, BarChart3, MessageCircle, Settings } from "lucide-react";
+import { Home, Calendar, BarChart3, MessageCircle, Settings as SettingsIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useIsClubAdmin } from "@/hooks/use-club";
@@ -8,13 +8,14 @@ const baseItems = [
   { to: "/bookings", icon: Calendar, label: "Courts" },
   { to: "/analytics", icon: BarChart3, label: "Stats" },
   { to: "/feed", icon: MessageCircle, label: "Feed" },
+  { to: "/settings", icon: SettingsIcon, label: "Settings" },
 ];
 
 export function BottomNav() {
   const isAdmin = useIsClubAdmin();
 
   const navItems = isAdmin
-    ? [...baseItems, { to: "/club-admin", icon: Settings, label: "Admin" }]
+    ? [...baseItems, { to: "/club-admin", icon: SettingsIcon, label: "Admin" }]
     : baseItems;
 
   return (

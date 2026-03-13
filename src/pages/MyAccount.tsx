@@ -36,25 +36,26 @@ export default function MyAccount() {
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
 
-  // Credit transactions
-  const { data: transactions, isLoading: txLoading } = useQuery({
-    queryKey: ["credit-transactions", user?.id],
-    queryFn: async () => {
-      const { data, error } = await fromExt("member_credit_transactions")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
   // Fee payments from club_member_fee_payments
   const clubMemberId = myClubMember?.id;
   const clubId = (myClubMember as any)?.club_id;
   const feeCategoryId = (myClubMember as any)?.fee_category_id;
   const playsLeague = (myClubMember as any)?.plays_league;
+
+  // Credit transactions (explicitly tenant scoped)
+  const { data: transactions, isLoading: txLoading } = useQuery({
+    queryKey: ["credit-transactions", user?.id, clubId, clubMemberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_credit_transactions")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("club_id", clubId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!clubId && !!clubMemberId,
+  });
 
   const { data: fees, isLoading: feesLoading } = useQuery({
     queryKey: ["club-member-fee-payments", clubMemberId],

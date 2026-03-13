@@ -14,7 +14,6 @@ import { Separator } from "@/components/ui/separator";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useClubContext } from "@/contexts/ClubContext";
 import { useLadder, useCreateMatch } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 

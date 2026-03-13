@@ -24,6 +24,10 @@ export interface Club {
   chairman_member_id?: string;
   secretary_member_id?: string;
   club_captain_member_id?: string;
+  member_number_prefix?: string;
+  member_number_length?: number;
+  member_number_start?: number;
+  challenge_levels_up?: number;
   created_by?: string;
   created_at: string;
   updated_at: string;

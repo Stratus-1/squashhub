@@ -34,6 +34,10 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
     logo_url: club.logo_url || "",
+    member_number_prefix: club.member_number_prefix || "",
+    member_number_length: club.member_number_length ?? 4,
+    member_number_start: club.member_number_start ?? 1,
+    challenge_levels_up: club.challenge_levels_up ?? 2,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -41,6 +45,9 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
 
   const setSelect = (k: string) => (value: string) =>
     setForm(p => ({ ...p, [k]: value === "__none__" ? "" : value }));
+
+  const setNumber = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(p => ({ ...p, [k]: parseInt(e.target.value) || 0 }));
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -201,6 +208,48 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
           <div />
           <div className="space-y-1"><Label>Public / Publishable Key</Label><Input value={form.payment_gateway_public_key} onChange={set("payment_gateway_public_key")} placeholder="pk_live_..." /></div>
           <div className="space-y-1"><Label>Secret Key</Label><Input type="password" value={form.payment_gateway_secret_key} onChange={set("payment_gateway_secret_key")} placeholder="sk_live_..." /></div>
+        </div>
+      </Card>
+
+      {/* Member Numbering */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold">Member Numbering</h3>
+        <p className="text-sm text-muted-foreground">Configure how member numbers are generated (e.g. WRT-0001).</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1">
+            <Label>Prefix</Label>
+            <Input value={form.member_number_prefix} onChange={set("member_number_prefix")} placeholder="e.g. WRT" />
+          </div>
+          <div className="space-y-1">
+            <Label>Number Length (digits)</Label>
+            <Input type="number" min={1} max={10} value={form.member_number_length} onChange={setNumber("member_number_length")} />
+          </div>
+          <div className="space-y-1">
+            <Label>Start From</Label>
+            <Input type="number" min={0} value={form.member_number_start} onChange={setNumber("member_number_start")} />
+          </div>
+        </div>
+        {form.member_number_prefix && (
+          <p className="text-xs text-muted-foreground">
+            Preview: <span className="font-mono font-semibold text-foreground">{form.member_number_prefix}-{String(form.member_number_start).padStart(form.member_number_length, "0")}</span>
+          </p>
+        )}
+      </Card>
+
+      {/* Challenge Rules */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold">Challenge Rules</h3>
+        <p className="text-sm text-muted-foreground">How many ladder positions up can a player challenge?</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Levels Up Allowed</Label>
+            <Input type="number" min={1} max={10} value={form.challenge_levels_up} onChange={setNumber("challenge_levels_up")} />
+          </div>
+          <div className="flex items-end">
+            <p className="text-sm text-muted-foreground pb-2">
+              Players can challenge up to <span className="font-semibold text-foreground">{form.challenge_levels_up}</span> position{form.challenge_levels_up !== 1 ? "s" : ""} above them.
+            </p>
+          </div>
         </div>
       </Card>
 

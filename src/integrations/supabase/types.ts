@@ -482,6 +482,7 @@ export type Database = {
           bank_name: string | null
           bank_reference: string | null
           chairman_member_id: string | null
+          challenge_levels_up: number | null
           club_captain_member_id: string | null
           created_at: string
           created_by: string | null
@@ -492,6 +493,9 @@ export type Database = {
           logo_url: string | null
           member_fee_annual: number | null
           member_fee_due_month: number | null
+          member_number_length: number | null
+          member_number_prefix: string | null
+          member_number_start: number | null
           name: string
           payment_gateway: string | null
           payment_gateway_public_key: string | null
@@ -509,6 +513,7 @@ export type Database = {
           bank_name?: string | null
           bank_reference?: string | null
           chairman_member_id?: string | null
+          challenge_levels_up?: number | null
           club_captain_member_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -519,6 +524,9 @@ export type Database = {
           logo_url?: string | null
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
+          member_number_length?: number | null
+          member_number_prefix?: string | null
+          member_number_start?: number | null
           name: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
@@ -536,6 +544,7 @@ export type Database = {
           bank_name?: string | null
           bank_reference?: string | null
           chairman_member_id?: string | null
+          challenge_levels_up?: number | null
           club_captain_member_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -546,6 +555,9 @@ export type Database = {
           logo_url?: string | null
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
+          member_number_length?: number | null
+          member_number_prefix?: string | null
+          member_number_start?: number | null
           name?: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null

@@ -46,9 +46,9 @@ export default function Home() {
     staleTime: 60_000,
   });
 
-  // If logged in, redirect to dashboard
+  // If logged in, redirect to home (Dashboard)
   if (user) {
-    navigate("/dashboard", { replace: true });
+    navigate("/", { replace: true });
     return null;
   }
 

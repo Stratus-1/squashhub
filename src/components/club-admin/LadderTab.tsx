@@ -87,7 +87,7 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
 export function LadderTab({ clubId }: { clubId: string }) {
   const { data: players, isLoading, error } = useLadder(clubId);
   const { data: membersFallback = [], isLoading: membersLoading } = useClubMembers(clubId);
-  const { data: clubData } = useMyClub();
+  
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderPlayer[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderPlayer[] | null>(null);

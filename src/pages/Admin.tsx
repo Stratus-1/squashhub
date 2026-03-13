@@ -823,9 +823,6 @@ export default function Admin() {
     });
 
     rows.sort((a, b) => {
-      const ar = a.rank == null ? 1e9 : a.rank;
-      const br = b.rank == null ? 1e9 : b.rank;
-      if (ar !== br) return ar - br;
       if (a.matches_played !== b.matches_played) return b.matches_played - a.matches_played;
       return a.name.localeCompare(b.name);
     });

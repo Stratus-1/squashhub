@@ -329,6 +329,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
 function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; clubId: string; onClose: () => void }) {
   const { data: associations = [] } = useLeagueAssociations(clubId);
+  const [regLoaded, setRegLoaded] = useState(false);
   const [form, setForm] = useState({
     name: member.name || member.profiles?.name || "",
     email: member.email || member.profiles?.email || "",
@@ -344,6 +345,30 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     skill_level: member.skill_level || "",
     association_id: "",
     association_number: "",
+  });
+
+  // Load existing league registration data
+  useState(() => {
+    if (member.plays_league) {
+      fromExt("member_league_registrations")
+        .select("league_id, league_association_number, player_rank, leagues:league_id(association_id)")
+        .eq("club_member_id", member.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            const assocId = (data.leagues as any)?.association_id || "";
+            setForm(p => ({
+              ...p,
+              association_id: assocId,
+              association_number: data.league_association_number || "",
+              league_player_rank: data.player_rank ?? "",
+            }));
+          }
+          setRegLoaded(true);
+        });
+    } else {
+      setRegLoaded(true);
+    }
   });
 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;

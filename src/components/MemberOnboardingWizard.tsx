@@ -494,9 +494,9 @@ export function MemberOnboardingWizard({
                         ))}
                       </SelectContent>
                     </Select>
-                    {suggestedCategory && feeCategoryId === suggestedCategory && (
+                    {suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
                       <p className="text-[10px] text-primary mt-0.5">
-                        ⭐ Auto-suggested based on your ID number. You may change this.
+                        ⭐ Auto-suggested based on your age ({detectedAge} years). You may change this if needed.
                       </p>
                     )}
                     {selectedCategory?.description && (

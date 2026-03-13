@@ -98,15 +98,34 @@ export default function Dashboard() {
   const [onboardingDone, setOnboardingDone] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && profile) {
-      const needsOnboarding =
-        !profile.name || profile.name === "" || profile.name === "New Player";
-      const alreadyCompleted = (profile as any).onboarding_completed === true;
-      if (needsOnboarding && !alreadyCompleted && !onboardingDone) {
-        setShowOnboarding(true);
-      }
+    if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
+
+    const alreadyCompleted = (profile as any).onboarding_completed === true;
+    const legacyNeedsOnboarding =
+      !profile.name || profile.name === "" || profile.name === "New Player";
+
+    const hasClub = !!clubData?.club;
+    const missingMemberData =
+      hasClub &&
+      (!myClubMember ||
+        !myClubMember.id_number ||
+        !myClubMember.gender ||
+        !myClubMember.address ||
+        !myClubMember.fee_category_id ||
+        !myClubMember.club_member_number);
+
+    if (((!alreadyCompleted && legacyNeedsOnboarding) || missingMemberData) && !onboardingDone) {
+      setShowOnboarding(true);
     }
-  }, [isLoading, profile, onboardingDone]);
+  }, [
+    isLoading,
+    isClubLoading,
+    isClubMemberLoading,
+    profile,
+    clubData?.club,
+    myClubMember,
+    onboardingDone,
+  ]);
 
   if (isLoading) {
     return (

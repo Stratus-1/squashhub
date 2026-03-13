@@ -364,6 +364,18 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
             <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSendTestEmail}
+          disabled={sendingTest || !form.sender_email || !form.smtp_host}
+        >
+          <Send className="w-4 h-4 mr-2" />
+          {sendingTest ? "Sending..." : "Send Test Email"}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Sends a test email to your login address ({user?.email}) to verify your SMTP settings work.
+        </p>
       </Card>
 
       <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">

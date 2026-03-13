@@ -12,8 +12,8 @@ interface SEOProps {
   jsonLd?: unknown;
 }
 
-const DEFAULT_TITLE = "Gordon's Bay Squash Club";
-const DEFAULT_DESC = "Book courts, challenge players, and climb the social league ladder at Gordon's Bay Squash Club.";
+const DEFAULT_TITLE = "SquashHub";
+const DEFAULT_DESC = "The all-in-one platform for squash clubs. Court bookings, ladders, championships, member management and more.";
 const DEFAULT_IMAGE = absoluteUrl("/pwa-512x512.png");
 
 export function SEO({

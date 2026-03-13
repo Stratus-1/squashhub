@@ -557,23 +557,14 @@ export default function Bookings() {
         guestName: bookingDialog.guestName || null,
       });
 
-      // Deduct light fee from member's account if lights are on
-      if (bookingDialog.lightsOn && lightFeePerHour > 0 && user?.id) {
-        const lightCost = (bookingDialog.duration / 60) * lightFeePerHour;
+      // Mark lights_requested on the booking (edge function handles actual billing)
+      if (bookingDialog.lightsOn && user?.id) {
         try {
-          await fromExt("member_credit_transactions").insert({
-            user_id: user.id,
-            amount: -lightCost,
-            type: "debit",
-            method: "system",
-            status: "confirmed",
-            confirmed_at: new Date().toISOString(),
-            description: `Court lights – ${bookingDialog.duration}min on Court ${bookingDialog.courtId} (${dateStr})`,
-            reference: (created as any)?.id || bookingId,
-          });
-        } catch (lightErr: any) {
-          console.error("Failed to record light fee:", lightErr);
-          toast.error("Booking created but light fee could not be recorded");
+          await fromExt("bookings")
+            .update({ lights_requested: true })
+            .eq("id", (created as any)?.id || bookingId);
+        } catch (e: any) {
+          console.error("Failed to set lights_requested:", e);
         }
       }
 

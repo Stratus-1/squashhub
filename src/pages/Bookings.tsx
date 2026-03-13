@@ -1372,6 +1372,43 @@ export default function Bookings() {
         opponentName={shareDialog.opponentName}
         inviterName={me?.name || undefined}
       />
+
+      {/* Transfer Court Dialog */}
+      <Dialog open={!!transferDialog} onOpenChange={() => setTransferDialog(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Transfer to Another Court</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <p className="text-sm text-muted-foreground">
+              Select a court to transfer your lights to. The current court's lights will turn off and you'll be charged for actual usage.
+            </p>
+            <div className="grid gap-2">
+              {courts
+                .filter((c: number) => c !== transferDialog?.currentCourtId)
+                .map((courtId: number) => (
+                  <Button
+                    key={courtId}
+                    variant="outline"
+                    className="justify-start gap-2"
+                    disabled={terminatingSession}
+                    onClick={() => {
+                      if (transferDialog) {
+                        handleTransferCourt(transferDialog.sessionId, courtId);
+                      }
+                    }}
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    {getCourtName(courtId)}
+                  </Button>
+                ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferDialog(null)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

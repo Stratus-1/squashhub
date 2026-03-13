@@ -12,7 +12,7 @@ import { useMyClub } from "@/hooks/use-club";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
+
 
 export default function Ladder() {
   const navigate = useNavigate();

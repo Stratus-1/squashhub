@@ -525,7 +525,7 @@ export function usePlayerProfile(playerId?: string | null) {
         .from("profiles")
         .select("*")
         .eq("id", playerId)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

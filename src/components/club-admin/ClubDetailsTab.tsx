@@ -237,6 +237,25 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
         )}
       </Card>
 
+      {/* Court Lights */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold">Court Lights</h3>
+        <p className="text-sm text-muted-foreground">Set the fee charged per hour when court lights are switched on during a booking.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Light Fee per Hour (R)</Label>
+            <Input type="number" min={0} step={0.01} value={form.light_fee_per_hour} onChange={setNumber("light_fee_per_hour")} placeholder="e.g. 50" />
+          </div>
+          <div className="flex items-end">
+            <p className="text-sm text-muted-foreground pb-2">
+              {form.light_fee_per_hour > 0
+                ? <>Members will be charged <span className="font-semibold text-foreground">R{form.light_fee_per_hour}</span>/hour when lights are enabled.</>
+                : "No light fee configured — lights are free."}
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Challenge Rules */}
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Challenge Rules</h3>

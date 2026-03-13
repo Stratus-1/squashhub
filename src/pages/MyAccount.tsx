@@ -309,6 +309,7 @@ export default function MyAccount() {
   // Pay fee mutation
   const payFeeMutation = useMutation({
     mutationFn: async ({ feeIds, method }: { feeIds: string[]; method: string }) => {
+      if (!clubId) throw new Error("No club membership found for this account.");
       const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
       if (!selectedFees.length) throw new Error("No fees selected");
       const totalAmount = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
@@ -320,6 +321,7 @@ export default function MyAccount() {
         // Deduct from credit and mark paid
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
+          club_id: clubId,
           amount: totalAmount,
           type: "payment",
           method: "credit",
@@ -338,6 +340,7 @@ export default function MyAccount() {
         // Card payment — auto-confirm, mark fees paid immediately
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
+          club_id: clubId,
           amount: totalAmount,
           type: "payment",
           method: "card",
@@ -355,6 +358,7 @@ export default function MyAccount() {
         // EFT — pending admin confirmation
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
+          club_id: clubId,
           amount: totalAmount,
           type: "payment",
           method: "eft",

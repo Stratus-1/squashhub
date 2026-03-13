@@ -78,10 +78,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthGate() {
   const { user } = useAuth();
+  const { subdomain: clubSubdomain } = useClubContext();
   const [params] = useSearchParams();
   const redirectTo = (params.get("redirectTo") || "").trim();
 
-  if (!user) return <Auth />;
+  if (!user) {
+    // On a club subdomain, show the club-specific auth page
+    if (clubSubdomain) return <ClubAuth />;
+    return <Auth />;
+  }
 
   const safeRedirect =
     redirectTo.startsWith("/") && !redirectTo.startsWith("//")

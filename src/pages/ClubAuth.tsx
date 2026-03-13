@@ -186,7 +186,7 @@ export default function ClubAuth() {
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
         <SEO title={`Reset Password | ${clubName}`} description="Reset your password." path="/auth" noIndex />
-        <motion.div className="w-full max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold font-heading">Reset Password</h1>
             <p className="text-sm text-muted-foreground mt-1">Enter your email to receive a reset link</p>

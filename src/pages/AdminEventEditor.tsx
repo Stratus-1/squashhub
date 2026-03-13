@@ -320,7 +320,7 @@ export default function AdminEventEditor() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Location (optional)</Label>
-                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Gordon's Bay Squash Club" />
+                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. My Squash Club" />
               </div>
               <div className="space-y-1.5">
                 <Label>Court (optional)</Label>

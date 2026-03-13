@@ -249,8 +249,8 @@ export default function Achievements() {
                               <span className="text-primary ml-1 text-xs">(You)</span>
                             )}
                           </p>
-                          {entry.rank && (
-                            <p className="text-[10px] text-muted-foreground">Rank #{entry.rank}</p>
+                          {false && (
+                            <p className="text-[10px] text-muted-foreground">Rank</p>
                           )}
                         </div>
                         <div className="text-right">

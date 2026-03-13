@@ -188,9 +188,9 @@ export function useBookings(date: string, clubId?: string) {
       return bookings.map(b => ({
         ...b,
         player_name: getName((b as any).user_id) || "Unknown",
-        player_rank: (profileMap.get((b as any).user_id) as any)?.rank ?? null,
+        player_rank: null,
         opponent_name: (b as any).guest_name || getName((b as any).opponent_id),
-        opponent_rank: (b as any).opponent_id ? ((profileMap.get((b as any).opponent_id) as any)?.rank ?? null) : null,
+        opponent_rank: null,
       }));
     },
     enabled: !!user,
@@ -380,7 +380,7 @@ export function useMyBookings() {
           ...b,
           court_name: b.court_id === 1 ? "Court 1" : "Court 2",
           opponent_name: b.guest_name || (b.opponent_id ? (opponentMap.get(b.opponent_id)?.name || "Unknown") : null),
-          opponent_rank: b.opponent_id ? (opponentMap.get(b.opponent_id)?.rank ?? null) : null,
+          opponent_rank: null,
         }));
     },
     enabled: !!user,

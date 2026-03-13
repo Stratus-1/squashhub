@@ -179,7 +179,7 @@ export function useClubMembers(clubId?: string) {
     queryKey: ["club-members", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("*, profiles:user_id(name, email, phone, avatar_url, rank), fee_category:fee_category_id(id, name, annual_fee)")
+        .select("*, profiles:user_id(name, email, phone, avatar_url), fee_category:fee_category_id(id, name, annual_fee)")
         .eq("club_id", clubId!)
         .order("role")
         .order("joined_at");

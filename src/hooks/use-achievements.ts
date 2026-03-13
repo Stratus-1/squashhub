@@ -181,7 +181,7 @@ export function useXpLeaderboard() {
           xp: totals.get(uid) || 0,
           name: (profileMap.get(uid) as any)?.name || "Unknown",
           avatar_url: (profileMap.get(uid) as any)?.avatar_url || null,
-          rank: (profileMap.get(uid) as any)?.rank || null,
+          rank: null,
         }))
         .sort((a, b) => b.xp - a.xp);
     },

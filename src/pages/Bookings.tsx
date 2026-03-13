@@ -416,22 +416,23 @@ export default function Bookings() {
   const { data: availablePlayers } = useQuery({
     queryKey: ["available-players-club", dateStr],
     queryFn: async () => {
-      // First get club members with their names
+      // Get club members with their ladder rank
       const { data: members, error: membersError } = await (supabase as any)
         .from("club_members")
-        .select("id, name, user_id, email");
+        .select("id, name, user_id, email, league_player_rank");
       if (membersError) throw membersError;
 
-      // Also get profiles for registered users
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id,name,rank,email")
-        .order("rank", { ascending: true })
-        .limit(100);
-      if (profilesError) throw profilesError;
+      // Also get profiles for display names
+      const userIds = (members || []).map((m: any) => m.user_id).filter(Boolean);
+      let profileMap = new Map<string, any>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id,name,email")
+          .in("id", userIds);
+        profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      }
 
-      // Merge: use profiles for linked members, club_members for unlinked
-      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
       const combined: Array<{ id: string; name: string; rank: number | null; email: string | null; memberId: string }> = [];
       const seen = new Set<string>();
 
@@ -441,20 +442,12 @@ export default function Bookings() {
         seen.add(key);
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
         combined.push({
-          id: m.user_id || m.id, // use user_id if linked, else member id
+          id: m.user_id || m.id,
           name: profile?.name || m.name || m.email || "Unknown",
-          rank: profile?.rank ?? null,
+          rank: m.league_player_rank ?? null,
           email: profile?.email || m.email || null,
           memberId: m.id,
         });
-      }
-
-      // Also add profiles not in club_members
-      for (const p of (profiles || [])) {
-        if (!seen.has(p.id)) {
-          seen.add(p.id);
-          combined.push({ id: p.id, name: p.name, rank: p.rank, email: p.email, memberId: p.id });
-        }
       }
 
       return combined as any;
@@ -726,12 +719,13 @@ export default function Bookings() {
     const myRank = me?.rank ?? null;
     if (!myRank) return [] as typeof list;
 
+    const challengeLevelsUp = 2;
     const availableSet = availableForSlotUserIds ? new Set(availableForSlotUserIds) : null;
     return list.filter(
       (p: any) =>
         typeof p.rank === "number" &&
         myRank - p.rank >= 1 &&
-        myRank - p.rank <= 2 &&
+        myRank - p.rank <= challengeLevelsUp &&
         (availableSet ? availableSet.has(p.id) : true)
     );
   })();

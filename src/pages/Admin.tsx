@@ -36,7 +36,7 @@ type ProfileRow = {
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
-  rank: number | null;
+  rank: number | null; // kept for compatibility but not used as source of truth
   matches_played: number;
   wins: number;
   losses: number;
@@ -438,9 +438,6 @@ export default function Admin() {
       if (error) throw error;
       const rows = (data || []) as ProfileRow[];
       rows.sort((a, b) => {
-        const ar = a.rank ?? 9999;
-        const br = b.rank ?? 9999;
-        if (ar !== br) return ar - br;
         return (a.name || "").localeCompare(b.name || "");
       });
       return rows;
@@ -826,9 +823,6 @@ export default function Admin() {
     });
 
     rows.sort((a, b) => {
-      const ar = a.rank == null ? 1e9 : a.rank;
-      const br = b.rank == null ? 1e9 : b.rank;
-      if (ar !== br) return ar - br;
       if (a.matches_played !== b.matches_played) return b.matches_played - a.matches_played;
       return a.name.localeCompare(b.name);
     });
@@ -1435,7 +1429,7 @@ export default function Admin() {
 
   /* ─── Computed KPIs ─── */
   const totalMembers = (profiles || []).length;
-  const rankedMembers = (profiles || []).filter(p => p.rank != null).length;
+  const rankedMembers = (profiles || []).filter(p => p.matches_played > 0).length;
   const pendingChallenges = (challenges || []).filter(c => c.status === "pending").length;
   const disputedMatches = (matches || []).filter(m => m.disputed).length;
   const activeBookingsToday = (allBookings || []).filter(b => b.date === format(new Date(), "yyyy-MM-dd") && b.status === "active").length;
@@ -1703,7 +1697,7 @@ export default function Admin() {
                 <Input placeholder="Search name or email…" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} className="flex-1" />
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
-                    const ladderRows = (profiles || []).filter(p => p.rank != null).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)).map(p => ({ rank: p.rank ?? "", name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
+                    const ladderRows = (profiles || []).sort((a, b) => (a.name || "").localeCompare(b.name || "")).map(p => ({ name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
                     downloadFile(`ladder-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(ladderRows));
                   }}>
                     <Download className="w-3.5 h-3.5" /> Export
@@ -1739,11 +1733,7 @@ export default function Admin() {
                               </div>
                             </TableCell>
                             <TableCell className="p-3">
-                              {p.rank != null ? (
-                                <Badge className="bg-primary/15 text-primary border-primary/20">#{p.rank}</Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Unranked</span>
-                              )}
+                              <span className="text-xs text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell className="p-3">
                               <span className="text-sm tabular-nums font-medium">{p.wins}W–{p.losses}L</span>
@@ -2348,7 +2338,7 @@ export default function Admin() {
                         <Upload className="w-3 h-3" /> Import
                       </Button>
                       <Button size="sm" variant="secondary" className="h-7 text-xs gap-1" onClick={() => {
-                        const ladderRows = (profiles || []).filter(p => p.rank != null).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)).map(p => ({ rank: p.rank ?? "", name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
+                        const ladderRows = (profiles || []).sort((a, b) => (a.name || "").localeCompare(b.name || "")).map(p => ({ name: p.name || "", email: p.email || "", matches_played: p.matches_played ?? 0, wins: p.wins ?? 0, losses: p.losses ?? 0 }));
                         downloadFile(`ladder-${format(new Date(), "yyyy-MM-dd")}.csv`, toCsv(ladderRows));
                       }}>
                         <Download className="w-3 h-3" /> Export Ladder
@@ -2598,7 +2588,7 @@ export default function Admin() {
                       const allIds = (profiles || []).map(p => p.id);
                       let ids: string[] = [];
                       if (broadcast.audience === "all") ids = allIds;
-                      if (broadcast.audience === "ranked") ids = (profiles || []).filter(p => p.rank != null).map(p => p.id);
+                      if (broadcast.audience === "ranked") ids = (profiles || []).filter(p => p.matches_played > 0).map(p => p.id);
                       if (broadcast.audience === "active30") {
                         const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
                         ids = (profiles || []).filter(p => { const last = (p as any).last_competitive_match_at as string | null | undefined; return last ? new Date(last).getTime() >= cutoff : false; }).map(p => p.id);
@@ -3085,16 +3075,16 @@ export default function Admin() {
                   className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
                   disabled={!isAdmin || toggleSuspend.isPending}
                   onClick={() => {
-                    const isSuspending = selected.rank != null;
+                    const isSuspending = selected.matches_played > 0;
                     if (confirm(isSuspending
-                      ? `Suspend ${selected.name}? This will remove their rank and notify them.`
+                      ? `Suspend ${selected.name}? This will notify them.`
                       : `Reinstate ${selected.name}?`
                     )) {
                       toggleSuspend.mutate({ userId: selected.id, suspend: isSuspending });
                     }
                   }}
                 >
-                  {selected.rank != null ? "Suspend player" : "Reinstate player"}
+                  Suspend / Reinstate
                 </Button>
                 {!isAdmin && (
                   <p className="text-[11px] text-muted-foreground">Only admins can suspend players.</p>

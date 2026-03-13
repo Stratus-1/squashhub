@@ -173,7 +173,7 @@ export default function EventDetail() {
   const seoDescription = (() => {
     const raw = (event.description || "").replace(/\s+/g, " ").trim();
     if (raw) return raw.slice(0, 160);
-    return "Upcoming squash event at Gordon's Bay Squash Club.";
+    return "Upcoming squash event.";
   })();
   const eventUrlPath = `/events/${event.id}`;
 

@@ -1348,7 +1348,7 @@ export default function Bookings() {
                   calendarPrompt.isFriendly ? "Friendly match." : "Ladder match.",
                   `Court ${calendarPrompt.courtId}`,
                   `Time: ${calendarPrompt.startTime}-${calendarPrompt.endTime}`,
-                  "Booked via Gordon's Bay Squash Hub.",
+                  "Booked via SquashHub.",
                 ].join("\n");
                 const url = buildGoogleCalendarEventUrl({
                   title,

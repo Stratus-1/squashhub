@@ -46,15 +46,15 @@ export default function Events() {
     <div className="bottom-nav-safe">
       <SEO
         title="Events"
-        description="Upcoming squash events, socials, and tournaments at Gordon's Bay Squash Club."
+        description="Upcoming squash events, socials, and tournaments."
         path="/events"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "CollectionPage",
-          name: "Events — Gordon's Bay Squash Club",
+          name: "Events — SquashHub",
           description: "Upcoming squash events, socials, and tournaments.",
           url: absoluteUrl("/events"),
-          isPartOf: { "@type": "WebSite", name: "Gordon's Bay Squash Club", url: absoluteUrl("/") },
+          isPartOf: { "@type": "WebSite", name: "SquashHub", url: absoluteUrl("/") },
         }}
       />
       <PageHeader title="Events" subtitle="Upcoming club events" />

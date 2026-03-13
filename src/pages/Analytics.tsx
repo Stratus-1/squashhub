@@ -223,7 +223,13 @@ function PersonalTab() {
 }
 
 function PersonalStatsSnapshot() {
+  const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: ladder } = useLadder();
+  const myLadderPosition = useMemo(() => {
+    if (!user?.id || !ladder) return null;
+    return ladder.find((p: any) => p.id === user.id)?.ladder_position ?? null;
+  }, [ladder, user?.id]);
   const matchesPlayed = profile?.matches_played ?? 0;
   const wins = profile?.wins ?? 0;
   const losses = profile?.losses ?? 0;
@@ -234,7 +240,7 @@ function PersonalStatsSnapshot() {
       <AppleStatsCard
         title="Your stats"
         subtitle="Snapshot of your performance."
-        badgeText={profile?.rank ? `Rank #${profile.rank}` : "Unranked"}
+        badgeText={myLadderPosition ? `Rank #${myLadderPosition}` : "Unranked"}
         ringLabel="Win rate"
         ringValue={`${winRate}%`}
         progress={{
@@ -246,7 +252,7 @@ function PersonalStatsSnapshot() {
           { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
           { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
           { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
-          { label: "Rank", value: profile?.rank ? `#${profile.rank}` : "—", unit: "ladder", dotColor: "#ff2d55" },
+          { label: "Rank", value: myLadderPosition ? `#${myLadderPosition}` : "—", unit: "ladder", dotColor: "#ff2d55" },
         ]}
       />
     </motion.div>

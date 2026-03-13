@@ -295,6 +295,41 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
         </div>
       </Card>
 
+      {/* Email Sender Settings */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold">Email Notifications</h3>
+        <p className="text-sm text-muted-foreground">
+          Configure your club's outgoing email settings for member communications (login confirmations, match reminders, etc.).
+          If left blank, the platform default (noreply@squashhub.co.za) will be used.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Sender Name</Label>
+            <Input value={form.sender_name} onChange={set("sender_name")} placeholder="e.g. CSIR Squash Club" />
+          </div>
+          <div className="space-y-1">
+            <Label>Sender Email</Label>
+            <Input type="email" value={form.sender_email} onChange={set("sender_email")} placeholder="e.g. noreply@csir-squash.co.za" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Host</Label>
+            <Input value={form.smtp_host} onChange={set("smtp_host")} placeholder="e.g. smtp.gmail.com" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Port</Label>
+            <Input type="number" value={form.smtp_port} onChange={e => setForm(p => ({ ...p, smtp_port: e.target.value }))} placeholder="587" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Username</Label>
+            <Input value={form.smtp_user} onChange={set("smtp_user")} placeholder="SMTP username" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Password</Label>
+            <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
+          </div>
+        </div>
+      </Card>
+
       <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">
         {updateClub.isPending ? "Saving..." : "Save Club Details"}
       </Button>

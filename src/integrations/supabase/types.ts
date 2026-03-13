@@ -179,6 +179,73 @@ export type Database = {
           },
         ]
       }
+      challenge_schedules: {
+        Row: {
+          booking_id: string | null
+          challenge_id: string
+          court_id: number | null
+          created_at: string
+          end_time: string
+          expires_at: string
+          id: string
+          proposed_by: string
+          proposed_date: string
+          start_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          challenge_id: string
+          court_id?: number | null
+          created_at?: string
+          end_time: string
+          expires_at?: string
+          id?: string
+          proposed_by: string
+          proposed_date: string
+          start_time: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          challenge_id?: string
+          court_id?: number | null
+          created_at?: string
+          end_time?: string
+          expires_at?: string
+          id?: string
+          proposed_by?: string
+          proposed_date?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_schedules_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_schedules_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_schedules_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenges: {
         Row: {
           challenger_id: string

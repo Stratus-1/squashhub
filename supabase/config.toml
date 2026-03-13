@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.verify-captcha]
 verify_jwt = false
+
+[functions.email-notifications]
+verify_jwt = false

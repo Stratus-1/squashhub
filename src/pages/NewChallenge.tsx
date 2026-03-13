@@ -111,19 +111,19 @@ export default function NewChallenge() {
 
   /* path to #1 calculation */
   const pathToTop = useMemo(() => {
-    if (!myRank || !ladder) return [];
+    if (!myLadderPosition || !ladder) return [];
     const steps: typeof ladder = [];
-    let currentRank = myRank;
-    while (currentRank > 1) {
+    let currentPos = myLadderPosition;
+    while (currentPos > 1) {
       const target = ladder.find(
-        (p) => p.rank !== null && p.rank >= Math.max(1, currentRank - 2) && p.rank < currentRank,
+        (p) => p.ladder_position !== null && p.ladder_position >= Math.max(1, currentPos - challengeLevelsUp) && p.ladder_position < currentPos,
       );
-      if (!target || target.rank === null) break;
+      if (!target || target.ladder_position === null) break;
       steps.push(target);
-      currentRank = target.rank;
+      currentPos = target.ladder_position;
     }
     return steps;
-  }, [myRank, ladder]);
+  }, [myLadderPosition, ladder, challengeLevelsUp]);
 
   /* filtered & sorted player lists */
   const { eligible, allPlayers } = useMemo(() => {

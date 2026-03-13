@@ -309,6 +309,23 @@ export default function Bookings() {
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const { data: bookings, isLoading } = useBookings(dateStr);
+  const [terminatingSession, setTerminatingSession] = useState(false);
+  const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
+
+  // Active light sessions for the current user
+  const { data: myActiveLightSessions = [], refetch: refetchSessions } = useQuery({
+    queryKey: ["my-active-light-sessions", user?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("light_sessions")
+        .select("id, booking_id, court_id, started_at, fee_per_hour, status")
+        .eq("user_id", user!.id)
+        .eq("status", "active");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
   const { data: champsBookings = [] } = useQuery({
     queryKey: ["club-champs-bookings", dateStr],
     queryFn: async () => {

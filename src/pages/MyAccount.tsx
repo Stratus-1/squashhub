@@ -158,7 +158,7 @@ export default function MyAccount() {
       club?.bank_account_name && `Account: ${club.bank_account_name}`,
       club?.bank_account_number && `Number: ${club.bank_account_number}`,
       club?.bank_branch_code && `Branch: ${club.bank_branch_code}`,
-      club?.bank_reference && `Reference: ${club.bank_reference}`,
+      `Reference: ${memberNo} - Top-up`,
     ]
       .filter(Boolean)
       .join("\n");

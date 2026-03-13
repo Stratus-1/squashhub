@@ -147,6 +147,79 @@ export default function MyAccount() {
     })();
   }, [fees, feesLoading, clubMemberId, feeCategoryId, playsLeague, clubId, club, queryClient]);
 
+  // Light sessions (debits for court lighting)
+  const { data: lightSessions, isLoading: lightSessionsLoading } = useQuery({
+    queryKey: ["light-sessions", user?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("light_sessions")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("status", "completed")
+        .order("ended_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Build unified statement lines sorted chronologically (oldest first)
+  type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
+  const statementLines: StatementLine[] = (() => {
+    const lines: Omit<StatementLine, "balance">[] = [];
+
+    // Fee charges (debits)
+    for (const fee of (fees || [])) {
+      lines.push({
+        id: `fee-${(fee as any).id}`,
+        date: (fee as any).created_at,
+        description: (fee as any).fee_label,
+        debit: Number((fee as any).amount),
+        credit: 0,
+        status: (fee as any).paid ? "confirmed" : "outstanding",
+      });
+    }
+
+    // Credit transactions (topups = credit, payments = debit)
+    for (const tx of (transactions || [])) {
+      const isCredit = (tx as any).type === "topup" || (tx as any).type === "refund";
+      lines.push({
+        id: `tx-${(tx as any).id}`,
+        date: (tx as any).created_at,
+        description: (tx as any).description || (tx as any).type,
+        debit: isCredit ? 0 : Number((tx as any).amount),
+        credit: isCredit ? Number((tx as any).amount) : 0,
+        status: (tx as any).status,
+      });
+    }
+
+    // Light session charges (debits)
+    for (const ls of (lightSessions || [])) {
+      if ((ls as any).fee_charged && Number((ls as any).fee_charged) > 0) {
+        lines.push({
+          id: `light-${(ls as any).id}`,
+          date: (ls as any).ended_at || (ls as any).started_at,
+          description: `Court lighting (${(ls as any).duration_minutes ? Math.round(Number((ls as any).duration_minutes)) + " min" : "session"})`,
+          debit: Number((ls as any).fee_charged),
+          credit: 0,
+          status: "confirmed",
+        });
+      }
+    }
+
+    // Sort oldest first
+    lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Compute running balance (credits - debits)
+    let balance = 0;
+    return lines.map((line) => {
+      // Only count confirmed credits toward balance
+      if (line.status === "confirmed" || line.status === "outstanding") {
+        balance = balance + line.credit - line.debit;
+      }
+      return { ...line, balance };
+    });
+  })();
+
   // Calculate credit balance
   const creditBalance = (transactions || []).reduce((sum: number, tx: any) => {
     if (tx.status !== "confirmed") return sum;

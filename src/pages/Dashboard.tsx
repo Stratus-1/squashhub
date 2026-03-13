@@ -161,8 +161,7 @@ export default function Dashboard() {
           profile={profile}
           onAction={(action) => {
             if (action === "edit") openProfile("/profile?edit=1");
-            if (action === "avatar") openProfile("/profile?edit=1&focus=avatar");
-            if (action === "availability") navigate("/availability");
+            if (action === "account") navigate("/my-account");
           }}
         />
       </div>

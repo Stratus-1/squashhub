@@ -140,7 +140,7 @@ function AppRoutes() {
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       <Routes location={routeLocation}>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={isClubSubdomain && !user ? <ClubLanding hostClub={clubFromHost} /> : <Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />

@@ -49,9 +49,6 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
       <Card
         className={cn(
           "p-2.5 flex items-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors",
-          index === 0 && "border-accent/50 bg-accent/5",
-          index === 1 && "border-primary/30 bg-primary/5",
-          index === 2 && "border-primary/20 bg-primary/[0.02]",
           highlightChallengeable && "ring-1 ring-primary/40 bg-primary/5"
         )}
         role="button"

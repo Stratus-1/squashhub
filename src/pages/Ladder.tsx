@@ -22,6 +22,7 @@ export default function Ladder() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: clubData } = useMyClub();
+  const { data: myClubMember } = useMyClubMember();
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
   const queryClient = useQueryClient();

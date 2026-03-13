@@ -107,6 +107,34 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Fetch fee payments for all members with user_ids
+  const memberUserIds = members.filter(m => m.user_id).map(m => m.user_id!);
+  const { data: feePayments = [], refetch: refetchPayments } = useQuery({
+    queryKey: ["club-fee-payments", clubId, memberUserIds.join(",")],
+    queryFn: async () => {
+      if (memberUserIds.length === 0) return [];
+      const { data, error } = await fromExt("fee_payments")
+        .select("id, user_id, fee_type, fee_label, amount, paid")
+        .in("user_id", memberUserIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as FeePaymentRow[];
+    },
+    enabled: memberUserIds.length > 0,
+  });
+
+  const getPaymentsForMember = (userId?: string | null) => {
+    if (!userId) return [];
+    return feePayments.filter(f => f.user_id === userId);
+  };
+
+  const handleTogglePaid = async (feeId: string, paid: boolean) => {
+    const updates: any = { paid, paid_at: paid ? new Date().toISOString() : null };
+    const { error } = await fromExt("fee_payments").update(updates).eq("id", feeId);
+    if (error) toast.error(error.message);
+    else { toast.success(paid ? "Marked as paid" : "Marked as unpaid"); refetchPayments(); }
+  };
+
   const filtered = members.filter(m => {
     const name = m.profiles?.name || m.name || "";
     const email = m.profiles?.email || m.email || "";

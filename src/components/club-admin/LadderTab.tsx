@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLadder } from "@/hooks/use-data";
-import { useMyClub, useClubMembers } from "@/hooks/use-club";
+import { useClubMembers } from "@/hooks/use-club";
 import { type LadderPlayer } from "@/components/LadderPlayerCard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";

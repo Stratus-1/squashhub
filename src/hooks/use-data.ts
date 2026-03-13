@@ -438,10 +438,10 @@ export function useLadder(clubId?: string) {
         }
       }
 
-      // 3. Build ladder entries (single source of truth: club_members.league_player_rank)
+      // 3. Build ladder entries (single source of truth: club_members.ladder_position)
       const ladder = (members || []).map(m => {
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
-        const leagueRank = m.league_player_rank ?? null;
+        const ladderPos = m.ladder_position ?? null;
         return {
           id: m.user_id || m.id,
           club_member_id: m.id,

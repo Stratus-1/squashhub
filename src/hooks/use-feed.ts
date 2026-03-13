@@ -44,14 +44,20 @@ const PAGE_SIZE = 20;
 
 export function useFeedPosts() {
   const { user } = useAuth();
+  const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
 
   return useQuery({
-    queryKey: ["feed-posts"],
+    queryKey: ["feed-posts", clubId],
     queryFn: async () => {
-      const { data: posts, error } = await fromAny("feed_posts")
+      let query = fromAny("feed_posts")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50);
+      if (clubId) {
+        query = query.eq("club_id", clubId);
+      }
+      const { data: posts, error } = await query;
       if (error) throw error;
 
       if (!posts || posts.length === 0) return [] as FeedPost[];

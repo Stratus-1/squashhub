@@ -706,6 +706,7 @@ export default function Bookings() {
                   playerMode: "none",
                   isFriendly: true,
                   duration: 30,
+                  lightsOn: false,
                 });
               }}
             >

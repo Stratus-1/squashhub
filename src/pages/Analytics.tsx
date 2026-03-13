@@ -222,7 +222,7 @@ function PersonalTab() {
 }
 
 function PersonalStatsSnapshot() {
-  const { data: profile } = usePersonalProfile();
+  const { data: profile } = useProfile();
   const matchesPlayed = profile?.matches_played ?? 0;
   const wins = profile?.wins ?? 0;
   const losses = profile?.losses ?? 0;
@@ -250,11 +250,6 @@ function PersonalStatsSnapshot() {
       />
     </motion.div>
   );
-}
-
-function usePersonalProfile() {
-  const { useProfile } = require("@/hooks/use-data");
-  return useProfile();
 }
 
 export default function Analytics() {

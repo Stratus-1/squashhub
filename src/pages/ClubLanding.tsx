@@ -69,9 +69,9 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     );
   }
 
-  // If user is logged in, redirect to home
+  // If user is logged in from path-based club route, keep club context in URL
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
 
   return (

@@ -1435,7 +1435,7 @@ export default function Admin() {
 
   /* ─── Computed KPIs ─── */
   const totalMembers = (profiles || []).length;
-  const rankedMembers = (profiles || []).filter(p => p.rank != null).length;
+  const rankedMembers = (profiles || []).filter(p => p.matches_played > 0).length;
   const pendingChallenges = (challenges || []).filter(c => c.status === "pending").length;
   const disputedMatches = (matches || []).filter(m => m.disputed).length;
   const activeBookingsToday = (allBookings || []).filter(b => b.date === format(new Date(), "yyyy-MM-dd") && b.status === "active").length;

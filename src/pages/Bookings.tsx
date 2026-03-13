@@ -246,6 +246,9 @@ export default function Bookings() {
   const { user } = useAuth();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
+  const { data: myClubData } = useMyClub();
+  const myClub = myClubData?.club;
+  const lightFeePerHour = (myClub as any)?.light_fee_per_hour ?? 0;
 
   useEffect(() => {
     if (!user?.id) return;

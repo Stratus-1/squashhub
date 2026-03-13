@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
 
   const action = body?.action;
 
-  // ── User actions: terminate or transfer ──
-  if (action === "terminate" || action === "transfer") {
+  // ── User actions: terminate, transfer, or turn_on ──
+  if (action === "terminate" || action === "transfer" || action === "turn_on") {
     // Verify the user via Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {

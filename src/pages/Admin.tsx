@@ -438,9 +438,6 @@ export default function Admin() {
       if (error) throw error;
       const rows = (data || []) as ProfileRow[];
       rows.sort((a, b) => {
-        const ar = a.rank ?? 9999;
-        const br = b.rank ?? 9999;
-        if (ar !== br) return ar - br;
         return (a.name || "").localeCompare(b.name || "");
       });
       return rows;

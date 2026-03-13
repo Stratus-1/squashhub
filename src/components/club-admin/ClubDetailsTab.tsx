@@ -46,6 +46,9 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
   const setSelect = (k: string) => (value: string) =>
     setForm(p => ({ ...p, [k]: value === "__none__" ? "" : value }));
 
+  const setNumber = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(p => ({ ...p, [k]: parseInt(e.target.value) || 0 }));
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

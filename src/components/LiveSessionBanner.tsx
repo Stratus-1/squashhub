@@ -121,28 +121,12 @@ export function LiveSessionBanner() {
     if (!currentBooking || !user) return;
     setActionLoading(true);
     try {
-      // Mark lights_requested on booking
-      await fromExt("bookings")
-        .update({ lights_requested: true })
-        .eq("id", currentBooking.id);
-
-      // Try edge function first; if relay isn't connected it may fail,
-      // so fall back to creating the session record directly (dev/testing mode).
       const resp = await supabase.functions.invoke("court-lights", {
         body: { action: "turn_on", booking_id: currentBooking.id },
       });
 
       if (resp.error) {
-        // Fallback: create session directly so the banner activates immediately
-        const clubId = clubData?.club?.id;
-        await fromExt("light_sessions").insert({
-          booking_id: currentBooking.id,
-          court_id: currentBooking.court_id,
-          user_id: user.id,
-          club_id: clubId,
-          fee_per_hour: lightFeePerHour,
-          status: "active",
-        });
+        throw new Error(resp.error.message || "Failed to turn on lights");
       }
 
       toast.success("Lights are on! ⚡");

@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-internal-secret",
+    "authorization, x-client-info, apikey, content-type, x-internal-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 /**
@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
 
   const action = body?.action;
 
-  // ── User actions: terminate or transfer ──
-  if (action === "terminate" || action === "transfer") {
+  // ── User actions: terminate, transfer, or turn_on ──
+  if (action === "terminate" || action === "transfer" || action === "turn_on") {
     // Verify the user via Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -64,6 +64,92 @@ Deno.serve(async (req) => {
       });
     }
     const userId = claimsData.claims.sub as string;
+
+    // ── turn_on: create a light session for an active booking ──
+    if (action === "turn_on") {
+      const bookingId = body.booking_id;
+      if (!bookingId) {
+        return new Response(JSON.stringify({ error: "booking_id required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify booking belongs to user and is active
+      const { data: booking, error: bErr } = await supabase
+        .from("bookings")
+        .select("id, court_id, user_id, date, start_time, end_time, status")
+        .eq("id", bookingId)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (bErr || !booking) {
+        return new Response(JSON.stringify({ error: "Booking not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get club info for fee
+      const { data: courtInfo } = await supabase
+        .from("courts")
+        .select("id, club_id, relay_device_id, relay_server, clubs(shelly_auth_key, light_fee_per_hour)")
+        .eq("id", booking.court_id)
+        .maybeSingle();
+
+      const club = (courtInfo as any)?.clubs;
+      const feePerHour = club?.light_fee_per_hour ?? 0;
+      const clubId = courtInfo?.club_id;
+
+      // Try to turn on the physical relay (skip if not configured)
+      const authKey = club?.shelly_auth_key;
+      if (courtInfo?.relay_device_id && authKey) {
+        const shellyServer = (courtInfo as any).relay_server || "https://shelly-44-eu.shelly.cloud";
+        try {
+          await fetch(`${shellyServer}/device/relay/control`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              auth_key: authKey,
+              id: courtInfo.relay_device_id,
+              channel: "0",
+              turn: "on",
+            }),
+          });
+        } catch (e) {
+          console.error("Shelly relay error (non-fatal):", e);
+        }
+      }
+
+      // Mark lights_requested
+      await supabase.from("bookings").update({ lights_requested: true }).eq("id", bookingId);
+
+      // Create the session
+      const { data: newSession, error: insErr } = await supabase
+        .from("light_sessions")
+        .insert({
+          booking_id: bookingId,
+          court_id: booking.court_id,
+          user_id: userId,
+          club_id: clubId,
+          fee_per_hour: feePerHour,
+          status: "active",
+        })
+        .select("id")
+        .single();
+
+      if (insErr) {
+        return new Response(JSON.stringify({ error: insErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ result: "lights_on", session_id: newSession.id }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── terminate / transfer require session_id ──
     const sessionId = body.session_id;
 
     if (!sessionId) {

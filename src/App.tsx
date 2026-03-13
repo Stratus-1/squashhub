@@ -111,6 +111,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { subdomain: clubSubdomain, club: clubFromHost, isLoading: clubLoading } = useClubContext();
   const location = useLocation();
   const backgroundLocation = (location.state as any)?.backgroundLocation as typeof location | undefined;
 

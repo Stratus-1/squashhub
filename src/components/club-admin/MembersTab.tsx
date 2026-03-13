@@ -712,9 +712,9 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           <div className="space-y-1">
             <Label>Provisional Ranking</Label>
             <Input type="number" min={1} value={form.league_player_rank} onChange={e => setForm(p => ({ ...p, league_player_rank: e.target.value }))} placeholder="e.g. 5" />
-            {member.user_id && member.profiles && (
-              <p className="text-xs text-muted-foreground">Current ladder rank: #{(member.profiles as any)?.rank ?? "unranked"}</p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              Current ladder rank: {typeof member.league_player_rank === "number" ? `#${member.league_player_rank}` : "unranked"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={form.plays_league} onChange={e => setForm(p => ({ ...p, plays_league: e.target.checked }))} />

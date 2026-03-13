@@ -5,8 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useLadder } from "@/hooks/use-data";
 import { useMyClubMember } from "@/hooks/use-club";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Swords, X, Trophy, Sparkles, HandMetal } from "lucide-react";
@@ -38,59 +36,36 @@ export function WelcomeBanner() {
     }
   }, [profile]);
 
-  // Find a suggested opponent close to their rank
-  const { data: suggestedPlayer } = useQuery({
-    queryKey: ["suggested-challenge", user?.id, profile?.rank],
-    queryFn: async () => {
-      if (!user?.id) return null;
+  // Suggest an opponent based on current ladder position (same ladder group)
+  const suggestedPlayer = useMemo(() => {
+    if (!user?.id || dismissed || !ladder) return null;
 
-      // If ranked, suggest someone within 2 ladder positions (prefer above).
-      if (profile?.rank) {
-        const aboveFrom = Math.max(1, profile.rank - 2);
-        const aboveTo = Math.max(1, profile.rank - 1);
-        if (aboveTo >= aboveFrom) {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("id, name, rank, wins, losses, matches_played")
-            .neq("id", user.id)
-            .gte("rank", aboveFrom)
-            .lte("rank", aboveTo)
-            .order("rank", { ascending: false })
-            .limit(1);
-          if (!error && data && data.length > 0) return data[0];
-        }
+    const me = ladder.find(
+      (p: any) => p.user_id === user.id || p.club_member_id === (myClubMember as any)?.id,
+    );
+    if (!me?.ladder_position) return null;
 
-        const belowFrom = Math.min(20, profile.rank + 1);
-        const belowTo = Math.min(20, profile.rank + 2);
-        if (belowTo >= belowFrom) {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("id, name, rank, wins, losses, matches_played")
-            .neq("id", user.id)
-            .gte("rank", belowFrom)
-            .lte("rank", belowTo)
-            .order("rank", { ascending: true })
-            .limit(1);
-          if (!error && data && data.length > 0) return data[0];
-        }
-      }
+    const myGroupIsLadies = ["female", "ladies", "f"].includes((me.gender || "").toLowerCase());
 
-      // Fallback: find any active player with matches
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, name, rank, wins, losses, matches_played")
-        .neq("id", user.id)
-        .gt("matches_played", 0)
-        .order("matches_played", { ascending: false })
-        .limit(5);
+    const sameGroupPlayers = (ladder || []).filter((p: any) => {
+      if (p.id === me.id || p.user_id === user.id) return false;
+      if (typeof p.ladder_position !== "number") return false;
+      const isLadies = ["female", "ladies", "f"].includes((p.gender || "").toLowerCase());
+      return isLadies === myGroupIsLadies;
+    });
 
-      if (error || !data || data.length === 0) return null;
-      // Pick a random one for variety
-      return data[Math.floor(Math.random() * data.length)];
-    },
-    enabled: !!user?.id && !!profile && !dismissed,
-    staleTime: 1000 * 60 * 5,
-  });
+    const above = sameGroupPlayers
+      .filter((p: any) => p.ladder_position < me.ladder_position && me.ladder_position - p.ladder_position <= 2)
+      .sort((a: any, b: any) => b.ladder_position - a.ladder_position);
+    if (above.length > 0) return above[0];
+
+    const below = sameGroupPlayers
+      .filter((p: any) => p.ladder_position > me.ladder_position && p.ladder_position - me.ladder_position <= 2)
+      .sort((a: any, b: any) => a.ladder_position - b.ladder_position);
+    if (below.length > 0) return below[0];
+
+    return sameGroupPlayers.sort((a: any, b: any) => a.ladder_position - b.ladder_position)[0] || null;
+  }, [dismissed, ladder, myClubMember, user?.id]);
 
   const handleDismiss = () => {
     setDismissed(true);
@@ -139,7 +114,7 @@ export function WelcomeBanner() {
 
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Badge variant="secondary" className="gap-1">
-                    <Trophy className="w-3 h-3" /> {myLadderPosition ? `#${myLadderPosition} on ladder` : profile.rank ? `Rank #${profile.rank}` : "Unranked"}
+                    <Trophy className="w-3 h-3" /> {myLadderPosition ? `#${myLadderPosition} on ladder` : "Unranked"}
                   </Badge>
                   <Badge variant="secondary" className="gap-1">
                     <HandMetal className="w-3 h-3" /> {profile.matches_played} matches
@@ -173,8 +148,8 @@ export function WelcomeBanner() {
                     {(suggestedPlayer as any).name || "Unknown"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {typeof (suggestedPlayer as any).rank === "number"
-                      ? `Rank #${(suggestedPlayer as any).rank}`
+                    {typeof (suggestedPlayer as any).ladder_position === "number"
+                      ? `#${(suggestedPlayer as any).ladder_position} on ladder`
                       : "Unranked"}{" "}
                     · {(suggestedPlayer as any).wins || 0}W / {(suggestedPlayer as any).losses || 0}L
                   </p>

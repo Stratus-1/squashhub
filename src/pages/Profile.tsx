@@ -413,7 +413,7 @@ function ViewMode({
   setMode: (m: "edit") => void;
 }) {
   const email = profile.email as string | null;
-  const rank = typeof profile.rank === "number" ? profile.rank : null;
+  const rank = typeof clubMember?.league_player_rank === "number" ? clubMember.league_player_rank : null;
   const skillLabel = clubMember?.skill_level
     ? SKILL_LEVELS.find((s) => s.value === clubMember.skill_level)?.label || clubMember.skill_level
     : null;

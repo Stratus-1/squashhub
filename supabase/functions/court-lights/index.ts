@@ -10,22 +10,19 @@ const corsHeaders = {
  * Court Lights Edge Function
  *
  * Called on a schedule (every minute via pg_cron) to:
- * 1. Turn ON lights for courts whose booking is starting now (or within the next 2 min)
+ * 1. Turn ON lights for courts whose booking is starting now
  * 2. Turn OFF lights for courts whose booking just ended
  *
- * Uses the Shelly Cloud HTTP API to toggle relays.
- * Each court stores its own `relay_device_id` and `relay_server`.
+ * Reads the Shelly auth key from the club record (per-club config).
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate internal secret (scheduled call from pg_cron)
   const internalSecret = req.headers.get("x-internal-secret");
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const shellyAuthKey = Deno.env.get("SHELLY_AUTH_KEY");
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -43,25 +40,15 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (!shellyAuthKey) {
-    return new Response(
-      JSON.stringify({ error: "SHELLY_AUTH_KEY not configured" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  }
-
   try {
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
-    const currentTimeStr = now.toTimeString().slice(0, 5); // HH:MM
+    const todayStr = now.toISOString().slice(0, 10);
+    const currentTimeStr = now.toTimeString().slice(0, 5);
 
-    // Get all courts that have a relay configured
+    // Get all courts with relays, joined with their club's shelly_auth_key
     const { data: courts, error: courtsErr } = await supabase
       .from("courts")
-      .select("id, name, relay_device_id, relay_server")
+      .select("id, name, relay_device_id, relay_server, club_id, clubs(shelly_auth_key)")
       .not("relay_device_id", "is", null);
 
     if (courtsErr) throw courtsErr;
@@ -74,69 +61,63 @@ Deno.serve(async (req) => {
 
     const courtIds = courts.map((c: any) => c.id);
 
-    // Get all active bookings for today on these courts
-    const { data: bookings, error: bookErr } = await supabase
-      .from("bookings")
-      .select("id, court_id, start_time, end_time")
-      .eq("date", todayStr)
-      .eq("status", "active")
-      .in("court_id", courtIds);
+    // Get today's active bookings and champs matches
+    const [{ data: bookings, error: bookErr }, { data: champsMatches, error: champsErr }] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("id, court_id, start_time, end_time")
+        .eq("date", todayStr)
+        .eq("status", "active")
+        .in("court_id", courtIds),
+      supabase
+        .from("club_champs_matches")
+        .select("id, court_id, scheduled_time")
+        .eq("scheduled_date", todayStr)
+        .eq("status", "scheduled")
+        .in("court_id", courtIds),
+    ]);
 
     if (bookErr) throw bookErr;
-
-    // Also check club champs matches scheduled for today
-    const { data: champsMatches, error: champsErr } = await supabase
-      .from("club_champs_matches")
-      .select("id, court_id, scheduled_time")
-      .eq("scheduled_date", todayStr)
-      .eq("status", "scheduled")
-      .in("court_id", courtIds);
-
     if (champsErr) throw champsErr;
 
     const results: any[] = [];
 
     for (const court of courts) {
-      const courtBookings = (bookings || []).filter(
-        (b: any) => b.court_id === court.id
-      );
-      const courtChamps = (champsMatches || []).filter(
-        (m: any) => m.court_id === court.id
-      );
+      const authKey = (court as any).clubs?.shelly_auth_key;
+      if (!authKey) {
+        results.push({ court: court.name, status: "skipped", detail: "No Shelly auth key configured for club" });
+        continue;
+      }
 
-      // Check if any booking is currently active (start_time <= now < end_time)
+      const courtBookings = (bookings || []).filter((b: any) => b.court_id === court.id);
+      const courtChamps = (champsMatches || []).filter((m: any) => m.court_id === court.id);
+
       const hasActiveBooking = courtBookings.some((b: any) => {
         const start = b.start_time.slice(0, 5);
         const end = b.end_time.slice(0, 5);
         return currentTimeStr >= start && currentTimeStr < end;
       });
 
-      // Check if any champs match is currently active (scheduled_time <= now < scheduled_time + 30min)
       const hasActiveChamps = courtChamps.some((m: any) => {
         if (!m.scheduled_time) return false;
         const start = m.scheduled_time.slice(0, 5);
-        // Assume 30-min duration for champs matches
-        const startMin =
-          parseInt(start.split(":")[0]) * 60 + parseInt(start.split(":")[1]);
+        const startMin = parseInt(start.split(":")[0]) * 60 + parseInt(start.split(":")[1]);
         const endMin = startMin + 30;
         const endStr = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
         return currentTimeStr >= start && currentTimeStr < endStr;
       });
 
       const shouldBeOn = hasActiveBooking || hasActiveChamps;
-
-      // Call Shelly Cloud API to set the relay state
       const shellyServer = court.relay_server || "https://shelly-44-eu.shelly.cloud";
       const deviceId = court.relay_device_id;
 
       try {
-        const shellyUrl = `${shellyServer}/device/relay/control`;
-        const response = await fetch(shellyUrl, {
+        const response = await fetch(`${shellyServer}/device/relay/control`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({
             id: deviceId,
-            auth_key: shellyAuthKey,
+            auth_key: authKey,
             channel: "0",
             turn: shouldBeOn ? "on" : "off",
           }),

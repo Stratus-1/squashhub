@@ -23,7 +23,7 @@ import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardAccountSettings } from "@/components/DashboardAccountSettings";
+
 
 export default function Dashboard() {
   const navigate = useNavigate();

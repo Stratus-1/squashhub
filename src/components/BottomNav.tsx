@@ -15,7 +15,7 @@ export function BottomNav() {
   const isAdmin = useIsClubAdmin();
 
   const navItems = isAdmin
-    ? [...baseItems, { to: "/club-admin", icon: Settings, label: "Admin" }]
+    ? [...baseItems, { to: "/club-admin", icon: SettingsIcon, label: "Admin" }]
     : baseItems;
 
   return (

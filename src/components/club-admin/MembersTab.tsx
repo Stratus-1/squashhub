@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Search, Edit2, Trash2 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { UserPlus, Upload, Search, Edit2, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
 function getAgeFromSaId(idNumber: string): number | null {

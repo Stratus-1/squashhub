@@ -1735,6 +1735,7 @@ export type Database = {
           winner_id: string
         }[]
       }
+      get_next_member_number: { Args: { _club_id: string }; Returns: string }
       get_personal_analytics: {
         Args: { days_back?: number; target_user_id: string }
         Returns: Json

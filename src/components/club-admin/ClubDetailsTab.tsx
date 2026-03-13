@@ -18,6 +18,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
   const { data: members = [] } = useClubMembers(clubId);
   const [uploading, setUploading] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState(user?.email || "");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -128,12 +129,12 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
           smtp_port: parseInt(String(form.smtp_port)) || 587,
           smtp_user: form.smtp_user,
           smtp_pass: form.smtp_pass,
-          to: user?.email,
+          to: testEmailTo || user?.email,
         },
       });
       if (error) throw error;
       if (data?.ok) {
-        toast.success(`Test email sent to ${user?.email}`);
+        toast.success(`Test email sent to ${testEmailTo || user?.email}`);
       } else {
         toast.error(data?.reason || "Failed to send test email");
       }
@@ -364,17 +365,30 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
             <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSendTestEmail}
-          disabled={sendingTest || !form.sender_email || !form.smtp_host}
-        >
-          <Send className="w-4 h-4 mr-2" />
-          {sendingTest ? "Sending..." : "Send Test Email"}
-        </Button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+          <div className="space-y-1 flex-1 w-full sm:w-auto">
+            <Label htmlFor="test-email-to">Send Test To</Label>
+            <Input
+              id="test-email-to"
+              type="email"
+              value={testEmailTo}
+              onChange={(e) => setTestEmailTo(e.target.value)}
+              placeholder="recipient@example.com"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSendTestEmail}
+            disabled={sendingTest || !form.sender_email || !form.smtp_host || !testEmailTo}
+            className="shrink-0"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            {sendingTest ? "Sending..." : "Send Test Email"}
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground">
-          Sends a test email to your login address ({user?.email}) to verify your SMTP settings work.
+          Sends a test email to verify your SMTP settings work.
         </p>
       </Card>
 

@@ -1095,6 +1095,23 @@ export default function Bookings() {
                 />
               </div>
 
+              <div className="flex items-center justify-between rounded-xl border p-3">
+                <div className="min-w-0">
+                  <Label className="text-xs font-semibold">Switch on Lights</Label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {lightFeePerHour > 0
+                      ? `R${lightFeePerHour}/hr — deducted from your account`
+                      : "No light fee configured"}
+                  </p>
+                </div>
+                <Switch
+                  checked={bookingDialog.lightsOn}
+                  onCheckedChange={(checked) =>
+                    setBookingDialog((s) => (s ? { ...s, lightsOn: checked } : s))
+                  }
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">2nd Player (optional)</Label>
                 <div className="flex gap-1.5">

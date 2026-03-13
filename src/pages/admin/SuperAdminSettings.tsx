@@ -13,6 +13,10 @@ import { toast } from "sonner";
 interface PlatformSettings {
   platform_sender_email: string;
   platform_sender_name: string;
+  platform_smtp_host: string;
+  platform_smtp_port: string;
+  platform_smtp_user: string;
+  platform_smtp_pass: string;
   hcaptcha_enabled: string;
   hcaptcha_site_key: string;
 }

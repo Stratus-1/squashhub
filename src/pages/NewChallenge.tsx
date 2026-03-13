@@ -330,7 +330,7 @@ export default function NewChallenge() {
               <div className="shrink-0 flex flex-col items-center">
                 <span className="text-[10px] text-muted-foreground">You</span>
                 <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
-                  #{myRank}
+                  #{myLadderPosition}
                 </div>
               </div>
               {pathToTop.map((step, i) => {

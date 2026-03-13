@@ -719,12 +719,13 @@ export default function Bookings() {
     const myRank = me?.rank ?? null;
     if (!myRank) return [] as typeof list;
 
+    const challengeLevelsUp = 2;
     const availableSet = availableForSlotUserIds ? new Set(availableForSlotUserIds) : null;
     return list.filter(
       (p: any) =>
         typeof p.rank === "number" &&
         myRank - p.rank >= 1 &&
-        myRank - p.rank <= 2 &&
+        myRank - p.rank <= challengeLevelsUp &&
         (availableSet ? availableSet.has(p.id) : true)
     );
   })();

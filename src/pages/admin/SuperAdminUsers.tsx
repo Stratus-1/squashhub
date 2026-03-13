@@ -107,7 +107,7 @@ export default function SuperAdminUsers() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">{p.rank ?? "—"}</TableCell>
+                    <TableCell className="text-center">—</TableCell>
                     <TableCell className="text-center">{p.matches_played}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(p.created_at), "dd MMM yyyy")}

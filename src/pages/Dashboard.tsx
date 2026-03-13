@@ -107,7 +107,7 @@ export default function Dashboard() {
     const legacyNeedsOnboarding =
       !profile.name || profile.name === "" || profile.name === "New Player";
 
-    const hasClub = !!clubData?.club;
+    const hasClub = !!effectiveClub;
     const missingMemberData =
       hasClub &&
       (!myClubMember ||
@@ -125,7 +125,7 @@ export default function Dashboard() {
     isClubLoading,
     isClubMemberLoading,
     profile,
-    clubData?.club,
+    effectiveClub,
     myClubMember,
     onboardingDone,
   ]);

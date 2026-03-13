@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
       ...(typeof (data as any)?.merge === "object" && (data as any).merge ? (data as any).merge : {}),
     };
 
-    let subject = `GB Squash: ${title}`;
+    let subject = `SquashHub: ${title}`;
     let html = "";
     let text = "";
 

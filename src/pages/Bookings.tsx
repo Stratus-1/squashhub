@@ -419,7 +419,7 @@ export default function Bookings() {
       // Get club members with their ladder rank
       const { data: members, error: membersError } = await (supabase as any)
         .from("club_members")
-        .select("id, name, user_id, email, league_player_rank");
+        .select("id, name, user_id, email, ladder_position");
       if (membersError) throw membersError;
 
       // Also get profiles for display names

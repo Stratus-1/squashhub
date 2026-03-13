@@ -36,25 +36,26 @@ export default function MyAccount() {
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
 
-  // Credit transactions
-  const { data: transactions, isLoading: txLoading } = useQuery({
-    queryKey: ["credit-transactions", user?.id],
-    queryFn: async () => {
-      const { data, error } = await fromExt("member_credit_transactions")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
   // Fee payments from club_member_fee_payments
   const clubMemberId = myClubMember?.id;
   const clubId = (myClubMember as any)?.club_id;
   const feeCategoryId = (myClubMember as any)?.fee_category_id;
   const playsLeague = (myClubMember as any)?.plays_league;
+
+  // Credit transactions (explicitly tenant scoped)
+  const { data: transactions, isLoading: txLoading } = useQuery({
+    queryKey: ["credit-transactions", user?.id, clubId, clubMemberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_credit_transactions")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("club_id", clubId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!clubId && !!clubMemberId,
+  });
 
   const { data: fees, isLoading: feesLoading } = useQuery({
     queryKey: ["club-member-fee-payments", clubMemberId],
@@ -283,8 +284,10 @@ export default function MyAccount() {
   // Top-up mutation
   const topUpMutation = useMutation({
     mutationFn: async ({ amount, method }: { amount: number; method: string }) => {
+      if (!clubId) throw new Error("No club membership found for this account.");
       const { error } = await fromExt("member_credit_transactions").insert({
         user_id: user!.id,
+        club_id: clubId,
         amount,
         type: "topup",
         method,
@@ -308,6 +311,7 @@ export default function MyAccount() {
   // Pay fee mutation
   const payFeeMutation = useMutation({
     mutationFn: async ({ feeIds, method }: { feeIds: string[]; method: string }) => {
+      if (!clubId) throw new Error("No club membership found for this account.");
       const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
       if (!selectedFees.length) throw new Error("No fees selected");
       const totalAmount = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
@@ -319,6 +323,7 @@ export default function MyAccount() {
         // Deduct from credit and mark paid
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
+          club_id: clubId,
           amount: totalAmount,
           type: "payment",
           method: "credit",
@@ -337,6 +342,7 @@ export default function MyAccount() {
         // Card payment — auto-confirm, mark fees paid immediately
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
+          club_id: clubId,
           amount: totalAmount,
           type: "payment",
           method: "card",
@@ -354,6 +360,7 @@ export default function MyAccount() {
         // EFT — pending admin confirmation
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
+          club_id: clubId,
           amount: totalAmount,
           type: "payment",
           method: "eft",

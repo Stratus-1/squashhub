@@ -28,22 +28,18 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     payment_gateway_secret_key: club.payment_gateway_secret_key || "",
   });
 
-  // Get all member user_ids for this club
-  const memberUserIds = (members || []).map(m => m.user_id).filter(Boolean) as string[];
-
-  // Fetch pending credit transactions for club members
+  // Fetch pending credit transactions for this tenant only
   const { data: pendingTransactions, isLoading: pendingLoading } = useQuery({
-    queryKey: ["pending-member-transactions", clubId, memberUserIds],
+    queryKey: ["pending-member-transactions", clubId],
     queryFn: async () => {
-      if (memberUserIds.length === 0) return [];
       const { data, error } = await fromExt("member_credit_transactions")
         .select("*")
-        .in("user_id", memberUserIds)
+        .eq("club_id", clubId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: memberUserIds.length > 0,
+    enabled: !!clubId,
   });
 
   const pendingOnly = (pendingTransactions || []).filter((t: any) => t.status === "pending");

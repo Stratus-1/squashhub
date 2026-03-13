@@ -64,7 +64,6 @@ export default function Ladder() {
 
   const getChallengeBlockReason = useMemo(() => {
     return (playerId: string, opponentPosition: number | null) => {
-      if (ladderStatus !== "active") return "The ladder is not yet active. Challenges will be enabled once the admin activates the ladder.";
       if (!user?.id) return "You must be logged in to challenge players.";
       if (playerId === user.id) return "You can't challenge yourself.";
       if (!myPosition) return "You need a ladder rank before you can challenge players.";
@@ -75,7 +74,7 @@ export default function Ladder() {
       if (diff > challengeLevelsUp) return `You may only challenge players within ${challengeLevelsUp} ladder positions above you.`;
       return null;
     };
-  }, [myPosition, user?.id, ladderStatus, challengeLevelsUp]);
+  }, [myPosition, user?.id, challengeLevelsUp]);
 
   const handleNavigate = (playerId: string, isMe: boolean) => {
     if (isMe) navigate("/profile", { state: { backgroundLocation: location } });

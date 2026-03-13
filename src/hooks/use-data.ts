@@ -462,33 +462,30 @@ export function useLadder(clubId?: string) {
         }
       }
 
-      // 4. Build ladder entries
-      const ladder = (members || []).map(m => {
-        const profile = m.user_id ? profileMap.get(m.user_id) : null;
-        const leagueRank = leagueRankMap.get(m.id) ?? null;
-        return {
-          id: m.user_id || m.id,
-          club_member_id: m.id,
-          name: m.name || profile?.name || "Unknown",
-          avatar_url: profile?.avatar_url || null,
-          wins: profile?.wins ?? 0,
-          losses: profile?.losses ?? 0,
-          matches_played: profile?.matches_played ?? 0,
-          rank: leagueRank,
-          league_rank: leagueRank,
-          user_id: m.user_id,
-          gender: m.gender || null,
-          ladder_position: null as number | null,
-        };
-      });
+      // 4. Build ladder entries — only include members with a league rank
+      const ladder = (members || [])
+        .filter(m => leagueRankMap.has(m.id))
+        .map(m => {
+          const profile = m.user_id ? profileMap.get(m.user_id) : null;
+          const leagueRank = leagueRankMap.get(m.id)!;
+          return {
+            id: m.user_id || m.id,
+            club_member_id: m.id,
+            name: m.name || profile?.name || "Unknown",
+            avatar_url: profile?.avatar_url || null,
+            wins: profile?.wins ?? 0,
+            losses: profile?.losses ?? 0,
+            matches_played: profile?.matches_played ?? 0,
+            rank: leagueRank,
+            league_rank: leagueRank,
+            user_id: m.user_id,
+            gender: m.gender || null,
+            ladder_position: null as number | null,
+          };
+        });
 
-      // Sort: league-ranked first (by player_rank), then alphabetically
-      ladder.sort((a, b) => {
-        if (a.league_rank != null && b.league_rank != null) return a.league_rank - b.league_rank;
-        if (a.league_rank != null) return -1;
-        if (b.league_rank != null) return 1;
-        return (a.name || "").localeCompare(b.name || "");
-      });
+      // Sort by player_rank ascending
+      ladder.sort((a, b) => a.league_rank - b.league_rank);
 
       // Assign ladder_position per gender group (index+1 within each gender)
       const genderGroups = new Map<string, number>();
@@ -496,7 +493,7 @@ export function useLadder(clubId?: string) {
         const gKey = (entry.gender?.toLowerCase() === "female" || entry.gender?.toLowerCase() === "ladies" || entry.gender?.toLowerCase() === "f") ? "ladies" : "men";
         const pos = (genderGroups.get(gKey) ?? 0) + 1;
         genderGroups.set(gKey, pos);
-        entry.ladder_position = entry.league_rank != null ? pos : null;
+        entry.ladder_position = pos;
       }
 
       return ladder;

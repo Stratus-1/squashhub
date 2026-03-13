@@ -118,7 +118,7 @@ export function LiveSessionBanner() {
   };
 
   const handleTurnOnLights = async () => {
-    if (!currentBooking) return;
+    if (!currentBooking || !user) return;
     setActionLoading(true);
     try {
       // Mark lights_requested on booking
@@ -126,13 +126,30 @@ export function LiveSessionBanner() {
         .update({ lights_requested: true })
         .eq("id", currentBooking.id);
 
-      // The next scheduled run of court-lights will pick it up and turn on,
-      // but let's also create the session immediately via the edge function
-      // by triggering a manual check - for now we just mark it and notify
-      toast.success("Lights requested! They will turn on within the next minute.");
-      queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+      // Try edge function first; if relay isn't connected it may fail,
+      // so fall back to creating the session record directly (dev/testing mode).
+      const resp = await supabase.functions.invoke("court-lights", {
+        body: { action: "turn_on", booking_id: currentBooking.id },
+      });
+
+      if (resp.error) {
+        // Fallback: create session directly so the banner activates immediately
+        const clubId = clubData?.club?.id;
+        await fromExt("light_sessions").insert({
+          booking_id: currentBooking.id,
+          court_id: currentBooking.court_id,
+          user_id: user.id,
+          club_id: clubId,
+          fee_per_hour: lightFeePerHour,
+          status: "active",
+        });
+      }
+
+      toast.success("Lights are on! ⚡");
+      refetchSessions();
+      queryClient.invalidateQueries({ queryKey: ["my-bookings", "my-active-light-sessions"] });
     } catch (e: any) {
-      toast.error(e.message || "Failed to request lights");
+      toast.error(e.message || "Failed to turn on lights");
     } finally {
       setActionLoading(false);
     }

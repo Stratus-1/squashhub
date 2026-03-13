@@ -1,4 +1,5 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 declare global {
   interface Window {
@@ -16,28 +17,42 @@ interface HCaptchaProps {
   onExpire?: () => void;
 }
 
-const SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
+let cachedSiteKey: string | null | undefined = undefined;
+
+async function getSiteKey(): Promise<string | null> {
+  if (cachedSiteKey !== undefined) return cachedSiteKey;
+  const { data } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "hcaptcha_site_key")
+    .maybeSingle();
+  cachedSiteKey = data?.value || null;
+  return cachedSiteKey;
+}
 
 export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSiteKey().then(setSiteKey);
+  }, []);
 
   const renderWidget = useCallback(() => {
-    if (!containerRef.current || !window.hcaptcha || widgetIdRef.current !== null) return;
-    if (!SITE_KEY) return;
+    if (!containerRef.current || !window.hcaptcha || widgetIdRef.current !== null || !siteKey) return;
 
     widgetIdRef.current = window.hcaptcha.render(containerRef.current, {
-      sitekey: SITE_KEY,
+      sitekey: siteKey,
       callback: (token: string) => onVerify(token),
       "expired-callback": () => onExpire?.(),
       size: "compact",
     });
-  }, [onVerify, onExpire]);
+  }, [onVerify, onExpire, siteKey]);
 
   useEffect(() => {
-    if (!SITE_KEY) return;
+    if (!siteKey) return;
 
-    // Load the hCaptcha script if not already loaded
     if (!document.getElementById("hcaptcha-script")) {
       const script = document.createElement("script");
       script.id = "hcaptcha-script";
@@ -49,7 +64,6 @@ export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
     } else if (window.hcaptcha) {
       renderWidget();
     } else {
-      // Script is loading, wait for it
       const interval = setInterval(() => {
         if (window.hcaptcha) {
           clearInterval(interval);
@@ -61,17 +75,25 @@ export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
 
     return () => {
       if (widgetIdRef.current !== null && window.hcaptcha) {
-        try {
-          window.hcaptcha.remove(widgetIdRef.current);
-        } catch {
-          // ignore
-        }
+        try { window.hcaptcha.remove(widgetIdRef.current); } catch { /* ignore */ }
         widgetIdRef.current = null;
       }
     };
-  }, [renderWidget]);
+  }, [renderWidget, siteKey]);
 
-  if (!SITE_KEY) return null;
+  if (!siteKey) return null;
 
   return <div ref={containerRef} className="flex justify-center my-2" />;
+}
+
+export async function verifyCaptchaToken(token: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.functions.invoke("verify-captcha", {
+      body: { token },
+    });
+    if (error) return false;
+    return data?.success === true;
+  } catch {
+    return false;
+  }
 }

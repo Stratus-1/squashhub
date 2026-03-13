@@ -1,19 +1,195 @@
+import { useState, useEffect } from "react";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
-import { Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Settings, Mail, Shield, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface PlatformSettings {
+  platform_sender_email: string;
+  platform_sender_name: string;
+  hcaptcha_enabled: string;
+  hcaptcha_site_key: string;
+}
 
 export default function SuperAdminSettings() {
+  const [settings, setSettings] = useState<PlatformSettings>({
+    platform_sender_email: "",
+    platform_sender_name: "",
+    hcaptcha_enabled: "true",
+    hcaptcha_site_key: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("key, value")
+      .in("key", [
+        "platform_sender_email",
+        "platform_sender_name",
+        "hcaptcha_enabled",
+        "hcaptcha_site_key",
+      ]);
+
+    if (data) {
+      const mapped: Record<string, string> = {};
+      data.forEach((row) => (mapped[row.key] = row.value));
+      setSettings((prev) => ({ ...prev, ...mapped }));
+    }
+    setLoading(false);
+  };
+
+  const saveSetting = async (key: string, value: string) => {
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ key, value }, { onConflict: "key" });
+    if (error) throw error;
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await Promise.all(
+        Object.entries(settings).map(([key, value]) => saveSetting(key, value))
+      );
+      toast.success("Settings saved");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save settings");
+    }
+    setSaving(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <SEO title="Settings — Super Admin" noIndex />
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-48" />
+          <div className="h-64 bg-muted rounded" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <SEO title="Settings — Super Admin" noIndex />
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Platform Settings</h2>
-        <p className="text-sm text-muted-foreground mt-1">Global configuration</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Platform Settings</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Global configuration for email and security
+          </p>
+        </div>
+        <Button onClick={handleSave} disabled={saving}>
+          <Save className="w-4 h-4 mr-2" />
+          {saving ? "Saving..." : "Save All"}
+        </Button>
       </div>
 
-      <Card className="p-8 flex flex-col items-center justify-center text-center gap-3">
-        <Settings className="h-10 w-10 text-muted-foreground" />
-        <p className="text-muted-foreground">Platform settings coming soon</p>
+      {/* Email Settings */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Mail className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-lg">Platform Email (No-Reply)</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Used for club creation confirmations and system emails when a club has
+          not configured its own email settings.
+        </p>
+        <Separator />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="sender-name">Sender Name</Label>
+            <Input
+              id="sender-name"
+              placeholder="SquashHub"
+              value={settings.platform_sender_name}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, platform_sender_name: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <Label htmlFor="sender-email">Sender Email</Label>
+            <Input
+              id="sender-email"
+              type="email"
+              placeholder="noreply@squashhub.co.za"
+              value={settings.platform_sender_email}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, platform_sender_email: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Clubs that configure their own email settings in Club Admin will use
+          those for member communications instead.
+        </p>
+      </Card>
+
+      {/* hCaptcha Settings */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Shield className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-lg">hCaptcha Protection</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Protects login and signup forms against automated abuse.
+        </p>
+        <Separator />
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Enable hCaptcha</p>
+            <p className="text-xs text-muted-foreground">
+              When enabled, users must complete a captcha challenge on auth pages
+            </p>
+          </div>
+          <Switch
+            checked={settings.hcaptcha_enabled === "true"}
+            onCheckedChange={(checked) =>
+              setSettings((s) => ({
+                ...s,
+                hcaptcha_enabled: checked ? "true" : "false",
+              }))
+            }
+          />
+        </div>
+        <div>
+          <Label htmlFor="hcaptcha-site-key">Site Key (Public)</Label>
+          <Input
+            id="hcaptcha-site-key"
+            placeholder="Enter your hCaptcha site key"
+            value={settings.hcaptcha_site_key}
+            onChange={(e) =>
+              setSettings((s) => ({ ...s, hcaptcha_site_key: e.target.value }))
+            }
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Get your site key from{" "}
+            <a
+              href="https://dashboard.hcaptcha.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              hCaptcha Dashboard
+            </a>
+            . The secret key is stored securely as a backend secret.
+          </p>
+        </div>
       </Card>
     </div>
   );

@@ -176,8 +176,8 @@ export default function Ladder() {
               else navigate(`/players/${id}`);
             }}
             onChallenge={() => handleChallengeClick(player)}
-            challengeBlocked={!isChallengeable(player.id)}
-            highlightChallengeable={isChallengeable(player.id)}
+            challengeBlocked={!isChallengeable(player)}
+            highlightChallengeable={isChallengeable(player)}
           />
         ))}
         {list.length === 0 && (

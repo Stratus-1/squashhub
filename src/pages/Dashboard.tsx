@@ -17,6 +17,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
+import { useClubContext } from "@/contexts/ClubContext";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
@@ -28,10 +29,12 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { club: contextClub } = useClubContext();
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
-  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
+  const effectiveClub = clubData?.club || contextClub;
+  const ladderStatus = (effectiveClub as any)?.ladder_status || "unranked";
   const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
@@ -104,7 +107,7 @@ export default function Dashboard() {
     const legacyNeedsOnboarding =
       !profile.name || profile.name === "" || profile.name === "New Player";
 
-    const hasClub = !!clubData?.club;
+    const hasClub = !!effectiveClub;
     const missingMemberData =
       hasClub &&
       (!myClubMember ||
@@ -122,7 +125,7 @@ export default function Dashboard() {
     isClubLoading,
     isClubMemberLoading,
     profile,
-    clubData?.club,
+    effectiveClub,
     myClubMember,
     onboardingDone,
   ]);
@@ -148,7 +151,7 @@ export default function Dashboard() {
       />
       <DashboardTutorial />
 
-      <PageHeader title={clubData?.club?.name || "SquashHub"} subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
+      <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
 
       <WelcomeBanner />
 

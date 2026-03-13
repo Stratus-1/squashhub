@@ -296,36 +296,6 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Stats */}
-      <motion.div
-        className="px-4 mt-4"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <AppleStatsCard
-          title="Your stats"
-          subtitle="Snapshot of your performance."
-          badgeText={profile?.rank ? `Rank #${profile.rank}` : "Unranked"}
-          ringLabel="Win rate"
-          ringValue={`${winRate}%`}
-          progress={{
-            played: Math.min(1, matchesPlayed / 50),
-            wins: Math.min(1, wins / 25),
-            winPct: Math.min(1, winRate / 100),
-          }}
-          tiles={[
-            { label: "Played", value: matchesPlayed, unit: "matches", dotColor: "#007aff" },
-            { label: "Wins", value: wins, unit: "wins", dotColor: "#34c759" },
-            { label: "Losses", value: losses, unit: "losses", dotColor: "#ff9500" },
-            { label: "Rank", value: profile?.rank ? `#${profile.rank}` : "—", unit: "ladder", dotColor: "#ff2d55" },
-          ]}
-        />
-      </motion.div>
-
-      {/* Match of the Week */}
-      <div className="px-4 mt-3">
-        <MatchOfTheWeekCard />
-      </div>
 
       {/* More Actions */}
       <div className="px-4 mt-5">

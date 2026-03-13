@@ -455,7 +455,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
                 <Label>Association Number *</Label>
                 <Input value={form.association_number} onChange={e => setForm(p => ({ ...p, association_number: e.target.value }))} placeholder="e.g. NSF12345" />
               </div>
-              <div className="space-y-1"><Label>Player Rank (1-4)</Label><Input type="number" min={1} max={4} value={form.league_player_rank} onChange={e => setForm(p => ({ ...p, league_player_rank: e.target.value }))} /></div>
+              
             </>
           )}
           <div className="space-y-1">

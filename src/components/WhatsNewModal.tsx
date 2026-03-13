@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { BadgeCheck, Calendar, LayoutDashboard, Sparkles, Swords, UserCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { BadgeCheck, Calendar, LayoutDashboard, Sparkles, Swords } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/use-data";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,9 +28,7 @@ function safeSet(key: string, value: string) {
 
 export function WhatsNewModal() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
-  const { data: profile } = useProfile();
 
   const [open, setOpen] = useState(false);
 
@@ -93,7 +90,7 @@ export function WhatsNewModal() {
     ];
 
     return list.filter((x) => x.visible);
-  }, [location, navigate, profile, user]);
+  }, [navigate, user]);
 
   const closeAndMarkSeen = () => {
     safeSet(KEY_LAST_BUILD, buildId);

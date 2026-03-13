@@ -46,7 +46,7 @@ export function NativePushListener() {
         try {
           await PushNotifications.createChannel({
             id: "gb_alerts",
-            name: "GB Squash Alerts",
+            name: "SquashHub Alerts",
             description: "Challenges, matches, and reminders",
             importance: 4,
             visibility: 1,

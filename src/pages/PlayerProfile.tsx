@@ -248,7 +248,7 @@ export default function PlayerProfile() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <PlayerAvatar initials={initials} rank={player.rank} size="md" avatarUrl={(player as any)?.avatar_url || null} />
+                <PlayerAvatar initials={initials} rank={playerLadderPosition} size="md" avatarUrl={(player as any)?.avatar_url || null} />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">{player.name || "Player"}</p>
                   <p className="text-xs text-muted-foreground truncate">

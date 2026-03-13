@@ -464,22 +464,33 @@ export default function MyAccount() {
       </Dialog>
 
       {/* Pay Fee Dialog */}
-      <Dialog open={!!payFeeId} onOpenChange={(open) => !open && setPayFeeId(null)}>
+      <Dialog open={!!payFeeId} onOpenChange={(open) => { if (!open) { setPayFeeId(null); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Pay Fee</DialogTitle>
+            <DialogTitle>Pay Fees</DialogTitle>
             <DialogDescription>
-              {payingFee?.fee_label} — R{Number(payingFee?.amount || 0).toFixed(2)}
+              {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} — Total R{selectedFeeTotal.toFixed(2)}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-2">
+          <div className="space-y-3 mt-1">
+            <div className="space-y-1">
+              {unpaidFees.filter((f: any) => selectedFeeIds.includes(f.id)).map((f: any) => (
+                <div key={f.id} className="flex justify-between text-xs">
+                  <span className="truncate">{f.fee_label}</span>
+                  <span className="font-medium shrink-0 ml-2">R{Number(f.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            <Separator />
+
             <div className="grid grid-cols-3 gap-2">
               <Button
                 variant={payMethod === "credit" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"
                 onClick={() => setPayMethod("credit")}
-                disabled={creditBalance < Number(payingFee?.amount || 0)}
+                disabled={creditBalance < selectedFeeTotal}
               >
                 <Wallet className="w-4 h-4" />
                 Credit
@@ -522,25 +533,33 @@ export default function MyAccount() {
                 {club.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {club.bank_account_name}</p>}
                 {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
                 {club.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {club.bank_branch_code}</p>}
-                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - {payingFee?.fee_label}</p>
+                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Fees</p>
+              </Card>
+            )}
+
+            {payMethod === "eft" && (
+              <Card className="p-2.5 bg-amber-500/5 border-amber-500/20">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  After making your EFT, your secretary/admin will confirm receipt and mark the fees as paid.
+                </p>
               </Card>
             )}
 
             {payMethod === "card" && (
               <Card className="p-3 bg-muted/50">
                 <p className="text-xs text-muted-foreground">
-                  Card payment via {club?.payment_gateway || "payment gateway"}. Admin will confirm after verification.
+                  Card payment via {club?.payment_gateway || "payment gateway"}. Fees will be marked as paid immediately.
                 </p>
               </Card>
             )}
 
             <Button
               className="w-full"
-              disabled={payFeeMutation.isPending}
-              onClick={() => payFeeId && payFeeMutation.mutate({ feeId: payFeeId, method: payMethod })}
+              disabled={payFeeMutation.isPending || selectedFeeIds.length === 0}
+              onClick={() => payFeeMutation.mutate({ feeIds: selectedFeeIds, method: payMethod })}
             >
               {payFeeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Pay R{Number(payingFee?.amount || 0).toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
+              Pay R{selectedFeeTotal.toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
             </Button>
           </div>
         </DialogContent>

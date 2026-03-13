@@ -205,6 +205,9 @@ export default function MyAccount() {
 
   const unpaidFees = (fees || []).filter((f: any) => !f.paid);
   const paidFees = (fees || []).filter((f: any) => f.paid);
+  const selectedFeeTotal = unpaidFees
+    .filter((f: any) => selectedFeeIds.includes(f.id))
+    .reduce((s: number, f: any) => s + Number(f.amount), 0);
 
   return (
     <div className="bottom-nav-safe">

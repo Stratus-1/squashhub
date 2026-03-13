@@ -877,7 +877,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         {step === "review" ? (
           <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
             {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-            Generate Matches
+            {editingChampId ? "Regenerate Matches" : "Generate Matches"}
           </Button>
         ) : (
           <Button onClick={() => goToStep(STEPS[stepIdx + 1])} disabled={!canProceed()}>

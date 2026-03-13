@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
+import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -205,6 +206,7 @@ export default function ClubAuth() {
               </Button>
             </form>
           </Card>
+          <PoweredBySquashHub />
         </motion.div>
       </div>
     );
@@ -231,6 +233,7 @@ export default function ClubAuth() {
               Back
             </Button>
           </Card>
+          <PoweredBySquashHub />
         </motion.div>
       </div>
     );
@@ -460,6 +463,7 @@ export default function ClubAuth() {
             </Card>
           </TabsContent>
         </Tabs>
+        <PoweredBySquashHub />
       </motion.div>
     </div>
   );

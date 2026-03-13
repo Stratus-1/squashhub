@@ -584,7 +584,7 @@ export default function NewChallenge() {
         {/* Send */}
         <Button
           className="w-full"
-          disabled={!myRank || !opponentId || !selectedEligible || createChallenge.isPending || proposeSchedule.isPending}
+          disabled={!myLadderPosition || !opponentId || !selectedEligible || createChallenge.isPending || proposeSchedule.isPending}
           onClick={onSend}
         >
           {createChallenge.isPending || proposeSchedule.isPending ? (

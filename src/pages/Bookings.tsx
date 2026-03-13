@@ -308,7 +308,9 @@ export default function Bookings() {
   }, [courtCheckinsEnabled, selectedDate, user?.id]);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
-  const { data: bookings, isLoading } = useBookings(dateStr);
+  const { data: clubData } = useMyClub();
+  const bookingClubId = clubData?.club?.id;
+  const { data: bookings, isLoading } = useBookings(dateStr, bookingClubId);
   const [terminatingSession, setTerminatingSession] = useState(false);
   const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
 

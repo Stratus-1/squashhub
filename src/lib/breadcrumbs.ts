@@ -22,7 +22,6 @@ const rules: Rule[] = [
   { re: /^\/ladder$/, crumbs: [{ label: "Home", to: "/" }, { label: "Ladder" }], backTo: "/" },
   { re: /^\/players\/[^/]+$/, crumbs: [{ label: "Ladder", to: "/ladder" }, { label: "Player" }], backTo: "/ladder" },
   { re: /^\/challenges$/, crumbs: [{ label: "Home", to: "/" }, { label: "Challenges" }], backTo: "/" },
-  { re: /^\/challenges\/new$/, crumbs: [{ label: "Challenges", to: "/challenges" }, { label: "New" }], backTo: "/challenges" },
   { re: /^\/match-tracker\/[^/]+$/, crumbs: [{ label: "Home", to: "/" }, { label: "Match tracker" }], backTo: "/" },
   { re: /^\/events$/, crumbs: [{ label: "Events" }] },
   { re: /^\/events\/[^/]+$/, crumbs: [{ label: "Events", to: "/events" }, { label: "Event" }], backTo: "/events" },

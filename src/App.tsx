@@ -58,6 +58,7 @@ import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
 import MyAccount from "./pages/MyAccount";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 import Terms from "./pages/Terms";

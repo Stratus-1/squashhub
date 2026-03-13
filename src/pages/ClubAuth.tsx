@@ -216,7 +216,7 @@ export default function ClubAuth() {
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
         <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
         <SEO title={`Check Email | ${clubName}`} description="Confirm your email." path="/auth" noIndex />
-        <motion.div className="w-full max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
               <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

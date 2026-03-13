@@ -27,13 +27,13 @@ export default function Privacy() {
             <div className="prose prose-sm max-w-none dark:prose-invert">
               <p>
                 This Privacy Policy explains how we collect, use, share, and protect personal information when you
-                use Gordon&apos;s Bay Squash Hub (the &quot;Service&quot;). We aim to follow the principles of the
+                use SquashHub (the &quot;Service&quot;). We aim to follow the principles of the
                 Protection of Personal Information Act 4 of 2013 (&quot;POPIA&quot;).
               </p>
 
               <h2>1. Responsible party</h2>
               <p>
-                Gordon&apos;s Bay Squash Club (the club committee / administrators) is the responsible party for
+                SquashHub and the respective club administrators are the responsible parties for
                 processing personal information in the Service.
               </p>
 

@@ -349,7 +349,7 @@ export default function NewChallenge() {
                         {step.name.split(" ")[0]}
                       </span>
                       <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                        #{step.rank}
+                        #{step.ladder_position}
                       </div>
                       {h2h && h2h.matches > 0 && (
                         <span className={cn(

@@ -1,5 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { absoluteUrl } from "@/lib/site";
+import { useMyClub } from "@/hooks/use-club";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SEOProps {
   title?: string;
@@ -10,7 +12,7 @@ interface SEOProps {
   imageAlt?: string;
   noIndex?: boolean;
   jsonLd?: unknown;
-  /** Override the site name used in the tab title (defaults to "SquashHub") */
+  /** Override the site name used in the tab title (defaults to club name for members, "SquashHub" otherwise) */
   siteName?: string;
 }
 
@@ -29,7 +31,11 @@ export function SEO({
   jsonLd,
   siteName,
 }: SEOProps) {
-  const brand = siteName || DEFAULT_TITLE;
+  const { user } = useAuth();
+  const { data: clubData } = useMyClub();
+
+  // For authenticated users, prefer club name; for public pages, use SquashHub
+  const brand = siteName || (user && clubData?.club?.name) || DEFAULT_TITLE;
   const fullTitle = title ? `${title} | ${brand}` : brand;
   const resolvedPath =
     path ??

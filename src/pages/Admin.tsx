@@ -1739,11 +1739,7 @@ export default function Admin() {
                               </div>
                             </TableCell>
                             <TableCell className="p-3">
-                              {p.rank != null ? (
-                                <Badge className="bg-primary/15 text-primary border-primary/20">#{p.rank}</Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Unranked</span>
-                              )}
+                              <span className="text-xs text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell className="p-3">
                               <span className="text-sm tabular-nums font-medium">{p.wins}W–{p.losses}L</span>

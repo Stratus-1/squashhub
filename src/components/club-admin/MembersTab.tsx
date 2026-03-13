@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Search, Edit2, Trash2 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { UserPlus, Upload, Search, Edit2, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
 function getAgeFromSaId(idNumber: string): number | null {
@@ -27,12 +28,45 @@ function getAgeFromSaId(idNumber: string): number | null {
   return age >= 0 && age < 150 ? age : null;
 }
 
-function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdit: () => void; onDelete: () => void }) {
+interface FeePaymentRow {
+  id: string;
+  user_id: string;
+  fee_type: string;
+  fee_label: string;
+  amount: number;
+  paid: boolean;
+}
+
+function MemberPaymentStatus({ payments, onToggle }: { payments: FeePaymentRow[]; onToggle: (feeId: string, paid: boolean) => void }) {
+  if (payments.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
+  return (
+    <div className="flex flex-col gap-0.5">
+      {payments.map(f => (
+        <div key={f.id} className="flex items-center gap-1.5 text-[11px]">
+          <Checkbox
+            checked={f.paid}
+            onCheckedChange={(v) => onToggle(f.id, !!v)}
+            className="h-3.5 w-3.5"
+          />
+          <span className="truncate max-w-[100px]">{f.fee_label || f.fee_type}</span>
+          <span className="text-muted-foreground">R{f.amount}</span>
+          {f.paid ? (
+            <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
+          ) : (
+            <XCircle className="w-3 h-3 text-destructive shrink-0" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MemberCard({ member: m, payments, onEdit, onDelete, onTogglePaid }: { member: ClubMember; payments: FeePaymentRow[]; onEdit: () => void; onDelete: () => void; onTogglePaid: (feeId: string, paid: boolean) => void }) {
   const displayName = m.profiles?.name || m.name || "—";
   const displayEmail = m.profiles?.email || m.email || "";
   const isLinked = !!m.user_id;
   return (
-    <Card className="p-3 flex items-center justify-between gap-2">
+    <Card className="p-3 flex items-start justify-between gap-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium truncate">{displayName}</span>
@@ -51,11 +85,14 @@ function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdi
           {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
         </p>
       </div>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
-        {m.role !== "captain" && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
-        )}
+      <div className="flex items-start gap-3 shrink-0">
+        <MemberPaymentStatus payments={payments} onToggle={onTogglePaid} />
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
+          {m.role !== "captain" && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -69,6 +106,34 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Fetch fee payments for all members with user_ids
+  const memberUserIds = members.filter(m => m.user_id).map(m => m.user_id!);
+  const { data: feePayments = [], refetch: refetchPayments } = useQuery({
+    queryKey: ["club-fee-payments", clubId, memberUserIds.join(",")],
+    queryFn: async () => {
+      if (memberUserIds.length === 0) return [];
+      const { data, error } = await fromExt("fee_payments")
+        .select("id, user_id, fee_type, fee_label, amount, paid")
+        .in("user_id", memberUserIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as FeePaymentRow[];
+    },
+    enabled: memberUserIds.length > 0,
+  });
+
+  const getPaymentsForMember = (userId?: string | null) => {
+    if (!userId) return [];
+    return feePayments.filter(f => f.user_id === userId);
+  };
+
+  const handleTogglePaid = async (feeId: string, paid: boolean) => {
+    const updates: any = { paid, paid_at: paid ? new Date().toISOString() : null };
+    const { error } = await fromExt("fee_payments").update(updates).eq("id", feeId);
+    if (error) toast.error(error.message);
+    else { toast.success(paid ? "Marked as paid" : "Marked as unpaid"); refetchPayments(); }
+  };
 
   const filtered = members.filter(m => {
     const name = m.profiles?.name || m.name || "";
@@ -163,7 +228,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                 <span className="text-xs font-normal text-muted-foreground">({group.length})</span>
               </h3>
               <div className="space-y-2">
-                {all.map(m => <MemberCard key={m.id} member={m} onEdit={() => setEditMember(m)} onDelete={() => handleDelete(m.id)} />)}
+                {all.map(m => <MemberCard key={m.id} member={m} payments={getPaymentsForMember(m.user_id)} onEdit={() => setEditMember(m)} onDelete={() => handleDelete(m.id)} onTogglePaid={handleTogglePaid} />)}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
               </div>
               {gender === "Men" && unassigned.length > 0 && (

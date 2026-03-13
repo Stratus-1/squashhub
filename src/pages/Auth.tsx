@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
+import { HCaptcha, verifyCaptchaToken } from "@/components/HCaptcha";
 
 export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth();
@@ -18,6 +19,7 @@ export default function Auth() {
   const [showReset, setShowReset] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
@@ -59,6 +61,10 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (captchaToken) {
+      const valid = await verifyCaptchaToken(captchaToken);
+      if (!valid) { toast.error("Captcha verification failed"); return; }
+    }
     setLoading(true);
     const { error } = await signIn(loginEmail.trim(), loginPassword);
     if (error) toast.error(error.message);
@@ -106,6 +112,10 @@ export default function Auth() {
       return;
     }
 
+    if (captchaToken) {
+      const valid = await verifyCaptchaToken(captchaToken);
+      if (!valid) { toast.error("Captcha verification failed"); return; }
+    }
     setLoading(true);
     const nowIso = new Date().toISOString();
     const { error } = await signUp(email, signupPassword, name, phone || undefined, {
@@ -213,6 +223,7 @@ export default function Auth() {
                     </button>
                   </div>
                 </div>
+                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -346,6 +357,7 @@ export default function Auth() {
                     minLength={6}
                   />
                 </div>
+                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Creating club..." : "Create Club"}
                 </Button>

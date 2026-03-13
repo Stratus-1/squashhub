@@ -40,6 +40,12 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
     challenge_levels_up: club.challenge_levels_up ?? 2,
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
     shelly_auth_key: club.shelly_auth_key || "",
+    sender_email: (club as any).sender_email || "",
+    sender_name: (club as any).sender_name || "",
+    smtp_host: (club as any).smtp_host || "",
+    smtp_port: (club as any).smtp_port ?? "",
+    smtp_user: (club as any).smtp_user || "",
+    smtp_pass: (club as any).smtp_pass || "",
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -88,6 +94,13 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       if (!payload.payment_gateway_public_key) payload.payment_gateway_public_key = null;
       if (!payload.payment_gateway_secret_key) payload.payment_gateway_secret_key = null;
       if (!payload.shelly_auth_key) payload.shelly_auth_key = null;
+      if (!payload.sender_email) payload.sender_email = null;
+      if (!payload.sender_name) payload.sender_name = null;
+      if (!payload.smtp_host) payload.smtp_host = null;
+      if (payload.smtp_port === "" || payload.smtp_port === 0) payload.smtp_port = null;
+      else payload.smtp_port = parseInt(payload.smtp_port) || null;
+      if (!payload.smtp_user) payload.smtp_user = null;
+      if (!payload.smtp_pass) payload.smtp_pass = null;
       await updateClub.mutateAsync({ id: club.id, ...payload });
       toast.success("Club details saved");
     } catch (err: any) {
@@ -278,6 +291,41 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
             <p className="text-sm text-muted-foreground pb-2">
               Players can challenge up to <span className="font-semibold text-foreground">{form.challenge_levels_up}</span> position{form.challenge_levels_up !== 1 ? "s" : ""} above them.
             </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Email Sender Settings */}
+      <Card className="p-6 space-y-4">
+        <h3 className="font-semibold">Email Notifications</h3>
+        <p className="text-sm text-muted-foreground">
+          Configure your club's outgoing email settings for member communications (login confirmations, match reminders, etc.).
+          If left blank, the platform default (noreply@squashhub.co.za) will be used.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Sender Name</Label>
+            <Input value={form.sender_name} onChange={set("sender_name")} placeholder="e.g. CSIR Squash Club" />
+          </div>
+          <div className="space-y-1">
+            <Label>Sender Email</Label>
+            <Input type="email" value={form.sender_email} onChange={set("sender_email")} placeholder="e.g. noreply@csir-squash.co.za" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Host</Label>
+            <Input value={form.smtp_host} onChange={set("smtp_host")} placeholder="e.g. smtp.gmail.com" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Port</Label>
+            <Input type="number" value={form.smtp_port} onChange={e => setForm(p => ({ ...p, smtp_port: e.target.value }))} placeholder="587" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Username</Label>
+            <Input value={form.smtp_user} onChange={set("smtp_user")} placeholder="SMTP username" />
+          </div>
+          <div className="space-y-1">
+            <Label>SMTP Password</Label>
+            <Input type="password" value={form.smtp_pass} onChange={set("smtp_pass")} placeholder="SMTP password" />
           </div>
         </div>
       </Card>

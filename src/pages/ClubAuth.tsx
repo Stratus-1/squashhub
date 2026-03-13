@@ -91,6 +91,7 @@ export default function ClubAuth() {
       if (!valid) { toast.error("Captcha verification failed"); return; }
     }
     setLoading(true);
+    const nowIso = new Date().toISOString();
     // Pass member_number and club info in metadata so the handle_new_user trigger can link
     const { error } = await signUp(
       email,

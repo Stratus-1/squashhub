@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN shelly_auth_key text DEFAULT NULL;

@@ -550,6 +550,7 @@ export type Database = {
           payment_gateway_secret_key: string | null
           phone: string | null
           secretary_member_id: string | null
+          shelly_auth_key: string | null
           subdomain: string | null
           updated_at: string
         }
@@ -582,6 +583,7 @@ export type Database = {
           payment_gateway_secret_key?: string | null
           phone?: string | null
           secretary_member_id?: string | null
+          shelly_auth_key?: string | null
           subdomain?: string | null
           updated_at?: string
         }
@@ -614,6 +616,7 @@ export type Database = {
           payment_gateway_secret_key?: string | null
           phone?: string | null
           secretary_member_id?: string | null
+          shelly_auth_key?: string | null
           subdomain?: string | null
           updated_at?: string
         }

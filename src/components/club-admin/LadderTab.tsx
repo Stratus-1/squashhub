@@ -87,12 +87,10 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
 export function LadderTab({ clubId }: { clubId: string }) {
   const { data: players, isLoading } = useLadder();
   const { data: clubData } = useMyClub();
-  const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderPlayer[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderPlayer[] | null>(null);
   const [saving, setSaving] = useState(false);
-  const [statusSaving, setStatusSaving] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),

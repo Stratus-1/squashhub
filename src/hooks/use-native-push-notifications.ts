@@ -52,7 +52,7 @@ export function useNativePushNotifications() {
         try {
           await PushNotifications.createChannel({
             id: PUSH_CHANNEL_ID,
-            name: "GB Squash Alerts",
+            name: "SquashHub Alerts",
             description: "Challenges, matches, and reminders",
             importance: 4,
             visibility: 1,

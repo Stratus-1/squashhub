@@ -167,7 +167,7 @@ export function OnboardingWizard({
                       id="onb-location"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      placeholder="e.g. Gordon's Bay"
+                      placeholder="e.g. Cape Town"
                     />
                   </div>
                 </div>

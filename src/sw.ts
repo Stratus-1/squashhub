@@ -33,7 +33,7 @@ self.addEventListener("push", (event) => {
     data = { title: "SquashHub", body: event.data.text() };
   }
 
-  const title = (data?.title as string) || "GB Squash";
+  const title = (data?.title as string) || "SquashHub";
   const rawUrl = (data?.url as string) || "/notifications";
   const notificationId = (data?.tag as string) || "";
   const extra =

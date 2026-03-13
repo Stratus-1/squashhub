@@ -85,7 +85,7 @@ export function NativePushListener() {
             notifications: [
               {
                 id: Date.now(),
-                title: notification?.title || "GB Squash",
+                title: notification?.title || "SquashHub",
                 body: notification?.body || "",
                 extra: { ...(notification?.data || {}), url },
                 ...(Capacitor.getPlatform() === "android" ? { channelId: foregroundChannelId } : {}),

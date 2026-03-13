@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
           <p style="margin:0 0 14px 0; color:#334155">${safeBody}</p>
           <p style="margin:0 0 18px 0">
             <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
-              Open in GB Squash
+              Open in SquashHub
             </a>
           </p>
           <p style="margin:0; font-size:12px; color:#64748b">

@@ -271,8 +271,8 @@ export default function NewChallenge() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold font-heading">{profile.name}</p>
                 <div className="flex items-center gap-3 mt-0.5">
-                  {myRank ? (
-                    <Badge className="bg-primary/15 text-primary border-primary/30">Rank #{myRank}</Badge>
+                  {myLadderPosition ? (
+                    <Badge className="bg-primary/15 text-primary border-primary/30">Rank #{myLadderPosition}</Badge>
                   ) : (
                     <Badge variant="secondary">Unranked</Badge>
                   )}

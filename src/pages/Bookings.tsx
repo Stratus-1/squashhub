@@ -913,19 +913,26 @@ export default function Bookings() {
                   const isBlocked = !!(booking as any)?.is_blocked;
                   const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";
 
+                  // Check if this slot is in the past
+                  const slotDateTime = new Date(`${dateStr}T${time}:00`);
+                  const isPastSlot = slotDateTime < new Date();
+
                   return (
                     <motion.div
                       key={courtId}
-                      whileTap={{ scale: 0.97 }}
+                      whileTap={isPastSlot && !booking ? undefined : { scale: 0.97 }}
                       className={cn(
-                        "h-10 rounded-lg flex items-center justify-center text-xs cursor-pointer transition-all border",
-                        booking
-                          ? isMine
-                            ? "bg-primary/15 border-primary/40 hover:bg-primary/20"
-                            : "bg-secondary/80 border-border/50 hover:bg-secondary"
-                          : "border-border/30 hover:border-primary/30 hover:bg-primary/5 border-dashed"
+                        "h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
+                        isPastSlot && !booking
+                          ? "bg-muted/50 border-border/20 cursor-not-allowed opacity-50"
+                          : booking
+                            ? isMine
+                              ? "bg-primary/15 border-primary/40 hover:bg-primary/20 cursor-pointer"
+                              : "bg-secondary/80 border-border/50 hover:bg-secondary cursor-pointer"
+                            : "border-border/30 hover:border-primary/30 hover:bg-primary/5 border-dashed cursor-pointer"
                       )}
                       onClick={() => {
+                        if (isPastSlot && !booking) return;
                         if (booking) setBookingDetails(booking);
                         else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true });
                       }}
@@ -944,6 +951,8 @@ export default function Bookings() {
                             {!isBlocked && b ? ` vs ${b}` : ""}
                           </p>
                         </div>
+                      ) : isPastSlot ? (
+                        <span className="text-muted-foreground/20 text-[10px]">—</span>
                       ) : (
                         <span className="text-muted-foreground/30 text-[10px]">·</span>
                       )}

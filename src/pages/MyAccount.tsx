@@ -179,25 +179,72 @@ export default function MyAccount() {
       });
     }
 
-    // Credit transactions: topups, refunds, and fee payments BY the member are all credits (money in)
-    // Only "debit" type transactions (e.g. light usage auto-deducted from credit) are debits
+    // Build a set of fee labels referenced by existing "payment" type credit transactions
+    // to avoid double-counting paid fees that already have a credit transaction
+    const txDescriptions = new Set<string>();
     for (const tx of (transactions || [])) {
-      const isCredit = (tx as any).type === "topup" || (tx as any).type === "refund" || (tx as any).type === "payment";
-      lines.push({
-        id: `tx-${(tx as any).id}`,
-        date: (tx as any).created_at,
-        description: (tx as any).description || (tx as any).type,
-        debit: isCredit ? 0 : Number((tx as any).amount),
-        credit: isCredit ? Number((tx as any).amount) : 0,
-        status: (tx as any).status,
-      });
+      if ((tx as any).type === "payment") {
+        txDescriptions.add((tx as any).description || "");
+      }
     }
 
-    // Light session charges (debits)
+    // Credit transactions
+    for (const tx of (transactions || [])) {
+      const txType = (tx as any).type;
+      const amt = Number((tx as any).amount);
+
+      if (txType === "topup" || txType === "refund" || txType === "payment") {
+        // These are credits (money paid by member toward the club)
+        lines.push({
+          id: `tx-${(tx as any).id}`,
+          date: (tx as any).created_at,
+          description: (tx as any).description || txType,
+          debit: 0,
+          credit: Math.abs(amt),
+          status: (tx as any).status,
+        });
+      } else if (txType === "debit") {
+        // System debits (e.g. light usage) — amount is typically negative
+        lines.push({
+          id: `tx-${(tx as any).id}`,
+          date: (tx as any).created_at,
+          description: (tx as any).description || "Debit",
+          debit: Math.abs(amt),
+          credit: 0,
+          status: (tx as any).status,
+        });
+      }
+    }
+
+    // For paid fees that have NO matching credit transaction, add an implicit credit line
+    // (e.g. admin marked fee as paid directly without going through the payment flow)
+    for (const fee of (fees || [])) {
+      if (!(fee as any).paid || !(fee as any).paid_at) continue;
+      const feeLabel = (fee as any).fee_label as string;
+      // Check if any existing credit transaction references this fee
+      const hasMatchingTx = Array.from(txDescriptions).some(desc =>
+        desc.includes(feeLabel) || feeLabel.includes(desc)
+      );
+      if (!hasMatchingTx) {
+        lines.push({
+          id: `paid-${(fee as any).id}`,
+          date: (fee as any).paid_at,
+          description: `Payment: ${feeLabel}`,
+          debit: 0,
+          credit: Number((fee as any).amount),
+          status: "confirmed",
+        });
+      }
+    }
+
+    // Light session charges (debits) — skip if already captured via credit transactions
     for (const ls of (lightSessions || [])) {
+      const lsId = (ls as any).id;
+      const alreadyCaptured = (transactions || []).some((tx: any) => tx.reference === lsId);
+      if (alreadyCaptured) continue;
       if ((ls as any).fee_charged && Number((ls as any).fee_charged) > 0) {
         lines.push({
-          id: `light-${(ls as any).id}`,
+          id: `light-${lsId}`,
           date: (ls as any).ended_at || (ls as any).started_at,
           description: `Court lighting (${(ls as any).duration_minutes ? Math.round(Number((ls as any).duration_minutes)) + " min" : "session"})`,
           debit: Number((ls as any).fee_charged),
@@ -213,7 +260,6 @@ export default function MyAccount() {
     // Compute running balance (credits - debits)
     let balance = 0;
     return lines.map((line) => {
-      // Only count confirmed credits toward balance
       if (line.status === "confirmed" || line.status === "outstanding") {
         balance = balance + line.credit - line.debit;
       }

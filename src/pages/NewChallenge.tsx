@@ -283,15 +283,15 @@ export default function NewChallenge() {
               </div>
             </div>
 
-            {!myRank && (
+            {!myLadderPosition && (
               <div className="mt-3 p-3 rounded-md bg-destructive/5 border border-destructive/20">
                 <p className="text-xs text-destructive font-medium">
-                  You need a ladder rank before you can challenge. Play a match to get ranked.
+                  You need a ladder rank before you can challenge. Ask your club admin to rank you.
                 </p>
               </div>
             )}
 
-            {myRank && (
+            {myLadderPosition && (
               <div className="mt-3 p-3 rounded-md bg-muted/50 border">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-3.5 h-3.5 text-primary" />
@@ -300,9 +300,9 @@ export default function NewChallenge() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  You can challenge players within <strong className="text-foreground">2</strong> ladder positions of your rank
-                  (ranks <strong className="text-foreground">{Math.max(1, myRank - 2)}</strong> to{" "}
-                  <strong className="text-foreground">{Math.min(20, myRank + 2)}</strong>, excluding your own).
+                  You can challenge players within <strong className="text-foreground">{challengeLevelsUp}</strong> ladder positions above you
+                  (positions <strong className="text-foreground">{Math.max(1, myLadderPosition - challengeLevelsUp)}</strong> to{" "}
+                  <strong className="text-foreground">{myLadderPosition - 1}</strong>).
                 </p>
               </div>
             )}

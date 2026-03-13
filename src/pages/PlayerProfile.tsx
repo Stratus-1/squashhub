@@ -32,6 +32,10 @@ export default function PlayerProfile() {
   const queryClient = useQueryClient();
   const { data: me } = useProfile();
   const { data: player, isLoading, error: playerError } = usePlayerProfile(id);
+  const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
+  const { data: ladder } = useLadder(clubId);
+  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
   const isSelf = !!id && user?.id === id;
   const showRecentMatches = isSelf || (!!player && (((player as any)?.privacy_show_recent_matches) ?? true));
   const showTraining = isSelf || (!!player && (((player as any)?.privacy_show_training) ?? true));

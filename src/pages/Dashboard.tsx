@@ -119,7 +119,7 @@ export default function Dashboard() {
     <div className="bottom-nav-safe relative">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
-      <OnboardingWizard
+      <MemberOnboardingWizard
         open={showOnboarding}
         onComplete={() => {
           setShowOnboarding(false);

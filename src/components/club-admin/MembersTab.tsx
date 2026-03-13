@@ -643,8 +643,46 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       fee_category_id: form.fee_category_id || null,
       skill_level: form.skill_level || null,
     }).eq("id", member.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Member updated"); onClose(); }
+    if (error) { toast.error(error.message); return; }
+
+    // Save league registration (association number) if plays league
+    if (form.plays_league && form.association_id) {
+      // Find the league linked to the selected association
+      const { data: league } = await fromExt("leagues")
+        .select("id")
+        .eq("association_id", form.association_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (league) {
+        // Upsert league registration
+        const { data: existing } = await fromExt("member_league_registrations")
+          .select("id")
+          .eq("club_member_id", member.id)
+          .eq("league_id", league.id)
+          .maybeSingle();
+
+        if (existing) {
+          await fromExt("member_league_registrations")
+            .update({
+              league_association_number: form.association_number.trim(),
+              player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+            })
+            .eq("id", existing.id);
+        } else {
+          await fromExt("member_league_registrations")
+            .insert({
+              club_member_id: member.id,
+              league_id: league.id,
+              league_association_number: form.association_number.trim(),
+              player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+            });
+        }
+      }
+    }
+
+    toast.success("Member updated");
+    onClose();
   };
 
   return (

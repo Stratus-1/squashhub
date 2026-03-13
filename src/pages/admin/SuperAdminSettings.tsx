@@ -46,6 +46,10 @@ export default function SuperAdminSettings() {
       .in("key", [
         "platform_sender_email",
         "platform_sender_name",
+        "platform_smtp_host",
+        "platform_smtp_port",
+        "platform_smtp_user",
+        "platform_smtp_pass",
         "hcaptcha_enabled",
         "hcaptcha_site_key",
       ]);

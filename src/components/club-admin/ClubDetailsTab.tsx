@@ -94,6 +94,13 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       if (!payload.payment_gateway_public_key) payload.payment_gateway_public_key = null;
       if (!payload.payment_gateway_secret_key) payload.payment_gateway_secret_key = null;
       if (!payload.shelly_auth_key) payload.shelly_auth_key = null;
+      if (!payload.sender_email) payload.sender_email = null;
+      if (!payload.sender_name) payload.sender_name = null;
+      if (!payload.smtp_host) payload.smtp_host = null;
+      if (payload.smtp_port === "" || payload.smtp_port === 0) payload.smtp_port = null;
+      else payload.smtp_port = parseInt(payload.smtp_port) || null;
+      if (!payload.smtp_user) payload.smtp_user = null;
+      if (!payload.smtp_pass) payload.smtp_pass = null;
       await updateClub.mutateAsync({ id: club.id, ...payload });
       toast.success("Club details saved");
     } catch (err: any) {

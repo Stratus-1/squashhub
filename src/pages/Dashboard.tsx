@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
-import { AppleStatsCard } from "@/components/AppleStatsCard";
+
 import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

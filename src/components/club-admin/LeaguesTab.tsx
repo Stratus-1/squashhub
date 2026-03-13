@@ -716,8 +716,44 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   const handleSave = async () => {
     if (entries.length === 0) return;
     const { error } = await fromExt("leagues").insert(entries);
-    if (error) toast.error(error.message);
-    else { toast.success(`${entries.length} league(s) added`); onOpenChange(false); setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId(""); qc.invalidateQueries({ queryKey: ["leagues"] }); }
+    if (error) { toast.error(error.message); return; }
+
+    // After adding, renumber ALL league codes in each gender group from 001
+    if (prefix) {
+      // Fetch all leagues for this club to get fresh data including newly inserted
+      const { data: allLeagues } = await fromExt("leagues").select("*").eq("club_id", clubId);
+      if (allLeagues) {
+        const renumberGroup = async (filterFn: (l: any) => boolean) => {
+          const group = allLeagues
+            .filter(l => l.code?.startsWith(prefix) && filterFn(l))
+            .sort((a, b) => {
+              const numA = parseInt(a.name.match(/(\d+)/)?.[1] || "99");
+              const numB = parseInt(b.name.match(/(\d+)/)?.[1] || "99");
+              return numA - numB;
+            });
+          for (let i = 0; i < group.length; i++) {
+            const newCode = `${prefix}${String(i + 1).padStart(3, "0")}`;
+            if (group[i].code !== newCode) {
+              await fromExt("leagues").update({ code: newCode }).eq("id", group[i].id);
+            }
+          }
+        };
+
+        await renumberGroup(l => {
+          const n = l.name.toLowerCase();
+          return n.includes("men's") || n.startsWith("men");
+        });
+        await renumberGroup(l => {
+          const n = l.name.toLowerCase();
+          return n.includes("ladies") || n.includes("women");
+        });
+      }
+    }
+
+    toast.success(`${entries.length} league(s) added & codes renumbered`);
+    onOpenChange(false);
+    setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
+    qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 
   return (

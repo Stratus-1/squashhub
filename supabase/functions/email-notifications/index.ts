@@ -100,9 +100,7 @@ function renderTemplate(template: string, vars: Record<string, string>) {
   });
 }
 
-async function handleTestEmail(req: Request) {
-  // Authenticate via Supabase JWT
-  const authHeader = req.headers.get("authorization") ?? "";
+async function handleTestEmail(payload: Record<string, unknown>, authHeader: string) {
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
@@ -111,7 +109,6 @@ async function handleTestEmail(req: Request) {
   }
 
   try {
-    const payload = await req.json();
     const to = String(payload?.to || "").trim();
     const senderName = String(payload?.sender_name || "Test").trim();
     const senderEmail = String(payload?.sender_email || "").trim();
@@ -152,7 +149,6 @@ async function handleTestEmail(req: Request) {
       }
     }
 
-    // Send test email via Resend (the only provider currently wired)
     const subject = `✅ SquashHub Test Email — ${senderName}`;
     const html = `
       <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.4; color:#0f172a">
@@ -192,13 +188,13 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
 
-  // Handle test email from client (body has action field)
+  // Handle requests from the client (body contains action)
   if (!action && req.method === "POST") {
     try {
-      const cloned = req.clone();
-      const body = await cloned.json();
+      const body = await req.clone().json();
       if (body?.action === "test") {
-        return handleTestEmail(req);
+        const authHeader = req.headers.get("authorization") ?? "";
+        return handleTestEmail(body, authHeader);
       }
     } catch { /* not JSON or no action, fall through */ }
   }

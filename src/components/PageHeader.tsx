@@ -30,7 +30,7 @@ export function PageHeader({
   showBack,
   backTo,
 }: PageHeaderProps) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();

@@ -149,12 +149,24 @@ export default function PlayerProfile() {
     return (headToHead || []).find((r: any) => r.opponent_id === user.id) || null;
   }, [headToHead, id, user?.id]);
 
+  // Use ladder position for challenge eligibility
+  const playerLadderPosition = useMemo(() => {
+    if (!id || !ladder) return null;
+    return ladder.find(p => p.id === id)?.ladder_position ?? null;
+  }, [id, ladder]);
+
+  const myLadderPosition = useMemo(() => {
+    if (!user?.id || !ladder) return null;
+    return ladder.find(p => p.id === user.id)?.ladder_position ?? null;
+  }, [user?.id, ladder]);
+
   const canChallenge = useMemo(() => {
-    if (!user?.id || !me?.rank || !player?.rank) return false;
-    if (player.id === user.id) return false;
-    const diff = me.rank - player.rank;
-    return diff >= 1 && diff <= 2;
-  }, [me?.rank, player?.id, player?.rank, user?.id]);
+    if (!user?.id || !myLadderPosition || !playerLadderPosition) return false;
+    if (player?.id === user.id) return false;
+    if (myLadderPosition <= playerLadderPosition) return false;
+    const diff = myLadderPosition - playerLadderPosition;
+    return diff >= 1 && diff <= challengeLevelsUp;
+  }, [myLadderPosition, playerLadderPosition, player?.id, user?.id, challengeLevelsUp]);
 
   const stravaKm =
     (player as any)?.strava_connected && (player as any)?.strava_distance_m != null

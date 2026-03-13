@@ -20,13 +20,13 @@ export default function Terms() {
           <CardContent className="p-4 sm:p-6">
             <div className="prose prose-sm max-w-none dark:prose-invert">
               <p>
-                These Terms of Use (&quot;Terms&quot;) govern your use of Gordon&apos;s Bay Squash Hub (the
+                These Terms of Use (&quot;Terms&quot;) govern your use of SquashHub (the
                 &quot;Service&quot;). By creating an account or using the Service, you agree to these Terms.
               </p>
 
               <h2>1. Who we are</h2>
               <p>
-                The Service is provided for the Gordon&apos;s Bay Squash Club community to help with court bookings,
+                The Service is provided by SquashHub to help squash clubs with court bookings,
                 ladder play, events, and club communications.
               </p>
 

@@ -15,7 +15,7 @@ export default function Privacy() {
     <div className="bottom-nav-safe">
       <SEO
         title="Privacy Policy"
-        description="Privacy policy for Gordon's Bay Squash Hub (POPIA aligned)."
+        description="Privacy policy for SquashHub (POPIA aligned)."
         path="/privacy"
       />
 

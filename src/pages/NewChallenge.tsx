@@ -171,10 +171,10 @@ export default function NewChallenge() {
 
   function PlayerCard({ p, compact }: { p: (typeof ladder extends (infer U)[] | undefined ? U : never); compact?: boolean }) {
     const isSelected = p.id === opponentId;
-    const canChallenge = isEligible(p.rank);
+    const canChallenge = isEligible(p.ladder_position);
     const wr = winRate(p.wins, p.matches_played);
     const h2h = h2hMap.get(p.id);
-    const rankDiff = myRank && p.rank ? myRank - p.rank : null;
+    const rankDiff = myLadderPosition && p.ladder_position ? myLadderPosition - p.ladder_position : null;
 
     return (
       <motion.div

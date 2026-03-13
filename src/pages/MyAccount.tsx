@@ -103,52 +103,74 @@ export default function MyAccount() {
 
   // Pay fee mutation
   const payFeeMutation = useMutation({
-    mutationFn: async ({ feeId, method }: { feeId: string; method: string }) => {
-      const fee = (fees || []).find((f: any) => f.id === feeId);
-      if (!fee) throw new Error("Fee not found");
+    mutationFn: async ({ feeIds, method }: { feeIds: string[]; method: string }) => {
+      const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
+      if (!selectedFees.length) throw new Error("No fees selected");
+      const totalAmount = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
 
       if (method === "credit") {
-        if (creditBalance < Number(fee.amount)) {
+        if (creditBalance < totalAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
-        // Create payment transaction
+        // Deduct from credit and mark paid
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
-          amount: Number(fee.amount),
+          amount: totalAmount,
           type: "payment",
           method: "credit",
-          description: `Payment for ${fee.fee_label}`,
+          description: `Fee payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
           status: "confirmed",
         });
         if (txErr) throw txErr;
-      } else {
-        // EFT or card - create pending transaction
+        // Mark all selected fees as paid
+        for (const fee of selectedFees) {
+          const { error } = await fromExt("club_member_fee_payments")
+            .update({ paid: true, paid_at: new Date().toISOString() })
+            .eq("id", fee.id);
+          if (error) throw error;
+        }
+      } else if (method === "card") {
+        // Card payment — auto-confirm, mark fees paid immediately
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
-          amount: Number(fee.amount),
+          amount: totalAmount,
           type: "payment",
-          method,
-          description: `Payment for ${fee.fee_label}`,
+          method: "card",
+          description: `Card payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
+          status: "confirmed",
+        });
+        if (txErr) throw txErr;
+        for (const fee of selectedFees) {
+          const { error } = await fromExt("club_member_fee_payments")
+            .update({ paid: true, paid_at: new Date().toISOString() })
+            .eq("id", fee.id);
+          if (error) throw error;
+        }
+      } else {
+        // EFT — pending admin confirmation
+        const { error: txErr } = await fromExt("member_credit_transactions").insert({
+          user_id: user!.id,
+          amount: totalAmount,
+          type: "payment",
+          method: "eft",
+          description: `EFT payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
+          reference: `${memberNo} - Fees`,
           status: "pending",
         });
         if (txErr) throw txErr;
+        // Do NOT mark fees as paid — admin/secretary must confirm
       }
-
-      // Mark fee as paid
-      const { error: feeErr } = await fromExt("fee_payments")
-        .update({
-          paid: true,
-          paid_at: new Date().toISOString(),
-          payment_method: method,
-        })
-        .eq("id", feeId);
-      if (feeErr) throw feeErr;
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["fee-payments"] });
-      toast.success("Payment recorded successfully!");
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      if (vars.method === "eft") {
+        toast.success("EFT payment recorded. Your secretary/admin will confirm receipt.");
+      } else {
+        toast.success("Payment recorded successfully!");
+      }
       setPayFeeId(null);
+      setSelectedFeeIds([]);
     },
     onError: (e: any) => toast.error(e.message || "Payment failed"),
   });

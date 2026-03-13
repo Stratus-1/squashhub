@@ -655,8 +655,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
                     <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
-                    {m.league_player_rank && (
-                      <Badge variant="secondary" className="text-xs">Rank {m.league_player_rank}</Badge>
+                    {m.ladder_position && (
+                      <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>
                     )}
                   </label>
                 ))}

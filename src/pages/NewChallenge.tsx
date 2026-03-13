@@ -137,8 +137,8 @@ export default function NewChallenge() {
   }, [ladder, query, user?.id, myLadderPosition]);
 
   const onSend = async () => {
-    if (!myRank) return toast.error("You need a ladder position to challenge players");
-    if (!selectedEligible) return toast.error("You can only challenge players within 2 ladder positions");
+    if (!myLadderPosition) return toast.error("You need a ladder position to challenge players");
+    if (!selectedEligible) return toast.error(`You can only challenge players within ${challengeLevelsUp} ladder positions`);
 
     try {
       const challenge = await createChallenge.mutateAsync({

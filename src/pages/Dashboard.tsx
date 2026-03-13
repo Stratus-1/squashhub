@@ -41,10 +41,6 @@ export default function Dashboard() {
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
-  const matchesPlayed = profile?.matches_played ?? 0;
-  const wins = profile?.wins ?? 0;
-  const losses = profile?.losses ?? 0;
-  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
 
   const trackableBooking = useMemo(() => {
     const list = (myBookings || []).filter((b) => b.status === "active");

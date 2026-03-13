@@ -706,8 +706,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     {g.map((p) => (
                       <div key={p.id} className="flex items-center gap-2 py-1">
                         <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
-                        {p.league_player_rank && (
-                          <Badge variant="secondary" className="text-[10px]">#{p.league_player_rank}</Badge>
+                        {p.ladder_position && (
+                          <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>
                         )}
                         <Select
                           value={String(groupAssignments.get(p.id) ?? 0)}

@@ -7,11 +7,28 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
 
-export default function ClubLanding() {
+interface ClubData {
+  id: string;
+  name: string;
+  subdomain: string | null;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
+  logo_url: string | null;
+}
+
+interface ClubLandingProps {
+  hostClub?: ClubData | null;
+}
+
+export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { user } = useAuth();
 
-  const { data: club, isLoading, error } = useQuery({
+  // If hostClub is provided (subdomain routing), skip the query
+  const needsQuery = !hostClub && !!subdomain;
+
+  const { data: queriedClub, isLoading, error } = useQuery({
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
@@ -19,12 +36,16 @@ export default function ClubLanding() {
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      return data as ClubData | null;
     },
-    enabled: !!subdomain,
+    enabled: needsQuery,
   });
 
-  if (isLoading) {
+  const club = hostClub ?? queriedClub;
+  const loading = needsQuery && isLoading;
+  const displaySubdomain = club?.subdomain ?? subdomain;
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -38,7 +59,7 @@ export default function ClubLanding() {
         <Building2 className="w-12 h-12 text-muted-foreground" />
         <h1 className="text-xl font-bold font-heading">Club not found</h1>
         <p className="text-sm text-muted-foreground text-center">
-          No club with the abbreviation <span className="font-mono font-semibold text-foreground">"{subdomain}"</span> exists.
+          No club with the abbreviation <span className="font-mono font-semibold text-foreground">"{displaySubdomain}"</span> exists.
         </p>
         <Button variant="outline" onClick={() => window.location.href = "/"}>Go Home</Button>
       </div>
@@ -55,7 +76,7 @@ export default function ClubLanding() {
       <SEO
         title={`${club.name} | SquashHub`}
         description={`Join ${club.name} on SquashHub — book courts, track matches, and compete on the ladder.`}
-        path={`/c/${subdomain}`}
+        path={`/c/${displaySubdomain}`}
       />
       <Card className="max-w-md w-full p-8 text-center space-y-4">
         {club.logo_url ? (
@@ -64,7 +85,7 @@ export default function ClubLanding() {
           <Building2 className="w-12 h-12 text-primary mx-auto" />
         )}
         <h1 className="text-2xl font-bold font-heading">{club.name}</h1>
-        <p className="text-sm font-mono text-primary">{club.subdomain}.squashhub.app</p>
+        <p className="text-sm font-mono text-primary">{displaySubdomain}.squashhub.co.za</p>
         {club.address && <p className="text-sm text-muted-foreground">{club.address}</p>}
         <div className="pt-2 space-y-2">
           <Button className="w-full" onClick={() => window.location.href = `/auth?redirectTo=/dashboard`}>

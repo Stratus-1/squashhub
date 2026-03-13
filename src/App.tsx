@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ClubProvider, useClubContext } from "@/contexts/ClubContext";
 import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
@@ -110,16 +111,21 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { subdomain: clubSubdomain, club: clubFromHost, isLoading: clubLoading } = useClubContext();
   const location = useLocation();
   const backgroundLocation = (location.state as any)?.backgroundLocation as typeof location | undefined;
 
-  if (loading) {
+  if (loading || clubLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
+
+  // If on a club subdomain (e.g. wsc.squashhub.co.za), show club landing for unauthenticated users
+  // Authenticated users see the normal dashboard routes
+  const isClubSubdomain = !!clubSubdomain;
 
   const routeLocation = backgroundLocation || location;
 
@@ -134,7 +140,7 @@ function AppRoutes() {
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       <Routes location={routeLocation}>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={isClubSubdomain && !user ? <ClubLanding hostClub={clubFromHost} /> : <Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
@@ -202,7 +208,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <ClubProvider>
+            <AppRoutes />
+          </ClubProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

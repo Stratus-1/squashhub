@@ -115,7 +115,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/auth" replace />;
 
   const allowed = (roles || []).includes("admin") || (roles || []).includes("moderator");
-  if (!allowed) return <Navigate to="/dashboard" replace />;
+  if (!allowed) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

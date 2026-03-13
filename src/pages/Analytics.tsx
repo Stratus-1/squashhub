@@ -5,8 +5,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, BarChart3, Users, Clock, Trophy, Flame, TrendingUp, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClubAnalytics, usePersonalAnalytics, useMatchOfTheWeek } from "@/hooks/use-analytics";
+import { useProfile } from "@/hooks/use-data";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
+import { AppleStatsCard } from "@/components/AppleStatsCard";
 
 const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

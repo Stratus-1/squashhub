@@ -23,7 +23,6 @@ export default function Ladder() {
   const { data: players, isLoading } = useLadder(clubId);
   const { data: profile } = useProfile();
   const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
-  const myRank = profile?.rank ?? null;
   const queryClient = useQueryClient();
   const [blockedChallenge, setBlockedChallenge] = useState<{
     open: boolean;
@@ -41,21 +40,6 @@ export default function Ladder() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const getChallengeBlockReason = useMemo(() => {
-    return (playerId: string, opponentRank: number | null) => {
-      if (ladderStatus !== "active") return "The ladder is not yet active. Challenges will be enabled once the admin activates the ladder.";
-      if (!user?.id) return "You must be logged in to challenge players.";
-      if (playerId === user.id) return "You can't challenge yourself.";
-      if (!myRank) return "You need a ladder rank before you can challenge players.";
-      if (!opponentRank) return "This player is not ranked yet.";
-      const diff = Math.abs(myRank - opponentRank);
-      if (diff < 1) return "You can't challenge a player with the same rank.";
-      if (diff > 2) return "You may only challenge players within 2 ladder positions.";
-      if (myRank <= opponentRank) return "You may only challenge players ranked above you.";
-      return null;
-    };
-  }, [myRank, user?.id, ladderStatus]);
-
   const menPlayers = useMemo(() =>
     (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],
     [players]
@@ -66,13 +50,41 @@ export default function Ladder() {
     [players]
   );
 
+  // Build position maps from the gender-filtered sorted ladder (index+1 = position)
+  const positionMap = useMemo(() => {
+    const map = new Map<string, number>();
+    menPlayers.forEach((p, i) => map.set(p.id, i + 1));
+    ladiesPlayers.forEach((p, i) => map.set(p.id, i + 1));
+    return map;
+  }, [menPlayers, ladiesPlayers]);
+
+  const myPosition = user?.id ? positionMap.get(user.id) ?? null : null;
+
+  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
+
+  const getChallengeBlockReason = useMemo(() => {
+    return (playerId: string, opponentPosition: number | null) => {
+      if (ladderStatus !== "active") return "The ladder is not yet active. Challenges will be enabled once the admin activates the ladder.";
+      if (!user?.id) return "You must be logged in to challenge players.";
+      if (playerId === user.id) return "You can't challenge yourself.";
+      if (!myPosition) return "You need a ladder rank before you can challenge players.";
+      if (!opponentPosition) return "This player is not ranked yet.";
+      if (myPosition === opponentPosition) return "You can't challenge a player with the same rank.";
+      if (myPosition <= opponentPosition) return "You may only challenge players ranked above you.";
+      const diff = myPosition - opponentPosition;
+      if (diff > challengeLevelsUp) return `You may only challenge players within ${challengeLevelsUp} ladder positions above you.`;
+      return null;
+    };
+  }, [myPosition, user?.id, ladderStatus, challengeLevelsUp]);
+
   const handleNavigate = (playerId: string, isMe: boolean) => {
     if (isMe) navigate("/profile", { state: { backgroundLocation: location } });
     else navigate(`/players/${playerId}`);
   };
 
-  const handleChallenge = (playerId: string, rank: number | null) => {
-    const reason = getChallengeBlockReason(playerId, rank);
+  const handleChallenge = (playerId: string, _rank: number | null) => {
+    const opponentPosition = positionMap.get(playerId) ?? null;
+    const reason = getChallengeBlockReason(playerId, opponentPosition);
     if (reason) {
       setBlockedChallenge({ open: true, title: "Can't challenge this player", description: reason });
       return;
@@ -87,18 +99,21 @@ export default function Ladder() {
         <span className="text-muted-foreground font-normal ml-1.5">({list.length})</span>
       </h2>
       <div className="space-y-1.5">
-        {list.map((player, index) => (
-          <LadderPlayerCard
-            key={player.id}
-            player={player}
-            index={index}
-            isMe={player.id === user?.id}
-            isAdmin={false}
-            onNavigate={handleNavigate}
-            onChallenge={handleChallenge}
-            challengeBlocked={!!getChallengeBlockReason(player.id, player.rank)}
-          />
-        ))}
+        {list.map((player, index) => {
+          const playerPosition = positionMap.get(player.id) ?? null;
+          return (
+            <LadderPlayerCard
+              key={player.id}
+              player={player}
+              index={index}
+              isMe={player.id === user?.id}
+              isAdmin={false}
+              onNavigate={handleNavigate}
+              onChallenge={handleChallenge}
+              challengeBlocked={!!getChallengeBlockReason(player.id, playerPosition)}
+            />
+          );
+        })}
         {list.length === 0 && (
           <p className="text-xs text-muted-foreground py-4 text-center">No players yet</p>
         )}

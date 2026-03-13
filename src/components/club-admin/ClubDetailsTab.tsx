@@ -330,7 +330,6 @@ function CourtsSection({ clubId }: { clubId: string }) {
       </p>
       <div className="space-y-3">
         {courts.map(c => {
-          const isEditing = courtId in editingRelay || false;
           const courtId = c.id;
           const relayValue = editingRelay[courtId] ?? c.relay_device_id ?? "";
           return (

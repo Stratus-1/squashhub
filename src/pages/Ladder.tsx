@@ -23,7 +23,6 @@ export default function Ladder() {
   const { data: players, isLoading } = useLadder(clubId);
   const { data: profile } = useProfile();
   const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
-  const myRank = profile?.rank ?? null;
   const queryClient = useQueryClient();
   const [blockedChallenge, setBlockedChallenge] = useState<{
     open: boolean;

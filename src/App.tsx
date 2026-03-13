@@ -95,8 +95,8 @@ function AuthGate() {
 
   const safeRedirect =
     redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? redirectTo
-      : "/dashboard";
+      ? (redirectTo === "/dashboard" ? "/" : redirectTo)
+      : "/";
   return <Navigate to={safeRedirect} replace />;
 }
 

@@ -36,6 +36,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
+import AddMatchResult from "./pages/AddMatchResult";
 import PlayerProfile from "./pages/PlayerProfile";
 import RegisterClub from "./pages/RegisterClub";
 import ClubAdmin from "./pages/ClubAdmin";
@@ -212,6 +213,7 @@ function AppRoutes() {
         <Route path="/challenges/new" element={<Navigate to="/ladder" replace />} />
         <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
+        <Route path="/add-result" element={<ProtectedRoute><AddMatchResult /></ProtectedRoute>} />
         <Route path="/players/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
         <Route path="/integrations/strava/callback" element={<ProtectedRoute><StravaCallback /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

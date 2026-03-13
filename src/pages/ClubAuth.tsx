@@ -14,6 +14,7 @@ import { Eye, EyeOff, Building2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
+import { HCaptcha, verifyCaptchaToken } from "@/components/HCaptcha";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();

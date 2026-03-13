@@ -30,7 +30,7 @@ function getAgeFromSaId(idNumber: string): number | null {
 
 interface FeePaymentRow {
   id: string;
-  user_id: string;
+  club_member_id: string;
   fee_type: string;
   fee_label: string;
   amount: number;
@@ -68,8 +68,7 @@ function computeExpectedFees(
   existingPayments: FeePaymentRow[]
 ): ExpectedFee[] {
   const fees: ExpectedFee[] = [];
-  if (!member.user_id) return fees;
-  const memberPayments = existingPayments.filter(p => p.user_id === member.user_id);
+  const memberPayments = existingPayments.filter(p => p.club_member_id === member.id);
 
   // 1. Club membership fee (from fee category, pro-rated for new members)
   if (member.fee_category_id) {
@@ -153,7 +152,7 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
-  onCreateFee: (fee: ExpectedFee, userId: string) => void;
+  onCreateFee: (fee: ExpectedFee, clubMemberId: string) => void;
 }) {
   const displayName = m.profiles?.name || m.name || "—";
   const displayEmail = m.profiles?.email || m.email || "";
@@ -178,11 +177,7 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
         </p>
       </div>
       <div className="flex items-start gap-3 shrink-0">
-        {m.user_id ? (
-          <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.user_id!)} />
-        ) : (
-          <span className="text-[10px] text-muted-foreground italic">Not registered</span>
-        )}
+        <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
           {m.role !== "captain" && (
@@ -207,20 +202,20 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Fetch fee payments for all members with user_ids
-  const memberUserIds = members.filter(m => m.user_id).map(m => m.user_id!);
+  // Fetch fee payments for all club members
+  const memberIds = members.map(m => m.id);
   const { data: feePayments = [], refetch: refetchPayments } = useQuery({
-    queryKey: ["club-fee-payments", clubId, memberUserIds.join(",")],
+    queryKey: ["club-member-fee-payments", clubId, memberIds.join(",")],
     queryFn: async () => {
-      if (memberUserIds.length === 0) return [];
-      const { data, error } = await fromExt("fee_payments")
-        .select("id, user_id, fee_type, fee_label, amount, paid")
-        .in("user_id", memberUserIds)
+      if (memberIds.length === 0) return [];
+      const { data, error } = await fromExt("club_member_fee_payments")
+        .select("id, club_member_id, fee_type, fee_label, amount, paid")
+        .in("club_member_id", memberIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as FeePaymentRow[];
     },
-    enabled: memberUserIds.length > 0,
+    enabled: memberIds.length > 0,
   });
 
   const getFeesForMember = (member: ClubMember) => {
@@ -229,20 +224,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
   const handleTogglePaid = async (feeId: string, paid: boolean) => {
     const updates: any = { paid, paid_at: paid ? new Date().toISOString() : null };
-    const { error } = await fromExt("fee_payments").update(updates).eq("id", feeId);
+    const { error } = await fromExt("club_member_fee_payments").update(updates).eq("id", feeId);
     if (error) toast.error(error.message);
     else { toast.success(paid ? "Marked as paid" : "Marked as unpaid"); refetchPayments(); }
   };
 
-  /** Create a fee_payment record and immediately mark as paid */
-  const handleCreateFee = async (fee: ExpectedFee, userId: string) => {
-    const { error } = await fromExt("fee_payments").insert({
-      user_id: userId,
+  /** Create a member fee record and immediately mark as paid */
+  const handleCreateFee = async (fee: ExpectedFee, clubMemberId: string) => {
+    const { error } = await fromExt("club_member_fee_payments").insert({
+      club_member_id: clubMemberId,
       fee_type: fee.fee_type,
       fee_label: fee.fee_label,
       amount: fee.amount,
       paid: true,
       paid_at: new Date().toISOString(),
+      season_year: new Date().getFullYear(),
     });
     if (error) toast.error(error.message);
     else { toast.success(`${fee.fee_label} marked as paid`); refetchPayments(); }
@@ -441,7 +437,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
     try {
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
 
-      const { error } = await fromExt("club_members").insert({
+      const { data: memberData, error } = await fromExt("club_members").insert({
         club_id: clubId,
         user_id: profile?.id || null,
         name: trimmedName,
@@ -454,19 +450,20 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         gender: gender || undefined,
         skill_level: skillLevel || undefined,
         plays_league: playsLeague,
-      });
-      if (error) throw error;
+      }).select("id").single();
+      if (error || !memberData) throw error || new Error("Failed to create member");
 
-      // Auto-create fee_payment records for the new member (if they have a profile)
-      if (profile?.id && previewFees.length > 0) {
+      // Auto-create member fee records for the new member
+      if (previewFees.length > 0) {
         const feeRecords = previewFees.map((f, idx) => ({
-          user_id: profile.id,
+          club_member_id: memberData.id,
           fee_type: idx === 0 ? "membership" : (idx <= associations.filter(a => a.fee_annual > 0).length ? "association" : "national_body"),
           fee_label: f.label,
           amount: f.amount,
           paid: false,
+          season_year: new Date().getFullYear(),
         }));
-        await fromExt("fee_payments").insert(feeRecords);
+        await fromExt("club_member_fee_payments").insert(feeRecords);
       }
 
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
@@ -474,7 +471,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
-      qc.invalidateQueries({ queryKey: ["club-fee-payments"] });
+      qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to add member");
     } finally { setLoading(false); }

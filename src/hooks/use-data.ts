@@ -718,9 +718,13 @@ export function useCreateChallenge() {
     mutationFn: async ({
       opponentId,
       proposedDate,
+      proposedTime,
+      courtId,
     }: {
       opponentId: string;
       proposedDate?: string | null;
+      proposedTime?: string | null;
+      courtId?: number;
     }) => {
       if (!user) throw new Error("Must be logged in");
       if (!opponentId) throw new Error("Choose an opponent");
@@ -750,14 +754,17 @@ export function useCreateChallenge() {
         throw new Error("That player already has an active challenge. Try again later.");
       }
 
-      const { data, error } = await supabase
-        .from("challenges")
-        .insert({
-          challenger_id: user.id,
-          opponent_id: opponentId,
-          proposed_date: proposedDate ?? null,
-          status: "pending",
-        })
+      const insertPayload: Record<string, any> = {
+        challenger_id: user.id,
+        opponent_id: opponentId,
+        proposed_date: proposedDate ?? null,
+        status: "pending",
+      };
+      if (proposedTime) insertPayload.proposed_time = proposedTime;
+      if (courtId) insertPayload.court_id = courtId;
+
+      const { data, error } = await fromAny("challenges")
+        .insert(insertPayload)
         .select()
         .single();
       if (error) throw error;

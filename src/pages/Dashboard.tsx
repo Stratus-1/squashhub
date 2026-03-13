@@ -310,26 +310,25 @@ export default function Dashboard() {
         <IncomingChallengesCard
           userId={user?.id}
           challenges={challenges}
-          onViewAll={() => navigate("/challenges?view=inbox")}
+          onViewAll={() => navigate("/challenges")}
         />
       </div>
-
 
       {/* More Actions */}
       <div className="px-4 mt-5">
         <p className="text-sm font-semibold font-heading mb-2">More</p>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges/new")}>
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/ladder")}>
             <span className="inline-flex items-center gap-2">
               <Swords className="w-4 h-4" />
-              Create Challenge
+              Challenge Player
             </span>
             <ChevronRight className="w-4 h-4 opacity-70" />
           </Button>
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges?view=inbox")}>
+          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges")}>
             <span className="inline-flex items-center gap-2">
               <Swords className="w-4 h-4" />
-              Challenges Inbox
+              Challenges
             </span>
             <ChevronRight className="w-4 h-4 opacity-70" />
           </Button>

@@ -635,7 +635,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       club_member_number: form.club_member_number || null,
       role: form.role,
       plays_league: form.plays_league,
-      league_player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+      ladder_position: form.ladder_position ? Number(form.ladder_position) : null,
       id_number: form.id_number || null,
       gender: form.gender || null,
       phone: form.phone && form.phone !== "+27" ? form.phone : null,

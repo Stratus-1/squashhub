@@ -453,16 +453,17 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       });
       if (error) throw error;
 
-      // Auto-create fee_payment records for the new member (if they have a profile)
-      if (profile?.id && previewFees.length > 0) {
+      // Auto-create member fee records for the new member
+      if (previewFees.length > 0) {
         const feeRecords = previewFees.map((f, idx) => ({
-          user_id: profile.id,
+          club_member_id: memberData.id,
           fee_type: idx === 0 ? "membership" : (idx <= associations.filter(a => a.fee_annual > 0).length ? "association" : "national_body"),
           fee_label: f.label,
           amount: f.amount,
           paid: false,
+          season_year: new Date().getFullYear(),
         }));
-        await fromExt("fee_payments").insert(feeRecords);
+        await fromExt("club_member_fee_payments").insert(feeRecords);
       }
 
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";

@@ -37,9 +37,10 @@ export default function Dashboard() {
   const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
-  const { data: ladder } = useLadder();
+  const clubId = effectiveClub?.id || clubData?.club?.id;
+  const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
-  const { data: todayBookings } = useBookings(todayStr);
+  const { data: todayBookings } = useBookings(todayStr, clubId);
   const { data: myBookings } = useMyBookings();
   const { data: myScheduledMatches } = useMyScheduledMatches();
 

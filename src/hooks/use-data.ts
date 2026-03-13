@@ -127,17 +127,21 @@ export function useUnreadNotificationsCount() {
   });
 }
 
-export function useBookings(date: string) {
+export function useBookings(date: string, clubId?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["bookings", date],
+    queryKey: ["bookings", date, clubId],
     queryFn: async () => {
-      const { data: bookings, error } = await supabase
+      let query = supabase
         .from("bookings")
         .select("*")
         .eq("date", date)
         .eq("status", "active");
+      if (clubId) {
+        query = query.eq("club_id", clubId);
+      }
+      const { data: bookings, error } = await query;
       if (error) throw error;
 
       // Fetch player names for bookings
@@ -405,28 +409,38 @@ export function useMyScheduledMatches() {
   });
 }
 
-export function useLadder() {
+export function useLadder(clubId?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["ladder"],
+    queryKey: ["ladder", clubId],
     queryFn: async () => {
-      // 1. Get all club members with their league registrations
-      const { data: members, error: mErr } = await supabase
+      // 1. Get club members scoped to the user's club
+      let query = supabase
         .from("club_members")
         .select("id, name, email, user_id, gender, skill_level, plays_league, league_player_rank");
+      if (clubId) {
+        query = query.eq("club_id", clubId);
+      }
+      const { data: members, error: mErr } = await query;
       if (mErr) throw mErr;
 
       // 2. Get league registrations for best player_rank per member
-      const { data: regs } = await supabase
-        .from("member_league_registrations")
-        .select("club_member_id, player_rank")
-        .not("player_rank", "is", null)
-        .order("player_rank");
+      const memberIds = (members || []).map(m => m.id);
+      let regs: any[] = [];
+      if (memberIds.length > 0) {
+        const { data } = await supabase
+          .from("member_league_registrations")
+          .select("club_member_id, player_rank")
+          .in("club_member_id", memberIds)
+          .not("player_rank", "is", null)
+          .order("player_rank");
+        regs = data || [];
+      }
 
       // Build map: club_member_id -> best (lowest) league player_rank
       const leagueRankMap = new Map<string, number>();
-      for (const r of regs || []) {
+      for (const r of regs) {
         if (r.player_rank != null) {
           const existing = leagueRankMap.get(r.club_member_id);
           if (existing == null || r.player_rank < existing) {

@@ -18,9 +18,10 @@ export default function Ladder() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { data: players, isLoading } = useLadder();
-  const { data: profile } = useProfile();
   const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
+  const { data: players, isLoading } = useLadder(clubId);
+  const { data: profile } = useProfile();
   const ladderStatus = (clubData?.club as any)?.ladder_status || "unranked";
   const myRank = profile?.rank ?? null;
   const queryClient = useQueryClient();

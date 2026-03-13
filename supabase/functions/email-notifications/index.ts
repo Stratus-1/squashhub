@@ -149,6 +149,18 @@ async function handleTestEmail(payload: Record<string, unknown>, authHeader: str
       }
     }
 
+    const smtpHost = String(payload?.smtp_host || "").trim();
+    const smtpPort = Number(payload?.smtp_port) || 587;
+    const smtpUser = String(payload?.smtp_user || "").trim();
+    const smtpPass = String(payload?.smtp_pass || "").trim();
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      return new Response(JSON.stringify({ ok: false, reason: "Missing SMTP settings (host, user, or password)" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const subject = `✅ SquashHub Test Email — ${senderName}`;
     const html = `
       <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.4; color:#0f172a">
@@ -165,9 +177,30 @@ async function handleTestEmail(payload: Record<string, unknown>, authHeader: str
         </p>
       </div>
     `.trim();
-    const text = `Email Settings Working!\n\nThis is a test email from ${senderName} (${senderEmail}).\nYour club email configuration is set up correctly.\n`;
+    const textBody = `Email Settings Working!\n\nThis is a test email from ${senderName} (${senderEmail}).\nYour club email configuration is set up correctly.\n`;
 
-    const result = await sendViaResend({ to, subject, html, text });
+    // Send via club's own SMTP
+    const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpHost,
+        port: smtpPort,
+        tls: smtpPort === 465,
+        auth: { username: smtpUser, password: smtpPass },
+      },
+    });
+
+    await client.send({
+      from: `${senderName} <${senderEmail}>`,
+      to: to,
+      subject,
+      content: textBody,
+      html,
+    });
+
+    await client.close();
+
+    const result = { ok: true };
 
     return new Response(JSON.stringify(result), {
       status: result.ok ? 200 : (result.skipped ? 200 : 500),

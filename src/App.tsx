@@ -115,13 +115,17 @@ function AppRoutes() {
   const location = useLocation();
   const backgroundLocation = (location.state as any)?.backgroundLocation as typeof location | undefined;
 
-  if (loading) {
+  if (loading || clubLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
+
+  // If on a club subdomain (e.g. wsc.squashhub.co.za), show club landing for unauthenticated users
+  // Authenticated users see the normal dashboard routes
+  const isClubSubdomain = !!clubSubdomain;
 
   const routeLocation = backgroundLocation || location;
 

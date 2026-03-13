@@ -395,7 +395,7 @@ export default function MyAccount() {
                 {club.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {club.bank_account_name}</p>}
                 {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
                 {club.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {club.bank_branch_code}</p>}
-                <p className="text-xs"><span className="text-muted-foreground">Reference:</span> {profile?.name || user?.email}</p>
+                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Top-up</p>
               </Card>
             )}
 

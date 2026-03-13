@@ -129,7 +129,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
           smtp_port: parseInt(String(form.smtp_port)) || 587,
           smtp_user: form.smtp_user,
           smtp_pass: form.smtp_pass,
-          to: user?.email,
+          to: testEmailTo || user?.email,
         },
       });
       if (error) throw error;

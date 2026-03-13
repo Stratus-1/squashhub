@@ -311,6 +311,7 @@ export default function ClubAuth() {
                     </button>
                   </div>
                 </div>
+                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>

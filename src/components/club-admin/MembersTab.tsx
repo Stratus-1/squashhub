@@ -471,7 +471,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
-      qc.invalidateQueries({ queryKey: ["club-fee-payments"] });
+      qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to add member");
     } finally { setLoading(false); }

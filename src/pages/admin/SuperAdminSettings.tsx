@@ -85,6 +85,25 @@ export default function SuperAdminSettings() {
     setSaving(false);
   };
 
+  const handleSendTestEmail = async () => {
+    if (!user?.email) {
+      toast.error("No email address found for your account");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auth-email-hook?action=test", {
+        body: { to: user.email, source: "platform" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Test email sent to ${user.email}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send test email");
+    }
+    setSendingTest(false);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">

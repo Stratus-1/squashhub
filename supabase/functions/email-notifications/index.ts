@@ -47,7 +47,7 @@ async function sendViaResend(args: { to: string; subject: string; html: string; 
   const apiKey = (Deno.env.get("RESEND_API_KEY") || "").trim();
   if (!apiKey) return { ok: false, skipped: true, reason: "Missing RESEND_API_KEY" };
 
-  const from = (Deno.env.get("EMAIL_FROM") || "GB Squash <onboarding@resend.dev>").trim();
+  const from = (Deno.env.get("EMAIL_FROM") || "SquashHub <onboarding@resend.dev>").trim();
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
       ...(typeof (data as any)?.merge === "object" && (data as any).merge ? (data as any).merge : {}),
     };
 
-    let subject = `GB Squash: ${title}`;
+    let subject = `SquashHub: ${title}`;
     let html = "";
     let text = "";
 
@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
           <p style="margin:0 0 14px 0; color:#334155">${safeBody}</p>
           <p style="margin:0 0 18px 0">
             <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
-              Open in GB Squash
+              Open in SquashHub
             </a>
           </p>
           <p style="margin:0; font-size:12px; color:#64748b">

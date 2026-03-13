@@ -143,7 +143,7 @@ export function InstallAppPrompt() {
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {isIos
                     ? "On iPhone, install via “Add to Home Screen” so it behaves like a real app."
-                    : "Install GB Squash so it opens faster and feels like a real app."}
+                    : "Install SquashHub so it opens faster and feels like a real app."}
                 </p>
 
                 <div className="flex flex-wrap gap-2 mt-3">

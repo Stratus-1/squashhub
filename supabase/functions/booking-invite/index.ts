@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const from = (Deno.env.get("EMAIL_FROM") || "GB Squash <onboarding@resend.dev>").trim();
+    const from = (Deno.env.get("EMAIL_FROM") || "SquashHub <onboarding@resend.dev>").trim();
     const subject = `🏸 Squash Invitation from ${escapeHtml(inviterName)}`;
 
     const html = `

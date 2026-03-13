@@ -98,7 +98,7 @@ export default function BookingResponse() {
               Your booking has been confirmed. See you on the court!
             </p>
             <Button asChild className="mt-4">
-              <a href="/">Go to GB Squash Hub</a>
+              <a href="/">Go to SquashHub</a>
             </Button>
           </div>
         )}
@@ -113,7 +113,7 @@ export default function BookingResponse() {
               Thanks for letting us know. We've notified the organiser.
             </p>
             <Button asChild variant="outline" className="mt-4">
-              <a href="/">Go to GB Squash Hub</a>
+              <a href="/">Go to SquashHub</a>
             </Button>
           </div>
         )}
@@ -176,7 +176,7 @@ export default function BookingResponse() {
             <h2 className="text-xl font-heading font-bold">Something went wrong</h2>
             <p className="text-sm text-muted-foreground">{errorMsg}</p>
             <Button asChild variant="outline" className="mt-4">
-              <a href="/">Go to GB Squash Hub</a>
+              <a href="/">Go to SquashHub</a>
             </Button>
           </div>
         )}

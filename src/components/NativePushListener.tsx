@@ -46,7 +46,7 @@ export function NativePushListener() {
         try {
           await PushNotifications.createChannel({
             id: "gb_alerts",
-            name: "GB Squash Alerts",
+            name: "SquashHub Alerts",
             description: "Challenges, matches, and reminders",
             importance: 4,
             visibility: 1,
@@ -85,7 +85,7 @@ export function NativePushListener() {
             notifications: [
               {
                 id: Date.now(),
-                title: notification?.title || "GB Squash",
+                title: notification?.title || "SquashHub",
                 body: notification?.body || "",
                 extra: { ...(notification?.data || {}), url },
                 ...(Capacitor.getPlatform() === "android" ? { channelId: foregroundChannelId } : {}),

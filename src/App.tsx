@@ -220,7 +220,7 @@ function AppRoutes() {
         </Routes>
       )}
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
-      {user && <BottomNav />}
+      {user && !isAdminRoute && <BottomNav />}
       {user && <OfflineBanner />}
       {user && <LiveSessionBanner />}
       <InstallAppPrompt />

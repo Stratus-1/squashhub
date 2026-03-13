@@ -19,6 +19,7 @@ export default function Auth() {
   const [showReset, setShowReset] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   // Login form
   const [loginEmail, setLoginEmail] = useState("");

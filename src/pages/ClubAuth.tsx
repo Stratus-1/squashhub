@@ -233,6 +233,7 @@ export default function ClubAuth() {
               Back
             </Button>
           </Card>
+          <PoweredBySquashHub />
         </motion.div>
       </div>
     );

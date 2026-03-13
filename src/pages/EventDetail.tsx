@@ -173,7 +173,7 @@ export default function EventDetail() {
   const seoDescription = (() => {
     const raw = (event.description || "").replace(/\s+/g, " ").trim();
     if (raw) return raw.slice(0, 160);
-    return "Upcoming squash event at Gordon's Bay Squash Club.";
+    return "Upcoming squash event.";
   })();
   const eventUrlPath = `/events/${event.id}`;
 
@@ -201,17 +201,15 @@ export default function EventDetail() {
                     : "https://schema.org/EventScheduled",
                 location: {
                   "@type": "Place",
-                  name: event.location || "Gordon's Bay Squash Club",
+                  name: event.location || "Squash Club",
                   address: {
                     "@type": "PostalAddress",
-                    addressLocality: "Gordon's Bay",
-                    addressRegion: "Western Cape",
                     addressCountry: "ZA",
                   },
                 },
                 organizer: {
-                  "@type": "SportsClub",
-                  name: "Gordon's Bay Squash Club",
+                  "@type": "Organization",
+                  name: "SquashHub",
                   url: absoluteUrl("/"),
                 },
                 url: absoluteUrl(eventUrlPath),

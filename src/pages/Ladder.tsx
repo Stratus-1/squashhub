@@ -107,7 +107,7 @@ export default function Ladder() {
 
   return (
     <div className="bottom-nav-safe">
-      <SEO title="Player Ladder" description="See the latest squash ladder rankings at Gordon's Bay Squash Club." path="/ladder" noIndex />
+      <SEO title="Player Ladder" description="See the latest squash ladder rankings." path="/ladder" noIndex />
       <PageHeader
         title="Player Ladder"
         subtitle={`${(players || []).length} players ranked`}

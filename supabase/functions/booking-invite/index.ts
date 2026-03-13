@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       .single();
     if (invErr) throw invErr;
 
-    const siteUrl = (Deno.env.get("SITE_URL") || "https://gordon-s-bay-squash-hub.vercel.app").trim();
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://www.squashhub.co.za").trim();
     const inviteToken = (invite as any).token;
 
     const acceptUrl = `${siteUrl}/booking-response?token=${inviteToken}&action=accept`;
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
             </a>
           </div>
           <p style="margin:16px 0 0;font-size:12px;color:#64748b;text-align:center">
-            Gordon's Bay Squash Hub
+            SquashHub
           </p>
         </div>
       </div>

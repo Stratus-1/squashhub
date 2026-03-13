@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const siteUrl = (Deno.env.get("SITE_URL") || "https://gordon-s-bay-squash-hub.vercel.app").trim();
+    const siteUrl = (Deno.env.get("SITE_URL") || "https://www.squashhub.co.za").trim();
     const link = absoluteUrl(siteUrl, notifUrl);
 
     const managePrefsUrl = absoluteUrl(siteUrl, "/dashboard");

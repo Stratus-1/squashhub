@@ -83,7 +83,7 @@ export function NotificationListener() {
           // OS-level notification (foreground only)
           if (typeof Notification !== "undefined" && Notification.permission === "granted") {
             try {
-              const n = new Notification(row.title || "Gordon's Bay Squash", {
+              const n = new Notification(row.title || "SquashHub", {
                 body: row.message,
                 icon: "/pwa-192x192.png",
                 data: { url: targetUrl, notificationId: row.id },

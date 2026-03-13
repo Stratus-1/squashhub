@@ -248,7 +248,6 @@ export function MemberOnboardingWizard({
         .update({
           name: name.trim() || "New Player",
           phone: phone.trim() || null,
-          onboarding_completed: true,
         })
         .eq("id", user.id);
       if (profileErr) throw profileErr;

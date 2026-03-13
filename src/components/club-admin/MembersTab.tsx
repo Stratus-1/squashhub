@@ -666,7 +666,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           await fromExt("member_league_registrations")
             .update({
               league_association_number: form.association_number.trim(),
-              player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
             })
             .eq("id", existing.id);
         } else {
@@ -675,7 +675,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               club_member_id: member.id,
               league_id: league.id,
               league_association_number: form.association_number.trim(),
-              player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
             });
         }
       }

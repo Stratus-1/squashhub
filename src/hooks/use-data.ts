@@ -418,7 +418,7 @@ export function useLadder(clubId?: string) {
       // 1. Get club members scoped to the user's club
       let query = supabase
         .from("club_members")
-        .select("id, name, email, user_id, gender, skill_level, plays_league, league_player_rank");
+        .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position");
       if (clubId) {
         query = query.eq("club_id", clubId);
       }

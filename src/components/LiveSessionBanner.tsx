@@ -270,7 +270,7 @@ export function LiveSessionBanner() {
             </p>
             <div className="grid gap-2">
               {(courtsData || [])
-                .filter((c) => c.relay_device_id && c.id !== (displaySession?.court_id ?? -1))
+                .filter((c) => c.id !== (displaySession?.court_id ?? -1))
                 .map((court) => (
                   <Button
                     key={court.id}

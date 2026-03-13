@@ -24,6 +24,7 @@ import { format, addDays, subDays, getISODay, isToday, isTomorrow, isPast, parse
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile, useMyBookings } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Zap, ZapOff, ArrowRightLeft } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
 import {
   Dialog,
@@ -308,6 +309,23 @@ export default function Bookings() {
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const { data: bookings, isLoading } = useBookings(dateStr);
+  const [terminatingSession, setTerminatingSession] = useState(false);
+  const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
+
+  // Active light sessions for the current user
+  const { data: myActiveLightSessions = [], refetch: refetchSessions } = useQuery({
+    queryKey: ["my-active-light-sessions", user?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("light_sessions")
+        .select("id, booking_id, court_id, started_at, fee_per_hour, status")
+        .eq("user_id", user!.id)
+        .eq("status", "active");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
   const { data: champsBookings = [] } = useQuery({
     queryKey: ["club-champs-bookings", dateStr],
     queryFn: async () => {
@@ -556,23 +574,14 @@ export default function Bookings() {
         guestName: bookingDialog.guestName || null,
       });
 
-      // Deduct light fee from member's account if lights are on
-      if (bookingDialog.lightsOn && lightFeePerHour > 0 && user?.id) {
-        const lightCost = (bookingDialog.duration / 60) * lightFeePerHour;
+      // Mark lights_requested on the booking (edge function handles actual billing)
+      if (bookingDialog.lightsOn && user?.id) {
         try {
-          await fromExt("member_credit_transactions").insert({
-            user_id: user.id,
-            amount: -lightCost,
-            type: "debit",
-            method: "system",
-            status: "confirmed",
-            confirmed_at: new Date().toISOString(),
-            description: `Court lights – ${bookingDialog.duration}min on Court ${bookingDialog.courtId} (${dateStr})`,
-            reference: (created as any)?.id || bookingId,
-          });
-        } catch (lightErr: any) {
-          console.error("Failed to record light fee:", lightErr);
-          toast.error("Booking created but light fee could not be recorded");
+          await fromExt("bookings")
+            .update({ lights_requested: true })
+            .eq("id", (created as any)?.id || bookingId);
+        } catch (e: any) {
+          console.error("Failed to set lights_requested:", e);
         }
       }
 
@@ -664,6 +673,44 @@ export default function Bookings() {
       }
 
       toast.error(err.message || "Failed to book");
+    }
+  };
+
+  const handleTerminateSession = async (sessionId: string) => {
+    setTerminatingSession(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const resp = await supabase.functions.invoke("court-lights", {
+        body: { action: "terminate", session_id: sessionId },
+      });
+      if (resp.error) throw resp.error;
+      const result = resp.data;
+      toast.success(`Lights off! R${(result?.fee_charged || 0).toFixed(2)} charged for ${result?.duration_minutes || 0} minutes`);
+      refetchSessions();
+      setBookingDetails(null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to terminate session");
+    } finally {
+      setTerminatingSession(false);
+    }
+  };
+
+  const handleTransferCourt = async (sessionId: string, targetCourtId: number) => {
+    setTerminatingSession(true);
+    try {
+      const resp = await supabase.functions.invoke("court-lights", {
+        body: { action: "transfer", session_id: sessionId, target_court_id: targetCourtId },
+      });
+      if (resp.error) throw resp.error;
+      const result = resp.data;
+      toast.success(`Transferred! R${(result?.fee_charged || 0).toFixed(2)} charged for previous court. Lights on at new court.`);
+      refetchSessions();
+      setTransferDialog(null);
+      setBookingDetails(null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to transfer");
+    } finally {
+      setTerminatingSession(false);
     }
   };
 
@@ -976,6 +1023,52 @@ export default function Bookings() {
                 )}
               </div>
 
+              {/* Active light session info */}
+              {(() => {
+                const activeSession = (myActiveLightSessions as any[]).find(
+                  (s: any) => s.booking_id === bookingDetails.id
+                );
+                if (!activeSession) return null;
+                const startedAt = new Date(activeSession.started_at);
+                const elapsedMin = Math.round((Date.now() - startedAt.getTime()) / 60000);
+                const feePerHour = Number(activeSession.fee_per_hour) || 0;
+                const currentCost = Math.round(((elapsedMin / 60) * feePerHour) * 100) / 100;
+                return (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm font-semibold">Lights Active</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p>Running for {elapsedMin} min · R{currentCost.toFixed(2)} so far</p>
+                      <p>R{feePerHour}/hr — charged when session ends</p>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="gap-1.5 flex-1"
+                        disabled={terminatingSession}
+                        onClick={() => handleTerminateSession(activeSession.id)}
+                      >
+                        <ZapOff className="w-3.5 h-3.5" />
+                        {terminatingSession ? "Ending..." : "End Session"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 flex-1"
+                        disabled={terminatingSession}
+                        onClick={() => setTransferDialog({ sessionId: activeSession.id, currentCourtId: bookingDetails.court_id })}
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                        Transfer Court
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {bookingDetails.created_at && (
                 <p className="text-[10px] text-muted-foreground text-center">
                   Created {new Date(bookingDetails.created_at).toLocaleString()}
@@ -1159,7 +1252,7 @@ export default function Bookings() {
               {bookingDialog.lightsOn && lightFeePerHour > 0 && (
                 <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-xs">
                   <span className="font-semibold">💡 Light fee:</span>{" "}
-                  R{((bookingDialog.duration / 60) * lightFeePerHour).toFixed(2)} will be deducted from your account
+                  R{lightFeePerHour}/hr — charged based on actual usage when lights turn off
                 </div>
               )}
             </div>
@@ -1279,6 +1372,43 @@ export default function Bookings() {
         opponentName={shareDialog.opponentName}
         inviterName={me?.name || undefined}
       />
+
+      {/* Transfer Court Dialog */}
+      <Dialog open={!!transferDialog} onOpenChange={() => setTransferDialog(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Transfer to Another Court</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <p className="text-sm text-muted-foreground">
+              Select a court to transfer your lights to. The current court's lights will turn off and you'll be charged for actual usage.
+            </p>
+            <div className="grid gap-2">
+              {courts
+                .filter((c: number) => c !== transferDialog?.currentCourtId)
+                .map((courtId: number) => (
+                  <Button
+                    key={courtId}
+                    variant="outline"
+                    className="justify-start gap-2"
+                    disabled={terminatingSession}
+                    onClick={() => {
+                      if (transferDialog) {
+                        handleTransferCourt(transferDialog.sessionId, courtId);
+                      }
+                    }}
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    {getCourtName(courtId)}
+                  </Button>
+                ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferDialog(null)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

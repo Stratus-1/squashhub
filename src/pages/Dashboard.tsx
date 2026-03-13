@@ -216,9 +216,9 @@ export default function Dashboard() {
             {ladderStatus === "unranked" && "Ladder has not been ranked yet. Check back soon!"}
           </p>
         </div>
-        {profile?.rank != null && (
+        {(myLadderPosition != null || profile?.rank != null) && (
           <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-            #{profile.rank}{ladderStatus === "provisional" ? " (Prov.)" : ""}
+            #{myLadderPosition || profile?.rank}{ladderStatus === "provisional" ? " (Prov.)" : ""}
           </Badge>
         )}
       </div>

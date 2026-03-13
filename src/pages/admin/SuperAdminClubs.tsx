@@ -20,7 +20,7 @@ type Club = {
   email: string | null;
   phone: string | null;
   logo_url: string | null;
-  ladder_status: string;
+  
   created_at: string;
   member_count?: number;
 };

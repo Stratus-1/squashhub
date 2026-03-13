@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye } from "lucide-react";
+import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
 
 interface ClubChampsTabProps {

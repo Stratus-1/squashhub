@@ -36,7 +36,7 @@ type ProfileRow = {
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
-  rank: number | null;
+  rank: number | null; // kept for compatibility but not used as source of truth
   matches_played: number;
   wins: number;
   losses: number;

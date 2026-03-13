@@ -116,16 +116,17 @@ export default function Dashboard() {
       !profile.name || profile.name === "" || profile.name === "New Player";
 
     const hasClub = !!effectiveClub;
+    // Only show onboarding if the member hasn't been assigned a member number yet
+    // (member number is assigned during the onboarding wizard completion)
     const missingMemberData =
       hasClub &&
-      (!myClubMember ||
-        !myClubMember.id_number ||
-        !myClubMember.gender ||
-        !myClubMember.address ||
-        !myClubMember.fee_category_id ||
-        !myClubMember.club_member_number);
+      myClubMember &&
+      !myClubMember.club_member_number;
 
-    if ((legacyNeedsOnboarding || missingMemberData) && !onboardingDone) {
+    // If no club member record at all but club exists, they may need to register
+    const noMemberRecord = hasClub && !myClubMember && !isClubMemberLoading;
+
+    if ((legacyNeedsOnboarding || missingMemberData || noMemberRecord) && !onboardingDone) {
       setShowOnboarding(true);
     }
   }, [

@@ -33,8 +33,6 @@ export default function Dashboard() {
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
-  const ladderStatus = (effectiveClub as any)?.ladder_status || "unranked";
-  const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
   const clubId = effectiveClub?.id || clubData?.club?.id;

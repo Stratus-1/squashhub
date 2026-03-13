@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -90,11 +91,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AuthGate() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { subdomain: clubSubdomain } = useClubContext();
   const { data: roles, isLoading: rolesLoading } = useMyRoles();
   const [params] = useSearchParams();
   const redirectTo = (params.get("redirectTo") || "").trim();
+  const hardLogout = params.get("hardLogout") === "1" || params.get("logout") === "1";
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!hardLogout || !user) return;
+
+    setLoggingOut(true);
+    signOut().finally(() => {
+      if (active) setLoggingOut(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [hardLogout, user, signOut]);
+
+  if (hardLogout && (user || loggingOut)) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
+  }
 
   if (!user) {
     if (clubSubdomain) return <ClubAuth />;

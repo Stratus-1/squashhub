@@ -105,8 +105,8 @@ function AuthGate() {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   }
 
-  // Super admins go to /admin by default
-  const isAdmin = (roles || []).includes("admin");
+  // On a club subdomain, always redirect to club home (never /admin)
+  const isAdmin = !clubSubdomain && (roles || []).includes("admin");
   const defaultRedirect = isAdmin ? "/admin" : "/";
 
   const safeRedirect =

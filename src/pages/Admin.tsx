@@ -2594,7 +2594,7 @@ export default function Admin() {
                       const allIds = (profiles || []).map(p => p.id);
                       let ids: string[] = [];
                       if (broadcast.audience === "all") ids = allIds;
-                      if (broadcast.audience === "ranked") ids = (profiles || []).filter(p => p.rank != null).map(p => p.id);
+                      if (broadcast.audience === "ranked") ids = (profiles || []).filter(p => p.matches_played > 0).map(p => p.id);
                       if (broadcast.audience === "active30") {
                         const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
                         ids = (profiles || []).filter(p => { const last = (p as any).last_competitive_match_at as string | null | undefined; return last ? new Date(last).getTime() >= cutoff : false; }).map(p => p.id);

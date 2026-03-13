@@ -88,7 +88,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   const [step, setStep] = useState<WizardStep>("gender");
   const [showWizard, setShowWizard] = useState(false);
-
+  const [editingChampId, setEditingChampId] = useState<string | null>(null);
   // Wizard state
   const [gender, setGender] = useState<"men" | "ladies">("men");
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());

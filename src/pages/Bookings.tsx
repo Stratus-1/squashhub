@@ -701,43 +701,11 @@ export default function Bookings() {
             <p className="text-xs text-muted-foreground mt-0.5">
               {getDateLabel(selectedDate)} · {format(selectedDate, "d MMM")}
             </p>
+            <p className="text-[10px] text-primary mt-1 flex items-center gap-1">
+              <CalendarIcon className="w-3 h-3" /> Tap an open slot below to book a court
+            </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="sm"
-              className="h-8 px-3 text-xs gap-1.5"
-              onClick={() => {
-                // Find first available court and next open slot
-                const firstCourt = courts[0] || 1;
-                const now = new Date();
-                const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                const nextSlot = timeSlots.find((t) => {
-                  const slotMin = timeToMinutes(t);
-                  return isToday(selectedDate) ? slotMin >= currentMinutes : true;
-                }) || timeSlots[0];
-                // Find an open court at this slot
-                let openCourt = firstCourt;
-                for (const cId of courts) {
-                  if (!getBooking(cId, nextSlot)) {
-                    openCourt = cId;
-                    break;
-                  }
-                }
-                setBookingDialog({
-                  courtId: openCourt,
-                  time: nextSlot,
-                  opponentId: "",
-                  guestName: "",
-                  playerMode: "none",
-                  isFriendly: true,
-                  duration: 30,
-                  lightsOn: false,
-                });
-              }}
-            >
-              <CalendarIcon className="w-3.5 h-3.5" />
-              Book Court
-            </Button>
             {!isToday(selectedDate) && (
               <Button
                 variant="secondary"

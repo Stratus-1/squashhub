@@ -228,7 +228,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                 <span className="text-xs font-normal text-muted-foreground">({group.length})</span>
               </h3>
               <div className="space-y-2">
-                {all.map(m => <MemberCard key={m.id} member={m} onEdit={() => setEditMember(m)} onDelete={() => handleDelete(m.id)} />)}
+                {all.map(m => <MemberCard key={m.id} member={m} payments={getPaymentsForMember(m.user_id)} onEdit={() => setEditMember(m)} onDelete={() => handleDelete(m.id)} onTogglePaid={handleTogglePaid} />)}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
               </div>
               {gender === "Men" && unassigned.length > 0 && (

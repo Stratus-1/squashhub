@@ -37,10 +37,20 @@ export default function Dashboard() {
   const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
+  const { data: ladder } = useLadder();
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
   const { data: myBookings } = useMyBookings();
   const { data: myScheduledMatches } = useMyScheduledMatches();
+
+  // Find player's position on gender-specific ladder
+  const myLadderPosition = useMemo(() => {
+    if (!ladder || !myClubMember || !user) return null;
+    const gender = (myClubMember as any)?.gender;
+    const genderLadder = gender ? ladder.filter((p: any) => p.gender === gender) : ladder;
+    const idx = genderLadder.findIndex((p: any) => p.club_member_id === myClubMember.id || p.user_id === user.id);
+    return idx >= 0 ? idx + 1 : null;
+  }, [ladder, myClubMember, user]);
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });

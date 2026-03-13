@@ -392,7 +392,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#ff2d55]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Rank</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.rank ? `#${player.rank}` : "—"}</p>
+                <p className="text-lg font-bold font-heading mt-1">{playerLadderPosition ? `#${playerLadderPosition}` : "—"}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">ladder</p>
               </div>
             </div>

@@ -1187,6 +1187,13 @@ export default function Bookings() {
                   />
                 )}
               </div>
+
+              {bookingDialog.lightsOn && lightFeePerHour > 0 && (
+                <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-xs">
+                  <span className="font-semibold">💡 Light fee:</span>{" "}
+                  R{((bookingDialog.duration / 60) * lightFeePerHour).toFixed(2)} will be deducted from your account
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>

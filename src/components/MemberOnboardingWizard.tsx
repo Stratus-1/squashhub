@@ -312,6 +312,8 @@ export function MemberOnboardingWizard({
       queryClient.invalidateQueries({ queryKey: ["my-club"] });
       queryClient.invalidateQueries({ queryKey: ["my-club-member"] });
       queryClient.invalidateQueries({ queryKey: ["club-members"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       toast.success("Registration complete! Welcome to the club 🎉");
       onComplete();
     } catch (err: any) {

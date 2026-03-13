@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     const siteUrl = (Deno.env.get("SITE_URL") || "https://www.squashhub.co.za").trim();
     const link = absoluteUrl(siteUrl, notifUrl);
 
-    const managePrefsUrl = absoluteUrl(siteUrl, "/dashboard");
+    const managePrefsUrl = absoluteUrl(siteUrl, "/");
     const mergeVars: Record<string, string> = {
       name: String((profile as any)?.name || ""),
       email,

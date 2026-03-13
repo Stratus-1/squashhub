@@ -39,6 +39,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
     member_number_start: club.member_number_start ?? 1,
     challenge_levels_up: club.challenge_levels_up ?? 2,
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
+    shelly_auth_key: club.shelly_auth_key || "",
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -86,6 +87,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       if (!payload.payment_gateway) payload.payment_gateway = null;
       if (!payload.payment_gateway_public_key) payload.payment_gateway_public_key = null;
       if (!payload.payment_gateway_secret_key) payload.payment_gateway_secret_key = null;
+      if (!payload.shelly_auth_key) payload.shelly_auth_key = null;
       await updateClub.mutateAsync({ id: club.id, ...payload });
       toast.success("Club details saved");
     } catch (err: any) {
@@ -240,7 +242,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       {/* Court Lights */}
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Court Lights</h3>
-        <p className="text-sm text-muted-foreground">Set the fee charged per hour when court lights are switched on during a booking.</p>
+        <p className="text-sm text-muted-foreground">Configure automatic court light control via Shelly smart relays.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
             <Label>Light Fee per Hour (R)</Label>
@@ -251,6 +253,13 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
               {form.light_fee_per_hour > 0
                 ? <>Members will be charged <span className="font-semibold text-foreground">R{form.light_fee_per_hour}</span>/hour when lights are enabled.</>
                 : "No light fee configured — lights are free."}
+            </p>
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label>Shelly Cloud Auth Key</Label>
+            <Input type="password" value={form.shelly_auth_key} onChange={set("shelly_auth_key")} placeholder="Paste your Shelly Cloud auth key" />
+            <p className="text-xs text-muted-foreground">
+              Find this in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key. Required for automatic court light switching.
             </p>
           </div>
         </div>

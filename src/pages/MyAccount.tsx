@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Upload, Copy, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/use-data";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,8 +23,10 @@ export default function MyAccount() {
   const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: clubData } = useMyClub();
+  const { data: myClubMember } = useMyClubMember();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
+  const memberNo = myClubMember?.club_member_number || "N/A";
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");
@@ -156,7 +158,7 @@ export default function MyAccount() {
       club?.bank_account_name && `Account: ${club.bank_account_name}`,
       club?.bank_account_number && `Number: ${club.bank_account_number}`,
       club?.bank_branch_code && `Branch: ${club.bank_branch_code}`,
-      club?.bank_reference && `Reference: ${club.bank_reference}`,
+      `Reference: ${memberNo} - Top-up`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -393,7 +395,7 @@ export default function MyAccount() {
                 {club.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {club.bank_account_name}</p>}
                 {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
                 {club.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {club.bank_branch_code}</p>}
-                <p className="text-xs"><span className="text-muted-foreground">Reference:</span> {profile?.name || user?.email}</p>
+                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Top-up</p>
               </Card>
             )}
 
@@ -479,7 +481,7 @@ export default function MyAccount() {
                 {club.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {club.bank_account_name}</p>}
                 {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
                 {club.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {club.bank_branch_code}</p>}
-                <p className="text-xs"><span className="text-muted-foreground">Reference:</span> {payingFee?.fee_label} - {profile?.name}</p>
+                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - {payingFee?.fee_label}</p>
               </Card>
             )}
 

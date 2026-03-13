@@ -16,6 +16,7 @@ import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { FeedbackFab } from "@/components/FeedbackFab";
+import { LiveSessionBanner } from "@/components/LiveSessionBanner";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";

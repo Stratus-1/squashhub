@@ -25,7 +25,7 @@ export default function ClubAdmin() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           {club.logo_url ? (
             <img src={club.logo_url} alt={`${club.name} logo`} className="w-10 h-10 object-contain rounded-md" />

@@ -197,10 +197,16 @@ function AppRoutes() {
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><ClubChampsView /></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />
-        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-        <Route path="/admin/support" element={<AdminRoute><AdminSupport /></AdminRoute>} />
-        <Route path="/admin/events/new" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
-        <Route path="/admin/events/:id" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
+        <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
+          <Route index element={<SuperAdminDashboard />} />
+          <Route path="clubs" element={<SuperAdminClubs />} />
+          <Route path="users" element={<SuperAdminUsers />} />
+          <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
+          <Route path="settings" element={<SuperAdminSettings />} />
+          <Route path="support" element={<AdminSupport />} />
+          <Route path="events/new" element={<AdminEventEditor />} />
+          <Route path="events/:id" element={<AdminEventEditor />} />
+        </Route>
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />

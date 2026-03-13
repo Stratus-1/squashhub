@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLadder } from "@/hooks/use-data";
-import { useMyClub } from "@/hooks/use-club";
+import { useClubMembers } from "@/hooks/use-club";
 import { type LadderPlayer } from "@/components/LadderPlayerCard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { GripVertical, Loader2, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { rpcExt, fromExt } from "@/lib/supabase-ext";
+import { rpcExt } from "@/lib/supabase-ext";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -85,8 +85,9 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
 }
 
 export function LadderTab({ clubId }: { clubId: string }) {
-  const { data: players, isLoading } = useLadder(clubId);
-  const { data: clubData } = useMyClub();
+  const { data: players, isLoading, error } = useLadder(clubId);
+  const { data: membersFallback = [], isLoading: membersLoading } = useClubMembers(clubId);
+  
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderPlayer[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderPlayer[] | null>(null);
@@ -97,18 +98,54 @@ export function LadderTab({ clubId }: { clubId: string }) {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
+  const fallbackPlayers = useMemo(() => {
+    const list = (membersFallback || []).map((m: any) => {
+      const ladderPos = typeof m.ladder_position === "number" ? m.ladder_position : null;
+      return {
+        id: m.user_id || m.id,
+        club_member_id: m.id,
+        name: m.name || m.profiles?.name || m.email || "Unknown",
+        avatar_url: m.profiles?.avatar_url || null,
+        wins: 0,
+        losses: 0,
+        matches_played: 0,
+        rank: ladderPos,
+        league_rank: ladderPos,
+        ladder_position: ladderPos,
+        user_id: m.user_id || null,
+        gender: m.gender || null,
+      } as LadderPlayer;
+    });
+
+    list.sort((a, b) => {
+      if (a.league_rank != null && b.league_rank != null) return a.league_rank - b.league_rank;
+      if (a.league_rank != null) return -1;
+      if (b.league_rank != null) return 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+    return list;
+  }, [membersFallback]);
+
+  const sourcePlayers = players && players.length > 0 ? players : fallbackPlayers;
+
+  useEffect(() => {
+    if (!error) return;
+    toast.error("Could not load ladder stats. Showing member list.");
+  }, [error]);
+
   const menFromData = useMemo(() =>
-    (players || []).filter((p: any) =>
+    (sourcePlayers || []).filter((p: any) =>
       p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f"
     ) as LadderPlayer[],
-    [players]
+    [sourcePlayers]
   );
 
   const ladiesFromData = useMemo(() =>
-    (players || []).filter((p: any) =>
+    (sourcePlayers || []).filter((p: any) =>
       p.gender?.toLowerCase() === "female" || p.gender?.toLowerCase() === "ladies" || p.gender?.toLowerCase() === "f"
     ) as LadderPlayer[],
-    [players]
+    [sourcePlayers]
   );
 
   useEffect(() => {
@@ -162,7 +199,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
   }, [menOrder, ladiesOrder, queryClient]);
 
 
-  if (isLoading) {
+  if (isLoading || (membersLoading && (!players || players.length === 0))) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />

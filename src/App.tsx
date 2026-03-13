@@ -163,7 +163,7 @@ function AppRoutes() {
 
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
-      {user && <ClubBrandedBackground />}
+      {user && !isAdminRoute && <ClubBrandedBackground />}
       <Routes location={routeLocation}>
         <Route path="/" element={
           isClubSubdomain && !user

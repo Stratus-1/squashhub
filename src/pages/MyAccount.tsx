@@ -179,9 +179,10 @@ export default function MyAccount() {
       });
     }
 
-    // Credit transactions (topups = credit, payments = debit)
+    // Credit transactions: topups, refunds, and fee payments BY the member are all credits (money in)
+    // Only "debit" type transactions (e.g. light usage auto-deducted from credit) are debits
     for (const tx of (transactions || [])) {
-      const isCredit = (tx as any).type === "topup" || (tx as any).type === "refund";
+      const isCredit = (tx as any).type === "topup" || (tx as any).type === "refund" || (tx as any).type === "payment";
       lines.push({
         id: `tx-${(tx as any).id}`,
         date: (tx as any).created_at,

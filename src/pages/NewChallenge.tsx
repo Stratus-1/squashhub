@@ -359,7 +359,7 @@ export default function NewChallenge() {
                           {h2h.wins}-{h2h.losses}
                         </span>
                       )}
-                      {isEligible(step.rank) && (
+                      {isEligible(step.ladder_position) && (
                         <Badge className="text-[8px] px-1 py-0 mt-0.5 bg-primary/15 text-primary border-0">
                           Challenge
                         </Badge>

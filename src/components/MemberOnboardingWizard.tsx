@@ -50,7 +50,7 @@ function getGenderFromSAId(idNumber: string): string | null {
   if (!idNumber || idNumber.length < 7) return null;
   const genderDigit = parseInt(idNumber[6], 10);
   if (isNaN(genderDigit)) return null;
-  return genderDigit >= 5 ? "male" : "female";
+  return genderDigit >= 5 ? "Men" : "Ladies";
 }
 
 /** Generate next member number based on club settings */
@@ -429,8 +429,8 @@ export function MemberOnboardingWizard({
                       <Select value={gender} onValueChange={setGender}>
                         <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="Men">Male</SelectItem>
+                          <SelectItem value="Ladies">Female</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

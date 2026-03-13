@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 declare global {
@@ -17,7 +17,7 @@ interface HCaptchaProps {
   onExpire?: () => void;
 }
 
-let cachedSiteKey: string | null | undefined = undefined;
+let cachedSiteKey: string | null = null;
 
 async function getSiteKey(): Promise<string | null> {
   if (cachedSiteKey) return cachedSiteKey;
@@ -39,25 +39,31 @@ async function getSiteKey(): Promise<string | null> {
 export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const onVerifyRef = useRef(onVerify);
+  const onExpireRef = useRef(onExpire);
   const [siteKey, setSiteKey] = useState<string | null>(null);
+
+  // Keep refs in sync without triggering re-renders
+  onVerifyRef.current = onVerify;
+  onExpireRef.current = onExpire;
 
   useEffect(() => {
     getSiteKey().then(setSiteKey);
   }, []);
 
-  const renderWidget = useCallback(() => {
-    if (!containerRef.current || !window.hcaptcha || widgetIdRef.current !== null || !siteKey) return;
-
-    widgetIdRef.current = window.hcaptcha.render(containerRef.current, {
-      sitekey: siteKey,
-      callback: (token: string) => onVerify(token),
-      "expired-callback": () => onExpire?.(),
-      size: "compact",
-    });
-  }, [onVerify, onExpire, siteKey]);
-
   useEffect(() => {
     if (!siteKey) return;
+
+    const doRender = () => {
+      if (!containerRef.current || !window.hcaptcha || widgetIdRef.current !== null) return;
+
+      widgetIdRef.current = window.hcaptcha.render(containerRef.current, {
+        sitekey: siteKey,
+        callback: (token: string) => onVerifyRef.current(token),
+        "expired-callback": () => onExpireRef.current?.(),
+        size: "compact",
+      });
+    };
 
     if (!document.getElementById("hcaptcha-script")) {
       const script = document.createElement("script");
@@ -65,15 +71,15 @@ export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
       script.src = "https://js.hcaptcha.com/1/api.js?render=explicit";
       script.async = true;
       script.defer = true;
-      script.onload = () => renderWidget();
+      script.onload = () => doRender();
       document.head.appendChild(script);
     } else if (window.hcaptcha) {
-      renderWidget();
+      doRender();
     } else {
       const interval = setInterval(() => {
         if (window.hcaptcha) {
           clearInterval(interval);
-          renderWidget();
+          doRender();
         }
       }, 100);
       return () => clearInterval(interval);
@@ -85,7 +91,7 @@ export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
         widgetIdRef.current = null;
       }
     };
-  }, [renderWidget, siteKey]);
+  }, [siteKey]);
 
   if (!siteKey) return null;
 

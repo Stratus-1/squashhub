@@ -24,6 +24,7 @@ import { format, addDays, subDays, getISODay, isToday, isTomorrow, isPast, parse
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile, useMyBookings } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Zap, ZapOff, ArrowRightLeft } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
 import {
   Dialog,

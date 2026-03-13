@@ -401,7 +401,7 @@ export default function NewChallenge() {
                       <p className="text-sm font-semibold font-heading">{opponentProfile.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px]">
-                          Rank #{opponentProfile.rank}
+                          Ladder #{opponentProfile.ladder_position}
                         </Badge>
                         {!selectedEligible && (
                           <Badge variant="destructive" className="text-[10px]">Not eligible</Badge>

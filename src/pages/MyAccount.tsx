@@ -32,6 +32,7 @@ export default function MyAccount() {
   const [topUpAmount, setTopUpAmount] = useState("100");
   const [topUpMethod, setTopUpMethod] = useState<"eft" | "card">("eft");
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
+  const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
 
   // Credit transactions

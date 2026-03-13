@@ -202,20 +202,20 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Fetch fee payments for all members with user_ids
-  const memberUserIds = members.filter(m => m.user_id).map(m => m.user_id!);
+  // Fetch fee payments for all club members
+  const memberIds = members.map(m => m.id);
   const { data: feePayments = [], refetch: refetchPayments } = useQuery({
-    queryKey: ["club-fee-payments", clubId, memberUserIds.join(",")],
+    queryKey: ["club-member-fee-payments", clubId, memberIds.join(",")],
     queryFn: async () => {
-      if (memberUserIds.length === 0) return [];
-      const { data, error } = await fromExt("fee_payments")
-        .select("id, user_id, fee_type, fee_label, amount, paid")
-        .in("user_id", memberUserIds)
+      if (memberIds.length === 0) return [];
+      const { data, error } = await fromExt("club_member_fee_payments")
+        .select("id, club_member_id, fee_type, fee_label, amount, paid")
+        .in("club_member_id", memberIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as FeePaymentRow[];
     },
-    enabled: memberUserIds.length > 0,
+    enabled: memberIds.length > 0,
   });
 
   const getFeesForMember = (member: ClubMember) => {
@@ -224,20 +224,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
   const handleTogglePaid = async (feeId: string, paid: boolean) => {
     const updates: any = { paid, paid_at: paid ? new Date().toISOString() : null };
-    const { error } = await fromExt("fee_payments").update(updates).eq("id", feeId);
+    const { error } = await fromExt("club_member_fee_payments").update(updates).eq("id", feeId);
     if (error) toast.error(error.message);
     else { toast.success(paid ? "Marked as paid" : "Marked as unpaid"); refetchPayments(); }
   };
 
-  /** Create a fee_payment record and immediately mark as paid */
-  const handleCreateFee = async (fee: ExpectedFee, userId: string) => {
-    const { error } = await fromExt("fee_payments").insert({
-      user_id: userId,
+  /** Create a member fee record and immediately mark as paid */
+  const handleCreateFee = async (fee: ExpectedFee, clubMemberId: string) => {
+    const { error } = await fromExt("club_member_fee_payments").insert({
+      club_member_id: clubMemberId,
       fee_type: fee.fee_type,
       fee_label: fee.fee_label,
       amount: fee.amount,
       paid: true,
       paid_at: new Date().toISOString(),
+      season_year: new Date().getFullYear(),
     });
     if (error) toast.error(error.message);
     else { toast.success(`${fee.fee_label} marked as paid`); refetchPayments(); }

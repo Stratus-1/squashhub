@@ -218,6 +218,7 @@ Deno.serve(async (req) => {
     if (feeCharged > 0) {
       await supabase.from("member_credit_transactions").insert({
         user_id: userId,
+        club_id: session.club_id,
         amount: -feeCharged,
         type: "debit",
         method: "system",

@@ -5,8 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useLadder } from "@/hooks/use-data";
 import { useMyClubMember } from "@/hooks/use-club";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Swords, X, Trophy, Sparkles, HandMetal } from "lucide-react";

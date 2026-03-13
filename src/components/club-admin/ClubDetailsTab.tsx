@@ -87,6 +87,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
       if (!payload.payment_gateway) payload.payment_gateway = null;
       if (!payload.payment_gateway_public_key) payload.payment_gateway_public_key = null;
       if (!payload.payment_gateway_secret_key) payload.payment_gateway_secret_key = null;
+      if (!payload.shelly_auth_key) payload.shelly_auth_key = null;
       await updateClub.mutateAsync({ id: club.id, ...payload });
       toast.success("Club details saved");
     } catch (err: any) {

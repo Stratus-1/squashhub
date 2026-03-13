@@ -608,7 +608,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               ...p,
               association_id: assocId,
               association_number: data.league_association_number || "",
-              league_player_rank: data.player_rank ?? p.league_player_rank,
+              ladder_position: data.player_rank ?? p.ladder_position,
             }));
           }
           setRegLoaded(true);

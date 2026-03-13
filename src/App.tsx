@@ -155,15 +155,15 @@ function AppRoutes() {
           isClubSubdomain && !user
             ? <ClubLanding hostClub={clubFromHost} />
             : user
-              ? <Navigate to="/dashboard" replace />
+              ? <Dashboard />
               : <Home />
         } />
         <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />

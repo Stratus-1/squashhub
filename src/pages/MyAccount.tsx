@@ -193,6 +193,10 @@ export default function MyAccount() {
     }
   };
 
+  const selectedFeeTotal = unpaidFees
+    .filter((f: any) => selectedFeeIds.includes(f.id))
+    .reduce((s: number, f: any) => s + Number(f.amount), 0);
+
   const payingFee = (fees || []).find((f: any) => f.id === payFeeId);
 
   if (profileLoading) {

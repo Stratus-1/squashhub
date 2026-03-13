@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, Building2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { SEO } from "@/components/SEO";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";

@@ -148,8 +148,8 @@ export function WelcomeBanner() {
                     {(suggestedPlayer as any).name || "Unknown"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {typeof (suggestedPlayer as any).rank === "number"
-                      ? `Rank #${(suggestedPlayer as any).rank}`
+                    {typeof (suggestedPlayer as any).ladder_position === "number"
+                      ? `#${(suggestedPlayer as any).ladder_position} on ladder`
                       : "Unranked"}{" "}
                     · {(suggestedPlayer as any).wins || 0}W / {(suggestedPlayer as any).losses || 0}L
                   </p>

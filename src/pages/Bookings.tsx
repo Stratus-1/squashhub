@@ -1023,6 +1023,52 @@ export default function Bookings() {
                 )}
               </div>
 
+              {/* Active light session info */}
+              {(() => {
+                const activeSession = (myActiveLightSessions as any[]).find(
+                  (s: any) => s.booking_id === bookingDetails.id
+                );
+                if (!activeSession) return null;
+                const startedAt = new Date(activeSession.started_at);
+                const elapsedMin = Math.round((Date.now() - startedAt.getTime()) / 60000);
+                const feePerHour = Number(activeSession.fee_per_hour) || 0;
+                const currentCost = Math.round(((elapsedMin / 60) * feePerHour) * 100) / 100;
+                return (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm font-semibold">Lights Active</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p>Running for {elapsedMin} min · R{currentCost.toFixed(2)} so far</p>
+                      <p>R{feePerHour}/hr — charged when session ends</p>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="gap-1.5 flex-1"
+                        disabled={terminatingSession}
+                        onClick={() => handleTerminateSession(activeSession.id)}
+                      >
+                        <ZapOff className="w-3.5 h-3.5" />
+                        {terminatingSession ? "Ending..." : "End Session"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 flex-1"
+                        disabled={terminatingSession}
+                        onClick={() => setTransferDialog({ sessionId: activeSession.id, currentCourtId: bookingDetails.court_id })}
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                        Transfer Court
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {bookingDetails.created_at && (
                 <p className="text-[10px] text-muted-foreground text-center">
                   Created {new Date(bookingDetails.created_at).toLocaleString()}

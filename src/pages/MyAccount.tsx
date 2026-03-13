@@ -418,49 +418,62 @@ export default function MyAccount() {
         </motion.div>
       )}
 
-      {/* Transaction History */}
+      {/* Account Statement */}
       <motion.div
         className="px-4 mt-4 mb-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
       >
-        <h2 className="text-sm font-semibold font-heading mb-2">Transaction History</h2>
-        {txLoading ? (
+        <h2 className="text-sm font-semibold font-heading mb-2">Account Statement</h2>
+        {(txLoading || feesLoading || lightSessionsLoading) ? (
           <Card className="p-4 flex justify-center">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </Card>
-        ) : (transactions || []).length > 0 ? (
-          <div className="space-y-1.5">
-            {(transactions || []).slice(0, 10).map((tx: any) => (
-              <Card key={tx.id} className="p-2.5 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium truncate">{tx.description || tx.type}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {new Date(tx.created_at).toLocaleDateString()} · {tx.method?.toUpperCase()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={cn(
-                    "text-xs font-semibold",
-                    tx.type === "topup" || tx.type === "refund" ? "text-green-600" : "text-destructive"
-                  )}>
-                    {tx.type === "topup" || tx.type === "refund" ? "+" : "-"}R{Number(tx.amount).toFixed(2)}
+        ) : statementLines.length > 0 ? (
+          <Card className="overflow-hidden border">
+            {/* Header */}
+            <div className="grid grid-cols-[1fr_80px_80px_90px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span>Description</span>
+              <span className="text-right">Debit</span>
+              <span className="text-right">Credit</span>
+              <span className="text-right">Balance</span>
+            </div>
+            {/* Rows */}
+            <div className="divide-y">
+              {statementLines.map((line, i) => (
+                <div
+                  key={line.id}
+                  className={cn(
+                    "grid grid-cols-[1fr_80px_80px_90px] gap-1 px-3 py-2 text-xs items-center",
+                    line.status === "pending" && "opacity-60 bg-amber-500/5"
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{line.description}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(line.date).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" })}
+                      {line.status === "pending" && (
+                        <Badge variant="secondary" className="ml-1.5 text-[8px] bg-amber-500/10 text-amber-600 py-0 px-1">pending</Badge>
+                      )}
+                    </p>
+                  </div>
+                  <span className={cn("text-right tabular-nums", line.debit > 0 && "text-destructive")}>
+                    {line.debit > 0 ? `R${line.debit.toFixed(2)}` : ""}
                   </span>
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      "text-[9px]",
-                      tx.status === "confirmed" && "bg-green-500/10 text-green-600",
-                      tx.status === "pending" && "bg-amber-500/10 text-amber-600"
-                    )}
-                  >
-                    {tx.status}
-                  </Badge>
+                  <span className={cn("text-right tabular-nums", line.credit > 0 && "text-green-600")}>
+                    {line.credit > 0 ? `R${line.credit.toFixed(2)}` : ""}
+                  </span>
+                  <span className={cn(
+                    "text-right font-semibold tabular-nums",
+                    line.balance < 0 ? "text-destructive" : "text-green-600"
+                  )}>
+                    {line.balance < 0 ? "-" : ""}R{Math.abs(line.balance).toFixed(2)}
+                  </span>
                 </div>
-              </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Card>
         ) : (
           <Card className="p-3 text-center text-sm text-muted-foreground">
             No transactions yet

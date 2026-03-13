@@ -88,8 +88,8 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
         <p className="text-sm font-mono text-primary">{displaySubdomain}.squashhub.co.za</p>
         {club.address && <p className="text-sm text-muted-foreground">{club.address}</p>}
         <div className="pt-2 space-y-2">
-          <Button className="w-full" onClick={() => window.location.href = `/auth?redirectTo=/dashboard`}>
-            Sign In / Sign Up
+          <Button className="w-full" onClick={() => window.location.href = `/auth`}>
+            Sign In / Register
           </Button>
         </div>
       </Card>

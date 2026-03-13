@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLadder } from "@/hooks/use-data";
 import { useClubMembers } from "@/hooks/use-club";
-import { type LadderPlayer } from "@/components/LadderPlayerCard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { GripVertical, Loader2, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -28,7 +25,15 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: number }) {
+interface LadderMember {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  gender: string | null;
+  ladder_position: number | null;
+}
+
+function DraggablePlayerRow({ player, index }: { player: LadderMember; index: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id });
 
   const style = {
@@ -45,7 +50,6 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
       <Card className={cn(
         "p-2 flex items-center gap-2 transition-colors",
         isDragging && "shadow-lg ring-2 ring-primary/30 bg-muted",
-        index === 0 && "border-accent/50 bg-accent/5",
       )}>
         <div
           className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
@@ -55,12 +59,7 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
           <GripVertical className="w-4 h-4" />
         </div>
 
-        <div className={cn(
-          "w-6 h-6 rounded-full flex items-center justify-center font-heading font-bold text-[10px] shrink-0",
-          index === 0 ? "bg-accent text-accent-foreground" :
-          index <= 2 ? "bg-primary/15 text-primary" :
-          "bg-secondary text-muted-foreground"
-        )}>
+        <div className="w-6 h-6 rounded-full flex items-center justify-center font-heading font-bold text-[10px] shrink-0 bg-secondary text-muted-foreground">
           {index + 1}
         </div>
 
@@ -68,16 +67,6 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
 
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold truncate">{player.name}</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[10px] text-muted-foreground">
-              {player.wins}W-{player.losses}L
-            </span>
-            {player.league_rank != null && (
-              <Badge variant="secondary" className="text-[9px] px-1 py-0">
-                League #{player.league_rank}
-              </Badge>
-            )}
-          </div>
         </div>
       </Card>
     </div>
@@ -85,12 +74,10 @@ function DraggablePlayerRow({ player, index }: { player: LadderPlayer; index: nu
 }
 
 export function LadderTab({ clubId }: { clubId: string }) {
-  const { data: players, isLoading, error } = useLadder(clubId);
-  const { data: membersFallback = [], isLoading: membersLoading } = useClubMembers(clubId);
-  
+  const { data: members = [], isLoading } = useClubMembers(clubId);
   const queryClient = useQueryClient();
-  const [menOrder, setMenOrder] = useState<LadderPlayer[] | null>(null);
-  const [ladiesOrder, setLadiesOrder] = useState<LadderPlayer[] | null>(null);
+  const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
+  const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);
   const [saving, setSaving] = useState(false);
 
   const sensors = useSensors(
@@ -98,60 +85,56 @@ export function LadderTab({ clubId }: { clubId: string }) {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
-  const fallbackPlayers = useMemo(() => {
-    const list = (membersFallback || []).map((m: any) => {
-      const ladderPos = typeof m.ladder_position === "number" ? m.ladder_position : null;
-      return {
-        id: m.user_id || m.id,
-        club_member_id: m.id,
+  // Build simple lists from club members, sorted by existing ladder_position then name
+  const menFromData = useMemo(() =>
+    members
+      .filter((m: any) => {
+        const g = (m.gender || "").toLowerCase();
+        return g !== "female" && g !== "ladies" && g !== "f";
+      })
+      .sort((a: any, b: any) => {
+        const ap = a.ladder_position ?? 9999;
+        const bp = b.ladder_position ?? 9999;
+        if (ap !== bp) return ap - bp;
+        return (a.name || "").localeCompare(b.name || "");
+      })
+      .map((m: any) => ({
+        id: m.id,
         name: m.name || m.profiles?.name || m.email || "Unknown",
         avatar_url: m.profiles?.avatar_url || null,
-        wins: 0,
-        losses: 0,
-        matches_played: 0,
-        rank: ladderPos,
-        league_rank: ladderPos,
-        ladder_position: ladderPos,
-        user_id: m.user_id || null,
         gender: m.gender || null,
-      } as LadderPlayer;
-    });
-
-    list.sort((a, b) => {
-      if (a.league_rank != null && b.league_rank != null) return a.league_rank - b.league_rank;
-      if (a.league_rank != null) return -1;
-      if (b.league_rank != null) return 1;
-      return (a.name || "").localeCompare(b.name || "");
-    });
-
-    return list;
-  }, [membersFallback]);
-
-  const sourcePlayers = players && players.length > 0 ? players : fallbackPlayers;
-
-  useEffect(() => {
-    if (!error) return;
-    toast.error("Could not load ladder stats. Showing member list.");
-  }, [error]);
-
-  const menFromData = useMemo(() =>
-    (sourcePlayers || []).filter((p: any) =>
-      p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f"
-    ) as LadderPlayer[],
-    [sourcePlayers]
+        ladder_position: m.ladder_position ?? null,
+      })),
+    [members]
   );
 
   const ladiesFromData = useMemo(() =>
-    (sourcePlayers || []).filter((p: any) =>
-      p.gender?.toLowerCase() === "female" || p.gender?.toLowerCase() === "ladies" || p.gender?.toLowerCase() === "f"
-    ) as LadderPlayer[],
-    [sourcePlayers]
+    members
+      .filter((m: any) => {
+        const g = (m.gender || "").toLowerCase();
+        return g === "female" || g === "ladies" || g === "f";
+      })
+      .sort((a: any, b: any) => {
+        const ap = a.ladder_position ?? 9999;
+        const bp = b.ladder_position ?? 9999;
+        if (ap !== bp) return ap - bp;
+        return (a.name || "").localeCompare(b.name || "");
+      })
+      .map((m: any) => ({
+        id: m.id,
+        name: m.name || m.profiles?.name || m.email || "Unknown",
+        avatar_url: m.profiles?.avatar_url || null,
+        gender: m.gender || null,
+        ladder_position: m.ladder_position ?? null,
+      })),
+    [members]
   );
 
+  // Reset local order when data refreshes
   useEffect(() => {
     setMenOrder(null);
     setLadiesOrder(null);
-  }, [players]);
+  }, [members]);
 
   const menPlayers = menOrder ?? menFromData;
   const ladiesPlayers = ladiesOrder ?? ladiesFromData;
@@ -191,6 +174,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
       setMenOrder(null);
       setLadiesOrder(null);
       queryClient.invalidateQueries({ queryKey: ["ladder"] });
+      queryClient.invalidateQueries({ queryKey: ["club-members"] });
     } catch (e: any) {
       toast.error(e.message || "Failed to save order");
     } finally {
@@ -198,8 +182,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
     }
   }, [menOrder, ladiesOrder, queryClient]);
 
-
-  if (isLoading || (membersLoading && (!players || players.length === 0))) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -223,13 +206,11 @@ export function LadderTab({ clubId }: { clubId: string }) {
         </div>
       )}
 
-
       <p className="text-xs text-muted-foreground">
         Drag players to reorder their ladder position. Changes are reflected on the public ladder page after saving.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Men's */}
         <div>
           <h3 className="text-sm font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
             Men's Ladder
@@ -249,7 +230,6 @@ export function LadderTab({ clubId }: { clubId: string }) {
           </DndContext>
         </div>
 
-        {/* Ladies' */}
         <div>
           <h3 className="text-sm font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
             Ladies' Ladder

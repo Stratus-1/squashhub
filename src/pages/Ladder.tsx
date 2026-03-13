@@ -4,7 +4,7 @@ import { LadderPlayerCard, type LadderPlayer } from "@/components/LadderPlayerCa
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useProfile } from "@/hooks/use-data";

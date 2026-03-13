@@ -222,10 +222,22 @@ export default function SuperAdminSettings() {
             />
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Clubs that configure their own SMTP settings in Club Admin will use
-          those for member communications instead of the platform defaults.
-        </p>
+        <Separator />
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Clubs that configure their own SMTP settings in Club Admin will use
+            those for member communications instead of the platform defaults.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSendTestEmail}
+            disabled={sendingTest || !settings.platform_smtp_host}
+          >
+            <Send className="w-4 h-4 mr-2" />
+            {sendingTest ? "Sending..." : "Send Test Email"}
+          </Button>
+        </div>
       </Card>
 
       {/* hCaptcha Settings */}

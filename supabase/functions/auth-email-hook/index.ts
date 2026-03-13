@@ -20,7 +20,7 @@ function escapeHtml(s: string) {
     .replace(/'/g, "&#039;");
 }
 
-interface ClubSmtp {
+interface SmtpConfig {
   name: string;
   logo_url: string | null;
   sender_name: string | null;
@@ -31,7 +31,7 @@ interface ClubSmtp {
   smtp_pass: string | null;
 }
 
-async function getClubBySubdomain(subdomain: string): Promise<ClubSmtp | null> {
+async function getClubBySubdomain(subdomain: string): Promise<SmtpConfig | null> {
   const { data, error } = await supabaseAdmin
     .from("clubs")
     .select("name, logo_url, sender_name, sender_email, smtp_host, smtp_port, smtp_user, smtp_pass")
@@ -39,22 +39,57 @@ async function getClubBySubdomain(subdomain: string): Promise<ClubSmtp | null> {
     .single();
 
   if (error || !data) return null;
-  return data as ClubSmtp;
+  return data as SmtpConfig;
 }
 
-function hasSmtpConfig(club: ClubSmtp): boolean {
-  return !!(club.smtp_host && club.smtp_user && club.smtp_pass && club.sender_email);
+async function getPlatformSmtp(): Promise<SmtpConfig | null> {
+  const keys = [
+    "platform_sender_email",
+    "platform_sender_name",
+    "platform_smtp_host",
+    "platform_smtp_port",
+    "platform_smtp_user",
+    "platform_smtp_pass",
+  ];
+  const { data } = await supabaseAdmin
+    .from("app_settings")
+    .select("key, value")
+    .in("key", keys);
+
+  if (!data || data.length === 0) return null;
+
+  const map: Record<string, string> = {};
+  data.forEach((r: { key: string; value: string }) => (map[r.key] = r.value));
+
+  if (!map.platform_smtp_host || !map.platform_smtp_user || !map.platform_smtp_pass || !map.platform_sender_email) {
+    return null;
+  }
+
+  return {
+    name: map.platform_sender_name || "SquashHub",
+    logo_url: null,
+    sender_name: map.platform_sender_name || "SquashHub",
+    sender_email: map.platform_sender_email,
+    smtp_host: map.platform_smtp_host,
+    smtp_port: parseInt(map.platform_smtp_port || "587", 10),
+    smtp_user: map.platform_smtp_user,
+    smtp_pass: map.platform_smtp_pass,
+  };
+}
+
+function hasSmtpConfig(config: SmtpConfig): boolean {
+  return !!(config.smtp_host && config.smtp_user && config.smtp_pass && config.sender_email);
 }
 
 function buildConfirmationHtml(
-  club: ClubSmtp,
+  config: SmtpConfig,
   confirmationUrl: string,
   recipientName: string,
   emailType: string,
 ): string {
-  const clubName = escapeHtml(club.name);
-  const logoHtml = club.logo_url
-    ? `<img src="${escapeHtml(club.logo_url)}" alt="${clubName}" style="width:64px;height:64px;object-fit:contain;border-radius:8px;margin-bottom:16px" />`
+  const clubName = escapeHtml(config.name);
+  const logoHtml = config.logo_url
+    ? `<img src="${escapeHtml(config.logo_url)}" alt="${clubName}" style="width:64px;height:64px;object-fit:contain;border-radius:8px;margin-bottom:16px" />`
     : "";
 
   let heading = "Confirm Your Email";
@@ -77,6 +112,10 @@ function buildConfirmationHtml(
     heading = "Confirm Email Change";
     bodyText = `You requested to change the email address on your <strong>${clubName}</strong> account. Click the button below to confirm.`;
     buttonText = "Confirm Change";
+  } else if (emailType === "test") {
+    heading = "Test Email";
+    bodyText = `This is a test email from <strong>${clubName}</strong>. If you received this, your SMTP settings are working correctly! 🎉`;
+    buttonText = "Visit SquashHub";
   }
 
   const greeting = recipientName ? `Hi ${escapeHtml(recipientName)},` : "Hi,";
@@ -93,7 +132,7 @@ function buildConfirmationHtml(
   ${logoHtml}
   <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a">${heading}</h1>
   <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.5">${greeting}<br/>${bodyText}</p>
-  <a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;padding:12px 28px;background:#1a5c3a;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none;border-radius:8px">${buttonText}</a>
+  ${confirmationUrl ? `<a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;padding:12px 28px;background:#1a5c3a;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none;border-radius:8px">${buttonText}</a>` : ""}
   <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;line-height:1.4">
     If you didn't request this, you can safely ignore this email.
   </p>
@@ -108,22 +147,22 @@ function buildConfirmationHtml(
 </html>`.trim();
 }
 
-async function sendViaClubSmtp(
-  club: ClubSmtp,
+async function sendViaSmtp(
+  config: SmtpConfig,
   to: string,
   subject: string,
   html: string,
   text: string,
 ): Promise<{ ok: boolean; reason?: string }> {
   try {
-    const smtpHost = club.smtp_host!.trim();
-    const smtpPort = club.smtp_port || 587;
-    const smtpUser = club.smtp_user!.trim();
-    const smtpPass = club.smtp_pass!.trim();
-    const senderName = (club.sender_name || club.name).trim();
-    const senderEmail = club.sender_email!.trim();
+    const smtpHost = config.smtp_host!.trim();
+    const smtpPort = config.smtp_port || 587;
+    const smtpUser = config.smtp_user!.trim();
+    const smtpPass = config.smtp_pass!.trim();
+    const senderName = (config.sender_name || config.name).trim();
+    const senderEmail = config.sender_email!.trim();
 
-    console.log(`[auth-email-hook] Sending via club SMTP: ${smtpHost}:${smtpPort} from ${senderEmail} to ${to}`);
+    console.log(`[auth-email-hook] Sending via SMTP: ${smtpHost}:${smtpPort} from ${senderEmail} to ${to}`);
 
     const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
     const client = new SMTPClient({
@@ -158,9 +197,65 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const payload = await req.json();
+    const url = new URL(req.url);
+    const action = url.searchParams.get("action");
 
-    // Supabase auth hook payload structure
+    // ── Test email action ──
+    if (action === "test") {
+      const body = await req.json();
+      const recipientEmail = body.to;
+      const source = body.source || "platform"; // "platform" or "club"
+      const subdomain = body.subdomain || null;
+
+      if (!recipientEmail) {
+        return new Response(JSON.stringify({ error: "Missing 'to' field" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let smtpConfig: SmtpConfig | null = null;
+
+      if (source === "club" && subdomain) {
+        smtpConfig = await getClubBySubdomain(subdomain);
+      }
+
+      if (!smtpConfig || !hasSmtpConfig(smtpConfig)) {
+        smtpConfig = await getPlatformSmtp();
+      }
+
+      if (!smtpConfig || !hasSmtpConfig(smtpConfig)) {
+        return new Response(
+          JSON.stringify({ error: "No SMTP settings configured. Please save your SMTP settings first." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const subject = `${smtpConfig.name}: Test Email`;
+      const html = buildConfirmationHtml(smtpConfig, "", "", "test");
+      const text = `Test email from ${smtpConfig.name}. If you received this, your SMTP settings are working correctly!`;
+
+      const sendPromise = sendViaSmtp(smtpConfig, recipientEmail, subject, html, text);
+      const timeoutPromise = new Promise<{ ok: false; reason: string }>((resolve) =>
+        setTimeout(() => resolve({ ok: false, reason: "SMTP timeout after 15s" }), 15000),
+      );
+
+      const result = await Promise.race([sendPromise, timeoutPromise]);
+
+      if (result.ok) {
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ error: result.reason || "SMTP send failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ── Auth hook payload (standard Supabase auth email hook) ──
+    const payload = await req.json();
     const user = payload?.user;
     const emailData = payload?.email_data;
 
@@ -180,40 +275,42 @@ Deno.serve(async (req) => {
 
     console.log(`[auth-email-hook] email_type=${emailType}, club_subdomain=${clubSubdomain}, to=${recipientEmail}`);
 
-    // If no club subdomain in metadata, let Supabase send the default email
-    if (!clubSubdomain) {
-      console.log("[auth-email-hook] No club_subdomain, using default Supabase email");
-      return new Response(JSON.stringify({}), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Determine SMTP config: club first, then platform fallback
+    let smtpConfig: SmtpConfig | null = null;
+
+    if (clubSubdomain) {
+      smtpConfig = await getClubBySubdomain(clubSubdomain);
     }
 
-    // Look up club SMTP settings
-    const club = await getClubBySubdomain(clubSubdomain);
-    if (!club || !hasSmtpConfig(club)) {
-      console.log(`[auth-email-hook] Club "${clubSubdomain}" not found or missing SMTP config, using default`);
+    if (!smtpConfig || !hasSmtpConfig(smtpConfig)) {
+      // Try platform SMTP as fallback
+      smtpConfig = await getPlatformSmtp();
+    }
+
+    if (!smtpConfig || !hasSmtpConfig(smtpConfig)) {
+      console.log("[auth-email-hook] No SMTP config available (club or platform), using default Supabase email");
       return new Response(JSON.stringify({}), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Build branded email
-    let subject = `${club.name}: Confirm Your Email`;
+    let subject = `${smtpConfig.name}: Confirm Your Email`;
     if (emailType === "recovery" || emailType === "reset") {
-      subject = `${club.name}: Reset Your Password`;
+      subject = `${smtpConfig.name}: Reset Your Password`;
     } else if (emailType === "magic_link" || emailType === "magiclink") {
-      subject = `${club.name}: Your Login Link`;
+      subject = `${smtpConfig.name}: Your Login Link`;
     } else if (emailType === "invite") {
-      subject = `${club.name}: You've Been Invited`;
+      subject = `${smtpConfig.name}: You've Been Invited`;
     } else if (emailType === "email_change") {
-      subject = `${club.name}: Confirm Email Change`;
+      subject = `${smtpConfig.name}: Confirm Email Change`;
     }
 
-    const html = buildConfirmationHtml(club, confirmationUrl, recipientName, emailType);
-    const text = `${subject}\n\nClick the link below:\n${confirmationUrl}\n\nIf you didn't request this, ignore this email.\n\n${club.name} — Powered by SquashHub`;
+    const html = buildConfirmationHtml(smtpConfig, confirmationUrl, recipientName, emailType);
+    const text = `${subject}\n\nClick the link below:\n${confirmationUrl}\n\nIf you didn't request this, ignore this email.\n\n${smtpConfig.name} — Powered by SquashHub`;
 
     // Send with timeout
-    const sendPromise = sendViaClubSmtp(club, recipientEmail, subject, html, text);
+    const sendPromise = sendViaSmtp(smtpConfig, recipientEmail, subject, html, text);
     const timeoutPromise = new Promise<{ ok: false; reason: string }>((resolve) =>
       setTimeout(() => resolve({ ok: false, reason: "SMTP timeout after 15s" }), 15000),
     );
@@ -221,20 +318,19 @@ Deno.serve(async (req) => {
     const result = await Promise.race([sendPromise, timeoutPromise]);
 
     if (result.ok) {
-      // Tell Supabase NOT to send its default email
       return new Response(JSON.stringify({ handled: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // If club SMTP failed, fall back to default Supabase email
-    console.error(`[auth-email-hook] Club SMTP failed (${result.reason}), falling back to default`);
+    console.error(`[auth-email-hook] SMTP failed (${result.reason}), falling back to default`);
     return new Response(JSON.stringify({}), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("[auth-email-hook] Error:", err);
-    return new Response(JSON.stringify({}), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

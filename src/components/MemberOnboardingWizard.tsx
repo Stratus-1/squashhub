@@ -395,6 +395,17 @@ export function MemberOnboardingWizard({
                     <Label htmlFor="onb-address">Address</Label>
                     <Input id="onb-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City" />
                   </div>
+                  <div>
+                    <Label>Skill Level</Label>
+                    <Select value={skillLevel} onValueChange={setSkillLevel}>
+                      <SelectTrigger><SelectValue placeholder="Select skill level" /></SelectTrigger>
+                      <SelectContent>
+                        {SKILL_LEVELS.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </motion.div>
             )}

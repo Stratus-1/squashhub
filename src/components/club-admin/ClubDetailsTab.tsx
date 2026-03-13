@@ -18,6 +18,7 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
   const { data: members = [] } = useClubMembers(clubId);
   const [uploading, setUploading] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState(user?.email || "");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({

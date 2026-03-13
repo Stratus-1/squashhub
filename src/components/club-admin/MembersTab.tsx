@@ -28,12 +28,45 @@ function getAgeFromSaId(idNumber: string): number | null {
   return age >= 0 && age < 150 ? age : null;
 }
 
-function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdit: () => void; onDelete: () => void }) {
+interface FeePaymentRow {
+  id: string;
+  user_id: string;
+  fee_type: string;
+  fee_label: string;
+  amount: number;
+  paid: boolean;
+}
+
+function MemberPaymentStatus({ payments, onToggle }: { payments: FeePaymentRow[]; onToggle: (feeId: string, paid: boolean) => void }) {
+  if (payments.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
+  return (
+    <div className="flex flex-col gap-0.5">
+      {payments.map(f => (
+        <div key={f.id} className="flex items-center gap-1.5 text-[11px]">
+          <Checkbox
+            checked={f.paid}
+            onCheckedChange={(v) => onToggle(f.id, !!v)}
+            className="h-3.5 w-3.5"
+          />
+          <span className="truncate max-w-[100px]">{f.fee_label || f.fee_type}</span>
+          <span className="text-muted-foreground">R{f.amount}</span>
+          {f.paid ? (
+            <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
+          ) : (
+            <XCircle className="w-3 h-3 text-destructive shrink-0" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MemberCard({ member: m, payments, onEdit, onDelete, onTogglePaid }: { member: ClubMember; payments: FeePaymentRow[]; onEdit: () => void; onDelete: () => void; onTogglePaid: (feeId: string, paid: boolean) => void }) {
   const displayName = m.profiles?.name || m.name || "—";
   const displayEmail = m.profiles?.email || m.email || "";
   const isLinked = !!m.user_id;
   return (
-    <Card className="p-3 flex items-center justify-between gap-2">
+    <Card className="p-3 flex items-start justify-between gap-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium truncate">{displayName}</span>
@@ -52,11 +85,14 @@ function MemberCard({ member: m, onEdit, onDelete }: { member: ClubMember; onEdi
           {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
         </p>
       </div>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
-        {m.role !== "captain" && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
-        )}
+      <div className="flex items-start gap-3 shrink-0">
+        <MemberPaymentStatus payments={payments} onToggle={onTogglePaid} />
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
+          {m.role !== "captain" && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+          )}
+        </div>
       </div>
     </Card>
   );

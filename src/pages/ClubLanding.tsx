@@ -120,9 +120,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground/70 pt-2">
-              Powered by <span className="font-semibold text-foreground/60">SquashHub</span>
-            </p>
+            <PoweredBySquashHub />
           </motion.div>
         </div>
       </section>

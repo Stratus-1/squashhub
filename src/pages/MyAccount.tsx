@@ -23,8 +23,10 @@ export default function MyAccount() {
   const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: clubData } = useMyClub();
+  const { data: myClubMember } = useMyClubMember();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
+  const memberNo = myClubMember?.club_member_number || "N/A";
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");

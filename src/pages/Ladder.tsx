@@ -4,31 +4,55 @@ import { LadderPlayerCard, type LadderPlayer } from "@/components/LadderPlayerCa
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Swords } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLadder, useProfile } from "@/hooks/use-data";
+import { useLadder, useCreateChallenge } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-
+import { format, addDays } from "date-fns";
+import { toast } from "sonner";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 
 export default function Ladder() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
-  const { data: profile } = useProfile();
-  
   const queryClient = useQueryClient();
+  const createChallenge = useCreateChallenge();
+
+  // Challenge dialog state
+  const [challengeDialog, setChallengeDialog] = useState<{
+    open: boolean;
+    player: LadderPlayer | null;
+  }>({ open: false, player: null });
+  const [proposedDate, setProposedDate] = useState("");
+  const [proposedTime, setProposedTime] = useState("18:00");
+  const [courtId, setCourtId] = useState<string>("");
+  const [sending, setSending] = useState(false);
+
+  // Blocked challenge dialog
   const [blockedChallenge, setBlockedChallenge] = useState<{
     open: boolean;
-    title: string;
     description: string;
-  }>({ open: false, title: "Can't challenge this player", description: "" });
+  }>({ open: false, description: "" });
+
+  // Fetch courts
+  const [courts, setCourts] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    if (!clubId) return;
+    supabase.from("courts").select("id, name").eq("club_id", clubId).then(({ data }) => {
+      setCourts(data || []);
+      if (data && data.length > 0 && !courtId) setCourtId(String(data[0].id));
+    });
+  }, [clubId]);
 
   useEffect(() => {
     const channel = supabase
@@ -50,7 +74,6 @@ export default function Ladder() {
     [players]
   );
 
-  // Build position maps from the gender-filtered sorted ladder (index+1 = position)
   const positionMap = useMemo(() => {
     const map = new Map<string, number>();
     menPlayers.forEach((p, i) => map.set(p.id, i + 1));
@@ -59,37 +82,57 @@ export default function Ladder() {
   }, [menPlayers, ladiesPlayers]);
 
   const myPosition = user?.id ? positionMap.get(user.id) ?? null : null;
-
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
 
-  const getChallengeBlockReason = useMemo(() => {
-    return (playerId: string, opponentPosition: number | null) => {
-      if (!user?.id) return "You must be logged in to challenge players.";
-      if (playerId === user.id) return "You can't challenge yourself.";
-      if (!myPosition) return "You need a ladder rank before you can challenge players.";
-      if (!opponentPosition) return "This player is not ranked yet.";
-      if (myPosition === opponentPosition) return "You can't challenge a player with the same rank.";
-      if (myPosition <= opponentPosition) return "You may only challenge players ranked above you.";
-      const diff = myPosition - opponentPosition;
-      if (diff > challengeLevelsUp) return `You may only challenge players within ${challengeLevelsUp} ladder positions above you.`;
-      return null;
-    };
-  }, [myPosition, user?.id, challengeLevelsUp]);
-
-  const handleNavigate = (playerId: string, isMe: boolean) => {
-    if (isMe) navigate("/profile", { state: { backgroundLocation: location } });
-    else navigate(`/players/${playerId}`);
+  const canChallenge = (playerId: string): string | null => {
+    if (!user?.id) return "You must be logged in.";
+    if (playerId === user.id) return null; // just hide button for self
+    if (!myPosition) return "You need a ladder rank first.";
+    const opponentPos = positionMap.get(playerId) ?? null;
+    if (!opponentPos) return "This player is not ranked.";
+    if (myPosition <= opponentPos) return "You may only challenge players above you.";
+    const diff = myPosition - opponentPos;
+    if (diff > challengeLevelsUp) return `You can only challenge up to ${challengeLevelsUp} positions above you.`;
+    return null;
   };
 
-  const handleChallenge = (playerId: string, _rank: number | null) => {
-    const opponentPosition = positionMap.get(playerId) ?? null;
-    const reason = getChallengeBlockReason(playerId, opponentPosition);
+  const isChallengeable = (playerId: string): boolean => {
+    if (!user?.id || playerId === user.id) return false;
+    return canChallenge(playerId) === null;
+  };
+
+  const handleChallengeClick = (player: LadderPlayer) => {
+    const reason = canChallenge(player.id);
     if (reason) {
-      setBlockedChallenge({ open: true, title: "Can't challenge this player", description: reason });
+      setBlockedChallenge({ open: true, description: reason });
       return;
     }
-    navigate(`/challenges/new?opponent=${playerId}`);
+    setProposedDate(format(addDays(new Date(), 1), "yyyy-MM-dd"));
+    setProposedTime("18:00");
+    setChallengeDialog({ open: true, player });
   };
+
+  const handleSendChallenge = async () => {
+    if (!challengeDialog.player || !proposedDate || !proposedTime) return;
+    setSending(true);
+    try {
+      await createChallenge.mutateAsync({
+        opponentId: challengeDialog.player.id,
+        proposedDate,
+        proposedTime,
+        courtId: courtId ? Number(courtId) : undefined,
+      });
+      toast.success(`Challenge sent to ${challengeDialog.player.name}`);
+      setChallengeDialog({ open: false, player: null });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send challenge");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const getInitials = (name: string) =>
+    name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   const renderColumn = (title: string, list: LadderPlayer[]) => (
     <div>
@@ -98,21 +141,22 @@ export default function Ladder() {
         <span className="text-muted-foreground font-normal ml-1.5">({list.length})</span>
       </h2>
       <div className="space-y-1.5">
-        {list.map((player, index) => {
-          const playerPosition = positionMap.get(player.id) ?? null;
-          return (
-            <LadderPlayerCard
-              key={player.id}
-              player={player}
-              index={index}
-              isMe={player.id === user?.id}
-              isAdmin={false}
-              onNavigate={handleNavigate}
-              onChallenge={handleChallenge}
-              challengeBlocked={!!getChallengeBlockReason(player.id, playerPosition)}
-            />
-          );
-        })}
+        {list.map((player, index) => (
+          <LadderPlayerCard
+            key={player.id}
+            player={player}
+            index={index}
+            isMe={player.id === user?.id}
+            isAdmin={false}
+            onNavigate={(id, isMe) => {
+              if (isMe) navigate("/profile");
+              else navigate(`/players/${id}`);
+            }}
+            onChallenge={() => handleChallengeClick(player)}
+            challengeBlocked={!isChallengeable(player.id)}
+            highlightChallengeable={isChallengeable(player.id)}
+          />
+        ))}
         {list.length === 0 && (
           <p className="text-xs text-muted-foreground py-4 text-center">No players yet</p>
         )}
@@ -128,7 +172,6 @@ export default function Ladder() {
         subtitle={`${(players || []).length} players ranked`}
       />
 
-
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -140,13 +183,83 @@ export default function Ladder() {
         </div>
       )}
 
-      <Dialog
-        open={blockedChallenge.open}
-        onOpenChange={(open) => setBlockedChallenge((s) => ({ ...s, open }))}
-      >
+      {/* Challenge Dialog */}
+      <Dialog open={challengeDialog.open} onOpenChange={(open) => setChallengeDialog((s) => ({ ...s, open }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Swords className="w-4 h-4" />
+              Challenge {challengeDialog.player?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Propose a date and time. Your opponent can accept, decline, or suggest an alternative.
+            </DialogDescription>
+          </DialogHeader>
+
+          {challengeDialog.player && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+              <PlayerAvatar initials={getInitials(challengeDialog.player.name)} size="sm" avatarUrl={challengeDialog.player.avatar_url} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{challengeDialog.player.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  #{positionMap.get(challengeDialog.player.id)} on ladder · {challengeDialog.player.wins}W-{challengeDialog.player.losses}L
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Proposed Date</Label>
+              <Input
+                type="date"
+                value={proposedDate}
+                min={format(addDays(new Date(), 1), "yyyy-MM-dd")}
+                onChange={(e) => setProposedDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Proposed Time</Label>
+              <Input
+                type="time"
+                value={proposedTime}
+                onChange={(e) => setProposedTime(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            {courts.length > 0 && (
+              <div>
+                <Label className="text-xs">Court</Label>
+                <Select value={courtId} onValueChange={setCourtId}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {courts.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChallengeDialog({ open: false, player: null })}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendChallenge} disabled={sending || !proposedDate || !proposedTime}>
+              {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Swords className="w-4 h-4 mr-2" />}
+              Send Challenge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Blocked reason dialog */}
+      <Dialog open={blockedChallenge.open} onOpenChange={(open) => setBlockedChallenge((s) => ({ ...s, open }))}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{blockedChallenge.title}</DialogTitle>
+            <DialogTitle>Can't challenge this player</DialogTitle>
             <DialogDescription>{blockedChallenge.description}</DialogDescription>
           </DialogHeader>
           <DialogFooter>

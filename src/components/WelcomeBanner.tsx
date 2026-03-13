@@ -157,7 +157,7 @@ export function WelcomeBanner() {
                 <Button
                   size="sm"
                   className="shrink-0"
-                  onClick={() => navigate(`/challenges/new?opponent=${(suggestedPlayer as any).id}`)}
+                  onClick={() => navigate(`/ladder`)}
                 >
                   <Swords className="w-4 h-4 mr-1" />
                   Challenge

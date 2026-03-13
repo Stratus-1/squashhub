@@ -250,34 +250,57 @@ export type Database = {
         Row: {
           challenger_id: string
           club_id: string | null
+          confirmed_by: string | null
+          counter_date: string | null
+          counter_time: string | null
+          court_id: number | null
           created_at: string
           id: string
           opponent_id: string
           proposed_date: string | null
+          proposed_time: string | null
           status: string
           updated_at: string
         }
         Insert: {
           challenger_id: string
           club_id?: string | null
+          confirmed_by?: string | null
+          counter_date?: string | null
+          counter_time?: string | null
+          court_id?: number | null
           created_at?: string
           id?: string
           opponent_id: string
           proposed_date?: string | null
+          proposed_time?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           challenger_id?: string
           club_id?: string | null
+          confirmed_by?: string | null
+          counter_date?: string | null
+          counter_time?: string | null
+          court_id?: number | null
           created_at?: string
           id?: string
           opponent_id?: string
           proposed_date?: string | null
+          proposed_time?: string | null
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "challenges_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       club_champs: {
         Row: {

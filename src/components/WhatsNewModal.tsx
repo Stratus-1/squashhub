@@ -57,7 +57,7 @@ export function WhatsNewModal() {
         description: "Use the swords icon next to notifications to respond fast.",
         Icon: Swords,
         cta: "Open inbox",
-        onClick: () => navigate("/challenges?view=inbox"),
+        onClick: () => navigate("/challenges"),
         visible: !!user,
       },
       {

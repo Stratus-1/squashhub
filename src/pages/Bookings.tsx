@@ -887,7 +887,7 @@ export default function Bookings() {
                       )}
                       onClick={() => {
                         if (booking) setBookingDetails(booking);
-                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: false, duration: 30 });
+                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: false, duration: 30, lightsOn: false });
                       }}
                     >
                       {booking ? (

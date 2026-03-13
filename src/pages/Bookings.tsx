@@ -783,6 +783,11 @@ export default function Bookings() {
         </div>
       </div>
 
+      {/* Upcoming games first */}
+      <div className="mt-2">
+        <UpcomingGamesSection />
+      </div>
+
       {/* Date chips */}
       {!isLoading && (
         <div className="px-4 mt-2">
@@ -794,11 +799,6 @@ export default function Bookings() {
         </div>
       )}
       <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} />
-
-      {/* Upcoming games */}
-      <div className="mt-4">
-        <UpcomingGamesSection />
-      </div>
 
       {/* Court availability stats */}
       {!isLoading && (
@@ -868,7 +868,10 @@ export default function Bookings() {
         </div>
 
         <div className="gap-x-1.5 px-4 pb-2" style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}>
-          <div />
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[11px] font-bold text-foreground">{format(selectedDate, "EEE")}</span>
+            <span className="text-[10px] text-muted-foreground">{format(selectedDate, "d MMM")}</span>
+          </div>
           {courts.map((c: number) => (
             <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               {getCourtName(c)}

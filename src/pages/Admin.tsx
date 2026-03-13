@@ -3081,16 +3081,16 @@ export default function Admin() {
                   className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
                   disabled={!isAdmin || toggleSuspend.isPending}
                   onClick={() => {
-                    const isSuspending = selected.rank != null;
+                    const isSuspending = selected.matches_played > 0;
                     if (confirm(isSuspending
-                      ? `Suspend ${selected.name}? This will remove their rank and notify them.`
+                      ? `Suspend ${selected.name}? This will notify them.`
                       : `Reinstate ${selected.name}?`
                     )) {
                       toggleSuspend.mutate({ userId: selected.id, suspend: isSuspending });
                     }
                   }}
                 >
-                  {selected.rank != null ? "Suspend player" : "Reinstate player"}
+                  Suspend / Reinstate
                 </Button>
                 {!isAdmin && (
                   <p className="text-[11px] text-muted-foreground">Only admins can suspend players.</p>

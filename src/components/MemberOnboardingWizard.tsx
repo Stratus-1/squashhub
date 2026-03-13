@@ -403,9 +403,31 @@ export function MemberOnboardingWizard({
                   </div>
                   <div>
                     <Label htmlFor="onb-id">SA ID Number</Label>
-                    <Input id="onb-id" value={idNumber} onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="e.g. 8501015800082" maxLength={13} />
+                    <Input id="onb-id" value={idNumber} onChange={(e) => { setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13)); setCategoryAutoSet(false); }} placeholder="e.g. 8501015800082" maxLength={13} />
                     <p className="text-[10px] text-muted-foreground mt-0.5">Used to auto-detect age, gender & fee category</p>
+                    {detectedAge !== null && idNumber.length >= 6 && (
+                      <p className="text-[10px] text-primary mt-0.5">Age detected: {detectedAge} years</p>
+                    )}
                   </div>
+                  {/* Date of birth fallback when no valid age from ID */}
+                  {(idNumber.length < 6 || getAgeFromSAId(idNumber) === null) && (
+                    <div>
+                      <Label htmlFor="onb-dob">Date of Birth {!idNumber ? <span className="text-destructive">*</span> : ""}</Label>
+                      <Input
+                        id="onb-dob"
+                        type="date"
+                        value={dateOfBirth}
+                        onChange={(e) => { setDateOfBirth(e.target.value); setCategoryAutoSet(false); }}
+                        max={new Date().toISOString().split("T")[0]}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {idNumber ? "Could not determine age from ID — please enter your date of birth" : "Enter your date of birth to determine your fee category"}
+                      </p>
+                      {detectedAge !== null && dateOfBirth && (
+                        <p className="text-[10px] text-primary mt-0.5">Age: {detectedAge} years</p>
+                      )}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Gender</Label>

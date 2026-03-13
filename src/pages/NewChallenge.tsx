@@ -465,7 +465,7 @@ export default function NewChallenge() {
                 {selectedEligible && (
                   <div className="mt-3 p-3 rounded-md bg-primary/5 border border-primary/20">
                     <p className="text-xs text-primary font-medium">
-                      ✅ Win this challenge to move from #{myRank} → #{opponentProfile.rank}
+                      ✅ Win this challenge to move from #{myLadderPosition} → #{opponentProfile.ladder_position}
                     </p>
                   </div>
                 )}

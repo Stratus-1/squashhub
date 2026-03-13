@@ -783,6 +783,11 @@ export default function Bookings() {
         </div>
       </div>
 
+      {/* Upcoming games first */}
+      <div className="mt-2">
+        <UpcomingGamesSection />
+      </div>
+
       {/* Date chips */}
       {!isLoading && (
         <div className="px-4 mt-2">
@@ -794,11 +799,6 @@ export default function Bookings() {
         </div>
       )}
       <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} />
-
-      {/* Upcoming games */}
-      <div className="mt-4">
-        <UpcomingGamesSection />
-      </div>
 
       {/* Court availability stats */}
       {!isLoading && (

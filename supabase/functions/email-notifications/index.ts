@@ -47,7 +47,7 @@ async function sendViaResend(args: { to: string; subject: string; html: string; 
   const apiKey = (Deno.env.get("RESEND_API_KEY") || "").trim();
   if (!apiKey) return { ok: false, skipped: true, reason: "Missing RESEND_API_KEY" };
 
-  const from = (Deno.env.get("EMAIL_FROM") || "GB Squash <onboarding@resend.dev>").trim();
+  const from = (Deno.env.get("EMAIL_FROM") || "SquashHub <onboarding@resend.dev>").trim();
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

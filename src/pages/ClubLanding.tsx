@@ -2,10 +2,12 @@ import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2 } from "lucide-react";
+import { Loader2, Building2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
+import { motion } from "framer-motion";
+import heroBg from "@/assets/hero-bg.jpg";
 
 interface ClubData {
   id: string;

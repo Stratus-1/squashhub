@@ -40,6 +40,16 @@ export default function Ladder() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
+  const menPlayers = useMemo(() =>
+    (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],
+    [players]
+  );
+
+  const ladiesPlayers = useMemo(() =>
+    (players || []).filter((p: any) => p.gender?.toLowerCase() === "female" || p.gender?.toLowerCase() === "ladies" || p.gender?.toLowerCase() === "f") as LadderPlayer[],
+    [players]
+  );
+
   // Build position maps from the gender-filtered sorted ladder (index+1 = position)
   const positionMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -67,16 +77,6 @@ export default function Ladder() {
     };
   }, [myPosition, user?.id, ladderStatus, challengeLevelsUp]);
 
-  const menPlayers = useMemo(() =>
-    (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],
-    [players]
-  );
-
-  const ladiesPlayers = useMemo(() =>
-    (players || []).filter((p: any) => p.gender?.toLowerCase() === "female" || p.gender?.toLowerCase() === "ladies" || p.gender?.toLowerCase() === "f") as LadderPlayer[],
-    [players]
-  );
-
   const handleNavigate = (playerId: string, isMe: boolean) => {
     if (isMe) navigate("/profile", { state: { backgroundLocation: location } });
     else navigate(`/players/${playerId}`);
@@ -102,24 +102,18 @@ export default function Ladder() {
         {list.map((player, index) => {
           const playerPosition = positionMap.get(player.id) ?? null;
           return (
-          <LadderPlayerCard
-            key={player.id}
-            player={player}
-            index={index}
-            isMe={player.id === user?.id}
-            isAdmin={false}
-            onNavigate={handleNavigate}
-            onChallenge={handleChallenge}
-            challengeBlocked={!!getChallengeBlockReason(player.id, playerPosition)}
-          />
-        ))}
-        {list.length === 0 && (
-          <p className="text-xs text-muted-foreground py-4 text-center">No players yet</p>
-        )}
-      </div>
-    </div>
-  );
-
+            <LadderPlayerCard
+              key={player.id}
+              player={player}
+              index={index}
+              isMe={player.id === user?.id}
+              isAdmin={false}
+              onNavigate={handleNavigate}
+              onChallenge={handleChallenge}
+              challengeBlocked={!!getChallengeBlockReason(player.id, playerPosition)}
+            />
+          );
+        })}
   return (
     <div className="bottom-nav-safe">
       <SEO title="Player Ladder" description="See the latest squash ladder rankings." path="/ladder" noIndex />

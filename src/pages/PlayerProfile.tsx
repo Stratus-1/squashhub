@@ -288,7 +288,7 @@ export default function PlayerProfile() {
               <p className="text-xs text-muted-foreground mt-0.5">At-a-glance stats.</p>
             </div>
             <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border border-primary/20 shrink-0">
-              {player.rank ? `Rank #${player.rank}` : "Unranked"}
+              {playerLadderPosition ? `Rank #${playerLadderPosition}` : "Unranked"}
             </Badge>
           </div>
 

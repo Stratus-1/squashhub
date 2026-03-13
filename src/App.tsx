@@ -179,6 +179,7 @@ function AppRoutes() {
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
       {user && <BottomNav />}
       {user && <OfflineBanner />}
+      {user && <LiveSessionBanner />}
       <InstallAppPrompt />
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}

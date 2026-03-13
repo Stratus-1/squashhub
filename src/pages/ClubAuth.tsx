@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
+import heroBg from "@/assets/hero-bg.jpg";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();

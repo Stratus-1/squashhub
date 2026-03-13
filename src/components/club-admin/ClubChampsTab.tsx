@@ -303,7 +303,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // 2. Create entries
       const entries = groups.flatMap((groupPlayers, gi) =>
         groupPlayers.map((p) => ({
-          champ_id: champ.id,
+          champ_id: champId,
           club_member_id: p.id,
           group_number: gi + 1,
         }))
@@ -313,7 +313,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // 3. Create matches
       const matches = schedulePreview.allMatches.map((m) => ({
-        champ_id: champ.id,
+        champ_id: champId,
         group_number: m.groupNum,
         round_number: m.roundNum,
         player_a_member_id: m.playerA,
@@ -357,11 +357,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);
       }
 
-      return champ;
+      return { id: champId };
     },
     onSuccess: () => {
-      toast.success("Club Champs created with all matches scheduled!");
+      toast.success(editingChampId ? "Club Champs updated & rescheduled!" : "Club Champs created with all matches scheduled!");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
+      qc.invalidateQueries({ queryKey: ["club-champ-entries"] });
+      qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
       setShowWizard(false);
       resetWizard();
     },

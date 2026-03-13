@@ -49,7 +49,6 @@ export function OnboardingWizard({
       const updates: Record<string, any> = {
         name: name.trim() || "New Player",
         phone: phone.trim() || null,
-        onboarding_completed: true,
       };
 
       // These columns may exist on extended profiles

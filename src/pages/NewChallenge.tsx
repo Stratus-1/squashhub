@@ -341,9 +341,9 @@ export default function NewChallenge() {
                     <div
                       className={cn(
                         "flex flex-col items-center cursor-pointer hover:opacity-80",
-                        isEligible(step.rank) && "ring-2 ring-primary/30 rounded-lg p-1",
+                        isEligible(step.ladder_position) && "ring-2 ring-primary/30 rounded-lg p-1",
                       )}
-                      onClick={() => isEligible(step.rank) && setOpponentId(step.id)}
+                      onClick={() => isEligible(step.ladder_position) && setOpponentId(step.id)}
                     >
                       <span className="text-[9px] text-muted-foreground truncate max-w-[60px]">
                         {step.name.split(" ")[0]}

@@ -10,6 +10,8 @@ interface SEOProps {
   imageAlt?: string;
   noIndex?: boolean;
   jsonLd?: unknown;
+  /** Override the site name used in the tab title (defaults to "SquashHub") */
+  siteName?: string;
 }
 
 const DEFAULT_TITLE = "SquashHub";
@@ -25,14 +27,16 @@ export function SEO({
   imageAlt,
   noIndex = false,
   jsonLd,
+  siteName,
 }: SEOProps) {
-  const fullTitle = title ? `${title} | ${DEFAULT_TITLE}` : DEFAULT_TITLE;
+  const brand = siteName || DEFAULT_TITLE;
+  const fullTitle = title ? `${title} | ${brand}` : brand;
   const resolvedPath =
     path ??
     (typeof window !== "undefined" ? window.location.pathname : "/");
   const url = absoluteUrl(resolvedPath);
   const resolvedImage = absoluteUrl(image);
-  const resolvedImageAlt = (imageAlt || "").trim() || `${DEFAULT_TITLE} logo`;
+  const resolvedImageAlt = (imageAlt || "").trim() || `${brand} logo`;
 
   return (
     <Helmet>
@@ -48,7 +52,7 @@ export function SEO({
       <meta property="og:type" content={type} />
       <meta property="og:image" content={resolvedImage} />
       <meta property="og:image:alt" content={resolvedImageAlt} />
-      <meta property="og:site_name" content={DEFAULT_TITLE} />
+      <meta property="og:site_name" content={brand} />
       <meta property="og:locale" content="en_ZA" />
 
       {/* Twitter */}

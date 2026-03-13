@@ -35,6 +35,8 @@ export default function SuperAdminSettings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadSettings();

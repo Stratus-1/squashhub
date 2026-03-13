@@ -12,7 +12,25 @@ serve(async (req) => {
   }
 
   try {
-    const { token } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const action = typeof body?.action === "string" ? body.action : "verify";
+
+    if (action === "config") {
+      const siteKey = (Deno.env.get("HCAPTCHA_SITE_KEY") ?? "").trim();
+      return new Response(
+        JSON.stringify({ enabled: siteKey.length > 0, siteKey }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action !== "verify") {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid action" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { token } = body;
 
     if (!token || typeof token !== "string") {
       return new Response(
@@ -23,7 +41,6 @@ serve(async (req) => {
 
     const secret = Deno.env.get("HCAPTCHA_SECRET_KEY");
     if (!secret) {
-      // If no secret key configured, pass through (captcha disabled server-side)
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -42,7 +59,7 @@ serve(async (req) => {
       JSON.stringify({ success: result.success === true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch {
     return new Response(
       JSON.stringify({ success: false, error: "Verification failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

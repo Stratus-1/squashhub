@@ -237,14 +237,16 @@ export default function ClubAuth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+    <div className="min-h-screen relative flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
       <SEO
         title={`Sign In | ${clubName}`}
         description={`Sign in or register for ${clubName} on SquashHub.`}
         path="/auth"
         noIndex
       />
-      <motion.div className="w-full max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         {/* Club Header */}
         <div className="text-center mb-6">
           {club?.logo_url ? (

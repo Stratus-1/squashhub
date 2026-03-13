@@ -147,7 +147,8 @@ export default function ClubAuth() {
       newPassword,
       name,
       phone || undefined,
-      { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso }
+      { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
+      club ? { clubName: club.name, subdomain: subdomain || "" } : undefined
     );
     if (error) {
       toast.error(error.message);

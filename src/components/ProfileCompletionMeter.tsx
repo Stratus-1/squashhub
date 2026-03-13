@@ -6,60 +6,71 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useMyClub, useMyClubMember } from "@/hooks/use-club";
+import { fromExt } from "@/lib/supabase-ext";
 
 type Step = { key: string; label: string; done: boolean; action?: string };
 
-type ProfileCompletionProfile = {
-  name?: string | null;
-  phone?: string | null;
-  avatar_url?: string | null;
-  availability?: string | null;
-};
-
 interface ProfileCompletionMeterProps {
-  profile: ProfileCompletionProfile | null;
+  profile: {
+    name?: string | null;
+    phone?: string | null;
+    avatar_url?: string | null;
+  } | null;
   onAction?: (action: string) => void;
 }
 
 export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionMeterProps) {
   const [dismissed, setDismissed] = useState(false);
   const { user } = useAuth();
+  const { data: clubData } = useMyClub();
+  const { data: myClubMember } = useMyClubMember();
+  const clubMemberId = myClubMember?.id;
 
-  const { data: availabilityExists } = useQuery<boolean | null>({
-    queryKey: ["profile-completion", "availability-exists", user?.id],
+  // Check if fee payment records exist for this member
+  const { data: feePayments } = useQuery({
+    queryKey: ["profile-completion-fees", clubMemberId],
     queryFn: async () => {
-      if (!user) return false;
-      const { data, error } = await supabase
-        .from("player_availability")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
-      if (error) {
-        const code = error.code;
-        const msg = error.message || "";
-        const missingTable = code === "42P01" || msg.includes("player_availability");
-        if (missingTable) return null;
-        throw error;
-      }
-      return (data || []).length > 0;
+      const { data, error } = await fromExt("club_member_fee_payments")
+        .select("id, paid")
+        .eq("club_member_id", clubMemberId!);
+      if (error) throw error;
+      return data || [];
     },
-    enabled: !!user,
+    enabled: !!clubMemberId,
     staleTime: 30_000,
   });
 
   if (!profile || dismissed) return null;
 
-  const legacyAvailabilityDone =
-    !!profile.availability && String(profile.availability).trim().length > 0;
-  const availabilityDone =
-    availabilityExists === null ? legacyAvailabilityDone : !!availabilityExists;
+  // Step 1: Profile basics (name + phone)
+  const profileDone =
+    !!profile.name &&
+    profile.name !== "" &&
+    profile.name !== "New Player" &&
+    !!profile.phone &&
+    String(profile.phone).trim().length > 0;
+
+  // Step 2: Club member data complete (ID, gender, address, fee category, member number)
+  const memberDataDone =
+    !!myClubMember &&
+    !!myClubMember.id_number &&
+    !!myClubMember.gender &&
+    !!myClubMember.address &&
+    !!myClubMember.fee_category_id &&
+    !!myClubMember.club_member_number;
+
+  // Step 3: Fees captured (fee payment records exist)
+  const feesCaptured = (feePayments || []).length > 0;
+
+  // Step 4: All fees paid
+  const allFeesPaid = feesCaptured && (feePayments || []).every((f: any) => f.paid);
 
   const steps: Step[] = [
-    { key: "name", label: "Add your name", done: !!profile.name && profile.name !== "" && profile.name !== "New Player" },
-    { key: "phone", label: "Add phone number", done: !!profile.phone && String(profile.phone).trim().length > 0, action: "edit" },
-    { key: "avatar", label: "Upload avatar", done: !!profile.avatar_url, action: "avatar" },
-    { key: "availability", label: "Set availability", done: availabilityDone, action: "availability" },
+    { key: "profile", label: "Complete your profile", done: profileDone, action: "edit" },
+    { key: "member", label: "Member details captured", done: memberDataDone, action: "edit" },
+    { key: "fees-captured", label: "Fees allocated", done: feesCaptured, action: "account" },
+    { key: "fees-paid", label: "All fees paid", done: allFeesPaid, action: "account" },
   ];
 
   const done = steps.filter((s) => s.done).length;
@@ -77,7 +88,7 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold font-heading">Complete your profile</p>
+              <p className="text-xs font-semibold font-heading">Membership progress</p>
               <button
                 className="text-[10px] text-muted-foreground hover:text-foreground"
                 onClick={() => setDismissed(true)}
@@ -109,7 +120,7 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
                       className="ml-auto text-primary text-[10px] font-medium flex items-center gap-0.5 hover:underline"
                       onClick={() => onAction(step.action!)}
                     >
-                      Add <ChevronRight className="w-3 h-3" />
+                      View <ChevronRight className="w-3 h-3" />
                     </button>
                   )}
                 </div>

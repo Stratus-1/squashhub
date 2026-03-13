@@ -98,7 +98,7 @@ export default function BookingResponse() {
               Your booking has been confirmed. See you on the court!
             </p>
             <Button asChild className="mt-4">
-              <a href="/">Go to GB Squash Hub</a>
+              <a href="/">Go to SquashHub</a>
             </Button>
           </div>
         )}

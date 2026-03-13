@@ -676,6 +676,44 @@ export default function Bookings() {
     }
   };
 
+  const handleTerminateSession = async (sessionId: string) => {
+    setTerminatingSession(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const resp = await supabase.functions.invoke("court-lights", {
+        body: { action: "terminate", session_id: sessionId },
+      });
+      if (resp.error) throw resp.error;
+      const result = resp.data;
+      toast.success(`Lights off! R${(result?.fee_charged || 0).toFixed(2)} charged for ${result?.duration_minutes || 0} minutes`);
+      refetchSessions();
+      setBookingDetails(null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to terminate session");
+    } finally {
+      setTerminatingSession(false);
+    }
+  };
+
+  const handleTransferCourt = async (sessionId: string, targetCourtId: number) => {
+    setTerminatingSession(true);
+    try {
+      const resp = await supabase.functions.invoke("court-lights", {
+        body: { action: "transfer", session_id: sessionId, target_court_id: targetCourtId },
+      });
+      if (resp.error) throw resp.error;
+      const result = resp.data;
+      toast.success(`Transferred! R${(result?.fee_charged || 0).toFixed(2)} charged for previous court. Lights on at new court.`);
+      refetchSessions();
+      setTransferDialog(null);
+      setBookingDetails(null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to transfer");
+    } finally {
+      setTerminatingSession(false);
+    }
+  };
+
   const eligibleOpponents = (() => {
     const list = (availablePlayers || []).filter((p: any) => p.id !== user?.id);
 

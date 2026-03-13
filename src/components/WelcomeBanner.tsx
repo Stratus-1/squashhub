@@ -114,7 +114,7 @@ export function WelcomeBanner() {
 
                 <div className="flex flex-wrap gap-2 text-xs">
                   <Badge variant="secondary" className="gap-1">
-                    <Trophy className="w-3 h-3" /> {myLadderPosition ? `#${myLadderPosition} on ladder` : profile.rank ? `Rank #${profile.rank}` : "Unranked"}
+                    <Trophy className="w-3 h-3" /> {myLadderPosition ? `#${myLadderPosition} on ladder` : "Unranked"}
                   </Badge>
                   <Badge variant="secondary" className="gap-1">
                     <HandMetal className="w-3 h-3" /> {profile.matches_played} matches

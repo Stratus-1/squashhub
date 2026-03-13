@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
             </a>
           </div>
           <p style="margin:16px 0 0;font-size:12px;color:#64748b;text-align:center">
-            Gordon's Bay Squash Hub
+            SquashHub
           </p>
         </div>
       </div>

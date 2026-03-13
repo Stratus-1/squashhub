@@ -48,18 +48,19 @@ export default function MyAccount() {
     enabled: !!user,
   });
 
-  // Fee payments
+  // Fee payments from club_member_fee_payments
+  const clubMemberId = myClubMember?.id;
   const { data: fees, isLoading: feesLoading } = useQuery({
-    queryKey: ["fee-payments", user?.id],
+    queryKey: ["club-member-fee-payments", clubMemberId],
     queryFn: async () => {
-      const { data, error } = await fromExt("fee_payments")
+      const { data, error } = await fromExt("club_member_fee_payments")
         .select("*")
-        .eq("user_id", user!.id)
-        .order("due_date", { ascending: true });
+        .eq("club_member_id", clubMemberId!)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!clubMemberId,
   });
 
   // Calculate credit balance

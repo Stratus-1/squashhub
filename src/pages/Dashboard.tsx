@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
-import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
+
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";

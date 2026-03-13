@@ -98,7 +98,8 @@ export default function ClubAuth() {
       existingPassword,
       memberNum, // name will be populated from club_members record
       undefined,
-      { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso }
+      { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
+      club ? { clubName: club.name, subdomain: subdomain || "" } : undefined
     );
     if (error) {
       toast.error(error.message);

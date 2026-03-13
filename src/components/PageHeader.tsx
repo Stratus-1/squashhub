@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Swords, User } from "lucide-react";
+import { ChevronLeft, LogOut, Swords, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
@@ -30,7 +30,7 @@ export function PageHeader({
   showBack,
   backTo,
 }: PageHeaderProps) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -84,7 +84,7 @@ export function PageHeader({
         </div>
 
         {user && (showNotifications || showChallengesInbox || showProfile) && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {showNotifications && <NotificationsDropdown />}
             {showChallengesInbox ? (
               <Button
@@ -119,6 +119,16 @@ export function PageHeader({
                 <PlayerAvatar initials={initials} avatarUrl={avatarUrl} size="sm" />
               </button>
             )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-destructive"
+              onClick={() => signOut()}
+              aria-label="Log out"
+            >
+              <LogOut className="w-4.5 h-4.5" />
+            </Button>
           </div>
         )}
       </div>

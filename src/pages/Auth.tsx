@@ -112,6 +112,10 @@ export default function Auth() {
       return;
     }
 
+    if (captchaToken) {
+      const valid = await verifyCaptchaToken(captchaToken);
+      if (!valid) { toast.error("Captcha verification failed"); return; }
+    }
     setLoading(true);
     const nowIso = new Date().toISOString();
     const { error } = await signUp(email, signupPassword, name, phone || undefined, {

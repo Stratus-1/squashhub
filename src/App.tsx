@@ -91,13 +91,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AuthGate() {
   const { user } = useAuth();
   const { subdomain: clubSubdomain } = useClubContext();
-  const { data: roles } = useMyRoles();
+  const { data: roles, isLoading: rolesLoading } = useMyRoles();
   const [params] = useSearchParams();
   const redirectTo = (params.get("redirectTo") || "").trim();
 
   if (!user) {
     if (clubSubdomain) return <ClubAuth />;
     return <Auth />;
+  }
+
+  // Wait for roles to load before deciding where to redirect
+  if (rolesLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   }
 
   // Super admins go to /admin by default

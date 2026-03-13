@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
 
       const keys = await getOrCreateVapidKeys();
       webpush.setVapidDetails(
-        "mailto:admin@gordonsbaysquash.co.za",
+        "mailto:admin@squashhub.co.za",
         keys.publicKey,
         keys.privateKey
       );

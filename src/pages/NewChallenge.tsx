@@ -29,6 +29,7 @@ import {
   useProposeChallengeSchedule, useHeadToHead,
 } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyClub } from "@/hooks/use-club";
 
 /* ── helpers ────────────────────────────────────────────────── */
 
@@ -55,7 +56,9 @@ export default function NewChallenge() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user } = useAuth();
-  const { data: ladder, isLoading } = useLadder();
+  const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
+  const { data: ladder, isLoading } = useLadder(clubId);
   const { data: profile } = useProfile();
   const { data: h2hData } = useHeadToHead(user?.id, 50);
   const createChallenge = useCreateChallenge();
@@ -74,12 +77,20 @@ export default function NewChallenge() {
   const [query, setQuery] = useState("");
   const [listTab, setListTab] = useState("eligible");
 
-  const myRank = profile?.rank ?? null;
+  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
 
-  const isEligible = (rank: number | null) => {
-    if (!myRank || !rank) return false;
-    const diff = Math.abs(myRank - rank);
-    return diff >= 1 && diff <= 2;
+  // Find my ladder position from the ladder data
+  const myLadderPosition = useMemo(() => {
+    if (!user?.id || !ladder) return null;
+    const me = ladder.find(p => p.id === user.id);
+    return me?.ladder_position ?? null;
+  }, [ladder, user?.id]);
+
+  const isEligible = (ladderPosition: number | null) => {
+    if (!myLadderPosition || !ladderPosition) return false;
+    if (myLadderPosition <= ladderPosition) return false; // can only challenge above
+    const diff = myLadderPosition - ladderPosition;
+    return diff >= 1 && diff <= challengeLevelsUp;
   };
 
   const opponentProfile = useMemo(
@@ -87,7 +98,7 @@ export default function NewChallenge() {
     [ladder, opponentId],
   );
 
-  const selectedEligible = isEligible(opponentProfile?.rank ?? null);
+  const selectedEligible = isEligible(opponentProfile?.ladder_position ?? null);
 
   /* head-to-head map for quick lookup */
   const h2hMap = useMemo(() => {
@@ -100,19 +111,19 @@ export default function NewChallenge() {
 
   /* path to #1 calculation */
   const pathToTop = useMemo(() => {
-    if (!myRank || !ladder) return [];
+    if (!myLadderPosition || !ladder) return [];
     const steps: typeof ladder = [];
-    let currentRank = myRank;
-    while (currentRank > 1) {
+    let currentPos = myLadderPosition;
+    while (currentPos > 1) {
       const target = ladder.find(
-        (p) => p.rank !== null && p.rank >= Math.max(1, currentRank - 2) && p.rank < currentRank,
+        (p) => p.ladder_position !== null && p.ladder_position >= Math.max(1, currentPos - challengeLevelsUp) && p.ladder_position < currentPos,
       );
-      if (!target || target.rank === null) break;
+      if (!target || target.ladder_position === null) break;
       steps.push(target);
-      currentRank = target.rank;
+      currentPos = target.ladder_position;
     }
     return steps;
-  }, [myRank, ladder]);
+  }, [myLadderPosition, ladder, challengeLevelsUp]);
 
   /* filtered & sorted player lists */
   const { eligible, allPlayers } = useMemo(() => {
@@ -120,14 +131,14 @@ export default function NewChallenge() {
     const q = query.trim().toLowerCase();
     const searched = q ? list.filter((p) => (p.name || "").toLowerCase().includes(q)) : list;
     return {
-      eligible: searched.filter((p) => isEligible(p.rank)),
+      eligible: searched.filter((p) => isEligible(p.ladder_position)),
       allPlayers: searched,
     };
-  }, [ladder, query, user?.id, myRank]);
+  }, [ladder, query, user?.id, myLadderPosition]);
 
   const onSend = async () => {
-    if (!myRank) return toast.error("You need a ladder position to challenge players");
-    if (!selectedEligible) return toast.error("You can only challenge players within 2 ladder positions");
+    if (!myLadderPosition) return toast.error("You need a ladder position to challenge players");
+    if (!selectedEligible) return toast.error(`You can only challenge players within ${challengeLevelsUp} ladder positions`);
 
     try {
       const challenge = await createChallenge.mutateAsync({
@@ -160,10 +171,10 @@ export default function NewChallenge() {
 
   function PlayerCard({ p, compact }: { p: (typeof ladder extends (infer U)[] | undefined ? U : never); compact?: boolean }) {
     const isSelected = p.id === opponentId;
-    const canChallenge = isEligible(p.rank);
+    const canChallenge = isEligible(p.ladder_position);
     const wr = winRate(p.wins, p.matches_played);
     const h2h = h2hMap.get(p.id);
-    const rankDiff = myRank && p.rank ? myRank - p.rank : null;
+    const rankDiff = myLadderPosition && p.ladder_position ? myLadderPosition - p.ladder_position : null;
 
     return (
       <motion.div
@@ -183,9 +194,9 @@ export default function NewChallenge() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <PlayerAvatar initials={getInitials(p.name)} size="sm" />
-              {p.rank && (
+              {p.ladder_position && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                  {p.rank}
+                  {p.ladder_position}
                 </span>
               )}
             </div>
@@ -260,8 +271,8 @@ export default function NewChallenge() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold font-heading">{profile.name}</p>
                 <div className="flex items-center gap-3 mt-0.5">
-                  {myRank ? (
-                    <Badge className="bg-primary/15 text-primary border-primary/30">Rank #{myRank}</Badge>
+                  {myLadderPosition ? (
+                    <Badge className="bg-primary/15 text-primary border-primary/30">Rank #{myLadderPosition}</Badge>
                   ) : (
                     <Badge variant="secondary">Unranked</Badge>
                   )}
@@ -272,15 +283,15 @@ export default function NewChallenge() {
               </div>
             </div>
 
-            {!myRank && (
+            {!myLadderPosition && (
               <div className="mt-3 p-3 rounded-md bg-destructive/5 border border-destructive/20">
                 <p className="text-xs text-destructive font-medium">
-                  You need a ladder rank before you can challenge. Play a match to get ranked.
+                  You need a ladder rank before you can challenge. Ask your club admin to rank you.
                 </p>
               </div>
             )}
 
-            {myRank && (
+            {myLadderPosition && (
               <div className="mt-3 p-3 rounded-md bg-muted/50 border">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-3.5 h-3.5 text-primary" />
@@ -289,9 +300,9 @@ export default function NewChallenge() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  You can challenge players within <strong className="text-foreground">2</strong> ladder positions of your rank
-                  (ranks <strong className="text-foreground">{Math.max(1, myRank - 2)}</strong> to{" "}
-                  <strong className="text-foreground">{Math.min(20, myRank + 2)}</strong>, excluding your own).
+                  You can challenge players within <strong className="text-foreground">{challengeLevelsUp}</strong> ladder positions above you
+                  (positions <strong className="text-foreground">{Math.max(1, myLadderPosition - challengeLevelsUp)}</strong> to{" "}
+                  <strong className="text-foreground">{myLadderPosition - 1}</strong>).
                 </p>
               </div>
             )}
@@ -319,7 +330,7 @@ export default function NewChallenge() {
               <div className="shrink-0 flex flex-col items-center">
                 <span className="text-[10px] text-muted-foreground">You</span>
                 <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
-                  #{myRank}
+                  #{myLadderPosition}
                 </div>
               </div>
               {pathToTop.map((step, i) => {
@@ -330,15 +341,15 @@ export default function NewChallenge() {
                     <div
                       className={cn(
                         "flex flex-col items-center cursor-pointer hover:opacity-80",
-                        isEligible(step.rank) && "ring-2 ring-primary/30 rounded-lg p-1",
+                        isEligible(step.ladder_position) && "ring-2 ring-primary/30 rounded-lg p-1",
                       )}
-                      onClick={() => isEligible(step.rank) && setOpponentId(step.id)}
+                      onClick={() => isEligible(step.ladder_position) && setOpponentId(step.id)}
                     >
                       <span className="text-[9px] text-muted-foreground truncate max-w-[60px]">
                         {step.name.split(" ")[0]}
                       </span>
                       <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                        #{step.rank}
+                        #{step.ladder_position}
                       </div>
                       {h2h && h2h.matches > 0 && (
                         <span className={cn(
@@ -348,7 +359,7 @@ export default function NewChallenge() {
                           {h2h.wins}-{h2h.losses}
                         </span>
                       )}
-                      {isEligible(step.rank) && (
+                      {isEligible(step.ladder_position) && (
                         <Badge className="text-[8px] px-1 py-0 mt-0.5 bg-primary/15 text-primary border-0">
                           Challenge
                         </Badge>
@@ -454,7 +465,7 @@ export default function NewChallenge() {
                 {selectedEligible && (
                   <div className="mt-3 p-3 rounded-md bg-primary/5 border border-primary/20">
                     <p className="text-xs text-primary font-medium">
-                      ✅ Win this challenge to move from #{myRank} → #{opponentProfile.rank}
+                      ✅ Win this challenge to move from #{myLadderPosition} → #{opponentProfile.ladder_position}
                     </p>
                   </div>
                 )}
@@ -539,8 +550,8 @@ export default function NewChallenge() {
             ) : eligible.length === 0 ? (
               <Card className="p-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  {myRank
-                    ? myRank === 1
+                  {myLadderPosition
+                    ? myLadderPosition === 1
                       ? "You're #1! No one to challenge above you. 👑"
                       : "No eligible opponents found. Try the All Players tab."
                     : "Get ranked first to see eligible opponents."}
@@ -573,7 +584,7 @@ export default function NewChallenge() {
         {/* Send */}
         <Button
           className="w-full"
-          disabled={!myRank || !opponentId || !selectedEligible || createChallenge.isPending || proposeSchedule.isPending}
+          disabled={!myLadderPosition || !opponentId || !selectedEligible || createChallenge.isPending || proposeSchedule.isPending}
           onClick={onSend}
         >
           {createChallenge.isPending || proposeSchedule.isPending ? (

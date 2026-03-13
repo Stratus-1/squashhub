@@ -474,10 +474,11 @@ export function useLadder(clubId?: string) {
           wins: profile?.wins ?? 0,
           losses: profile?.losses ?? 0,
           matches_played: profile?.matches_played ?? 0,
-          rank: profile?.rank ?? null,
+          rank: leagueRank,
           league_rank: leagueRank,
           user_id: m.user_id,
           gender: m.gender || null,
+          ladder_position: null as number | null,
         };
       });
 
@@ -488,6 +489,15 @@ export function useLadder(clubId?: string) {
         if (b.league_rank != null) return 1;
         return (a.name || "").localeCompare(b.name || "");
       });
+
+      // Assign ladder_position per gender group (index+1 within each gender)
+      const genderGroups = new Map<string, number>();
+      for (const entry of ladder) {
+        const gKey = (entry.gender?.toLowerCase() === "female" || entry.gender?.toLowerCase() === "ladies" || entry.gender?.toLowerCase() === "f") ? "ladies" : "men";
+        const pos = (genderGroups.get(gKey) ?? 0) + 1;
+        genderGroups.set(gKey, pos);
+        entry.ladder_position = entry.league_rank != null ? pos : null;
+      }
 
       return ladder;
     },

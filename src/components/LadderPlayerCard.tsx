@@ -16,6 +16,7 @@ export interface LadderPlayer {
   matches_played: number;
   rank: number | null;
   league_rank: number | null;
+  ladder_position: number | null;
   user_id: string | null;
   gender: string | null;
 }

@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { IntegrationLogo } from "@/components/IntegrationLogo";
-import { useHeadToHead, usePlayerProfile, useProfile, useSquashTotals } from "@/hooks/use-data";
+import { useHeadToHead, usePlayerProfile, useProfile, useSquashTotals, useLadder } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Flame, Loader2, Swords, Target, Timer, Trophy, TrendingUp } from "lucide-react";
@@ -31,6 +32,10 @@ export default function PlayerProfile() {
   const queryClient = useQueryClient();
   const { data: me } = useProfile();
   const { data: player, isLoading, error: playerError } = usePlayerProfile(id);
+  const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
+  const { data: ladder } = useLadder(clubId);
+  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
   const isSelf = !!id && user?.id === id;
   const showRecentMatches = isSelf || (!!player && (((player as any)?.privacy_show_recent_matches) ?? true));
   const showTraining = isSelf || (!!player && (((player as any)?.privacy_show_training) ?? true));
@@ -144,12 +149,24 @@ export default function PlayerProfile() {
     return (headToHead || []).find((r: any) => r.opponent_id === user.id) || null;
   }, [headToHead, id, user?.id]);
 
+  // Use ladder position for challenge eligibility
+  const playerLadderPosition = useMemo(() => {
+    if (!id || !ladder) return null;
+    return ladder.find(p => p.id === id)?.ladder_position ?? null;
+  }, [id, ladder]);
+
+  const myLadderPosition = useMemo(() => {
+    if (!user?.id || !ladder) return null;
+    return ladder.find(p => p.id === user.id)?.ladder_position ?? null;
+  }, [user?.id, ladder]);
+
   const canChallenge = useMemo(() => {
-    if (!user?.id || !me?.rank || !player?.rank) return false;
-    if (player.id === user.id) return false;
-    const diff = me.rank - player.rank;
-    return diff >= 1 && diff <= 2;
-  }, [me?.rank, player?.id, player?.rank, user?.id]);
+    if (!user?.id || !myLadderPosition || !playerLadderPosition) return false;
+    if (player?.id === user.id) return false;
+    if (myLadderPosition <= playerLadderPosition) return false;
+    const diff = myLadderPosition - playerLadderPosition;
+    return diff >= 1 && diff <= challengeLevelsUp;
+  }, [myLadderPosition, playerLadderPosition, player?.id, user?.id, challengeLevelsUp]);
 
   const stravaKm =
     (player as any)?.strava_connected && (player as any)?.strava_distance_m != null
@@ -223,7 +240,7 @@ export default function PlayerProfile() {
 
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="Player Profile" subtitle={player.rank ? `Rank #${player.rank}` : "Unranked"} />
+      <PageHeader title="Player Profile" subtitle={playerLadderPosition ? `Rank #${playerLadderPosition}` : "Unranked"} />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-4 pb-4">
         <Card className="overflow-hidden">
@@ -231,7 +248,7 @@ export default function PlayerProfile() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <PlayerAvatar initials={initials} rank={player.rank} size="md" avatarUrl={(player as any)?.avatar_url || null} />
+                <PlayerAvatar initials={initials} rank={playerLadderPosition} size="md" avatarUrl={(player as any)?.avatar_url || null} />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">{player.name || "Player"}</p>
                   <p className="text-xs text-muted-foreground truncate">
@@ -271,7 +288,7 @@ export default function PlayerProfile() {
               <p className="text-xs text-muted-foreground mt-0.5">At-a-glance stats.</p>
             </div>
             <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border border-primary/20 shrink-0">
-              {player.rank ? `Rank #${player.rank}` : "Unranked"}
+              {playerLadderPosition ? `Rank #${playerLadderPosition}` : "Unranked"}
             </Badge>
           </div>
 
@@ -375,7 +392,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#ff2d55]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Rank</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.rank ? `#${player.rank}` : "—"}</p>
+                <p className="text-lg font-bold font-heading mt-1">{playerLadderPosition ? `#${playerLadderPosition}` : "—"}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">ladder</p>
               </div>
             </div>

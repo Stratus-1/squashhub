@@ -61,6 +61,7 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { subdomain: clubSubdomain } = useClubContext();
   const location = useLocation();
   if (loading) {
     return (
@@ -71,6 +72,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   if (!user) {
     const redirectTo = `${location.pathname}${location.search || ""}`;
+    // On club subdomains, always redirect to club-specific auth
+    if (clubSubdomain) {
+      return <Navigate to={`/auth?redirectTo=${encodeURIComponent(redirectTo)}`} replace />;
+    }
     return <Navigate to={`/auth?redirectTo=${encodeURIComponent(redirectTo)}`} replace />;
   }
   return <>{children}</>;
@@ -146,7 +151,13 @@ function AppRoutes() {
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       <Routes location={routeLocation}>
-        <Route path="/" element={isClubSubdomain && !user ? <ClubLanding hostClub={clubFromHost} /> : <Home />} />
+        <Route path="/" element={
+          isClubSubdomain && !user
+            ? <ClubLanding hostClub={clubFromHost} />
+            : user
+              ? <Navigate to="/dashboard" replace />
+              : <Home />
+        } />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />

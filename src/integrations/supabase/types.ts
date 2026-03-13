@@ -116,6 +116,7 @@ export type Database = {
       bookings: {
         Row: {
           challenge_id: string | null
+          club_id: string | null
           court_id: number
           created_at: string
           date: string
@@ -131,6 +132,7 @@ export type Database = {
         }
         Insert: {
           challenge_id?: string | null
+          club_id?: string | null
           court_id: number
           created_at?: string
           date: string
@@ -146,6 +148,7 @@ export type Database = {
         }
         Update: {
           challenge_id?: string | null
+          club_id?: string | null
           court_id?: number
           created_at?: string
           date?: string
@@ -179,6 +182,7 @@ export type Database = {
       challenges: {
         Row: {
           challenger_id: string
+          club_id: string | null
           created_at: string
           id: string
           opponent_id: string
@@ -188,6 +192,7 @@ export type Database = {
         }
         Insert: {
           challenger_id: string
+          club_id?: string | null
           created_at?: string
           id?: string
           opponent_id: string
@@ -197,6 +202,7 @@ export type Database = {
         }
         Update: {
           challenger_id?: string
+          club_id?: string | null
           created_at?: string
           id?: string
           opponent_id?: string
@@ -700,6 +706,7 @@ export type Database = {
       fee_payments: {
         Row: {
           amount: number
+          club_id: string | null
           created_at: string
           due_date: string | null
           fee_label: string
@@ -713,6 +720,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          club_id?: string | null
           created_at?: string
           due_date?: string | null
           fee_label?: string
@@ -726,6 +734,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          club_id?: string | null
           created_at?: string
           due_date?: string | null
           fee_label?: string
@@ -781,6 +790,7 @@ export type Database = {
       }
       feed_posts: {
         Row: {
+          club_id: string | null
           content: string | null
           created_at: string
           id: string
@@ -791,6 +801,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          club_id?: string | null
           content?: string | null
           created_at?: string
           id?: string
@@ -801,6 +812,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          club_id?: string | null
           content?: string | null
           created_at?: string
           id?: string
@@ -1127,6 +1139,7 @@ export type Database = {
       matches: {
         Row: {
           challenge_id: string | null
+          club_id: string | null
           confirmed: boolean
           court_id: number | null
           created_at: string
@@ -1142,6 +1155,7 @@ export type Database = {
         }
         Insert: {
           challenge_id?: string | null
+          club_id?: string | null
           confirmed?: boolean
           court_id?: number | null
           created_at?: string
@@ -1157,6 +1171,7 @@ export type Database = {
         }
         Update: {
           challenge_id?: string | null
+          club_id?: string | null
           confirmed?: boolean
           court_id?: number | null
           created_at?: string
@@ -1503,6 +1518,7 @@ export type Database = {
       recurring_bookings: {
         Row: {
           active: boolean
+          club_id: string | null
           court_id: number
           created_at: string
           day_of_week: number
@@ -1513,6 +1529,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          club_id?: string | null
           court_id: number
           created_at?: string
           day_of_week: number
@@ -1523,6 +1540,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          club_id?: string | null
           court_id?: number
           created_at?: string
           day_of_week?: number

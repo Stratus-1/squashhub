@@ -646,16 +646,22 @@ export type Database = {
           club_id: string | null
           id: number
           name: string
+          relay_device_id: string | null
+          relay_server: string | null
         }
         Insert: {
           club_id?: string | null
           id?: number
           name: string
+          relay_device_id?: string | null
+          relay_server?: string | null
         }
         Update: {
           club_id?: string | null
           id?: number
           name?: string
+          relay_device_id?: string | null
+          relay_server?: string | null
         }
         Relationships: [
           {

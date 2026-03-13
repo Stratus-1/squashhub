@@ -33,7 +33,7 @@ import EventDetail from "./pages/EventDetail";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
-import NewChallenge from "./pages/NewChallenge";
+
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
 import PlayerProfile from "./pages/PlayerProfile";

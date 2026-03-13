@@ -51,6 +51,12 @@ import Seasons from "./pages/Seasons";
 import AdminEventEditor from "./pages/AdminEventEditor";
 import Support from "./pages/Support";
 import AdminSupport from "./pages/AdminSupport";
+import { SuperAdminLayout } from "./components/admin/SuperAdminLayout";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+import SuperAdminClubs from "./pages/admin/SuperAdminClubs";
+import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
+import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
+import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
 import MyAccount from "./pages/MyAccount";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
@@ -85,19 +91,23 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AuthGate() {
   const { user } = useAuth();
   const { subdomain: clubSubdomain } = useClubContext();
+  const { data: roles } = useMyRoles();
   const [params] = useSearchParams();
   const redirectTo = (params.get("redirectTo") || "").trim();
 
   if (!user) {
-    // On a club subdomain, show the club-specific auth page
     if (clubSubdomain) return <ClubAuth />;
     return <Auth />;
   }
 
+  // Super admins go to /admin by default
+  const isAdmin = (roles || []).includes("admin");
+  const defaultRedirect = isAdmin ? "/admin" : "/";
+
   const safeRedirect =
     redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? (redirectTo === "/dashboard" ? "/" : redirectTo)
-      : "/";
+      ? (redirectTo === "/dashboard" ? defaultRedirect : redirectTo)
+      : defaultRedirect;
   return <Navigate to={safeRedirect} replace />;
 }
 
@@ -141,17 +151,19 @@ function AppRoutes() {
 
   const routeLocation = backgroundLocation || location;
 
+  const isAdminRoute = (routeLocation.pathname || "/").startsWith("/admin");
+
   const showFooter = (() => {
     const p = routeLocation.pathname || "/";
     if (p === "/booking-response") return false;
     if (p.startsWith("/match-tracker/")) return false;
-    if (p.startsWith("/admin")) return false;
+    if (isAdminRoute) return false;
     return true;
   })();
 
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
-      {user && <ClubBrandedBackground />}
+      {user && !isAdminRoute && <ClubBrandedBackground />}
       <Routes location={routeLocation}>
         <Route path="/" element={
           isClubSubdomain && !user
@@ -187,10 +199,16 @@ function AppRoutes() {
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><ClubChampsView /></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />
-        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-        <Route path="/admin/support" element={<AdminRoute><AdminSupport /></AdminRoute>} />
-        <Route path="/admin/events/new" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
-        <Route path="/admin/events/:id" element={<AdminRoute><AdminEventEditor /></AdminRoute>} />
+        <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
+          <Route index element={<SuperAdminDashboard />} />
+          <Route path="clubs" element={<SuperAdminClubs />} />
+          <Route path="users" element={<SuperAdminUsers />} />
+          <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
+          <Route path="settings" element={<SuperAdminSettings />} />
+          <Route path="support" element={<AdminSupport />} />
+          <Route path="events/new" element={<AdminEventEditor />} />
+          <Route path="events/:id" element={<AdminEventEditor />} />
+        </Route>
         <Route path="/booking-response" element={<BookingResponse />} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
@@ -202,7 +220,7 @@ function AppRoutes() {
         </Routes>
       )}
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
-      {user && <BottomNav />}
+      {user && !isAdminRoute && <BottomNav />}
       {user && <OfflineBanner />}
       {user && <LiveSessionBanner />}
       <InstallAppPrompt />

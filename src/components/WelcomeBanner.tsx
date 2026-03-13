@@ -16,10 +16,21 @@ const WELCOME_DISMISSED_KEY = "gb-squash-welcome-dismissed";
 export function WelcomeBanner() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: myClubMember } = useMyClubMember();
+  const { data: ladder } = useLadder();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(true);
 
   const isNewPlayer = profile && (profile.matches_played === 0);
+
+  // Find player's position on the gender-specific ladder
+  const myLadderPosition = useMemo(() => {
+    if (!ladder || !myClubMember) return null;
+    const gender = (myClubMember as any)?.gender;
+    const genderLadder = gender ? ladder.filter((p: any) => p.gender === gender) : ladder;
+    const idx = genderLadder.findIndex((p: any) => p.club_member_id === myClubMember.id || p.user_id === user?.id);
+    return idx >= 0 ? idx + 1 : null;
+  }, [ladder, myClubMember, user?.id]);
 
   useEffect(() => {
     if (!profile) return;

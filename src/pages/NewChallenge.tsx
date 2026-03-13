@@ -56,7 +56,9 @@ export default function NewChallenge() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user } = useAuth();
-  const { data: ladder, isLoading } = useLadder();
+  const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
+  const { data: ladder, isLoading } = useLadder(clubId);
   const { data: profile } = useProfile();
   const { data: h2hData } = useHeadToHead(user?.id, 50);
   const createChallenge = useCreateChallenge();
@@ -75,12 +77,20 @@ export default function NewChallenge() {
   const [query, setQuery] = useState("");
   const [listTab, setListTab] = useState("eligible");
 
-  const myRank = profile?.rank ?? null;
+  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
 
-  const isEligible = (rank: number | null) => {
-    if (!myRank || !rank) return false;
-    const diff = Math.abs(myRank - rank);
-    return diff >= 1 && diff <= 2;
+  // Find my ladder position from the ladder data
+  const myLadderPosition = useMemo(() => {
+    if (!user?.id || !ladder) return null;
+    const me = ladder.find(p => p.id === user.id);
+    return me?.ladder_position ?? null;
+  }, [ladder, user?.id]);
+
+  const isEligible = (ladderPosition: number | null) => {
+    if (!myLadderPosition || !ladderPosition) return false;
+    if (myLadderPosition <= ladderPosition) return false; // can only challenge above
+    const diff = myLadderPosition - ladderPosition;
+    return diff >= 1 && diff <= challengeLevelsUp;
   };
 
   const opponentProfile = useMemo(

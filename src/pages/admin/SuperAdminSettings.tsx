@@ -25,6 +25,10 @@ export default function SuperAdminSettings() {
   const [settings, setSettings] = useState<PlatformSettings>({
     platform_sender_email: "",
     platform_sender_name: "",
+    platform_smtp_host: "",
+    platform_smtp_port: "587",
+    platform_smtp_user: "",
+    platform_smtp_pass: "",
     hcaptcha_enabled: "true",
     hcaptcha_site_key: "",
   });

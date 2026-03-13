@@ -116,6 +116,10 @@ function buildConfirmationHtml(
     heading = "Test Email";
     bodyText = `This is a test email from <strong>${clubName}</strong>. If you received this, your SMTP settings are working correctly! 🎉`;
     buttonText = "Visit SquashHub";
+  } else if (emailType === "welcome") {
+    heading = "Welcome! 🎉";
+    bodyText = `Your account with <strong>${clubName}</strong> has been created successfully. You can now log in and start using the platform.`;
+    buttonText = "";
   }
 
   const greeting = recipientName ? `Hi ${escapeHtml(recipientName)},` : "Hi,";

@@ -37,7 +37,6 @@ import NewChallenge from "./pages/NewChallenge";
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
 import PlayerProfile from "./pages/PlayerProfile";
-import Admin from "./pages/Admin";
 import RegisterClub from "./pages/RegisterClub";
 import ClubAdmin from "./pages/ClubAdmin";
 import ClubChampsView from "./pages/ClubChampsView";

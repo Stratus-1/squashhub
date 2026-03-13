@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
-import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
+import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";

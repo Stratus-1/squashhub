@@ -127,17 +127,20 @@ export function useUnreadNotificationsCount() {
   });
 }
 
-export function useBookings(date: string) {
+export function useBookings(date: string, clubId?: string) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["bookings", date],
+    queryKey: ["bookings", date, clubId],
     queryFn: async () => {
-      const { data: bookings, error } = await supabase
+      let query = supabase
         .from("bookings")
         .select("*")
         .eq("date", date)
         .eq("status", "active");
+      if (clubId) {
+        query = query.eq("club_id", clubId);
+      }
       if (error) throw error;
 
       // Fetch player names for bookings

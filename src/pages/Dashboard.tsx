@@ -11,7 +11,7 @@ import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { AvatarFeatureBanner } from "@/components/AvatarFeatureBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
-import { MatchOfTheWeekCard } from "@/components/MatchOfTheWeekCard";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Shield, ShieldCheck, Wallet } from "lucide-react";
 import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Shield, ShieldCheck, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";

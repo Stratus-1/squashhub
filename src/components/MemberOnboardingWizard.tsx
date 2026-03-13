@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
-import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory } from "@/hooks/use-club";
+import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";

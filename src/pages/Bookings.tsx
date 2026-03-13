@@ -556,6 +556,26 @@ export default function Bookings() {
         guestName: bookingDialog.guestName || null,
       });
 
+      // Deduct light fee from member's account if lights are on
+      if (bookingDialog.lightsOn && lightFeePerHour > 0 && user?.id) {
+        const lightCost = (bookingDialog.duration / 60) * lightFeePerHour;
+        try {
+          await fromExt("member_credit_transactions").insert({
+            user_id: user.id,
+            amount: -lightCost,
+            type: "debit",
+            method: "system",
+            status: "confirmed",
+            confirmed_at: new Date().toISOString(),
+            description: `Court lights – ${bookingDialog.duration}min on Court ${bookingDialog.courtId} (${dateStr})`,
+            reference: (created as any)?.id || bookingId,
+          });
+        } catch (lightErr: any) {
+          console.error("Failed to record light fee:", lightErr);
+          toast.error("Booking created but light fee could not be recorded");
+        }
+      }
+
       const opponent = bookingDialog.opponentId
         ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
         : null;

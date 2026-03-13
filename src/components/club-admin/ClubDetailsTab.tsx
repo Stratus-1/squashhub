@@ -13,9 +13,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string }) {
+  const { user } = useAuth();
   const updateClub = useUpdateClub();
   const { data: members = [] } = useClubMembers(clubId);
   const [uploading, setUploading] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({

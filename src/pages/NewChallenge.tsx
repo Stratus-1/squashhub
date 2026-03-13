@@ -98,7 +98,7 @@ export default function NewChallenge() {
     [ladder, opponentId],
   );
 
-  const selectedEligible = isEligible(opponentProfile?.rank ?? null);
+  const selectedEligible = isEligible(opponentProfile?.ladder_position ?? null);
 
   /* head-to-head map for quick lookup */
   const h2hMap = useMemo(() => {

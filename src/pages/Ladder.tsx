@@ -113,7 +113,13 @@ export default function Ladder() {
               challengeBlocked={!!getChallengeBlockReason(player.id, playerPosition)}
             />
           );
-        })}
+        {list.length === 0 && (
+          <p className="text-xs text-muted-foreground py-4 text-center">No players yet</p>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="bottom-nav-safe">
       <SEO title="Player Ladder" description="See the latest squash ladder rankings." path="/ladder" noIndex />

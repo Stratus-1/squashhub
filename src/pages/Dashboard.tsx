@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 
-import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { AvatarFeatureBanner } from "@/components/AvatarFeatureBanner";
@@ -119,7 +119,7 @@ export default function Dashboard() {
     <div className="bottom-nav-safe relative">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
-      <OnboardingWizard
+      <MemberOnboardingWizard
         open={showOnboarding}
         onComplete={() => {
           setShowOnboarding(false);

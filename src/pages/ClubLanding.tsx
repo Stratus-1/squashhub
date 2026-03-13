@@ -69,9 +69,9 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     );
   }
 
-  // If user is logged in, redirect to home
+  // If user is logged in from path-based club route, keep club context in URL
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
 
   return (
@@ -115,7 +115,18 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
               </p>
             )}
             <div className="pt-3 space-y-3">
-              <Button size="lg" className="w-full gap-2" onClick={() => window.location.href = `/auth`}>
+              <Button
+                size="lg"
+                className="w-full gap-2"
+                onClick={() => {
+                  const clubParam = displaySubdomain ? `club=${encodeURIComponent(displaySubdomain)}` : "";
+                  const redirect = displaySubdomain
+                    ? `redirectTo=${encodeURIComponent(`/?club=${displaySubdomain}`)}`
+                    : "";
+                  const query = [clubParam, redirect].filter(Boolean).join("&");
+                  window.location.href = query ? `/auth?${query}` : "/auth";
+                }}
+              >
                 Sign In / Register
                 <ArrowRight className="w-4 h-4" />
               </Button>

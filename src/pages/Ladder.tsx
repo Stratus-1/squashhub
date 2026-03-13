@@ -76,29 +76,52 @@ export default function Ladder() {
 
   const positionMap = useMemo(() => {
     const map = new Map<string, number>();
-    menPlayers.forEach((p, i) => map.set(p.id, i + 1));
-    ladiesPlayers.forEach((p, i) => map.set(p.id, i + 1));
+    const setPositionKeys = (player: LadderPlayer, position: number) => {
+      [player.id, player.user_id, player.club_member_id].forEach((key) => {
+        if (key) map.set(String(key), position);
+      });
+    };
+
+    menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+    ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
     return map;
   }, [menPlayers, ladiesPlayers]);
 
-  const myPosition = user?.id ? positionMap.get(user.id) ?? null : null;
+  const myPosition = useMemo(() => {
+    const keys = [user?.id, myClubMember?.id].filter(Boolean) as string[];
+    for (const key of keys) {
+      const position = positionMap.get(key);
+      if (typeof position === "number") return position;
+    }
+    return null;
+  }, [positionMap, user?.id, myClubMember?.id]);
+
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
 
-  const canChallenge = (playerId: string): string | null => {
+  const canChallenge = (player: LadderPlayer): string | null => {
     if (!user?.id) return "You must be logged in.";
-    if (playerId === user.id) return null; // just hide button for self
-    if (!myPosition) return "You need a ladder rank first.";
-    const opponentPos = positionMap.get(playerId) ?? null;
+    if (player.user_id === user.id) return null; // hide button for self
+    if (!player.user_id) return "This member has not linked an account yet.";
+    if (!myPosition) return "Your account is not linked to your ladder rank yet.";
+
+    const opponentPos =
+      positionMap.get(player.user_id) ??
+      positionMap.get(player.club_member_id) ??
+      positionMap.get(player.id) ??
+      null;
+
     if (!opponentPos) return "This player is not ranked.";
     if (myPosition <= opponentPos) return "You may only challenge players above you.";
+
     const diff = myPosition - opponentPos;
     if (diff > challengeLevelsUp) return `You can only challenge up to ${challengeLevelsUp} positions above you.`;
+
     return null;
   };
 
-  const isChallengeable = (playerId: string): boolean => {
-    if (!user?.id || playerId === user.id) return false;
-    return canChallenge(playerId) === null;
+  const isChallengeable = (player: LadderPlayer): boolean => {
+    if (!user?.id || player.user_id === user.id) return false;
+    return canChallenge(player) === null;
   };
 
   const handleChallengeClick = (player: LadderPlayer) => {

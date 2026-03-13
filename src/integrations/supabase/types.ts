@@ -1231,9 +1231,11 @@ export type Database = {
           court_id: number | null
           created_at: string
           disputed: boolean
+          duration_s: number | null
           game_scores: string | null
           id: string
           match_date: string
+          notes: string | null
           player_a: string
           player_b: string
           score: string | null
@@ -1247,9 +1249,11 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           disputed?: boolean
+          duration_s?: number | null
           game_scores?: string | null
           id?: string
           match_date?: string
+          notes?: string | null
           player_a: string
           player_b: string
           score?: string | null
@@ -1263,9 +1267,11 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           disputed?: boolean
+          duration_s?: number | null
           game_scores?: string | null
           id?: string
           match_date?: string
+          notes?: string | null
           player_a?: string
           player_b?: string
           score?: string | null

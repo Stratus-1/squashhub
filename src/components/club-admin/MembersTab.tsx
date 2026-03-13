@@ -583,7 +583,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     club_member_number: member.club_member_number || "",
     role: member.role,
     plays_league: member.plays_league,
-    league_player_rank: member.league_player_rank ?? "",
+    ladder_position: member.ladder_position ?? "",
     id_number: member.id_number || "",
     gender: member.gender || "",
     phone: member.phone || member.profiles?.phone || "+27",
@@ -608,7 +608,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               ...p,
               association_id: assocId,
               association_number: data.league_association_number || "",
-              league_player_rank: data.player_rank ?? p.league_player_rank,
+              ladder_position: data.player_rank ?? p.ladder_position,
             }));
           }
           setRegLoaded(true);
@@ -635,7 +635,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       club_member_number: form.club_member_number || null,
       role: form.role,
       plays_league: form.plays_league,
-      league_player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+      ladder_position: form.ladder_position ? Number(form.ladder_position) : null,
       id_number: form.id_number || null,
       gender: form.gender || null,
       phone: form.phone && form.phone !== "+27" ? form.phone : null,
@@ -666,7 +666,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           await fromExt("member_league_registrations")
             .update({
               league_association_number: form.association_number.trim(),
-              player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
             })
             .eq("id", existing.id);
         } else {
@@ -675,7 +675,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               club_member_id: member.id,
               league_id: league.id,
               league_association_number: form.association_number.trim(),
-              player_rank: form.league_player_rank ? Number(form.league_player_rank) : null,
+              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
             });
         }
       }
@@ -710,10 +710,10 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             </select>
           </div>
           <div className="space-y-1">
-            <Label>Provisional Ranking</Label>
-            <Input type="number" min={1} value={form.league_player_rank} onChange={e => setForm(p => ({ ...p, league_player_rank: e.target.value }))} placeholder="e.g. 5" />
+            <Label>Ladder Position</Label>
+            <Input type="number" min={1} value={form.ladder_position} onChange={e => setForm(p => ({ ...p, ladder_position: e.target.value }))} placeholder="e.g. 5" />
             <p className="text-xs text-muted-foreground">
-              Current ladder rank: {typeof member.league_player_rank === "number" ? `#${member.league_player_rank}` : "unranked"}
+              Current ladder position: {typeof member.ladder_position === "number" ? `#${member.ladder_position}` : "unranked"}
             </p>
           </div>
           <div className="flex items-center gap-2">

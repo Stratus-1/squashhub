@@ -44,7 +44,7 @@ export interface ClubMember {
   role: "captain" | "admin" | "member";
   club_member_number?: string;
   plays_league: boolean;
-  league_player_rank?: number;
+  ladder_position?: number;
   id_number?: string;
   gender?: string;
   phone?: string;

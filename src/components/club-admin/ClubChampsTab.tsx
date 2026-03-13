@@ -110,7 +110,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()))
-      .sort((a, b) => (a.league_player_rank || 999) - (b.league_player_rank || 999));
+      .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members, gender]);
 
   // When entering players step, pre-select all; when entering groups, auto-seed assignments
@@ -655,8 +655,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
                     <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
-                    {m.league_player_rank && (
-                      <Badge variant="secondary" className="text-xs">Rank {m.league_player_rank}</Badge>
+                    {m.ladder_position && (
+                      <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>
                     )}
                   </label>
                 ))}
@@ -706,8 +706,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     {g.map((p) => (
                       <div key={p.id} className="flex items-center gap-2 py-1">
                         <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
-                        {p.league_player_rank && (
-                          <Badge variant="secondary" className="text-[10px]">#{p.league_player_rank}</Badge>
+                        {p.ladder_position && (
+                          <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>
                         )}
                         <Select
                           value={String(groupAssignments.get(p.id) ?? 0)}

@@ -28,7 +28,7 @@ export default function ClubChampsView() {
     queryKey: ["club-champ-entries", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_entries")
-        .select("*, club_members:club_member_id(id, name, user_id, league_player_rank, profiles:user_id(name, avatar_url))")
+        .select("*, club_members:club_member_id(id, name, user_id, ladder_position, profiles:user_id(name, avatar_url))")
         .eq("champ_id", champId!);
       if (error) throw error;
       return data || [];

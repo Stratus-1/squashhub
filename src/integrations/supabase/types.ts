@@ -548,7 +548,7 @@ export type Database = {
           id: string
           id_number: string | null
           joined_at: string
-          league_player_rank: number | null
+          ladder_position: number | null
           name: string | null
           phone: string | null
           plays_league: boolean
@@ -567,7 +567,7 @@ export type Database = {
           id?: string
           id_number?: string | null
           joined_at?: string
-          league_player_rank?: number | null
+          ladder_position?: number | null
           name?: string | null
           phone?: string | null
           plays_league?: boolean
@@ -586,7 +586,7 @@ export type Database = {
           id?: string
           id_number?: string | null
           joined_at?: string
-          league_player_rank?: number | null
+          ladder_position?: number | null
           name?: string | null
           phone?: string | null
           plays_league?: boolean

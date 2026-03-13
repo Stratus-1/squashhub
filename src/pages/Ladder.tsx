@@ -3,7 +3,6 @@ import { SEO } from "@/components/SEO";
 import { LadderPlayerCard, type LadderPlayer } from "@/components/LadderPlayerCard";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,7 +10,7 @@ import { Loader2, Swords } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useCreateChallenge } from "@/hooks/use-data";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +22,7 @@ export default function Ladder() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: clubData } = useMyClub();
+  const { data: myClubMember } = useMyClubMember();
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
   const queryClient = useQueryClient();
@@ -76,33 +76,56 @@ export default function Ladder() {
 
   const positionMap = useMemo(() => {
     const map = new Map<string, number>();
-    menPlayers.forEach((p, i) => map.set(p.id, i + 1));
-    ladiesPlayers.forEach((p, i) => map.set(p.id, i + 1));
+    const setPositionKeys = (player: LadderPlayer, position: number) => {
+      [player.id, player.user_id, player.club_member_id].forEach((key) => {
+        if (key) map.set(String(key), position);
+      });
+    };
+
+    menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+    ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
     return map;
   }, [menPlayers, ladiesPlayers]);
 
-  const myPosition = user?.id ? positionMap.get(user.id) ?? null : null;
+  const myPosition = useMemo(() => {
+    const keys = [user?.id, myClubMember?.id].filter(Boolean) as string[];
+    for (const key of keys) {
+      const position = positionMap.get(key);
+      if (typeof position === "number") return position;
+    }
+    return null;
+  }, [positionMap, user?.id, myClubMember?.id]);
+
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
 
-  const canChallenge = (playerId: string): string | null => {
+  const canChallenge = (player: LadderPlayer): string | null => {
     if (!user?.id) return "You must be logged in.";
-    if (playerId === user.id) return null; // just hide button for self
-    if (!myPosition) return "You need a ladder rank first.";
-    const opponentPos = positionMap.get(playerId) ?? null;
+    if (player.user_id === user.id) return null; // hide button for self
+    if (!player.user_id) return "This member has not linked an account yet.";
+    if (!myPosition) return "Your account is not linked to your ladder rank yet.";
+
+    const opponentPos =
+      positionMap.get(player.user_id) ??
+      positionMap.get(player.club_member_id) ??
+      positionMap.get(player.id) ??
+      null;
+
     if (!opponentPos) return "This player is not ranked.";
     if (myPosition <= opponentPos) return "You may only challenge players above you.";
+
     const diff = myPosition - opponentPos;
     if (diff > challengeLevelsUp) return `You can only challenge up to ${challengeLevelsUp} positions above you.`;
+
     return null;
   };
 
-  const isChallengeable = (playerId: string): boolean => {
-    if (!user?.id || playerId === user.id) return false;
-    return canChallenge(playerId) === null;
+  const isChallengeable = (player: LadderPlayer): boolean => {
+    if (!user?.id || player.user_id === user.id) return false;
+    return canChallenge(player) === null;
   };
 
   const handleChallengeClick = (player: LadderPlayer) => {
-    const reason = canChallenge(player.id);
+    const reason = canChallenge(player);
     if (reason) {
       setBlockedChallenge({ open: true, description: reason });
       return;
@@ -114,10 +137,15 @@ export default function Ladder() {
 
   const handleSendChallenge = async () => {
     if (!challengeDialog.player || !proposedDate || !proposedTime) return;
+    if (!challengeDialog.player.user_id) {
+      toast.error("This member has not linked an account yet.");
+      return;
+    }
+
     setSending(true);
     try {
       await createChallenge.mutateAsync({
-        opponentId: challengeDialog.player.id,
+        opponentId: challengeDialog.player.user_id,
         proposedDate,
         proposedTime,
         courtId: courtId ? Number(courtId) : undefined,
@@ -146,15 +174,15 @@ export default function Ladder() {
             key={player.id}
             player={player}
             index={index}
-            isMe={player.id === user?.id}
+            isMe={player.user_id === user?.id || player.id === user?.id || player.club_member_id === myClubMember?.id}
             isAdmin={false}
             onNavigate={(id, isMe) => {
               if (isMe) navigate("/profile");
               else navigate(`/players/${id}`);
             }}
             onChallenge={() => handleChallengeClick(player)}
-            challengeBlocked={!isChallengeable(player.id)}
-            highlightChallengeable={isChallengeable(player.id)}
+            challengeBlocked={!isChallengeable(player)}
+            highlightChallengeable={isChallengeable(player)}
           />
         ))}
         {list.length === 0 && (

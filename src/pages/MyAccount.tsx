@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Upload, Copy, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/use-data";
@@ -32,6 +33,7 @@ export default function MyAccount() {
   const [topUpAmount, setTopUpAmount] = useState("100");
   const [topUpMethod, setTopUpMethod] = useState<"eft" | "card">("eft");
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
+  const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
 
   // Credit transactions
@@ -48,18 +50,19 @@ export default function MyAccount() {
     enabled: !!user,
   });
 
-  // Fee payments
+  // Fee payments from club_member_fee_payments
+  const clubMemberId = myClubMember?.id;
   const { data: fees, isLoading: feesLoading } = useQuery({
-    queryKey: ["fee-payments", user?.id],
+    queryKey: ["club-member-fee-payments", clubMemberId],
     queryFn: async () => {
-      const { data, error } = await fromExt("fee_payments")
+      const { data, error } = await fromExt("club_member_fee_payments")
         .select("*")
-        .eq("user_id", user!.id)
-        .order("due_date", { ascending: true });
+        .eq("club_member_id", clubMemberId!)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!clubMemberId,
   });
 
   // Calculate credit balance
@@ -102,52 +105,74 @@ export default function MyAccount() {
 
   // Pay fee mutation
   const payFeeMutation = useMutation({
-    mutationFn: async ({ feeId, method }: { feeId: string; method: string }) => {
-      const fee = (fees || []).find((f: any) => f.id === feeId);
-      if (!fee) throw new Error("Fee not found");
+    mutationFn: async ({ feeIds, method }: { feeIds: string[]; method: string }) => {
+      const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
+      if (!selectedFees.length) throw new Error("No fees selected");
+      const totalAmount = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
 
       if (method === "credit") {
-        if (creditBalance < Number(fee.amount)) {
+        if (creditBalance < totalAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
-        // Create payment transaction
+        // Deduct from credit and mark paid
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
-          amount: Number(fee.amount),
+          amount: totalAmount,
           type: "payment",
           method: "credit",
-          description: `Payment for ${fee.fee_label}`,
+          description: `Fee payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
           status: "confirmed",
         });
         if (txErr) throw txErr;
-      } else {
-        // EFT or card - create pending transaction
+        // Mark all selected fees as paid
+        for (const fee of selectedFees) {
+          const { error } = await fromExt("club_member_fee_payments")
+            .update({ paid: true, paid_at: new Date().toISOString() })
+            .eq("id", fee.id);
+          if (error) throw error;
+        }
+      } else if (method === "card") {
+        // Card payment — auto-confirm, mark fees paid immediately
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: user!.id,
-          amount: Number(fee.amount),
+          amount: totalAmount,
           type: "payment",
-          method,
-          description: `Payment for ${fee.fee_label}`,
+          method: "card",
+          description: `Card payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
+          status: "confirmed",
+        });
+        if (txErr) throw txErr;
+        for (const fee of selectedFees) {
+          const { error } = await fromExt("club_member_fee_payments")
+            .update({ paid: true, paid_at: new Date().toISOString() })
+            .eq("id", fee.id);
+          if (error) throw error;
+        }
+      } else {
+        // EFT — pending admin confirmation
+        const { error: txErr } = await fromExt("member_credit_transactions").insert({
+          user_id: user!.id,
+          amount: totalAmount,
+          type: "payment",
+          method: "eft",
+          description: `EFT payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
+          reference: `${memberNo} - Fees`,
           status: "pending",
         });
         if (txErr) throw txErr;
+        // Do NOT mark fees as paid — admin/secretary must confirm
       }
-
-      // Mark fee as paid
-      const { error: feeErr } = await fromExt("fee_payments")
-        .update({
-          paid: true,
-          paid_at: new Date().toISOString(),
-          payment_method: method,
-        })
-        .eq("id", feeId);
-      if (feeErr) throw feeErr;
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["fee-payments"] });
-      toast.success("Payment recorded successfully!");
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      if (vars.method === "eft") {
+        toast.success("EFT payment recorded. Your secretary/admin will confirm receipt.");
+      } else {
+        toast.success("Payment recorded successfully!");
+      }
       setPayFeeId(null);
+      setSelectedFeeIds([]);
     },
     onError: (e: any) => toast.error(e.message || "Payment failed"),
   });
@@ -180,6 +205,9 @@ export default function MyAccount() {
 
   const unpaidFees = (fees || []).filter((f: any) => !f.paid);
   const paidFees = (fees || []).filter((f: any) => f.paid);
+  const selectedFeeTotal = unpaidFees
+    .filter((f: any) => selectedFeeIds.includes(f.id))
+    .reduce((s: number, f: any) => s + Number(f.amount), 0);
 
   return (
     <div className="bottom-nav-safe">
@@ -236,31 +264,44 @@ export default function MyAccount() {
         ) : unpaidFees.length > 0 ? (
           <div className="space-y-1.5">
             {unpaidFees.map((fee: any) => (
-              <Card key={fee.id} className="p-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
+              <Card key={fee.id} className="p-3 flex items-center gap-3">
+                <Checkbox
+                  checked={selectedFeeIds.includes(fee.id)}
+                  onCheckedChange={(checked) => {
+                    setSelectedFeeIds((prev) =>
+                      checked ? [...prev, fee.id] : prev.filter((id) => id !== fee.id)
+                    );
+                  }}
+                />
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
                     <p className="text-sm font-medium truncate">{fee.fee_label}</p>
                   </div>
                   <p className="text-[11px] text-muted-foreground ml-5.5">
                     R{Number(fee.amount).toFixed(2)}
-                    {fee.due_date && ` · Due ${fee.due_date}`}
+                    {fee.season_year && ` · ${fee.season_year}`}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 h-7 text-[11px] gap-1 border-primary/30"
-                  onClick={() => {
-                    setPayFeeId(fee.id);
-                    setPayMethod(creditBalance >= Number(fee.amount) ? "credit" : "eft");
-                  }}
-                >
-                  Pay
-                  <ChevronRight className="w-3 h-3" />
-                </Button>
               </Card>
             ))}
+            {selectedFeeIds.length > 0 && (
+              <Button
+                className="w-full mt-2 gap-2"
+                onClick={() => {
+                  setPayFeeId("batch");
+                  setPayMethod(creditBalance >= selectedFeeTotal ? "credit" : "eft");
+                }}
+              >
+                Pay Selected ({selectedFeeIds.length}) · R{selectedFeeTotal.toFixed(2)}
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            )}
+            {selectedFeeIds.length === 0 && (
+              <p className="text-[11px] text-muted-foreground text-center mt-1">
+                Select fees above to pay
+              </p>
+            )}
           </div>
         ) : (
           <Card className="p-3 text-center text-sm text-muted-foreground">
@@ -423,22 +464,33 @@ export default function MyAccount() {
       </Dialog>
 
       {/* Pay Fee Dialog */}
-      <Dialog open={!!payFeeId} onOpenChange={(open) => !open && setPayFeeId(null)}>
+      <Dialog open={!!payFeeId} onOpenChange={(open) => { if (!open) { setPayFeeId(null); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Pay Fee</DialogTitle>
+            <DialogTitle>Pay Fees</DialogTitle>
             <DialogDescription>
-              {payingFee?.fee_label} — R{Number(payingFee?.amount || 0).toFixed(2)}
+              {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} — Total R{selectedFeeTotal.toFixed(2)}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-2">
+          <div className="space-y-3 mt-1">
+            <div className="space-y-1">
+              {unpaidFees.filter((f: any) => selectedFeeIds.includes(f.id)).map((f: any) => (
+                <div key={f.id} className="flex justify-between text-xs">
+                  <span className="truncate">{f.fee_label}</span>
+                  <span className="font-medium shrink-0 ml-2">R{Number(f.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            <Separator />
+
             <div className="grid grid-cols-3 gap-2">
               <Button
                 variant={payMethod === "credit" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"
                 onClick={() => setPayMethod("credit")}
-                disabled={creditBalance < Number(payingFee?.amount || 0)}
+                disabled={creditBalance < selectedFeeTotal}
               >
                 <Wallet className="w-4 h-4" />
                 Credit
@@ -481,25 +533,33 @@ export default function MyAccount() {
                 {club.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {club.bank_account_name}</p>}
                 {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
                 {club.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {club.bank_branch_code}</p>}
-                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - {payingFee?.fee_label}</p>
+                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Fees</p>
+              </Card>
+            )}
+
+            {payMethod === "eft" && (
+              <Card className="p-2.5 bg-amber-500/5 border-amber-500/20">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  After making your EFT, your secretary/admin will confirm receipt and mark the fees as paid.
+                </p>
               </Card>
             )}
 
             {payMethod === "card" && (
               <Card className="p-3 bg-muted/50">
                 <p className="text-xs text-muted-foreground">
-                  Card payment via {club?.payment_gateway || "payment gateway"}. Admin will confirm after verification.
+                  Card payment via {club?.payment_gateway || "payment gateway"}. Fees will be marked as paid immediately.
                 </p>
               </Card>
             )}
 
             <Button
               className="w-full"
-              disabled={payFeeMutation.isPending}
-              onClick={() => payFeeId && payFeeMutation.mutate({ feeId: payFeeId, method: payMethod })}
+              disabled={payFeeMutation.isPending || selectedFeeIds.length === 0}
+              onClick={() => payFeeMutation.mutate({ feeIds: selectedFeeIds, method: payMethod })}
             >
               {payFeeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Pay R{Number(payingFee?.amount || 0).toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
+              Pay R{selectedFeeTotal.toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
             </Button>
           </div>
         </DialogContent>

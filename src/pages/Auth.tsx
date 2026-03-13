@@ -61,6 +61,10 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (captchaToken) {
+      const valid = await verifyCaptchaToken(captchaToken);
+      if (!valid) { toast.error("Captcha verification failed"); return; }
+    }
     setLoading(true);
     const { error } = await signIn(loginEmail.trim(), loginPassword);
     if (error) toast.error(error.message);

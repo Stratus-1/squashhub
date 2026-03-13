@@ -583,7 +583,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     club_member_number: member.club_member_number || "",
     role: member.role,
     plays_league: member.plays_league,
-    league_player_rank: member.league_player_rank ?? "",
+    ladder_position: member.ladder_position ?? "",
     id_number: member.id_number || "",
     gender: member.gender || "",
     phone: member.phone || member.profiles?.phone || "+27",

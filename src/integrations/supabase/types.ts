@@ -1190,6 +1190,7 @@ export type Database = {
       member_credit_transactions: {
         Row: {
           amount: number
+          club_id: string
           confirmed_at: string | null
           confirmed_by: string | null
           created_at: string
@@ -1204,6 +1205,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          club_id: string
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
@@ -1218,6 +1220,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          club_id?: string
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string

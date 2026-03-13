@@ -113,6 +113,7 @@ export function MemberOnboardingWizard({
   const [idNumber, setIdNumber] = useState("");
   const [gender, setGender] = useState("");
   const [address, setAddress] = useState("");
+  const [skillLevel, setSkillLevel] = useState("");
 
   // Membership
   const [feeCategoryId, setFeeCategoryId] = useState("");

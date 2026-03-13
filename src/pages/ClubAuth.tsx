@@ -206,6 +206,7 @@ export default function ClubAuth() {
               </Button>
             </form>
           </Card>
+          <PoweredBySquashHub />
         </motion.div>
       </div>
     );

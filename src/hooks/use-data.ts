@@ -140,7 +140,7 @@ export function useBookings(date: string, clubId?: string) {
         .eq("status", "active");
       if (clubId) {
         query = query.eq("club_id", clubId);
-      }
+      const { data: bookings, error } = await query;
       if (error) throw error;
 
       // Fetch player names for bookings

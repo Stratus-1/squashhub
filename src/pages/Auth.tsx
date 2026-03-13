@@ -357,6 +357,7 @@ export default function Auth() {
                     minLength={6}
                   />
                 </div>
+                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Creating club..." : "Create Club"}
                 </Button>

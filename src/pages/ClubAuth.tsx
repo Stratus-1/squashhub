@@ -388,6 +388,7 @@ export default function ClubAuth() {
                   />
                 </div>
                 <TermsCheckbox checked={existingAcceptTerms} onCheckedChange={setExistingAcceptTerms} />
+                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Registering..." : "Register"}
                 </Button>

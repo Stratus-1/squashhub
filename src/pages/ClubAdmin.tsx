@@ -3,13 +3,16 @@ import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal } from "lucide-react";
-import { ClubDetailsTab } from "@/components/club-admin/ClubDetailsTab";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid } from "lucide-react";
+import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
+import { FinanceTab } from "@/components/club-admin/FinanceTab";
+import { CourtsTab } from "@/components/club-admin/CourtsTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
 import { LadderTab } from "@/components/club-admin/LadderTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { FeesTab } from "@/components/club-admin/FeesTab";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
+import { SettingsTab } from "@/components/club-admin/SettingsTab";
 
 export default function ClubAdmin() {
   const { user } = useAuth();
@@ -43,22 +46,28 @@ export default function ClubAdmin() {
           </div>
         </div>
 
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="details" className="text-xs md:text-sm"><Settings className="w-4 h-4 mr-1 hidden md:inline" />Details</TabsTrigger>
-            <TabsTrigger value="fees" className="text-xs md:text-sm"><DollarSign className="w-4 h-4 mr-1 hidden md:inline" />Fees</TabsTrigger>
-            <TabsTrigger value="members" className="text-xs md:text-sm"><Users className="w-4 h-4 mr-1 hidden md:inline" />Members</TabsTrigger>
-            <TabsTrigger value="ladder" className="text-xs md:text-sm"><ListOrdered className="w-4 h-4 mr-1 hidden md:inline" />Ladder</TabsTrigger>
-            <TabsTrigger value="leagues" className="text-xs md:text-sm"><Trophy className="w-4 h-4 mr-1 hidden md:inline" />Leagues</TabsTrigger>
-            <TabsTrigger value="champs" className="text-xs md:text-sm"><Medal className="w-4 h-4 mr-1 hidden md:inline" />Champs</TabsTrigger>
+        <Tabs defaultValue="club" className="w-full">
+          <TabsList className="flex w-full overflow-x-auto">
+            <TabsTrigger value="club" className="text-xs md:text-sm flex-1"><Building2 className="w-4 h-4 mr-1 hidden md:inline" />Club</TabsTrigger>
+            <TabsTrigger value="members" className="text-xs md:text-sm flex-1"><Users className="w-4 h-4 mr-1 hidden md:inline" />Members</TabsTrigger>
+            <TabsTrigger value="finance" className="text-xs md:text-sm flex-1"><Landmark className="w-4 h-4 mr-1 hidden md:inline" />Finance</TabsTrigger>
+            <TabsTrigger value="fees" className="text-xs md:text-sm flex-1"><DollarSign className="w-4 h-4 mr-1 hidden md:inline" />Fees</TabsTrigger>
+            <TabsTrigger value="courts" className="text-xs md:text-sm flex-1"><LayoutGrid className="w-4 h-4 mr-1 hidden md:inline" />Courts</TabsTrigger>
+            <TabsTrigger value="ladder" className="text-xs md:text-sm flex-1"><ListOrdered className="w-4 h-4 mr-1 hidden md:inline" />Ladder</TabsTrigger>
+            <TabsTrigger value="leagues" className="text-xs md:text-sm flex-1"><Trophy className="w-4 h-4 mr-1 hidden md:inline" />Leagues</TabsTrigger>
+            <TabsTrigger value="champs" className="text-xs md:text-sm flex-1"><Medal className="w-4 h-4 mr-1 hidden md:inline" />Champs</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs md:text-sm flex-1"><Settings className="w-4 h-4 mr-1 hidden md:inline" />Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details"><ClubDetailsTab club={club} clubId={club.id} /></TabsContent>
-          <TabsContent value="fees"><FeesTab clubId={club.id} /></TabsContent>
+          <TabsContent value="club"><ClubInfoTab club={club} clubId={club.id} /></TabsContent>
           <TabsContent value="members"><MembersTab clubId={club.id} /></TabsContent>
+          <TabsContent value="finance"><FinanceTab club={club} clubId={club.id} /></TabsContent>
+          <TabsContent value="fees"><FeesTab clubId={club.id} /></TabsContent>
+          <TabsContent value="courts"><CourtsTab club={club} clubId={club.id} /></TabsContent>
           <TabsContent value="ladder"><LadderTab clubId={club.id} /></TabsContent>
           <TabsContent value="leagues"><LeaguesTab clubId={club.id} /></TabsContent>
           <TabsContent value="champs"><ClubChampsTab clubId={club.id} /></TabsContent>
+          <TabsContent value="settings"><SettingsTab club={club} clubId={club.id} /></TabsContent>
         </Tabs>
       </div>
     </div>

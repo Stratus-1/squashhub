@@ -111,7 +111,7 @@ export default function Notifications() {
       site_url: origin,
       url,
       link_url: toAbsolute(url),
-      unsubscribe_url: toAbsolute("/dashboard"),
+      unsubscribe_url: toAbsolute("/"),
     } as Record<string, string>;
   }, [selected]);
 

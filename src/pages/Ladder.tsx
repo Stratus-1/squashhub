@@ -114,6 +114,7 @@ export default function Ladder() {
             />
           );
         })}
+        {list.length === 0 && (
           <p className="text-xs text-muted-foreground py-4 text-center">No players yet</p>
         )}
       </div>

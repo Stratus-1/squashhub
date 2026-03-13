@@ -348,7 +348,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   });
 
   // Load existing league registration data
-  useState(() => {
+  useEffect(() => {
     if (member.plays_league) {
       fromExt("member_league_registrations")
         .select("league_id, league_association_number, player_rank, leagues:league_id(association_id)")
@@ -369,7 +369,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     } else {
       setRegLoaded(true);
     }
-  });
+  }, [member.id, member.plays_league]);
 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 

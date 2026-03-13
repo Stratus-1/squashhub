@@ -182,7 +182,9 @@ export default function ClubAuth() {
 
   if (showReset) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="min-h-screen relative flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
         <SEO title={`Reset Password | ${clubName}`} description="Reset your password." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="text-center mb-6">

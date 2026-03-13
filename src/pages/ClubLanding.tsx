@@ -2,10 +2,12 @@ import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2 } from "lucide-react";
+import { Loader2, Building2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
+import { motion } from "framer-motion";
+import heroBg from "@/assets/hero-bg.jpg";
 
 interface ClubData {
   id: string;
@@ -72,27 +74,57 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background">
       <SEO
         title={`${club.name} | SquashHub`}
         description={`Join ${club.name} on SquashHub — book courts, track matches, and compete on the ladder.`}
         path={`/c/${displaySubdomain}`}
       />
-      <Card className="max-w-md w-full p-8 text-center space-y-4">
-        {club.logo_url ? (
-          <img src={club.logo_url} alt={`${club.name} logo`} className="w-20 h-20 object-contain mx-auto rounded-md" />
-        ) : (
-          <Building2 className="w-12 h-12 text-primary mx-auto" />
-        )}
-        <h1 className="text-2xl font-bold font-heading">{club.name}</h1>
-        <p className="text-sm font-mono text-primary">{displaySubdomain}.squashhub.co.za</p>
-        {club.address && <p className="text-sm text-muted-foreground">{club.address}</p>}
-        <div className="pt-2 space-y-2">
-          <Button className="w-full" onClick={() => window.location.href = `/auth`}>
-            Sign In / Register
-          </Button>
+
+      {/* Hero with squash court background */}
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${heroBg})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
+
+        <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-20">
+          <motion.div
+            className="max-w-md w-full text-center space-y-5"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {club.logo_url ? (
+              <img src={club.logo_url} alt={`${club.name} logo`} className="w-24 h-24 object-contain mx-auto rounded-xl shadow-lg" />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
+                <Building2 className="w-10 h-10 text-primary-foreground" />
+              </div>
+            )}
+            <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-foreground">
+              {club.name}
+            </h1>
+            <p className="text-sm font-mono text-primary">{displaySubdomain}.squashhub.co.za</p>
+            {club.address && <p className="text-sm text-muted-foreground">{club.address}</p>}
+            {(club.email || club.phone) && (
+              <p className="text-xs text-muted-foreground">
+                {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
+              </p>
+            )}
+            <div className="pt-3 space-y-3">
+              <Button size="lg" className="w-full gap-2" onClick={() => window.location.href = `/auth`}>
+                Sign In / Register
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground/70 pt-2">
+              Powered by <span className="font-semibold text-foreground/60">SquashHub</span>
+            </p>
+          </motion.div>
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

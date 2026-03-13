@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
+import heroBg from "@/assets/hero-bg.jpg";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -181,9 +182,11 @@ export default function ClubAuth() {
 
   if (showReset) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="min-h-screen relative flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
         <SEO title={`Reset Password | ${clubName}`} description="Reset your password." path="/auth" noIndex />
-        <motion.div className="w-full max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold font-heading">Reset Password</h1>
             <p className="text-sm text-muted-foreground mt-1">Enter your email to receive a reset link</p>
@@ -209,9 +212,11 @@ export default function ClubAuth() {
 
   if (signupDone) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="min-h-screen relative flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
         <SEO title={`Check Email | ${clubName}`} description="Confirm your email." path="/auth" noIndex />
-        <motion.div className="w-full max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
               <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -232,14 +237,16 @@ export default function ClubAuth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+    <div className="min-h-screen relative flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
       <SEO
         title={`Sign In | ${clubName}`}
         description={`Sign in or register for ${clubName} on SquashHub.`}
         path="/auth"
         noIndex
       />
-      <motion.div className="w-full max-w-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         {/* Club Header */}
         <div className="text-center mb-6">
           {club?.logo_url ? (

@@ -62,9 +62,7 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
       >
         <div className={cn(
           "w-7 h-7 rounded-full flex items-center justify-center font-heading font-bold text-xs shrink-0",
-          index === 0 ? "bg-accent text-accent-foreground" :
-          index <= 2 ? "bg-primary/15 text-primary" :
-          "bg-secondary text-muted-foreground"
+          highlightChallengeable ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
         )}>
           {index + 1}
         </div>

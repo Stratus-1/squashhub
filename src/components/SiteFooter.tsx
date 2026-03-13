@@ -1,5 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useMyClub } from "@/hooks/use-club";
+import { useAuth } from "@/contexts/AuthContext";
 
 function getPrivacyContactEmail() {
   return (import.meta.env.VITE_PRIVACY_CONTACT_EMAIL as string | undefined)?.trim() || "";
@@ -8,6 +10,14 @@ function getPrivacyContactEmail() {
 export function SiteFooter({ compact = false, withBottomNav = false }: { compact?: boolean; withBottomNav?: boolean }) {
   const email = getPrivacyContactEmail();
   const year = new Date().getFullYear();
+  const location = useLocation();
+  const { user } = useAuth();
+  const { data: clubData } = useMyClub();
+
+  const isHome = location.pathname === "/" || location.pathname === "/home";
+  const brandName = isHome || !user
+    ? "SquashHub"
+    : clubData?.club?.name || "SquashHub";
 
   return (
     <footer className={cn(
@@ -17,7 +27,7 @@ export function SiteFooter({ compact = false, withBottomNav = false }: { compact
       <div className="px-4 sm:px-6 lg:px-[5%] py-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="text-xs text-muted-foreground">
-            <span>© {year} Gordon&apos;s Bay Squash Club</span>
+            <span>© {year} {brandName}</span>
             {!compact && (
               <>
                 <span className="mx-2">·</span>

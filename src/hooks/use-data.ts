@@ -425,31 +425,7 @@ export function useLadder(clubId?: string) {
       const { data: members, error: mErr } = await query;
       if (mErr) throw mErr;
 
-      // 2. Get league registrations for best player_rank per member
-      const memberIds = (members || []).map(m => m.id);
-      let regs: any[] = [];
-      if (memberIds.length > 0) {
-        const { data } = await supabase
-          .from("member_league_registrations")
-          .select("club_member_id, player_rank")
-          .in("club_member_id", memberIds)
-          .not("player_rank", "is", null)
-          .order("player_rank");
-        regs = data || [];
-      }
-
-      // Build map: club_member_id -> best (lowest) league player_rank
-      const leagueRankMap = new Map<string, number>();
-      for (const r of regs) {
-        if (r.player_rank != null) {
-          const existing = leagueRankMap.get(r.club_member_id);
-          if (existing == null || r.player_rank < existing) {
-            leagueRankMap.set(r.club_member_id, r.player_rank);
-          }
-        }
-      }
-
-      // 3. Get profiles for members that have user_id (for stats like wins/losses)
+      // 2. Get profiles for members that have user_id (for stats like wins/losses)
       const userIds = (members || []).map(m => m.user_id).filter(Boolean) as string[];
       let profileMap = new Map<string, any>();
       if (userIds.length > 0) {
@@ -462,30 +438,33 @@ export function useLadder(clubId?: string) {
         }
       }
 
-      // 4. Build ladder entries — only include members with a league rank
-      const ladder = (members || [])
-        .filter(m => leagueRankMap.has(m.id))
-        .map(m => {
-          const profile = m.user_id ? profileMap.get(m.user_id) : null;
-          const leagueRank = leagueRankMap.get(m.id)!;
-          return {
-            id: m.user_id || m.id,
-            club_member_id: m.id,
-            name: m.name || profile?.name || "Unknown",
-            avatar_url: profile?.avatar_url || null,
-            wins: profile?.wins ?? 0,
-            losses: profile?.losses ?? 0,
-            matches_played: profile?.matches_played ?? 0,
-            rank: leagueRank,
-            league_rank: leagueRank,
-            user_id: m.user_id,
-            gender: m.gender || null,
-            ladder_position: null as number | null,
-          };
-        });
+      // 3. Build ladder entries (single source of truth: club_members.league_player_rank)
+      const ladder = (members || []).map(m => {
+        const profile = m.user_id ? profileMap.get(m.user_id) : null;
+        const leagueRank = m.league_player_rank ?? null;
+        return {
+          id: m.user_id || m.id,
+          club_member_id: m.id,
+          name: m.name || profile?.name || "Unknown",
+          avatar_url: profile?.avatar_url || null,
+          wins: profile?.wins ?? 0,
+          losses: profile?.losses ?? 0,
+          matches_played: profile?.matches_played ?? 0,
+          rank: leagueRank,
+          league_rank: leagueRank,
+          user_id: m.user_id,
+          gender: m.gender || null,
+          ladder_position: null as number | null,
+        };
+      });
 
-      // Sort by player_rank ascending
-      ladder.sort((a, b) => a.league_rank - b.league_rank);
+      // Sort by ladder rank (fallback by name for safety)
+      ladder.sort((a, b) => {
+        if (a.league_rank != null && b.league_rank != null) return a.league_rank - b.league_rank;
+        if (a.league_rank != null) return -1;
+        if (b.league_rank != null) return 1;
+        return (a.name || "").localeCompare(b.name || "");
+      });
 
       // Assign ladder_position per gender group (index+1 within each gender)
       const genderGroups = new Map<string, number>();

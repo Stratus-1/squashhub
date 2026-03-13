@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Mail, Shield, Save } from "lucide-react";
+import { Settings, Mail, Shield, Save, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PlatformSettings {
   platform_sender_email: string;
@@ -34,6 +35,8 @@ export default function SuperAdminSettings() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadSettings();
@@ -80,6 +83,25 @@ export default function SuperAdminSettings() {
       toast.error(err.message || "Failed to save settings");
     }
     setSaving(false);
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!user?.email) {
+      toast.error("No email address found for your account");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auth-email-hook?action=test", {
+        body: { to: user.email, source: "platform" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Test email sent to ${user.email}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send test email");
+    }
+    setSendingTest(false);
   };
 
   if (loading) {
@@ -200,10 +222,22 @@ export default function SuperAdminSettings() {
             />
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Clubs that configure their own SMTP settings in Club Admin will use
-          those for member communications instead of the platform defaults.
-        </p>
+        <Separator />
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Clubs that configure their own SMTP settings in Club Admin will use
+            those for member communications instead of the platform defaults.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSendTestEmail}
+            disabled={sendingTest || !settings.platform_smtp_host}
+          >
+            <Send className="w-4 h-4 mr-2" />
+            {sendingTest ? "Sending..." : "Send Test Email"}
+          </Button>
+        </div>
       </Card>
 
       {/* hCaptcha Settings */}

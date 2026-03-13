@@ -37,31 +37,124 @@ interface FeePaymentRow {
   paid: boolean;
 }
 
-function MemberPaymentStatus({ payments, onToggle }: { payments: FeePaymentRow[]; onToggle: (feeId: string, paid: boolean) => void }) {
-  if (payments.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
+interface ExpectedFee {
+  fee_type: string;
+  fee_label: string;
+  amount: number;
+  existing?: FeePaymentRow;
+}
+
+/** Calculate pro-rated club fee based on months remaining until fee_due_month */
+function proRateClubFee(annualFee: number, joinedAt: string, feeDueMonth: number): number {
+  const joined = new Date(joinedAt);
+  const now = new Date();
+  let nextDue = new Date(now.getFullYear(), feeDueMonth - 1, 1);
+  if (nextDue <= now) nextDue = new Date(now.getFullYear() + 1, feeDueMonth - 1, 1);
+  const feeYearStart = new Date(nextDue.getFullYear() - 1, feeDueMonth - 1, 1);
+  if (joined <= feeYearStart) return annualFee;
+  const monthsRemaining = (nextDue.getFullYear() - joined.getFullYear()) * 12 + (nextDue.getMonth() - joined.getMonth());
+  if (monthsRemaining >= 12) return annualFee;
+  if (monthsRemaining <= 0) return 0;
+  return Math.round((annualFee / 12) * monthsRemaining);
+}
+
+/** Compute expected fees for a member */
+function computeExpectedFees(
+  member: ClubMember,
+  feeCategories: MemberFeeCategory[],
+  associations: any[],
+  nationalFees: any[],
+  feeDueMonth: number,
+  existingPayments: FeePaymentRow[]
+): ExpectedFee[] {
+  const fees: ExpectedFee[] = [];
+  if (!member.user_id) return fees;
+  const memberPayments = existingPayments.filter(p => p.user_id === member.user_id);
+
+  // 1. Club membership fee (from fee category, pro-rated for new members)
+  if (member.fee_category_id) {
+    const cat = feeCategories.find(c => c.id === member.fee_category_id);
+    if (cat) {
+      const amount = proRateClubFee(cat.annual_fee, member.joined_at, feeDueMonth);
+      const existing = memberPayments.find(p => p.fee_type === "membership");
+      fees.push({ fee_type: "membership", fee_label: `Club – ${cat.name}`, amount, existing });
+    }
+  }
+
+  // 2. Association fee (if plays league)
+  if (member.plays_league) {
+    for (const assoc of associations) {
+      if (assoc.fee_annual && assoc.fee_annual > 0) {
+        const label = assoc.abbreviation || assoc.name;
+        const existing = memberPayments.find(p => p.fee_type === "association");
+        fees.push({ fee_type: "association", fee_label: label, amount: assoc.fee_annual, existing });
+      }
+    }
+  }
+
+  // 3. National body / SSA fees (if plays league)
+  if (member.plays_league) {
+    for (const nat of nationalFees) {
+      if (nat.fee_annual && nat.fee_annual > 0) {
+        const label = nat.abbreviation || nat.body_name;
+        const existing = memberPayments.find(p => p.fee_type === "national_body");
+        fees.push({ fee_type: "national_body", fee_label: label, amount: nat.fee_annual, existing });
+      }
+    }
+  }
+
+  return fees;
+}
+
+function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
+  fees: ExpectedFee[];
+  onToggle: (feeId: string, paid: boolean) => void;
+  onCreateFee: (fee: ExpectedFee) => void;
+}) {
+  if (fees.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
+  const total = fees.reduce((s, f) => s + f.amount, 0);
+  const totalPaid = fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
   return (
     <div className="flex flex-col gap-0.5">
-      {payments.map(f => (
-        <div key={f.id} className="flex items-center gap-1.5 text-[11px]">
-          <Checkbox
-            checked={f.paid}
-            onCheckedChange={(v) => onToggle(f.id, !!v)}
-            className="h-3.5 w-3.5"
-          />
-          <span className="truncate max-w-[100px]">{f.fee_label || f.fee_type}</span>
+      {fees.map((f, i) => (
+        <div key={i} className="flex items-center gap-1.5 text-[11px]">
+          {f.existing ? (
+            <Checkbox
+              checked={f.existing.paid}
+              onCheckedChange={(v) => onToggle(f.existing!.id, !!v)}
+              className="h-3.5 w-3.5"
+            />
+          ) : (
+            <Checkbox
+              checked={false}
+              onCheckedChange={() => onCreateFee(f)}
+              className="h-3.5 w-3.5"
+            />
+          )}
+          <span className="truncate max-w-[110px]">{f.fee_label}</span>
           <span className="text-muted-foreground">R{f.amount}</span>
-          {f.paid ? (
+          {f.existing?.paid ? (
             <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
           ) : (
             <XCircle className="w-3 h-3 text-destructive shrink-0" />
           )}
         </div>
       ))}
+      <div className="text-[10px] font-medium border-t border-border pt-0.5 mt-0.5">
+        R{totalPaid} / R{total}
+      </div>
     </div>
   );
 }
 
-function MemberCard({ member: m, payments, onEdit, onDelete, onTogglePaid }: { member: ClubMember; payments: FeePaymentRow[]; onEdit: () => void; onDelete: () => void; onTogglePaid: (feeId: string, paid: boolean) => void }) {
+function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateFee }: {
+  member: ClubMember;
+  fees: ExpectedFee[];
+  onEdit: () => void;
+  onDelete: () => void;
+  onTogglePaid: (feeId: string, paid: boolean) => void;
+  onCreateFee: (fee: ExpectedFee, userId: string) => void;
+}) {
   const displayName = m.profiles?.name || m.name || "—";
   const displayEmail = m.profiles?.email || m.email || "";
   const isLinked = !!m.user_id;
@@ -82,11 +175,14 @@ function MemberCard({ member: m, payments, onEdit, onDelete, onTogglePaid }: { m
           {displayEmail}
           {m.club_member_number ? ` • #${m.club_member_number}` : ""}
           {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
-          {m.fee_category ? ` • R${m.fee_category.annual_fee}/yr` : ""}
         </p>
       </div>
       <div className="flex items-start gap-3 shrink-0">
-        <MemberPaymentStatus payments={payments} onToggle={onTogglePaid} />
+        {m.user_id ? (
+          <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.user_id!)} />
+        ) : (
+          <span className="text-[10px] text-muted-foreground italic">Not registered</span>
+        )}
         <div className="flex gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
           {m.role !== "captain" && (
@@ -101,6 +197,10 @@ function MemberCard({ member: m, payments, onEdit, onDelete, onTogglePaid }: { m
 export function MembersTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading } = useClubMembers(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
+  const { data: associations = [] } = useLeagueAssociations(clubId);
+  const { data: nationalFees = [] } = useNationalBodyFees(clubId);
+  const { data: clubData } = useMyClub();
+  const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
@@ -123,9 +223,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
     enabled: memberUserIds.length > 0,
   });
 
-  const getPaymentsForMember = (userId?: string | null) => {
-    if (!userId) return [];
-    return feePayments.filter(f => f.user_id === userId);
+  const getFeesForMember = (member: ClubMember) => {
+    return computeExpectedFees(member, feeCategories, associations, nationalFees, feeDueMonth, feePayments);
   };
 
   const handleTogglePaid = async (feeId: string, paid: boolean) => {
@@ -133,6 +232,20 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const { error } = await fromExt("fee_payments").update(updates).eq("id", feeId);
     if (error) toast.error(error.message);
     else { toast.success(paid ? "Marked as paid" : "Marked as unpaid"); refetchPayments(); }
+  };
+
+  /** Create a fee_payment record and immediately mark as paid */
+  const handleCreateFee = async (fee: ExpectedFee, userId: string) => {
+    const { error } = await fromExt("fee_payments").insert({
+      user_id: userId,
+      fee_type: fee.fee_type,
+      fee_label: fee.fee_label,
+      amount: fee.amount,
+      paid: true,
+      paid_at: new Date().toISOString(),
+    });
+    if (error) toast.error(error.message);
+    else { toast.success(`${fee.fee_label} marked as paid`); refetchPayments(); }
   };
 
   const filtered = members.filter(m => {
@@ -173,9 +286,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
       const email = cols[emailIdx];
       if (!email) continue;
 
-      // Try to find existing profile, but don't require it
       const { data: profile } = await fromExt("profiles").select("id").eq("email", email).maybeSingle();
-
       const memberName = nameIdx >= 0 ? cols[nameIdx] : undefined;
 
       const { error } = await fromExt("club_members").upsert({
@@ -198,6 +309,16 @@ export function MembersTab({ clubId }: { clubId: string }) {
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  // Compute fee summary
+  const totalExpected = members.reduce((sum, m) => {
+    const fees = getFeesForMember(m);
+    return sum + fees.reduce((s, f) => s + f.amount, 0);
+  }, 0);
+  const totalPaid = members.reduce((sum, m) => {
+    const fees = getFeesForMember(m);
+    return sum + fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
+  }, 0);
+
   return (
     <div className="space-y-4 mt-4">
       <div className="flex flex-wrap gap-2 items-center justify-between">
@@ -214,7 +335,11 @@ export function MembersTab({ clubId }: { clubId: string }) {
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? "s" : ""}</p>
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>
+        <span className="font-medium">Fees: R{totalPaid} paid / R{totalExpected} total</span>
+        <span className="text-destructive font-medium">R{totalExpected - totalPaid} outstanding</span>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(["Men", "Ladies"] as const).map(gender => {
@@ -228,7 +353,17 @@ export function MembersTab({ clubId }: { clubId: string }) {
                 <span className="text-xs font-normal text-muted-foreground">({group.length})</span>
               </h3>
               <div className="space-y-2">
-                {all.map(m => <MemberCard key={m.id} member={m} payments={getPaymentsForMember(m.user_id)} onEdit={() => setEditMember(m)} onDelete={() => handleDelete(m.id)} onTogglePaid={handleTogglePaid} />)}
+                {all.map(m => (
+                  <MemberCard
+                    key={m.id}
+                    member={m}
+                    fees={getFeesForMember(m)}
+                    onEdit={() => setEditMember(m)}
+                    onDelete={() => handleDelete(m.id)}
+                    onTogglePaid={handleTogglePaid}
+                    onCreateFee={handleCreateFee}
+                  />
+                ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
               </div>
               {gender === "Men" && unassigned.length > 0 && (
@@ -239,7 +374,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         })}
       </div>
 
-      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); }} />}
+      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); refetchPayments(); }} />}
     </div>
   );
 }
@@ -260,9 +395,28 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [loading, setLoading] = useState(false);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
+  const { data: nationalFees = [] } = useNationalBodyFees(clubId);
+  const { data: clubData } = useMyClub();
+  const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const qc = useQueryClient();
 
   const age = idNumber ? getAgeFromSaId(idNumber) : null;
+
+  // Preview of fees that will be created
+  const selectedCat = feeCategories.find(c => c.id === feeCategoryId);
+  const previewFees: { label: string; amount: number }[] = [];
+  if (selectedCat) {
+    const proRated = proRateClubFee(selectedCat.annual_fee, new Date().toISOString(), feeDueMonth);
+    previewFees.push({ label: `Club – ${selectedCat.name}${proRated < selectedCat.annual_fee ? " (pro-rated)" : ""}`, amount: proRated });
+  }
+  if (playsLeague) {
+    for (const a of associations) {
+      if (a.fee_annual > 0) previewFees.push({ label: a.abbreviation || a.name, amount: a.fee_annual });
+    }
+    for (const n of nationalFees) {
+      if (n.fee_annual > 0) previewFees.push({ label: n.abbreviation || n.body_name, amount: n.fee_annual });
+    }
+  }
 
   const handleAdd = async () => {
     const trimmedEmail = email.trim().toLowerCase();
@@ -285,7 +439,6 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
     }
     setLoading(true);
     try {
-      // Check if user already has an account — link them if so
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
 
       const { error } = await fromExt("club_members").insert({
@@ -303,11 +456,25 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         plays_league: playsLeague,
       });
       if (error) throw error;
+
+      // Auto-create fee_payment records for the new member (if they have a profile)
+      if (profile?.id && previewFees.length > 0) {
+        const feeRecords = previewFees.map((f, idx) => ({
+          user_id: profile.id,
+          fee_type: idx === 0 ? "membership" : (idx <= associations.filter(a => a.fee_annual > 0).length ? "association" : "national_body"),
+          fee_label: f.label,
+          amount: f.amount,
+          paid: false,
+        }));
+        await fromExt("fee_payments").insert(feeRecords);
+      }
+
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
       toast.success(msg);
       setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
+      qc.invalidateQueries({ queryKey: ["club-fee-payments"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to add member");
     } finally { setLoading(false); }
@@ -385,6 +552,24 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
               </div>
             </>
           )}
+
+          {/* Fee preview */}
+          {previewFees.length > 0 && (
+            <Card className="p-3 bg-muted/50">
+              <p className="text-xs font-semibold mb-1">Annual Fees Payable</p>
+              {previewFees.map((f, i) => (
+                <div key={i} className="flex justify-between text-xs">
+                  <span>{f.label}</span>
+                  <span className="font-medium">R{f.amount}</span>
+                </div>
+              ))}
+              <div className="flex justify-between text-xs font-bold border-t border-border mt-1 pt-1">
+                <span>Total</span>
+                <span>R{previewFees.reduce((s, f) => s + f.amount, 0)}</span>
+              </div>
+            </Card>
+          )}
+
           <Button onClick={handleAdd} disabled={loading} className="w-full">{loading ? "Adding..." : "Add Member"}</Button>
         </div>
       </DialogContent>
@@ -419,14 +604,14 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
         .select("league_id, league_association_number, player_rank, leagues:league_id(association_id)")
         .eq("club_member_id", member.id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data }: any) => {
           if (data) {
             const assocId = (data.leagues as any)?.association_id || "";
             setForm(p => ({
               ...p,
               association_id: assocId,
               association_number: data.league_association_number || "",
-              league_player_rank: data.player_rank ?? "",
+              league_player_rank: data.player_rank ?? p.league_player_rank,
             }));
           }
           setRegLoaded(true);
@@ -520,7 +705,6 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
                 <Label>Association Number *</Label>
                 <Input value={form.association_number} onChange={e => setForm(p => ({ ...p, association_number: e.target.value }))} placeholder="e.g. NSF12345" />
               </div>
-              
             </>
           )}
           <div className="space-y-1">

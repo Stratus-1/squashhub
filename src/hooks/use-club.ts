@@ -58,13 +58,11 @@ export interface ClubMember {
 }
 
 export const SKILL_LEVELS = [
-  { value: "very_high", label: "Very High", order: 1 },
-  { value: "high", label: "High", order: 2 },
-  { value: "medium_high", label: "Medium High", order: 3 },
-  { value: "medium", label: "Medium", order: 4 },
-  { value: "medium_low", label: "Medium Low", order: 5 },
-  { value: "low", label: "Low", order: 6 },
-  { value: "starter", label: "Starter", order: 7 },
+  { value: "elite", label: "Elite", order: 1 },
+  { value: "league_player", label: "League Player", order: 2 },
+  { value: "club_player", label: "Club Player", order: 3 },
+  { value: "social_player", label: "Social Player", order: 4 },
+  { value: "beginner", label: "Beginner", order: 5 },
 ] as const;
 
 export function getSkillOrder(level?: string | null): number {

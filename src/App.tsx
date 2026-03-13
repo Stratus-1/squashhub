@@ -91,19 +91,23 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AuthGate() {
   const { user } = useAuth();
   const { subdomain: clubSubdomain } = useClubContext();
+  const { data: roles } = useMyRoles();
   const [params] = useSearchParams();
   const redirectTo = (params.get("redirectTo") || "").trim();
 
   if (!user) {
-    // On a club subdomain, show the club-specific auth page
     if (clubSubdomain) return <ClubAuth />;
     return <Auth />;
   }
 
+  // Super admins go to /admin by default
+  const isAdmin = (roles || []).includes("admin");
+  const defaultRedirect = isAdmin ? "/admin" : "/";
+
   const safeRedirect =
     redirectTo.startsWith("/") && !redirectTo.startsWith("//")
-      ? (redirectTo === "/dashboard" ? "/" : redirectTo)
-      : "/";
+      ? (redirectTo === "/dashboard" ? defaultRedirect : redirectTo)
+      : defaultRedirect;
   return <Navigate to={safeRedirect} replace />;
 }
 

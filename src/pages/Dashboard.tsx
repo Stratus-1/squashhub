@@ -123,7 +123,7 @@ export default function Dashboard() {
   return (
     <div className="bottom-nav-safe relative">
       <ClubBrandedBackground />
-      <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex siteName={clubData?.club?.name} />
+      <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
       <OnboardingWizard
         open={showOnboarding}

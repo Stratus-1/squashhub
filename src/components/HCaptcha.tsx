@@ -20,14 +20,18 @@ interface HCaptchaProps {
 let cachedSiteKey: string | null | undefined = undefined;
 
 async function getSiteKey(): Promise<string | null> {
-  if (cachedSiteKey !== undefined) return cachedSiteKey;
-  const { data } = await supabase
-    .from("app_settings")
-    .select("value")
-    .eq("key", "hcaptcha_site_key")
-    .maybeSingle();
-  const key = data?.value && data.value.trim().length > 0 ? data.value.trim() : null;
-  // Only cache non-empty results; allow retry if key wasn't set yet
+  if (cachedSiteKey) return cachedSiteKey;
+
+  const { data, error } = await supabase.functions.invoke("verify-captcha", {
+    body: { action: "config" },
+  });
+
+  if (error) return null;
+
+  const key = typeof data?.siteKey === "string" && data.siteKey.trim().length > 0
+    ? data.siteKey.trim()
+    : null;
+
   if (key) cachedSiteKey = key;
   return key;
 }

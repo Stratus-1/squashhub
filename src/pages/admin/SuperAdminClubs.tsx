@@ -143,7 +143,7 @@ export default function SuperAdminClubs() {
               <TableHead>Club</TableHead>
               <TableHead>Subdomain</TableHead>
               <TableHead className="text-center">Members</TableHead>
-              <TableHead>Ladder</TableHead>
+              
               <TableHead>Contact</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>

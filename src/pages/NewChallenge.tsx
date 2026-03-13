@@ -29,6 +29,7 @@ import {
   useProposeChallengeSchedule, useHeadToHead,
 } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyClub } from "@/hooks/use-club";
 
 /* ── helpers ────────────────────────────────────────────────── */
 

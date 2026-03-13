@@ -100,11 +100,108 @@ function renderTemplate(template: string, vars: Record<string, string>) {
   });
 }
 
+async function handleTestEmail(req: Request) {
+  // Authenticate via Supabase JWT
+  const authHeader = req.headers.get("authorization") ?? "";
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const payload = await req.json();
+    const to = String(payload?.to || "").trim();
+    const senderName = String(payload?.sender_name || "Test").trim();
+    const senderEmail = String(payload?.sender_email || "").trim();
+
+    if (!to || !senderEmail) {
+      return new Response(JSON.stringify({ error: "Missing 'to' or 'sender_email'" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify user is a club admin
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.98.0");
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const clubId = String(payload?.clubId || "");
+    if (clubId) {
+      const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", {
+        _user_id: user.id,
+        _club_id: clubId,
+      });
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Only club admins can send test emails" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Send test email via Resend (the only provider currently wired)
+    const subject = `✅ SquashHub Test Email — ${senderName}`;
+    const html = `
+      <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.4; color:#0f172a">
+        <h2 style="margin:0 0 8px 0">🎉 Email Settings Working!</h2>
+        <p style="margin:0 0 14px 0; color:#334155">
+          This is a test email from <strong>${escapeHtml(senderName)}</strong> (${escapeHtml(senderEmail)}).
+        </p>
+        <p style="margin:0 0 14px 0; color:#334155">
+          Your club email configuration is set up correctly. Members will receive
+          notifications from this sender address.
+        </p>
+        <p style="margin:0; font-size:12px; color:#64748b">
+          Sent via SquashHub email settings test.
+        </p>
+      </div>
+    `.trim();
+    const text = `Email Settings Working!\n\nThis is a test email from ${senderName} (${senderEmail}).\nYour club email configuration is set up correctly.\n`;
+
+    const result = await sendViaResend({ to, subject, html, text });
+
+    return new Response(JSON.stringify(result), {
+      status: result.ok ? 200 : (result.skipped ? 200 : 500),
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Test email error:", error);
+    return new Response(JSON.stringify({ error: (error as Error).message || String(error) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });
 
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
+
+  // Handle test email from client (body has action field)
+  if (!action && req.method === "POST") {
+    try {
+      const cloned = req.clone();
+      const body = await cloned.json();
+      if (body?.action === "test") {
+        return handleTestEmail(req);
+      }
+    } catch { /* not JSON or no action, fall through */ }
+  }
 
   if (action !== "send") {
     return new Response(JSON.stringify({ error: "Unknown action" }), {

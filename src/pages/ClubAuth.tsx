@@ -46,7 +46,7 @@ export default function ClubAuth() {
   const [resetEmail, setResetEmail] = useState("");
 
   // Redirect if already logged in
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
 

@@ -40,7 +40,7 @@ export default function Notifications() {
   const [selected, setSelected] = useState<any | null>(null);
   const close = () => {
     if (window.history.length > 1) navigate(-1);
-    else navigate("/dashboard");
+    else navigate("/");
   };
 
   const { data: notifications, isLoading } = useQuery({

@@ -429,8 +429,8 @@ export function MemberOnboardingWizard({
                       <Select value={gender} onValueChange={setGender}>
                         <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="Men">Male</SelectItem>
+                          <SelectItem value="Ladies">Female</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

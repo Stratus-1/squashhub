@@ -34,6 +34,10 @@ export function ClubDetailsTab({ club, clubId }: { club: Club; clubId: string })
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
     logo_url: club.logo_url || "",
+    member_number_prefix: club.member_number_prefix || "",
+    member_number_length: club.member_number_length ?? 4,
+    member_number_start: club.member_number_start ?? 1,
+    challenge_levels_up: club.challenge_levels_up ?? 2,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>

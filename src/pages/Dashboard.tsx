@@ -14,7 +14,7 @@ import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, Sh
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings } from "@/hooks/use-data";
+import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
 import { useClubContext } from "@/contexts/ClubContext";
 import { format } from "date-fns";
@@ -37,10 +37,20 @@ export default function Dashboard() {
   const ladderActive = ladderStatus === "active";
   const isClubAdmin = useIsClubAdmin();
   const { data: challenges } = useChallenges();
+  const { data: ladder } = useLadder();
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr);
   const { data: myBookings } = useMyBookings();
   const { data: myScheduledMatches } = useMyScheduledMatches();
+
+  // Find player's position on gender-specific ladder
+  const myLadderPosition = useMemo(() => {
+    if (!ladder || !myClubMember || !user) return null;
+    const gender = (myClubMember as any)?.gender;
+    const genderLadder = gender ? ladder.filter((p: any) => p.gender === gender) : ladder;
+    const idx = genderLadder.findIndex((p: any) => p.club_member_id === myClubMember.id || p.user_id === user.id);
+    return idx >= 0 ? idx + 1 : null;
+  }, [ladder, myClubMember, user]);
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
@@ -206,9 +216,9 @@ export default function Dashboard() {
             {ladderStatus === "unranked" && "Ladder has not been ranked yet. Check back soon!"}
           </p>
         </div>
-        {profile?.rank != null && (
+        {(myLadderPosition != null || profile?.rank != null) && (
           <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-            #{profile.rank}{ladderStatus === "provisional" ? " (Prov.)" : ""}
+            #{myLadderPosition || profile?.rank}{ladderStatus === "provisional" ? " (Prov.)" : ""}
           </Badge>
         )}
       </div>

@@ -199,11 +199,18 @@ export default function Dashboard() {
           ? <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
           : <Shield className={cn("w-4 h-4 shrink-0", ladderStatus === "provisional" ? "text-amber-500" : "text-muted-foreground")} />
         }
-        <p className="text-xs text-muted-foreground">
-          {ladderStatus === "active" && "Ladder is active — challenge players ranked above you!"}
-          {ladderStatus === "provisional" && "Rankings are provisional. Challenges will open once the admin activates the ladder."}
-          {ladderStatus === "unranked" && "Ladder has not been ranked yet. Check back soon!"}
-        </p>
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground">
+            {ladderStatus === "active" && "Ladder is active — challenge players ranked above you!"}
+            {ladderStatus === "provisional" && "Rankings are provisional. Challenges will open once the admin activates the ladder."}
+            {ladderStatus === "unranked" && "Ladder has not been ranked yet. Check back soon!"}
+          </p>
+        </div>
+        {profile?.rank != null && (
+          <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+            #{profile.rank}{ladderStatus === "provisional" ? " (Prov.)" : ""}
+          </Badge>
+        )}
       </div>
 
       {/* My Upcoming Bookings */}

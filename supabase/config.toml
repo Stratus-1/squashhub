@@ -1,1 +1,4 @@
 project_id = "bzbuppwzljadulwntjys"
+
+[functions.court-lights]
+verify_jwt = false

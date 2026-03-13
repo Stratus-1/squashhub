@@ -111,6 +111,7 @@ export function MemberOnboardingWizard({
   const [name, setName] = useState(user?.user_metadata?.name || "");
   const [phone, setPhone] = useState(user?.user_metadata?.phone || "");
   const [idNumber, setIdNumber] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
   const [address, setAddress] = useState("");
   const [skillLevel, setSkillLevel] = useState("");
@@ -120,6 +121,34 @@ export function MemberOnboardingWizard({
   const [playsLeague, setPlaysLeague] = useState(false);
   const [memberNumber, setMemberNumber] = useState("");
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
+  const [detectedAge, setDetectedAge] = useState<number | null>(null);
+  const [categoryAutoSet, setCategoryAutoSet] = useState(false);
+
+  /** Calculate age from a date of birth string (YYYY-MM-DD) */
+  function getAgeFromDob(dob: string): number | null {
+    if (!dob) return null;
+    const d = new Date(dob);
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) age--;
+    return age;
+  }
+
+  /** Find the best fee category for a given age */
+  function suggestCategoryForAge(age: number, cats: MemberFeeCategory[]): string | null {
+    if (cats.length === 0) return null;
+    const lower = (s: string) => s.toLowerCase();
+    const studentCat = cats.find(c => /student|school|junior|youth|child|scholar/i.test(c.name));
+    const pensionerCat = cats.find(c => /pension|senior|retired|oap/i.test(c.name));
+    const normalCat = cats.find(c => /^(normal|standard|adult|full|regular)$/i.test(c.name)) || cats.find(c => !/student|school|junior|youth|child|scholar|pension|senior|retired|oap|spouse|family/i.test(c.name));
+
+    if (age < 18 && studentCat) return studentCat.id;
+    if (age >= 18 && age < 25 && studentCat) return studentCat.id;
+    if (age >= 60 && pensionerCat) return pensionerCat.id;
+    if (normalCat) return normalCat.id;
+    return cats[0].id;
+  }
 
   // Auto-detect gender and suggest category from ID
   useEffect(() => {
@@ -127,25 +156,27 @@ export function MemberOnboardingWizard({
       const detectedGender = getGenderFromSAId(idNumber);
       if (detectedGender && !gender) setGender(detectedGender);
     }
-    if (idNumber.length >= 6 && feeCategories.length > 0) {
-      const age = getAgeFromSAId(idNumber);
-      if (age !== null) {
-        // Find pensioner category (age 60+) or normal
-        const pensionerCat = feeCategories.find(c => c.name.toLowerCase().includes("pension"));
-        const normalCat = feeCategories.find(c => c.name.toLowerCase() === "normal" || c.name.toLowerCase() === "standard" || c.name.toLowerCase() === "adult");
-        
-        if (age >= 60 && pensionerCat) {
-          setSuggestedCategory(pensionerCat.id);
-          if (!feeCategoryId) setFeeCategoryId(pensionerCat.id);
-        } else if (normalCat) {
-          setSuggestedCategory(normalCat.id);
-          if (!feeCategoryId) setFeeCategoryId(normalCat.id);
-        } else if (feeCategories.length > 0 && !feeCategoryId) {
-          setFeeCategoryId(feeCategories[0].id);
+    // Try age from ID first, then from DOB
+    let age: number | null = null;
+    if (idNumber.length >= 6) {
+      age = getAgeFromSAId(idNumber);
+    }
+    if (age === null && dateOfBirth) {
+      age = getAgeFromDob(dateOfBirth);
+    }
+    setDetectedAge(age);
+
+    if (age !== null && feeCategories.length > 0) {
+      const suggested = suggestCategoryForAge(age, feeCategories);
+      if (suggested) {
+        setSuggestedCategory(suggested);
+        if (!categoryAutoSet) {
+          setFeeCategoryId(suggested);
+          setCategoryAutoSet(true);
         }
       }
     }
-  }, [idNumber, feeCategories, gender, feeCategoryId]);
+  }, [idNumber, dateOfBirth, feeCategories, gender, categoryAutoSet]);
 
   // Auto-generate member number when reaching membership step
   useEffect(() => {

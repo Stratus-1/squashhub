@@ -261,7 +261,7 @@ function PlayerSelector({
 
 function isPlayerValid(p: PlayerSelection): boolean {
   if (p.mode === "myself") return !!p.userId;
-  if (p.mode === "club") return !!p.userId;
+  if (p.mode === "club") return !!p.clubMemberId;
   if (p.mode === "external") return p.name.trim().length > 0;
   return false;
 }

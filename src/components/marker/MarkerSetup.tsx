@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, UserCheck, X } from "lucide-react";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useMyClub } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -42,7 +43,11 @@ function PlayerField({
   player: PlayerInfo;
   onChange: (p: PlayerInfo) => void;
 }) {
-  const { club } = useClubContext();
+  const { club: clubFromHost } = useClubContext();
+  const { data: myClubData } = useMyClub();
+  const club = clubFromHost || myClubData?.club || null;
+  const clubName = club?.name || "";
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -76,7 +81,7 @@ function PlayerField({
     onChange({
       name: m.name || "",
       number: m.club_member_number || "",
-      club: club?.name || "",
+      club: clubName,
       clubMemberId: m.id,
     });
     setSearchOpen(false);
@@ -192,10 +197,12 @@ function PlayerField({
 }
 
 export function MarkerSetup({ onStart }: Props) {
-  const { club } = useClubContext();
+  const { club: hostClub } = useClubContext();
+  const { data: myClubData } = useMyClub();
+  const resolvedClub = hostClub || myClubData?.club || null;
 
-  const [playerA, setPlayerA] = useState<PlayerInfo>({ name: "", number: "", club: club?.name || "" });
-  const [playerB, setPlayerB] = useState<PlayerInfo>({ name: "", number: "", club: club?.name || "" });
+  const [playerA, setPlayerA] = useState<PlayerInfo>({ name: "", number: "", club: resolvedClub?.name || "" });
+  const [playerB, setPlayerB] = useState<PlayerInfo>({ name: "", number: "", club: resolvedClub?.name || "" });
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(3);

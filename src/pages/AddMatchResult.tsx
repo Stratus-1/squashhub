@@ -330,7 +330,8 @@ export default function AddMatchResult() {
 
   const canProceedStep1 = isPlayerValid(player1) && isPlayerValid(player2) && (
     // Can't be the same person
-    !(player1.userId && player2.userId && player1.userId === player2.userId)
+    !(player1.userId && player2.userId && player1.userId === player2.userId) &&
+    !(player1.clubMemberId && player2.clubMemberId && player1.clubMemberId === player2.clubMemberId)
   );
 
   // Match result computation

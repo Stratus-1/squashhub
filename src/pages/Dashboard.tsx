@@ -178,7 +178,7 @@ export default function Dashboard() {
 
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           <Button className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
             <span className="text-xs font-medium">Book</span>
@@ -190,6 +190,10 @@ export default function Dashboard() {
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/30 bg-primary/5" onClick={() => navigate("/add-result")}>
             <ClipboardCheck className="w-5 h-5" />
             <span className="text-xs font-medium">Result</span>
+          </Button>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-accent/40 bg-accent/10" onClick={() => navigate("/match-marker")}>
+            <Crosshair className="w-5 h-5" />
+            <span className="text-xs font-medium">Marker</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />

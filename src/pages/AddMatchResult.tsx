@@ -220,8 +220,8 @@ function PlayerSelector({
                         {p.gender && (
                           <span className="text-[10px] text-muted-foreground">{p.gender}</span>
                         )}
-                        {!hasAccount && (
-                          <span className="text-[10px] text-destructive">No account</span>
+                        {!p.user_id && (
+                          <span className="text-[10px] text-muted-foreground">No account</span>
                         )}
                       </div>
                     </div>

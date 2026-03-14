@@ -316,12 +316,30 @@ export default function Dashboard() {
               const isPlayerA = m.player_a === user?.id;
               const isPlayerB = m.player_b === user?.id;
               const isParticipant = isPlayerA || isPlayerB;
-              
-              const p1Name = matchPlayerNameMap.get(m.player_a) || "Player 1";
-              const p2Name = matchPlayerNameMap.get(m.player_b) || "Player 2";
+              const isSamePlayer = m.player_a === m.player_b;
+
+              // When both player IDs are the same (external/unlinked players), parse names from notes
+              let p1Name = matchPlayerNameMap.get(m.player_a) || "Player 1";
+              let p2Name = matchPlayerNameMap.get(m.player_b) || "Player 2";
+
+              if (isSamePlayer && m.notes) {
+                // Notes format typically contains player names like "Player 1: Name, Player 2: Name" or similar
+                const notesNames = m.notes.match(/Player\s*1[:\s]+([^,;\n]+)/i);
+                const notesNames2 = m.notes.match(/Player\s*2[:\s]+([^,;\n]+)/i);
+                if (notesNames) p1Name = notesNames[1].trim();
+                if (notesNames2) p2Name = notesNames2[1].trim();
+                // Fallback: if notes is just plain text, show it as the label
+                if (!notesNames && !notesNames2 && m.notes.length > 0) {
+                  p1Name = m.notes.split(/\s+vs\.?\s+/i)[0]?.trim() || p1Name;
+                  p2Name = m.notes.split(/\s+vs\.?\s+/i)[1]?.trim() || p2Name;
+                }
+              }
 
               let label = "";
-              if (isParticipant) {
+              if (isSamePlayer) {
+                // Match recorded on behalf of others — show both names from notes
+                label = `${p1Name} vs ${p2Name}`;
+              } else if (isParticipant) {
                 const opponentName = isPlayerA ? p2Name : p1Name;
                 const won = m.winner_id === user?.id;
                 label = `vs ${opponentName}`;

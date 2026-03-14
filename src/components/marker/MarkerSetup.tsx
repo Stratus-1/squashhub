@@ -197,10 +197,12 @@ function PlayerField({
 }
 
 export function MarkerSetup({ onStart }: Props) {
-  const { club } = useClubContext();
+  const { club: hostClub } = useClubContext();
+  const { data: myClubData } = useMyClub();
+  const resolvedClub = hostClub || myClubData?.club || null;
 
-  const [playerA, setPlayerA] = useState<PlayerInfo>({ name: "", number: "", club: club?.name || "" });
-  const [playerB, setPlayerB] = useState<PlayerInfo>({ name: "", number: "", club: club?.name || "" });
+  const [playerA, setPlayerA] = useState<PlayerInfo>({ name: "", number: "", club: resolvedClub?.name || "" });
+  const [playerB, setPlayerB] = useState<PlayerInfo>({ name: "", number: "", club: resolvedClub?.name || "" });
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(3);

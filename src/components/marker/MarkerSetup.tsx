@@ -43,7 +43,11 @@ function PlayerField({
   player: PlayerInfo;
   onChange: (p: PlayerInfo) => void;
 }) {
-  const { club } = useClubContext();
+  const { club: clubFromHost } = useClubContext();
+  const { data: myClubData } = useMyClub();
+  const club = clubFromHost || myClubData?.club || null;
+  const clubName = club?.name || "";
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 

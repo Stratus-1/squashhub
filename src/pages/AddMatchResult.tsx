@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Trophy, UserPlus, Users, ChevronLeft } from "lucide-react";
+import { Trophy, UserPlus, Users, ChevronLeft, UserCheck } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { Switch } from "@/components/ui/switch";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useLadder, useCreateMatch } from "@/hooks/use-data";
@@ -22,6 +23,14 @@ type ScoringFormat = "par11" | "par15" | "english9";
 type BestOf = 3 | 5;
 
 type GameScore = { playerA: string; playerB: string };
+
+interface PlayerSelection {
+  mode: "myself" | "club" | "external";
+  clubMemberId: string | null;
+  userId: string | null;
+  name: string;
+  externalClub: string;
+}
 
 const MATCH_TYPES: { value: MatchType; label: string; description: string }[] = [
   { value: "friendly", label: "Friendly", description: "Casual / social match" },
@@ -52,10 +61,8 @@ function getMaxScore(format: ScoringFormat) {
 
 function determineGameWinner(scoreA: number, scoreB: number, format: ScoringFormat): "a" | "b" | null {
   const target = getMaxScore(format);
-  const minWin = target;
-  // Must win by 2 if both are at target-1 or above
-  if (scoreA >= minWin && scoreA - scoreB >= 2) return "a";
-  if (scoreB >= minWin && scoreB - scoreA >= 2) return "b";
+  if (scoreA >= target && scoreA - scoreB >= 2) return "a";
+  if (scoreB >= target && scoreB - scoreA >= 2) return "b";
   return null;
 }
 
@@ -78,6 +85,199 @@ function computeMatchResult(games: GameScore[], format: ScoringFormat) {
   return { gamesA, gamesB, validGames };
 }
 
+const emptyPlayer = (mode: "myself" | "club" | "external" = "myself"): PlayerSelection => ({
+  mode,
+  clubMemberId: null,
+  userId: null,
+  name: "",
+  externalClub: "",
+});
+
+// Reusable player selector component
+function PlayerSelector({
+  label,
+  player,
+  onChange,
+  showMyself,
+  myName,
+  myUserId,
+  availableMembers,
+  search,
+  onSearchChange,
+  excludeUserId,
+}: {
+  label: string;
+  player: PlayerSelection;
+  onChange: (p: PlayerSelection) => void;
+  showMyself: boolean;
+  myName: string;
+  myUserId: string | null;
+  availableMembers: any[];
+  search: string;
+  onSearchChange: (s: string) => void;
+  excludeUserId?: string | null;
+}) {
+  const filteredMembers = useMemo(() => {
+    let list = availableMembers;
+    if (excludeUserId) {
+      list = list.filter((p) => p.user_id !== excludeUserId && p.club_member_id !== excludeUserId);
+    }
+    if (!search.trim()) return list;
+    return list.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [availableMembers, search, excludeUserId]);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold font-heading">{label}</h3>
+
+      <div className="flex gap-2">
+        {showMyself && (
+          <Button
+            variant={player.mode === "myself" ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() =>
+              onChange({
+                mode: "myself",
+                clubMemberId: null,
+                userId: myUserId,
+                name: myName,
+                externalClub: "",
+              })
+            }
+          >
+            <UserCheck className="w-4 h-4 mr-1" />
+            Myself
+          </Button>
+        )}
+        <Button
+          variant={player.mode === "club" ? "default" : "outline"}
+          size="sm"
+          className="flex-1"
+          onClick={() => onChange(emptyPlayer("club"))}
+        >
+          <Users className="w-4 h-4 mr-1" />
+          Club Member
+        </Button>
+        <Button
+          variant={player.mode === "external" ? "default" : "outline"}
+          size="sm"
+          className="flex-1"
+          onClick={() => onChange(emptyPlayer("external"))}
+        >
+          <UserPlus className="w-4 h-4 mr-1" />
+          External
+        </Button>
+      </div>
+
+      {player.mode === "myself" && (
+        <div className="flex items-center gap-3 rounded-lg border border-primary bg-primary/5 p-3">
+          <PlayerAvatar initials={initials(myName)} size="sm" />
+          <p className="text-sm font-medium">{myName}</p>
+          <Badge variant="outline" className="text-[10px] ml-auto">You</Badge>
+        </div>
+      )}
+
+      {player.mode === "club" && (
+        <div className="space-y-2">
+          <Input
+            placeholder="Search members…"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+          <div className="max-h-52 overflow-y-auto space-y-1">
+            {filteredMembers.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No members found</p>
+            ) : (
+              filteredMembers.map((p: any) => {
+                const hasAccount = !!p.user_id;
+                const isSelected = player.userId === p.user_id || player.clubMemberId === p.club_member_id;
+                return (
+                  <button
+                    key={p.club_member_id}
+                    type="button"
+                    disabled={!hasAccount}
+                    onClick={() =>
+                      hasAccount &&
+                      onChange({
+                        mode: "club",
+                        clubMemberId: p.club_member_id,
+                        userId: p.user_id,
+                        name: p.name,
+                        externalClub: "",
+                      })
+                    }
+                    className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : hasAccount
+                          ? "border-border hover:bg-muted/40"
+                          : "border-border opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    <PlayerAvatar initials={initials(p.name)} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <div className="flex gap-2 mt-0.5">
+                        {p.rank != null && (
+                          <Badge variant="outline" className="text-[10px]">#{p.rank}</Badge>
+                        )}
+                        {p.gender && (
+                          <span className="text-[10px] text-muted-foreground">{p.gender}</span>
+                        )}
+                        {!hasAccount && (
+                          <span className="text-[10px] text-destructive">No account</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {player.mode === "external" && (
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Player Name *</Label>
+            <Input
+              placeholder="e.g. John Smith"
+              value={player.name}
+              onChange={(e) => onChange({ ...player, name: e.target.value })}
+              maxLength={100}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Club / Organisation</Label>
+            <Input
+              placeholder="e.g. Wanderers Squash Club"
+              value={player.externalClub}
+              onChange={(e) => onChange({ ...player, externalClub: e.target.value })}
+              maxLength={100}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function isPlayerValid(p: PlayerSelection): boolean {
+  if (p.mode === "myself") return !!p.userId;
+  if (p.mode === "club") return !!p.userId;
+  if (p.mode === "external") return p.name.trim().length > 0;
+  return false;
+}
+
+function getPlayerDisplayName(p: PlayerSelection, fallback = "Player"): string {
+  if (p.mode === "myself") return p.name || "You";
+  if (p.mode === "club") return p.name || fallback;
+  if (p.mode === "external") return p.name || fallback;
+  return fallback;
+}
+
 export default function AddMatchResult() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -86,15 +286,19 @@ export default function AddMatchResult() {
   const { data: ladder } = useLadder(clubId);
   const createMatch = useCreateMatch();
 
-  // Step tracking
   const [step, setStep] = useState(1);
 
-  // Opponent selection
-  const [opponentMode, setOpponentMode] = useState<"club" | "external">("club");
-  const [selectedOpponentId, setSelectedOpponentId] = useState<string | null>(null);
-  const [opponentSearch, setOpponentSearch] = useState("");
-  const [externalName, setExternalName] = useState("");
-  const [externalClub, setExternalClub] = useState("");
+  // Player selections
+  const [player1, setPlayer1] = useState<PlayerSelection>(() => ({
+    mode: "myself" as const,
+    clubMemberId: null,
+    userId: user?.id ?? null,
+    name: "",
+    externalClub: "",
+  }));
+  const [player2, setPlayer2] = useState<PlayerSelection>(emptyPlayer("club"));
+  const [search1, setSearch1] = useState("");
+  const [search2, setSearch2] = useState("");
 
   // Match settings
   const [matchType, setMatchType] = useState<MatchType>("friendly");
@@ -106,34 +310,33 @@ export default function AddMatchResult() {
   const [games, setGames] = useState<GameScore[]>(
     Array.from({ length: 5 }, () => ({ playerA: "", playerB: "" }))
   );
-
   const [submitting, setSubmitting] = useState(false);
-
-  // Filter ladder for opponent selection (exclude self)
-  const availableOpponents = useMemo(() => {
-    if (!ladder || !user) return [];
-    return ladder
-      .filter((p) => p.id !== user.id && p.club_member_id !== user.id)
-      .filter((p) => {
-        if (!opponentSearch.trim()) return true;
-        return p.name.toLowerCase().includes(opponentSearch.toLowerCase());
-      });
-  }, [ladder, user, opponentSearch]);
-
-  const selectedOpponent = useMemo(() => {
-    if (!selectedOpponentId || !ladder) return null;
-    return ladder.find((p) => p.user_id === selectedOpponentId || p.club_member_id === selectedOpponentId) || null;
-  }, [selectedOpponentId, ladder]);
 
   const myName = useMemo(() => {
     if (!user || !ladder) return "You";
-    const me = ladder.find((p) => p.id === user.id);
+    const me = ladder.find((p: any) => p.id === user.id);
     return me?.name || "You";
   }, [user, ladder]);
 
-  const opponentDisplayName = opponentMode === "club"
-    ? selectedOpponent?.name || "Opponent"
-    : externalName || "Opponent";
+  // Update player1 name when myName loads
+  useMemo(() => {
+    if (player1.mode === "myself" && myName !== "You" && !player1.name) {
+      setPlayer1((prev) => ({ ...prev, name: myName, userId: user?.id ?? null }));
+    }
+  }, [myName, user?.id]);
+
+  const availableMembers = useMemo(() => {
+    if (!ladder) return [];
+    return ladder;
+  }, [ladder]);
+
+  const player1Name = getPlayerDisplayName(player1, "Player 1");
+  const player2Name = getPlayerDisplayName(player2, "Player 2");
+
+  const canProceedStep1 = isPlayerValid(player1) && isPlayerValid(player2) && (
+    // Can't be the same person
+    !(player1.userId && player2.userId && player1.userId === player2.userId)
+  );
 
   // Match result computation
   const { gamesA, gamesB, validGames } = useMemo(
@@ -160,7 +363,6 @@ export default function AddMatchResult() {
   }, [validGames, scoringFormat, bestOf]);
 
   const updateGame = (idx: number, field: "playerA" | "playerB", value: string) => {
-    // Only allow numbers
     const cleaned = value.replace(/\D/g, "").slice(0, 2);
     setGames((prev) => {
       const next = [...prev];
@@ -169,45 +371,58 @@ export default function AddMatchResult() {
     });
   };
 
-  const canProceedStep1 = opponentMode === "club" ? !!selectedOpponentId : externalName.trim().length > 0;
-  const canProceedStep2 = true; // always valid
   const canSubmit = matchComplete;
 
   const handleSubmit = async () => {
     if (!user || !canSubmit) return;
     setSubmitting(true);
     try {
-      const playerA = user.id;
+      const p1External = player1.mode === "external";
+      const p2External = player2.mode === "external";
 
-      if (opponentMode === "external") {
+      // Both external — store as self-reported with notes
+      if (p1External && p2External) {
         await createMatch.mutateAsync({
-          playerA,
-          playerB: playerA,
-          winnerId: matchWinner === "a" ? playerA : null,
+          playerA: user.id,
+          playerB: user.id,
+          winnerId: null,
           score: scoreString,
           matchDate,
           gameScores: gameScoresJson,
-          notes: `External opponent: ${externalName}${externalClub ? ` (${externalClub})` : ""}. Match type: ${matchType}. Winner: ${matchWinner === "a" ? myName : externalName}`,
+          notes: `Player 1: ${player1.name}${player1.externalClub ? ` (${player1.externalClub})` : ""}. Player 2: ${player2.name}${player2.externalClub ? ` (${player2.externalClub})` : ""}. Winner: ${matchWinner === "a" ? player1.name : player2.name}. Match type: ${matchType}.`,
         });
-      } else {
-        // Use the user_id of the selected opponent (not club_member_id)
-        const opponentUserId = selectedOpponent?.user_id;
-        if (!opponentUserId) {
-          throw new Error("This opponent hasn't linked their account yet. They need to sign up first.");
-        }
-        const winnerId = matchWinner === "a" ? playerA : opponentUserId;
+        toast.success("Match result recorded.");
+      } else if (p1External || p2External) {
+        // One internal, one external
+        const internal = p1External ? player2 : player1;
+        const external = p1External ? player1 : player2;
+        const internalIsA = p1External ? false : true;
+
         await createMatch.mutateAsync({
-          playerA,
-          playerB: opponentUserId,
+          playerA: internal.userId!,
+          playerB: internal.userId!,
+          winnerId: matchWinner === (internalIsA ? "a" : "b") ? internal.userId! : null,
+          score: scoreString,
+          matchDate,
+          gameScores: gameScoresJson,
+          notes: `External opponent: ${external.name}${external.externalClub ? ` (${external.externalClub})` : ""}. ${internalIsA ? "Player 1" : "Player 2"} is ${internal.name}. Winner: ${matchWinner === "a" ? player1Name : player2Name}. Match type: ${matchType}.`,
+        });
+        toast.success("Match result recorded.");
+      } else {
+        // Both internal
+        const winnerId = matchWinner === "a" ? player1.userId! : player2.userId!;
+        await createMatch.mutateAsync({
+          playerA: player1.userId!,
+          playerB: player2.userId!,
           winnerId,
           score: scoreString,
           matchDate,
           gameScores: gameScoresJson,
           notes: `Match type: ${matchType}`,
         });
+        toast.success("Match result submitted! Awaiting player confirmation.");
       }
 
-      toast.success("Match result submitted! Awaiting opponent confirmation.");
       navigate("/dashboard");
     } catch (e: any) {
       toast.error(e?.message || "Failed to submit match result");
@@ -216,11 +431,15 @@ export default function AddMatchResult() {
     }
   };
 
+  // Compute the exclude user id for player 2 selector (avoid selecting same person)
+  const excludeForPlayer2 = player1.mode !== "external" ? player1.userId : null;
+  const excludeForPlayer1 = player2.mode !== "external" ? player2.userId : null;
+
   return (
     <div className="bottom-nav-safe">
       <PageHeader
         title="Add Match Result"
-        subtitle="Record your match scores"
+        subtitle="Record a match result"
       />
 
       <div className="px-4 mt-3 space-y-4 mb-4 max-w-lg mx-auto">
@@ -238,117 +457,46 @@ export default function AddMatchResult() {
                 {s}
               </div>
               <span className="text-xs text-muted-foreground hidden sm:inline">
-                {s === 1 ? "Opponent" : s === 2 ? "Match Type" : "Scores"}
+                {s === 1 ? "Players" : s === 2 ? "Match Type" : "Scores"}
               </span>
               {s < 3 && <Separator className="flex-1" />}
             </div>
           ))}
         </div>
 
-        {/* STEP 1: Select Opponent */}
+        {/* STEP 1: Select Players */}
         {step === 1 && (
-          <Card className="p-4 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold font-heading flex items-center gap-2">
-                <Users className="w-4 h-4" /> Select Opponent
-              </h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Choose a club member or enter details for an external player.
-              </p>
-            </div>
+          <Card className="p-4 space-y-5">
+            <PlayerSelector
+              label="Player 1"
+              player={player1}
+              onChange={setPlayer1}
+              showMyself={true}
+              myName={myName}
+              myUserId={user?.id ?? null}
+              availableMembers={availableMembers}
+              search={search1}
+              onSearchChange={setSearch1}
+              excludeUserId={excludeForPlayer1}
+            />
 
-            <div className="flex gap-2">
-              <Button
-                variant={opponentMode === "club" ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => { setOpponentMode("club"); setSelectedOpponentId(null); }}
-              >
-                <Users className="w-4 h-4 mr-1" />
-                Club Member
-              </Button>
-              <Button
-                variant={opponentMode === "external" ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => { setOpponentMode("external"); setSelectedOpponentId(null); }}
-              >
-                <UserPlus className="w-4 h-4 mr-1" />
-                External Player
-              </Button>
-            </div>
+            <Separator />
 
-            {opponentMode === "club" ? (
-              <div className="space-y-3">
-                <Input
-                  placeholder="Search members…"
-                  value={opponentSearch}
-                  onChange={(e) => setOpponentSearch(e.target.value)}
-                />
-                <div className="max-h-64 overflow-y-auto space-y-1">
-                  {availableOpponents.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">No members found</p>
-                  ) : (
-                    availableOpponents.map((p) => {
-                      const hasAccount = !!p.user_id;
-                      return (
-                        <button
-                          key={p.club_member_id}
-                          type="button"
-                          disabled={!hasAccount}
-                          onClick={() => hasAccount && setSelectedOpponentId(p.user_id!)}
-                          className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
-                            selectedOpponentId === p.user_id
-                              ? "border-primary bg-primary/5"
-                              : hasAccount
-                                ? "border-border hover:bg-muted/40"
-                                : "border-border opacity-50 cursor-not-allowed"
-                          }`}
-                        >
-                          <PlayerAvatar initials={initials(p.name)} size="sm" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium truncate">{p.name}</p>
-                            <div className="flex gap-2 mt-0.5">
-                              {p.rank != null && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  #{p.rank}
-                                </Badge>
-                              )}
-                              {p.gender && (
-                                <span className="text-[10px] text-muted-foreground">{p.gender}</span>
-                              )}
-                              {!hasAccount && (
-                                <span className="text-[10px] text-destructive">No account</span>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs">Player Name *</Label>
-                  <Input
-                    placeholder="e.g. John Smith"
-                    value={externalName}
-                    onChange={(e) => setExternalName(e.target.value)}
-                    maxLength={100}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Club / Organisation</Label>
-                  <Input
-                    placeholder="e.g. Wanderers Squash Club"
-                    value={externalClub}
-                    onChange={(e) => setExternalClub(e.target.value)}
-                    maxLength={100}
-                  />
-                </div>
-              </div>
+            <PlayerSelector
+              label="Player 2"
+              player={player2}
+              onChange={setPlayer2}
+              showMyself={false}
+              myName={myName}
+              myUserId={user?.id ?? null}
+              availableMembers={availableMembers}
+              search={search2}
+              onSearchChange={setSearch2}
+              excludeUserId={excludeForPlayer2}
+            />
+
+            {player1.userId && player2.userId && player1.userId === player2.userId && (
+              <p className="text-xs text-destructive">Both players cannot be the same person.</p>
             )}
 
             <Button
@@ -369,7 +517,7 @@ export default function AddMatchResult() {
                 <Trophy className="w-4 h-4" /> Match Settings
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                vs {opponentDisplayName}
+                {player1Name} vs {player2Name}
               </p>
             </div>
 
@@ -459,20 +607,20 @@ export default function AddMatchResult() {
             <div>
               <h3 className="text-sm font-semibold font-heading">Game Scores</h3>
               <p className="text-xs text-muted-foreground mt-1">
-                {SCORING_FORMATS.find((f) => f.value === scoringFormat)?.label} · Best of {bestOf} · vs {opponentDisplayName}
+                {SCORING_FORMATS.find((f) => f.value === scoringFormat)?.label} · Best of {bestOf} · {player1Name} vs {player2Name}
               </p>
             </div>
 
             {/* Score header */}
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
               <div className="text-center">
-                <p className="text-xs font-semibold truncate">{myName}</p>
+                <p className="text-xs font-semibold truncate">{player1Name}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Game</p>
               </div>
               <div className="text-center">
-                <p className="text-xs font-semibold truncate">{opponentDisplayName}</p>
+                <p className="text-xs font-semibold truncate">{player2Name}</p>
               </div>
             </div>
 
@@ -482,15 +630,12 @@ export default function AddMatchResult() {
               const a = parseInt(game.playerA) || 0;
               const b = parseInt(game.playerB) || 0;
               const winner = determineGameWinner(a, b, scoringFormat);
-              // Only show game if previous game is complete or it's game 1
-              // Also stop showing after match is won
               const previousGamesComplete = i === 0 || games.slice(0, i).every((g) => {
                 const ga = parseInt(g.playerA) || 0;
                 const gb = parseInt(g.playerB) || 0;
                 return determineGameWinner(ga, gb, scoringFormat) !== null;
               });
 
-              // Check if match was already won before this game
               const gamesBeforeThis = games.slice(0, i);
               let winsA = 0, winsB = 0;
               for (const g of gamesBeforeThis) {
@@ -502,23 +647,17 @@ export default function AddMatchResult() {
               }
               const matchAlreadyWon = winsA >= neededToWin || winsB >= neededToWin;
 
-              if (matchAlreadyWon || !previousGamesComplete) {
-                return null;
-              }
+              if (matchAlreadyWon || !previousGamesComplete) return null;
 
               return (
                 <div
                   key={i}
-                  className={`grid grid-cols-[1fr_auto_1fr] gap-2 items-center ${
-                    winner ? "opacity-80" : ""
-                  }`}
+                  className={`grid grid-cols-[1fr_auto_1fr] gap-2 items-center ${winner ? "opacity-80" : ""}`}
                 >
                   <Input
                     type="text"
                     inputMode="numeric"
-                    className={`text-center text-lg font-bold h-12 ${
-                      winner === "a" ? "border-primary bg-primary/5" : ""
-                    }`}
+                    className={`text-center text-lg font-bold h-12 ${winner === "a" ? "border-primary bg-primary/5" : ""}`}
                     value={game.playerA}
                     onChange={(e) => updateGame(i, "playerA", e.target.value)}
                     placeholder="0"
@@ -534,9 +673,7 @@ export default function AddMatchResult() {
                   <Input
                     type="text"
                     inputMode="numeric"
-                    className={`text-center text-lg font-bold h-12 ${
-                      winner === "b" ? "border-primary bg-primary/5" : ""
-                    }`}
+                    className={`text-center text-lg font-bold h-12 ${winner === "b" ? "border-primary bg-primary/5" : ""}`}
                     value={game.playerB}
                     onChange={(e) => updateGame(i, "playerB", e.target.value)}
                     placeholder="0"

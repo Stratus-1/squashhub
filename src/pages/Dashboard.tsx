@@ -324,15 +324,10 @@ export default function Dashboard() {
 
               if (isSamePlayer && m.notes) {
                 // Notes format typically contains player names like "Player 1: Name, Player 2: Name" or similar
-                const notesNames = m.notes.match(/Player\s*1[:\s]+([^,;\n]+)/i);
-                const notesNames2 = m.notes.match(/Player\s*2[:\s]+([^,;\n]+)/i);
+                const notesNames = m.notes.match(/Player\s*1[:\s]+([^.;\n]+)/i);
+                const notesNames2 = m.notes.match(/Player\s*2[:\s]+([^.;\n]+)/i);
                 if (notesNames) p1Name = notesNames[1].trim();
                 if (notesNames2) p2Name = notesNames2[1].trim();
-                // Fallback: if notes is just plain text, show it as the label
-                if (!notesNames && !notesNames2 && m.notes.length > 0) {
-                  p1Name = m.notes.split(/\s+vs\.?\s+/i)[0]?.trim() || p1Name;
-                  p2Name = m.notes.split(/\s+vs\.?\s+/i)[1]?.trim() || p2Name;
-                }
               }
 
               let label = "";

@@ -42,6 +42,53 @@ export default function Dashboard() {
   const { data: myBookings } = useMyBookings();
   const { data: myScheduledMatches } = useMyScheduledMatches();
 
+  // Recent match results (submitted by me or involving me)
+  const { data: recentMatches } = useQuery({
+    queryKey: ["my-recent-matches", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("matches")
+        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, submitted_by, notes")
+        .or(`player_a.eq.${user.id},player_b.eq.${user.id},submitted_by.eq.${user.id}`)
+        .order("match_date", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  // Get opponent names for recent matches
+  const matchPlayerIds = useMemo(() => {
+    if (!recentMatches || !user?.id) return [] as string[];
+    const ids = new Set<string>();
+    for (const m of recentMatches) {
+      if (m.player_a && m.player_a !== user.id) ids.add(m.player_a);
+      if (m.player_b && m.player_b !== user.id) ids.add(m.player_b);
+    }
+    return [...ids];
+  }, [recentMatches, user?.id]);
+
+  const { data: matchPlayerProfiles } = useQuery({
+    queryKey: ["match-player-profiles", matchPlayerIds.join(",")],
+    queryFn: async () => {
+      if (matchPlayerIds.length === 0) return [];
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", matchPlayerIds);
+      return data || [];
+    },
+    enabled: matchPlayerIds.length > 0,
+  });
+
+  const matchPlayerNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of matchPlayerProfiles || []) map.set(p.id, p.name || "Unknown");
+    return map;
+  }, [matchPlayerProfiles]);
+
   // Find player's position on gender-specific ladder
   const myLadderPosition = useMemo(() => {
     if (!ladder || !myClubMember || !user) return null;

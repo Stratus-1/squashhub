@@ -300,7 +300,65 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      {/* Active match tracker */}
+      {/* Match History */}
+      <motion.div
+        className="px-4 mt-4"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
+            <History className="w-4 h-4" /> Match Results
+          </h2>
+        </div>
+        {recentMatches && recentMatches.length > 0 ? (
+          <div className="space-y-1.5">
+            {recentMatches.slice(0, 5).map((m: any) => {
+              const isPlayerA = m.player_a === user?.id;
+              const isPlayerB = m.player_b === user?.id;
+              const isSubmitter = m.submitted_by === user?.id && !isPlayerA && !isPlayerB;
+              
+              // Determine opponent or players
+              let label = "";
+              if (isPlayerA || isPlayerB) {
+                const opponentId = isPlayerA ? m.player_b : m.player_a;
+                const opponentName = opponentId === user?.id ? "Self" : (matchPlayerNameMap.get(opponentId) || "Opponent");
+                const won = m.winner_id === user?.id;
+                label = `vs ${opponentName}`;
+                if (m.winner_id) label += won ? " — Won" : " — Lost";
+              } else {
+                // Submitted for others
+                const p1Name = matchPlayerNameMap.get(m.player_a) || "Player 1";
+                const p2Name = matchPlayerNameMap.get(m.player_b) || "Player 2";
+                label = `${p1Name} vs ${p2Name}`;
+              }
+
+              return (
+                <Card key={m.id} className="p-2.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{label}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-muted-foreground">{m.match_date}</span>
+                      {m.score && <Badge variant="outline" className="text-[10px] tabular-nums">{m.score}</Badge>}
+                    </div>
+                  </div>
+                  <Badge
+                    variant={m.confirmed ? "default" : "secondary"}
+                    className="text-[10px] shrink-0"
+                  >
+                    {m.confirmed ? "Confirmed" : "Pending"}
+                  </Badge>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="p-3 text-center text-sm text-muted-foreground">
+            No match results yet
+          </Card>
+        )}
+      </motion.div>
+
       {trackableBooking && (
         <motion.div
           className="px-4 mt-3"

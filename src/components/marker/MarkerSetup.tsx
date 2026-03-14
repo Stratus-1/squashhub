@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, UserCheck, X } from "lucide-react";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useMyClub } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 

@@ -289,33 +289,42 @@ export default function AddMatchResult() {
                   {availableOpponents.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">No members found</p>
                   ) : (
-                    availableOpponents.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelectedOpponentId(p.id)}
-                        className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
-                          selectedOpponentId === p.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:bg-muted/40"
-                        }`}
-                      >
-                        <PlayerAvatar initials={initials(p.name)} size="sm" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{p.name}</p>
-                          <div className="flex gap-2 mt-0.5">
-                            {p.rank != null && (
-                              <Badge variant="outline" className="text-[10px]">
-                                #{p.rank}
-                              </Badge>
-                            )}
-                            {p.gender && (
-                              <span className="text-[10px] text-muted-foreground">{p.gender}</span>
-                            )}
+                    availableOpponents.map((p) => {
+                      const hasAccount = !!p.user_id;
+                      return (
+                        <button
+                          key={p.club_member_id}
+                          type="button"
+                          disabled={!hasAccount}
+                          onClick={() => hasAccount && setSelectedOpponentId(p.user_id!)}
+                          className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
+                            selectedOpponentId === p.user_id
+                              ? "border-primary bg-primary/5"
+                              : hasAccount
+                                ? "border-border hover:bg-muted/40"
+                                : "border-border opacity-50 cursor-not-allowed"
+                          }`}
+                        >
+                          <PlayerAvatar initials={initials(p.name)} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{p.name}</p>
+                            <div className="flex gap-2 mt-0.5">
+                              {p.rank != null && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  #{p.rank}
+                                </Badge>
+                              )}
+                              {p.gender && (
+                                <span className="text-[10px] text-muted-foreground">{p.gender}</span>
+                              )}
+                              {!hasAccount && (
+                                <span className="text-[10px] text-destructive">No account</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    ))
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </div>

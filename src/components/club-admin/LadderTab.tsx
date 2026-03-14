@@ -30,6 +30,7 @@ interface LadderMember {
   name: string;
   avatar_url: string | null;
   gender: string | null;
+  ladder_position: number | null;
 }
 
 function getInitials(name: string) {

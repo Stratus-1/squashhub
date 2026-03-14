@@ -178,16 +178,11 @@ export default function AddMatchResult() {
     setSubmitting(true);
     try {
       const playerA = user.id;
-      // For club members, use their user_id (or club_member_id if no user_id)
-      const playerB = opponentMode === "club" ? selectedOpponentId! : user.id; // external → we'll handle differently
-      const winnerId = matchWinner === "a" ? playerA : playerB;
 
       if (opponentMode === "external") {
-        // For external opponents, we can't create a proper match record since they don't have a user_id
-        // We'll store the external info in the notes
         await createMatch.mutateAsync({
           playerA,
-          playerB: playerA, // placeholder - will use notes for external
+          playerB: playerA,
           winnerId: matchWinner === "a" ? playerA : null,
           score: scoreString,
           matchDate,
@@ -195,9 +190,15 @@ export default function AddMatchResult() {
           notes: `External opponent: ${externalName}${externalClub ? ` (${externalClub})` : ""}. Match type: ${matchType}. Winner: ${matchWinner === "a" ? myName : externalName}`,
         });
       } else {
+        // Use the user_id of the selected opponent (not club_member_id)
+        const opponentUserId = selectedOpponent?.user_id;
+        if (!opponentUserId) {
+          throw new Error("This opponent hasn't linked their account yet. They need to sign up first.");
+        }
+        const winnerId = matchWinner === "a" ? playerA : opponentUserId;
         await createMatch.mutateAsync({
           playerA,
-          playerB,
+          playerB: opponentUserId,
           winnerId,
           score: scoreString,
           matchDate,

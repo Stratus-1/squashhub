@@ -312,23 +312,21 @@ export default function Dashboard() {
         </div>
         {recentMatches && recentMatches.length > 0 ? (
           <div className="space-y-1.5">
-            {recentMatches.slice(0, 5).map((m: any) => {
+            {recentMatches.slice(0, 10).map((m: any) => {
               const isPlayerA = m.player_a === user?.id;
               const isPlayerB = m.player_b === user?.id;
-              const isSubmitter = m.submitted_by === user?.id && !isPlayerA && !isPlayerB;
+              const isParticipant = isPlayerA || isPlayerB;
               
-              // Determine opponent or players
+              const p1Name = matchPlayerNameMap.get(m.player_a) || "Player 1";
+              const p2Name = matchPlayerNameMap.get(m.player_b) || "Player 2";
+
               let label = "";
-              if (isPlayerA || isPlayerB) {
-                const opponentId = isPlayerA ? m.player_b : m.player_a;
-                const opponentName = opponentId === user?.id ? "Self" : (matchPlayerNameMap.get(opponentId) || "Opponent");
+              if (isParticipant) {
+                const opponentName = isPlayerA ? p2Name : p1Name;
                 const won = m.winner_id === user?.id;
                 label = `vs ${opponentName}`;
                 if (m.winner_id) label += won ? " — Won" : " — Lost";
               } else {
-                // Submitted for others
-                const p1Name = matchPlayerNameMap.get(m.player_a) || "Player 1";
-                const p2Name = matchPlayerNameMap.get(m.player_b) || "Player 2";
                 label = `${p1Name} vs ${p2Name}`;
               }
 

@@ -42,33 +42,32 @@ export default function Dashboard() {
   const { data: myBookings } = useMyBookings();
   const { data: myScheduledMatches } = useMyScheduledMatches();
 
-  // Recent match results (submitted by me or involving me)
+  // Recent match results for the whole club
   const { data: recentMatches } = useQuery({
-    queryKey: ["my-recent-matches", user?.id],
+    queryKey: ["club-recent-matches", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("matches")
         .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, submitted_by, notes")
-        .or(`player_a.eq.${user.id},player_b.eq.${user.id},submitted_by.eq.${user.id}`)
         .order("match_date", { ascending: false })
-        .limit(10);
+        .limit(20);
       if (error) throw error;
       return data || [];
     },
     enabled: !!user?.id,
   });
 
-  // Get opponent names for recent matches
+  // Get all player names for recent matches
   const matchPlayerIds = useMemo(() => {
-    if (!recentMatches || !user?.id) return [] as string[];
+    if (!recentMatches) return [] as string[];
     const ids = new Set<string>();
     for (const m of recentMatches) {
-      if (m.player_a && m.player_a !== user.id) ids.add(m.player_a);
-      if (m.player_b && m.player_b !== user.id) ids.add(m.player_b);
+      if (m.player_a) ids.add(m.player_a);
+      if (m.player_b) ids.add(m.player_b);
     }
     return [...ids];
-  }, [recentMatches, user?.id]);
+  }, [recentMatches]);
 
   const { data: matchPlayerProfiles } = useQuery({
     queryKey: ["match-player-profiles", matchPlayerIds.join(",")],

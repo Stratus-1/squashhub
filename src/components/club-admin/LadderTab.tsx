@@ -163,17 +163,25 @@ export function LadderTab({ clubId }: { clubId: string }) {
         name: m.name || m.profiles?.name || m.email || "Unknown",
         avatar_url: m.profiles?.avatar_url || null,
         gender: m.gender || null,
+        ladder_position: m.ladder_position ?? null,
       })),
     [members]
   );
 
+  const sortByLadder = (a: LadderMember, b: LadderMember) => {
+    if (a.ladder_position != null && b.ladder_position != null) return a.ladder_position - b.ladder_position;
+    if (a.ladder_position != null) return -1;
+    if (b.ladder_position != null) return 1;
+    return a.name.localeCompare(b.name);
+  };
+
   const menMembers = useMemo(
-    () => allMembers.filter((m) => !isLadiesGender(m.gender)).sort((a, b) => a.name.localeCompare(b.name)),
+    () => allMembers.filter((m) => !isLadiesGender(m.gender)).sort(sortByLadder),
     [allMembers]
   );
 
   const ladiesMembers = useMemo(
-    () => allMembers.filter((m) => isLadiesGender(m.gender)).sort((a, b) => a.name.localeCompare(b.name)),
+    () => allMembers.filter((m) => isLadiesGender(m.gender)).sort(sortByLadder),
     [allMembers]
   );
 

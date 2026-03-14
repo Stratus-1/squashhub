@@ -62,7 +62,7 @@ export default function MatchMarker() {
         game_scores: gameScoresJson,
         duration_s: result.durationSeconds,
         submitted_by: user.id,
-        confirmed: false,
+        confirmed: true,
         notes: `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}.`,
       });
 

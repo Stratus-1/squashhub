@@ -957,7 +957,7 @@ export function useCreateMatch() {
           duration_s: durationS ?? null,
           notes: notes ?? null,
           submitted_by: user.id,
-          confirmed: false,
+          confirmed: true,
           disputed: false,
         } as any, { onConflict: "id" })
         .select()

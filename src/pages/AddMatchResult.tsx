@@ -190,19 +190,16 @@ function PlayerSelector({
               <p className="text-xs text-muted-foreground text-center py-4">No members found</p>
             ) : (
               filteredMembers.map((p: any) => {
-                const hasAccount = !!p.user_id;
-                const isSelected = player.userId === p.user_id || player.clubMemberId === p.club_member_id;
+                const isSelected = player.clubMemberId === p.club_member_id;
                 return (
                   <button
                     key={p.club_member_id}
                     type="button"
-                    disabled={!hasAccount}
                     onClick={() =>
-                      hasAccount &&
                       onChange({
                         mode: "club",
                         clubMemberId: p.club_member_id,
-                        userId: p.user_id,
+                        userId: p.user_id || null,
                         name: p.name,
                         externalClub: "",
                       })
@@ -210,9 +207,7 @@ function PlayerSelector({
                     className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
                       isSelected
                         ? "border-primary bg-primary/5"
-                        : hasAccount
-                          ? "border-border hover:bg-muted/40"
-                          : "border-border opacity-50 cursor-not-allowed"
+                        : "border-border hover:bg-muted/40"
                     }`}
                   >
                     <PlayerAvatar initials={initials(p.name)} size="sm" />
@@ -225,8 +220,8 @@ function PlayerSelector({
                         {p.gender && (
                           <span className="text-[10px] text-muted-foreground">{p.gender}</span>
                         )}
-                        {!hasAccount && (
-                          <span className="text-[10px] text-destructive">No account</span>
+                        {!p.user_id && (
+                          <span className="text-[10px] text-muted-foreground">No account</span>
                         )}
                       </div>
                     </div>
@@ -266,7 +261,7 @@ function PlayerSelector({
 
 function isPlayerValid(p: PlayerSelection): boolean {
   if (p.mode === "myself") return !!p.userId;
-  if (p.mode === "club") return !!p.userId;
+  if (p.mode === "club") return !!p.clubMemberId;
   if (p.mode === "external") return p.name.trim().length > 0;
   return false;
 }
@@ -335,7 +330,8 @@ export default function AddMatchResult() {
 
   const canProceedStep1 = isPlayerValid(player1) && isPlayerValid(player2) && (
     // Can't be the same person
-    !(player1.userId && player2.userId && player1.userId === player2.userId)
+    !(player1.userId && player2.userId && player1.userId === player2.userId) &&
+    !(player1.clubMemberId && player2.clubMemberId && player1.clubMemberId === player2.clubMemberId)
   );
 
   // Match result computation
@@ -377,39 +373,12 @@ export default function AddMatchResult() {
     if (!user || !canSubmit) return;
     setSubmitting(true);
     try {
-      const p1External = player1.mode === "external";
-      const p2External = player2.mode === "external";
+      const p1HasAccount = player1.mode !== "external" && !!player1.userId;
+      const p2HasAccount = player2.mode !== "external" && !!player2.userId;
 
-      // Both external — store as self-reported with notes
-      if (p1External && p2External) {
-        await createMatch.mutateAsync({
-          playerA: user.id,
-          playerB: user.id,
-          winnerId: null,
-          score: scoreString,
-          matchDate,
-          gameScores: gameScoresJson,
-          notes: `Player 1: ${player1.name}${player1.externalClub ? ` (${player1.externalClub})` : ""}. Player 2: ${player2.name}${player2.externalClub ? ` (${player2.externalClub})` : ""}. Winner: ${matchWinner === "a" ? player1.name : player2.name}. Match type: ${matchType}.`,
-        });
-        toast.success("Match result recorded.");
-      } else if (p1External || p2External) {
-        // One internal, one external
-        const internal = p1External ? player2 : player1;
-        const external = p1External ? player1 : player2;
-        const internalIsA = p1External ? false : true;
-
-        await createMatch.mutateAsync({
-          playerA: internal.userId!,
-          playerB: internal.userId!,
-          winnerId: matchWinner === (internalIsA ? "a" : "b") ? internal.userId! : null,
-          score: scoreString,
-          matchDate,
-          gameScores: gameScoresJson,
-          notes: `External opponent: ${external.name}${external.externalClub ? ` (${external.externalClub})` : ""}. ${internalIsA ? "Player 1" : "Player 2"} is ${internal.name}. Winner: ${matchWinner === "a" ? player1Name : player2Name}. Match type: ${matchType}.`,
-        });
-        toast.success("Match result recorded.");
-      } else {
-        // Both internal
+      // Determine if we can create a proper match record (need user_ids for both)
+      if (p1HasAccount && p2HasAccount) {
+        // Both have accounts — full match record
         const winnerId = matchWinner === "a" ? player1.userId! : player2.userId!;
         await createMatch.mutateAsync({
           playerA: player1.userId!,
@@ -421,6 +390,38 @@ export default function AddMatchResult() {
           notes: `Match type: ${matchType}`,
         });
         toast.success("Match result submitted! Awaiting player confirmation.");
+      } else {
+        // One or both players don't have accounts — store with notes
+        const submitterId = user.id;
+        const noteParts: string[] = [];
+        
+        const p1Label = player1.mode === "external" 
+          ? `${player1.name}${player1.externalClub ? ` (${player1.externalClub})` : ""}`
+          : player1.name;
+        const p2Label = player2.mode === "external"
+          ? `${player2.name}${player2.externalClub ? ` (${player2.externalClub})` : ""}`
+          : player2.name;
+
+        noteParts.push(`Player 1: ${p1Label}`);
+        noteParts.push(`Player 2: ${p2Label}`);
+        noteParts.push(`Winner: ${matchWinner === "a" ? p1Label : p2Label}`);
+        noteParts.push(`Match type: ${matchType}`);
+
+        // Use the available user_ids, fallback to submitter
+        const playerAId = player1.userId || submitterId;
+        const playerBId = player2.userId || submitterId;
+        const winnerId = matchWinner === "a" ? (player1.userId || null) : (player2.userId || null);
+
+        await createMatch.mutateAsync({
+          playerA: playerAId,
+          playerB: playerBId,
+          winnerId,
+          score: scoreString,
+          matchDate,
+          gameScores: gameScoresJson,
+          notes: noteParts.join(". "),
+        });
+        toast.success("Match result recorded.");
       }
 
       navigate("/dashboard");
@@ -431,9 +432,9 @@ export default function AddMatchResult() {
     }
   };
 
-  // Compute the exclude user id for player 2 selector (avoid selecting same person)
-  const excludeForPlayer2 = player1.mode !== "external" ? player1.userId : null;
-  const excludeForPlayer1 = player2.mode !== "external" ? player2.userId : null;
+  // Compute the exclude id for player selectors (avoid selecting same person)
+  const excludeForPlayer2 = player1.mode !== "external" ? (player1.clubMemberId || player1.userId) : null;
+  const excludeForPlayer1 = player2.mode !== "external" ? (player2.clubMemberId || player2.userId) : null;
 
   return (
     <div className="bottom-nav-safe">

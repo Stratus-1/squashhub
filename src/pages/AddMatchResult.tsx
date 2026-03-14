@@ -122,7 +122,7 @@ export default function AddMatchResult() {
 
   const selectedOpponent = useMemo(() => {
     if (!selectedOpponentId || !ladder) return null;
-    return ladder.find((p) => p.id === selectedOpponentId || p.club_member_id === selectedOpponentId) || null;
+    return ladder.find((p) => p.user_id === selectedOpponentId || p.club_member_id === selectedOpponentId) || null;
   }, [selectedOpponentId, ladder]);
 
   const myName = useMemo(() => {

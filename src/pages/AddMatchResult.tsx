@@ -373,39 +373,12 @@ export default function AddMatchResult() {
     if (!user || !canSubmit) return;
     setSubmitting(true);
     try {
-      const p1External = player1.mode === "external";
-      const p2External = player2.mode === "external";
+      const p1HasAccount = player1.mode !== "external" && !!player1.userId;
+      const p2HasAccount = player2.mode !== "external" && !!player2.userId;
 
-      // Both external — store as self-reported with notes
-      if (p1External && p2External) {
-        await createMatch.mutateAsync({
-          playerA: user.id,
-          playerB: user.id,
-          winnerId: null,
-          score: scoreString,
-          matchDate,
-          gameScores: gameScoresJson,
-          notes: `Player 1: ${player1.name}${player1.externalClub ? ` (${player1.externalClub})` : ""}. Player 2: ${player2.name}${player2.externalClub ? ` (${player2.externalClub})` : ""}. Winner: ${matchWinner === "a" ? player1.name : player2.name}. Match type: ${matchType}.`,
-        });
-        toast.success("Match result recorded.");
-      } else if (p1External || p2External) {
-        // One internal, one external
-        const internal = p1External ? player2 : player1;
-        const external = p1External ? player1 : player2;
-        const internalIsA = p1External ? false : true;
-
-        await createMatch.mutateAsync({
-          playerA: internal.userId!,
-          playerB: internal.userId!,
-          winnerId: matchWinner === (internalIsA ? "a" : "b") ? internal.userId! : null,
-          score: scoreString,
-          matchDate,
-          gameScores: gameScoresJson,
-          notes: `External opponent: ${external.name}${external.externalClub ? ` (${external.externalClub})` : ""}. ${internalIsA ? "Player 1" : "Player 2"} is ${internal.name}. Winner: ${matchWinner === "a" ? player1Name : player2Name}. Match type: ${matchType}.`,
-        });
-        toast.success("Match result recorded.");
-      } else {
-        // Both internal
+      // Determine if we can create a proper match record (need user_ids for both)
+      if (p1HasAccount && p2HasAccount) {
+        // Both have accounts — full match record
         const winnerId = matchWinner === "a" ? player1.userId! : player2.userId!;
         await createMatch.mutateAsync({
           playerA: player1.userId!,
@@ -417,6 +390,38 @@ export default function AddMatchResult() {
           notes: `Match type: ${matchType}`,
         });
         toast.success("Match result submitted! Awaiting player confirmation.");
+      } else {
+        // One or both players don't have accounts — store with notes
+        const submitterId = user.id;
+        const noteParts: string[] = [];
+        
+        const p1Label = player1.mode === "external" 
+          ? `${player1.name}${player1.externalClub ? ` (${player1.externalClub})` : ""}`
+          : player1.name;
+        const p2Label = player2.mode === "external"
+          ? `${player2.name}${player2.externalClub ? ` (${player2.externalClub})` : ""}`
+          : player2.name;
+
+        noteParts.push(`Player 1: ${p1Label}`);
+        noteParts.push(`Player 2: ${p2Label}`);
+        noteParts.push(`Winner: ${matchWinner === "a" ? p1Label : p2Label}`);
+        noteParts.push(`Match type: ${matchType}`);
+
+        // Use the available user_ids, fallback to submitter
+        const playerAId = player1.userId || submitterId;
+        const playerBId = player2.userId || submitterId;
+        const winnerId = matchWinner === "a" ? (player1.userId || null) : (player2.userId || null);
+
+        await createMatch.mutateAsync({
+          playerA: playerAId,
+          playerB: playerBId,
+          winnerId,
+          score: scoreString,
+          matchDate,
+          gameScores: gameScoresJson,
+          notes: noteParts.join(". "),
+        });
+        toast.success("Match result recorded.");
       }
 
       navigate("/dashboard");

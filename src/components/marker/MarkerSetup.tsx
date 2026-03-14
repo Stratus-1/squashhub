@@ -81,7 +81,7 @@ function PlayerField({
     onChange({
       name: m.name || "",
       number: m.club_member_number || "",
-      club: club?.name || "",
+      club: clubName,
       clubMemberId: m.id,
     });
     setSearchOpen(false);

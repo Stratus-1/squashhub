@@ -10,7 +10,7 @@ import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
-import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";

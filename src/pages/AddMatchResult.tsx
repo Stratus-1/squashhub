@@ -122,7 +122,7 @@ export default function AddMatchResult() {
 
   const selectedOpponent = useMemo(() => {
     if (!selectedOpponentId || !ladder) return null;
-    return ladder.find((p) => p.id === selectedOpponentId || p.club_member_id === selectedOpponentId) || null;
+    return ladder.find((p) => p.user_id === selectedOpponentId || p.club_member_id === selectedOpponentId) || null;
   }, [selectedOpponentId, ladder]);
 
   const myName = useMemo(() => {
@@ -178,16 +178,11 @@ export default function AddMatchResult() {
     setSubmitting(true);
     try {
       const playerA = user.id;
-      // For club members, use their user_id (or club_member_id if no user_id)
-      const playerB = opponentMode === "club" ? selectedOpponentId! : user.id; // external → we'll handle differently
-      const winnerId = matchWinner === "a" ? playerA : playerB;
 
       if (opponentMode === "external") {
-        // For external opponents, we can't create a proper match record since they don't have a user_id
-        // We'll store the external info in the notes
         await createMatch.mutateAsync({
           playerA,
-          playerB: playerA, // placeholder - will use notes for external
+          playerB: playerA,
           winnerId: matchWinner === "a" ? playerA : null,
           score: scoreString,
           matchDate,
@@ -195,9 +190,15 @@ export default function AddMatchResult() {
           notes: `External opponent: ${externalName}${externalClub ? ` (${externalClub})` : ""}. Match type: ${matchType}. Winner: ${matchWinner === "a" ? myName : externalName}`,
         });
       } else {
+        // Use the user_id of the selected opponent (not club_member_id)
+        const opponentUserId = selectedOpponent?.user_id;
+        if (!opponentUserId) {
+          throw new Error("This opponent hasn't linked their account yet. They need to sign up first.");
+        }
+        const winnerId = matchWinner === "a" ? playerA : opponentUserId;
         await createMatch.mutateAsync({
           playerA,
-          playerB,
+          playerB: opponentUserId,
           winnerId,
           score: scoreString,
           matchDate,
@@ -288,33 +289,42 @@ export default function AddMatchResult() {
                   {availableOpponents.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">No members found</p>
                   ) : (
-                    availableOpponents.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelectedOpponentId(p.id)}
-                        className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
-                          selectedOpponentId === p.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:bg-muted/40"
-                        }`}
-                      >
-                        <PlayerAvatar initials={initials(p.name)} size="sm" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{p.name}</p>
-                          <div className="flex gap-2 mt-0.5">
-                            {p.rank != null && (
-                              <Badge variant="outline" className="text-[10px]">
-                                #{p.rank}
-                              </Badge>
-                            )}
-                            {p.gender && (
-                              <span className="text-[10px] text-muted-foreground">{p.gender}</span>
-                            )}
+                    availableOpponents.map((p) => {
+                      const hasAccount = !!p.user_id;
+                      return (
+                        <button
+                          key={p.club_member_id}
+                          type="button"
+                          disabled={!hasAccount}
+                          onClick={() => hasAccount && setSelectedOpponentId(p.user_id!)}
+                          className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
+                            selectedOpponentId === p.user_id
+                              ? "border-primary bg-primary/5"
+                              : hasAccount
+                                ? "border-border hover:bg-muted/40"
+                                : "border-border opacity-50 cursor-not-allowed"
+                          }`}
+                        >
+                          <PlayerAvatar initials={initials(p.name)} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{p.name}</p>
+                            <div className="flex gap-2 mt-0.5">
+                              {p.rank != null && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  #{p.rank}
+                                </Badge>
+                              )}
+                              {p.gender && (
+                                <span className="text-[10px] text-muted-foreground">{p.gender}</span>
+                              )}
+                              {!hasAccount && (
+                                <span className="text-[10px] text-destructive">No account</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    ))
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               </div>

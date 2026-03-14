@@ -432,9 +432,9 @@ export default function AddMatchResult() {
     }
   };
 
-  // Compute the exclude user id for player 2 selector (avoid selecting same person)
-  const excludeForPlayer2 = player1.mode !== "external" ? player1.userId : null;
-  const excludeForPlayer1 = player2.mode !== "external" ? player2.userId : null;
+  // Compute the exclude id for player selectors (avoid selecting same person)
+  const excludeForPlayer2 = player1.mode !== "external" ? (player1.clubMemberId || player1.userId) : null;
+  const excludeForPlayer1 = player2.mode !== "external" ? (player2.clubMemberId || player2.userId) : null;
 
   return (
     <div className="bottom-nav-safe">

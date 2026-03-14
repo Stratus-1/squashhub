@@ -185,15 +185,15 @@ export default function Dashboard() {
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/ladder")}>
             <Trophy className="w-5 h-5" />
-            <span className="text-xs font-medium">Ladder</span>
+            <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/30 bg-primary/5" onClick={() => navigate("/add-result")}>
             <ClipboardCheck className="w-5 h-5" />
-            <span className="text-xs font-medium">Result</span>
+            <span className="text-xs font-medium leading-tight text-center">Enter Result</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-accent/40 bg-accent/10" onClick={() => navigate("/match-marker")}>
             <Crosshair className="w-5 h-5" />
-            <span className="text-xs font-medium">Marker</span>
+            <span className="text-xs font-medium leading-tight text-center">Mark a Game</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />

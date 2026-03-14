@@ -10,7 +10,7 @@ import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
-import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +41,53 @@ export default function Dashboard() {
   const { data: todayBookings } = useBookings(todayStr, clubId);
   const { data: myBookings } = useMyBookings();
   const { data: myScheduledMatches } = useMyScheduledMatches();
+
+  // Recent match results (submitted by me or involving me)
+  const { data: recentMatches } = useQuery({
+    queryKey: ["my-recent-matches", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("matches")
+        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, submitted_by, notes")
+        .or(`player_a.eq.${user.id},player_b.eq.${user.id},submitted_by.eq.${user.id}`)
+        .order("match_date", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  // Get opponent names for recent matches
+  const matchPlayerIds = useMemo(() => {
+    if (!recentMatches || !user?.id) return [] as string[];
+    const ids = new Set<string>();
+    for (const m of recentMatches) {
+      if (m.player_a && m.player_a !== user.id) ids.add(m.player_a);
+      if (m.player_b && m.player_b !== user.id) ids.add(m.player_b);
+    }
+    return [...ids];
+  }, [recentMatches, user?.id]);
+
+  const { data: matchPlayerProfiles } = useQuery({
+    queryKey: ["match-player-profiles", matchPlayerIds.join(",")],
+    queryFn: async () => {
+      if (matchPlayerIds.length === 0) return [];
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", matchPlayerIds);
+      return data || [];
+    },
+    enabled: matchPlayerIds.length > 0,
+  });
+
+  const matchPlayerNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of matchPlayerProfiles || []) map.set(p.id, p.name || "Unknown");
+    return map;
+  }, [matchPlayerProfiles]);
 
   // Find player's position on gender-specific ladder
   const myLadderPosition = useMemo(() => {
@@ -185,15 +232,15 @@ export default function Dashboard() {
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/ladder")}>
             <Trophy className="w-5 h-5" />
-            <span className="text-xs font-medium">Ladder</span>
+            <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/30 bg-primary/5" onClick={() => navigate("/add-result")}>
             <ClipboardCheck className="w-5 h-5" />
-            <span className="text-xs font-medium">Result</span>
+            <span className="text-xs font-medium leading-tight text-center">Enter Result</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-accent/40 bg-accent/10" onClick={() => navigate("/match-marker")}>
             <Crosshair className="w-5 h-5" />
-            <span className="text-xs font-medium">Marker</span>
+            <span className="text-xs font-medium leading-tight text-center">Mark a Game</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
@@ -253,7 +300,65 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      {/* Active match tracker */}
+      {/* Match History */}
+      <motion.div
+        className="px-4 mt-4"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
+            <History className="w-4 h-4" /> Match Results
+          </h2>
+        </div>
+        {recentMatches && recentMatches.length > 0 ? (
+          <div className="space-y-1.5">
+            {recentMatches.slice(0, 5).map((m: any) => {
+              const isPlayerA = m.player_a === user?.id;
+              const isPlayerB = m.player_b === user?.id;
+              const isSubmitter = m.submitted_by === user?.id && !isPlayerA && !isPlayerB;
+              
+              // Determine opponent or players
+              let label = "";
+              if (isPlayerA || isPlayerB) {
+                const opponentId = isPlayerA ? m.player_b : m.player_a;
+                const opponentName = opponentId === user?.id ? "Self" : (matchPlayerNameMap.get(opponentId) || "Opponent");
+                const won = m.winner_id === user?.id;
+                label = `vs ${opponentName}`;
+                if (m.winner_id) label += won ? " — Won" : " — Lost";
+              } else {
+                // Submitted for others
+                const p1Name = matchPlayerNameMap.get(m.player_a) || "Player 1";
+                const p2Name = matchPlayerNameMap.get(m.player_b) || "Player 2";
+                label = `${p1Name} vs ${p2Name}`;
+              }
+
+              return (
+                <Card key={m.id} className="p-2.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{label}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-muted-foreground">{m.match_date}</span>
+                      {m.score && <Badge variant="outline" className="text-[10px] tabular-nums">{m.score}</Badge>}
+                    </div>
+                  </div>
+                  <Badge
+                    variant={m.confirmed ? "default" : "secondary"}
+                    className="text-[10px] shrink-0"
+                  >
+                    {m.confirmed ? "Confirmed" : "Pending"}
+                  </Badge>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="p-3 text-center text-sm text-muted-foreground">
+            No match results yet
+          </Card>
+        )}
+      </motion.div>
+
       {trackableBooking && (
         <motion.div
           className="px-4 mt-3"

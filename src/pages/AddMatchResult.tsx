@@ -190,19 +190,16 @@ function PlayerSelector({
               <p className="text-xs text-muted-foreground text-center py-4">No members found</p>
             ) : (
               filteredMembers.map((p: any) => {
-                const hasAccount = !!p.user_id;
-                const isSelected = player.userId === p.user_id || player.clubMemberId === p.club_member_id;
+                const isSelected = player.clubMemberId === p.club_member_id;
                 return (
                   <button
                     key={p.club_member_id}
                     type="button"
-                    disabled={!hasAccount}
                     onClick={() =>
-                      hasAccount &&
                       onChange({
                         mode: "club",
                         clubMemberId: p.club_member_id,
-                        userId: p.user_id,
+                        userId: p.user_id || null,
                         name: p.name,
                         externalClub: "",
                       })
@@ -210,9 +207,7 @@ function PlayerSelector({
                     className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
                       isSelected
                         ? "border-primary bg-primary/5"
-                        : hasAccount
-                          ? "border-border hover:bg-muted/40"
-                          : "border-border opacity-50 cursor-not-allowed"
+                        : "border-border hover:bg-muted/40"
                     }`}
                   >
                     <PlayerAvatar initials={initials(p.name)} size="sm" />

@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Undo2, RotateCcw, Flag, Clock } from "lucide-react";
+import { Undo2, RotateCcw, Flag, Clock, Pause, Play } from "lucide-react";
 import type { MarkerConfig, ScoringFormat } from "./MarkerSetup";
 
 type ServeSide = "R" | "L";
 
-interface GameScore {
+export interface GameScore {
   a: number;
   b: number;
   winnerId: "a" | "b";
@@ -35,7 +35,6 @@ function isGameWon(scoreA: number, scoreB: number, pointsToWin: number): "a" | "
   const max = Math.max(scoreA, scoreB);
   const min = Math.min(scoreA, scoreB);
   if (max < pointsToWin) return null;
-  // At deuce (e.g. 10-10 in PAR 11), need 2 clear
   if (min >= pointsToWin - 1) {
     if (max - min >= 2) return scoreA > scoreB ? "a" : "b";
     return null;
@@ -48,6 +47,8 @@ function formatDuration(seconds: number): string {
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+const REST_DURATION = 90; // seconds
 
 interface Props {
   config: MarkerConfig;
@@ -75,28 +76,94 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const [matchOver, setMatchOver] = useState(false);
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(null);
 
-  // Timer
+  // Rest timer between games
+  const [resting, setResting] = useState(false);
+  const [restRemaining, setRestRemaining] = useState(0);
+  const restTimerRef = useRef<number | null>(null);
+
+  // Match timer
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef(Date.now());
+  const pausedElapsedRef = useRef(0);
 
   useEffect(() => {
     startTimeRef.current = Date.now();
     timerRef.current = window.setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      setElapsed(pausedElapsedRef.current + Math.floor((Date.now() - startTimeRef.current) / 1000));
     }, 1000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
+  // Pause match timer during rest
+  const pauseMatchTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    pausedElapsedRef.current = elapsed;
+  }, [elapsed]);
+
+  const resumeMatchTimer = useCallback(() => {
+    startTimeRef.current = Date.now();
+    timerRef.current = window.setInterval(() => {
+      setElapsed(pausedElapsedRef.current + Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+  }, []);
+
+  const startRestTimer = useCallback(() => {
+    setResting(true);
+    setRestRemaining(REST_DURATION);
+    pauseMatchTimer();
+
+    restTimerRef.current = window.setInterval(() => {
+      setRestRemaining((prev) => {
+        if (prev <= 1) {
+          if (restTimerRef.current) clearInterval(restTimerRef.current);
+          restTimerRef.current = null;
+          setResting(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [pauseMatchTimer]);
+
+  const skipRest = useCallback(() => {
+    if (restTimerRef.current) clearInterval(restTimerRef.current);
+    restTimerRef.current = null;
+    setResting(false);
+    setRestRemaining(0);
+    resumeMatchTimer();
+  }, [resumeMatchTimer]);
+
+  // Resume match timer when rest ends naturally
+  useEffect(() => {
+    if (!resting && restRemaining === 0 && !matchOver && timerRef.current === null && completedGames.length > 0) {
+      resumeMatchTimer();
+    }
+  }, [resting, restRemaining, matchOver, completedGames.length, resumeMatchTimer]);
+
+  // Cleanup rest timer
+  useEffect(() => {
+    return () => {
+      if (restTimerRef.current) clearInterval(restTimerRef.current);
+    };
+  }, []);
+
+  const toggleServeSide = useCallback(() => {
+    if (matchOver || resting) return;
+    setServeSide((s) => (s === "R" ? "L" : "R"));
+  }, [matchOver, resting]);
+
   const awardPoint = useCallback(
     (scorer: "a" | "b") => {
-      if (matchOver) return;
+      if (matchOver || resting) return;
 
       // English scoring: only server can score
       if (isEnglish && scorer !== server) {
-        // Handout - change serve, no point
         setServer(scorer);
         setServeSide("R");
         setHistory((h) => [
@@ -112,7 +179,6 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
       setScoreA(newA);
       setScoreB(newB);
 
-      // Toggle serve side if server scored, else change server
       if (scorer === server) {
         setServeSide((s) => (s === "R" ? "L" : "R"));
       } else {
@@ -151,20 +217,21 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
           setMatchWinner(winner);
           if (timerRef.current) clearInterval(timerRef.current);
           onMatchComplete({ games: newCompleted, winnerId: winner, durationSeconds: elapsed });
+        } else {
+          // Start rest timer between games
+          startRestTimer();
         }
       }
     },
-    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete]
+    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, resting, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete, startRestTimer]
   );
 
   const undo = useCallback(() => {
-    if (history.length === 0 || matchOver) return;
+    if (history.length === 0 || matchOver || resting) return;
     const prev = history.slice(0, -1);
     setHistory(prev);
 
-    // Replay all points from scratch for current game
     let a = 0, b = 0, srv: "a" | "b" = "a", side: ServeSide = "R";
-    // Find events after last game reset
     const lastGameEndIdx = (() => {
       for (let i = prev.length - 1; i >= 0; i--) {
         if (prev[i].scoreA === 0 && prev[i].scoreB === 0) return i;
@@ -185,7 +252,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
     setScoreB(b);
     setServer(srv);
     setServeSide(side);
-  }, [history, matchOver]);
+  }, [history, matchOver, resting]);
 
   const playerAName = config.playerA.name.split(" ")[0];
   const playerBName = config.playerB.name.split(" ")[0];
@@ -203,6 +270,25 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
           {" · "}Best of {config.bestOf}
         </Badge>
       </div>
+
+      {/* Rest timer overlay */}
+      {resting && (
+        <Card className="p-4 bg-accent/10 border-accent/30">
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Pause className="w-4 h-4 text-accent-foreground" />
+              <p className="text-sm font-heading font-bold">Rest Period</p>
+            </div>
+            <p className="text-4xl font-heading font-bold tabular-nums text-accent-foreground">
+              {formatDuration(restRemaining)}
+            </p>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={skipRest}>
+              <Play className="w-3.5 h-3.5" />
+              Resume Play
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Games summary */}
       {completedGames.length > 0 && (
@@ -222,12 +308,12 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         {/* Player A */}
         <button
           type="button"
-          disabled={matchOver}
+          disabled={matchOver || resting}
           className={cn(
             "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
             "bg-primary text-primary-foreground",
             matchOver && matchWinner === "a" && "ring-4 ring-[hsl(var(--win))]",
-            matchOver && "opacity-80 cursor-default"
+            (matchOver || resting) && "opacity-80 cursor-default"
           )}
           onClick={() => awardPoint("a")}
         >
@@ -241,7 +327,10 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
               Games: {gamesA}
             </Badge>
             {server === "a" && (
-              <Badge className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
+              <Badge
+                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
+              >
                 {serveSide}
               </Badge>
             )}
@@ -251,12 +340,12 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         {/* Player B */}
         <button
           type="button"
-          disabled={matchOver}
+          disabled={matchOver || resting}
           className={cn(
             "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
             "bg-secondary text-secondary-foreground",
             matchOver && matchWinner === "b" && "ring-4 ring-[hsl(var(--win))]",
-            matchOver && "opacity-80 cursor-default"
+            (matchOver || resting) && "opacity-80 cursor-default"
           )}
           onClick={() => awardPoint("b")}
         >
@@ -270,7 +359,10 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
               Games: {gamesB}
             </Badge>
             {server === "b" && (
-              <Badge className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]">
+              <Badge
+                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
+              >
                 {serveSide}
               </Badge>
             )}
@@ -281,7 +373,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
       {/* Server indicator */}
       <p className="text-center text-xs text-muted-foreground">
         {isEnglish ? "Hand-in/Hand-out · " : ""}Serving: <span className="font-semibold">{server === "a" ? playerAName : playerBName}</span> ({serveSide})
-        {" · "}Tap the scoring player's side
+        {" · "}Tap {serveSide} to switch
       </p>
 
       {/* Controls */}
@@ -290,7 +382,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
           variant="outline"
           size="sm"
           className="flex-1 gap-1.5"
-          disabled={history.length === 0 || matchOver}
+          disabled={history.length === 0 || matchOver || resting}
           onClick={undo}
         >
           <Undo2 className="w-3.5 h-3.5" />
@@ -317,7 +409,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
             </p>
           </div>
           <p className="text-xs text-center text-muted-foreground mt-1">
-            {completedGames.map((g, i) => `${g.a}-${g.b}`).join(", ")} in {formatDuration(elapsed)}
+            {completedGames.map((g) => `${g.a}-${g.b}`).join(", ")} in {formatDuration(elapsed)}
           </p>
         </Card>
       )}

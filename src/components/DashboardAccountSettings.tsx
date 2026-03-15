@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
-import { Bell, ChevronRight, Flame, Lock, LogOut, Mail, MapPin, Shield, SlidersHorizontal, Users } from "lucide-react";
+import { Bell, ChevronRight, Flame, Lock, LogOut, Mail, MapPin, Search, Shield, SlidersHorizontal, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -205,8 +206,16 @@ export function DashboardAccountSettings() {
     window.location.assign(url.toString());
   };
 
-  const { linkedMembers, activeMember, switchMember } = useMemberContext();
-  const showSwitcher = linkedMembers.length > 1;
+  const { linkedMembers, allMembers, isAdmin: isMemberAdmin, activeMember, isViewingAs, switchMember, resetToSelf } = useMemberContext();
+  const showFamilySwitcher = linkedMembers.length > 1;
+  const [memberSearch, setMemberSearch] = useState("");
+
+  // For admin "view as" — filter all members by search
+  const filteredAllMembers = allMembers.filter(m => {
+    if (!memberSearch) return true;
+    const q = memberSearch.toLowerCase();
+    return (m.name || "").toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q) || (m.email || "").toLowerCase().includes(q);
+  });
 
   return (
     <div className="space-y-3">
@@ -219,14 +228,27 @@ export function DashboardAccountSettings() {
         )}
       </div>
 
-      {/* ── Member switcher (shared email / family accounts) ── */}
-      {showSwitcher && (
+      {/* ── Viewing-as banner ── */}
+      {isViewingAs && activeMember && (
+        <Card className="p-3 border-primary/50 bg-primary/5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="w-4 h-4 text-primary" />
+            <span>Viewing as <strong>{activeMember.name || activeMember.club_member_number || "Member"}</strong></span>
+          </div>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={resetToSelf}>
+            Back to my profile
+          </Button>
+        </Card>
+      )}
+
+      {/* ── Family member switcher (shared email) ── */}
+      {showFamilySwitcher && (
         <Card className="p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Users className="w-4 h-4 text-primary" />
             <span>Switch Member</span>
           </div>
-          <p className="text-[11px] text-muted-foreground">Multiple members are linked to your email. Select who you'd like to view as:</p>
+          <p className="text-[11px] text-muted-foreground">Multiple members are linked to your email:</p>
           <div className="flex flex-wrap gap-2">
             {linkedMembers.map(m => (
               <Button
@@ -241,6 +263,42 @@ export function DashboardAccountSettings() {
               </Button>
             ))}
           </div>
+        </Card>
+      )}
+
+      {/* ── Admin: View as any player ── */}
+      {isMemberAdmin && allMembers.length > 0 && (
+        <Card className="p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Shield className="w-4 h-4 text-primary" />
+            <span>View as Player</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Switch to any member's profile to view their dashboard.</p>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              value={memberSearch}
+              onChange={e => setMemberSearch(e.target.value)}
+              placeholder="Search members..."
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          {memberSearch && (
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {filteredAllMembers.slice(0, 20).map(m => (
+                <button
+                  key={m.id}
+                  className={`w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted/50 transition-colors flex items-center justify-between ${activeMember?.id === m.id ? "bg-primary/10 font-medium" : ""}`}
+                  onClick={() => { switchMember(m.id); setMemberSearch(""); }}
+                >
+                  <span className="truncate">{m.name || "—"}</span>
+                  <span className="text-muted-foreground shrink-0 ml-2">{m.club_member_number ? `#${m.club_member_number}` : m.email || ""}</span>
+                </button>
+              ))}
+              {filteredAllMembers.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No members found</p>}
+              {filteredAllMembers.length > 20 && <p className="text-[10px] text-muted-foreground text-center">Type more to narrow results…</p>}
+            </div>
+          )}
         </Card>
       )}
 

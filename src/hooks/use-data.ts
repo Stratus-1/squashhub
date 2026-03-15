@@ -999,8 +999,9 @@ export function useUpdateChallengeStatus() {
         .update(patch)
         .eq("id", challengeId)
         .select()
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error("Challenge not found or you don't have permission to update it");
       return data;
     },
     onSuccess: () => {

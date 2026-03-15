@@ -1,0 +1,1 @@
+ALTER TABLE public.club_members DROP CONSTRAINT IF EXISTS club_members_club_id_user_id_key;

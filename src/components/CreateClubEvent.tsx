@@ -177,6 +177,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!myMemberId && eventIds.length > 0,
   });
 
+  // Pre-select the creator as an attendee
+  useEffect(() => {
+    if (activeMember?.id && form.selected_member_ids.length === 0) {
+      setForm((f) => ({
+        ...f,
+        selected_member_ids: [activeMember.id],
+        booking_member_ids: [activeMember.id],
+      }));
+    }
+  }, [activeMember?.id]);
+
   // Calculate instance dates based on recurrence
   const getInstanceDates = (): string[] => {
     const baseDate = new Date(form.event_date + "T00:00:00");

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff } from "lucide-react";
+import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
@@ -390,6 +390,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const leagueIdx = headers.indexOf("plays_league");
     const idNumIdx = headers.indexOf("id_number");
     const addressIdx = headers.indexOf("address");
+    const genderIdx = headers.indexOf("gender");
 
     let imported = 0;
     const importedMemberIds: string[] = [];
@@ -411,6 +412,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         id_number: idNumIdx >= 0 ? cols[idNumIdx] : undefined,
         phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
         address: addressIdx >= 0 ? cols[addressIdx] : undefined,
+        gender: genderIdx >= 0 ? cols[genderIdx] : undefined,
       }, { onConflict: "club_id,email" }).select("id, fee_category_id, plays_league").single();
 
       if (!error && memberData) {
@@ -503,6 +505,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search members..." className="pl-9" />
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => {
+            const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league"];
+            const sample = [
+              headers.join(","),
+              "John Smith,john@example.com,0821234567,Male,MB001,9001015009088,123 Main St,true",
+              "Jane Doe,jane@example.com,0839876543,Female,MB002,9205120054083,456 Oak Ave,false",
+            ].join("\n");
+            const blob = new Blob([sample], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "member_import_template.csv"; a.click();
+            URL.revokeObjectURL(url);
+          }}>
+            <Download className="w-4 h-4 mr-1" />Template
+          </Button>
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
             <Upload className="w-4 h-4 mr-1" />CSV Import
           </Button>

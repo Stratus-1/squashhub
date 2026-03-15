@@ -560,6 +560,10 @@ export default function Bookings() {
         return;
       }
 
+      const opponentMemberId = bookingDialog.opponentId
+        ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.memberId || null
+        : null;
+
       const created = await createBooking.mutateAsync({
         bookingId,
         courtId: bookingDialog.courtId,
@@ -569,6 +573,8 @@ export default function Bookings() {
         opponentId: bookingDialog.opponentId || null,
         isFriendly: bookingDialog.isFriendly,
         guestName: bookingDialog.guestName || null,
+        clubMemberId: activeMember?.id || null,
+        opponentMemberId,
       });
 
       // Mark lights_requested on the booking (edge function handles actual billing)

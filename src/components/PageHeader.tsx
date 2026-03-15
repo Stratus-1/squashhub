@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Button } from "@/components/ui/button";

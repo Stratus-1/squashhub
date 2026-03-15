@@ -233,6 +233,11 @@ function LeagueCard({ league, associations, onDelete, members }: {
             <div key={r.id} className="flex items-center gap-2 text-xs py-0.5">
               <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
               <span className="truncate">{getMemberName(r)}</span>
+              {(() => {
+                const m = members.find(m => m.id === r.club_member_id);
+                const idNum = m?.id_number;
+                return idNum ? <span className="text-muted-foreground flex-shrink-0">ID: {idNum}</span> : null;
+              })()}
               {r.league_association_number && <span className="text-muted-foreground flex-shrink-0">#{r.league_association_number}</span>}
               {r.is_captain && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
               {r.is_captain && <span className="text-[10px] text-amber-600 font-semibold">(C)</span>}

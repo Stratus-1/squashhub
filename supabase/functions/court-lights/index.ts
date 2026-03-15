@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       // Get club info for fee
       const { data: courtInfo } = await supabase
         .from("courts")
-        .select("id, club_id, relay_device_id, relay_server, clubs(shelly_auth_key, light_fee_per_hour)")
+        .select("id, club_id, relay_device_id, relay_server, clubs(light_fee_per_hour)")
         .eq("id", booking.court_id)
         .maybeSingle();
 
@@ -100,8 +100,9 @@ Deno.serve(async (req) => {
       const feePerHour = club?.light_fee_per_hour ?? 0;
       const clubId = courtInfo?.club_id;
 
-      // Try to turn on the physical relay (skip if not configured)
-      const authKey = club?.shelly_auth_key;
+      // Get shelly auth key from club_secrets
+      const { data: secretsData } = clubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", clubId).maybeSingle() : { data: null };
+      const authKey = secretsData?.shelly_auth_key;
       if (courtInfo?.relay_device_id && authKey) {
         const shellyServer = (courtInfo as any).relay_server || "https://shelly-44-eu.shelly.cloud";
         try {

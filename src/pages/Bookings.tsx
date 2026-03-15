@@ -1274,6 +1274,35 @@ export default function Bookings() {
                 )}
               </div>
 
+              {bookingDialog.lightsOn && lightFeePerHour > 0 && bookingDialog.playerMode === "member" && bookingDialog.opponentId && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Who pays for lights?</Label>
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant={bookingDialog.lightFeeSplit === "booker" ? "default" : "outline"}
+                      className="flex-1 text-xs rounded-lg"
+                      onClick={() => setBookingDialog((s) => s ? { ...s, lightFeeSplit: "booker" } : s)}
+                    >
+                      I'll pay
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={bookingDialog.lightFeeSplit === "shared" ? "default" : "outline"}
+                      className="flex-1 text-xs rounded-lg"
+                      onClick={() => setBookingDialog((s) => s ? { ...s, lightFeeSplit: "shared" } : s)}
+                    >
+                      Split 50/50
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {bookingDialog.lightFeeSplit === "shared"
+                      ? "Half the light fee will be deducted from each player's account"
+                      : "Full light fee will be deducted from your account"}
+                  </p>
+                </div>
+              )}
+
               {bookingDialog.lightsOn && lightFeePerHour > 0 && (
                 <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-xs">
                   <span className="font-semibold">💡 Light fee:</span>{" "}

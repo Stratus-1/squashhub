@@ -537,9 +537,7 @@ export function DashboardAccountSettings() {
         )}
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Card className="overflow-hidden">
-          <button
+
             className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
             onClick={() => navigate("/availability")}
           >

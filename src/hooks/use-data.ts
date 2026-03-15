@@ -693,18 +693,19 @@ export function useAcceptChallengeSchedule() {
   });
 }
 
-export function useChallenges() {
+export function useChallenges(overrideUserId?: string | null) {
   const { user } = useAuth();
+  const targetId = overrideUserId || user?.id;
 
   return useQuery({
-    queryKey: ["challenges", user?.id],
+    queryKey: ["challenges", targetId],
     queryFn: async () => {
-      if (!user) return [] as ChallengeWithProfiles[];
+      if (!targetId) return [] as ChallengeWithProfiles[];
 
       const { data: challenges, error } = await supabase
         .from("challenges")
         .select("*")
-        .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
+        .or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`)
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -725,7 +726,7 @@ export function useChallenges() {
         opponent_name: profileMap.get(c.opponent_id) || "Unknown",
       })) as ChallengeWithProfiles[];
     },
-    enabled: !!user,
+    enabled: !!targetId,
   });
 }
 

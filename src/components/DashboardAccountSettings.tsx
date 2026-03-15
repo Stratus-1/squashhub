@@ -538,7 +538,7 @@ export function DashboardAccountSettings() {
       </Card>
 
 
-            className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
+
             onClick={() => navigate("/availability")}
           >
             <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">

@@ -187,6 +187,7 @@ export default function Ladder() {
 
   const isChallengeable = (player: LadderPlayer): boolean => {
     if (!user?.id || isMe(player)) return false;
+    if (getPlayerGenderGroup(player) !== myGenderGroup) return false;
     return canChallenge(player) === null;
   };
 

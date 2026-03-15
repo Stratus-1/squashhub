@@ -62,9 +62,23 @@ export default function MatchMarker() {
         game_scores: gameScoresJson,
         duration_s: result.durationSeconds,
         submitted_by: user.id,
-        confirmed: true,
+        confirmed: false,
         notes: `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}.`,
       });
+
+      // Notify the other player to confirm
+      if (!error) {
+        const otherUserId = memberA.user_id === user.id ? memberB.user_id : memberA.user_id;
+        try {
+          await supabase.from("notifications" as any).insert({
+            user_id: otherUserId,
+            title: "Confirm Match Result",
+            message: `A match result (${scoreStr}) has been submitted and needs your confirmation.`,
+            type: "match",
+            url: "/dashboard",
+          });
+        } catch { /* non-critical */ }
+      }
 
       if (error) {
         console.error("Failed to save match:", error);

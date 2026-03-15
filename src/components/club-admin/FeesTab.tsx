@@ -70,12 +70,11 @@ export function FeesTab({ clubId }: { clubId: string }) {
       });
     });
     return list;
-  }, [feeCategories, associations, nationalFees, dueMonth]);
+  }, [feeCategories, associations, nationalFees]);
 
-  const handleDueSettings = async (field: string, value: number) => {
-    if (field === "member_fee_due_month") setDueMonth(value);
-    else setReminderDays(value);
-    const { error } = await fromExt("clubs").update({ [field]: value }).eq("id", clubId);
+  const handleReminderDays = async (value: number) => {
+    setReminderDays(value);
+    const { error } = await fromExt("clubs").update({ fee_reminder_days_before: value }).eq("id", clubId);
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["my-club"] });
   };

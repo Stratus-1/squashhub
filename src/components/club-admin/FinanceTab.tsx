@@ -130,8 +130,21 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         { club_id: clubId, journal_ref: journalRef, account: "debtors", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
       ]);
 
-      // Mark associated fees as paid if this was a fee payment
-      // (handled by the member's payment flow already)
+      // Mark associated fees as paid if this was a fee payment (EFT)
+      if (tx.type === "payment" && tx.club_member_id) {
+        const { data: unpaidFees } = await fromExt("club_member_fee_payments")
+          .select("id, fee_label")
+          .eq("club_member_id", tx.club_member_id)
+          .eq("paid", false);
+        const desc = (tx.description || "") as string;
+        const feesToMark = (unpaidFees || []).filter((f: any) => desc.includes(f.fee_label));
+        for (const fee of feesToMark) {
+          await fromExt("club_member_fee_payments")
+            .update({ paid: true, paid_at: new Date().toISOString() })
+            .eq("id", fee.id);
+        }
+        queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      }
 
       toast.success("Payment confirmed with GL entries");
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });

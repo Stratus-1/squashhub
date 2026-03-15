@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 
 import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
+import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

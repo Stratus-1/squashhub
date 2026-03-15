@@ -69,9 +69,12 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     return member?.name || member?.profiles?.name || "Unknown";
   };
 
+  type BalEntry = { debit: number; credit: number };
+  type TrialBal = Record<GLAccount, BalEntry>;
+
   // Calculate trial balance
-  const trialBalance = (journalEntries || []).reduce(
-    (acc: Record<GLAccount, { debit: number; credit: number }>, entry: any) => {
+  const trialBalance: TrialBal = (journalEntries || []).reduce(
+    (acc: TrialBal, entry: any) => {
       const account = entry.account as GLAccount;
       if (!acc[account]) acc[account] = { debit: 0, credit: 0 };
       acc[account].debit += Number(entry.debit);

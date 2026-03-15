@@ -503,6 +503,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search members..." className="pl-9" />
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => {
+            const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league"];
+            const sample = [
+              headers.join(","),
+              "John Smith,john@example.com,0821234567,Male,MB001,9001015009088,123 Main St,true",
+              "Jane Doe,jane@example.com,0839876543,Female,MB002,9205120054083,456 Oak Ave,false",
+            ].join("\n");
+            const blob = new Blob([sample], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "member_import_template.csv"; a.click();
+            URL.revokeObjectURL(url);
+          }}>
+            <Download className="w-4 h-4 mr-1" />Template
+          </Button>
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
             <Upload className="w-4 h-4 mr-1" />CSV Import
           </Button>

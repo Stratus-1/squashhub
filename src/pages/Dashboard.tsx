@@ -479,7 +479,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-1.5">
             {myScheduledMatches.slice(0, 3).map((s: any) => {
-              const opponentId = user?.id ? (s.player_a === user.id ? s.player_b : s.player_a) : null;
+              const opponentId = effectiveUserId ? (s.player_a === effectiveUserId ? s.player_b : s.player_a) : null;
               const opponentName = opponentId ? opponentNameMap.get(opponentId) || "Opponent" : "Opponent";
               return (
                 <Card key={s.id} className="p-2.5 flex items-center justify-between gap-3">

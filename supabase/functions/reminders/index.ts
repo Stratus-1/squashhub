@@ -200,7 +200,77 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4) Inactivity nudge (3 weeks). Only run weekly (Monday in REMINDERS_TIMEZONE) to keep load low.
+    // 4) Event instance reminders — check all upcoming instances where reminder_hours matches
+    {
+      // Fetch all active events with their reminder_hours
+      const { data: activeEvents } = await supabaseAdmin
+        .from("club_events")
+        .select("id, title, event_type, reminder_hours, start_time, end_time")
+        .eq("status", "active")
+        .limit(500);
+
+      for (const ev of activeEvents || []) {
+        const reminderHours = (ev as any).reminder_hours || 48;
+        // Find instances within the reminder window
+        const reminderCutoff = new Date(Date.now() + reminderHours * 60 * 60 * 1000);
+        const reminderCutoffDate = isoDateInTz(reminderCutoff, timeZone);
+
+        // Get scheduled instances that fall within the reminder window
+        const { data: instances } = await supabaseAdmin
+          .from("club_event_instances")
+          .select("id, instance_date")
+          .eq("event_id", String((ev as any).id))
+          .eq("status", "scheduled")
+          .lte("instance_date", reminderCutoffDate)
+          .gte("instance_date", today)
+          .limit(100);
+
+        for (const inst of instances || []) {
+          // Get invited/confirmed RSVPs for this instance
+          const { data: rsvps } = await supabaseAdmin
+            .from("club_event_instance_rsvps")
+            .select("club_member_id, status")
+            .eq("instance_id", String((inst as any).id))
+            .in("status", ["invited", "confirmed"])
+            .limit(500);
+
+          // Get user_ids from club_member_ids
+          const memberIds = (rsvps || []).map((r: any) => String(r.club_member_id));
+          if (memberIds.length === 0) continue;
+
+          const { data: memberUsers } = await supabaseAdmin
+            .from("club_members")
+            .select("id, user_id")
+            .in("id", memberIds)
+            .not("user_id", "is", null);
+
+          const startTime = String((ev as any).start_time || "").slice(0, 5);
+          const eventType = String((ev as any).event_type || "event");
+          const title = `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Event Reminder`;
+          const instanceDate = String((inst as any).instance_date);
+          const message = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please confirm your attendance.`;
+
+          for (const mu of memberUsers || []) {
+            const uid = String((mu as any).user_id);
+            const ok = await sendReminder({
+              user_id: uid,
+              kind: "event_instance_reminder",
+              ref_table: "club_event_instances",
+              ref_id: String((inst as any).id),
+              scheduled_for: today,
+              title,
+              message,
+              url: "/events",
+              data: { event_id: String((ev as any).id), instance_id: String((inst as any).id) },
+            });
+            if (ok) sent += 1;
+            else skipped += 1;
+          }
+        }
+      }
+    }
+
+    // 5) Inactivity nudge (3 weeks). Only run weekly (Monday in REMINDERS_TIMEZONE) to keep load low.
     if (!isWeeklyRun) {
       return new Response(JSON.stringify({ ok: true, sent, skipped, today, tomorrow, isWeeklyRun }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

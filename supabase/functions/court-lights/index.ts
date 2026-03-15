@@ -340,7 +340,7 @@ Deno.serve(async (req) => {
     // Get all courts with relays
     const { data: courts, error: courtsErr } = await supabase
       .from("courts")
-      .select("id, name, relay_device_id, relay_server, club_id, clubs(shelly_auth_key, light_fee_per_hour)")
+      .select("id, name, relay_device_id, relay_server, club_id, clubs(light_fee_per_hour)")
       .not("relay_device_id", "is", null);
 
     if (courtsErr) throw courtsErr;
@@ -349,6 +349,16 @@ Deno.serve(async (req) => {
         JSON.stringify({ message: "No courts with relays configured" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Fetch all club secrets for courts that have clubs
+    const clubIds = [...new Set(courts.map((c: any) => c.club_id).filter(Boolean))];
+    const { data: allSecrets } = clubIds.length > 0
+      ? await supabase.from("club_secrets").select("club_id, shelly_auth_key").in("club_id", clubIds)
+      : { data: [] };
+    const secretsMap = new Map<string, string>();
+    for (const s of (allSecrets || [])) {
+      if (s.shelly_auth_key) secretsMap.set(s.club_id, s.shelly_auth_key);
     }
 
     const courtIds = courts.map((c: any) => c.id);
@@ -386,7 +396,7 @@ Deno.serve(async (req) => {
     const results: any[] = [];
 
     for (const court of courts) {
-      const authKey = (court as any).clubs?.shelly_auth_key;
+      const authKey = court.club_id ? secretsMap.get(court.club_id) : undefined;
       const feePerHour = Number((court as any).clubs?.light_fee_per_hour) || 0;
       if (!authKey) {
         results.push({ court: court.name, status: "skipped", detail: "No Shelly auth key" });

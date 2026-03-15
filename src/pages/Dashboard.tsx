@@ -12,7 +12,7 @@ import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
-import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X } from "lucide-react";
+import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -298,6 +298,10 @@ export default function Dashboard() {
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-accent/40 bg-accent/10" onClick={() => navigate("/match-marker")}>
             <Crosshair className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Mark a Game</span>
+          </Button>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/events")}>
+            <CalendarDays className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">Events</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />

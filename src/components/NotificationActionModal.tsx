@@ -127,9 +127,9 @@ export function NotificationActionModal() {
       await supabase.from("notifications").update({ read: true }).eq("id", id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
     },
   });
 

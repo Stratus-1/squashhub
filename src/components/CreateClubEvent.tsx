@@ -399,6 +399,39 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
   const cancelMutation = useMutation({
     mutationFn: async (eventId: string) => {
+      // Get event details to find associated bookings
+      const { data: evt } = await fromExt("club_events")
+        .select("club_id, start_time, end_time, start_date")
+        .eq("id", eventId)
+        .single();
+
+      // Get courts linked to this event
+      const { data: eventCourts } = await fromExt("club_event_courts")
+        .select("court_id")
+        .eq("event_id", eventId);
+
+      // Get all instance dates
+      const { data: instances } = await fromExt("club_event_instances")
+        .select("instance_date")
+        .eq("event_id", eventId);
+
+      // Cancel matching bookings for all instance dates and courts
+      if (evt && eventCourts?.length && instances?.length) {
+        const courtIds = eventCourts.map((c: any) => c.court_id);
+        const dates = instances.map((i: any) => i.instance_date);
+
+        for (const date of dates) {
+          await supabase
+            .from("bookings")
+            .update({ status: "cancelled" })
+            .in("court_id", courtIds)
+            .eq("date", date)
+            .gte("start_time", evt.start_time)
+            .lte("end_time", evt.end_time);
+        }
+      }
+
+      // Cancel the event
       const { error } = await fromExt("club_events").update({ status: "cancelled" }).eq("id", eventId);
       if (error) throw error;
     },

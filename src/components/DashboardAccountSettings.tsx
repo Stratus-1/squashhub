@@ -302,36 +302,18 @@ export function DashboardAccountSettings() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Card className="overflow-hidden">
-          <button
-            className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
-            onClick={() => navigate("/profile", { state: { backgroundLocation: location } })}
-          >
-            <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
-              <SlidersHorizontal className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Profile details</p>
-              <p className="text-[11px] text-muted-foreground truncate">Name, phone, avatar</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </Card>
-
-        <Card className="p-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Theme</p>
-              <p className="text-[11px] text-muted-foreground">Light / dark</p>
-            </div>
+      <Card className="p-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
+            <Shield className="w-4 h-4 text-primary" />
           </div>
-          <ThemeToggle />
-        </Card>
-      </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Theme</p>
+            <p className="text-[11px] text-muted-foreground">Light / dark</p>
+          </div>
+        </div>
+        <ThemeToggle />
+      </Card>
 
       {/* User settings */}
       <Card className="overflow-hidden">

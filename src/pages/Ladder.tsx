@@ -151,11 +151,24 @@ export default function Ladder() {
     return false;
   };
 
+  const myGenderGroup = useMemo(() => {
+    const g = (myClubMember?.gender || "").toLowerCase();
+    return (g === "female" || g === "ladies" || g === "f") ? "ladies" : "men";
+  }, [myClubMember?.gender]);
+
+  const getPlayerGenderGroup = (player: LadderPlayer): string => {
+    const g = (player.gender || "").toLowerCase();
+    return (g === "female" || g === "ladies" || g === "f") ? "ladies" : "men";
+  };
+
   const canChallenge = (player: LadderPlayer): string | null => {
     if (!user?.id) return "You must be logged in.";
     if (isMe(player)) return null; // hide button for self
     if (!myMemberId) return "Your account is not linked to a club member.";
     if (!myPosition) return "You are not ranked on the ladder yet.";
+
+    // Gender must match — men challenge men, ladies challenge ladies
+    if (getPlayerGenderGroup(player) !== myGenderGroup) return null; // hide button for other gender
 
     const opponentPos =
       positionMap.get(player.club_member_id) ??
@@ -174,6 +187,7 @@ export default function Ladder() {
 
   const isChallengeable = (player: LadderPlayer): boolean => {
     if (!user?.id || isMe(player)) return false;
+    if (getPlayerGenderGroup(player) !== myGenderGroup) return false;
     return canChallenge(player) === null;
   };
 

@@ -23,10 +23,11 @@ const fromExt = (table: string) => (supabase as any).from(table);
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const EVENT_TYPES = [
-  { value: "social", label: "Social" },
-  { value: "coaching", label: "Coaching" },
-  { value: "training", label: "Training" },
-  { value: "other", label: "Other" },
+  { value: "social", label: "Social", adminOnly: false },
+  { value: "coaching", label: "Coaching", adminOnly: true },
+  { value: "training", label: "Training", adminOnly: true },
+  { value: "league", label: "League", adminOnly: true },
+  { value: "other", label: "Other", adminOnly: false },
 ];
 
 const TIME_OPTIONS = (() => {

@@ -392,6 +392,11 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const addressIdx = headers.indexOf("address");
     const genderIdx = headers.indexOf("gender");
     const rankingIdx = headers.indexOf("ranking");
+    const feeTypeIdx = headers.indexOf("fee_type");
+
+    // Pre-fetch fee categories to match by name
+    const { data: feeCats } = await fromExt("member_fee_categories").select("id, name").eq("club_id", clubId);
+    const feeCatMap = new Map((feeCats || []).map((c: any) => [c.name.toLowerCase(), c.id]));
 
     let imported = 0;
     const importedMemberIds: string[] = [];

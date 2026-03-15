@@ -554,15 +554,15 @@ export default function MyAccount() {
                       )}
                     </p>
                   </div>
-                  <span className={cn("text-right tabular-nums", line.debit > 0 && "text-destructive")}>
+                  <span className={cn("text-right tabular-nums", line.debit > 0 && "text-green-600")}>
                     {line.debit > 0 ? `R${line.debit.toFixed(2)}` : ""}
                   </span>
-                  <span className={cn("text-right tabular-nums", line.credit > 0 && "text-green-600")}>
+                  <span className={cn("text-right tabular-nums", line.credit > 0 && "text-destructive")}>
                     {line.credit > 0 ? `R${line.credit.toFixed(2)}` : ""}
                   </span>
                   <span className={cn(
                     "text-right font-semibold tabular-nums",
-                    line.balance < 0 ? "text-destructive" : "text-green-600"
+                    line.balance > 0 ? "text-destructive" : line.balance < 0 ? "text-green-600" : ""
                   )}>
                     {line.balance < 0 ? "-" : ""}R{Math.abs(line.balance).toFixed(2)}
                   </span>

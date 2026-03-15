@@ -199,7 +199,7 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
             </Button>
           )}
           {isProtected && isAdmin && (
-            <ShieldCheck className="w-3.5 h-3.5 text-primary mx-2 mt-2" title="Admin rights (delegate)" />
+            <ShieldCheck className="w-3.5 h-3.5 text-primary mx-2 mt-2" />
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
           {!isProtected && (

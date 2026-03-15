@@ -323,51 +323,6 @@ export function DashboardAccountSettings() {
         </div>
 
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="public-profile" className="border-b border-border/60">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex w-full items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
-                    <Lock className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">Public profile</p>
-                    <p className="text-[11px] text-muted-foreground truncate">Choose what other members can see.</p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="shrink-0 text-[10px]">
-                  {privacyVisibleCount}/5 visible
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <div className="space-y-3">
-                {[
-                  { key: "privacy_show_about", label: "About section", desc: "Bio + style" },
-                  { key: "privacy_show_availability", label: "Availability", desc: "Weekly windows" },
-                  { key: "privacy_show_recent_matches", label: "Recent matches", desc: "H2H + results" },
-                  { key: "privacy_show_training", label: "Training stats", desc: "Strava totals" },
-                  { key: "privacy_show_advanced_stats", label: "Advanced stats", desc: "Streaks, points" },
-                ].map(({ key, label, desc }) => (
-                  <div key={key} className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium">{label}</p>
-                      <p className="text-[11px] text-muted-foreground">{desc}</p>
-                    </div>
-                    <Switch
-                      checked={(privacy as any)[key]}
-                      disabled={saveProfilePrefs.isPending}
-                      onCheckedChange={(checked) => {
-                        const next = { ...privacy, [key]: checked };
-                        setPrivacy(next as any);
-                        saveProfilePrefs.mutate({ [key]: checked });
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
 
           {emailPrefsResult?.available ? (
             <AccordionItem value="email-preferences" className="border-b-0">

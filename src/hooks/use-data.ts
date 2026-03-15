@@ -761,14 +761,14 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p.name]) || []);
 
-      // For opponents without user_id, resolve names from club_members
-      const memberIdsToResolve = challenges
-        .filter((c) => !c.opponent_id && c.opponent_member_id)
-        .map((c) => c.opponent_member_id!);
-      const challengerMemberIdsToResolve = challenges
-        .filter((c) => !c.challenger_id && c.challenger_member_id)
-        .map((c) => c.challenger_member_id!);
-      const allMemberIds = [...new Set([...memberIdsToResolve, ...challengerMemberIdsToResolve])];
+      // Always resolve names from club_members (primary source of truth)
+      const allMemberIds = [
+        ...new Set(
+          challenges
+            .flatMap((c) => [c.challenger_member_id, c.opponent_member_id])
+            .filter(Boolean) as string[]
+        ),
+      ];
       
       let memberNameMap = new Map<string, string>();
       if (allMemberIds.length > 0) {
@@ -780,8 +780,8 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
 
       return challenges.map((c) => ({
         ...c,
-        challenger_name: profileMap.get(c.challenger_id!) || memberNameMap.get(c.challenger_member_id!) || "Unknown",
-        opponent_name: profileMap.get(c.opponent_id!) || memberNameMap.get(c.opponent_member_id!) || "Unknown",
+        challenger_name: memberNameMap.get(c.challenger_member_id!) || profileMap.get(c.challenger_id!) || "Unknown",
+        opponent_name: memberNameMap.get(c.opponent_member_id!) || profileMap.get(c.opponent_id!) || "Unknown",
       })) as ChallengeWithProfiles[];
     },
     enabled: !!queryId,

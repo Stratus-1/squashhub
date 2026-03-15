@@ -236,7 +236,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         invite_scope: form.invite_scope,
         invite_scope_id: form.invite_scope_id || null,
         is_club_booking: form.is_club_booking,
-        booked_by_member_id: form.is_club_booking ? null : (form.booked_by_member_id || null),
+        booked_by_member_id: null,
         recurrence: form.recurrence,
         light_fee_split: form.light_fee_split,
         reminder_hours: parseInt(form.reminder_hours),

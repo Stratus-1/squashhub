@@ -193,8 +193,8 @@ export default function Auth() {
 
         <Tabs defaultValue="login">
           <TabsList className="w-full mb-4">
-            <TabsTrigger value="login" className="flex-1">Existing Member Register</TabsTrigger>
-            <TabsTrigger value="signup" className="flex-1">New? Join the Club</TabsTrigger>
+            <TabsTrigger value="login" className="flex-1">Sign In</TabsTrigger>
+            <TabsTrigger value="signup" className="flex-1">Register Club</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">

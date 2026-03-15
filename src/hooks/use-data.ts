@@ -123,18 +123,25 @@ export function useHomeInsights(daysBack = 30) {
 
 export function useUnreadNotificationsCount() {
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
 
   return useQuery({
-    queryKey: ["notifications-unread-count", user?.id],
+    queryKey: ["notifications-unread-count", user?.id, activeMember?.id],
     queryFn: async () => {
       if (!user) return 0;
 
-      const { count, error } = await supabase
+      let query = supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
         .eq("read", false);
 
+      if (activeMember?.id) {
+        query = query.eq("club_member_id", activeMember.id);
+      } else {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { count, error } = await query;
       if (error) throw error;
       return count ?? 0;
     },

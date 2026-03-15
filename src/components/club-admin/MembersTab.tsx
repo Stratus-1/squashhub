@@ -465,12 +465,32 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const handleAdd = async () => {
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedName = name.trim();
-    if (!trimmedEmail || !trimmedName) {
-      toast.error("Name and email are required");
+    if (!trimmedName || trimmedName.length < 2) {
+      toast.error("Full name is required (at least 2 characters)");
+      return;
+    }
+    if (!trimmedEmail) {
+      toast.error("Email is required");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       toast.error("Please enter a valid email address");
+      return;
+    }
+    if (idNumber.trim() && (!/^\d+$/.test(idNumber.trim()) || idNumber.trim().length !== 13)) {
+      toast.error("SA ID number must be exactly 13 digits");
+      return;
+    }
+    if (phone && phone !== "+27" && !/^\+\d{7,15}$/.test(phone.replace(/\s/g, ""))) {
+      toast.error("Please enter a valid phone number in international format (e.g. +27821234567)");
+      return;
+    }
+    if (!gender) {
+      toast.error("Gender is required");
+      return;
+    }
+    if (!feeCategoryId) {
+      toast.error("Fee category is required");
       return;
     }
     if (playsLeague && !associationId) {
@@ -573,9 +593,9 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         <DialogHeader><DialogTitle>Add Member</DialogTitle></DialogHeader>
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-1"><Label>Full Name *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>
-          <div className="space-y-1"><Label>Email *</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
+          <div className="space-y-1"><Label>Email *</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
           <div className="space-y-1">
-            <Label>Gender</Label>
+            <Label>Gender *</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={gender} onChange={e => setGender(e.target.value)}>
               <option value="">— Select —</option>
               <option value="Men">Men</option>
@@ -585,7 +605,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
           <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Optional" /></div>
           <div className="space-y-1">
             <Label>ID Number</Label>
-            <Input value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="SA ID number (13 digits)" />
+            <Input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="SA ID number (13 digits)" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
           <div className="space-y-1">
@@ -594,7 +614,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
-            <Label>Fee Category</Label>
+            <Label>Fee Category *</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={feeCategoryId}
@@ -710,6 +730,31 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 
   const handleSave = async () => {
+    // ── Field validations (matching onboarding wizard) ──
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      toast.error("Full name is required (at least 2 characters)");
+      return;
+    }
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim().toLowerCase())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (form.id_number.trim() && (!/^\d+$/.test(form.id_number.trim()) || form.id_number.trim().length !== 13)) {
+      toast.error("SA ID number must be exactly 13 digits");
+      return;
+    }
+    if (form.phone && form.phone !== "+27" && !/^\+\d{7,15}$/.test(form.phone.replace(/\s/g, ""))) {
+      toast.error("Please enter a valid phone number in international format (e.g. +27821234567)");
+      return;
+    }
+    if (!form.gender) {
+      toast.error("Gender is required");
+      return;
+    }
+    if (!form.fee_category_id) {
+      toast.error("Fee category is required");
+      return;
+    }
     if (form.plays_league && !form.association_id) {
       toast.error("Please select a league association");
       return;
@@ -818,10 +863,10 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       <DialogContent>
         <DialogHeader><DialogTitle>Edit {form.name || member.profiles?.name || "Member"}</DialogTitle></DialogHeader>
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-          <div className="space-y-1"><Label>Full Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
-          <div className="space-y-1"><Label>Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Full Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
           <div className="space-y-1">
-            <Label>Gender</Label>
+            <Label>Gender *</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.gender} onChange={e => setForm(p => ({ ...p, gender: e.target.value }))}>
               <option value="">— Select —</option>
               <option value="Men">Men</option>
@@ -872,7 +917,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           )}
           <div className="space-y-1">
             <Label>ID Number</Label>
-            <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value }))} placeholder="SA ID number (13 digits)" />
+            <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value.replace(/\D/g, "").slice(0, 13) }))} placeholder="SA ID number (13 digits)" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
           <div className="space-y-1">
@@ -881,7 +926,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
-            <Label>Fee Category</Label>
+            <Label>Fee Category *</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={form.fee_category_id}

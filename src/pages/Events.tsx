@@ -1,16 +1,19 @@
+import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
+import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { absoluteUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 const fromExt = (table: string) => (supabase as any).from(table);
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyClub } from "@/hooks/use-club";
 
 type EventRow = {
   id: string;

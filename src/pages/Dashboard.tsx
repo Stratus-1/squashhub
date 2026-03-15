@@ -370,8 +370,8 @@ export default function Dashboard() {
         {recentMatches && recentMatches.length > 0 ? (
           <div className="space-y-1.5">
             {recentMatches.slice(0, 10).map((m: any) => {
-              const isPlayerA = m.player_a === user?.id;
-              const isPlayerB = m.player_b === user?.id;
+              const isPlayerA = m.player_a === effectiveUserId;
+              const isPlayerB = m.player_b === effectiveUserId;
               const isParticipant = isPlayerA || isPlayerB;
               const isSamePlayer = m.player_a === m.player_b;
 
@@ -395,14 +395,14 @@ export default function Dashboard() {
                 if (winnerName) label += ` — ${winnerName} won`;
               } else if (isParticipant) {
                 const opponentName = isPlayerA ? p2Name : p1Name;
-                const won = m.winner_id === user?.id;
+                const won = m.winner_id === effectiveUserId;
                 label = `vs ${opponentName}`;
                 if (m.winner_id) label += won ? " — Won" : " — Lost";
               } else {
                 label = `${p1Name} vs ${p2Name}`;
               }
 
-              const needsMyConfirmation = !m.confirmed && !m.disputed && isParticipant && m.submitted_by !== user?.id;
+              const needsMyConfirmation = !m.confirmed && !m.disputed && isParticipant && m.submitted_by !== effectiveUserId;
 
               return (
                 <Card key={m.id} className={cn("p-2.5 flex items-center justify-between gap-2", needsMyConfirmation && "border-primary/40 bg-primary/5")}>

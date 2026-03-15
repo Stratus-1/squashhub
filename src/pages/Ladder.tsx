@@ -190,19 +190,15 @@ export default function Ladder() {
 
   const handleSendChallenge = async () => {
     if (!challengeDialog.player || !proposedDate || !proposedTime) return;
-    if (!challengeDialog.player.user_id) {
-      toast.error("This member has not linked an account yet.");
-      return;
-    }
 
     setSending(true);
     try {
       await createChallenge.mutateAsync({
-        opponentId: challengeDialog.player.user_id,
+        opponentId: challengeDialog.player.user_id || challengeDialog.player.id,
         proposedDate,
         proposedTime,
         courtId: courtId ? Number(courtId) : undefined,
-        challengerMemberId: myClubMember?.id || null,
+        challengerMemberId: myMemberId || null,
         opponentMemberId: challengeDialog.player.club_member_id || null,
       });
       toast.success(`Challenge sent to ${challengeDialog.player.name}`);

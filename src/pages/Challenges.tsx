@@ -193,9 +193,19 @@ export default function Challenges() {
 
   const handleAccept = async (c: ChallengeWithProfiles) => {
     try {
-      await updateChallenge.mutateAsync({ challengeId: c.id, status: "accepted" });
+      // Check court availability before accepting
+      const matchDate = c.proposed_date;
+      const matchTime = (c as any).proposed_time;
+      const courtId = (c as any).court_id;
+      if (matchDate && matchTime && courtId) {
+        const { available, conflictMessage } = await isCourtAvailable(courtId, matchDate, matchTime);
+        if (!available) {
+          toast.error(conflictMessage || "Court is not available at this time. Ask the challenger to choose a different slot.");
+          return;
+        }
+      }
 
-      // Auto-create court booking
+      await updateChallenge.mutateAsync({ challengeId: c.id, status: "accepted" });
       const matchDate = c.proposed_date;
       const matchTime = (c as any).proposed_time;
       const courtId = (c as any).court_id;

@@ -64,21 +64,21 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   const loading = needsQuery && isLoading;
   const displaySubdomain = club?.subdomain ?? subdomain;
 
-  // Fetch delegate details
+  // Fetch delegate details via safe public view (no PII exposed)
   const delegateIds = [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id].filter(Boolean) as string[];
   const { data: delegates = [] } = useQuery({
     queryKey: ["club-delegates", club?.id, delegateIds.join(",")],
     queryFn: async () => {
       if (delegateIds.length === 0) return [];
-      const { data, error } = await fromExt("club_members")
-        .select("id, name, email, phone, profiles:user_id(name, email, phone)")
+      const { data, error } = await fromExt("club_delegates_public")
+        .select("id, name")
         .in("id", delegateIds);
       if (error) throw error;
       return (data || []).map((d: any) => ({
         id: d.id,
-        name: d.profiles?.name || d.name,
-        email: d.profiles?.email || d.email,
-        phone: d.profiles?.phone || d.phone,
+        name: d.name || "Unknown",
+        email: null,
+        phone: null,
       })) as ClubDelegate[];
     },
     enabled: !!club && delegateIds.length > 0,

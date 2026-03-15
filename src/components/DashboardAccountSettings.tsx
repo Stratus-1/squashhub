@@ -219,14 +219,6 @@ export function DashboardAccountSettings() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold font-heading">Account & Settings</h2>
-        {canOpenAdmin && (
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => navigate("/admin")}>
-            Admin <ChevronRight className="w-3 h-3 ml-1" />
-          </Button>
-        )}
-      </div>
 
       {/* ── Viewing-as banner ── */}
       {isViewingAs && activeMember && (

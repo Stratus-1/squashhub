@@ -534,21 +534,6 @@ export default function Dashboard() {
         <CreateClubEvent />
       </div>
 
-      {/* More Actions */}
-      {isClubAdmin && (
-        <div className="px-4 mt-5">
-          <p className="text-sm font-semibold font-heading mb-2">More</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" className="justify-between h-11 px-3 border-primary/30 bg-primary/5" onClick={() => navigate("/club-admin")}>
-              <span className="inline-flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Club Admin
-              </span>
-              <ChevronRight className="w-4 h-4 opacity-70" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Today's Bookings */}
       <motion.div

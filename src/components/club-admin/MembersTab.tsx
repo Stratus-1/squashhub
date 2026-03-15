@@ -562,14 +562,15 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       }).select("id").single();
       if (error || !memberData) throw error || new Error("Failed to create member");
 
-      // Auto-create member fee records for the new member
+      // Auto-create member fee records — admin-added members default to paid
       if (previewFees.length > 0) {
         const feeRecords = previewFees.map((f, idx) => ({
           club_member_id: memberData.id,
-          fee_type: idx === 0 ? "membership" : (idx <= associations.filter(a => a.fee_annual > 0).length ? "association" : "national_body"),
+          fee_type: idx === 0 ? "club" : (idx <= associations.filter(a => a.fee_annual > 0).length ? "association" : "national"),
           fee_label: f.label,
           amount: f.amount,
-          paid: false,
+          paid: true,
+          paid_at: new Date().toISOString(),
           season_year: new Date().getFullYear(),
         }));
         await fromExt("club_member_fee_payments").insert(feeRecords);

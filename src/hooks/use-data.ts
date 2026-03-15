@@ -939,6 +939,10 @@ export function useCreateMatch() {
       gameScores,
       durationS,
       notes,
+      playerAMemberId,
+      playerBMemberId,
+      winnerMemberId,
+      submittedByMemberId,
     }: {
       matchId?: string;
       playerA: string;
@@ -951,14 +955,17 @@ export function useCreateMatch() {
       gameScores?: string | null;
       durationS?: number | null;
       notes?: string | null;
+      playerAMemberId?: string | null;
+      playerBMemberId?: string | null;
+      winnerMemberId?: string | null;
+      submittedByMemberId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
 
       const id = matchId || crypto.randomUUID();
 
-      // Both players have accounts and are different people → pending confirmation
       const bothLinked = playerA !== playerB;
-      const confirmed = !bothLinked; // auto-confirm only when external/same-id placeholder
+      const confirmed = !bothLinked;
 
       const { data, error } = await supabase
         .from("matches")
@@ -967,6 +974,10 @@ export function useCreateMatch() {
           player_a: playerA,
           player_b: playerB,
           winner_id: winnerId,
+          player_a_member_id: playerAMemberId ?? null,
+          player_b_member_id: playerBMemberId ?? null,
+          winner_member_id: winnerMemberId ?? null,
+          submitted_by_member_id: submittedByMemberId ?? null,
           score: score ?? null,
           match_date: matchDate,
           court_id: courtId ?? null,

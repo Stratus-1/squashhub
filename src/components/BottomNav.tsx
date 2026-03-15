@@ -1,9 +1,8 @@
 import { Home, Calendar, BarChart3, MessageCircle, Settings as SettingsIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useIsClubAdmin } from "@/hooks/use-club";
 
-const baseItems = [
+const navItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/bookings", icon: Calendar, label: "Courts" },
   { to: "/analytics", icon: BarChart3, label: "Stats" },
@@ -12,11 +11,6 @@ const baseItems = [
 ];
 
 export function BottomNav() {
-  const isAdmin = useIsClubAdmin();
-
-  const navItems = isAdmin
-    ? [...baseItems, { to: "/club-admin", icon: SettingsIcon, label: "Admin" }]
-    : baseItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md safe-area-inset" style={{ paddingTop: 0 }}>

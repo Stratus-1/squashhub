@@ -391,6 +391,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const idNumIdx = headers.indexOf("id_number");
     const addressIdx = headers.indexOf("address");
     const genderIdx = headers.indexOf("gender");
+    const rankingIdx = headers.indexOf("ranking");
 
     let imported = 0;
     const importedMemberIds: string[] = [];

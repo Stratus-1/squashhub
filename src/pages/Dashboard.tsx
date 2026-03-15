@@ -503,7 +503,7 @@ export default function Dashboard() {
 
       <div className="px-4 mt-3">
         <IncomingChallengesCard
-          userId={user?.id}
+          userId={effectiveUserId}
           challenges={challenges}
           onViewAll={() => navigate("/challenges")}
         />

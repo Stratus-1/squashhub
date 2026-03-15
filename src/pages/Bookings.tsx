@@ -597,6 +597,8 @@ export default function Bookings() {
           const challenge = await createChallenge.mutateAsync({
             opponentId: bookingDialog.opponentId,
             proposedDate: dateStr,
+            challengerMemberId: activeMember?.id || null,
+            opponentMemberId: opponentMemberId || null,
           });
 
           await (supabase as any)

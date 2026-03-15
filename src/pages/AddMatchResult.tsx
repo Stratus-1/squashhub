@@ -15,6 +15,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Switch } from "@/components/ui/switch";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateMatch } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 

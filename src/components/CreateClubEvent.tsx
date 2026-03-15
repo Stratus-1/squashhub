@@ -182,22 +182,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const rsvpCounts = rsvpData?.counts;
   const confirmedNames = rsvpData?.confirmedNames;
 
-  // My RSVPs
+  // My RSVPs — check all linked members (family accounts sharing email)
+  const { linkedMembers } = useMemberContext();
+  const linkedMemberIds = useMemo(() => linkedMembers.map(m => m.id), [linkedMembers]);
   const myMemberId = activeMember?.id;
   const { data: myRsvps } = useQuery({
-    queryKey: ["club-event-my-rsvps", myMemberId, eventIds.join(",")],
+    queryKey: ["club-event-my-rsvps", linkedMemberIds.join(","), eventIds.join(",")],
     queryFn: async () => {
-      if (!myMemberId || eventIds.length === 0) return {};
+      if (linkedMemberIds.length === 0 || eventIds.length === 0) return {};
       const { data, error } = await fromExt("club_event_rsvps")
-        .select("event_id, status, id")
-        .eq("club_member_id", myMemberId)
+        .select("event_id, status, id, club_member_id")
+        .in("club_member_id", linkedMemberIds)
         .in("event_id", eventIds);
       if (error) throw error;
-      const map: Record<string, { id: string; status: string }> = {};
-      for (const r of data || []) map[r.event_id] = { id: r.id, status: r.status };
+      // Build map: event_id -> array of RSVPs (one per linked member)
+      const map: Record<string, { id: string; status: string; club_member_id: string; memberName: string }[]> = {};
+      for (const r of data || []) {
+        if (!map[r.event_id]) map[r.event_id] = [];
+        const member = linkedMembers.find(m => m.id === r.club_member_id);
+        map[r.event_id].push({ id: r.id, status: r.status, club_member_id: r.club_member_id, memberName: member?.name || "Unknown" });
+      }
       return map;
     },
-    enabled: !!myMemberId && eventIds.length > 0,
+    enabled: linkedMemberIds.length > 0 && eventIds.length > 0,
   });
 
   // Pre-select the creator as an attendee
@@ -452,7 +459,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
-      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
       toast.success("RSVP updated");
     },
   });
@@ -570,7 +577,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         <div className="space-y-2">
           {events.map((e: any) => {
             const counts = rsvpCounts?.[e.id];
-            const myRsvp = myRsvps?.[e.id];
+            const myRsvpList = myRsvps?.[e.id] || [];
             const courtNames = (e.club_event_courts || []).map((c: any) => `Court ${c.court_id}`).join(", ");
             const isCreator = e.created_by === user?.id;
             const recLabel = e.recurrence && e.recurrence !== "once" ? e.recurrence : null;
@@ -615,13 +622,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {myRsvp && myRsvp.status === "invited" && (
-                        <>
+                      {/* Show confirm/decline for each linked member with pending invite */}
+                      {myRsvpList.filter(r => r.status === "invited").map(r => (
+                        <span key={r.id} className="inline-flex items-center gap-0.5">
+                          {linkedMembers.length > 1 && (
+                            <span className="text-[9px] text-muted-foreground mr-0.5">{r.memberName}:</span>
+                          )}
                           <Button
                             size="sm"
                             variant="default"
                             className="h-6 text-[10px] px-2"
-                            onClick={() => respondMutation.mutate({ rsvpId: myRsvp.id, status: "confirmed" })}
+                            onClick={() => respondMutation.mutate({ rsvpId: r.id, status: "confirmed" })}
                           >
                             <Check className="w-3 h-3 mr-0.5" /> Confirm
                           </Button>
@@ -629,17 +640,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                             size="sm"
                             variant="outline"
                             className="h-6 text-[10px] px-2"
-                            onClick={() => respondMutation.mutate({ rsvpId: myRsvp.id, status: "declined" })}
+                            onClick={() => respondMutation.mutate({ rsvpId: r.id, status: "declined" })}
                           >
                             <X className="w-3 h-3 mr-0.5" /> Decline
                           </Button>
-                        </>
-                      )}
-                      {myRsvp && myRsvp.status !== "invited" && (
-                        <Badge variant={myRsvp.status === "confirmed" ? "default" : "outline"} className="text-[9px] capitalize">
-                          {myRsvp.status}
+                        </span>
+                      ))}
+                      {/* Show status badges for already-responded members */}
+                      {myRsvpList.filter(r => r.status !== "invited").map(r => (
+                        <Badge key={r.id} variant={r.status === "confirmed" ? "default" : "outline"} className="text-[9px] capitalize">
+                          {linkedMembers.length > 1 ? `${r.memberName}: ${r.status}` : r.status}
                         </Badge>
-                      )}
+                      ))}
                       {isCreator && (
                         <Button
                           size="icon"

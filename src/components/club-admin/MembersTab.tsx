@@ -511,10 +511,11 @@ export function MembersTab({ clubId }: { clubId: string }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>
         <span className="font-medium">Fees: R{totalPaid} paid / R{totalExpected} total</span>
         <span className="text-destructive font-medium">R{totalExpected - totalPaid} outstanding</span>
+        <span className="text-emerald-600 dark:text-emerald-400 font-medium">💡 Set up fees in the Fees tab · Untick fees still outstanding for a member</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

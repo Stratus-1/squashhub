@@ -2,8 +2,9 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 
-interface LinkedMember {
+export interface LinkedMember {
   id: string;
   name: string | null;
   email: string | null;
@@ -13,19 +14,31 @@ interface LinkedMember {
 }
 
 interface MemberContextType {
-  /** All club_members sharing the current user's email within the club */
+  /** Members sharing the current user's email (family accounts) */
   linkedMembers: LinkedMember[];
-  /** The currently active member (whose data drives the dashboard) */
+  /** All club members (only populated for club admins) */
+  allMembers: LinkedMember[];
+  /** Whether user is club admin */
+  isAdmin: boolean;
+  /** The currently active/viewed member */
   activeMember: LinkedMember | null;
-  /** Switch to a different linked member */
+  /** Whether viewing as another member (admin impersonation) */
+  isViewingAs: boolean;
+  /** Switch to a different member */
   switchMember: (memberId: string) => void;
+  /** Reset back to own profile */
+  resetToSelf: () => void;
   isLoading: boolean;
 }
 
 const MemberContext = createContext<MemberContextType>({
   linkedMembers: [],
+  allMembers: [],
+  isAdmin: false,
   activeMember: null,
+  isViewingAs: false,
   switchMember: () => {},
+  resetToSelf: () => {},
   isLoading: false,
 });
 
@@ -33,47 +46,88 @@ export function MemberProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { club } = useClubContext();
   const [linkedMembers, setLinkedMembers] = useState<LinkedMember[]>([]);
+  const [allMembers, setAllMembers] = useState<LinkedMember[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeMemberId, setActiveMemberId] = useState<string | null>(null);
+  const [selfMemberId, setSelfMemberId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!user?.email || !club?.id) {
+    if (!user?.id || !club?.id) {
       setLinkedMembers([]);
+      setAllMembers([]);
+      setIsAdmin(false);
       setActiveMemberId(null);
+      setSelfMemberId(null);
       return;
     }
 
-    const fetchLinked = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Find all club_members with this email in this club
-        const { data, error } = await fromExt("club_members")
-          .select("id, name, email, club_member_number, gender, user_id")
+        // 1. Fetch user's own club membership(s)
+        const { data: ownMembers, error: ownErr } = await fromExt("club_members")
+          .select("id, name, email, club_member_number, gender, user_id, role")
           .eq("club_id", club.id)
-          .eq("email", user.email!.toLowerCase());
+          .eq("user_id", user.id);
+        if (ownErr) throw ownErr;
 
-        if (error) throw error;
-        const members = (data || []) as LinkedMember[];
-        setLinkedMembers(members);
+        const myMembership = (ownMembers || [])[0] as any;
+        const adminRole = myMembership?.role === "captain" || myMembership?.role === "admin";
+        setIsAdmin(adminRole);
 
-        // Default to the member linked to the current user_id, or first
-        const self = members.find(m => m.user_id === user.id);
+        // 2. Fetch linked members (same email, family accounts)
+        let linked: LinkedMember[] = [];
+        if (user.email) {
+          const { data: emailMembers } = await fromExt("club_members")
+            .select("id, name, email, club_member_number, gender, user_id")
+            .eq("club_id", club.id)
+            .eq("email", user.email.toLowerCase());
+          linked = (emailMembers || []) as LinkedMember[];
+        }
+        // Ensure own membership is in linked list
+        if (myMembership && !linked.find(m => m.id === myMembership.id)) {
+          linked.unshift(myMembership as LinkedMember);
+        }
+        setLinkedMembers(linked);
+
+        // 3. For admins, fetch all club members
+        if (adminRole) {
+          const { data: all } = await fromExt("club_members")
+            .select("id, name, email, club_member_number, gender, user_id")
+            .eq("club_id", club.id)
+            .order("name", { ascending: true });
+          setAllMembers((all || []) as LinkedMember[]);
+        } else {
+          setAllMembers([]);
+        }
+
+        // Set default active member
         const stored = localStorage.getItem(`active_member_${club.id}_${user.id}`);
-        if (stored && members.find(m => m.id === stored)) {
-          setActiveMemberId(stored);
-        } else if (self) {
-          setActiveMemberId(self.id);
-        } else if (members.length > 0) {
-          setActiveMemberId(members[0].id);
+        const selfId = myMembership?.id || linked[0]?.id || null;
+        setSelfMemberId(selfId);
+
+        if (stored) {
+          // Validate stored ID is still accessible
+          const validStored = adminRole
+            ? true // admin can view anyone
+            : linked.find(m => m.id === stored);
+          if (validStored) {
+            setActiveMemberId(stored);
+          } else {
+            setActiveMemberId(selfId);
+          }
+        } else {
+          setActiveMemberId(selfId);
         }
       } catch (e) {
-        console.warn("[MemberContext] Failed to fetch linked members:", e);
+        console.warn("[MemberContext] Failed to fetch members:", e);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchLinked();
+    fetchData();
   }, [user?.id, user?.email, club?.id]);
 
   const switchMember = useCallback((memberId: string) => {
@@ -83,10 +137,29 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     }
   }, [club?.id, user?.id]);
 
-  const activeMember = linkedMembers.find(m => m.id === activeMemberId) || null;
+  const resetToSelf = useCallback(() => {
+    if (selfMemberId) {
+      setActiveMemberId(selfMemberId);
+      if (club?.id && user?.id) {
+        localStorage.removeItem(`active_member_${club.id}_${user.id}`);
+      }
+    }
+  }, [selfMemberId, club?.id, user?.id]);
+
+  const activeMember = [...linkedMembers, ...allMembers].find(m => m.id === activeMemberId) || null;
+  const isViewingAs = !!activeMemberId && activeMemberId !== selfMemberId;
 
   return (
-    <MemberContext.Provider value={{ linkedMembers, activeMember, switchMember, isLoading }}>
+    <MemberContext.Provider value={{
+      linkedMembers,
+      allMembers,
+      isAdmin,
+      activeMember,
+      isViewingAs,
+      switchMember,
+      resetToSelf,
+      isLoading,
+    }}>
       {children}
     </MemberContext.Provider>
   );

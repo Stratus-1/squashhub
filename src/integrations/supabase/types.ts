@@ -1539,6 +1539,7 @@ export type Database = {
       league_associations: {
         Row: {
           abbreviation: string | null
+          active: boolean
           club_id: string
           contact_email: string | null
           contact_phone: string | null
@@ -1556,6 +1557,7 @@ export type Database = {
         }
         Insert: {
           abbreviation?: string | null
+          active?: boolean
           club_id: string
           contact_email?: string | null
           contact_phone?: string | null
@@ -1573,6 +1575,7 @@ export type Database = {
         }
         Update: {
           abbreviation?: string | null
+          active?: boolean
           club_id?: string
           contact_email?: string | null
           contact_phone?: string | null
@@ -1955,6 +1958,7 @@ export type Database = {
       }
       member_fee_categories: {
         Row: {
+          active: boolean
           annual_fee: number
           club_id: string
           created_at: string
@@ -1968,6 +1972,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           annual_fee?: number
           club_id: string
           created_at?: string
@@ -1981,6 +1986,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           annual_fee?: number
           club_id?: string
           created_at?: string
@@ -2064,6 +2070,7 @@ export type Database = {
       national_body_fees: {
         Row: {
           abbreviation: string | null
+          active: boolean
           body_name: string
           club_id: string
           created_at: string
@@ -2078,6 +2085,7 @@ export type Database = {
         }
         Insert: {
           abbreviation?: string | null
+          active?: boolean
           body_name?: string
           club_id: string
           created_at?: string
@@ -2092,6 +2100,7 @@ export type Database = {
         }
         Update: {
           abbreviation?: string | null
+          active?: boolean
           body_name?: string
           club_id?: string
           created_at?: string

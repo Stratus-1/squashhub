@@ -27,6 +27,7 @@ interface UnifiedFee {
   amount: number;
   feeClass: "club_income" | "pass_through";
   proRate: boolean;
+  active: boolean;
   dueMonth: number; // 1-12
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
@@ -49,13 +50,13 @@ export function FeesTab({ clubId }: { clubId: string }) {
     feeCategories.forEach(c => list.push({
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
-      dueMonth: (c as any).due_month ?? 1,
+      active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1,
       source: "member_fee_categories", raw: c,
     }));
     associations.forEach(a => list.push({
       id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
       amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
-      dueMonth: a.fee_due_month ?? 1,
+      active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1,
       source: "league_associations", raw: a,
     }));
     nationalFees.forEach(f => {
@@ -65,7 +66,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
         type: (f as any).fee_type === "other" ? "other" : "national",
         typeLabel: (f as any).fee_type === "other" ? "Other" : "National Body",
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
-        dueMonth: f.fee_due_month ?? 1,
+        active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1,
         source: "national_body_fees", raw: f,
       });
     });
@@ -77,6 +78,14 @@ export function FeesTab({ clubId }: { clubId: string }) {
     const { error } = await fromExt("clubs").update({ fee_reminder_days_before: value }).eq("id", clubId);
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["my-club"] });
+  };
+
+  const handleToggleActive = async (fee: UnifiedFee) => {
+    const newActive = !fee.active;
+    const { error } = await fromExt(fee.source as any).update({ active: newActive }).eq("id", fee.id);
+    if (error) { toast.error(error.message); return; }
+    const key = fee.source === "member_fee_categories" ? "fee-categories" : fee.source === "league_associations" ? "league-associations" : "national-body-fees";
+    qc.invalidateQueries({ queryKey: [key] });
   };
 
   const handleDelete = async (fee: UnifiedFee) => {
@@ -110,19 +119,20 @@ export function FeesTab({ clubId }: { clubId: string }) {
                 <TableHead>Due</TableHead>
                 <TableHead>Classification</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
+                <TableHead className="text-center">Active</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
               )}
               {fees.map(fee => (
-                <TableRow key={`${fee.source}-${fee.id}`}>
+                <TableRow key={`${fee.source}-${fee.id}`} className={fee.active ? "" : "opacity-50"}>
                   <TableCell className="font-medium">{fee.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
@@ -135,6 +145,9 @@ export function FeesTab({ clubId }: { clubId: string }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
+                  <TableCell className="text-center">
+                    <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditFee(fee)}><Edit2 className="w-3.5 h-3.5" /></Button>

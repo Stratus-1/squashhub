@@ -117,8 +117,14 @@ export function IncomingChallengesCard({
               <Button
                 size="sm"
                 className="h-9 sm:flex-1"
-                disabled={updateChallenge.isPending}
-                onClick={() => accept(c.id)}
+                disabled={updateChallenge.isPending || !canRespond(c)}
+                onClick={() => {
+                  if (!canRespond(c)) {
+                    toast.error("Switch to the linked player account to respond.");
+                    return;
+                  }
+                  accept(c.id);
+                }}
               >
                 <Check className="w-4 h-4 mr-2" />
                 Accept
@@ -127,8 +133,14 @@ export function IncomingChallengesCard({
                 size="sm"
                 variant="outline"
                 className="h-9 sm:flex-1"
-                disabled={updateChallenge.isPending}
-                onClick={() => decline(c.id)}
+                disabled={updateChallenge.isPending || !canRespond(c)}
+                onClick={() => {
+                  if (!canRespond(c)) {
+                    toast.error("Switch to the linked player account to respond.");
+                    return;
+                  }
+                  decline(c.id);
+                }}
               >
                 <X className="w-4 h-4 mr-2" />
                 Decline

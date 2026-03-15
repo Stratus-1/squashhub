@@ -33,35 +33,36 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { club: contextClub } = useClubContext();
-  const { linkedMembers, activeMember, switchMember } = useMemberContext();
+  const { linkedMembers, activeMember, switchMember, effectiveUserId } = useMemberContext();
   const showFamilySwitcher = linkedMembers.length > 1;
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
-  const { data: challenges } = useChallenges();
+  const { data: challenges } = useChallenges(effectiveUserId);
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr, clubId);
-  const { data: myBookings } = useMyBookings();
-  const { data: myScheduledMatches } = useMyScheduledMatches();
+  const { data: myBookings } = useMyBookings(effectiveUserId);
+  const { data: myScheduledMatches } = useMyScheduledMatches(effectiveUserId);
 
   // Recent match results for the whole club
   const { data: recentMatches } = useQuery({
-    queryKey: ["club-recent-matches", user?.id],
+    queryKey: ["club-recent-matches", effectiveUserId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("matches")
         .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, disputed, submitted_by, notes")
+        .or(`player_a.eq.${effectiveUserId},player_b.eq.${effectiveUserId}`)
         .order("match_date", { ascending: false })
         .limit(20);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   // Get all player names for recent matches
@@ -154,15 +155,15 @@ export default function Dashboard() {
   }, [myBookings, todayStr]);
 
   const scheduledOpponentIds = useMemo(() => {
-    if (!user?.id) return [] as string[];
+    if (!effectiveUserId) return [] as string[];
     const ids = (myScheduledMatches || [])
-      .map((s: any) => (s.player_a === user.id ? s.player_b : s.player_a))
+      .map((s: any) => (s.player_a === effectiveUserId ? s.player_b : s.player_a))
       .filter(Boolean) as string[];
     return [...new Set(ids)];
-  }, [myScheduledMatches, user?.id]);
+  }, [myScheduledMatches, effectiveUserId]);
 
   const { data: opponentProfiles } = useQuery({
-    queryKey: ["scheduled-opponents", user?.id, scheduledOpponentIds.join(",")],
+    queryKey: ["scheduled-opponents", effectiveUserId, scheduledOpponentIds.join(",")],
     queryFn: async () => {
       if (scheduledOpponentIds.length === 0) return [];
       const { data, error } = await supabase
@@ -369,8 +370,8 @@ export default function Dashboard() {
         {recentMatches && recentMatches.length > 0 ? (
           <div className="space-y-1.5">
             {recentMatches.slice(0, 10).map((m: any) => {
-              const isPlayerA = m.player_a === user?.id;
-              const isPlayerB = m.player_b === user?.id;
+              const isPlayerA = m.player_a === effectiveUserId;
+              const isPlayerB = m.player_b === effectiveUserId;
               const isParticipant = isPlayerA || isPlayerB;
               const isSamePlayer = m.player_a === m.player_b;
 
@@ -394,14 +395,14 @@ export default function Dashboard() {
                 if (winnerName) label += ` — ${winnerName} won`;
               } else if (isParticipant) {
                 const opponentName = isPlayerA ? p2Name : p1Name;
-                const won = m.winner_id === user?.id;
+                const won = m.winner_id === effectiveUserId;
                 label = `vs ${opponentName}`;
                 if (m.winner_id) label += won ? " — Won" : " — Lost";
               } else {
                 label = `${p1Name} vs ${p2Name}`;
               }
 
-              const needsMyConfirmation = !m.confirmed && !m.disputed && isParticipant && m.submitted_by !== user?.id;
+              const needsMyConfirmation = !m.confirmed && !m.disputed && isParticipant && m.submitted_by !== effectiveUserId;
 
               return (
                 <Card key={m.id} className={cn("p-2.5 flex items-center justify-between gap-2", needsMyConfirmation && "border-primary/40 bg-primary/5")}>
@@ -478,7 +479,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-1.5">
             {myScheduledMatches.slice(0, 3).map((s: any) => {
-              const opponentId = user?.id ? (s.player_a === user.id ? s.player_b : s.player_a) : null;
+              const opponentId = effectiveUserId ? (s.player_a === effectiveUserId ? s.player_b : s.player_a) : null;
               const opponentName = opponentId ? opponentNameMap.get(opponentId) || "Opponent" : "Opponent";
               return (
                 <Card key={s.id} className="p-2.5 flex items-center justify-between gap-3">
@@ -502,7 +503,7 @@ export default function Dashboard() {
 
       <div className="px-4 mt-3">
         <IncomingChallengesCard
-          userId={user?.id}
+          userId={effectiveUserId}
           challenges={challenges}
           onViewAll={() => navigate("/challenges")}
         />

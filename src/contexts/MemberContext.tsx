@@ -22,6 +22,8 @@ interface MemberContextType {
   isAdmin: boolean;
   /** The currently active/viewed member */
   activeMember: LinkedMember | null;
+  /** The user_id to use for data queries — active member's user_id or auth user id */
+  effectiveUserId: string | null;
   /** Whether viewing as another member (admin impersonation) */
   isViewingAs: boolean;
   /** Switch to a different member */
@@ -36,6 +38,7 @@ const MemberContext = createContext<MemberContextType>({
   allMembers: [],
   isAdmin: false,
   activeMember: null,
+  effectiveUserId: null,
   isViewingAs: false,
   switchMember: () => {},
   resetToSelf: () => {},
@@ -148,6 +151,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
   const activeMember = [...linkedMembers, ...allMembers].find(m => m.id === activeMemberId) || null;
   const isViewingAs = !!activeMemberId && activeMemberId !== selfMemberId;
+  const effectiveUserId = activeMember?.user_id || user?.id || null;
 
   return (
     <MemberContext.Provider value={{
@@ -155,6 +159,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       allMembers,
       isAdmin,
       activeMember,
+      effectiveUserId,
       isViewingAs,
       switchMember,
       resetToSelf,

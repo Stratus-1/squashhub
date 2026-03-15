@@ -329,17 +329,18 @@ export function useCancelBooking() {
   });
 }
 
-export function useMyBookings() {
+export function useMyBookings(overrideUserId?: string | null) {
   const { user } = useAuth();
+  const targetId = overrideUserId || user?.id;
 
   return useQuery({
-    queryKey: ["my-bookings"],
+    queryKey: ["my-bookings", targetId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!targetId) return [];
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", targetId)
         .eq("status", "active")
         .gte("date", new Date().toISOString().split("T")[0])
         .order("date")
@@ -383,21 +384,22 @@ export function useMyBookings() {
           opponent_rank: null,
         }));
     },
-    enabled: !!user,
+    enabled: !!targetId,
   });
 }
 
-export function useMyScheduledMatches() {
+export function useMyScheduledMatches(overrideUserId?: string | null) {
   const { user } = useAuth();
+  const targetId = overrideUserId || user?.id;
 
   return useQuery({
-    queryKey: ["my-scheduled-matches", user?.id],
+    queryKey: ["my-scheduled-matches", targetId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!targetId) return [];
       const today = new Date().toISOString().split("T")[0];
       const { data, error } = await fromAny("scheduled_matches")
         .select("*")
-        .or(`player_a.eq.${user.id},player_b.eq.${user.id}`)
+        .or(`player_a.eq.${targetId},player_b.eq.${targetId}`)
         .eq("status", "scheduled")
         .gte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
@@ -405,7 +407,7 @@ export function useMyScheduledMatches() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!targetId,
   });
 }
 
@@ -691,18 +693,19 @@ export function useAcceptChallengeSchedule() {
   });
 }
 
-export function useChallenges() {
+export function useChallenges(overrideUserId?: string | null) {
   const { user } = useAuth();
+  const targetId = overrideUserId || user?.id;
 
   return useQuery({
-    queryKey: ["challenges", user?.id],
+    queryKey: ["challenges", targetId],
     queryFn: async () => {
-      if (!user) return [] as ChallengeWithProfiles[];
+      if (!targetId) return [] as ChallengeWithProfiles[];
 
       const { data: challenges, error } = await supabase
         .from("challenges")
         .select("*")
-        .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
+        .or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`)
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -723,7 +726,7 @@ export function useChallenges() {
         opponent_name: profileMap.get(c.opponent_id) || "Unknown",
       })) as ChallengeWithProfiles[];
     },
-    enabled: !!user,
+    enabled: !!targetId,
   });
 }
 

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Club, useUpdateClub } from "@/hooks/use-club";
+import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,19 +12,30 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
+  const { data: secrets } = useClubSecrets(clubId);
+  const updateSecrets = useUpdateClubSecrets();
 
   const [lightsForm, setLightsForm] = useState({
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
-    shelly_auth_key: club.shelly_auth_key || "",
+    shelly_auth_key: "",
   });
+
+  useEffect(() => {
+    if (secrets) {
+      setLightsForm(p => ({ ...p, shelly_auth_key: secrets.shelly_auth_key || "" }));
+    }
+  }, [secrets]);
 
   const handleSaveLights = async () => {
     try {
       await updateClub.mutateAsync({
         id: club.id,
         light_fee_per_hour: lightsForm.light_fee_per_hour,
-        shelly_auth_key: lightsForm.shelly_auth_key || null,
       });
+      await updateSecrets.mutateAsync({
+        club_id: clubId,
+        shelly_auth_key: lightsForm.shelly_auth_key || null,
+      } as any);
       toast.success("Court light settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");

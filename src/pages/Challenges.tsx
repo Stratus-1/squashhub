@@ -321,6 +321,15 @@ export default function Challenges() {
       const finalTime = (c as any).counter_time;
       const courtId = (c as any).court_id;
 
+      // Check court availability before accepting counter-proposal
+      if (finalDate && finalTime && courtId) {
+        const { available, conflictMessage } = await isCourtAvailable(courtId, finalDate, finalTime);
+        if (!available) {
+          toast.error(conflictMessage || "Court is not available at the counter-proposed time.");
+          return;
+        }
+      }
+
       // Accept the challenge with counter terms
       const { error } = await fromExt("challenges")
         .update({

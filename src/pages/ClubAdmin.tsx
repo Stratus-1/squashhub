@@ -3,9 +3,10 @@ import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote } from "lucide-react";
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
+import { BankingTab } from "@/components/club-admin/BankingTab";
 import { CourtsTab } from "@/components/club-admin/CourtsTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
 import { LadderTab } from "@/components/club-admin/LadderTab";
@@ -51,6 +52,7 @@ export default function ClubAdmin() {
             <TabsTrigger value="club" className="text-xs md:text-sm flex-1"><Building2 className="w-4 h-4 mr-1 hidden md:inline" />Club</TabsTrigger>
             <TabsTrigger value="members" className="text-xs md:text-sm flex-1"><Users className="w-4 h-4 mr-1 hidden md:inline" />Members</TabsTrigger>
             <TabsTrigger value="finance" className="text-xs md:text-sm flex-1"><Landmark className="w-4 h-4 mr-1 hidden md:inline" />Finance</TabsTrigger>
+            <TabsTrigger value="banking" className="text-xs md:text-sm flex-1"><Banknote className="w-4 h-4 mr-1 hidden md:inline" />Banking</TabsTrigger>
             <TabsTrigger value="fees" className="text-xs md:text-sm flex-1"><DollarSign className="w-4 h-4 mr-1 hidden md:inline" />Fees</TabsTrigger>
             <TabsTrigger value="courts" className="text-xs md:text-sm flex-1"><LayoutGrid className="w-4 h-4 mr-1 hidden md:inline" />Courts</TabsTrigger>
             <TabsTrigger value="ladder" className="text-xs md:text-sm flex-1"><ListOrdered className="w-4 h-4 mr-1 hidden md:inline" />Ladder</TabsTrigger>
@@ -62,6 +64,7 @@ export default function ClubAdmin() {
           <TabsContent value="club"><ClubInfoTab club={club} clubId={club.id} /></TabsContent>
           <TabsContent value="members"><MembersTab clubId={club.id} /></TabsContent>
           <TabsContent value="finance"><FinanceTab club={club} clubId={club.id} /></TabsContent>
+          <TabsContent value="banking"><BankingTab club={club} clubId={club.id} /></TabsContent>
           <TabsContent value="fees"><FeesTab clubId={club.id} /></TabsContent>
           <TabsContent value="courts"><CourtsTab club={club} clubId={club.id} /></TabsContent>
           <TabsContent value="ladder"><LadderTab clubId={club.id} /></TabsContent>

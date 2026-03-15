@@ -2017,33 +2017,57 @@ export type Database = {
       }
       notifications: {
         Row: {
+          club_member_id: string | null
           created_at: string
+          data: Json | null
           id: string
           message: string
           read: boolean
           title: string
           type: string
+          url: string | null
           user_id: string
         }
         Insert: {
+          club_member_id?: string | null
           created_at?: string
+          data?: Json | null
           id?: string
           message: string
           read?: boolean
           title: string
           type?: string
+          url?: string | null
           user_id: string
         }
         Update: {
+          club_member_id?: string | null
           created_at?: string
+          data?: Json | null
           id?: string
           message?: string
           read?: boolean
           title?: string
           type?: string
+          url?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_availability: {
         Row: {

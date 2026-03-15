@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";

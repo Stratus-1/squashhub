@@ -76,7 +76,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     selected_member_ids: [] as string[],
     light_fee_split: "creator",
     is_club_booking: false,
-    booked_by_member_id: "",
+    booking_member_ids: [] as string[],
     court_ids: [] as number[],
   });
 
@@ -236,7 +236,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         invite_scope: form.invite_scope,
         invite_scope_id: form.invite_scope_id || null,
         is_club_booking: form.is_club_booking,
-        booked_by_member_id: form.is_club_booking ? null : (form.booked_by_member_id || null),
+        booked_by_member_id: null,
         recurrence: form.recurrence,
         light_fee_split: form.light_fee_split,
         reminder_hours: parseInt(form.reminder_hours),
@@ -294,24 +294,55 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         }
       }
 
-      // Create court bookings for the first instance
+      // Create court bookings — split across booking members (max 1hr each)
       const firstDate = instanceDates[0];
-      for (const cid of form.court_ids) {
-        const bookingUserId = form.is_club_booking
-          ? user.id
-          : (form.booked_by_member_id
-            ? (members || []).find((m) => m.id === form.booked_by_member_id)?.user_id || user.id
-            : user.id);
+      const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
+      const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
+      const totalMinutes = endMinutes - startMinutes;
 
-        await supabase.from("bookings").insert({
-          court_id: cid,
-          date: firstDate,
-          start_time: form.start_time + ":00",
-          end_time: form.end_time + ":00",
-          user_id: bookingUserId,
-          guest_name: form.is_club_booking ? `${club?.name || "Club"} — ${form.title}` : undefined,
-          status: "active",
-        });
+      if (form.is_club_booking) {
+        // Admin club booking: single booking per court under club name
+        for (const cid of form.court_ids) {
+          await supabase.from("bookings").insert({
+            court_id: cid,
+            date: firstDate,
+            start_time: form.start_time + ":00",
+            end_time: form.end_time + ":00",
+            user_id: user.id,
+            guest_name: `${club?.name || "Club"} — ${form.title}`,
+            status: "active",
+          });
+        }
+      } else {
+        // Member bookings: split time across selected booking members, max 60min each
+        const bookingMembers = form.booking_member_ids
+          .map((mid) => (members || []).find((m) => m.id === mid))
+          .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
+
+        if (bookingMembers.length > 0) {
+          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / bookingMembers.length));
+          let offsetMin = 0;
+
+          for (const cid of form.court_ids) {
+            offsetMin = 0; // reset per court
+            for (const bm of bookingMembers) {
+              if (offsetMin >= totalMinutes) break;
+              const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
+              const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
+              const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
+
+              await supabase.from("bookings").insert({
+                court_id: cid,
+                date: firstDate,
+                start_time: slotStartTime,
+                end_time: slotEndTime,
+                user_id: bm.user_id || user.id,
+                status: "active",
+              });
+              offsetMin = slotEnd;
+            }
+          }
+        }
       }
 
       // Send notifications (best-effort, don't block event creation)
@@ -392,7 +423,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       selected_member_ids: [],
       light_fee_split: "creator",
       is_club_booking: false,
-      booked_by_member_id: "",
+      booking_member_ids: [],
       court_ids: [],
     });
     setStep(1);
@@ -688,42 +719,6 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               </div>
 
-              {/* Booking Name */}
-              <div className="rounded-lg border border-border p-3 space-y-3">
-                {isAdmin ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-medium">Book under Club name (free)</p>
-                        <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
-                      </div>
-                      <Switch
-                        checked={form.is_club_booking}
-                        onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booked_by_member_id: "" }))}
-                      />
-                    </div>
-
-                    {!form.is_club_booking && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Book under member</Label>
-                        <Select value={form.booked_by_member_id} onValueChange={(v) => setForm((f) => ({ ...f, booked_by_member_id: v }))}>
-                          <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
-                          <SelectContent>
-                            {(members || []).map((m) => (
-                              <SelectItem key={m.id} value={m.id}>{m.name || "Unnamed"}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium">Court booked under your name</p>
-                    <p className="text-[11px] text-muted-foreground">You will be responsible for the booking fee</p>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -795,6 +790,95 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
 
+              {/* Court Booking Assignment */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <Label className="text-xs font-medium">Court Booking Names</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Club rules limit 1 hour per member. Select members to split the booking across.
+                </p>
+
+                {isAdmin && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium">Book under Club name (free)</p>
+                      <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
+                    </div>
+                    <Switch
+                      checked={form.is_club_booking}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booking_member_ids: [] }))}
+                    />
+                  </div>
+                )}
+
+                {!form.is_club_booking && (() => {
+                  const invitedMembers = form.invite_scope === "selected"
+                    ? (members || []).filter((m) => form.selected_member_ids.includes(m.id))
+                    : (members || []);
+
+                  const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
+                  const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
+                  const totalMin = endMin - startMin;
+                  const maxMembers = Math.ceil(totalMin / 60);
+
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        Event duration: {totalMin} min — need {maxMembers} member{maxMembers !== 1 ? "s" : ""} (max 1hr each)
+                      </p>
+                      <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
+                        {invitedMembers.map((m) => {
+                          const isSelected = form.booking_member_ids.includes(m.id);
+                          const atMax = !isSelected && form.booking_member_ids.length >= maxMembers;
+                          return (
+                            <label
+                              key={m.id}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors text-sm",
+                                isSelected && "bg-accent",
+                                atMax && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                disabled={atMax}
+                                onCheckedChange={() => {
+                                  setForm((f) => ({
+                                    ...f,
+                                    booking_member_ids: isSelected
+                                      ? f.booking_member_ids.filter((id) => id !== m.id)
+                                      : [...f.booking_member_ids, m.id],
+                                  }));
+                                }}
+                              />
+                              <span className="text-xs">{m.name || "Unnamed"}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {form.booking_member_ids.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground space-y-0.5">
+                          <p className="font-medium text-foreground">Booking split preview:</p>
+                          {(() => {
+                            const slotMin = Math.min(60, Math.ceil(totalMin / form.booking_member_ids.length));
+                            let offset = 0;
+                            return form.booking_member_ids.map((mid) => {
+                              const m = invitedMembers.find((x) => x.id === mid);
+                              const slotEnd = Math.min(offset + slotMin, totalMin);
+                              const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
+                              const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
+                              offset = slotEnd;
+                              return (
+                                <p key={mid}>{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
+                              );
+                            });
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Light Fees */}
               <div className="rounded-lg border border-border p-3 space-y-2">
                 <Label className="text-xs font-medium">Light Fees</Label>
@@ -829,6 +913,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 )}
                 <p className="text-[11px] text-muted-foreground">
                   Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Shared" : "Creator pays"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Booked under: {form.is_club_booking ? `${club?.name || "Club"}` : `${form.booking_member_ids.length} member(s)`}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Reminder: {form.reminder_hours}h before each occurrence

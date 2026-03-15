@@ -20,10 +20,10 @@ const FeeClassBadge = ({ feeClass }: { feeClass: string }) => (
   </Badge>
 );
 
-const FeeClassSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+const FeeClassSelect = ({ value, onChange }: { value: string; onChange: (v: "club_income" | "pass_through") => void }) => (
   <div className="space-y-1">
     <Label>Fee Class</Label>
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={v => onChange(v as "club_income" | "pass_through")}>
       <SelectTrigger><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem value="club_income">Club Income</SelectItem>

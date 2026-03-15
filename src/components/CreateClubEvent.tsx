@@ -372,7 +372,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 start_time: slotStartTime,
                 end_time: slotEndTime,
                 user_id: bm.user_id || user.id,
+                guest_name: bm.user_id ? null : (bm.name || "Member"),
                 status: "active",
+                club_id: clubId || null,
               });
               offsetMin = slotEnd;
               memberIdx++;

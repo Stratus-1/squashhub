@@ -119,19 +119,20 @@ export function FeesTab({ clubId }: { clubId: string }) {
                 <TableHead>Due</TableHead>
                 <TableHead>Classification</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
+                <TableHead className="text-center">Active</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
               )}
               {fees.map(fee => (
-                <TableRow key={`${fee.source}-${fee.id}`}>
+                <TableRow key={`${fee.source}-${fee.id}`} className={fee.active ? "" : "opacity-50"}>
                   <TableCell className="font-medium">{fee.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
@@ -144,6 +145,9 @@ export function FeesTab({ clubId }: { clubId: string }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
+                  <TableCell className="text-center">
+                    <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditFee(fee)}><Edit2 className="w-3.5 h-3.5" /></Button>

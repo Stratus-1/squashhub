@@ -185,93 +185,49 @@ export default function MyAccount() {
   });
 
   // Build unified statement lines sorted chronologically (oldest first)
+  // NEW ACCOUNTING MODEL:
+  // - Fees charged → Credit on member statement (they owe the club)
+  // - Payments/top-ups → Debit on member statement (reduces what they owe)
+  // - Light fees → Credit on member statement (charged to them)
+  // Balance: positive = member owes money, negative = member in credit
   type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
   const statementLines: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
-    // Fee charges (debits)
-    for (const fee of (fees || [])) {
-      lines.push({
-        id: `fee-${(fee as any).id}`,
-        date: (fee as any).created_at,
-        description: (fee as any).fee_label,
-        debit: Number((fee as any).amount),
-        credit: 0,
-        status: (fee as any).paid ? "confirmed" : "outstanding",
-      });
-    }
-
-    // Build a set of fee labels referenced by existing "payment" type credit transactions
-    // to avoid double-counting paid fees that already have a credit transaction
-    const txDescriptions = new Set<string>();
-    for (const tx of (transactions || [])) {
-      if ((tx as any).type === "payment") {
-        txDescriptions.add((tx as any).description || "");
-      }
-    }
-
-    // Credit transactions
+    // Credit transactions from member_credit_transactions
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
-      const amt = Number((tx as any).amount);
+      const amt = Math.abs(Number((tx as any).amount));
 
-      if (txType === "topup" || txType === "refund" || txType === "payment") {
-        // These are credits (money paid by member toward the club)
+      if (txType === "debit") {
+        // System debit = fee charged or light fee → Credit on member statement
+        lines.push({
+          id: `tx-${(tx as any).id}`,
+          date: (tx as any).created_at,
+          description: (tx as any).description || "Fee charged",
+          debit: 0,
+          credit: amt,
+          status: (tx as any).status,
+        });
+      } else if (txType === "topup" || txType === "payment") {
+        // Payment or top-up → Debit on member statement (reduces balance owed)
         lines.push({
           id: `tx-${(tx as any).id}`,
           date: (tx as any).created_at,
           description: (tx as any).description || txType,
-          debit: 0,
-          credit: Math.abs(amt),
+          debit: amt,
+          credit: 0,
           status: (tx as any).status,
         });
-      } else if (txType === "debit") {
-        // System debits (e.g. light usage) — amount is typically negative
+      } else if (txType === "refund") {
+        // Refund/reversal → Debit on member statement
         lines.push({
           id: `tx-${(tx as any).id}`,
           date: (tx as any).created_at,
-          description: (tx as any).description || "Debit",
-          debit: Math.abs(amt),
+          description: (tx as any).description || "Reversal",
+          debit: amt,
           credit: 0,
           status: (tx as any).status,
-        });
-      }
-    }
-
-    // For paid fees that have NO matching credit transaction, add an implicit credit line
-    // (e.g. admin marked fee as paid directly without going through the payment flow)
-    for (const fee of (fees || [])) {
-      if (!(fee as any).paid || !(fee as any).paid_at) continue;
-      const feeLabel = (fee as any).fee_label as string;
-      // Check if any existing credit transaction references this fee
-      const hasMatchingTx = Array.from(txDescriptions).some(desc =>
-        desc.includes(feeLabel) || feeLabel.includes(desc)
-      );
-      if (!hasMatchingTx) {
-        lines.push({
-          id: `paid-${(fee as any).id}`,
-          date: (fee as any).paid_at,
-          description: `Payment: ${feeLabel}`,
-          debit: 0,
-          credit: Number((fee as any).amount),
-          status: "confirmed",
-        });
-      }
-    }
-
-    // Light session charges (debits) — skip if already captured via credit transactions
-    for (const ls of (lightSessions || [])) {
-      const lsId = (ls as any).id;
-      const alreadyCaptured = (transactions || []).some((tx: any) => tx.reference === lsId);
-      if (alreadyCaptured) continue;
-      if ((ls as any).fee_charged && Number((ls as any).fee_charged) > 0) {
-        lines.push({
-          id: `light-${lsId}`,
-          date: (ls as any).ended_at || (ls as any).started_at,
-          description: `Court lighting (${(ls as any).duration_minutes ? Math.round(Number((ls as any).duration_minutes)) + " min" : "session"})`,
-          debit: Number((ls as any).fee_charged),
-          credit: 0,
-          status: "confirmed",
         });
       }
     }
@@ -279,7 +235,7 @@ export default function MyAccount() {
     // Sort oldest first
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Compute running balance (credits - debits)
+    // Compute running balance (credits - debits; positive = owes money)
     let balance = 0;
     return lines.map((line) => {
       if (line.status === "confirmed" || line.status === "outstanding") {
@@ -289,14 +245,13 @@ export default function MyAccount() {
     });
   })();
 
-  // Calculate credit balance
-  const creditBalance = (transactions || []).reduce((sum: number, tx: any) => {
-    if (tx.status !== "confirmed") return sum;
-    if (tx.type === "topup") return sum + Number(tx.amount);
-    if (tx.type === "payment") return sum - Number(tx.amount);
-    if (tx.type === "refund") return sum + Number(tx.amount);
-    return sum;
-  }, 0);
+  // Calculate credit balance (negative of statement balance for display)
+  // Positive credit balance = member has prepaid / in credit
+  const creditBalance = (() => {
+    if (statementLines.length === 0) return 0;
+    const lastBalance = statementLines[statementLines.length - 1]?.balance || 0;
+    return -lastBalance; // positive = in credit, negative = owes money
+  })();
 
   const pendingTopUps = (transactions || []).filter(
     (tx: any) => tx.type === "topup" && tx.status === "pending"

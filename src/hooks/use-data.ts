@@ -968,7 +968,6 @@ export function useCreateChallenge() {
           }
 
           await fromAny("notifications").insert(notifPayload);
-          });
         } catch { /* non-critical */ }
       }
 

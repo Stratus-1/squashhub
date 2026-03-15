@@ -35,7 +35,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url")
+        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id")
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;

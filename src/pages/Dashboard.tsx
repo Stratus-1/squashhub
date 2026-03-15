@@ -102,6 +102,30 @@ export default function Dashboard() {
   const firstName = profile?.name?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 
+  const handleConfirmMatch = async (matchId: string) => {
+    try {
+      const { error } = await supabase.from("matches").update({ confirmed: true }).eq("id", matchId);
+      if (error) throw error;
+      toast.success("Match confirmed!");
+      queryClient.invalidateQueries({ queryKey: ["club-recent-matches"] });
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    } catch {
+      toast.error("Failed to confirm match");
+    }
+  };
+
+  const handleDisputeMatch = async (matchId: string) => {
+    try {
+      const { error } = await supabase.from("matches").update({ disputed: true }).eq("id", matchId);
+      if (error) throw error;
+      toast.success("Match disputed. An admin will review.");
+      queryClient.invalidateQueries({ queryKey: ["club-recent-matches"] });
+    } catch {
+      toast.error("Failed to dispute match");
+    }
+  };
+
   const trackableBooking = useMemo(() => {
     const list = (myBookings || []).filter((b) => b.status === "active");
     const now = new Date();

@@ -286,8 +286,8 @@ export default function Ladder() {
                   </p>
                 </div>
               </div>
-              {challengeDialog.player.user_id && user && (
-                <OpponentStatsInline userId={challengeDialog.player.user_id} myUserId={user.id} />
+              {challengeDialog.player.club_member_id && myMemberId && (
+                <OpponentStatsInline memberId={challengeDialog.player.club_member_id} myMemberId={myMemberId} />
               )}
             </>
           )}

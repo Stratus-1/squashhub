@@ -385,7 +385,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   {totalDebit.toFixed(2) === totalCredit.toFixed(2)
                     ? "✅ Trial balance is in balance"
                     : "⚠️ Trial balance is out of balance"}
-            </p>
+                </p>
+              );
+            })()}
           </Card>
         </TabsContent>
       </Tabs>

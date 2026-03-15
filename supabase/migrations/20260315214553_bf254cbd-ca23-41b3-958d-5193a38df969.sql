@@ -1,0 +1,1 @@
+ALTER TABLE public.league_associations ADD COLUMN IF NOT EXISTS fee_class text NOT NULL DEFAULT 'pass_through';

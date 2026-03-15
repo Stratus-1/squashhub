@@ -942,6 +942,10 @@ export function useCreateMatch() {
 
       const id = matchId || crypto.randomUUID();
 
+      // Both players have accounts and are different people → pending confirmation
+      const bothLinked = playerA !== playerB;
+      const confirmed = !bothLinked; // auto-confirm only when external/same-id placeholder
+
       const { data, error } = await supabase
         .from("matches")
         .upsert({
@@ -957,17 +961,35 @@ export function useCreateMatch() {
           duration_s: durationS ?? null,
           notes: notes ?? null,
           submitted_by: user.id,
-          confirmed: true,
+          confirmed,
           disputed: false,
         } as any, { onConflict: "id" })
         .select()
         .single();
       if (error) throw error;
+
+      // Notify the other player to confirm
+      if (bothLinked) {
+        const otherPlayerId = playerA === user.id ? playerB : playerA;
+        try {
+          await fromAny("notifications").insert({
+            user_id: otherPlayerId,
+            title: "Confirm Match Result",
+            message: `A match result (${score || "no score"}) has been submitted and needs your confirmation.`,
+            type: "match",
+            url: "/dashboard",
+          });
+        } catch {
+          // non-critical
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
       queryClient.invalidateQueries({ queryKey: ["challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["club-recent-matches"] });
     },
   });
 }

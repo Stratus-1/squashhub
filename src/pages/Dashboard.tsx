@@ -10,7 +10,7 @@ import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
-import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History } from "lucide-react";
+import { Calendar, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,12 +20,14 @@ import { useClubContext } from "@/contexts/ClubContext";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const { user } = useAuth();
   const { club: contextClub } = useClubContext();
@@ -49,7 +51,7 @@ export default function Dashboard() {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("matches")
-        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, submitted_by, notes")
+        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, disputed, submitted_by, notes")
         .order("match_date", { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -99,6 +101,30 @@ export default function Dashboard() {
 
   const firstName = profile?.name?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
+
+  const handleConfirmMatch = async (matchId: string) => {
+    try {
+      const { error } = await supabase.from("matches").update({ confirmed: true }).eq("id", matchId);
+      if (error) throw error;
+      toast.success("Match confirmed!");
+      queryClient.invalidateQueries({ queryKey: ["club-recent-matches"] });
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    } catch {
+      toast.error("Failed to confirm match");
+    }
+  };
+
+  const handleDisputeMatch = async (matchId: string) => {
+    try {
+      const { error } = await supabase.from("matches").update({ disputed: true }).eq("id", matchId);
+      if (error) throw error;
+      toast.success("Match disputed. An admin will review.");
+      queryClient.invalidateQueries({ queryKey: ["club-recent-matches"] });
+    } catch {
+      toast.error("Failed to dispute match");
+    }
+  };
 
   const trackableBooking = useMemo(() => {
     const list = (myBookings || []).filter((b) => b.status === "active");
@@ -345,8 +371,10 @@ export default function Dashboard() {
                 label = `${p1Name} vs ${p2Name}`;
               }
 
+              const needsMyConfirmation = !m.confirmed && !m.disputed && isParticipant && m.submitted_by !== user?.id;
+
               return (
-                <Card key={m.id} className="p-2.5 flex items-center justify-between gap-2">
+                <Card key={m.id} className={cn("p-2.5 flex items-center justify-between gap-2", needsMyConfirmation && "border-primary/40 bg-primary/5")}>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{label}</p>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -354,12 +382,23 @@ export default function Dashboard() {
                       {m.score && <Badge variant="outline" className="text-[10px] tabular-nums">{m.score}</Badge>}
                     </div>
                   </div>
-                  <Badge
-                    variant={m.confirmed ? "default" : "secondary"}
-                    className="text-[10px] shrink-0"
-                  >
-                    {m.confirmed ? "Confirmed" : "Pending"}
-                  </Badge>
+                  {needsMyConfirmation ? (
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:bg-green-100" onClick={() => handleConfirmMatch(m.id)}>
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => handleDisputeMatch(m.id)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge
+                      variant={m.confirmed ? "default" : m.disputed ? "destructive" : "secondary"}
+                      className="text-[10px] shrink-0"
+                    >
+                      {m.confirmed ? "Confirmed" : m.disputed ? "Disputed" : "Pending"}
+                    </Badge>
+                  )}
                 </Card>
               );
             })}

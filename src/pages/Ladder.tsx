@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";
+import { isCourtAvailable } from "@/lib/court-availability";
 import { toast } from "sonner";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { BarChart3 } from "lucide-react";
@@ -228,6 +229,18 @@ export default function Ladder() {
 
     setSending(true);
     try {
+      // Check court availability before sending challenge
+      if (courtId) {
+        const { available, conflictMessage } = await isCourtAvailable(
+          Number(courtId), proposedDate, proposedTime
+        );
+        if (!available) {
+          toast.error(conflictMessage || "Court is not available at this time.");
+          setSending(false);
+          return;
+        }
+      }
+
       await createChallenge.mutateAsync({
         opponentId: challengeDialog.player.user_id || null,
         proposedDate,

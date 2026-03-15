@@ -29,6 +29,7 @@ import {
 } from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
+import { isCourtAvailable } from "@/lib/court-availability";
 
 function initials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -192,12 +193,21 @@ export default function Challenges() {
 
   const handleAccept = async (c: ChallengeWithProfiles) => {
     try {
-      await updateChallenge.mutateAsync({ challengeId: c.id, status: "accepted" });
-
-      // Auto-create court booking
+      // Check court availability before accepting
       const matchDate = c.proposed_date;
       const matchTime = (c as any).proposed_time;
       const courtId = (c as any).court_id;
+      if (matchDate && matchTime && courtId) {
+        const { available, conflictMessage } = await isCourtAvailable(courtId, matchDate, matchTime);
+        if (!available) {
+          toast.error(conflictMessage || "Court is not available at this time. Ask the challenger to choose a different slot.");
+          return;
+        }
+      }
+
+      await updateChallenge.mutateAsync({ challengeId: c.id, status: "accepted" });
+
+      // Auto-create court booking
       // The booking user_id must be a valid auth user; use challenger's user_id or fall back to current user
       const bookingUserId = c.challenger_id || user!.id;
       if (matchDate && matchTime && courtId && user) {
@@ -309,6 +319,15 @@ export default function Challenges() {
       const finalDate = (c as any).counter_date;
       const finalTime = (c as any).counter_time;
       const courtId = (c as any).court_id;
+
+      // Check court availability before accepting counter-proposal
+      if (finalDate && finalTime && courtId) {
+        const { available, conflictMessage } = await isCourtAvailable(courtId, finalDate, finalTime);
+        if (!available) {
+          toast.error(conflictMessage || "Court is not available at the counter-proposed time.");
+          return;
+        }
+      }
 
       // Accept the challenge with counter terms
       const { error } = await fromExt("challenges")

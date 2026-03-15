@@ -81,6 +81,7 @@ export interface MemberFeeCategory {
   description?: string;
   annual_fee: number;
   sort_order: number;
+  fee_class: "club_income" | "pass_through";
 }
 
 export interface LeagueAssociation {

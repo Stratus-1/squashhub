@@ -527,31 +527,10 @@ export default function Dashboard() {
       </div>
 
       {/* More Actions */}
-      <div className="px-4 mt-5">
-        <p className="text-sm font-semibold font-heading mb-2">More</p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/ladder")}>
-            <span className="inline-flex items-center gap-2">
-              <Swords className="w-4 h-4" />
-              Challenge Player
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/challenges")}>
-            <span className="inline-flex items-center gap-2">
-              <Swords className="w-4 h-4" />
-              Challenges
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-          <Button variant="outline" className="justify-between h-11 px-3" onClick={() => navigate("/support")}>
-            <span className="inline-flex items-center gap-2">
-              <LifeBuoy className="w-4 h-4" />
-              Support
-            </span>
-            <ChevronRight className="w-4 h-4 opacity-70" />
-          </Button>
-          {isClubAdmin && (
+      {isClubAdmin && (
+        <div className="px-4 mt-5">
+          <p className="text-sm font-semibold font-heading mb-2">More</p>
+          <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" className="justify-between h-11 px-3 border-primary/30 bg-primary/5" onClick={() => navigate("/club-admin")}>
               <span className="inline-flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -559,9 +538,9 @@ export default function Dashboard() {
               </span>
               <ChevronRight className="w-4 h-4 opacity-70" />
             </Button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Today's Bookings */}
       <motion.div

@@ -1078,7 +1078,7 @@ export default function Bookings() {
                         variant="destructive"
                         className="gap-1.5 flex-1"
                         disabled={terminatingSession}
-                        onClick={() => handleTerminateSession(activeSession.id)}
+                        onClick={() => setConfirmEndSession(activeSession.id)}
                       >
                         <ZapOff className="w-3.5 h-3.5" />
                         {terminatingSession ? "Ending..." : "End Session"}

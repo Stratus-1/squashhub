@@ -579,45 +579,36 @@ export function usePlayerProfile(playerId?: string | null) {
     queryFn: async () => {
       if (!playerId) return null;
 
-      // Try profiles table first (playerId is a user_id)
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", playerId)
-        .maybeSingle();
-      if (error) throw error;
-      if (data) return data;
-
-      // Fallback: playerId might be a club_member_id for unlinked members
+      // Try club_members first (playerId is typically a club_member_id)
       const { data: member, error: mErr } = await supabase
         .from("club_members")
         .select("id, name, email, user_id, gender, ladder_position")
         .eq("id", playerId)
         .maybeSingle();
-      if (mErr) throw mErr;
-      if (!member) return null;
 
-      // If the member has a linked user_id, fetch that profile
-      if (member.user_id) {
-        const { data: linkedProfile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", member.user_id)
-          .maybeSingle();
-        if (linkedProfile) return linkedProfile;
-      }
+      if (member) {
+        // If the member has a linked user_id, fetch that profile for rich data
+        if (member.user_id) {
+          const { data: linkedProfile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", member.user_id)
+            .maybeSingle();
+          if (linkedProfile) return { ...linkedProfile, club_member_id: member.id };
+        }
 
-      // Return a synthetic profile from club_members data
-      return {
-        id: member.id,
-        name: member.name || member.email || "Unknown",
-        email: member.email,
-        avatar_url: null,
-        wins: 0,
-        losses: 0,
-        matches_played: 0,
-        rank: member.ladder_position,
-        created_at: new Date().toISOString(),
+        // Return a synthetic profile from club_members data
+        return {
+          id: member.id,
+          club_member_id: member.id,
+          name: member.name || member.email || "Unknown",
+          email: member.email,
+          avatar_url: null,
+          wins: 0,
+          losses: 0,
+          matches_played: 0,
+          rank: member.ladder_position,
+          created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         phone: null,
       };

@@ -282,8 +282,8 @@ export default function ClubAuth() {
         <Tabs defaultValue="login">
           <TabsList className="w-full mb-4">
             <TabsTrigger value="login" className="flex-1">Log In</TabsTrigger>
-            <TabsTrigger value="existing" className="flex-1 text-xs">Existing Member</TabsTrigger>
-            <TabsTrigger value="new" className="flex-1 text-xs">New Member</TabsTrigger>
+            <TabsTrigger value="existing" className="flex-1 text-xs">Existing Member Register</TabsTrigger>
+            <TabsTrigger value="new" className="flex-1 text-xs">New? Join the Club</TabsTrigger>
           </TabsList>
 
           {/* ─── LOG IN ─── */}

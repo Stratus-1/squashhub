@@ -69,11 +69,7 @@ function addMinutesToTime(t: string, delta: number) {
 }
 
 function formatTimeDisplay(t: string) {
-  const [hh, mm] = t.split(":");
-  const h = parseInt(hh);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${h12}:${mm} ${ampm}`;
+  return t;
 }
 
 const timeSlots = (() => {

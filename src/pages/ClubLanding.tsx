@@ -45,7 +45,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url")
+        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id")
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;
@@ -57,6 +57,35 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   const club = hostClub ?? queriedClub;
   const loading = needsQuery && isLoading;
   const displaySubdomain = club?.subdomain ?? subdomain;
+
+  // Fetch delegate details
+  const delegateIds = [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id].filter(Boolean) as string[];
+  const { data: delegates = [] } = useQuery({
+    queryKey: ["club-delegates", club?.id, delegateIds.join(",")],
+    queryFn: async () => {
+      if (delegateIds.length === 0) return [];
+      const { data, error } = await fromExt("club_members")
+        .select("id, name, email, phone, profiles:user_id(name, email, phone)")
+        .in("id", delegateIds);
+      if (error) throw error;
+      return (data || []).map((d: any) => ({
+        id: d.id,
+        name: d.profiles?.name || d.name,
+        email: d.profiles?.email || d.email,
+        phone: d.profiles?.phone || d.phone,
+      })) as ClubDelegate[];
+    },
+    enabled: !!club && delegateIds.length > 0,
+  });
+
+  const getDelegateName = (memberId: string | null | undefined) => {
+    if (!memberId) return null;
+    return delegates.find(d => d.id === memberId) || null;
+  };
+
+  const chairmanDelegate = getDelegateName(club?.chairman_member_id);
+  const secretaryDelegate = getDelegateName(club?.secretary_member_id);
+  const captainDelegate = getDelegateName(club?.club_captain_member_id);
 
   if (loading) {
     return (

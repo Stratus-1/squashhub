@@ -50,18 +50,19 @@ export default function Dashboard() {
 
   // Recent match results for the whole club
   const { data: recentMatches } = useQuery({
-    queryKey: ["club-recent-matches", user?.id],
+    queryKey: ["club-recent-matches", effectiveUserId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!effectiveUserId) return [];
       const { data, error } = await supabase
         .from("matches")
         .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, disputed, submitted_by, notes")
+        .or(`player_a.eq.${effectiveUserId},player_b.eq.${effectiveUserId}`)
         .order("match_date", { ascending: false })
         .limit(20);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id,
+    enabled: !!effectiveUserId,
   });
 
   // Get all player names for recent matches

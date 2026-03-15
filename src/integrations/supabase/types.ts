@@ -117,6 +117,7 @@ export type Database = {
         Row: {
           challenge_id: string | null
           club_id: string | null
+          club_member_id: string | null
           court_id: number
           created_at: string
           date: string
@@ -133,6 +134,7 @@ export type Database = {
         Insert: {
           challenge_id?: string | null
           club_id?: string | null
+          club_member_id?: string | null
           court_id: number
           created_at?: string
           date: string
@@ -149,6 +151,7 @@ export type Database = {
         Update: {
           challenge_id?: string | null
           club_id?: string | null
+          club_member_id?: string | null
           court_id?: number
           created_at?: string
           date?: string
@@ -168,6 +171,20 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
           {

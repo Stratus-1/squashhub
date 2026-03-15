@@ -25,9 +25,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 
-  const queryClient = useQueryClient();
 export default function Dashboard() {
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const { user } = useAuth();
   const { club: contextClub } = useClubContext();

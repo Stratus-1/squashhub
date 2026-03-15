@@ -23,10 +23,11 @@ const fromExt = (table: string) => (supabase as any).from(table);
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const EVENT_TYPES = [
-  { value: "social", label: "Social" },
-  { value: "coaching", label: "Coaching" },
-  { value: "training", label: "Training" },
-  { value: "other", label: "Other" },
+  { value: "social", label: "Social", adminOnly: false },
+  { value: "coaching", label: "Coaching", adminOnly: true },
+  { value: "training", label: "Training", adminOnly: true },
+  { value: "league", label: "League", adminOnly: true },
+  { value: "other", label: "Other", adminOnly: false },
 ];
 
 const TIME_OPTIONS = (() => {
@@ -41,7 +42,7 @@ const TIME_OPTIONS = (() => {
 export function CreateClubEvent() {
   const { user } = useAuth();
   const { club } = useClubContext();
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const queryClient = useQueryClient();
   const clubId = club?.id;
 
@@ -450,10 +451,21 @@ export function CreateClubEvent() {
             {/* Event Type */}
             <div className="space-y-1.5">
               <Label className="text-xs">Event Type</Label>
-              <Select value={form.event_type} onValueChange={(v) => setForm((f) => ({ ...f, event_type: v }))}>
+              <Select
+                value={form.event_type}
+                onValueChange={(v) => {
+                  const isClubType = ["coaching", "training", "league"].includes(v);
+                  setForm((f) => ({
+                    ...f,
+                    event_type: v,
+                    // Auto-set club booking for admin-only types
+                    is_club_booking: isClubType ? true : f.is_club_booking,
+                  }));
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPES.map((t) => (
+                  {EVENT_TYPES.filter((t) => !t.adminOnly || isAdmin).map((t) => (
                     <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -561,28 +573,37 @@ export function CreateClubEvent() {
 
             {/* Booking Name */}
             <div className="rounded-lg border border-border p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium">Book under Club name (free)</p>
-                  <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
-                </div>
-                <Switch
-                  checked={form.is_club_booking}
-                  onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booked_by_member_id: "" }))}
-                />
-              </div>
+              {isAdmin ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium">Book under Club name (free)</p>
+                      <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
+                    </div>
+                    <Switch
+                      checked={form.is_club_booking}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booked_by_member_id: "" }))}
+                    />
+                  </div>
 
-              {!form.is_club_booking && (
+                  {!form.is_club_booking && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Book under member</Label>
+                      <Select value={form.booked_by_member_id} onValueChange={(v) => setForm((f) => ({ ...f, booked_by_member_id: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
+                        <SelectContent>
+                          {(members || []).map((m) => (
+                            <SelectItem key={m.id} value={m.id}>{m.name || "Unnamed"}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Book under member</Label>
-                  <Select value={form.booked_by_member_id} onValueChange={(v) => setForm((f) => ({ ...f, booked_by_member_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
-                    <SelectContent>
-                      {(members || []).map((m) => (
-                        <SelectItem key={m.id} value={m.id}>{m.name || "Unnamed"}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <p className="text-xs font-medium">Court booked under your name</p>
+                  <p className="text-[11px] text-muted-foreground">You will be responsible for the booking fee</p>
                 </div>
               )}
             </div>

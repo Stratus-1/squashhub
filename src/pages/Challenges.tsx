@@ -68,14 +68,14 @@ function needsResult(c: ChallengeWithProfiles): boolean {
 }
 
 // ---------- Opponent Stats Panel ----------
-function OpponentStatsPanel({ userId, myUserId }: { userId: string; myUserId: string }) {
-  const { data: stats, isLoading } = useSquashTotals(userId);
-  const { data: h2h } = useHeadToHead(myUserId, 20);
+function OpponentStatsPanel({ memberId, myMemberId }: { memberId?: string; myMemberId?: string; }) {
+  const { data: stats, isLoading } = useSquashTotals(null, { memberId });
+  const { data: h2h } = useHeadToHead(null, 20, { memberId: myMemberId });
 
   const h2hRecord = useMemo(() => {
-    if (!h2h) return null;
-    return h2h.find((r) => r.opponent_id === userId) || null;
-  }, [h2h, userId]);
+    if (!h2h || !memberId) return null;
+    return h2h.find((r) => r.opponent_id === memberId) || null;
+  }, [h2h, memberId]);
 
   if (isLoading) return <div className="text-xs text-muted-foreground py-2">Loading stats…</div>;
   if (!stats) return null;

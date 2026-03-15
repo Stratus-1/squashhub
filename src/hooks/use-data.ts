@@ -426,15 +426,41 @@ export function useMyScheduledMatches(overrideUserId?: string | null) {
     queryFn: async () => {
       if (!targetId) return [];
       const today = new Date().toISOString().split("T")[0];
-      const { data, error } = await fromAny("scheduled_matches")
-        .select("*")
-        .or(`player_a.eq.${targetId},player_b.eq.${targetId}`)
-        .eq("status", "scheduled")
-        .gte("scheduled_date", today)
-        .order("scheduled_date", { ascending: true })
+
+      const { data: challenges, error: challengesError } = await supabase
+        .from("challenges")
+        .select("id, challenger_id, opponent_id")
+        .or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`);
+      if (challengesError) throw challengesError;
+      if (!challenges || challenges.length === 0) return [];
+
+      const challengeIds = challenges.map((c) => c.id);
+      const challengeMap = new Map(challenges.map((c) => [c.id, c]));
+
+      const { data: schedules, error: schedulesError } = await supabase
+        .from("challenge_schedules")
+        .select("id, challenge_id, booking_id, proposed_date, start_time, end_time, status")
+        .in("challenge_id", challengeIds)
+        .eq("status", "accepted")
+        .not("booking_id", "is", null)
+        .gte("proposed_date", today)
+        .order("proposed_date", { ascending: true })
         .order("start_time", { ascending: true });
-      if (error) throw error;
-      return data || [];
+      if (schedulesError) throw schedulesError;
+
+      return (schedules || []).map((s) => {
+        const challenge = challengeMap.get(s.challenge_id);
+        return {
+          id: s.id,
+          booking_id: s.booking_id,
+          scheduled_date: s.proposed_date,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          status: s.status === "accepted" ? "scheduled" : s.status,
+          player_a: challenge?.challenger_id || null,
+          player_b: challenge?.opponent_id || null,
+        };
+      });
     },
     enabled: !!targetId,
   });
@@ -765,7 +791,12 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
       const allMemberIds = [
         ...new Set(
           challenges
-            .flatMap((c) => [c.challenger_member_id, c.opponent_member_id])
+            .flatMap((c) => [
+              c.challenger_member_id,
+              c.opponent_member_id,
+              c.challenger_id,
+              c.opponent_id,
+            ])
             .filter(Boolean) as string[]
         ),
       ];
@@ -777,29 +808,22 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
           .select("id, name")
           .in("id", allMemberIds);
         if (memberErr) console.warn("[useChallenges] member name lookup failed:", memberErr);
-        console.log("[useChallenges] allMemberIds:", allMemberIds, "members returned:", members);
         memberNameMap = new Map((members || []).filter((m) => m.name).map((m) => [m.id, m.name!]));
-      } else {
-        console.warn("[useChallenges] No member IDs found in challenges. Challenges:", challenges.map(c => ({ id: c.id, challenger_member_id: c.challenger_member_id, opponent_member_id: c.opponent_member_id })));
       }
 
-      const result = challenges.map((c) => ({
+      return challenges.map((c) => ({
         ...c,
-        challenger_name: memberNameMap.get(c.challenger_member_id!) || profileMap.get(c.challenger_id!) || "Unknown",
-        opponent_name: memberNameMap.get(c.opponent_member_id!) || profileMap.get(c.opponent_id!) || "Unknown",
+        challenger_name:
+          memberNameMap.get(c.challenger_member_id || "") ||
+          memberNameMap.get(c.challenger_id || "") ||
+          profileMap.get(c.challenger_id || "") ||
+          "Unknown",
+        opponent_name:
+          memberNameMap.get(c.opponent_member_id || "") ||
+          memberNameMap.get(c.opponent_id || "") ||
+          profileMap.get(c.opponent_id || "") ||
+          "Unknown",
       })) as ChallengeWithProfiles[];
-      
-      // Debug: log any "Unknown" results
-      result.forEach(c => {
-        if (c.challenger_name === "Unknown" || c.opponent_name === "Unknown") {
-          console.warn("[useChallenges] Unknown name for challenge:", c.id, 
-            "challenger_member_id:", c.challenger_member_id, "->", c.challenger_name,
-            "opponent_member_id:", c.opponent_member_id, "->", c.opponent_name,
-            "memberMap has:", memberNameMap.has(c.challenger_member_id!), memberNameMap.has(c.opponent_member_id!));
-        }
-      });
-      
-      return result;
     },
     enabled: !!queryId,
   });

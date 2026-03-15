@@ -76,7 +76,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     selected_member_ids: [] as string[],
     light_fee_split: "creator",
     is_club_booking: false,
-    booked_by_member_id: "",
+    booking_member_ids: [] as string[],
     court_ids: [] as number[],
   });
 

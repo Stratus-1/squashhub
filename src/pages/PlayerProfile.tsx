@@ -30,6 +30,7 @@ export default function PlayerProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
   const { data: me } = useProfile();
   const { data: player, isLoading, error: playerError } = usePlayerProfile(id);
@@ -44,8 +45,24 @@ export default function PlayerProfile() {
   const showAvailability = isSelf || (!!player && (((player as any)?.privacy_show_availability) ?? true));
   const showAdvanced = isSelf || (!!player && (((player as any)?.privacy_show_advanced_stats) ?? true));
 
-  const { data: squashTotals, isLoading: squashTotalsLoading } = useSquashTotals(showAdvanced ? id : null);
-  const { data: headToHead, isLoading: headToHeadLoading } = useHeadToHead(showRecentMatches ? id : null, 10);
+  // Resolve the club_member_id for this player from the ladder data
+  const playerMemberId = useMemo(() => {
+    if (!ladder || !id) return null;
+    const member = (ladder as any[]).find((m: any) => m.user_id === id || m.id === id);
+    return member?.club_member_id || member?.id || null;
+  }, [ladder, id]);
+
+  const myMemberId = activeMember?.id || null;
+
+  const { data: squashTotals, isLoading: squashTotalsLoading } = useSquashTotals(
+    showAdvanced ? id : null,
+    { memberId: showAdvanced ? playerMemberId : null }
+  );
+  const { data: headToHead, isLoading: headToHeadLoading } = useHeadToHead(
+    showRecentMatches ? id : null,
+    10,
+    { memberId: showRecentMatches ? playerMemberId : null }
+  );
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
     queryKey: ["player-matches", id],

@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Trophy, UserPlus, Users, ChevronLeft, UserCheck } from "lucide-react";
 
@@ -276,12 +276,18 @@ function getPlayerDisplayName(p: PlayerSelection, fallback = "Player"): string {
 
 export default function AddMatchResult() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const createMatch = useCreateMatch();
+
+  // URL params from challenge flow
+  const urlChallengeId = searchParams.get("challengeId");
+  const urlOpponentId = searchParams.get("opponentId");
+  const urlOpponentMemberId = searchParams.get("opponentMemberId");
 
   const [step, setStep] = useState(1);
 
@@ -321,6 +327,26 @@ export default function AddMatchResult() {
       setPlayer1((prev) => ({ ...prev, name: myName, userId: user?.id ?? null }));
     }
   }, [myName, user?.id]);
+
+  // Pre-select opponent from URL params (challenge flow)
+  const [challengePreFilled, setChallengePreFilled] = useState(false);
+  useEffect(() => {
+    if (challengePreFilled || !ladder || !urlOpponentMemberId) return;
+    const opponent = ladder.find(
+      (p: any) => p.club_member_id === urlOpponentMemberId
+    );
+    if (opponent) {
+      setPlayer2({
+        mode: "club",
+        clubMemberId: opponent.club_member_id,
+        userId: opponent.user_id || urlOpponentId || null,
+        name: opponent.name,
+        externalClub: "",
+      });
+      setMatchType("ladder");
+      setChallengePreFilled(true);
+    }
+  }, [ladder, urlOpponentMemberId, urlOpponentId, challengePreFilled]);
 
   const availableMembers = useMemo(() => {
     if (!ladder) return [];
@@ -390,6 +416,7 @@ export default function AddMatchResult() {
           score: scoreString,
           matchDate,
           gameScores: gameScoresJson,
+          challengeId: urlChallengeId || null,
           notes: `Match type: ${matchType}`,
           playerAMemberId: player1.clubMemberId || null,
           playerBMemberId: player2.clubMemberId || null,
@@ -426,6 +453,7 @@ export default function AddMatchResult() {
           score: scoreString,
           matchDate,
           gameScores: gameScoresJson,
+          challengeId: urlChallengeId || null,
           notes: noteParts.join(". "),
           playerAMemberId: player1.clubMemberId || null,
           playerBMemberId: player2.clubMemberId || null,

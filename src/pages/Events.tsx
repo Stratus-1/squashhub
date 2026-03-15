@@ -1,16 +1,19 @@
+import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
+import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { absoluteUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 const fromExt = (table: string) => (supabase as any).from(table);
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyClub } from "@/hooks/use-club";
 
 type EventRow = {
   id: string;
@@ -28,6 +31,10 @@ type EventRow = {
 
 export default function Events() {
   const { user } = useAuth();
+
+  const { data: clubData } = useMyClub();
+  const hasClub = !!clubData?.club;
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data: events, isLoading, error } = useQuery({
     queryKey: ["events", user?.id ? "authed" : "anon"],
@@ -60,6 +67,14 @@ export default function Events() {
       <PageHeader title="Events" subtitle="Upcoming club events" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-3 mb-20">
+        {hasClub && !showCreate && (
+          <Button className="w-full gap-2" onClick={() => setShowCreate(true)}>
+            <Plus className="w-4 h-4" />
+            Create Event
+          </Button>
+        )}
+
+        {showCreate && <CreateClubEvent onClose={() => setShowCreate(false)} />}
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />

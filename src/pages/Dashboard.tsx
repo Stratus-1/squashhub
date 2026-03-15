@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
+import { Users } from "lucide-react";
 
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { DashboardTutorial } from "@/components/DashboardTutorial";
@@ -17,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
@@ -31,6 +33,8 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { club: contextClub } = useClubContext();
+  const { linkedMembers, activeMember, switchMember } = useMemberContext();
+  const showFamilySwitcher = linkedMembers.length > 1;
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
@@ -93,13 +97,14 @@ export default function Dashboard() {
   // Find player's position on gender-specific ladder
   const myLadderPosition = useMemo(() => {
     if (!ladder || !myClubMember || !user) return null;
-    const gender = (myClubMember as any)?.gender;
+    const effectiveMemberId = activeMember?.id || myClubMember.id;
+    const gender = activeMember?.gender || (myClubMember as any)?.gender;
     const genderLadder = gender ? ladder.filter((p: any) => p.gender === gender) : ladder;
-    const idx = genderLadder.findIndex((p: any) => p.club_member_id === myClubMember.id || p.user_id === user.id);
+    const idx = genderLadder.findIndex((p: any) => p.club_member_id === effectiveMemberId || p.user_id === user.id);
     return idx >= 0 ? idx + 1 : null;
-  }, [ladder, myClubMember, user]);
+  }, [ladder, myClubMember, user, activeMember]);
 
-  const firstName = profile?.name?.split(" ")[0] || "Player";
+  const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 
   const handleConfirmMatch = async (matchId: string) => {
@@ -234,6 +239,31 @@ export default function Dashboard() {
       <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
 
       <WelcomeBanner />
+
+      {/* Family Member Switcher */}
+      {showFamilySwitcher && (
+        <div className="px-4 mt-2">
+          <Card className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold">Switch Member</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {linkedMembers.map(m => (
+                <Button
+                  key={m.id}
+                  size="sm"
+                  variant={activeMember?.id === m.id ? "default" : "outline"}
+                  className="h-8 text-xs"
+                  onClick={() => switchMember(m.id)}
+                >
+                  {m.name || m.club_member_number || "Member"}
+                </Button>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Profile Completion — only show if incomplete */}
       <div className="px-4 mt-2">

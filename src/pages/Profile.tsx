@@ -194,13 +194,15 @@ export default function Profile() {
       const phoneErr = validatePhone(phone);
       if (phoneErr) throw new Error(phoneErr);
 
-      // Update profile
-      const { error } = await supabase.from("profiles").update({
-        name: cleanName,
-        phone: phone.trim() || null,
-        avatar_url: avatarUrl.trim() || null,
-      }).eq("id", user.id);
-      if (error) throw error;
+      // Only update the profiles table if editing the primary user (not a switched family member)
+      if (!isViewingSwitchedMember) {
+        const { error } = await supabase.from("profiles").update({
+          name: cleanName,
+          phone: phone.trim() || null,
+          avatar_url: avatarUrl.trim() || null,
+        }).eq("id", user.id);
+        if (error) throw error;
+      }
 
       // Update club member record if exists
       if (clubMember?.id) {

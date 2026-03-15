@@ -240,6 +240,31 @@ export function MemberOnboardingWizard({
 
   const handleSave = async () => {
     if (!user || !clubId) return;
+
+    // ── Duplicate validations ──
+    if (memberNumber) {
+      const { data: dupNum } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("club_member_number", memberNumber)
+        .maybeSingle();
+      if (dupNum) {
+        toast.error("This membership number is already in use");
+        return;
+      }
+    }
+    if (idNumber.trim()) {
+      const { data: dupId } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("id_number", idNumber.trim())
+        .maybeSingle();
+      if (dupId) {
+        toast.error("This ID number is already registered in the club");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       // 1. Update profile

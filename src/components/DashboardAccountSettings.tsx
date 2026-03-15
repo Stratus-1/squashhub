@@ -3,12 +3,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
-import { Bell, ChevronRight, Flame, Lock, LogOut, Mail, MapPin, Shield, SlidersHorizontal } from "lucide-react";
+import { Bell, ChevronRight, Flame, Lock, LogOut, Mail, MapPin, Shield, SlidersHorizontal, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIntegrations, useMyRoles, useProfile } from "@/hooks/use-data";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -204,6 +205,9 @@ export function DashboardAccountSettings() {
     window.location.assign(url.toString());
   };
 
+  const { linkedMembers, activeMember, switchMember } = useMemberContext();
+  const showSwitcher = linkedMembers.length > 1;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -214,6 +218,31 @@ export function DashboardAccountSettings() {
           </Button>
         )}
       </div>
+
+      {/* ── Member switcher (shared email / family accounts) ── */}
+      {showSwitcher && (
+        <Card className="p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Users className="w-4 h-4 text-primary" />
+            <span>Switch Member</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Multiple members are linked to your email. Select who you'd like to view as:</p>
+          <div className="flex flex-wrap gap-2">
+            {linkedMembers.map(m => (
+              <Button
+                key={m.id}
+                size="sm"
+                variant={activeMember?.id === m.id ? "default" : "outline"}
+                className="h-8 text-xs"
+                onClick={() => switchMember(m.id)}
+              >
+                {m.name || m.club_member_number || "Member"}
+                {m.club_member_number ? ` (#${m.club_member_number})` : ""}
+              </Button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Card className="overflow-hidden">

@@ -433,6 +433,47 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       toast.error("Please enter the association number");
       return;
     }
+
+    // ── Duplicate validations ──
+    // Member number uniqueness within club
+    if (memberNumber.trim()) {
+      const { data: dupNum } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("club_member_number", memberNumber.trim())
+        .maybeSingle();
+      if (dupNum) {
+        toast.error("This membership number is already in use within the club");
+        return;
+      }
+    }
+    // ID number uniqueness within club
+    if (idNumber.trim()) {
+      const { data: dupId } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("id_number", idNumber.trim())
+        .maybeSingle();
+      if (dupId) {
+        toast.error("This ID number is already registered in the club");
+        return;
+      }
+    }
+    // Duplicate email: allowed only if ID numbers differ
+    if (trimmedEmail) {
+      const { data: dupEmail } = await fromExt("club_members")
+        .select("id, id_number")
+        .eq("club_id", clubId)
+        .eq("email", trimmedEmail);
+      if (dupEmail && dupEmail.length > 0 && idNumber.trim()) {
+        const sameId = dupEmail.find((m: any) => m.id_number === idNumber.trim());
+        if (sameId) {
+          toast.error("A member with this email and ID number already exists");
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     try {
       const { data: profile } = await fromExt("profiles").select("id").eq("email", trimmedEmail).maybeSingle();
@@ -629,6 +670,45 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       toast.error("Please enter the association number");
       return;
     }
+
+    // ── Duplicate validations ──
+    if (form.club_member_number.trim()) {
+      const { data: dupNum } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("club_member_number", form.club_member_number.trim())
+        .neq("id", member.id)
+        .maybeSingle();
+      if (dupNum) {
+        toast.error("This membership number is already in use within the club");
+        return;
+      }
+    }
+    if (form.id_number.trim()) {
+      const { data: dupId } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("id_number", form.id_number.trim())
+        .neq("id", member.id)
+        .maybeSingle();
+      if (dupId) {
+        toast.error("This ID number is already registered in the club");
+        return;
+      }
+    }
+    // Duplicate email allowed, but not with same ID number
+    if (form.email.trim() && form.id_number.trim()) {
+      const { data: dupEmail } = await fromExt("club_members")
+        .select("id, id_number")
+        .eq("club_id", clubId)
+        .eq("email", form.email.trim().toLowerCase())
+        .neq("id", member.id);
+      if (dupEmail && dupEmail.find((m: any) => m.id_number === form.id_number.trim())) {
+        toast.error("A member with this email and ID number already exists");
+        return;
+      }
+    }
+
     const { error } = await fromExt("club_members").update({
       name: form.name || null,
       email: form.email || null,

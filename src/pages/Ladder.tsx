@@ -131,25 +131,35 @@ export default function Ladder() {
   }, [menPlayers, ladiesPlayers]);
 
   const myPosition = useMemo(() => {
-    const keys = [user?.id, myClubMember?.id].filter(Boolean) as string[];
+    if (!myMemberId) return null;
+    const pos = positionMap.get(myMemberId);
+    if (typeof pos === "number") return pos;
+    // Fallback: try user_id
+    const keys = [user?.id].filter(Boolean) as string[];
     for (const key of keys) {
       const position = positionMap.get(key);
       if (typeof position === "number") return position;
     }
     return null;
-  }, [positionMap, user?.id, myClubMember?.id]);
+  }, [positionMap, myMemberId, user?.id]);
 
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
 
+  const isMe = (player: LadderPlayer): boolean => {
+    if (myMemberId && player.club_member_id === myMemberId) return true;
+    if (user?.id && (player.user_id === user.id || player.id === user.id)) return true;
+    return false;
+  };
+
   const canChallenge = (player: LadderPlayer): string | null => {
     if (!user?.id) return "You must be logged in.";
-    if (player.user_id === user.id) return null; // hide button for self
-    if (!player.user_id) return "This member has not linked an account yet.";
-    if (!myPosition) return "Your account is not linked to your ladder rank yet.";
+    if (isMe(player)) return null; // hide button for self
+    if (!myMemberId) return "Your account is not linked to a club member.";
+    if (!myPosition) return "You are not ranked on the ladder yet.";
 
     const opponentPos =
-      positionMap.get(player.user_id) ??
       positionMap.get(player.club_member_id) ??
+      positionMap.get(player.user_id || "") ??
       positionMap.get(player.id) ??
       null;
 
@@ -163,7 +173,7 @@ export default function Ladder() {
   };
 
   const isChallengeable = (player: LadderPlayer): boolean => {
-    if (!user?.id || player.user_id === user.id) return false;
+    if (!user?.id || isMe(player)) return false;
     return canChallenge(player) === null;
   };
 

@@ -77,8 +77,8 @@ export function NotificationsDropdown({
       await supabase.from("notifications").update({ read: true }).eq("id", id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
     },
   });
 

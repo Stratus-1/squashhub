@@ -349,22 +349,32 @@ export function useCancelBooking() {
   });
 }
 
-export function useMyBookings(overrideUserId?: string | null) {
+export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   const targetId = overrideUserId || user?.id;
+  const queryId = memberId || targetId;
 
   return useQuery({
-    queryKey: ["my-bookings", targetId],
+    queryKey: ["my-bookings", queryId],
     queryFn: async () => {
-      if (!targetId) return [];
-      const { data, error } = await supabase
+      if (!queryId) return [];
+      let query = supabase
         .from("bookings")
         .select("*")
-        .eq("user_id", targetId)
         .eq("status", "active")
         .gte("date", new Date().toISOString().split("T")[0])
         .order("date")
         .order("start_time");
+
+      // Filter by club_member_id when available, else fall back to user_id
+      if (memberId) {
+        query = query.eq("club_member_id", memberId);
+      } else {
+        query = query.eq("user_id", targetId!);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       // Map court names & opponent names (check profiles first, then club_members)
@@ -389,11 +399,10 @@ export function useMyBookings(overrideUserId?: string | null) {
 
       const now = new Date();
       const todayStr = now.toISOString().split("T")[0];
-      const nowTime = now.toTimeString().slice(0, 5); // "HH:MM"
+      const nowTime = now.toTimeString().slice(0, 5);
 
       return data
         .filter((b: any) => {
-          // For today's bookings, exclude ones where end_time has already passed
           if (b.date === todayStr && b.end_time && b.end_time.slice(0, 5) <= nowTime) return false;
           return true;
         })
@@ -404,7 +413,7 @@ export function useMyBookings(overrideUserId?: string | null) {
           opponent_rank: null,
         }));
     },
-    enabled: !!targetId,
+    enabled: !!queryId,
   });
 }
 

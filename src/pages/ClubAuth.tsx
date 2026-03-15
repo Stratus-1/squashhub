@@ -280,10 +280,10 @@ export default function ClubAuth() {
         </div>
 
         <Tabs defaultValue="login">
-          <TabsList className="w-full mb-4">
+          <TabsList className="w-full mb-4 h-auto flex-wrap gap-1">
             <TabsTrigger value="login" className="flex-1">Log In</TabsTrigger>
-            <TabsTrigger value="existing" className="flex-1 text-xs">Existing Member Register</TabsTrigger>
-            <TabsTrigger value="new" className="flex-1 text-xs">New? Join the Club</TabsTrigger>
+            <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing Member<br/>Register</TabsTrigger>
+            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">New?<br/>Join the Club</TabsTrigger>
           </TabsList>
 
           {/* ─── LOG IN ─── */}

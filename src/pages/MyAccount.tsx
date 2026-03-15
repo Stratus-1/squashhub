@@ -403,9 +403,11 @@ export default function MyAccount() {
                 <Wallet className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Credit Balance</p>
-                <p className="text-2xl font-bold font-heading text-foreground">
-                  R{creditBalance.toFixed(2)}
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  {creditBalance >= 0 ? "Credit Balance" : "Amount Owing"}
+                </p>
+                <p className={cn("text-2xl font-bold font-heading", creditBalance >= 0 ? "text-foreground" : "text-destructive")}>
+                  {creditBalance < 0 ? "-" : ""}R{Math.abs(creditBalance).toFixed(2)}
                 </p>
               </div>
             </div>

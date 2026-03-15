@@ -31,6 +31,7 @@ export function LiveSessionBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [transferOpen, setTransferOpen] = useState<string | null>(null);
+  const [confirmEndOpen, setConfirmEndOpen] = useState<string | null>(null);
 
   // Active light sessions
   const { data: activeSessions = [], refetch: refetchSessions } = useQuery({
@@ -219,7 +220,7 @@ export function LiveSessionBanner() {
                       variant="destructive"
                       className="h-8 px-3 text-xs gap-1"
                       disabled={actionLoading}
-                      onClick={() => handleTerminate(displaySession.id)}
+                      onClick={() => setConfirmEndOpen(displaySession.id)}
                     >
                       <ZapOff className="w-3.5 h-3.5" />
                       End
@@ -289,6 +290,39 @@ export function LiveSessionBanner() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTransferOpen(null)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm End Session Dialog */}
+      <Dialog open={!!confirmEndOpen} onOpenChange={() => setConfirmEndOpen(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              <ZapOff className="w-4 h-4" /> End Court Session?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will turn off the lights and end your session. You'll be charged based on actual usage
+            {displaySession ? ` (${elapsedMin} min · R${currentCost.toFixed(2)} so far)` : ""}.
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setConfirmEndOpen(null)} disabled={actionLoading}>
+              Keep Playing
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={actionLoading}
+              onClick={() => {
+                if (confirmEndOpen) {
+                  handleTerminate(confirmEndOpen);
+                  setConfirmEndOpen(null);
+                }
+              }}
+            >
+              <ZapOff className="w-3.5 h-3.5 mr-1" />
+              End Session
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

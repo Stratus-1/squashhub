@@ -49,13 +49,17 @@ export function LiveSessionBanner() {
   });
 
   // Courts list
+  const clubId = clubData?.club?.id;
   const { data: courtsData } = useQuery({
-    queryKey: ["courts-list"],
+    queryKey: ["courts-list", clubId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("courts").select("id, name, relay_device_id").order("id");
+      let q = supabase.from("courts").select("id, name, relay_device_id").order("id");
+      if (clubId) q = q.eq("club_id", clubId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as { id: number; name: string; relay_device_id: string | null }[];
     },
+    enabled: !!clubId,
   });
   const getCourtName = (id: number) => courtsData?.find((c) => c.id === id)?.name || `Court ${id}`;
 

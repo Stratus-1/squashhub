@@ -407,12 +407,15 @@ export default function Bookings() {
 
   // Load courts dynamically from database
   const { data: courtsData } = useQuery({
-    queryKey: ["courts-list"],
+    queryKey: ["courts-list", bookingClubId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("courts").select("id, name").order("id");
+      let q = supabase.from("courts").select("id, name").order("id");
+      if (bookingClubId) q = q.eq("club_id", bookingClubId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as { id: number; name: string }[];
     },
+    enabled: !!bookingClubId,
   });
   const courts = (courtsData || []).map((c: any) => c.id);
   const getCourtName = (id: number) => courtsData?.find((c: any) => c.id === id)?.name || `Court ${id}`;

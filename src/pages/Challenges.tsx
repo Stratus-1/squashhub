@@ -124,6 +124,29 @@ export default function Challenges() {
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
 
+  // Fetch match results linked to completed challenges
+  const completedChallengeIds = useMemo(
+    () => (challenges || []).filter((c) => c.status === "completed").map((c) => c.id),
+    [challenges]
+  );
+
+  const [challengeMatches, setChallengeMatches] = useState<Record<string, { score: string | null; winner_id: string | null; winner_member_id: string | null; confirmed: boolean }>>({});
+  useMemo(() => {
+    if (completedChallengeIds.length === 0) return;
+    supabase
+      .from("matches")
+      .select("challenge_id, score, winner_id, winner_member_id, confirmed")
+      .in("challenge_id", completedChallengeIds)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: typeof challengeMatches = {};
+        for (const m of data) {
+          if (m.challenge_id) map[m.challenge_id] = { score: m.score, winner_id: m.winner_id, winner_member_id: m.winner_member_id, confirmed: m.confirmed };
+        }
+        setChallengeMatches(map);
+      });
+  }, [completedChallengeIds.join(",")]);
+
   // Courts for counter-proposals
   const [courts, setCourts] = useState<{ id: number; name: string }[]>([]);
   useMemo(() => {

@@ -764,11 +764,15 @@ export function useCreateChallenge() {
       proposedDate,
       proposedTime,
       courtId,
+      challengerMemberId,
+      opponentMemberId,
     }: {
       opponentId: string;
       proposedDate?: string | null;
       proposedTime?: string | null;
       courtId?: number;
+      challengerMemberId?: string | null;
+      opponentMemberId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
       if (!opponentId) throw new Error("Choose an opponent");
@@ -804,6 +808,8 @@ export function useCreateChallenge() {
         proposed_date: proposedDate ?? null,
         status: "pending",
       };
+      if (challengerMemberId) insertPayload.challenger_member_id = challengerMemberId;
+      if (opponentMemberId) insertPayload.opponent_member_id = opponentMemberId;
       if (proposedTime) insertPayload.proposed_time = proposedTime;
       if (courtId) insertPayload.court_id = courtId;
 

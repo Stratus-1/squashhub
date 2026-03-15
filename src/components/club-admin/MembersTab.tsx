@@ -442,7 +442,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         if (m.fee_category_id) {
           const cat = (cats || []).find((c: any) => c.id === m.fee_category_id);
           if (cat) {
-            const amount = proRateClubFee(cat.annual_fee, m.joined_at, feeDueMonth);
+            const amount = cat.annual_fee;
             feeRecords.push({
               club_member_id: m.id, fee_type: "club",
               fee_label: `Club – ${cat.name}`, amount,

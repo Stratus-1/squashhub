@@ -52,15 +52,31 @@ export default function Profile() {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: profile, isLoading } = useProfile();
-  const { data: clubMember, isLoading: memberLoading } = useMyClubMember();
+  const { data: defaultClubMember, isLoading: memberLoading } = useMyClubMember();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
-  const { data: feeCategories = [] } = useFeeCategories(clubId);
-  const { data: associations = [] } = useLeagueAssociations(clubId);
-  const { data: leagues = [] } = useLeagues(clubId);
-  const { data: leagueRegistration } = useMyLeagueRegistration(clubMember?.id);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // If a different member is active (family account switching), fetch their club_member record
+  const activeMemberId = activeMember?.id;
+  const { data: switchedClubMember } = useQuery({
+    queryKey: ["club-member-by-id", activeMemberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .eq("id", activeMemberId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!activeMemberId && activeMemberId !== defaultClubMember?.id,
+  });
+
+  // Use switched member's record if active, otherwise default
+  const clubMember = (activeMemberId && activeMemberId !== defaultClubMember?.id && switchedClubMember)
+    ? switchedClubMember
+    : defaultClubMember;
 
   const [mode, setMode] = useState<"view" | "edit">("view");
   // Profile fields

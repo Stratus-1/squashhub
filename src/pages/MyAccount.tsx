@@ -171,17 +171,17 @@ export default function MyAccount() {
 
   // Light sessions (debits for court lighting)
   const { data: lightSessions, isLoading: lightSessionsLoading } = useQuery({
-    queryKey: ["light-sessions", user?.id],
+    queryKey: ["light-sessions", effectiveUserId],
     queryFn: async () => {
       const { data, error } = await fromExt("light_sessions")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .eq("status", "completed")
         .order("ended_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!effectiveUserId,
   });
 
   // Build unified statement lines sorted chronologically (oldest first)

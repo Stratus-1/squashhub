@@ -772,10 +772,12 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
       
       let memberNameMap = new Map<string, string>();
       if (allMemberIds.length > 0) {
-        const { data: members } = await fromAny("club_members")
+        const { data: members, error: memberErr } = await supabase
+          .from("club_members")
           .select("id, name")
           .in("id", allMemberIds);
-        memberNameMap = new Map((members || []).map((m: any) => [m.id, m.name]));
+        if (memberErr) console.warn("[useChallenges] member name lookup failed:", memberErr);
+        memberNameMap = new Map((members || []).filter((m) => m.name).map((m) => [m.id, m.name!]));
       }
 
       return challenges.map((c) => ({

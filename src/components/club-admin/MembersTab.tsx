@@ -595,7 +595,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
           <div className="space-y-1"><Label>Full Name *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>
           <div className="space-y-1"><Label>Email *</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
           <div className="space-y-1">
-            <Label>Gender</Label>
+            <Label>Gender *</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={gender} onChange={e => setGender(e.target.value)}>
               <option value="">— Select —</option>
               <option value="Men">Men</option>
@@ -605,7 +605,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
           <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Optional" /></div>
           <div className="space-y-1">
             <Label>ID Number</Label>
-            <Input value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="SA ID number (13 digits)" />
+            <Input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="SA ID number (13 digits)" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
           <div className="space-y-1">
@@ -614,7 +614,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
-            <Label>Fee Category</Label>
+            <Label>Fee Category *</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={feeCategoryId}

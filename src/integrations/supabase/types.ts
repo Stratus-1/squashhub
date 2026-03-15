@@ -2374,11 +2374,43 @@ export type Database = {
       }
     }
     Functions: {
+      _match_rollups_for_member: {
+        Args: { target_member_id: string }
+        Returns: {
+          created_at: string
+          duration_s: number
+          is_win: boolean
+          match_date: string
+          match_id: string
+          opponent_id: string
+          points_against: number
+          points_for: number
+          sets_against: number
+          sets_for: number
+        }[]
+      }
       admin_reorder_ladder: {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
       }
       get_club_analytics: { Args: { days_back?: number }; Returns: Json }
+      get_head_to_head_by_member: {
+        Args: { limit_count?: number; target_member_id: string }
+        Returns: {
+          avg_duration_min: number
+          last_match_date: string
+          losses: number
+          matches: number
+          opponent_id: string
+          opponent_name: string
+          points_against: number
+          points_for: number
+          sets_against: number
+          sets_for: number
+          win_rate: number
+          wins: number
+        }[]
+      }
       get_match_of_the_week: {
         Args: never
         Returns: {
@@ -2397,6 +2429,10 @@ export type Database = {
       get_next_member_number: { Args: { _club_id: string }; Returns: string }
       get_personal_analytics: {
         Args: { days_back?: number; target_user_id: string }
+        Returns: Json
+      }
+      get_squash_totals_by_member: {
+        Args: { target_member_id: string }
         Returns: Json
       }
       has_role: {

@@ -75,8 +75,6 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
       return (data || []).map((d: any) => ({
         id: d.id,
         name: d.name || "Unknown",
-        email: null,
-        phone: null,
       })) as ClubDelegate[];
     },
     enabled: !!club && delegateIds.length > 0,

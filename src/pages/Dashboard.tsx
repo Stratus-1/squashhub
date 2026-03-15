@@ -521,7 +521,9 @@ export default function Dashboard() {
 
       <div className="px-4 mt-3">
         <IncomingChallengesCard
-          userId={effectiveUserId}
+          userId={user?.id}
+          memberId={activeMember?.id}
+          activeMemberUserId={activeMember?.user_id ?? null}
           challenges={challenges}
           onViewAll={() => navigate("/challenges")}
         />

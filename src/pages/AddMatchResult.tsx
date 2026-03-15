@@ -276,12 +276,18 @@ function getPlayerDisplayName(p: PlayerSelection, fallback = "Player"): string {
 
 export default function AddMatchResult() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const createMatch = useCreateMatch();
+
+  // URL params from challenge flow
+  const urlChallengeId = searchParams.get("challengeId");
+  const urlOpponentId = searchParams.get("opponentId");
+  const urlOpponentMemberId = searchParams.get("opponentMemberId");
 
   const [step, setStep] = useState(1);
 

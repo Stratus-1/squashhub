@@ -227,15 +227,20 @@ export default function Ladder() {
           </DialogHeader>
 
           {challengeDialog.player && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
-              <PlayerAvatar initials={getInitials(challengeDialog.player.name)} size="sm" avatarUrl={challengeDialog.player.avatar_url} />
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{challengeDialog.player.name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  #{positionMap.get(challengeDialog.player.id)} on ladder · {challengeDialog.player.wins}W-{challengeDialog.player.losses}L
-                </p>
+            <>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                <PlayerAvatar initials={getInitials(challengeDialog.player.name)} size="sm" avatarUrl={challengeDialog.player.avatar_url} />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{challengeDialog.player.name}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    #{positionMap.get(challengeDialog.player.id)} on ladder · {challengeDialog.player.wins}W-{challengeDialog.player.losses}L
+                  </p>
+                </div>
               </div>
-            </div>
+              {challengeDialog.player.user_id && user && (
+                <OpponentStatsInline userId={challengeDialog.player.user_id} myUserId={user.id} />
+              )}
+            </>
           )}
 
           <div className="space-y-3">

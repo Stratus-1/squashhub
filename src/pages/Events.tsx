@@ -8,13 +8,14 @@ import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { absoluteUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubContext } from "@/contexts/ClubContext";
+import { format } from "date-fns";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const fromExt = (table: string) => (supabase as any).from(table);
 
 export default function Events() {
   const { user } = useAuth();
@@ -28,8 +29,7 @@ export default function Events() {
     queryKey: ["club-events-list", club?.id],
     queryFn: async () => {
       if (!club?.id) return [];
-      const { data, error } = await supabase
-        .from("club_events")
+      const { data, error } = await fromExt("club_events")
         .select("*")
         .eq("club_id", club.id)
         .eq("status", "active")
@@ -79,35 +79,55 @@ export default function Events() {
         ) : !events || events.length === 0 ? (
           <Card className="p-4 text-sm text-muted-foreground">No upcoming events yet.</Card>
         ) : (
-          events.map((e) => (
-            <Card key={e.id} className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold font-heading truncate">{e.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Every {DAYS[e.day_of_week]} · {e.start_time?.slice(0, 5)} – {e.end_time?.slice(0, 5)}
+          events.map((e: any) => {
+            const recLabel = e.recurrence && e.recurrence !== "once"
+              ? e.recurrence.charAt(0).toUpperCase() + e.recurrence.slice(1)
+              : null;
+            const startDateFormatted = e.start_date
+              ? format(new Date(e.start_date + "T00:00:00"), "EEE d MMM")
+              : null;
+
+            return (
+              <Card key={e.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold font-heading truncate">{e.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {recLabel
+                        ? `${recLabel} · ${DAYS[e.day_of_week]}`
+                        : startDateFormatted || DAYS[e.day_of_week]
+                      } · {e.start_time?.slice(0, 5)} – {e.end_time?.slice(0, 5)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Badge variant="secondary" className="capitalize text-[10px]">
+                      {e.event_type}
+                    </Badge>
+                    {recLabel && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {recLabel}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {e.description && (
+                  <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line line-clamp-2">
+                    {e.description}
                   </p>
-                </div>
-                <Badge variant="secondary" className="shrink-0 capitalize text-[10px]">
-                  {e.event_type}
-                </Badge>
-              </div>
+                )}
 
-              {e.description && (
-                <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line line-clamp-2">
-                  {e.description}
-                </p>
-              )}
-
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <div className="text-[11px] text-muted-foreground">
-                  {e.is_club_booking ? "Club booking" : "Member booking"}
-                  {" · "}
-                  Scope: {e.invite_scope === "all" ? "All members" : e.invite_scope}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="text-[11px] text-muted-foreground">
+                    {e.is_club_booking ? "Club booking" : "Member booking"}
+                    {" · "}
+                    Scope: {e.invite_scope === "all" ? "All members" : e.invite_scope === "selected" ? "Selected members" : e.invite_scope}
+                    {e.light_fee_split === "attendees" && " · Lights shared"}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))
+              </Card>
+            );
+          })
         )}
       </div>
     </div>

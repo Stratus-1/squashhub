@@ -81,7 +81,12 @@ export function FeesTab({ clubId }: { clubId: string }) {
           {feeCategories.map(cat => (
             <Card key={cat.id} className="p-3 flex items-center justify-between">
               <div>
-                <p className="font-medium">{cat.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{cat.name}</p>
+                  <Badge variant={cat.fee_class === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
+                    {cat.fee_class === "pass_through" ? "Pass-through" : "Club Income"}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground">R{cat.annual_fee}/year{cat.description ? ` — ${cat.description}` : ""}</p>
               </div>
               <div className="flex gap-1">

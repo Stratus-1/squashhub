@@ -60,12 +60,16 @@ function OpponentStatsInline({ userId, myUserId }: { userId: string; myUserId: s
 export default function Ladder() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const { data: myClubMember } = useMyClubMember();
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
   const queryClient = useQueryClient();
   const createChallenge = useCreateChallenge();
+
+  // The active member's club_member_id is the primary identity
+  const myMemberId = activeMember?.id || myClubMember?.id || null;
 
   // Challenge dialog state
   const [challengeDialog, setChallengeDialog] = useState<{

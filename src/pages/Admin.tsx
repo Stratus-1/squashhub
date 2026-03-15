@@ -2644,7 +2644,7 @@ export default function Admin() {
               <AdminEmailMarketing enabled={isAdmin || isManager} />
 
               {/* Audit Log */}
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <div className="p-4 pb-2">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-muted-foreground" />

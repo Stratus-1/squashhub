@@ -382,6 +382,7 @@ export default function AddMatchResult() {
       if (p1HasAccount && p2HasAccount) {
         // Both have accounts — full match record
         const winnerId = matchWinner === "a" ? player1.userId! : player2.userId!;
+        const winnerMemberId = matchWinner === "a" ? (player1.clubMemberId || null) : (player2.clubMemberId || null);
         await createMatch.mutateAsync({
           playerA: player1.userId!,
           playerB: player2.userId!,
@@ -390,6 +391,10 @@ export default function AddMatchResult() {
           matchDate,
           gameScores: gameScoresJson,
           notes: `Match type: ${matchType}`,
+          playerAMemberId: player1.clubMemberId || null,
+          playerBMemberId: player2.clubMemberId || null,
+          winnerMemberId,
+          submittedByMemberId: activeMember?.id || null,
         });
         toast.success("Match result submitted! Awaiting player confirmation.");
       } else {

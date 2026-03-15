@@ -22,6 +22,8 @@ interface MemberContextType {
   isAdmin: boolean;
   /** The currently active/viewed member */
   activeMember: LinkedMember | null;
+  /** The user_id to use for data queries — active member's user_id or auth user id */
+  effectiveUserId: string | null;
   /** Whether viewing as another member (admin impersonation) */
   isViewingAs: boolean;
   /** Switch to a different member */

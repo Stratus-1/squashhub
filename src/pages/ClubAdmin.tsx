@@ -28,37 +28,37 @@ export default function ClubAdmin() {
   const club = data.club;
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 pb-24">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-background p-3 md:p-5 pb-20 text-[13px]">
+      <div className="max-w-7xl mx-auto space-y-4">
+        <div className="flex items-center gap-2">
           {club.logo_url ? (
-            <img src={club.logo_url} alt={`${club.name} logo`} className="w-10 h-10 object-contain rounded-md" />
+            <img src={club.logo_url} alt={`${club.name} logo`} className="w-8 h-8 object-contain rounded-md" />
           ) : (
-            <Building2 className="w-8 h-8 text-primary" />
+            <Building2 className="w-6 h-6 text-primary" />
           )}
           <div>
-            <h1 className="text-2xl font-bold font-heading">{club.name}</h1>
-            <p className="text-sm text-muted-foreground">Club Administration</p>
+            <h1 className="text-lg font-bold font-heading leading-tight">{club.name}</h1>
+            <p className="text-[11px] text-muted-foreground">Club Administration</p>
             {club.subdomain && (
-              <p className="text-xs text-primary font-mono mt-0.5">
+              <p className="text-[10px] text-primary font-mono">
                 {club.subdomain}.squashhub.app
               </p>
             )}
           </div>
         </div>
 
-        <Tabs defaultValue="club" className="w-full">
-          <TabsList className="flex w-full overflow-x-auto">
-            <TabsTrigger value="club" className="text-xs md:text-sm flex-1"><Building2 className="w-4 h-4 mr-1 hidden md:inline" />Club</TabsTrigger>
-            <TabsTrigger value="members" className="text-xs md:text-sm flex-1"><Users className="w-4 h-4 mr-1 hidden md:inline" />Members</TabsTrigger>
-            <TabsTrigger value="finance" className="text-xs md:text-sm flex-1"><Landmark className="w-4 h-4 mr-1 hidden md:inline" />Finance</TabsTrigger>
-            <TabsTrigger value="banking" className="text-xs md:text-sm flex-1"><Banknote className="w-4 h-4 mr-1 hidden md:inline" />Banking</TabsTrigger>
-            <TabsTrigger value="fees" className="text-xs md:text-sm flex-1"><DollarSign className="w-4 h-4 mr-1 hidden md:inline" />Fees</TabsTrigger>
-            <TabsTrigger value="courts" className="text-xs md:text-sm flex-1"><LayoutGrid className="w-4 h-4 mr-1 hidden md:inline" />Courts</TabsTrigger>
-            <TabsTrigger value="ladder" className="text-xs md:text-sm flex-1"><ListOrdered className="w-4 h-4 mr-1 hidden md:inline" />Ladder</TabsTrigger>
-            <TabsTrigger value="leagues" className="text-xs md:text-sm flex-1"><Trophy className="w-4 h-4 mr-1 hidden md:inline" />Leagues</TabsTrigger>
-            <TabsTrigger value="champs" className="text-xs md:text-sm flex-1"><Medal className="w-4 h-4 mr-1 hidden md:inline" />Champs</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs md:text-sm flex-1"><Settings className="w-4 h-4 mr-1 hidden md:inline" />Settings</TabsTrigger>
+        <Tabs defaultValue="club" className="w-full [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
+          <TabsList className="flex w-full overflow-x-auto h-8">
+            <TabsTrigger value="club" className="text-[11px] flex-1 h-7 px-2"><Building2 className="w-3.5 h-3.5 mr-1 hidden md:inline" />Club</TabsTrigger>
+            <TabsTrigger value="members" className="text-[11px] flex-1 h-7 px-2"><Users className="w-3.5 h-3.5 mr-1 hidden md:inline" />Members</TabsTrigger>
+            <TabsTrigger value="finance" className="text-[11px] flex-1 h-7 px-2"><Landmark className="w-3.5 h-3.5 mr-1 hidden md:inline" />Finance</TabsTrigger>
+            <TabsTrigger value="banking" className="text-[11px] flex-1 h-7 px-2"><Banknote className="w-3.5 h-3.5 mr-1 hidden md:inline" />Banking</TabsTrigger>
+            <TabsTrigger value="fees" className="text-[11px] flex-1 h-7 px-2"><DollarSign className="w-3.5 h-3.5 mr-1 hidden md:inline" />Fees</TabsTrigger>
+            <TabsTrigger value="courts" className="text-[11px] flex-1 h-7 px-2"><LayoutGrid className="w-3.5 h-3.5 mr-1 hidden md:inline" />Courts</TabsTrigger>
+            <TabsTrigger value="ladder" className="text-[11px] flex-1 h-7 px-2"><ListOrdered className="w-3.5 h-3.5 mr-1 hidden md:inline" />Ladder</TabsTrigger>
+            <TabsTrigger value="leagues" className="text-[11px] flex-1 h-7 px-2"><Trophy className="w-3.5 h-3.5 mr-1 hidden md:inline" />Leagues</TabsTrigger>
+            <TabsTrigger value="champs" className="text-[11px] flex-1 h-7 px-2"><Medal className="w-3.5 h-3.5 mr-1 hidden md:inline" />Champs</TabsTrigger>
+            <TabsTrigger value="settings" className="text-[11px] flex-1 h-7 px-2"><Settings className="w-3.5 h-3.5 mr-1 hidden md:inline" />Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="club"><ClubInfoTab club={club} clubId={club.id} /></TabsContent>

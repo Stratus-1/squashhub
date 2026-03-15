@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Swords } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateChallenge, useSquashTotals, useHeadToHead } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { useEffect, useMemo, useState } from "react";
@@ -59,12 +60,16 @@ function OpponentStatsInline({ userId, myUserId }: { userId: string; myUserId: s
 export default function Ladder() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const { data: myClubMember } = useMyClubMember();
   const clubId = clubData?.club?.id;
   const { data: players, isLoading } = useLadder(clubId);
   const queryClient = useQueryClient();
   const createChallenge = useCreateChallenge();
+
+  // The active member's club_member_id is the primary identity
+  const myMemberId = activeMember?.id || myClubMember?.id || null;
 
   // Challenge dialog state
   const [challengeDialog, setChallengeDialog] = useState<{
@@ -126,25 +131,35 @@ export default function Ladder() {
   }, [menPlayers, ladiesPlayers]);
 
   const myPosition = useMemo(() => {
-    const keys = [user?.id, myClubMember?.id].filter(Boolean) as string[];
+    if (!myMemberId) return null;
+    const pos = positionMap.get(myMemberId);
+    if (typeof pos === "number") return pos;
+    // Fallback: try user_id
+    const keys = [user?.id].filter(Boolean) as string[];
     for (const key of keys) {
       const position = positionMap.get(key);
       if (typeof position === "number") return position;
     }
     return null;
-  }, [positionMap, user?.id, myClubMember?.id]);
+  }, [positionMap, myMemberId, user?.id]);
 
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
 
+  const isMe = (player: LadderPlayer): boolean => {
+    if (myMemberId && player.club_member_id === myMemberId) return true;
+    if (user?.id && (player.user_id === user.id || player.id === user.id)) return true;
+    return false;
+  };
+
   const canChallenge = (player: LadderPlayer): string | null => {
     if (!user?.id) return "You must be logged in.";
-    if (player.user_id === user.id) return null; // hide button for self
-    if (!player.user_id) return "This member has not linked an account yet.";
-    if (!myPosition) return "Your account is not linked to your ladder rank yet.";
+    if (isMe(player)) return null; // hide button for self
+    if (!myMemberId) return "Your account is not linked to a club member.";
+    if (!myPosition) return "You are not ranked on the ladder yet.";
 
     const opponentPos =
-      positionMap.get(player.user_id) ??
       positionMap.get(player.club_member_id) ??
+      positionMap.get(player.user_id || "") ??
       positionMap.get(player.id) ??
       null;
 
@@ -158,7 +173,7 @@ export default function Ladder() {
   };
 
   const isChallengeable = (player: LadderPlayer): boolean => {
-    if (!user?.id || player.user_id === user.id) return false;
+    if (!user?.id || isMe(player)) return false;
     return canChallenge(player) === null;
   };
 
@@ -175,19 +190,15 @@ export default function Ladder() {
 
   const handleSendChallenge = async () => {
     if (!challengeDialog.player || !proposedDate || !proposedTime) return;
-    if (!challengeDialog.player.user_id) {
-      toast.error("This member has not linked an account yet.");
-      return;
-    }
 
     setSending(true);
     try {
       await createChallenge.mutateAsync({
-        opponentId: challengeDialog.player.user_id,
+        opponentId: challengeDialog.player.user_id || challengeDialog.player.id,
         proposedDate,
         proposedTime,
         courtId: courtId ? Number(courtId) : undefined,
-        challengerMemberId: myClubMember?.id || null,
+        challengerMemberId: myMemberId || null,
         opponentMemberId: challengeDialog.player.club_member_id || null,
       });
       toast.success(`Challenge sent to ${challengeDialog.player.name}`);
@@ -214,7 +225,7 @@ export default function Ladder() {
             key={player.id}
             player={player}
             index={index}
-            isMe={player.user_id === user?.id || player.id === user?.id || player.club_member_id === myClubMember?.id}
+            isMe={isMe(player)}
             isAdmin={false}
             onNavigate={(id, isMe) => {
               if (isMe) navigate("/profile");

@@ -2,7 +2,7 @@ import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight, Mail, Phone, DollarSign } from "lucide-react";
+import { Loader2, Building2, ArrowRight, Mail, Phone, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
@@ -186,73 +186,73 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
             )}
           </motion.div>
 
-          {/* Two-column layout: Officials | Fees */}
-          {(hasDelegates || hasFees) && (
+          {/* Delegates inline */}
+          {hasDelegates && (
             <motion.div
-              className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
+              className="w-full max-w-lg mb-6 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
             >
-              {/* Left: Club Officials */}
-              <div className="space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center md:text-left">
-                  Club Officials
-                </h2>
-                {hasDelegates ? (
-                  <div className="space-y-2">
-                    {[
-                      { label: "Chairman", delegate: chairmanDelegate },
-                      { label: "Secretary", delegate: secretaryDelegate },
-                      { label: "Club Captain", delegate: captainDelegate },
-                    ].filter(d => d.delegate).map(({ label, delegate }) => (
-                      <Card key={label} className="p-3 bg-card/60 backdrop-blur-sm border-border/50">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
-                        <p className="text-sm font-semibold text-foreground">{delegate!.name || "—"}</p>
-                        <div className="flex flex-wrap gap-3 mt-1">
-                          {delegate!.email && (
-                            <a href={`mailto:${delegate!.email}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
-                              <Mail className="w-3 h-3" />{delegate!.email}
-                            </a>
-                          )}
-                          {delegate!.phone && (
-                            <a href={`tel:${delegate!.phone}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
-                              <Phone className="w-3 h-3" />{delegate!.phone}
-                            </a>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic text-center md:text-left">No officials assigned yet</p>
-                )}
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {[
+                  { label: "Chairman", delegate: chairmanDelegate },
+                  { label: "Secretary", delegate: secretaryDelegate },
+                  { label: "Captain", delegate: captainDelegate },
+                ].filter(d => d.delegate).map(({ label, delegate }, i, arr) => (
+                  <span key={label} className="inline-flex items-center gap-1">
+                    <span className="font-medium text-foreground">{label}:</span>
+                    <span>{delegate!.name || "—"}</span>
+                    {delegate!.email && (
+                      <a href={`mailto:${delegate!.email}`} className="text-primary hover:underline">
+                        <Mail className="w-3 h-3 inline" />
+                      </a>
+                    )}
+                    {delegate!.phone && (
+                      <a href={`tel:${delegate!.phone}`} className="text-primary hover:underline">
+                        <Phone className="w-3 h-3 inline" />
+                      </a>
+                    )}
+                    {i < arr.length - 1 && <span className="text-border ml-1">·</span>}
+                  </span>
+                ))}
               </div>
+            </motion.div>
+          )}
 
-              {/* Right: Membership Fees */}
-              <div className="space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center md:text-left">
-                  Membership Fees
-                </h2>
-                {hasFees ? (
-                  <div className="space-y-2">
-                    {feeCategories.map(cat => (
-                      <Card key={cat.id} className="p-3 bg-card/60 backdrop-blur-sm border-border/50 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground">{cat.name}</p>
-                          {cat.description && <p className="text-xs text-muted-foreground truncate">{cat.description}</p>}
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-lg font-bold text-primary">R{cat.annual_fee}</p>
-                          <p className="text-[10px] text-muted-foreground">per year</p>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic text-center md:text-left">Fee structure not yet configured</p>
-                )}
-              </div>
+          {/* Fees - collapsible small section */}
+          {hasFees && (
+            <motion.div
+              className="w-full max-w-sm mb-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+            >
+              <details className="group">
+                <summary className="flex items-center justify-center gap-1 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors select-none">
+                  <span>View Membership Fees</span>
+                  <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="mt-3 rounded-lg border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden">
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {feeCategories.map((cat, i) => (
+                        <tr key={cat.id} className={i > 0 ? "border-t border-border/30" : ""}>
+                          <td className="px-3 py-2 text-foreground font-medium">
+                            {cat.name}
+                            {cat.description && (
+                              <span className="block text-[10px] text-muted-foreground font-normal">{cat.description}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right font-semibold text-primary whitespace-nowrap">
+                            R{cat.annual_fee}<span className="text-muted-foreground font-normal">/yr</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             </motion.div>
           )}
 

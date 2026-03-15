@@ -175,6 +175,8 @@ export default function Challenges() {
       const matchDate = c.proposed_date;
       const matchTime = (c as any).proposed_time;
       const courtId = (c as any).court_id;
+      // The booking user_id must be a valid auth user; use challenger's user_id or fall back to current user
+      const bookingUserId = c.challenger_id || user!.id;
       if (matchDate && matchTime && courtId && user) {
         const endTimeStr = matchTime.replace(/^(\d{2}):(\d{2})/, (_: any, h: string, m: string) => {
           const endH = (parseInt(h) + 1) % 24;
@@ -182,8 +184,8 @@ export default function Challenges() {
         });
         try {
           await supabase.from("bookings").insert({
-            user_id: c.challenger_id,
-            opponent_id: c.opponent_id,
+            user_id: bookingUserId,
+            opponent_id: c.opponent_id || null,
             court_id: courtId,
             date: matchDate,
             start_time: matchTime.length === 5 ? matchTime + ":00" : matchTime,
@@ -197,16 +199,18 @@ export default function Challenges() {
         }
       }
 
-      // Notify challenger
-      try {
-        await fromExt("notifications").insert({
-          user_id: c.challenger_id,
-          title: "Challenge Accepted!",
-          message: `${c.opponent_name} has accepted your challenge${matchDate ? ` on ${matchDate}` : ""}.`,
-          type: "challenge",
-          url: "/challenges",
-        });
-      } catch { /* non-critical */ }
+      // Notify challenger (only if they have a user_id)
+      if (c.challenger_id) {
+        try {
+          await fromExt("notifications").insert({
+            user_id: c.challenger_id,
+            title: "Challenge Accepted!",
+            message: `${c.opponent_name} has accepted your challenge${matchDate ? ` on ${matchDate}` : ""}.`,
+            type: "challenge",
+            url: "/challenges",
+          });
+        } catch { /* non-critical */ }
+      }
 
       toast.success("Challenge accepted! Court booking created.");
     } catch (e: any) {
@@ -223,17 +227,21 @@ export default function Challenges() {
       await updateChallenge.mutateAsync({ challengeId: c.id, status: "declined" });
 
       // Notify the other party
-      const otherUserId = c.challenger_id === user?.id ? c.opponent_id : c.challenger_id;
-      const otherName = c.challenger_id === user?.id ? c.opponent_name : c.challenger_name;
-      try {
-        await fromExt("notifications").insert({
-          user_id: otherUserId,
-          title: "Challenge Cancelled",
-          message: `The challenge has been cancelled.`,
-          type: "challenge",
-          url: "/challenges",
-        });
-      } catch { /* non-critical */ }
+      const isChallenger = myMemberId
+        ? (c as any).challenger_member_id === myMemberId
+        : c.challenger_id === user?.id;
+      const otherUserId = isChallenger ? c.opponent_id : c.challenger_id;
+      if (otherUserId) {
+        try {
+          await fromExt("notifications").insert({
+            user_id: otherUserId,
+            title: "Challenge Cancelled",
+            message: `The challenge has been cancelled.`,
+            type: "challenge",
+            url: "/challenges",
+          });
+        } catch { /* non-critical */ }
+      }
 
       toast.success("Challenge cancelled");
     } catch (e: any) {
@@ -291,6 +299,7 @@ export default function Challenges() {
       if (error) throw error;
 
       // Auto-create court booking
+      const bookingUserId = c.challenger_id || user!.id;
       if (finalDate && finalTime && courtId && user) {
         const endTimeStr = finalTime.replace(/^(\d{2}):(\d{2})/, (_: any, h: string, m: string) => {
           const endH = (parseInt(h) + 1) % 24;
@@ -298,8 +307,8 @@ export default function Challenges() {
         });
         try {
           await supabase.from("bookings").insert({
-            user_id: c.challenger_id,
-            opponent_id: c.opponent_id,
+            user_id: bookingUserId,
+            opponent_id: c.opponent_id || null,
             court_id: courtId,
             date: finalDate,
             start_time: finalTime.length === 5 ? finalTime + ":00" : finalTime,
@@ -311,16 +320,18 @@ export default function Challenges() {
         } catch { /* non-critical */ }
       }
 
-      // Notify opponent
-      try {
-        await fromExt("notifications").insert({
-          user_id: c.opponent_id,
-          title: "Counter-Proposal Accepted",
-          message: `Your counter-proposal for ${finalDate} at ${finalTime?.slice(0, 5)} has been accepted. Court booked!`,
-          type: "challenge",
-          url: "/challenges",
-        });
-      } catch { /* non-critical */ }
+      // Notify opponent (only if they have a user_id)
+      if (c.opponent_id) {
+        try {
+          await fromExt("notifications").insert({
+            user_id: c.opponent_id,
+            title: "Counter-Proposal Accepted",
+            message: `Your counter-proposal for ${finalDate} at ${finalTime?.slice(0, 5)} has been accepted. Court booked!`,
+            type: "challenge",
+            url: "/challenges",
+          });
+        } catch { /* non-critical */ }
+      }
 
       toast.success("Counter accepted & court booked!");
     } catch (e: any) {
@@ -329,7 +340,12 @@ export default function Challenges() {
   };
 
   const handleEnterResult = (c: ChallengeWithProfiles) => {
-    navigate(`/add-result?challengeId=${c.id}&opponentId=${c.challenger_id === user?.id ? c.opponent_id : c.challenger_id}`);
+    const isChallenger = myMemberId
+      ? (c as any).challenger_member_id === myMemberId
+      : c.challenger_id === user?.id;
+    const oppMemberId = isChallenger ? (c as any).opponent_member_id : (c as any).challenger_member_id;
+    const oppUserId = isChallenger ? c.opponent_id : c.challenger_id;
+    navigate(`/add-result?challengeId=${c.id}${oppUserId ? `&opponentId=${oppUserId}` : ""}${oppMemberId ? `&opponentMemberId=${oppMemberId}` : ""}`);
   };
 
   const renderChallengeCard = (c: ChallengeWithProfiles, type: "incoming" | "outgoing" | "past") => {
@@ -342,7 +358,9 @@ export default function Challenges() {
     const hasCounter = !!(c as any).counter_date;
     const showResult = needsResult(c);
     const isCancellable = canCancel(c);
-    const isChallenger = c.challenger_id === user?.id;
+    const isChallenger = myMemberId
+      ? (c as any).challenger_member_id === myMemberId
+      : c.challenger_id === user?.id;
 
     // For outgoing with counter: challenger needs to accept or decline counter
     const needsCounterResponse = type === "outgoing" && c.status === "pending" && hasCounter;

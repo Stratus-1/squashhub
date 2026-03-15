@@ -604,8 +604,8 @@ export type ChallengeStatus = "pending" | "accepted" | "declined" | "completed" 
 
 export type ChallengeWithProfiles = {
   id: string;
-  challenger_id: string;
-  opponent_id: string;
+  challenger_id: string | null;
+  opponent_id: string | null;
   challenger_member_id?: string | null;
   opponent_member_id?: string | null;
   status: ChallengeStatus;

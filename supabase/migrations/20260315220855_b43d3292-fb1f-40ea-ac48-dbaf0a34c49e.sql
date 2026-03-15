@@ -1,0 +1,1 @@
+ALTER TABLE public.member_fee_categories ADD COLUMN IF NOT EXISTS due_month integer NOT NULL DEFAULT 1;

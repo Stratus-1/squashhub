@@ -1959,6 +1959,7 @@ export type Database = {
           club_id: string
           created_at: string
           description: string | null
+          due_month: number
           fee_class: string
           id: string
           name: string
@@ -1971,6 +1972,7 @@ export type Database = {
           club_id: string
           created_at?: string
           description?: string | null
+          due_month?: number
           fee_class?: string
           id?: string
           name: string
@@ -1983,6 +1985,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           description?: string | null
+          due_month?: number
           fee_class?: string
           id?: string
           name?: string

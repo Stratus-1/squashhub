@@ -2,7 +2,7 @@ import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight, Mail, Phone, ChevronDown } from "lucide-react";
+import { Loader2, Building2, ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
@@ -13,8 +13,6 @@ import heroBg from "@/assets/hero-bg.jpg";
 interface ClubDelegate {
   id: string;
   name: string | null;
-  email: string | null;
-  phone: string | null;
 }
 
 interface FeeCategory {
@@ -77,8 +75,6 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
       return (data || []).map((d: any) => ({
         id: d.id,
         name: d.name || "Unknown",
-        email: null,
-        phone: null,
       })) as ClubDelegate[];
     },
     enabled: !!club && delegateIds.length > 0,
@@ -203,16 +199,6 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                   <span key={label} className="inline-flex items-center gap-1">
                     <span className="font-medium text-foreground">{label}:</span>
                     <span>{delegate!.name || "—"}</span>
-                    {delegate!.email && (
-                      <a href={`mailto:${delegate!.email}`} className="text-primary hover:underline">
-                        <Mail className="w-3 h-3 inline" />
-                      </a>
-                    )}
-                    {delegate!.phone && (
-                      <a href={`tel:${delegate!.phone}`} className="text-primary hover:underline">
-                        <Phone className="w-3 h-3 inline" />
-                      </a>
-                    )}
                     {i < arr.length - 1 && <span className="text-border ml-1">·</span>}
                   </span>
                 ))}

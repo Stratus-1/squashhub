@@ -818,29 +818,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
                   const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
                   const totalMin = endMin - startMin;
-                  const maxMembers = Math.ceil(totalMin / 60);
+                  const sessionsNeeded = Math.ceil(totalMin / 60);
 
                   return (
                     <div className="space-y-2">
                       <p className="text-[11px] text-muted-foreground">
-                        Event duration: {totalMin} min — need {maxMembers} member{maxMembers !== 1 ? "s" : ""} (max 1hr each)
+                        Event duration: {totalMin} min — {sessionsNeeded} booking session{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr each).
+                        First {sessionsNeeded} selected member{sessionsNeeded !== 1 ? "s" : ""} will have bookings in their name.
                       </p>
                       <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
                         {invitedMembers.map((m) => {
                           const isSelected = form.booking_member_ids.includes(m.id);
-                          const atMax = !isSelected && form.booking_member_ids.length >= maxMembers;
+                          const selIndex = form.booking_member_ids.indexOf(m.id);
+                          const isBookingName = isSelected && selIndex < sessionsNeeded;
                           return (
                             <label
                               key={m.id}
                               className={cn(
                                 "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors text-sm",
                                 isSelected && "bg-accent",
-                                atMax && "opacity-50 cursor-not-allowed"
                               )}
                             >
                               <Checkbox
                                 checked={isSelected}
-                                disabled={atMax}
                                 onCheckedChange={() => {
                                   setForm((f) => ({
                                     ...f,

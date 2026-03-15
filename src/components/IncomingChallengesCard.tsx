@@ -147,7 +147,69 @@ export function IncomingChallengesCard({
               </Button>
             </div>
           </div>
-        ))}
+          {incoming.slice(0, maxItems).map((c) => {
+            const canAct = canRespond(c);
+            return (
+              <div key={c.id} className="rounded-xl border border-border/70 bg-background/60 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex items-start gap-2">
+                    <PlayerAvatar initials={initials(c.challenger_name)} size="sm" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{c.challenger_name}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {c.proposed_date ? `Proposed: ${c.proposed_date}` : "No proposed date"}
+                        {" · "}
+                        {format(new Date(c.created_at), "yyyy-MM-dd")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                  <Button
+                    size="sm"
+                    className="h-9 sm:flex-1"
+                    disabled={updateChallenge.isPending || !canAct}
+                    onClick={() => {
+                      if (!canAct) {
+                        toast.error("Switch to the linked player account to respond.");
+                        return;
+                      }
+                      accept(c.id);
+                    }}
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 sm:flex-1"
+                    disabled={updateChallenge.isPending || !canAct}
+                    onClick={() => {
+                      if (!canAct) {
+                        toast.error("Switch to the linked player account to respond.");
+                        return;
+                      }
+                      decline(c.id);
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Decline
+                  </Button>
+                </div>
+
+                {!canAct ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    This challenge can only be actioned by the linked recipient account.
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-3">

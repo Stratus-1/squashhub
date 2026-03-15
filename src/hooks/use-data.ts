@@ -622,6 +622,7 @@ export function usePlayerProfile(playerId?: string | null) {
         .maybeSingle();
       if (error) throw error;
       return profile;
+    },
     enabled: !!playerId,
   });
 }

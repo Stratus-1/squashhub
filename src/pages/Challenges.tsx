@@ -299,6 +299,7 @@ export default function Challenges() {
       if (error) throw error;
 
       // Auto-create court booking
+      const bookingUserId = c.challenger_id || user!.id;
       if (finalDate && finalTime && courtId && user) {
         const endTimeStr = finalTime.replace(/^(\d{2}):(\d{2})/, (_: any, h: string, m: string) => {
           const endH = (parseInt(h) + 1) % 24;
@@ -306,8 +307,8 @@ export default function Challenges() {
         });
         try {
           await supabase.from("bookings").insert({
-            user_id: c.challenger_id,
-            opponent_id: c.opponent_id,
+            user_id: bookingUserId,
+            opponent_id: c.opponent_id || null,
             court_id: courtId,
             date: finalDate,
             start_time: finalTime.length === 5 ? finalTime + ":00" : finalTime,
@@ -319,16 +320,18 @@ export default function Challenges() {
         } catch { /* non-critical */ }
       }
 
-      // Notify opponent
-      try {
-        await fromExt("notifications").insert({
-          user_id: c.opponent_id,
-          title: "Counter-Proposal Accepted",
-          message: `Your counter-proposal for ${finalDate} at ${finalTime?.slice(0, 5)} has been accepted. Court booked!`,
-          type: "challenge",
-          url: "/challenges",
-        });
-      } catch { /* non-critical */ }
+      // Notify opponent (only if they have a user_id)
+      if (c.opponent_id) {
+        try {
+          await fromExt("notifications").insert({
+            user_id: c.opponent_id,
+            title: "Counter-Proposal Accepted",
+            message: `Your counter-proposal for ${finalDate} at ${finalTime?.slice(0, 5)} has been accepted. Court booked!`,
+            type: "challenge",
+            url: "/challenges",
+          });
+        } catch { /* non-critical */ }
+      }
 
       toast.success("Counter accepted & court booked!");
     } catch (e: any) {

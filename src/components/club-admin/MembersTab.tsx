@@ -323,6 +323,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const addressIdx = headers.indexOf("address");
 
     let imported = 0;
+    const importedMemberIds: string[] = [];
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(",").map(c => c.trim());
       const email = cols[emailIdx];
@@ -331,7 +332,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
       const { data: profile } = await fromExt("profiles").select("id").eq("email", email).maybeSingle();
       const memberName = nameIdx >= 0 ? cols[nameIdx] : undefined;
 
-      const { error } = await fromExt("club_members").upsert({
+      const { data: memberData, error } = await fromExt("club_members").upsert({
         club_id: clubId,
         user_id: profile?.id || null,
         name: memberName || undefined,
@@ -341,13 +342,77 @@ export function MembersTab({ clubId }: { clubId: string }) {
         id_number: idNumIdx >= 0 ? cols[idNumIdx] : undefined,
         phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
         address: addressIdx >= 0 ? cols[addressIdx] : undefined,
-      }, { onConflict: "club_id,email" });
+      }, { onConflict: "club_id,email" }).select("id, fee_category_id, plays_league").single();
 
-      if (!error) imported++;
-      else console.error(`CSV row ${i}: ${error.message}`);
+      if (!error && memberData) {
+        imported++;
+        importedMemberIds.push(memberData.id);
+      } else if (error) {
+        console.error(`CSV row ${i}: ${error.message}`);
+      }
     }
+
+    // Auto-create fee records (default paid) for imported members that don't have them yet
+    if (importedMemberIds.length > 0) {
+      const { data: existingFees } = await fromExt("club_member_fee_payments")
+        .select("club_member_id")
+        .in("club_member_id", importedMemberIds);
+      const membersWithFees = new Set((existingFees || []).map(f => f.club_member_id));
+
+      const { data: allMembers } = await fromExt("club_members")
+        .select("id, fee_category_id, plays_league, joined_at")
+        .in("id", importedMemberIds);
+
+      const { data: cats } = await fromExt("member_fee_categories").select("*").eq("club_id", clubId);
+      const { data: assocs } = await fromExt("league_associations").select("*").eq("club_id", clubId);
+      const { data: natFees } = await fromExt("national_body_fees").select("*").eq("club_id", clubId);
+
+      const feeRecords: any[] = [];
+      for (const m of (allMembers || [])) {
+        if (membersWithFees.has(m.id)) continue; // already has fees
+        if (m.fee_category_id) {
+          const cat = (cats || []).find((c: any) => c.id === m.fee_category_id);
+          if (cat) {
+            const amount = proRateClubFee(cat.annual_fee, m.joined_at, feeDueMonth);
+            feeRecords.push({
+              club_member_id: m.id, fee_type: "club",
+              fee_label: `Club – ${cat.name}`, amount,
+              paid: true, paid_at: new Date().toISOString(),
+              season_year: new Date().getFullYear(),
+            });
+          }
+        }
+        if (m.plays_league) {
+          for (const a of (assocs || [])) {
+            if (a.fee_annual && a.fee_annual > 0) {
+              feeRecords.push({
+                club_member_id: m.id, fee_type: "association",
+                fee_label: a.abbreviation || a.name, amount: a.fee_annual,
+                paid: true, paid_at: new Date().toISOString(),
+                season_year: new Date().getFullYear(),
+              });
+            }
+          }
+          for (const n of (natFees || [])) {
+            if (n.fee_annual && n.fee_annual > 0) {
+              feeRecords.push({
+                club_member_id: m.id, fee_type: "national",
+                fee_label: n.abbreviation || n.body_name, amount: n.fee_annual,
+                paid: true, paid_at: new Date().toISOString(),
+                season_year: new Date().getFullYear(),
+              });
+            }
+          }
+        }
+      }
+      if (feeRecords.length > 0) {
+        await fromExt("club_member_fee_payments").insert(feeRecords);
+      }
+    }
+
     toast.success(`Imported ${imported} member${imported !== 1 ? "s" : ""}`);
     qc.invalidateQueries({ queryKey: ["club-members"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
     if (fileRef.current) fileRef.current.value = "";
   };
 

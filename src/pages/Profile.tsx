@@ -294,7 +294,8 @@ export default function Profile() {
           />
         ) : (
           <div className="space-y-3">
-            {/* Photo upload */}
+            {/* Photo upload — only for primary user, not switched family members */}
+            {!isViewingSwitchedMember && (
             <div id="avatar-picker" className="flex flex-col items-center gap-3 py-2">
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden bg-muted border-2 border-border flex items-center justify-center">
@@ -331,6 +332,7 @@ export default function Profile() {
                 )}
               </div>
             </div>
+            )}
 
             {/* Personal info */}
             <div className="space-y-1.5">

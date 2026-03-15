@@ -29,7 +29,6 @@ export interface Club {
   member_number_start?: number;
   challenge_levels_up?: number;
   light_fee_per_hour?: number;
-  shelly_auth_key?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;

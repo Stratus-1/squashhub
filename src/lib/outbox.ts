@@ -151,6 +151,7 @@ async function flushBookingFlow(item: Extract<OutboxItem, { kind: "booking_flow"
   if (!booking.opponent_id) return;
 
   // Create challenge (or reuse an existing active one).
+  let challengeId = challenge.id;
   const insertPayload: Record<string, any> = {
     id: challenge.id,
     challenger_id: item.user_id,
@@ -166,7 +167,6 @@ async function flushBookingFlow(item: Extract<OutboxItem, { kind: "booking_flow"
     .insert(insertPayload as any);
 
   if (insertChallengeError) {
-    // If it already exists between players, reuse it.
     const { data: existing } = await supabase
       .from("challenges")
       .select("id")

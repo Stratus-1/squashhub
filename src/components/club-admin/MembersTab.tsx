@@ -75,8 +75,8 @@ function computeExpectedFees(
     const cat = feeCategories.find(c => c.id === member.fee_category_id);
     if (cat) {
       const amount = proRateClubFee(cat.annual_fee, member.joined_at, feeDueMonth);
-      const existing = memberPayments.find(p => p.fee_type === "membership");
-      fees.push({ fee_type: "membership", fee_label: `Club – ${cat.name}`, amount, existing });
+      const existing = memberPayments.find(p => p.fee_type === "club" || p.fee_type === "membership");
+      fees.push({ fee_type: "club", fee_label: `Club – ${cat.name}`, amount, existing });
     }
   }
 
@@ -96,8 +96,8 @@ function computeExpectedFees(
     for (const nat of nationalFees) {
       if (nat.fee_annual && nat.fee_annual > 0) {
         const label = nat.abbreviation || nat.body_name;
-        const existing = memberPayments.find(p => p.fee_type === "national_body");
-        fees.push({ fee_type: "national_body", fee_label: label, amount: nat.fee_annual, existing });
+        const existing = memberPayments.find(p => p.fee_type === "national" || p.fee_type === "national_body");
+        fees.push({ fee_type: "national", fee_label: label, amount: nat.fee_annual, existing });
       }
     }
   }

@@ -110,11 +110,17 @@ export default function Profile() {
     navigate("/dashboard");
   };
 
+  const isViewingSwitchedMember = !!activeMemberId && activeMemberId !== defaultClubMember?.id;
+
   const resetDraft = () => {
-    if (!profile) return;
-    setName(String((profile as any).name || ""));
-    setPhone(String((profile as any).phone || ""));
-    setAvatarUrl(String((profile as any).avatar_url || ""));
+    if (!profile && !isViewingSwitchedMember) return;
+    // When viewing a switched member, use their club_member name/phone
+    const sourceName = isViewingSwitchedMember ? (clubMember?.name || "") : String((profile as any)?.name || "");
+    const sourcePhone = isViewingSwitchedMember ? (clubMember?.phone || "") : String((profile as any)?.phone || "");
+    const sourceAvatar = isViewingSwitchedMember ? "" : String((profile as any)?.avatar_url || "");
+    setName(sourceName);
+    setPhone(sourcePhone);
+    setAvatarUrl(sourceAvatar);
     setPreviewFile(null);
     // Club member fields
     if (clubMember) {

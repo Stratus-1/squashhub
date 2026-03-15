@@ -1953,6 +1953,7 @@ export type Database = {
           club_id: string
           created_at: string
           description: string | null
+          fee_class: string
           id: string
           name: string
           sort_order: number
@@ -1963,6 +1964,7 @@ export type Database = {
           club_id: string
           created_at?: string
           description?: string | null
+          fee_class?: string
           id?: string
           name: string
           sort_order?: number
@@ -1973,6 +1975,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           description?: string | null
+          fee_class?: string
           id?: string
           name?: string
           sort_order?: number
@@ -2053,6 +2056,7 @@ export type Database = {
           club_id: string
           created_at: string
           fee_annual: number | null
+          fee_class: string
           fee_due_month: number | null
           fee_payable_to: string | null
           fee_payment_details: string | null
@@ -2065,6 +2069,7 @@ export type Database = {
           club_id: string
           created_at?: string
           fee_annual?: number | null
+          fee_class?: string
           fee_due_month?: number | null
           fee_payable_to?: string | null
           fee_payment_details?: string | null
@@ -2077,6 +2082,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           fee_annual?: number | null
+          fee_class?: string
           fee_due_month?: number | null
           fee_payable_to?: string | null
           fee_payment_details?: string | null

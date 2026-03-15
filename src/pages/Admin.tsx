@@ -1705,7 +1705,7 @@ export default function Admin() {
                 </div>
               </div>
 
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
@@ -1764,7 +1764,7 @@ export default function Admin() {
           {activeSection === "challenges" && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
               <SectionHeader title="Challenges" subtitle={`${pendingChallenges} pending`} />
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
@@ -1852,7 +1852,7 @@ export default function Admin() {
                 </Card>
               </div>
 
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
@@ -1924,7 +1924,7 @@ export default function Admin() {
                 </Button>
               </div>
 
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
@@ -2009,7 +2009,7 @@ export default function Admin() {
                 </Button>
               </div>
 
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
@@ -2095,7 +2095,7 @@ export default function Admin() {
               </Card>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <Card className="p-0 overflow-hidden">
+                <Card className="p-0 overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -2644,7 +2644,7 @@ export default function Admin() {
               <AdminEmailMarketing enabled={isAdmin || isManager} />
 
               {/* Audit Log */}
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <div className="p-4 pb-2">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-muted-foreground" />

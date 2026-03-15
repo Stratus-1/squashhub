@@ -417,15 +417,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarPlus className="w-4 h-4 text-primary" />
-          <p className="text-xs font-semibold font-heading">Club Events</p>
+      {!onClose && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarPlus className="w-4 h-4 text-primary" />
+            <p className="text-xs font-semibold font-heading">Club Events</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { resetForm(); setCreateOpen(true); }}>
+            <CalendarPlus className="w-3 h-3" /> Create
+          </Button>
         </div>
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { resetForm(); setCreateOpen(true); }}>
-          <CalendarPlus className="w-3 h-3" /> Create
-        </Button>
-      </div>
+      )}
 
       {eventsLoading ? (
         <div className="flex justify-center py-4">

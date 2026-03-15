@@ -33,20 +33,20 @@ export default function Dashboard() {
   const location = useLocation();
   const { user } = useAuth();
   const { club: contextClub } = useClubContext();
-  const { linkedMembers, activeMember, switchMember } = useMemberContext();
+  const { linkedMembers, activeMember, switchMember, effectiveUserId } = useMemberContext();
   const showFamilySwitcher = linkedMembers.length > 1;
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
-  const { data: challenges } = useChallenges();
+  const { data: challenges } = useChallenges(effectiveUserId);
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr, clubId);
-  const { data: myBookings } = useMyBookings();
-  const { data: myScheduledMatches } = useMyScheduledMatches();
+  const { data: myBookings } = useMyBookings(effectiveUserId);
+  const { data: myScheduledMatches } = useMyScheduledMatches(effectiveUserId);
 
   // Recent match results for the whole club
   const { data: recentMatches } = useQuery({

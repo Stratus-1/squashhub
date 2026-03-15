@@ -442,7 +442,7 @@ export default function MyAccount() {
   return (
     <div className="bottom-nav-safe">
       <SEO title="My Account" description="Manage your credit balance and fee payments." path="/my-account" noIndex />
-      <PageHeader title="My Account" subtitle="Credit balance & fee payments" />
+      <PageHeader title={isViewingSwitchedMember ? `${activeMember?.name}'s Account` : "My Account"} subtitle="Credit balance & fee payments" />
 
       {/* Credit Balance Card */}
       <motion.div

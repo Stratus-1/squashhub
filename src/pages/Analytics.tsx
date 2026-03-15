@@ -226,16 +226,26 @@ function PersonalTab() {
 
 function PersonalStatsSnapshot() {
   const { user } = useAuth();
-  const { data: profile } = useProfile();
+  const { activeMember } = useMemberContext();
+  const memberId = activeMember?.id || null;
+  const { data: squashTotals } = useSquashTotals(user?.id, { memberId });
   const { data: ladder } = useLadder();
   const myLadderPosition = useMemo(() => {
-    if (!user?.id || !ladder) return null;
-    return ladder.find((p: any) => p.id === user.id)?.ladder_position ?? null;
-  }, [ladder, user?.id]);
-  const matchesPlayed = profile?.matches_played ?? 0;
-  const wins = profile?.wins ?? 0;
-  const losses = profile?.losses ?? 0;
-  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
+    if (!ladder) return null;
+    if (memberId) {
+      const entry = ladder.find((p: any) => p.club_member_id === memberId);
+      if (entry) return entry.ladder_position ?? null;
+    }
+    if (user?.id) {
+      const entry = ladder.find((p: any) => p.user_id === user.id || p.id === user.id);
+      if (entry) return entry.ladder_position ?? null;
+    }
+    return null;
+  }, [ladder, memberId, user?.id]);
+  const matchesPlayed = squashTotals?.matches ?? 0;
+  const wins = squashTotals?.wins ?? 0;
+  const losses = squashTotals?.losses ?? 0;
+  const winRate = squashTotals?.win_rate ?? 0;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>

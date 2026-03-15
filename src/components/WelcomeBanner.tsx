@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useLadder } from "@/hooks/use-data";
 import { useMyClubMember } from "@/hooks/use-club";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Swords, X, Trophy, Sparkles, HandMetal } from "lucide-react";
@@ -16,17 +17,19 @@ export function WelcomeBanner() {
   const { data: profile } = useProfile();
   const { data: myClubMember } = useMyClubMember();
   const { data: ladder } = useLadder();
+  const { activeMember, effectiveUserId } = useMemberContext();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(true);
 
   const isNewPlayer = profile && (profile.matches_played === 0);
 
-  // Find player's ladder_position (only set for ranked players)
+  // Find player's ladder_position using active member
+  const activeMemberId = activeMember?.id || (myClubMember as any)?.id;
   const myLadderPosition = useMemo(() => {
-    if (!ladder || !user?.id) return null;
-    const me = ladder.find((p: any) => p.user_id === user.id || p.club_member_id === (myClubMember as any)?.id);
+    if (!ladder || !activeMemberId) return null;
+    const me = ladder.find((p: any) => p.club_member_id === activeMemberId);
     return (me as any)?.ladder_position ?? null;
-  }, [ladder, myClubMember, user?.id]);
+  }, [ladder, activeMemberId]);
 
   useEffect(() => {
     if (!profile) return;

@@ -336,6 +336,7 @@ export default function Challenges() {
     const isIncoming = type === "incoming";
     const opponentName = isIncoming ? c.challenger_name : c.opponent_name;
     const opponentId = isIncoming ? c.challenger_id : c.opponent_id;
+    const opponentMemberId = isIncoming ? (c.challenger_member_id || "") : (c.opponent_member_id || "");
     const cfg = statusConfig[c.status] || statusConfig.pending;
     const StatusIcon = cfg.icon;
     const hasCounter = !!(c as any).counter_date;

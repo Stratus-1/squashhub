@@ -528,6 +528,26 @@ export function MembersTab({ clubId }: { clubId: string }) {
           }}>
             <Download className="w-4 h-4 mr-1" />Template
           </Button>
+          <Button variant="outline" size="sm" onClick={() => {
+            const escape = (v: string) => v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
+            const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_category", "skill_level"];
+            const rows = members.map((m: any) => [
+              m.name || "", m.email || "", m.phone || "", m.gender || "",
+              m.club_member_number || "", m.id_number || "", m.address || "",
+              m.plays_league ? "true" : "false",
+              m.ladder_position ?? "",
+              m.fee_category?.name || "",
+              m.skill_level || "",
+            ].map(v => escape(String(v))).join(","));
+            const csv = [headers.join(","), ...rows].join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "members_export.csv"; a.click();
+            URL.revokeObjectURL(url);
+          }}>
+            <Download className="w-4 h-4 mr-1" />Export
+          </Button>
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
             <Upload className="w-4 h-4 mr-1" />CSV Import
           </Button>

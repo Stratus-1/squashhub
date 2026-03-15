@@ -147,6 +147,7 @@ function FeeCategoryDialog({ clubId, open, onOpenChange, existing }: { clubId: s
     description: existing?.description || "",
     annual_fee: existing?.annual_fee ?? 0,
     sort_order: existing?.sort_order ?? 0,
+    fee_class: existing?.fee_class || "club_income",
   });
   const qc = useQueryClient();
 

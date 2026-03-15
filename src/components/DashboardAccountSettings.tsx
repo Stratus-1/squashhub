@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIntegrations, useMyRoles, useProfile } from "@/hooks/use-data";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

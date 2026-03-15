@@ -65,17 +65,17 @@ export default function MyAccount() {
 
   // Credit transactions (explicitly tenant scoped)
   const { data: transactions, isLoading: txLoading } = useQuery({
-    queryKey: ["credit-transactions", user?.id, clubId, clubMemberId],
+    queryKey: ["credit-transactions", effectiveUserId, clubId, clubMemberId],
     queryFn: async () => {
       const { data, error } = await fromExt("member_credit_transactions")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", effectiveUserId!)
         .eq("club_id", clubId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user && !!clubId && !!clubMemberId,
+    enabled: !!effectiveUserId && !!clubId && !!clubMemberId,
   });
 
   const { data: fees, isLoading: feesLoading } = useQuery({

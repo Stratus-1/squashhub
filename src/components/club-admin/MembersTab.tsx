@@ -273,8 +273,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q);
   });
 
+  // Resolve delegate titles from club data
+  const club = clubData?.club;
+  const getDelegateTitle = (memberId: string): string | null => {
+    if (!club) return null;
+    const titles: string[] = [];
+    if ((club as any).chairman_member_id === memberId) titles.push("Chairman");
+    if ((club as any).secretary_member_id === memberId) titles.push("Secretary");
+    if ((club as any).club_captain_member_id === memberId) titles.push("Club Captain");
+    return titles.length > 0 ? titles.join(" / ") : null;
+  };
+
+  const isDelegate = (memberId: string) => !!getDelegateTitle(memberId);
+
   const handleToggleAdmin = async (member: ClubMember) => {
-    if (member.role === "captain") return;
+    if (member.role === "captain" || isDelegate(member.id)) return;
     const newRole = member.role === "admin" ? "member" : "admin";
     const { error } = await fromExt("club_members").update({ role: newRole }).eq("id", member.id);
     if (error) toast.error(error.message);

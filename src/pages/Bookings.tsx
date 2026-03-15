@@ -952,7 +952,7 @@ export default function Bookings() {
                             ? isMine
                               ? "bg-primary/15 border-primary/50 hover:bg-primary/20 cursor-pointer shadow-sm"
                               : "bg-secondary border-border/60 hover:bg-secondary/90 cursor-pointer shadow-sm"
-                            : "border-border bg-accent/10 hover:border-primary/40 hover:bg-primary/10 border-dashed cursor-pointer"
+                            : "border-border bg-win/10 hover:border-primary/40 hover:bg-win/20 border-dashed cursor-pointer"
                       )}
                       onClick={() => {
                         if (isPastSlot && !booking) return;

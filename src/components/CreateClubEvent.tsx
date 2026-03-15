@@ -314,8 +314,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           });
         }
       } else {
-        // Member bookings: split time across selected booking members, max 60min each
+        // Member bookings: split time across first N selected booking members (max 60min each)
+        const sessionsNeeded = Math.ceil(totalMinutes / 60);
         const bookingMembers = form.booking_member_ids
+          .slice(0, sessionsNeeded)
           .map((mid) => (members || []).find((m) => m.id === mid))
           .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
 
@@ -818,29 +820,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
                   const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
                   const totalMin = endMin - startMin;
-                  const maxMembers = Math.ceil(totalMin / 60);
+                  const sessionsNeeded = Math.ceil(totalMin / 60);
 
                   return (
                     <div className="space-y-2">
                       <p className="text-[11px] text-muted-foreground">
-                        Event duration: {totalMin} min — need {maxMembers} member{maxMembers !== 1 ? "s" : ""} (max 1hr each)
+                        Event duration: {totalMin} min — {sessionsNeeded} booking session{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr each).
+                        First {sessionsNeeded} selected member{sessionsNeeded !== 1 ? "s" : ""} will have bookings in their name.
                       </p>
                       <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
                         {invitedMembers.map((m) => {
                           const isSelected = form.booking_member_ids.includes(m.id);
-                          const atMax = !isSelected && form.booking_member_ids.length >= maxMembers;
+                          const selIndex = form.booking_member_ids.indexOf(m.id);
+                          const isBookingName = isSelected && selIndex < sessionsNeeded;
                           return (
                             <label
                               key={m.id}
                               className={cn(
                                 "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors text-sm",
                                 isSelected && "bg-accent",
-                                atMax && "opacity-50 cursor-not-allowed"
                               )}
                             >
                               <Checkbox
                                 checked={isSelected}
-                                disabled={atMax}
                                 onCheckedChange={() => {
                                   setForm((f) => ({
                                     ...f,
@@ -851,6 +853,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                                 }}
                               />
                               <span className="text-xs">{m.name || "Unnamed"}</span>
+                              {isBookingName && (
+                                <Badge variant="secondary" className="text-[9px] ml-auto">Booking {selIndex + 1}</Badge>
+                              )}
                             </label>
                           );
                         })}
@@ -859,9 +864,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         <div className="text-[11px] text-muted-foreground space-y-0.5">
                           <p className="font-medium text-foreground">Booking split preview:</p>
                           {(() => {
-                            const slotMin = Math.min(60, Math.ceil(totalMin / form.booking_member_ids.length));
+                            const bookingIds = form.booking_member_ids.slice(0, sessionsNeeded);
+                            const slotMin = Math.min(60, Math.ceil(totalMin / bookingIds.length));
                             let offset = 0;
-                            return form.booking_member_ids.map((mid) => {
+                            return bookingIds.map((mid) => {
                               const m = invitedMembers.find((x) => x.id === mid);
                               const slotEnd = Math.min(offset + slotMin, totalMin);
                               const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
@@ -872,6 +878,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                               );
                             });
                           })()}
+                          {form.booking_member_ids.length > sessionsNeeded && (
+                            <p className="text-muted-foreground italic">
+                              +{form.booking_member_ids.length - sessionsNeeded} more invited (no booking in their name)
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

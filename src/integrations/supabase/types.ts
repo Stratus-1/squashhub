@@ -1408,6 +1408,7 @@ export type Database = {
         Row: {
           amount: number
           club_id: string
+          club_member_id: string | null
           confirmed_at: string | null
           confirmed_by: string | null
           created_at: string
@@ -1423,6 +1424,7 @@ export type Database = {
         Insert: {
           amount: number
           club_id: string
+          club_member_id?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
@@ -1438,6 +1440,7 @@ export type Database = {
         Update: {
           amount?: number
           club_id?: string
+          club_member_id?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           created_at?: string
@@ -1450,7 +1453,22 @@ export type Database = {
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "member_credit_transactions_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_credit_transactions_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       member_fee_categories: {
         Row: {

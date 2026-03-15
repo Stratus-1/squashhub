@@ -63,19 +63,19 @@ export default function MyAccount() {
   const feeCategoryId = (activeClubMember as any)?.fee_category_id;
   const playsLeague = (activeClubMember as any)?.plays_league;
 
-  // Credit transactions (explicitly tenant scoped)
+  // Credit transactions scoped per club member
   const { data: transactions, isLoading: txLoading } = useQuery({
-    queryKey: ["credit-transactions", effectiveUserId, clubId, clubMemberId],
+    queryKey: ["credit-transactions", clubMemberId, clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("member_credit_transactions")
         .select("*")
-        .eq("user_id", effectiveUserId!)
+        .eq("club_member_id", clubMemberId!)
         .eq("club_id", clubId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId && !!clubId && !!clubMemberId,
+    enabled: !!clubMemberId && !!clubId,
   });
 
   const { data: fees, isLoading: feesLoading } = useQuery({
@@ -309,6 +309,7 @@ export default function MyAccount() {
       const { error } = await fromExt("member_credit_transactions").insert({
         user_id: effectiveUserId!,
         club_id: clubId,
+        club_member_id: clubMemberId,
         amount,
         type: "topup",
         method,
@@ -345,6 +346,7 @@ export default function MyAccount() {
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: effectiveUserId!,
           club_id: clubId,
+          club_member_id: clubMemberId,
           amount: totalAmount,
           type: "payment",
           method: "credit",
@@ -364,6 +366,7 @@ export default function MyAccount() {
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: effectiveUserId!,
           club_id: clubId,
+          club_member_id: clubMemberId,
           amount: totalAmount,
           type: "payment",
           method: "card",
@@ -382,6 +385,7 @@ export default function MyAccount() {
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: effectiveUserId!,
           club_id: clubId,
+          club_member_id: clubMemberId,
           amount: totalAmount,
           type: "payment",
           method: "eft",

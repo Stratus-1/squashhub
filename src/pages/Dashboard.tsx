@@ -308,11 +308,11 @@ export default function Dashboard() {
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
-            <span className="text-xs font-medium">Account</span>
+            <span className="text-xs font-medium leading-tight text-center">My Account</span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => openProfile("/profile?edit=1")}>
             <Settings className="w-5 h-5" />
-            <span className="text-xs font-medium">Profile</span>
+            <span className="text-xs font-medium leading-tight text-center">My Profile</span>
           </Button>
         </div>
       </div>

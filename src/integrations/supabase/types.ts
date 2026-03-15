@@ -1550,6 +1550,7 @@ export type Database = {
           fee_payment_details: string | null
           id: string
           name: string
+          pro_rate: boolean
           updated_at: string
           website: string | null
         }
@@ -1566,6 +1567,7 @@ export type Database = {
           fee_payment_details?: string | null
           id?: string
           name: string
+          pro_rate?: boolean
           updated_at?: string
           website?: string | null
         }
@@ -1582,6 +1584,7 @@ export type Database = {
           fee_payment_details?: string | null
           id?: string
           name?: string
+          pro_rate?: boolean
           updated_at?: string
           website?: string | null
         }
@@ -1959,6 +1962,7 @@ export type Database = {
           fee_class: string
           id: string
           name: string
+          pro_rate: boolean
           sort_order: number
           updated_at: string
         }
@@ -1970,6 +1974,7 @@ export type Database = {
           fee_class?: string
           id?: string
           name: string
+          pro_rate?: boolean
           sort_order?: number
           updated_at?: string
         }
@@ -1981,6 +1986,7 @@ export type Database = {
           fee_class?: string
           id?: string
           name?: string
+          pro_rate?: boolean
           sort_order?: number
           updated_at?: string
         }
@@ -2064,6 +2070,7 @@ export type Database = {
           fee_payable_to: string | null
           fee_payment_details: string | null
           id: string
+          pro_rate: boolean
           updated_at: string
         }
         Insert: {
@@ -2077,6 +2084,7 @@ export type Database = {
           fee_payable_to?: string | null
           fee_payment_details?: string | null
           id?: string
+          pro_rate?: boolean
           updated_at?: string
         }
         Update: {
@@ -2090,6 +2098,7 @@ export type Database = {
           fee_payable_to?: string | null
           fee_payment_details?: string | null
           id?: string
+          pro_rate?: boolean
           updated_at?: string
         }
         Relationships: [

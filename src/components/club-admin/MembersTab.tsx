@@ -584,8 +584,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const selectedCat = feeCategories.find(c => c.id === feeCategoryId);
   const previewFees: { label: string; amount: number }[] = [];
   if (selectedCat) {
-    const proRated = proRateClubFee(selectedCat.annual_fee, new Date().toISOString(), feeDueMonth);
-    previewFees.push({ label: `Club – ${selectedCat.name}${proRated < selectedCat.annual_fee ? " (pro-rated)" : ""}`, amount: proRated });
+    previewFees.push({ label: `Club – ${selectedCat.name}`, amount: selectedCat.annual_fee });
   }
   if (playsLeague) {
     for (const a of associations) {

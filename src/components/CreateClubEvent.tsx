@@ -314,21 +314,23 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           });
         }
       } else {
-        // Member bookings: split time across first N selected booking members (max 60min each)
-        const sessionsNeeded = Math.ceil(totalMinutes / 60);
+        // Member bookings: distribute across courts × hour-sessions
+        // e.g. 3 courts × 2hr = 6 bookings, each assigned to a different member
+        const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
+        const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
         const bookingMembers = form.booking_member_ids
-          .slice(0, sessionsNeeded)
+          .slice(0, totalSessionsNeeded)
           .map((mid) => (members || []).find((m) => m.id === mid))
           .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
 
         if (bookingMembers.length > 0) {
-          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / bookingMembers.length));
-          let offsetMin = 0;
+          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
+          let memberIdx = 0;
 
           for (const cid of form.court_ids) {
-            offsetMin = 0; // reset per court
-            for (const bm of bookingMembers) {
-              if (offsetMin >= totalMinutes) break;
+            let offsetMin = 0;
+            while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
+              const bm = bookingMembers[memberIdx];
               const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
               const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
               const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
@@ -342,6 +344,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 status: "active",
               });
               offsetMin = slotEnd;
+              memberIdx++;
             }
           }
         }

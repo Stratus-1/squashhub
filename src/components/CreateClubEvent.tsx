@@ -314,8 +314,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           });
         }
       } else {
-        // Member bookings: split time across selected booking members, max 60min each
+        // Member bookings: split time across first N selected booking members (max 60min each)
+        const sessionsNeeded = Math.ceil(totalMinutes / 60);
         const bookingMembers = form.booking_member_ids
+          .slice(0, sessionsNeeded)
           .map((mid) => (members || []).find((m) => m.id === mid))
           .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
 

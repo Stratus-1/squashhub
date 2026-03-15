@@ -308,6 +308,10 @@ export function useUpdateClub() {
       if (error) throw error;
       return data as Club;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-club"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-club"] });
+      qc.invalidateQueries({ queryKey: ["club-by-subdomain"] });
+      qc.invalidateQueries({ queryKey: ["club-delegates"] });
+    },
   });
 }

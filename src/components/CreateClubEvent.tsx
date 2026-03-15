@@ -139,25 +139,48 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!clubId,
   });
 
-  // Get RSVP counts
+  // Get RSVP counts + confirmed member names
   const eventIds = useMemo(() => (events || []).map((e: any) => e.id), [events]);
-  const { data: rsvpCounts } = useQuery({
-    queryKey: ["club-event-rsvps-counts", eventIds.join(",")],
+  const { data: rsvpData } = useQuery({
+    queryKey: ["club-event-rsvps-data", eventIds.join(",")],
     queryFn: async () => {
-      if (eventIds.length === 0) return {};
+      if (eventIds.length === 0) return { counts: {}, confirmedNames: {} };
       const { data, error } = await fromExt("club_event_rsvps")
-        .select("event_id, status")
+        .select("event_id, status, club_member_id")
         .in("event_id", eventIds);
       if (error) throw error;
       const counts: Record<string, { invited: number; confirmed: number; declined: number }> = {};
+      const confirmedMemberIds: Record<string, string[]> = {};
       for (const r of data || []) {
         if (!counts[r.event_id]) counts[r.event_id] = { invited: 0, confirmed: 0, declined: 0 };
         counts[r.event_id][r.status as "invited" | "confirmed" | "declined"]++;
+        if (r.status === "confirmed") {
+          if (!confirmedMemberIds[r.event_id]) confirmedMemberIds[r.event_id] = [];
+          confirmedMemberIds[r.event_id].push(r.club_member_id);
+        }
       }
-      return counts;
+      // Resolve member names for confirmed attendees
+      const allMemberIds = [...new Set(Object.values(confirmedMemberIds).flat())];
+      const nameMap: Record<string, string> = {};
+      if (allMemberIds.length > 0) {
+        const { data: memberData } = await supabase
+          .from("club_members")
+          .select("id, name")
+          .in("id", allMemberIds);
+        for (const m of memberData || []) {
+          nameMap[m.id] = m.name || "Unknown";
+        }
+      }
+      const confirmedNames: Record<string, string[]> = {};
+      for (const [eventId, mids] of Object.entries(confirmedMemberIds)) {
+        confirmedNames[eventId] = mids.map((mid) => nameMap[mid] || "Unknown");
+      }
+      return { counts, confirmedNames };
     },
     enabled: eventIds.length > 0,
   });
+  const rsvpCounts = rsvpData?.counts;
+  const confirmedNames = rsvpData?.confirmedNames;
 
   // My RSVPs
   const myMemberId = activeMember?.id;
@@ -480,6 +503,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
 
   const resetForm = () => {
+    const selfId = activeMember?.id;
     setForm({
       title: "",
       description: "",
@@ -492,10 +516,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       reminder_hours: "48",
       invite_scope: "all",
       invite_scope_id: "",
-      selected_member_ids: [],
+      selected_member_ids: selfId ? [selfId] : [],
       light_fee_split: "creator",
       is_club_booking: false,
-      booking_member_ids: [],
+      booking_member_ids: selfId ? [selfId] : [],
       court_ids: [],
     });
     setStep(1);
@@ -511,6 +535,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   };
 
   const toggleSelectedMember = (memberId: string) => {
+    // Don't allow deselecting the organizer
+    if (memberId === activeMember?.id) return;
     setForm((f) => ({
       ...f,
       selected_member_ids: f.selected_member_ids.includes(memberId)
@@ -571,6 +597,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
                   {e.description && (
                     <p className="text-xs text-muted-foreground line-clamp-2">{e.description}</p>
+                  )}
+
+                  {/* Confirmed member names */}
+                  {confirmedNames?.[e.id]?.length > 0 && (
+                    <div className="text-[11px] text-muted-foreground">
+                      <span className="font-medium text-foreground">Confirmed:</span>{" "}
+                      {confirmedNames[e.id].join(", ")}
+                    </div>
                   )}
 
                   <div className="flex items-center justify-between gap-2">

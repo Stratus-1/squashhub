@@ -2,7 +2,7 @@ import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight, Mail, Phone, User } from "lucide-react";
+import { Loader2, Building2, ArrowRight, Mail, Phone, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
@@ -15,6 +15,13 @@ interface ClubDelegate {
   name: string | null;
   email: string | null;
   phone: string | null;
+}
+
+interface FeeCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  annual_fee: number;
 }
 
 interface ClubData {
@@ -38,10 +45,9 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { user } = useAuth();
 
-  // If hostClub is provided (subdomain routing), skip the query
   const needsQuery = !hostClub && !!subdomain;
 
-  const { data: queriedClub, isLoading, error } = useQuery({
+  const { data: queriedClub, isLoading } = useQuery({
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
@@ -78,6 +84,20 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     enabled: !!club && delegateIds.length > 0,
   });
 
+  // Fetch fee categories
+  const { data: feeCategories = [] } = useQuery({
+    queryKey: ["club-fee-categories-public", club?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_fee_categories")
+        .select("id, name, description, annual_fee")
+        .eq("club_id", club!.id)
+        .order("sort_order");
+      if (error) throw error;
+      return (data || []) as FeeCategory[];
+    },
+    enabled: !!club?.id,
+  });
+
   const getDelegateName = (memberId: string | null | undefined) => {
     if (!memberId) return null;
     return delegates.find(d => d.id === memberId) || null;
@@ -86,6 +106,15 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   const chairmanDelegate = getDelegateName(club?.chairman_member_id);
   const secretaryDelegate = getDelegateName(club?.secretary_member_id);
   const captainDelegate = getDelegateName(club?.club_captain_member_id);
+
+  const signInUrl = (() => {
+    const clubParam = displaySubdomain ? `club=${encodeURIComponent(displaySubdomain)}` : "";
+    const redirect = displaySubdomain
+      ? `redirectTo=${encodeURIComponent(`/?club=${displaySubdomain}`)}`
+      : "";
+    const query = [clubParam, redirect].filter(Boolean).join("&");
+    return query ? `/auth?${query}` : "/auth";
+  })();
 
   if (loading) {
     return (
@@ -108,10 +137,12 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     );
   }
 
-  // If user is logged in from path-based club route, keep club context in URL
   if (user) {
     return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
+
+  const hasDelegates = chairmanDelegate || secretaryDelegate || captainDelegate;
+  const hasFees = feeCategories.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,7 +152,6 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
         path={`/c/${displaySubdomain}`}
       />
 
-      {/* Hero with squash court background */}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -129,9 +159,10 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
 
-        <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-20">
+        <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-16">
+          {/* Club header */}
           <motion.div
-            className="max-w-md w-full text-center space-y-5"
+            className="text-center space-y-3 mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -153,56 +184,96 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                 {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
               </p>
             )}
+          </motion.div>
 
-            {/* Club Delegates */}
-            {(chairmanDelegate || secretaryDelegate || captainDelegate) && (
-              <div className="space-y-2 pt-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Club Officials</h2>
-                <div className="grid gap-2">
-                  {[
-                    { label: "Chairman", delegate: chairmanDelegate },
-                    { label: "Secretary", delegate: secretaryDelegate },
-                    { label: "Club Captain", delegate: captainDelegate },
-                  ].filter(d => d.delegate).map(({ label, delegate }) => (
-                    <Card key={label} className="p-3 bg-card/60 backdrop-blur-sm border-border/50">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
-                      <p className="text-sm font-semibold text-foreground">{delegate!.name || "—"}</p>
-                      <div className="flex flex-wrap gap-3 mt-1">
-                        {delegate!.email && (
-                          <a href={`mailto:${delegate!.email}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
-                            <Mail className="w-3 h-3" />{delegate!.email}
-                          </a>
-                        )}
-                        {delegate!.phone && (
-                          <a href={`tel:${delegate!.phone}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
-                            <Phone className="w-3 h-3" />{delegate!.phone}
-                          </a>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+          {/* Two-column layout: Officials | Fees */}
+          {(hasDelegates || hasFees) && (
+            <motion.div
+              className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+            >
+              {/* Left: Club Officials */}
+              <div className="space-y-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center md:text-left">
+                  Club Officials
+                </h2>
+                {hasDelegates ? (
+                  <div className="space-y-2">
+                    {[
+                      { label: "Chairman", delegate: chairmanDelegate },
+                      { label: "Secretary", delegate: secretaryDelegate },
+                      { label: "Club Captain", delegate: captainDelegate },
+                    ].filter(d => d.delegate).map(({ label, delegate }) => (
+                      <Card key={label} className="p-3 bg-card/60 backdrop-blur-sm border-border/50">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
+                        <p className="text-sm font-semibold text-foreground">{delegate!.name || "—"}</p>
+                        <div className="flex flex-wrap gap-3 mt-1">
+                          {delegate!.email && (
+                            <a href={`mailto:${delegate!.email}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
+                              <Mail className="w-3 h-3" />{delegate!.email}
+                            </a>
+                          )}
+                          {delegate!.phone && (
+                            <a href={`tel:${delegate!.phone}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
+                              <Phone className="w-3 h-3" />{delegate!.phone}
+                            </a>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic text-center md:text-left">No officials assigned yet</p>
+                )}
               </div>
-            )}
 
-            <div className="pt-3 space-y-3">
-              <Button
-                size="lg"
-                className="w-full gap-2"
-                onClick={() => {
-                  const clubParam = displaySubdomain ? `club=${encodeURIComponent(displaySubdomain)}` : "";
-                  const redirect = displaySubdomain
-                    ? `redirectTo=${encodeURIComponent(`/?club=${displaySubdomain}`)}`
-                    : "";
-                  const query = [clubParam, redirect].filter(Boolean).join("&");
-                  window.location.href = query ? `/auth?${query}` : "/auth";
-                }}
-              >
-                Sign In / Register
-                <ArrowRight className="w-4 h-4" />
-              </Button>
+              {/* Right: Membership Fees */}
+              <div className="space-y-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center md:text-left">
+                  Membership Fees
+                </h2>
+                {hasFees ? (
+                  <div className="space-y-2">
+                    {feeCategories.map(cat => (
+                      <Card key={cat.id} className="p-3 bg-card/60 backdrop-blur-sm border-border/50 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground">{cat.name}</p>
+                          {cat.description && <p className="text-xs text-muted-foreground truncate">{cat.description}</p>}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-primary">R{cat.annual_fee}</p>
+                          <p className="text-[10px] text-muted-foreground">per year</p>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic text-center md:text-left">Fee structure not yet configured</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Centered Sign In button */}
+          <motion.div
+            className="w-full max-w-xs"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <Button
+              size="lg"
+              className="w-full gap-2"
+              onClick={() => { window.location.href = signInUrl; }}
+            >
+              Sign In / Register
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <div className="mt-4">
+              <PoweredBySquashHub />
             </div>
-            <PoweredBySquashHub />
           </motion.div>
         </div>
       </section>

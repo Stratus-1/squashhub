@@ -161,7 +161,7 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
   const isLinked = !!m.user_id;
   const isAdmin = m.role === "admin" || m.role === "captain";
   const isDelegate = !!delegateTitle;
-  const isProtected = m.role === "captain" || isDelegate;
+  const isProtected = isDelegate;
   return (
     <Card className="p-3 flex items-start justify-between gap-2">
       <div className="flex-1 min-w-0">

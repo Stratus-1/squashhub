@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Search, Edit2, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { UserPlus, Upload, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
@@ -146,17 +146,19 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   );
 }
 
-function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateFee }: {
+function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
   onCreateFee: (fee: ExpectedFee, clubMemberId: string) => void;
+  onToggleAdmin: () => void;
 }) {
   const displayName = m.profiles?.name || m.name || "—";
   const displayEmail = m.profiles?.email || m.email || "";
   const isLinked = !!m.user_id;
+  const isAdmin = m.role === "admin" || m.role === "captain";
   return (
     <Card className="p-3 flex items-start justify-between gap-2">
       <div className="flex-1 min-w-0">
@@ -179,6 +181,17 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
       <div className="flex items-start gap-3 shrink-0">
         <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
         <div className="flex gap-1">
+          {m.role !== "captain" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${isAdmin ? "text-primary" : "text-muted-foreground"}`}
+              onClick={onToggleAdmin}
+              title={isAdmin ? "Remove admin rights" : "Grant admin rights"}
+            >
+              {isAdmin ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldOff className="w-3.5 h-3.5" />}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
           {m.role !== "captain" && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
@@ -250,6 +263,17 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const q = search.toLowerCase();
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q);
   });
+
+  const handleToggleAdmin = async (member: ClubMember) => {
+    if (member.role === "captain") return;
+    const newRole = member.role === "admin" ? "member" : "admin";
+    const { error } = await fromExt("club_members").update({ role: newRole }).eq("id", member.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(newRole === "admin" ? `${member.profiles?.name || member.name} granted admin rights` : `Admin rights removed from ${member.profiles?.name || member.name}`);
+      qc.invalidateQueries({ queryKey: ["club-members"] });
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Remove this member from the club?")) return;
@@ -358,6 +382,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onDelete={() => handleDelete(m.id)}
                     onTogglePaid={handleTogglePaid}
                     onCreateFee={handleCreateFee}
+                    onToggleAdmin={() => handleToggleAdmin(m)}
                   />
                 ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}

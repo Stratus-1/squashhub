@@ -2026,7 +2026,7 @@ export type Database = {
           title: string
           type: string
           url: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           club_member_id?: string | null
@@ -2038,7 +2038,7 @@ export type Database = {
           title: string
           type?: string
           url?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           club_member_id?: string | null
@@ -2050,7 +2050,7 @@ export type Database = {
           title?: string
           type?: string
           url?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

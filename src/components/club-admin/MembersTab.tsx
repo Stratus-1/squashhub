@@ -710,6 +710,31 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 
   const handleSave = async () => {
+    // ── Field validations (matching onboarding wizard) ──
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      toast.error("Full name is required (at least 2 characters)");
+      return;
+    }
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim().toLowerCase())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (form.id_number.trim() && (!/^\d+$/.test(form.id_number.trim()) || form.id_number.trim().length !== 13)) {
+      toast.error("SA ID number must be exactly 13 digits");
+      return;
+    }
+    if (form.phone && form.phone !== "+27" && !/^\+\d{7,15}$/.test(form.phone.replace(/\s/g, ""))) {
+      toast.error("Please enter a valid phone number in international format (e.g. +27821234567)");
+      return;
+    }
+    if (!form.gender) {
+      toast.error("Gender is required");
+      return;
+    }
+    if (!form.fee_category_id) {
+      toast.error("Fee category is required");
+      return;
+    }
     if (form.plays_league && !form.association_id) {
       toast.error("Please select a league association");
       return;

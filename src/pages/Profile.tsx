@@ -275,7 +275,7 @@ export default function Profile() {
       <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-y-auto overscroll-contain p-4 sm:p-6">
         <SEO title="Profile" description="Your profile details." path="/profile" noIndex />
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit profile" : "Profile details"}</DialogTitle>
+          <DialogTitle>{mode === "edit" ? `Edit profile${isViewingSwitchedMember ? ` — ${activeMember?.name || ""}` : ""}` : `Profile details${isViewingSwitchedMember ? ` — ${activeMember?.name || ""}` : ""}`}</DialogTitle>
         </DialogHeader>
 
         {isLoading || memberLoading ? (

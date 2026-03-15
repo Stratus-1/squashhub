@@ -853,12 +853,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
                   const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
                   const totalMin = endMin - startMin;
-                  const sessionsNeeded = Math.ceil(totalMin / 60);
+                  const hourSessionsPerCourt = Math.ceil(totalMin / 60);
+                  const numCourts = form.court_ids.length || 1;
+                  const sessionsNeeded = hourSessionsPerCourt * numCourts;
 
                   return (
                     <div className="space-y-2">
                       <p className="text-[11px] text-muted-foreground">
-                        Event duration: {totalMin} min — {sessionsNeeded} booking session{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr each).
+                        {numCourts} court{numCourts !== 1 ? "s" : ""} × {hourSessionsPerCourt} hr session{hourSessionsPerCourt !== 1 ? "s" : ""} = {sessionsNeeded} booking{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr per member).
                         First {sessionsNeeded} selected member{sessionsNeeded !== 1 ? "s" : ""} will have bookings in their name.
                       </p>
                       <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">

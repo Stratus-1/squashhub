@@ -82,11 +82,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) {
-    const redirectTo = `${location.pathname}${location.search || ""}`;
-    // On club subdomains, always redirect to club-specific auth
+    // On club subdomains, redirect to club landing page (root) instead of auth
     if (clubSubdomain) {
-      return <Navigate to={`/auth?redirectTo=${encodeURIComponent(redirectTo)}`} replace />;
+      return <Navigate to="/" replace />;
     }
+    const redirectTo = `${location.pathname}${location.search || ""}`;
     return <Navigate to={`/auth?redirectTo=${encodeURIComponent(redirectTo)}`} replace />;
   }
   return <>{children}</>;

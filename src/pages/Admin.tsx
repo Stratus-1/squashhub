@@ -1764,7 +1764,7 @@ export default function Admin() {
           {activeSection === "challenges" && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
               <SectionHeader title="Challenges" subtitle={`${pendingChallenges} pending`} />
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">

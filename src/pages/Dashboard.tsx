@@ -97,11 +97,12 @@ export default function Dashboard() {
   // Find player's position on gender-specific ladder
   const myLadderPosition = useMemo(() => {
     if (!ladder || !myClubMember || !user) return null;
-    const gender = (myClubMember as any)?.gender;
+    const effectiveMemberId = activeMember?.id || myClubMember.id;
+    const gender = activeMember?.gender || (myClubMember as any)?.gender;
     const genderLadder = gender ? ladder.filter((p: any) => p.gender === gender) : ladder;
-    const idx = genderLadder.findIndex((p: any) => p.club_member_id === myClubMember.id || p.user_id === user.id);
+    const idx = genderLadder.findIndex((p: any) => p.club_member_id === effectiveMemberId || p.user_id === user.id);
     return idx >= 0 ? idx + 1 : null;
-  }, [ladder, myClubMember, user]);
+  }, [ladder, myClubMember, user, activeMember]);
 
   const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });

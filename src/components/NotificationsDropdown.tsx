@@ -42,6 +42,7 @@ export function NotificationsDropdown({
   triggerVariant?: ComponentProps<typeof Button>["variant"];
 }) {
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: unreadCount } = useUnreadNotificationsCount();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -50,14 +51,21 @@ export function NotificationsDropdown({
   const canLoad = !!user?.id;
 
   const { data: notifications, isLoading } = useQuery({
-    queryKey: ["notifications", user?.id],
+    queryKey: ["notifications", user?.id, activeMember?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(15);
+
+      if (activeMember?.id) {
+        query = query.eq("club_member_id", activeMember.id);
+      } else {
+        query = query.eq("user_id", user!.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as NotificationRow[];
     },

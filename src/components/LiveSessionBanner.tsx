@@ -220,7 +220,7 @@ export function LiveSessionBanner() {
                       variant="destructive"
                       className="h-8 px-3 text-xs gap-1"
                       disabled={actionLoading}
-                      onClick={() => handleTerminate(displaySession.id)}
+                      onClick={() => setConfirmEndOpen(displaySession.id)}
                     >
                       <ZapOff className="w-3.5 h-3.5" />
                       End

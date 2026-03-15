@@ -950,7 +950,7 @@ export default function Bookings() {
                       onClick={() => {
                         if (isPastSlot && !booking) return;
                         if (booking) setBookingDetails(booking);
-                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true });
+                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true, lightFeeSplit: "booker" });
                       }}
                     >
                       {booking ? (

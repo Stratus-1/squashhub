@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
       // Get target court info
       const { data: targetCourt } = await supabase
         .from("courts")
-        .select("id, relay_device_id, relay_server, club_id, clubs(shelly_auth_key)")
+        .select("id, relay_device_id, relay_server, club_id")
         .eq("id", targetCourtId)
         .maybeSingle();
 
@@ -256,7 +256,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      const targetAuthKey = (targetCourt as any).clubs?.shelly_auth_key;
+      const targetClubId = targetCourt?.club_id;
+      const { data: targetSecrets } = targetClubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", targetClubId).maybeSingle() : { data: null };
+      const targetAuthKey = targetSecrets?.shelly_auth_key;
 
       // Turn on lights on target court
       if (targetCourt.relay_device_id && targetAuthKey) {

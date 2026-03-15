@@ -298,6 +298,10 @@ export default function Dashboard() {
             <ClipboardCheck className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Enter Result</span>
           </Button>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/challenges")}>
+            <Swords className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">Challenges</span>
+          </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-accent/40 bg-accent/10" onClick={() => navigate("/match-marker")}>
             <Crosshair className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Mark a Game</span>

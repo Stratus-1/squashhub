@@ -127,6 +127,7 @@ export type Database = {
           is_friendly: boolean
           lights_requested: boolean
           opponent_id: string | null
+          opponent_member_id: string | null
           start_time: string
           status: string
           user_id: string
@@ -144,6 +145,7 @@ export type Database = {
           is_friendly?: boolean
           lights_requested?: boolean
           opponent_id?: string | null
+          opponent_member_id?: string | null
           start_time: string
           status?: string
           user_id: string
@@ -161,6 +163,7 @@ export type Database = {
           is_friendly?: boolean
           lights_requested?: boolean
           opponent_id?: string | null
+          opponent_member_id?: string | null
           start_time?: string
           status?: string
           user_id?: string
@@ -192,6 +195,20 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_opponent_member_id_fkey"
+            columns: ["opponent_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_opponent_member_id_fkey"
+            columns: ["opponent_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -266,6 +283,7 @@ export type Database = {
       challenges: {
         Row: {
           challenger_id: string
+          challenger_member_id: string | null
           club_id: string | null
           confirmed_by: string | null
           counter_date: string | null
@@ -274,6 +292,7 @@ export type Database = {
           created_at: string
           id: string
           opponent_id: string
+          opponent_member_id: string | null
           proposed_date: string | null
           proposed_time: string | null
           status: string
@@ -281,6 +300,7 @@ export type Database = {
         }
         Insert: {
           challenger_id: string
+          challenger_member_id?: string | null
           club_id?: string | null
           confirmed_by?: string | null
           counter_date?: string | null
@@ -289,6 +309,7 @@ export type Database = {
           created_at?: string
           id?: string
           opponent_id: string
+          opponent_member_id?: string | null
           proposed_date?: string | null
           proposed_time?: string | null
           status?: string
@@ -296,6 +317,7 @@ export type Database = {
         }
         Update: {
           challenger_id?: string
+          challenger_member_id?: string | null
           club_id?: string | null
           confirmed_by?: string | null
           counter_date?: string | null
@@ -304,6 +326,7 @@ export type Database = {
           created_at?: string
           id?: string
           opponent_id?: string
+          opponent_member_id?: string | null
           proposed_date?: string | null
           proposed_time?: string | null
           status?: string
@@ -311,10 +334,38 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "challenges_challenger_member_id_fkey"
+            columns: ["challenger_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenges_challenger_member_id_fkey"
+            columns: ["challenger_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "challenges_court_id_fkey"
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenges_opponent_member_id_fkey"
+            columns: ["opponent_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenges_opponent_member_id_fkey"
+            columns: ["opponent_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -1623,10 +1674,14 @@ export type Database = {
           match_date: string
           notes: string | null
           player_a: string
+          player_a_member_id: string | null
           player_b: string
+          player_b_member_id: string | null
           score: string | null
           submitted_by: string | null
+          submitted_by_member_id: string | null
           winner_id: string | null
+          winner_member_id: string | null
         }
         Insert: {
           challenge_id?: string | null
@@ -1641,10 +1696,14 @@ export type Database = {
           match_date?: string
           notes?: string | null
           player_a: string
+          player_a_member_id?: string | null
           player_b: string
+          player_b_member_id?: string | null
           score?: string | null
           submitted_by?: string | null
+          submitted_by_member_id?: string | null
           winner_id?: string | null
+          winner_member_id?: string | null
         }
         Update: {
           challenge_id?: string | null
@@ -1659,10 +1718,14 @@ export type Database = {
           match_date?: string
           notes?: string | null
           player_a?: string
+          player_a_member_id?: string | null
           player_b?: string
+          player_b_member_id?: string | null
           score?: string | null
           submitted_by?: string | null
+          submitted_by_member_id?: string | null
           winner_id?: string | null
+          winner_member_id?: string | null
         }
         Relationships: [
           {
@@ -1677,6 +1740,62 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player_a_member_id_fkey"
+            columns: ["player_a_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player_a_member_id_fkey"
+            columns: ["player_a_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player_b_member_id_fkey"
+            columns: ["player_b_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player_b_member_id_fkey"
+            columns: ["player_b_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_submitted_by_member_id_fkey"
+            columns: ["submitted_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_submitted_by_member_id_fkey"
+            columns: ["submitted_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -2299,6 +2418,7 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      is_member_owner: { Args: { _member_id: string }; Returns: boolean }
       respond_to_booking_invite: {
         Args: { invite_token: string; new_status: string; reason?: string }
         Returns: undefined

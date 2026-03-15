@@ -459,7 +459,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
-      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
       toast.success("RSVP updated");
     },
   });

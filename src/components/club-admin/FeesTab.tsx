@@ -80,6 +80,14 @@ export function FeesTab({ clubId }: { clubId: string }) {
     else qc.invalidateQueries({ queryKey: ["my-club"] });
   };
 
+  const handleToggleActive = async (fee: UnifiedFee) => {
+    const newActive = !fee.active;
+    const { error } = await fromExt(fee.source as any).update({ active: newActive }).eq("id", fee.id);
+    if (error) { toast.error(error.message); return; }
+    const key = fee.source === "member_fee_categories" ? "fee-categories" : fee.source === "league_associations" ? "league-associations" : "national-body-fees";
+    qc.invalidateQueries({ queryKey: [key] });
+  };
+
   const handleDelete = async (fee: UnifiedFee) => {
     if (!confirm(`Delete "${fee.name}"?`)) return;
     const { error } = await fromExt(fee.source as any).delete().eq("id", fee.id);

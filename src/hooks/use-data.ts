@@ -775,33 +775,43 @@ export function useCreateChallenge() {
       opponentMemberId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
-      if (!opponentId) throw new Error("Choose an opponent");
-      if (opponentId === user.id) throw new Error("You can't challenge yourself");
 
-      const { data: existing, error: existingError } = await supabase
-        .from("challenges")
+      // Build duplicate-check filter using member IDs when available
+      const chkChallenger = challengerMemberId || user.id;
+      const chkOpponent = opponentMemberId || opponentId;
+
+      // Check by member IDs first, then user IDs
+      let existingFilter = `and(challenger_id.eq.${user.id},opponent_id.eq.${opponentId}),and(challenger_id.eq.${opponentId},opponent_id.eq.${user.id})`;
+      if (challengerMemberId && opponentMemberId) {
+        existingFilter += `,and(challenger_member_id.eq.${challengerMemberId},opponent_member_id.eq.${opponentMemberId}),and(challenger_member_id.eq.${opponentMemberId},opponent_member_id.eq.${challengerMemberId})`;
+      }
+
+      const { data: existing, error: existingError } = await fromAny("challenges")
         .select("id, status")
         .in("status", ["pending", "accepted"])
-        .or(
-          `and(challenger_id.eq.${user.id},opponent_id.eq.${opponentId}),and(challenger_id.eq.${opponentId},opponent_id.eq.${user.id})`
-        )
+        .or(existingFilter)
         .limit(1);
       if (existingError) throw existingError;
       if (existing && existing.length > 0) {
         throw new Error("A challenge between you two is already active");
       }
 
-      const { data: oppActive, error: oppActiveError } = await supabase
-        .from("challenges")
+      // Check opponent doesn't already have an active challenge
+      let oppFilter = `challenger_id.eq.${opponentId},opponent_id.eq.${opponentId}`;
+      if (opponentMemberId) {
+        oppFilter += `,challenger_member_id.eq.${opponentMemberId},opponent_member_id.eq.${opponentMemberId}`;
+      }
+      const { data: oppActive, error: oppActiveError } = await fromAny("challenges")
         .select("id")
         .in("status", ["pending", "accepted"])
-        .or(`challenger_id.eq.${opponentId},opponent_id.eq.${opponentId}`)
+        .or(oppFilter)
         .limit(1);
       if (oppActiveError) throw oppActiveError;
       if ((oppActive || []).length > 0) {
         throw new Error("That player already has an active challenge. Try again later.");
       }
 
+      // Insert — the DB trigger populate_challenge_ids handles bi-directional resolution
       const insertPayload: Record<string, any> = {
         challenger_id: user.id,
         opponent_id: opponentId,
@@ -818,6 +828,30 @@ export function useCreateChallenge() {
         .select()
         .single();
       if (error) throw error;
+
+      // Send notification to opponent if they have a user_id
+      if (opponentId && opponentId !== user.id) {
+        try {
+          // Look up opponent's user_id from member if needed
+          let notifyUserId = opponentId;
+          if (opponentMemberId) {
+            const { data: mem } = await supabase
+              .from("club_members")
+              .select("user_id")
+              .eq("id", opponentMemberId)
+              .maybeSingle();
+            if (mem?.user_id) notifyUserId = mem.user_id;
+          }
+          await fromAny("notifications").insert({
+            user_id: notifyUserId,
+            title: "New Challenge!",
+            message: `You have been challenged! Proposed: ${proposedDate || "TBD"} at ${proposedTime?.slice(0, 5) || "TBD"}.`,
+            type: "challenge",
+            url: "/challenges",
+          });
+        } catch { /* non-critical */ }
+      }
+
       return data;
     },
     onSuccess: () => {

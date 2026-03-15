@@ -380,7 +380,7 @@ export default function MyAccount() {
       } else {
         // EFT — pending admin confirmation
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
-          user_id: user!.id,
+          user_id: effectiveUserId!,
           club_id: clubId,
           amount: totalAmount,
           type: "payment",

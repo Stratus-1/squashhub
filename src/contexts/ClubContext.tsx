@@ -15,6 +15,9 @@ interface ClubContextType {
     email: string | null;
     phone: string | null;
     logo_url: string | null;
+    chairman_member_id: string | null;
+    secretary_member_id: string | null;
+    club_captain_member_id: string | null;
   } | null;
   isLoading: boolean;
 }

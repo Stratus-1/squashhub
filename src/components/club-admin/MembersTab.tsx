@@ -382,6 +382,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onDelete={() => handleDelete(m.id)}
                     onTogglePaid={handleTogglePaid}
                     onCreateFee={handleCreateFee}
+                    onToggleAdmin={() => handleToggleAdmin(m)}
                   />
                 ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}

@@ -1852,7 +1852,7 @@ export default function Admin() {
                 </Card>
               </div>
 
-              <Card className="p-0 overflow-hidden">
+              <Card className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">

@@ -25,17 +25,23 @@ export type SquashTotals = {
   points_against: number;
 };
 
-export function useSquashTotals(playerId?: string | null) {
+export function useSquashTotals(playerId?: string | null, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   return useQuery({
-    queryKey: ["squash-totals", playerId],
+    queryKey: ["squash-totals", memberId || playerId],
     queryFn: async () => {
+      if (memberId) {
+        const { data, error } = await rpc("get_squash_totals_by_member", { target_member_id: memberId });
+        if (error) throw error;
+        return data as unknown as SquashTotals;
+      }
       if (!playerId) return null;
       const { data, error } = await rpc("get_squash_totals", { target_user_id: playerId });
       if (error) throw error;
       return data as unknown as SquashTotals;
     },
-    enabled: !!user && !!playerId,
+    enabled: !!user && !!(memberId || playerId),
   });
 }
 
@@ -54,11 +60,20 @@ export type HeadToHeadRow = {
   points_against: number;
 };
 
-export function useHeadToHead(playerId?: string | null, limit = 20) {
+export function useHeadToHead(playerId?: string | null, limit = 20, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   return useQuery({
-    queryKey: ["head-to-head", playerId, limit],
+    queryKey: ["head-to-head", memberId || playerId, limit],
     queryFn: async () => {
+      if (memberId) {
+        const { data, error } = await rpc("get_head_to_head_by_member", {
+          target_member_id: memberId,
+          limit_count: limit,
+        } as any);
+        if (error) throw error;
+        return (data || []) as HeadToHeadRow[];
+      }
       if (!playerId) return [] as HeadToHeadRow[];
       const { data, error } = await rpc("get_head_to_head", {
         target_user_id: playerId,
@@ -67,7 +82,7 @@ export function useHeadToHead(playerId?: string | null, limit = 20) {
       if (error) throw error;
       return (data || []) as HeadToHeadRow[];
     },
-    enabled: !!user && !!playerId,
+    enabled: !!user && !!(memberId || playerId),
   });
 }
 
@@ -334,22 +349,32 @@ export function useCancelBooking() {
   });
 }
 
-export function useMyBookings(overrideUserId?: string | null) {
+export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   const targetId = overrideUserId || user?.id;
+  const queryId = memberId || targetId;
 
   return useQuery({
-    queryKey: ["my-bookings", targetId],
+    queryKey: ["my-bookings", queryId],
     queryFn: async () => {
-      if (!targetId) return [];
-      const { data, error } = await supabase
+      if (!queryId) return [];
+      let query = supabase
         .from("bookings")
         .select("*")
-        .eq("user_id", targetId)
         .eq("status", "active")
         .gte("date", new Date().toISOString().split("T")[0])
         .order("date")
         .order("start_time");
+
+      // Filter by club_member_id when available, else fall back to user_id
+      if (memberId) {
+        query = query.eq("club_member_id", memberId);
+      } else {
+        query = query.eq("user_id", targetId!);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       // Map court names & opponent names (check profiles first, then club_members)
@@ -374,11 +399,10 @@ export function useMyBookings(overrideUserId?: string | null) {
 
       const now = new Date();
       const todayStr = now.toISOString().split("T")[0];
-      const nowTime = now.toTimeString().slice(0, 5); // "HH:MM"
+      const nowTime = now.toTimeString().slice(0, 5);
 
       return data
         .filter((b: any) => {
-          // For today's bookings, exclude ones where end_time has already passed
           if (b.date === todayStr && b.end_time && b.end_time.slice(0, 5) <= nowTime) return false;
           return true;
         })
@@ -389,7 +413,7 @@ export function useMyBookings(overrideUserId?: string | null) {
           opponent_rank: null,
         }));
     },
-    enabled: !!targetId,
+    enabled: !!queryId,
   });
 }
 
@@ -582,6 +606,8 @@ export type ChallengeWithProfiles = {
   id: string;
   challenger_id: string;
   opponent_id: string;
+  challenger_member_id?: string | null;
+  opponent_member_id?: string | null;
   status: ChallengeStatus;
   proposed_date: string | null;
   expires_at?: string | null;
@@ -698,20 +724,30 @@ export function useAcceptChallengeSchedule() {
   });
 }
 
-export function useChallenges(overrideUserId?: string | null) {
+export function useChallenges(overrideUserId?: string | null, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   const targetId = overrideUserId || user?.id;
+  const queryId = memberId || targetId;
 
   return useQuery({
-    queryKey: ["challenges", targetId],
+    queryKey: ["challenges", queryId],
     queryFn: async () => {
-      if (!targetId) return [] as ChallengeWithProfiles[];
+      if (!queryId) return [] as ChallengeWithProfiles[];
 
-      const { data: challenges, error } = await supabase
+      let query = supabase
         .from("challenges")
         .select("*")
-        .or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`)
         .order("created_at", { ascending: false });
+
+      // Filter by member_id when available, else fall back to user_id
+      if (memberId) {
+        query = query.or(`challenger_member_id.eq.${memberId},opponent_member_id.eq.${memberId}`);
+      } else {
+        query = query.or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`);
+      }
+
+      const { data: challenges, error } = await query;
       if (error) throw error;
 
       const ids = [
@@ -720,7 +756,7 @@ export function useChallenges(overrideUserId?: string | null) {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, name")
-        .in("id", ids);
+        .in("id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]);
       if (profilesError) throw profilesError;
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p.name]) || []);
@@ -731,22 +767,29 @@ export function useChallenges(overrideUserId?: string | null) {
         opponent_name: profileMap.get(c.opponent_id) || "Unknown",
       })) as ChallengeWithProfiles[];
     },
-    enabled: !!targetId,
+    enabled: !!queryId,
   });
 }
 
-export function useIncomingChallengesCount() {
+export function useIncomingChallengesCount(memberId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["challenges", "incoming-count", user?.id],
+    queryKey: ["challenges", "incoming-count", memberId || user?.id],
     queryFn: async () => {
       if (!user) return 0;
-      const { count, error } = await supabase
+      let query = supabase
         .from("challenges")
         .select("id", { count: "exact", head: true })
-        .eq("opponent_id", user.id)
         .eq("status", "pending");
+
+      if (memberId) {
+        query = query.eq("opponent_member_id", memberId);
+      } else {
+        query = query.eq("opponent_id", user.id);
+      }
+
+      const { count, error } = await query;
       if (error) throw error;
       return typeof count === "number" ? count : 0;
     },

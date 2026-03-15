@@ -21,10 +21,10 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { BarChart3 } from "lucide-react";
 
 // Inline opponent stats for the challenge dialog
-function OpponentStatsInline({ userId, myUserId }: { userId: string; myUserId: string }) {
-  const { data: stats, isLoading } = useSquashTotals(userId);
-  const { data: h2h } = useHeadToHead(myUserId, 20);
-  const h2hRecord = useMemo(() => h2h?.find((r) => r.opponent_id === userId) || null, [h2h, userId]);
+function OpponentStatsInline({ memberId, myMemberId }: { memberId: string; myMemberId: string }) {
+  const { data: stats, isLoading } = useSquashTotals(null, { memberId });
+  const { data: h2h } = useHeadToHead(null, 20, { memberId: myMemberId });
+  const h2hRecord = useMemo(() => h2h?.find((r) => r.opponent_id === memberId) || null, [h2h, memberId]);
 
   if (isLoading) return <p className="text-[11px] text-muted-foreground">Loading stats…</p>;
   if (!stats) return null;
@@ -286,8 +286,8 @@ export default function Ladder() {
                   </p>
                 </div>
               </div>
-              {challengeDialog.player.user_id && user && (
-                <OpponentStatsInline userId={challengeDialog.player.user_id} myUserId={user.id} />
+              {challengeDialog.player.club_member_id && myMemberId && (
+                <OpponentStatsInline memberId={challengeDialog.player.club_member_id} myMemberId={myMemberId} />
               )}
             </>
           )}

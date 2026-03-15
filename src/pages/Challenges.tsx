@@ -68,14 +68,14 @@ function needsResult(c: ChallengeWithProfiles): boolean {
 }
 
 // ---------- Opponent Stats Panel ----------
-function OpponentStatsPanel({ userId, myUserId }: { userId: string; myUserId: string }) {
-  const { data: stats, isLoading } = useSquashTotals(userId);
-  const { data: h2h } = useHeadToHead(myUserId, 20);
+function OpponentStatsPanel({ memberId, myMemberId }: { memberId?: string; myMemberId?: string; }) {
+  const { data: stats, isLoading } = useSquashTotals(null, { memberId });
+  const { data: h2h } = useHeadToHead(null, 20, { memberId: myMemberId });
 
   const h2hRecord = useMemo(() => {
-    if (!h2h) return null;
-    return h2h.find((r) => r.opponent_id === userId) || null;
-  }, [h2h, userId]);
+    if (!h2h || !memberId) return null;
+    return h2h.find((r) => r.opponent_id === memberId) || null;
+  }, [h2h, memberId]);
 
   if (isLoading) return <div className="text-xs text-muted-foreground py-2">Loading stats…</div>;
   if (!stats) return null;
@@ -117,10 +117,11 @@ function OpponentStatsPanel({ userId, myUserId }: { userId: string; myUserId: st
 export default function Challenges() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: challenges, isLoading } = useChallenges();
+  const { activeMember } = useMemberContext();
+  const myMemberId = activeMember?.id || null;
+  const { data: challenges, isLoading } = useChallenges(undefined, { memberId: myMemberId });
   const updateChallenge = useUpdateChallengeStatus();
   const { data: clubData } = useMyClub();
-  const { activeMember } = useMemberContext();
   const clubId = clubData?.club?.id;
 
   // Courts for counter-proposals
@@ -144,20 +145,27 @@ export default function Challenges() {
   // Stats dialog
   const [statsDialog, setStatsDialog] = useState<{
     open: boolean;
-    opponentId: string;
+    opponentMemberId: string;
     opponentName: string;
-  }>({ open: false, opponentId: "", opponentName: "" });
+  }>({ open: false, opponentMemberId: "", opponentName: "" });
 
   const { incoming, outgoing, past } = useMemo(() => {
-    if (!user || !challenges) return { incoming: [], outgoing: [], past: [] };
+    if (!challenges) return { incoming: [], outgoing: [], past: [] };
     const active = challenges.filter((c) => c.status === "pending" || c.status === "accepted");
     const done = challenges.filter((c) => c.status === "declined" || c.status === "completed");
+
+    // Use member_id matching when available, fall back to user_id
+    const isMyChallenge = (id: string | null, memberId: string | null) => {
+      if (myMemberId && memberId) return memberId === myMemberId;
+      return id === user?.id;
+    };
+
     return {
-      incoming: active.filter((c) => c.opponent_id === user.id),
-      outgoing: active.filter((c) => c.challenger_id === user.id),
+      incoming: active.filter((c) => isMyChallenge(c.opponent_id, c.opponent_member_id)),
+      outgoing: active.filter((c) => isMyChallenge(c.challenger_id, c.challenger_member_id)),
       past: done.slice(0, 20),
     };
-  }, [challenges, user]);
+  }, [challenges, user, myMemberId]);
 
   const handleAccept = async (c: ChallengeWithProfiles) => {
     try {
@@ -328,6 +336,7 @@ export default function Challenges() {
     const isIncoming = type === "incoming";
     const opponentName = isIncoming ? c.challenger_name : c.opponent_name;
     const opponentId = isIncoming ? c.challenger_id : c.opponent_id;
+    const opponentMemberId = isIncoming ? (c.challenger_member_id || "") : (c.opponent_member_id || "");
     const cfg = statusConfig[c.status] || statusConfig.pending;
     const StatusIcon = cfg.icon;
     const hasCounter = !!(c as any).counter_date;
@@ -373,7 +382,7 @@ export default function Challenges() {
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-[10px] shrink-0"
-              onClick={() => setStatsDialog({ open: true, opponentId, opponentName })}
+              onClick={() => setStatsDialog({ open: true, opponentMemberId, opponentName })}
             >
               <BarChart3 className="w-3 h-3" />
             </Button>
@@ -554,8 +563,8 @@ export default function Challenges() {
           <DialogHeader>
             <DialogTitle>{statsDialog.opponentName} — Stats</DialogTitle>
           </DialogHeader>
-          {statsDialog.open && user && (
-            <OpponentStatsPanel userId={statsDialog.opponentId} myUserId={user.id} />
+          {statsDialog.open && myMemberId && (
+            <OpponentStatsPanel memberId={statsDialog.opponentMemberId} myMemberId={myMemberId} />
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatsDialog((s) => ({ ...s, open: false }))}>Close</Button>

@@ -8,6 +8,7 @@ import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { useHeadToHead, usePlayerProfile, useProfile, useSquashTotals, useLadder } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Flame, Loader2, Swords, Target, Timer, Trophy, TrendingUp } from "lucide-react";
 import { useEffect, useMemo } from "react";
@@ -29,6 +30,7 @@ export default function PlayerProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
   const { data: me } = useProfile();
   const { data: player, isLoading, error: playerError } = usePlayerProfile(id);
@@ -43,18 +45,35 @@ export default function PlayerProfile() {
   const showAvailability = isSelf || (!!player && (((player as any)?.privacy_show_availability) ?? true));
   const showAdvanced = isSelf || (!!player && (((player as any)?.privacy_show_advanced_stats) ?? true));
 
-  const { data: squashTotals, isLoading: squashTotalsLoading } = useSquashTotals(showAdvanced ? id : null);
-  const { data: headToHead, isLoading: headToHeadLoading } = useHeadToHead(showRecentMatches ? id : null, 10);
+  // Resolve the club_member_id for this player from the ladder data
+  const playerMemberId = useMemo(() => {
+    if (!ladder || !id) return null;
+    const member = (ladder as any[]).find((m: any) => m.user_id === id || m.id === id);
+    return member?.club_member_id || member?.id || null;
+  }, [ladder, id]);
+
+  const myMemberId = activeMember?.id || null;
+
+  const { data: squashTotals, isLoading: squashTotalsLoading } = useSquashTotals(
+    showAdvanced ? id : null,
+    { memberId: showAdvanced ? playerMemberId : null }
+  );
+  const { data: headToHead, isLoading: headToHeadLoading } = useHeadToHead(
+    showRecentMatches ? id : null,
+    10,
+    { memberId: showRecentMatches ? playerMemberId : null }
+  );
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
-    queryKey: ["player-matches", id],
+    queryKey: ["player-matches", playerMemberId || id],
     queryFn: async () => {
-      if (!id) return [];
+      if (!id && !playerMemberId) return [];
       const { data: matches, error } = await (supabase as any)
         .from("matches")
         .select("*")
-        .or(`player_a.eq.${id},player_b.eq.${id}`)
-        .eq("is_friendly", false)
+        .or(playerMemberId
+          ? `player_a_member_id.eq.${playerMemberId},player_b_member_id.eq.${playerMemberId}`
+          : `player_a.eq.${id},player_b.eq.${id}`)
         .order("match_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(50) as any;

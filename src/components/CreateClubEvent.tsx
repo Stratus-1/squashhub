@@ -596,6 +596,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     <p className="text-xs text-muted-foreground line-clamp-2">{e.description}</p>
                   )}
 
+                  {/* Confirmed member names */}
+                  {confirmedNames?.[e.id]?.length > 0 && (
+                    <div className="text-[11px] text-muted-foreground">
+                      <span className="font-medium text-foreground">Confirmed:</span>{" "}
+                      {confirmedNames[e.id].join(", ")}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-[11px] text-muted-foreground">
                       {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "Loading..."}

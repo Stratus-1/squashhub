@@ -314,23 +314,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         });
       }
 
-      // Send notifications
+      // Send notifications (best-effort, don't block event creation)
       if (inviteeIds.length > 0) {
-        const memberUsers = await supabase.from("club_members").select("user_id").in("id", inviteeIds).not("user_id", "is", null);
-        const userIds = (memberUsers.data || []).map((m) => m.user_id).filter(Boolean) as string[];
-        const recurrenceText = form.recurrence === "once"
-          ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
-          : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
-        const notifRows = userIds
-          .filter((uid) => uid !== user.id)
-          .map((uid) => ({
-            user_id: uid,
-            title: `${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event`,
-            message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}`,
-            type: "booking",
-          }));
-        if (notifRows.length > 0) {
-          await supabase.from("notifications").insert(notifRows);
+        try {
+          const memberUsers = await supabase.from("club_members").select("user_id").in("id", inviteeIds).not("user_id", "is", null);
+          const userIds = (memberUsers.data || []).map((m) => m.user_id).filter(Boolean) as string[];
+          const recurrenceText = form.recurrence === "once"
+            ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
+            : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
+          const notifRows = userIds
+            .filter((uid) => uid !== user.id)
+            .map((uid) => ({
+              user_id: uid,
+              title: `${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event`,
+              message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}`,
+              type: "booking",
+            }));
+          if (notifRows.length > 0) {
+            await fromExt("notifications").insert(notifRows);
+          }
+        } catch (notifErr) {
+          console.warn("[CreateClubEvent] Notification insert failed (non-blocking):", notifErr);
         }
       }
 

@@ -508,11 +508,11 @@ export function MembersTab({ clubId }: { clubId: string }) {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => {
-            const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking"];
+            const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_type"];
             const sample = [
               headers.join(","),
-              "John Smith,john@example.com,0821234567,Male,MB001,9001015009088,123 Main St,true,1",
-              "Jane Doe,jane@example.com,0839876543,Female,MB002,9205120054083,456 Oak Ave,false,2",
+              "John Smith,john@example.com,0821234567,Male,MB001,9001015009088,123 Main St,true,1,Normal",
+              "Jane Doe,jane@example.com,0839876543,Female,MB002,9205120054083,456 Oak Ave,false,2,Student",
             ].join("\n");
             const blob = new Blob([sample], { type: "text/csv" });
             const url = URL.createObjectURL(blob);

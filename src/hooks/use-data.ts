@@ -751,7 +751,7 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
       if (error) throw error;
 
       const ids = [
-        ...new Set(challenges.flatMap((c) => [c.challenger_id, c.opponent_id])),
+        ...new Set(challenges.flatMap((c) => [c.challenger_id, c.opponent_id]).filter(Boolean)),
       ];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
@@ -761,10 +761,27 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p.name]) || []);
 
+      // For opponents without user_id, resolve names from club_members
+      const memberIdsToResolve = challenges
+        .filter((c) => !c.opponent_id && c.opponent_member_id)
+        .map((c) => c.opponent_member_id!);
+      const challengerMemberIdsToResolve = challenges
+        .filter((c) => !c.challenger_id && c.challenger_member_id)
+        .map((c) => c.challenger_member_id!);
+      const allMemberIds = [...new Set([...memberIdsToResolve, ...challengerMemberIdsToResolve])];
+      
+      let memberNameMap = new Map<string, string>();
+      if (allMemberIds.length > 0) {
+        const { data: members } = await fromAny("club_members")
+          .select("id, name")
+          .in("id", allMemberIds);
+        memberNameMap = new Map((members || []).map((m: any) => [m.id, m.name]));
+      }
+
       return challenges.map((c) => ({
         ...c,
-        challenger_name: profileMap.get(c.challenger_id) || "Unknown",
-        opponent_name: profileMap.get(c.opponent_id) || "Unknown",
+        challenger_name: profileMap.get(c.challenger_id!) || memberNameMap.get(c.challenger_member_id!) || "Unknown",
+        opponent_name: profileMap.get(c.opponent_id!) || memberNameMap.get(c.opponent_member_id!) || "Unknown",
       })) as ChallengeWithProfiles[];
     },
     enabled: !!queryId,

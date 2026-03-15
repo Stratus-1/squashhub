@@ -38,7 +38,7 @@ export default function PlayerProfile() {
   const clubId = clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
-  const isSelf = !!id && user?.id === id;
+  const isSelf = !!id && (user?.id === id || activeMember?.id === id);
   const showRecentMatches = isSelf || (!!player && (((player as any)?.privacy_show_recent_matches) ?? true));
   const showTraining = isSelf || (!!player && (((player as any)?.privacy_show_training) ?? true));
   const showAbout = isSelf || (!!player && (((player as any)?.privacy_show_about) ?? true));

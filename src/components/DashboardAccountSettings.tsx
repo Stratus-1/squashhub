@@ -538,10 +538,6 @@ export function DashboardAccountSettings() {
       </Card>
 
 
-      <p className="text-[11px] text-muted-foreground">
-        Legal: <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">Terms</Link>{" "}
-        · <Link to="/privacy" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">Privacy</Link>
-      </p>
     </div>
   );
 }

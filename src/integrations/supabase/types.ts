@@ -125,6 +125,7 @@ export type Database = {
           guest_name: string | null
           id: string
           is_friendly: boolean
+          light_fee_split: string
           lights_requested: boolean
           opponent_id: string | null
           opponent_member_id: string | null
@@ -143,6 +144,7 @@ export type Database = {
           guest_name?: string | null
           id?: string
           is_friendly?: boolean
+          light_fee_split?: string
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null
@@ -161,6 +163,7 @@ export type Database = {
           guest_name?: string | null
           id?: string
           is_friendly?: boolean
+          light_fee_split?: string
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null

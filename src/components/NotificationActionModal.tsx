@@ -59,6 +59,7 @@ function getActionLabel(type: string): string {
 
 export function NotificationActionModal() {
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -67,15 +68,22 @@ export function NotificationActionModal() {
 
   // Fetch unread notifications
   const { data: unreadNotifications } = useQuery({
-    queryKey: ["unread-notifications-modal", user?.id],
+    queryKey: ["unread-notifications-modal", user?.id, activeMember?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", user!.id)
         .eq("read", false)
         .order("created_at", { ascending: false })
         .limit(20);
+
+      if (activeMember?.id) {
+        query = query.eq("club_member_id", activeMember.id);
+      } else {
+        query = query.eq("user_id", user!.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as NotificationRow[];
     },

@@ -20,11 +20,15 @@ function initials(name: string) {
 
 export function IncomingChallengesCard({
   userId,
+  memberId,
+  activeMemberUserId,
   challenges,
   maxItems = 3,
   onViewAll,
 }: {
   userId: string | null | undefined;
+  memberId?: string | null;
+  activeMemberUserId?: string | null;
   challenges: ChallengeWithProfiles[] | null | undefined;
   maxItems?: number;
   onViewAll?: () => void;
@@ -32,13 +36,30 @@ export function IncomingChallengesCard({
   const updateChallenge = useUpdateChallengeStatus();
 
   const incoming = useMemo(() => {
-    if (!userId) return [];
-    return (challenges || []).filter(
-      (c) => c.opponent_id === userId && c.status === "pending" && !(c as any).counter_date
-    );
-  }, [challenges, userId]);
+    if (!userId && !memberId) return [];
+    return (challenges || []).filter((c) => {
+      const hasCounter = !!(c as any).counter_date || !!(c as any).counter_time;
+      const isIncomingByMember = !!memberId && (c as any).opponent_member_id === memberId;
+      const isIncomingByUser = !!userId && c.opponent_id === userId;
+      return c.status === "pending" && !hasCounter && (isIncomingByMember || isIncomingByUser);
+    });
+  }, [challenges, memberId, userId]);
 
-  if (!userId || incoming.length === 0) return null;
+  const canRespond = (challenge: ChallengeWithProfiles) => {
+    if (userId && challenge.opponent_id === userId) return true;
+    if (
+      memberId &&
+      (challenge as any).opponent_member_id === memberId &&
+      activeMemberUserId &&
+      userId &&
+      activeMemberUserId === userId
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  if ((!userId && !memberId) || incoming.length === 0) return null;
 
   const accept = async (challengeId: string) => {
     try {

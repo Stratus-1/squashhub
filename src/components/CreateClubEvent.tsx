@@ -719,42 +719,6 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               </div>
 
-              {/* Booking Name */}
-              <div className="rounded-lg border border-border p-3 space-y-3">
-                {isAdmin ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-medium">Book under Club name (free)</p>
-                        <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
-                      </div>
-                      <Switch
-                        checked={form.is_club_booking}
-                        onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booked_by_member_id: "" }))}
-                      />
-                    </div>
-
-                    {!form.is_club_booking && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Book under member</Label>
-                        <Select value={form.booked_by_member_id} onValueChange={(v) => setForm((f) => ({ ...f, booked_by_member_id: v }))}>
-                          <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
-                          <SelectContent>
-                            {(members || []).map((m) => (
-                              <SelectItem key={m.id} value={m.id}>{m.name || "Unnamed"}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium">Court booked under your name</p>
-                    <p className="text-[11px] text-muted-foreground">You will be responsible for the booking fee</p>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 

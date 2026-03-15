@@ -1467,6 +1467,38 @@ export default function Bookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm End Session Dialog */}
+      <Dialog open={!!confirmEndSession} onOpenChange={() => setConfirmEndSession(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading flex items-center gap-2">
+              <ZapOff className="w-4 h-4" /> End Court Session?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will turn off the lights and end your session. You'll be charged based on actual usage.
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setConfirmEndSession(null)} disabled={terminatingSession}>
+              Keep Playing
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={terminatingSession}
+              onClick={() => {
+                if (confirmEndSession) {
+                  handleTerminateSession(confirmEndSession);
+                  setConfirmEndSession(null);
+                }
+              }}
+            >
+              <ZapOff className="w-3.5 h-3.5 mr-1" />
+              {terminatingSession ? "Ending..." : "End Session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -520,7 +520,7 @@ export default function MyAccount() {
         transition={{ delay: 0.15 }}
       >
         <h2 className="text-sm font-semibold font-heading mb-2">Account Statement</h2>
-        {(txLoading || feesLoading || lightSessionsLoading) ? (
+        {(txLoading || feesLoading) ? (
           <Card className="p-4 flex justify-center">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </Card>

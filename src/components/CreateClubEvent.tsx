@@ -294,24 +294,55 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         }
       }
 
-      // Create court bookings for the first instance
+      // Create court bookings — split across booking members (max 1hr each)
       const firstDate = instanceDates[0];
-      for (const cid of form.court_ids) {
-        const bookingUserId = form.is_club_booking
-          ? user.id
-          : (form.booked_by_member_id
-            ? (members || []).find((m) => m.id === form.booked_by_member_id)?.user_id || user.id
-            : user.id);
+      const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
+      const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
+      const totalMinutes = endMinutes - startMinutes;
 
-        await supabase.from("bookings").insert({
-          court_id: cid,
-          date: firstDate,
-          start_time: form.start_time + ":00",
-          end_time: form.end_time + ":00",
-          user_id: bookingUserId,
-          guest_name: form.is_club_booking ? `${club?.name || "Club"} — ${form.title}` : undefined,
-          status: "active",
-        });
+      if (form.is_club_booking) {
+        // Admin club booking: single booking per court under club name
+        for (const cid of form.court_ids) {
+          await supabase.from("bookings").insert({
+            court_id: cid,
+            date: firstDate,
+            start_time: form.start_time + ":00",
+            end_time: form.end_time + ":00",
+            user_id: user.id,
+            guest_name: `${club?.name || "Club"} — ${form.title}`,
+            status: "active",
+          });
+        }
+      } else {
+        // Member bookings: split time across selected booking members, max 60min each
+        const bookingMembers = form.booking_member_ids
+          .map((mid) => (members || []).find((m) => m.id === mid))
+          .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
+
+        if (bookingMembers.length > 0) {
+          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / bookingMembers.length));
+          let offsetMin = 0;
+
+          for (const cid of form.court_ids) {
+            offsetMin = 0; // reset per court
+            for (const bm of bookingMembers) {
+              if (offsetMin >= totalMinutes) break;
+              const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
+              const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
+              const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
+
+              await supabase.from("bookings").insert({
+                court_id: cid,
+                date: firstDate,
+                start_time: slotStartTime,
+                end_time: slotEndTime,
+                user_id: bm.user_id || user.id,
+                status: "active",
+              });
+              offsetMin = slotEnd;
+            }
+          }
+        }
       }
 
       // Send notifications (best-effort, don't block event creation)

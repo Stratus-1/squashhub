@@ -244,14 +244,83 @@ export function MembersTab({ clubId }: { clubId: string }) {
     return computeExpectedFees(member, feeCategories, associations, nationalFees, feeDueMonth, feePayments);
   };
 
-  const handleTogglePaid = async (feeId: string, paid: boolean) => {
-    const updates: any = { paid, paid_at: paid ? new Date().toISOString() : null };
-    const { error } = await fromExt("club_member_fee_payments").update(updates).eq("id", feeId);
-    if (error) toast.error(error.message);
-    else { toast.success(paid ? "Marked as paid" : "Marked as unpaid"); refetchPayments(); }
+  /** Create paired GL journal entries for a fee toggle */
+  const createJournalEntries = async (
+    memberId: string,
+    feeId: string,
+    amount: number,
+    feeType: string,
+    feeLabel: string,
+    isAccrual: boolean // true = fee being charged (unticked), false = fee being reversed (ticked back)
+  ) => {
+    const journalRef = crypto.randomUUID();
+    const isPassThrough = feeType === "association" || feeType === "national" || feeType === "national_body";
+    const creditAccount = isPassThrough ? "creditors" : "fee_income";
+    const desc = isAccrual
+      ? `Fee accrued: ${feeLabel}`
+      : `Fee reversed: ${feeLabel}`;
+
+    // Get member name for description
+    const member = members.find(m => m.id === memberId);
+    const memberName = member?.profiles?.name || member?.name || "Member";
+    const fullDesc = `${desc} — ${memberName}`;
+
+    const entries = isAccrual
+      ? [
+          { club_id: clubId, journal_ref: journalRef, account: "debtors", debit: amount, credit: 0, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
+          { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: 0, credit: amount, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
+        ]
+      : [
+          // Reverse: Dt Fee Income/Creditors, Ct Debtors
+          { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: amount, credit: 0, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
+          { club_id: clubId, journal_ref: journalRef, account: "debtors", debit: 0, credit: amount, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
+        ];
+
+    await fromExt("club_journal_entries").insert(entries);
+
+    // Also create member credit transaction for their statement
+    // Find the member's user_id for the transaction
+    const userId = member?.user_id;
+    if (userId) {
+      await fromExt("member_credit_transactions").insert({
+        user_id: userId,
+        club_id: clubId,
+        club_member_id: memberId,
+        amount: isAccrual ? amount : -amount,
+        type: isAccrual ? "debit" : "refund",
+        method: "system",
+        description: isAccrual ? `Fee charged: ${feeLabel}` : `Fee reversed: ${feeLabel}`,
+        status: "confirmed",
+        reference: feeId,
+      });
+    }
   };
 
-  /** Create a member fee record and immediately mark as paid */
+  const handleTogglePaid = async (feeId: string, paid: boolean) => {
+    // Find the fee details
+    const fee = feePayments.find(f => f.id === feeId);
+    if (!fee) return;
+
+    const updates: any = { paid, paid_at: paid ? new Date().toISOString() : null };
+    const { error } = await fromExt("club_member_fee_payments").update(updates).eq("id", feeId);
+    if (error) { toast.error(error.message); return; }
+
+    // When unticking (paid -> unpaid): accrue fee (Dt Debtors, Ct Fee Income/Creditors)
+    // When ticking (unpaid -> paid): reverse the accrual
+    if (!paid) {
+      // Fee now unpaid = accrue it
+      await createJournalEntries(fee.club_member_id, feeId, fee.amount, fee.fee_type, fee.fee_label, true);
+    } else {
+      // Fee now paid = reverse accrual
+      await createJournalEntries(fee.club_member_id, feeId, fee.amount, fee.fee_type, fee.fee_label, false);
+    }
+
+    toast.success(paid ? "Marked as paid" : "Marked as unpaid");
+    refetchPayments();
+    qc.invalidateQueries({ queryKey: ["club-journal-entries"] });
+  };
+
+  /** Create a member fee record and immediately mark as paid (no GL entries needed — paid from start) */
   const handleCreateFee = async (fee: ExpectedFee, clubMemberId: string) => {
     const { error } = await fromExt("club_member_fee_payments").insert({
       club_member_id: clubMemberId,

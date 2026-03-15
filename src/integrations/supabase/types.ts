@@ -849,6 +849,84 @@ export type Database = {
           },
         ]
       }
+      club_journal_entries: {
+        Row: {
+          account: Database["public"]["Enums"]["gl_account"]
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          credit: number
+          debit: number
+          description: string
+          fee_payment_id: string | null
+          id: string
+          journal_ref: string
+          transaction_id: string | null
+        }
+        Insert: {
+          account: Database["public"]["Enums"]["gl_account"]
+          club_id: string
+          club_member_id?: string | null
+          created_at?: string
+          credit?: number
+          debit?: number
+          description: string
+          fee_payment_id?: string | null
+          id?: string
+          journal_ref?: string
+          transaction_id?: string | null
+        }
+        Update: {
+          account?: Database["public"]["Enums"]["gl_account"]
+          club_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          credit?: number
+          debit?: number
+          description?: string
+          fee_payment_id?: string | null
+          id?: string
+          journal_ref?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_journal_entries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_journal_entries_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_journal_entries_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_journal_entries_fee_payment_id_fkey"
+            columns: ["fee_payment_id"]
+            isOneToOne: false
+            referencedRelation: "club_member_fee_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_journal_entries_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "member_credit_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_member_fee_payments: {
         Row: {
           amount: number
@@ -2493,6 +2571,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       club_member_role: "captain" | "admin" | "member"
+      gl_account: "debtors" | "fee_income" | "bank" | "creditors"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -2627,6 +2706,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       club_member_role: ["captain", "admin", "member"],
+      gl_account: ["debtors", "fee_income", "bank", "creditors"],
       integration_provider: [
         "strava",
         "apple_health",

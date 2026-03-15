@@ -227,17 +227,21 @@ export default function Challenges() {
       await updateChallenge.mutateAsync({ challengeId: c.id, status: "declined" });
 
       // Notify the other party
-      const otherUserId = c.challenger_id === user?.id ? c.opponent_id : c.challenger_id;
-      const otherName = c.challenger_id === user?.id ? c.opponent_name : c.challenger_name;
-      try {
-        await fromExt("notifications").insert({
-          user_id: otherUserId,
-          title: "Challenge Cancelled",
-          message: `The challenge has been cancelled.`,
-          type: "challenge",
-          url: "/challenges",
-        });
-      } catch { /* non-critical */ }
+      const isChallenger = myMemberId
+        ? (c as any).challenger_member_id === myMemberId
+        : c.challenger_id === user?.id;
+      const otherUserId = isChallenger ? c.opponent_id : c.challenger_id;
+      if (otherUserId) {
+        try {
+          await fromExt("notifications").insert({
+            user_id: otherUserId,
+            title: "Challenge Cancelled",
+            message: `The challenge has been cancelled.`,
+            type: "challenge",
+            url: "/challenges",
+          });
+        } catch { /* non-critical */ }
+      }
 
       toast.success("Challenge cancelled");
     } catch (e: any) {

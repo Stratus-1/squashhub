@@ -146,9 +146,10 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   );
 }
 
-function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin }: {
+function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
+  delegateTitle?: string | null;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
@@ -159,12 +160,17 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
   const displayEmail = m.profiles?.email || m.email || "";
   const isLinked = !!m.user_id;
   const isAdmin = m.role === "admin" || m.role === "captain";
+  const isDelegate = !!delegateTitle;
+  const isProtected = m.role === "captain" || isDelegate;
   return (
     <Card className="p-3 flex items-start justify-between gap-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium truncate">{displayName}</span>
           <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
+          {delegateTitle && (
+            <Badge variant="default" className="text-[10px] bg-amber-600 hover:bg-amber-700">{delegateTitle}</Badge>
+          )}
           <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
             {isLinked ? "✓ Registered" : "✗ Not registered"}
           </Badge>
@@ -181,7 +187,7 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
       <div className="flex items-start gap-3 shrink-0">
         <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
         <div className="flex gap-1">
-          {m.role !== "captain" && (
+          {!isProtected && (
             <Button
               variant="ghost"
               size="icon"
@@ -192,8 +198,11 @@ function MemberCard({ member: m, fees, onEdit, onDelete, onTogglePaid, onCreateF
               {isAdmin ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldOff className="w-3.5 h-3.5" />}
             </Button>
           )}
+          {isProtected && isAdmin && (
+            <ShieldCheck className="w-3.5 h-3.5 text-primary mx-2 mt-2" />
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
-          {m.role !== "captain" && (
+          {!isProtected && (
             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
           )}
         </div>
@@ -264,8 +273,21 @@ export function MembersTab({ clubId }: { clubId: string }) {
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q);
   });
 
+  // Resolve delegate titles from club data
+  const club = clubData?.club;
+  const getDelegateTitle = (memberId: string): string | null => {
+    if (!club) return null;
+    const titles: string[] = [];
+    if ((club as any).chairman_member_id === memberId) titles.push("Chairman");
+    if ((club as any).secretary_member_id === memberId) titles.push("Secretary");
+    if ((club as any).club_captain_member_id === memberId) titles.push("Club Captain");
+    return titles.length > 0 ? titles.join(" / ") : null;
+  };
+
+  const isDelegate = (memberId: string) => !!getDelegateTitle(memberId);
+
   const handleToggleAdmin = async (member: ClubMember) => {
-    if (member.role === "captain") return;
+    if (member.role === "captain" || isDelegate(member.id)) return;
     const newRole = member.role === "admin" ? "member" : "admin";
     const { error } = await fromExt("club_members").update({ role: newRole }).eq("id", member.id);
     if (error) toast.error(error.message);
@@ -378,6 +400,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     key={m.id}
                     member={m}
                     fees={getFeesForMember(m)}
+                    delegateTitle={getDelegateTitle(m.id)}
                     onEdit={() => setEditMember(m)}
                     onDelete={() => handleDelete(m.id)}
                     onTogglePaid={handleTogglePaid}

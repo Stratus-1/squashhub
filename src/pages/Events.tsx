@@ -32,6 +32,10 @@ type EventRow = {
 export default function Events() {
   const { user } = useAuth();
 
+  const { data: clubData } = useMyClub();
+  const hasClub = !!clubData?.club;
+  const [showCreate, setShowCreate] = useState(false);
+
   const { data: events, isLoading, error } = useQuery({
     queryKey: ["events", user?.id ? "authed" : "anon"],
     queryFn: async () => {
@@ -63,6 +67,16 @@ export default function Events() {
       <PageHeader title="Events" subtitle="Upcoming club events" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-3 mb-20">
+        {hasClub && !showCreate && (
+          <Button className="w-full gap-2" onClick={() => setShowCreate(true)}>
+            <Plus className="w-4 h-4" />
+            Create Event
+          </Button>
+        )}
+
+        {showCreate && (
+          <CreateClubEvent onClose={() => setShowCreate(false)} />
+        )}
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />

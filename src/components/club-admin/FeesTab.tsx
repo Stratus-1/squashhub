@@ -66,7 +66,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
         type: (f as any).fee_type === "other" ? "other" : "national",
         typeLabel: (f as any).fee_type === "other" ? "Other" : "National Body",
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
-        dueMonth: f.fee_due_month ?? 1,
+        active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1,
         source: "national_body_fees", raw: f,
       });
     });

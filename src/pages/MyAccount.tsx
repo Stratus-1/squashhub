@@ -23,12 +23,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 export default function MyAccount() {
   const { user } = useAuth();
+  const { activeMember, effectiveUserId } = useMemberContext();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: clubData } = useMyClub();
   const { data: myClubMember } = useMyClubMember();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
-  const memberNo = myClubMember?.club_member_number || "N/A";
+
+  // Use active member's club_member record when switched
+  const isViewingSwitchedMember = !!activeMember?.id && activeMember.id !== myClubMember?.id;
+
+  // Fetch the switched member's full club_member record if needed
+  const { data: switchedClubMember } = useQuery({
+    queryKey: ["club-member-by-id-account", activeMember?.id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .eq("id", activeMember!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: isViewingSwitchedMember,
+  });
+
+  const activeClubMember = isViewingSwitchedMember && switchedClubMember ? switchedClubMember : myClubMember;
+  const memberNo = (activeClubMember as any)?.club_member_number || "N/A";
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");
@@ -38,10 +58,10 @@ export default function MyAccount() {
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
 
   // Fee payments from club_member_fee_payments
-  const clubMemberId = myClubMember?.id;
-  const clubId = (myClubMember as any)?.club_id;
-  const feeCategoryId = (myClubMember as any)?.fee_category_id;
-  const playsLeague = (myClubMember as any)?.plays_league;
+  const clubMemberId = (activeClubMember as any)?.id;
+  const clubId = (activeClubMember as any)?.club_id;
+  const feeCategoryId = (activeClubMember as any)?.fee_category_id;
+  const playsLeague = (activeClubMember as any)?.plays_league;
 
   // Credit transactions (explicitly tenant scoped)
   const { data: transactions, isLoading: txLoading } = useQuery({

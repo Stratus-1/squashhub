@@ -206,9 +206,8 @@ export default function Challenges() {
       }
 
       await updateChallenge.mutateAsync({ challengeId: c.id, status: "accepted" });
-      const matchDate = c.proposed_date;
-      const matchTime = (c as any).proposed_time;
-      const courtId = (c as any).court_id;
+
+      // Auto-create court booking
       // The booking user_id must be a valid auth user; use challenger's user_id or fall back to current user
       const bookingUserId = c.challenger_id || user!.id;
       if (matchDate && matchTime && courtId && user) {

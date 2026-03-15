@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Trash2, Edit2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -79,7 +81,12 @@ export function FeesTab({ clubId }: { clubId: string }) {
           {feeCategories.map(cat => (
             <Card key={cat.id} className="p-3 flex items-center justify-between">
               <div>
-                <p className="font-medium">{cat.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{cat.name}</p>
+                  <Badge variant={cat.fee_class === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
+                    {cat.fee_class === "pass_through" ? "Pass-through" : "Club Income"}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground">R{cat.annual_fee}/year{cat.description ? ` — ${cat.description}` : ""}</p>
               </div>
               <div className="flex gap-1">
@@ -104,7 +111,12 @@ export function FeesTab({ clubId }: { clubId: string }) {
           {nationalFees.map(f => (
             <Card key={f.id} className="p-3 flex items-center justify-between">
               <div>
-                <p className="font-medium">{f.body_name} {f.abbreviation ? `(${f.abbreviation})` : ""}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{f.body_name} {f.abbreviation ? `(${f.abbreviation})` : ""}</p>
+                  <Badge variant={f.fee_class === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
+                    {f.fee_class === "pass_through" ? "Pass-through" : "Club Income"}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground">R{f.fee_annual ?? 0}/year • Due: {MONTHS[(f.fee_due_month ?? 1) - 1]}</p>
                 {f.fee_payable_to && <p className="text-xs text-muted-foreground">Payable to: {f.fee_payable_to}</p>}
               </div>
@@ -135,6 +147,7 @@ function FeeCategoryDialog({ clubId, open, onOpenChange, existing }: { clubId: s
     description: existing?.description || "",
     annual_fee: existing?.annual_fee ?? 0,
     sort_order: existing?.sort_order ?? 0,
+    fee_class: existing?.fee_class || "club_income",
   });
   const qc = useQueryClient();
 

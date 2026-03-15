@@ -390,6 +390,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const leagueIdx = headers.indexOf("plays_league");
     const idNumIdx = headers.indexOf("id_number");
     const addressIdx = headers.indexOf("address");
+    const genderIdx = headers.indexOf("gender");
 
     let imported = 0;
     const importedMemberIds: string[] = [];
@@ -411,6 +412,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         id_number: idNumIdx >= 0 ? cols[idNumIdx] : undefined,
         phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
         address: addressIdx >= 0 ? cols[addressIdx] : undefined,
+        gender: genderIdx >= 0 ? cols[genderIdx] : undefined,
       }, { onConflict: "club_id,email" }).select("id, fee_category_id, plays_league").single();
 
       if (!error && memberData) {

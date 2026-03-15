@@ -246,6 +246,7 @@ export default function Bookings() {
     opponentName: string | null;
   }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();

@@ -152,9 +152,9 @@ export default function Ladder() {
   };
 
   const myGenderGroup = useMemo(() => {
-    const g = (myClubMember?.gender || "").toLowerCase();
+    const g = (activeMember?.gender || myClubMember?.gender || "").toLowerCase();
     return (g === "female" || g === "ladies" || g === "f") ? "ladies" : "men";
-  }, [myClubMember?.gender]);
+  }, [activeMember?.gender, myClubMember?.gender]);
 
   const getPlayerGenderGroup = (player: LadderPlayer): string => {
     const g = (player.gender || "").toLowerCase();

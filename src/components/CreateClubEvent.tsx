@@ -451,10 +451,21 @@ export function CreateClubEvent() {
             {/* Event Type */}
             <div className="space-y-1.5">
               <Label className="text-xs">Event Type</Label>
-              <Select value={form.event_type} onValueChange={(v) => setForm((f) => ({ ...f, event_type: v }))}>
+              <Select
+                value={form.event_type}
+                onValueChange={(v) => {
+                  const isClubType = ["coaching", "training", "league"].includes(v);
+                  setForm((f) => ({
+                    ...f,
+                    event_type: v,
+                    // Auto-set club booking for admin-only types
+                    is_club_booking: isClubType ? true : f.is_club_booking,
+                  }));
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPES.map((t) => (
+                  {EVENT_TYPES.filter((t) => !t.adminOnly || isAdmin).map((t) => (
                     <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>

@@ -15,6 +15,7 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Switch } from "@/components/ui/switch";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateMatch } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 
@@ -276,6 +277,7 @@ function getPlayerDisplayName(p: PlayerSelection, fallback = "Player"): string {
 export default function AddMatchResult() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
@@ -380,6 +382,7 @@ export default function AddMatchResult() {
       if (p1HasAccount && p2HasAccount) {
         // Both have accounts — full match record
         const winnerId = matchWinner === "a" ? player1.userId! : player2.userId!;
+        const winnerMemberId = matchWinner === "a" ? (player1.clubMemberId || null) : (player2.clubMemberId || null);
         await createMatch.mutateAsync({
           playerA: player1.userId!,
           playerB: player2.userId!,
@@ -388,6 +391,10 @@ export default function AddMatchResult() {
           matchDate,
           gameScores: gameScoresJson,
           notes: `Match type: ${matchType}`,
+          playerAMemberId: player1.clubMemberId || null,
+          playerBMemberId: player2.clubMemberId || null,
+          winnerMemberId,
+          submittedByMemberId: activeMember?.id || null,
         });
         toast.success("Match result submitted! Awaiting player confirmation.");
       } else {
@@ -420,6 +427,10 @@ export default function AddMatchResult() {
           matchDate,
           gameScores: gameScoresJson,
           notes: noteParts.join(". "),
+          playerAMemberId: player1.clubMemberId || null,
+          playerBMemberId: player2.clubMemberId || null,
+          winnerMemberId: matchWinner === "a" ? (player1.clubMemberId || null) : (player2.clubMemberId || null),
+          submittedByMemberId: activeMember?.id || null,
         });
         toast.success("Match result recorded.");
       }

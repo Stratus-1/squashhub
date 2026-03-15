@@ -15,16 +15,20 @@ export type BookingFlowPayload = {
   booking: {
     id: string;
     user_id: string;
+    club_member_id?: string | null;
     court_id: number;
     date: string;
     start_time: string;
     end_time: string;
     opponent_id: string | null;
+    opponent_member_id?: string | null;
     is_friendly: boolean;
   };
   challenge?: {
     id: string;
     opponent_id: string;
+    challenger_member_id?: string | null;
+    opponent_member_id?: string | null;
     proposed_date: string | null;
   };
 };
@@ -35,6 +39,10 @@ export type CreateMatchPayload = {
     player_a: string;
     player_b: string;
     winner_id: string | null;
+    player_a_member_id?: string | null;
+    player_b_member_id?: string | null;
+    winner_member_id?: string | null;
+    submitted_by_member_id?: string | null;
     score: string | null;
     game_scores: string | null;
     match_date: string;
@@ -122,11 +130,13 @@ async function flushBookingFlow(item: Extract<OutboxItem, { kind: "booking_flow"
       {
         id: booking.id,
         user_id: booking.user_id,
+        club_member_id: booking.club_member_id ?? null,
         court_id: booking.court_id,
         date: booking.date,
         start_time: booking.start_time,
         end_time: booking.end_time,
         opponent_id: booking.opponent_id,
+        opponent_member_id: booking.opponent_member_id ?? null,
         is_friendly: booking.is_friendly,
         status: "active",
       } as any,
@@ -142,18 +152,21 @@ async function flushBookingFlow(item: Extract<OutboxItem, { kind: "booking_flow"
 
   // Create challenge (or reuse an existing active one).
   let challengeId = challenge.id;
+  const insertPayload: Record<string, any> = {
+    id: challenge.id,
+    challenger_id: item.user_id,
+    opponent_id: challenge.opponent_id,
+    proposed_date: challenge.proposed_date,
+    status: "pending",
+  };
+  if (challenge.challenger_member_id) insertPayload.challenger_member_id = challenge.challenger_member_id;
+  if (challenge.opponent_member_id) insertPayload.opponent_member_id = challenge.opponent_member_id;
+
   const { error: insertChallengeError } = await supabase
     .from("challenges")
-    .insert({
-      id: challenge.id,
-      challenger_id: item.user_id,
-      opponent_id: challenge.opponent_id,
-      proposed_date: challenge.proposed_date,
-      status: "pending",
-    } as any);
+    .insert(insertPayload as any);
 
   if (insertChallengeError) {
-    // If it already exists between players, reuse it.
     const { data: existing } = await supabase
       .from("challenges")
       .select("id")

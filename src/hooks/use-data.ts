@@ -233,6 +233,8 @@ export function useCreateBooking() {
       isFriendly,
       challengeId,
       guestName,
+      clubMemberId,
+      opponentMemberId,
     }: {
       bookingId?: string;
       courtId: number;
@@ -243,6 +245,8 @@ export function useCreateBooking() {
       isFriendly?: boolean;
       challengeId?: string | null;
       guestName?: string | null;
+      clubMemberId?: string | null;
+      opponentMemberId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
 
@@ -260,7 +264,6 @@ export function useCreateBooking() {
       );
 
       if (existingMerge) {
-        // Extend the existing booking
         const newStart = existingMerge.start_time <= startTime ? existingMerge.start_time : startTime;
         const newEnd = existingMerge.end_time >= endTime ? existingMerge.end_time : endTime;
         const { data, error } = await supabase
@@ -269,6 +272,7 @@ export function useCreateBooking() {
             start_time: newStart,
             end_time: newEnd,
             opponent_id: opponentId ?? null,
+            opponent_member_id: opponentMemberId ?? null,
             is_friendly: !!isFriendly,
             challenge_id: challengeId ?? null,
             guest_name: guestName ?? null,
@@ -280,7 +284,6 @@ export function useCreateBooking() {
         return data;
       }
 
-      // No adjacent booking — create new
       const id = bookingId || crypto.randomUUID();
       const { data, error } = await supabase
         .from("bookings")
@@ -288,10 +291,12 @@ export function useCreateBooking() {
           id,
           court_id: courtId,
           user_id: user.id,
+          club_member_id: clubMemberId ?? null,
           date,
           start_time: startTime,
           end_time: endTime,
           opponent_id: opponentId ?? null,
+          opponent_member_id: opponentMemberId ?? null,
           is_friendly: !!isFriendly,
           challenge_id: challengeId ?? null,
           guest_name: guestName ?? null,
@@ -759,11 +764,15 @@ export function useCreateChallenge() {
       proposedDate,
       proposedTime,
       courtId,
+      challengerMemberId,
+      opponentMemberId,
     }: {
       opponentId: string;
       proposedDate?: string | null;
       proposedTime?: string | null;
       courtId?: number;
+      challengerMemberId?: string | null;
+      opponentMemberId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
       if (!opponentId) throw new Error("Choose an opponent");
@@ -799,6 +808,8 @@ export function useCreateChallenge() {
         proposed_date: proposedDate ?? null,
         status: "pending",
       };
+      if (challengerMemberId) insertPayload.challenger_member_id = challengerMemberId;
+      if (opponentMemberId) insertPayload.opponent_member_id = opponentMemberId;
       if (proposedTime) insertPayload.proposed_time = proposedTime;
       if (courtId) insertPayload.court_id = courtId;
 
@@ -928,6 +939,10 @@ export function useCreateMatch() {
       gameScores,
       durationS,
       notes,
+      playerAMemberId,
+      playerBMemberId,
+      winnerMemberId,
+      submittedByMemberId,
     }: {
       matchId?: string;
       playerA: string;
@@ -940,14 +955,17 @@ export function useCreateMatch() {
       gameScores?: string | null;
       durationS?: number | null;
       notes?: string | null;
+      playerAMemberId?: string | null;
+      playerBMemberId?: string | null;
+      winnerMemberId?: string | null;
+      submittedByMemberId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
 
       const id = matchId || crypto.randomUUID();
 
-      // Both players have accounts and are different people → pending confirmation
       const bothLinked = playerA !== playerB;
-      const confirmed = !bothLinked; // auto-confirm only when external/same-id placeholder
+      const confirmed = !bothLinked;
 
       const { data, error } = await supabase
         .from("matches")
@@ -956,6 +974,10 @@ export function useCreateMatch() {
           player_a: playerA,
           player_b: playerB,
           winner_id: winnerId,
+          player_a_member_id: playerAMemberId ?? null,
+          player_b_member_id: playerBMemberId ?? null,
+          winner_member_id: winnerMemberId ?? null,
+          submitted_by_member_id: submittedByMemberId ?? null,
           score: score ?? null,
           match_date: matchDate,
           court_id: courtId ?? null,

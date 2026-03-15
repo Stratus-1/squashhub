@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays, getISODay, isToday, isTomorrow, isPast, parseISO } from "date-fns";
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile, useMyBookings } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { toast } from "sonner";
 import { Zap, ZapOff, ArrowRightLeft } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
@@ -245,6 +246,7 @@ export default function Bookings() {
     opponentName: string | null;
   }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
@@ -519,11 +521,13 @@ export default function Bookings() {
             booking: {
               id: bookingId,
               user_id: user.id,
+              club_member_id: activeMember?.id || null,
               court_id: bookingDialog.courtId,
               date: dateStr,
               start_time: bookingDialog.time + ":00",
               end_time: endTime + ":00",
               opponent_id: bookingDialog.opponentId || null,
+              opponent_member_id: opponent?.memberId || null,
               is_friendly: bookingDialog.isFriendly,
             },
             ...(needsChallenge && bookingDialog.opponentId
@@ -531,6 +535,8 @@ export default function Bookings() {
                   challenge: {
                     id: challengeId,
                     opponent_id: bookingDialog.opponentId,
+                    challenger_member_id: activeMember?.id || null,
+                    opponent_member_id: opponent?.memberId || null,
                     proposed_date: dateStr,
                   },
                 }
@@ -558,6 +564,10 @@ export default function Bookings() {
         return;
       }
 
+      const opponentMemberId = bookingDialog.opponentId
+        ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.memberId || null
+        : null;
+
       const created = await createBooking.mutateAsync({
         bookingId,
         courtId: bookingDialog.courtId,
@@ -567,6 +577,8 @@ export default function Bookings() {
         opponentId: bookingDialog.opponentId || null,
         isFriendly: bookingDialog.isFriendly,
         guestName: bookingDialog.guestName || null,
+        clubMemberId: activeMember?.id || null,
+        opponentMemberId,
       });
 
       // Mark lights_requested on the booking (edge function handles actual billing)
@@ -589,6 +601,8 @@ export default function Bookings() {
           const challenge = await createChallenge.mutateAsync({
             opponentId: bookingDialog.opponentId,
             proposedDate: dateStr,
+            challengerMemberId: activeMember?.id || null,
+            opponentMemberId: opponentMemberId || null,
           });
 
           await (supabase as any)
@@ -641,6 +655,7 @@ export default function Bookings() {
             booking: {
               id: bookingId,
               user_id: user.id,
+              club_member_id: activeMember?.id || null,
               court_id: bookingDialog.courtId,
               date: dateStr,
               start_time: bookingDialog.time + ":00",
@@ -653,6 +668,7 @@ export default function Bookings() {
                   challenge: {
                     id: challengeId,
                     opponent_id: bookingDialog.opponentId,
+                    challenger_member_id: activeMember?.id || null,
                     proposed_date: dateStr,
                   },
                 }

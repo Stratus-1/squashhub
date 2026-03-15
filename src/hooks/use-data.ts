@@ -810,7 +810,7 @@ export function useCreateChallenge() {
       challengerMemberId,
       opponentMemberId,
     }: {
-      opponentId: string;
+      opponentId: string | null;
       proposedDate?: string | null;
       proposedTime?: string | null;
       courtId?: number;
@@ -818,49 +818,59 @@ export function useCreateChallenge() {
       opponentMemberId?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
+      if (!opponentId && !opponentMemberId) throw new Error("Opponent must be specified");
 
-      // Build duplicate-check filter using member IDs when available
-      const chkChallenger = challengerMemberId || user.id;
-      const chkOpponent = opponentMemberId || opponentId;
-
-      // Check by member IDs first, then user IDs
-      let existingFilter = `and(challenger_id.eq.${user.id},opponent_id.eq.${opponentId}),and(challenger_id.eq.${opponentId},opponent_id.eq.${user.id})`;
+      // Duplicate check using member IDs when available
       if (challengerMemberId && opponentMemberId) {
-        existingFilter += `,and(challenger_member_id.eq.${challengerMemberId},opponent_member_id.eq.${opponentMemberId}),and(challenger_member_id.eq.${opponentMemberId},opponent_member_id.eq.${challengerMemberId})`;
-      }
+        const { data: existing, error: existingError } = await fromAny("challenges")
+          .select("id, status")
+          .in("status", ["pending", "accepted"])
+          .or(`and(challenger_member_id.eq.${challengerMemberId},opponent_member_id.eq.${opponentMemberId}),and(challenger_member_id.eq.${opponentMemberId},opponent_member_id.eq.${challengerMemberId})`)
+          .limit(1);
+        if (existingError) throw existingError;
+        if (existing && existing.length > 0) {
+          throw new Error("A challenge between you two is already active");
+        }
 
-      const { data: existing, error: existingError } = await fromAny("challenges")
-        .select("id, status")
-        .in("status", ["pending", "accepted"])
-        .or(existingFilter)
-        .limit(1);
-      if (existingError) throw existingError;
-      if (existing && existing.length > 0) {
-        throw new Error("A challenge between you two is already active");
-      }
+        // Check opponent doesn't already have an active challenge
+        const { data: oppActive, error: oppActiveError } = await fromAny("challenges")
+          .select("id")
+          .in("status", ["pending", "accepted"])
+          .or(`challenger_member_id.eq.${opponentMemberId},opponent_member_id.eq.${opponentMemberId}`)
+          .limit(1);
+        if (oppActiveError) throw oppActiveError;
+        if ((oppActive || []).length > 0) {
+          throw new Error("That player already has an active challenge. Try again later.");
+        }
+      } else if (opponentId) {
+        const { data: existing, error: existingError } = await fromAny("challenges")
+          .select("id, status")
+          .in("status", ["pending", "accepted"])
+          .or(`and(challenger_id.eq.${user.id},opponent_id.eq.${opponentId}),and(challenger_id.eq.${opponentId},opponent_id.eq.${user.id})`)
+          .limit(1);
+        if (existingError) throw existingError;
+        if (existing && existing.length > 0) {
+          throw new Error("A challenge between you two is already active");
+        }
 
-      // Check opponent doesn't already have an active challenge
-      let oppFilter = `challenger_id.eq.${opponentId},opponent_id.eq.${opponentId}`;
-      if (opponentMemberId) {
-        oppFilter += `,challenger_member_id.eq.${opponentMemberId},opponent_member_id.eq.${opponentMemberId}`;
-      }
-      const { data: oppActive, error: oppActiveError } = await fromAny("challenges")
-        .select("id")
-        .in("status", ["pending", "accepted"])
-        .or(oppFilter)
-        .limit(1);
-      if (oppActiveError) throw oppActiveError;
-      if ((oppActive || []).length > 0) {
-        throw new Error("That player already has an active challenge. Try again later.");
+        const { data: oppActive, error: oppActiveError } = await fromAny("challenges")
+          .select("id")
+          .in("status", ["pending", "accepted"])
+          .or(`challenger_id.eq.${opponentId},opponent_id.eq.${opponentId}`)
+          .limit(1);
+        if (oppActiveError) throw oppActiveError;
+        if ((oppActive || []).length > 0) {
+          throw new Error("That player already has an active challenge. Try again later.");
+        }
       }
 
       // Insert — the DB trigger populate_challenge_ids handles bi-directional resolution
       const insertPayload: Record<string, any> = {
         challenger_id: user.id,
-        opponent_id: opponentId,
         proposed_date: proposedDate ?? null,
         status: "pending",
       };
+      if (opponentId) insertPayload.opponent_id = opponentId;
       if (challengerMemberId) insertPayload.challenger_member_id = challengerMemberId;
       if (opponentMemberId) insertPayload.opponent_member_id = opponentMemberId;
       if (proposedTime) insertPayload.proposed_time = proposedTime;

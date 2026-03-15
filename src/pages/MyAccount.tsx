@@ -362,7 +362,7 @@ export default function MyAccount() {
       } else if (method === "card") {
         // Card payment — auto-confirm, mark fees paid immediately
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
-          user_id: user!.id,
+          user_id: effectiveUserId!,
           club_id: clubId,
           amount: totalAmount,
           type: "payment",

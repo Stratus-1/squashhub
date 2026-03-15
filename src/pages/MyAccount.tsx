@@ -366,6 +366,7 @@ export default function MyAccount() {
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: effectiveUserId!,
           club_id: clubId,
+          club_member_id: clubMemberId,
           amount: totalAmount,
           type: "payment",
           method: "card",

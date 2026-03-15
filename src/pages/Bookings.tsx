@@ -214,6 +214,7 @@ export default function Bookings() {
     isFriendly: boolean;
     duration: 30 | 60;
     lightsOn: boolean;
+    lightFeeSplit: "booker" | "shared";
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;

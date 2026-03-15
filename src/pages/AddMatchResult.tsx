@@ -328,6 +328,26 @@ export default function AddMatchResult() {
     }
   }, [myName, user?.id]);
 
+  // Pre-select opponent from URL params (challenge flow)
+  const [challengePreFilled, setChallengePreFilled] = useState(false);
+  useEffect(() => {
+    if (challengePreFilled || !ladder || !urlOpponentMemberId) return;
+    const opponent = ladder.find(
+      (p: any) => p.club_member_id === urlOpponentMemberId
+    );
+    if (opponent) {
+      setPlayer2({
+        mode: "club",
+        clubMemberId: opponent.club_member_id,
+        userId: opponent.user_id || urlOpponentId || null,
+        name: opponent.name,
+        externalClub: "",
+      });
+      setMatchType("ladder");
+      setChallengePreFilled(true);
+    }
+  }, [ladder, urlOpponentMemberId, urlOpponentId, challengePreFilled]);
+
   const availableMembers = useMemo(() => {
     if (!ladder) return [];
     return ladder;

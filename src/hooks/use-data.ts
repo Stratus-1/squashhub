@@ -769,18 +769,25 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
   });
 }
 
-export function useIncomingChallengesCount() {
+export function useIncomingChallengesCount(memberId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["challenges", "incoming-count", user?.id],
+    queryKey: ["challenges", "incoming-count", memberId || user?.id],
     queryFn: async () => {
       if (!user) return 0;
-      const { count, error } = await supabase
+      let query = supabase
         .from("challenges")
         .select("id", { count: "exact", head: true })
-        .eq("opponent_id", user.id)
         .eq("status", "pending");
+
+      if (memberId) {
+        query = query.eq("opponent_member_id", memberId);
+      } else {
+        query = query.eq("opponent_id", user.id);
+      }
+
+      const { count, error } = await query;
       if (error) throw error;
       return typeof count === "number" ? count : 0;
     },

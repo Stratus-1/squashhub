@@ -427,6 +427,10 @@ export default function AddMatchResult() {
           matchDate,
           gameScores: gameScoresJson,
           notes: noteParts.join(". "),
+          playerAMemberId: player1.clubMemberId || null,
+          playerBMemberId: player2.clubMemberId || null,
+          winnerMemberId: matchWinner === "a" ? (player1.clubMemberId || null) : (player2.clubMemberId || null),
+          submittedByMemberId: activeMember?.id || null,
         });
         toast.success("Match result recorded.");
       }

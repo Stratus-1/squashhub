@@ -117,7 +117,8 @@ function OpponentStatsPanel({ userId, myUserId }: { userId: string; myUserId: st
 export default function Challenges() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: challenges, isLoading } = useChallenges();
+  const myMemberId = activeMember?.id || null;
+  const { data: challenges, isLoading } = useChallenges(undefined, { memberId: myMemberId });
   const updateChallenge = useUpdateChallengeStatus();
   const { data: clubData } = useMyClub();
   const { activeMember } = useMemberContext();

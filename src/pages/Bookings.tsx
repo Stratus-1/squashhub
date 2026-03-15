@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays, getISODay, isToday, isTomorrow, isPast, parseISO } from "date-fns";
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile, useMyBookings } from "@/hooks/use-data";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { toast } from "sonner";
 import { Zap, ZapOff, ArrowRightLeft } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";

@@ -151,6 +151,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
   const activeMember = [...linkedMembers, ...allMembers].find(m => m.id === activeMemberId) || null;
   const isViewingAs = !!activeMemberId && activeMemberId !== selfMemberId;
+  const effectiveUserId = activeMember?.user_id || user?.id || null;
 
   return (
     <MemberContext.Provider value={{
@@ -158,6 +159,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       allMembers,
       isAdmin,
       activeMember,
+      effectiveUserId,
       isViewingAs,
       switchMember,
       resetToSelf,

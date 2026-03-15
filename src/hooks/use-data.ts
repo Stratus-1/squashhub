@@ -60,11 +60,20 @@ export type HeadToHeadRow = {
   points_against: number;
 };
 
-export function useHeadToHead(playerId?: string | null, limit = 20) {
+export function useHeadToHead(playerId?: string | null, limit = 20, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   return useQuery({
-    queryKey: ["head-to-head", playerId, limit],
+    queryKey: ["head-to-head", memberId || playerId, limit],
     queryFn: async () => {
+      if (memberId) {
+        const { data, error } = await rpc("get_head_to_head_by_member", {
+          target_member_id: memberId,
+          limit_count: limit,
+        } as any);
+        if (error) throw error;
+        return (data || []) as HeadToHeadRow[];
+      }
       if (!playerId) return [] as HeadToHeadRow[];
       const { data, error } = await rpc("get_head_to_head", {
         target_user_id: playerId,
@@ -73,7 +82,7 @@ export function useHeadToHead(playerId?: string | null, limit = 20) {
       if (error) throw error;
       return (data || []) as HeadToHeadRow[];
     },
-    enabled: !!user && !!playerId,
+    enabled: !!user && !!(memberId || playerId),
   });
 }
 

@@ -152,9 +152,30 @@ export default function Ladder() {
   };
 
   const myGenderGroup = useMemo(() => {
-    const g = (activeMember?.gender || myClubMember?.gender || "").toLowerCase();
-    return (g === "female" || g === "ladies" || g === "f") ? "ladies" : "men";
-  }, [activeMember?.gender, myClubMember?.gender]);
+    const toGenderGroup = (gender?: string | null): "ladies" | "men" | null => {
+      const g = (gender || "").toLowerCase().trim();
+      if (!g) return null;
+      return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
+    };
+
+    const fromActiveMember = toGenderGroup(activeMember?.gender);
+    if (fromActiveMember) return fromActiveMember;
+
+    const selectedMember = (players || []).find((p) => {
+      if (!myMemberId) return false;
+      return p.club_member_id === myMemberId || p.id === myMemberId;
+    });
+    const fromSelectedLadderRow = toGenderGroup(selectedMember?.gender);
+    if (fromSelectedLadderRow) return fromSelectedLadderRow;
+
+    // Only fall back to the primary account member if no delegated profile is selected.
+    if (!activeMember?.id) {
+      const fromPrimaryMember = toGenderGroup(myClubMember?.gender);
+      if (fromPrimaryMember) return fromPrimaryMember;
+    }
+
+    return "men";
+  }, [activeMember?.id, activeMember?.gender, myClubMember?.gender, myMemberId, players]);
 
   const getPlayerGenderGroup = (player: LadderPlayer): string => {
     const g = (player.gender || "").toLowerCase();

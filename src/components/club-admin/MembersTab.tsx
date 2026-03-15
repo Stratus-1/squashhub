@@ -465,12 +465,32 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const handleAdd = async () => {
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedName = name.trim();
-    if (!trimmedEmail || !trimmedName) {
-      toast.error("Name and email are required");
+    if (!trimmedName || trimmedName.length < 2) {
+      toast.error("Full name is required (at least 2 characters)");
+      return;
+    }
+    if (!trimmedEmail) {
+      toast.error("Email is required");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       toast.error("Please enter a valid email address");
+      return;
+    }
+    if (idNumber.trim() && (!/^\d+$/.test(idNumber.trim()) || idNumber.trim().length !== 13)) {
+      toast.error("SA ID number must be exactly 13 digits");
+      return;
+    }
+    if (phone && phone !== "+27" && !/^\+\d{7,15}$/.test(phone.replace(/\s/g, ""))) {
+      toast.error("Please enter a valid phone number in international format (e.g. +27821234567)");
+      return;
+    }
+    if (!gender) {
+      toast.error("Gender is required");
+      return;
+    }
+    if (!feeCategoryId) {
+      toast.error("Fee category is required");
       return;
     }
     if (playsLeague && !associationId) {

@@ -862,9 +862,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         <div className="text-[11px] text-muted-foreground space-y-0.5">
                           <p className="font-medium text-foreground">Booking split preview:</p>
                           {(() => {
-                            const slotMin = Math.min(60, Math.ceil(totalMin / form.booking_member_ids.length));
+                            const bookingIds = form.booking_member_ids.slice(0, sessionsNeeded);
+                            const slotMin = Math.min(60, Math.ceil(totalMin / bookingIds.length));
                             let offset = 0;
-                            return form.booking_member_ids.map((mid) => {
+                            return bookingIds.map((mid) => {
                               const m = invitedMembers.find((x) => x.id === mid);
                               const slotEnd = Math.min(offset + slotMin, totalMin);
                               const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
@@ -875,6 +876,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                               );
                             });
                           })()}
+                          {form.booking_member_ids.length > sessionsNeeded && (
+                            <p className="text-muted-foreground italic">
+                              +{form.booking_member_ids.length - sessionsNeeded} more invited (no booking in their name)
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

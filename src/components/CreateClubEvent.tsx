@@ -790,6 +790,95 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
 
+              {/* Court Booking Assignment */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <Label className="text-xs font-medium">Court Booking Names</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Club rules limit 1 hour per member. Select members to split the booking across.
+                </p>
+
+                {isAdmin && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium">Book under Club name (free)</p>
+                      <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
+                    </div>
+                    <Switch
+                      checked={form.is_club_booking}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booking_member_ids: [] }))}
+                    />
+                  </div>
+                )}
+
+                {!form.is_club_booking && (() => {
+                  const invitedMembers = form.invite_scope === "selected"
+                    ? (members || []).filter((m) => form.selected_member_ids.includes(m.id))
+                    : (members || []);
+
+                  const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
+                  const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
+                  const totalMin = endMin - startMin;
+                  const maxMembers = Math.ceil(totalMin / 60);
+
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        Event duration: {totalMin} min — need {maxMembers} member{maxMembers !== 1 ? "s" : ""} (max 1hr each)
+                      </p>
+                      <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
+                        {invitedMembers.map((m) => {
+                          const isSelected = form.booking_member_ids.includes(m.id);
+                          const atMax = !isSelected && form.booking_member_ids.length >= maxMembers;
+                          return (
+                            <label
+                              key={m.id}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors text-sm",
+                                isSelected && "bg-accent",
+                                atMax && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                disabled={atMax}
+                                onCheckedChange={() => {
+                                  setForm((f) => ({
+                                    ...f,
+                                    booking_member_ids: isSelected
+                                      ? f.booking_member_ids.filter((id) => id !== m.id)
+                                      : [...f.booking_member_ids, m.id],
+                                  }));
+                                }}
+                              />
+                              <span className="text-xs">{m.name || "Unnamed"}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {form.booking_member_ids.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground space-y-0.5">
+                          <p className="font-medium text-foreground">Booking split preview:</p>
+                          {(() => {
+                            const slotMin = Math.min(60, Math.ceil(totalMin / form.booking_member_ids.length));
+                            let offset = 0;
+                            return form.booking_member_ids.map((mid) => {
+                              const m = invitedMembers.find((x) => x.id === mid);
+                              const slotEnd = Math.min(offset + slotMin, totalMin);
+                              const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
+                              const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
+                              offset = slotEnd;
+                              return (
+                                <p key={mid}>{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
+                              );
+                            });
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Light Fees */}
               <div className="rounded-lg border border-border p-3 space-y-2">
                 <Label className="text-xs font-medium">Light Fees</Label>

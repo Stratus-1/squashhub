@@ -551,6 +551,90 @@ export type Database = {
           },
         ]
       }
+      club_event_instance_rsvps: {
+        Row: {
+          club_member_id: string
+          created_at: string
+          id: string
+          instance_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          club_member_id: string
+          created_at?: string
+          id?: string
+          instance_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          instance_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_event_instance_rsvps_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_event_instance_rsvps_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_event_instance_rsvps_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "club_event_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_event_instances: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          instance_date: string
+          light_fee_total: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          instance_date: string
+          light_fee_total?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          instance_date?: string
+          light_fee_total?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_event_instances_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "club_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_event_rsvps: {
         Row: {
           club_member_id: string
@@ -614,6 +698,10 @@ export type Database = {
           invite_scope: string
           invite_scope_id: string | null
           is_club_booking: boolean
+          light_fee_split: string
+          num_instances: number
+          recurrence: string
+          reminder_hours: number
           start_date: string
           start_time: string
           status: string
@@ -633,6 +721,10 @@ export type Database = {
           invite_scope?: string
           invite_scope_id?: string | null
           is_club_booking?: boolean
+          light_fee_split?: string
+          num_instances?: number
+          recurrence?: string
+          reminder_hours?: number
           start_date?: string
           start_time: string
           status?: string
@@ -652,6 +744,10 @@ export type Database = {
           invite_scope?: string
           invite_scope_id?: string | null
           is_club_booking?: boolean
+          light_fee_split?: string
+          num_instances?: number
+          recurrence?: string
+          reminder_hours?: number
           start_date?: string
           start_time?: string
           status?: string

@@ -203,16 +203,6 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                   <span key={label} className="inline-flex items-center gap-1">
                     <span className="font-medium text-foreground">{label}:</span>
                     <span>{delegate!.name || "—"}</span>
-                    {delegate!.email && (
-                      <a href={`mailto:${delegate!.email}`} className="text-primary hover:underline">
-                        <Mail className="w-3 h-3 inline" />
-                      </a>
-                    )}
-                    {delegate!.phone && (
-                      <a href={`tel:${delegate!.phone}`} className="text-primary hover:underline">
-                        <Phone className="w-3 h-3 inline" />
-                      </a>
-                    )}
                     {i < arr.length - 1 && <span className="text-border ml-1">·</span>}
                   </span>
                 ))}

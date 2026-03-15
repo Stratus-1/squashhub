@@ -426,15 +426,40 @@ export function useMyScheduledMatches(overrideUserId?: string | null) {
     queryFn: async () => {
       if (!targetId) return [];
       const today = new Date().toISOString().split("T")[0];
-      const { data, error } = await fromAny("scheduled_matches")
-        .select("*")
-        .or(`player_a.eq.${targetId},player_b.eq.${targetId}`)
-        .eq("status", "scheduled")
-        .gte("scheduled_date", today)
-        .order("scheduled_date", { ascending: true })
+
+      const { data: challenges, error: challengesError } = await supabase
+        .from("challenges")
+        .select("id, challenger_id, opponent_id")
+        .or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`);
+      if (challengesError) throw challengesError;
+      if (!challenges || challenges.length === 0) return [];
+
+      const challengeIds = challenges.map((c) => c.id);
+      const challengeMap = new Map(challenges.map((c) => [c.id, c]));
+
+      const { data: schedules, error: schedulesError } = await supabase
+        .from("challenge_schedules")
+        .select("id, challenge_id, booking_id, proposed_date, start_time, end_time, status")
+        .in("challenge_id", challengeIds)
+        .in("status", ["accepted", "proposed"])
+        .gte("proposed_date", today)
+        .order("proposed_date", { ascending: true })
         .order("start_time", { ascending: true });
-      if (error) throw error;
-      return data || [];
+      if (schedulesError) throw schedulesError;
+
+      return (schedules || []).map((s) => {
+        const challenge = challengeMap.get(s.challenge_id);
+        return {
+          id: s.id,
+          booking_id: s.booking_id,
+          scheduled_date: s.proposed_date,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          status: s.status === "accepted" ? "scheduled" : s.status,
+          player_a: challenge?.challenger_id || null,
+          player_b: challenge?.opponent_id || null,
+        };
+      });
     },
     enabled: !!targetId,
   });

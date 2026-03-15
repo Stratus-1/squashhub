@@ -103,7 +103,7 @@ export default function Dashboard() {
     return idx >= 0 ? idx + 1 : null;
   }, [ladder, myClubMember, user]);
 
-  const firstName = profile?.name?.split(" ")[0] || "Player";
+  const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Player";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 
   const handleConfirmMatch = async (matchId: string) => {

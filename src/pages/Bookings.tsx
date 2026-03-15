@@ -817,49 +817,6 @@ export default function Bookings() {
       <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} />
 
       {/* Court availability stats */}
-      {!isLoading && (
-        <div className="px-4 mb-3">
-          <div className={cn("grid gap-2", courts.length <= 2 ? "grid-cols-1 sm:grid-cols-2" : courts.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
-            {courts.map((courtId: number) => {
-              const count = courtBookingCounts[courtId] || 0;
-              const pct = Math.round((count / totalSlots) * 100);
-              return (
-                <Card key={courtId} className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs font-semibold font-heading">{getCourtName(courtId)}</span>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "text-[9px] px-1.5 py-0",
-                          pct > 70 ? "bg-destructive/15 text-destructive" : pct > 40 ? "bg-accent/20 text-accent-foreground" : "bg-win/15 text-win"
-                        )}
-                      >
-                        {pct > 70 ? "Busy" : pct > 40 ? "Moderate" : "Available"}
-                      </Badge>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                      <motion.div
-                        className={cn(
-                          "h-full rounded-full",
-                          pct > 70 ? "bg-destructive" : pct > 40 ? "bg-accent" : "bg-primary"
-                        )}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, ease: "easeOut" }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">{count}/{totalSlots} slots booked</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Time Grid */}
       <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-y border-border/50 pt-[env(safe-area-inset-top)]">

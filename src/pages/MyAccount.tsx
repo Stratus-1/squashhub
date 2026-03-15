@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Upload, Copy, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/use-data";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";

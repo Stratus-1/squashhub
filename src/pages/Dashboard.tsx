@@ -286,40 +286,40 @@ export default function Dashboard() {
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          <Button className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/bookings")}>
+          <Button className="flex-col h-auto py-3 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
             <span className="text-xs font-medium">Book</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/ladder")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20" onClick={() => navigate("/ladder")}>
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/30 bg-primary/5" onClick={() => navigate("/add-result")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20" onClick={() => navigate("/add-result")}>
             <ClipboardCheck className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Enter Result</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/challenges")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20" onClick={() => navigate("/challenges")}>
             <Swords className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Challenges</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-accent/40 bg-accent/10" onClick={() => navigate("/match-marker")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20" onClick={() => navigate("/match-marker")}>
             <Crosshair className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Mark a Game</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/events")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-400 hover:bg-pink-500/20" onClick={() => navigate("/events")}>
             <CalendarDays className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Events</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/my-account")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Account</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => openProfile("/profile?edit=1")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/20" onClick={() => openProfile("/profile?edit=1")}>
             <Settings className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>
           </Button>
           {isClubAdmin && (
-            <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/40 bg-primary/5" onClick={() => navigate("/club-admin")}>
+            <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-500/20" onClick={() => navigate("/club-admin")}>
               <ShieldCheck className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Club Admin</span>
             </Button>

@@ -722,20 +722,30 @@ export function useAcceptChallengeSchedule() {
   });
 }
 
-export function useChallenges(overrideUserId?: string | null) {
+export function useChallenges(overrideUserId?: string | null, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   const targetId = overrideUserId || user?.id;
+  const queryId = memberId || targetId;
 
   return useQuery({
-    queryKey: ["challenges", targetId],
+    queryKey: ["challenges", queryId],
     queryFn: async () => {
-      if (!targetId) return [] as ChallengeWithProfiles[];
+      if (!queryId) return [] as ChallengeWithProfiles[];
 
-      const { data: challenges, error } = await supabase
+      let query = supabase
         .from("challenges")
         .select("*")
-        .or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`)
         .order("created_at", { ascending: false });
+
+      // Filter by member_id when available, else fall back to user_id
+      if (memberId) {
+        query = query.or(`challenger_member_id.eq.${memberId},opponent_member_id.eq.${memberId}`);
+      } else {
+        query = query.or(`challenger_id.eq.${targetId},opponent_id.eq.${targetId}`);
+      }
+
+      const { data: challenges, error } = await query;
       if (error) throw error;
 
       const ids = [
@@ -744,7 +754,7 @@ export function useChallenges(overrideUserId?: string | null) {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, name")
-        .in("id", ids);
+        .in("id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]);
       if (profilesError) throw profilesError;
 
       const profileMap = new Map(profiles?.map((p) => [p.id, p.name]) || []);
@@ -755,7 +765,7 @@ export function useChallenges(overrideUserId?: string | null) {
         opponent_name: profileMap.get(c.opponent_id) || "Unknown",
       })) as ChallengeWithProfiles[];
     },
-    enabled: !!targetId,
+    enabled: !!queryId,
   });
 }
 

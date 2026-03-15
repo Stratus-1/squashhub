@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 
 import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
+import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -507,6 +508,11 @@ export default function Dashboard() {
           challenges={challenges}
           onViewAll={() => navigate("/challenges")}
         />
+      </div>
+
+      {/* Club Events */}
+      <div className="px-4 mt-4">
+        <CreateClubEvent />
       </div>
 
       {/* More Actions */}

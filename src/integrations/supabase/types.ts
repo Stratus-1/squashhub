@@ -518,6 +518,170 @@ export type Database = {
           },
         ]
       }
+      club_event_courts: {
+        Row: {
+          court_id: number
+          event_id: string
+          id: string
+        }
+        Insert: {
+          court_id: number
+          event_id: string
+          id?: string
+        }
+        Update: {
+          court_id?: number
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_event_courts_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_event_courts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "club_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_event_rsvps: {
+        Row: {
+          club_member_id: string
+          created_at: string
+          event_id: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          club_member_id: string
+          created_at?: string
+          event_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          club_member_id?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_event_rsvps_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_event_rsvps_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "club_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_events: {
+        Row: {
+          booked_by_member_id: string | null
+          club_id: string
+          created_at: string
+          created_by: string
+          day_of_week: number
+          description: string | null
+          end_time: string
+          event_type: string
+          id: string
+          invite_scope: string
+          invite_scope_id: string | null
+          is_club_booking: boolean
+          start_date: string
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          booked_by_member_id?: string | null
+          club_id: string
+          created_at?: string
+          created_by: string
+          day_of_week: number
+          description?: string | null
+          end_time: string
+          event_type?: string
+          id?: string
+          invite_scope?: string
+          invite_scope_id?: string | null
+          is_club_booking?: boolean
+          start_date?: string
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          booked_by_member_id?: string | null
+          club_id?: string
+          created_at?: string
+          created_by?: string
+          day_of_week?: number
+          description?: string | null
+          end_time?: string
+          event_type?: string
+          id?: string
+          invite_scope?: string
+          invite_scope_id?: string | null
+          is_club_booking?: boolean
+          start_date?: string
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_events_booked_by_member_id_fkey"
+            columns: ["booked_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_events_booked_by_member_id_fkey"
+            columns: ["booked_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_member_fee_payments: {
         Row: {
           amount: number

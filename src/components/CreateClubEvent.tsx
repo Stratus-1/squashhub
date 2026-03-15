@@ -42,7 +42,7 @@ const TIME_OPTIONS = (() => {
 export function CreateClubEvent() {
   const { user } = useAuth();
   const { club } = useClubContext();
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const queryClient = useQueryClient();
   const clubId = club?.id;
 

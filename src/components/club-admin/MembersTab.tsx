@@ -287,7 +287,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const isDelegate = (memberId: string) => !!getDelegateTitle(memberId);
 
   const handleToggleAdmin = async (member: ClubMember) => {
-    if (member.role === "captain" || isDelegate(member.id)) return;
+    if (isDelegate(member.id)) return;
     const newRole = member.role === "admin" ? "member" : "admin";
     const { error } = await fromExt("club_members").update({ role: newRole }).eq("id", member.id);
     if (error) toast.error(error.message);

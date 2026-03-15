@@ -1110,8 +1110,9 @@ export function useCreateMatch() {
 
       const id = matchId || crypto.randomUUID();
 
-      const bothLinked = playerA !== playerB;
-      const confirmed = !bothLinked;
+      // Both players have distinct user accounts — needs opponent confirmation
+      const bothHaveAccounts = !!playerA && !!playerB && playerA !== playerB;
+      const confirmed = !bothHaveAccounts;
 
       const { data, error } = await supabase
         .from("matches")

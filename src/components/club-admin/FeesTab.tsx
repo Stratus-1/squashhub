@@ -155,12 +155,13 @@ export function FeesTab({ clubId }: { clubId: string }) {
         <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} />
       )}
 
-      <Card className="p-4 bg-muted/50">
-        <p className="text-sm text-muted-foreground">
-          <strong>Fee reminders:</strong> Members who play league are automatically notified about league and national body fees {club?.fee_reminder_days_before ?? 14} days before the due date.
-        </p>
-        <p className="text-sm text-muted-foreground mt-1">
-          <strong>Pro-rate:</strong> When enabled, self-registering members are charged a proportional fee based on months remaining. Admin-added members pay the full annual fee.
+      <Card className="p-4 bg-muted/50 space-y-3">
+        <div className="flex items-center gap-3">
+          <Label className="whitespace-nowrap">Reminder days before due date:</Label>
+          <Input type="number" min={1} max={90} className="w-20" value={reminderDays} onChange={e => handleReminderDays(Number(e.target.value))} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          <strong>Pro-rate:</strong> When enabled, self-registering members are charged a proportional fee based on months remaining.
         </p>
       </Card>
     </div>

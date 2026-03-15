@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     // Fetch the active session (use service role to ensure we can read it)
     const { data: session, error: sessErr } = await supabase
       .from("light_sessions")
-      .select("*, courts(relay_device_id, relay_server, club_id, clubs(shelly_auth_key))")
+      .select("*, courts(relay_device_id, relay_server, club_id)")
       .eq("id", sessionId)
       .eq("user_id", userId)
       .eq("status", "active")
@@ -177,7 +177,9 @@ Deno.serve(async (req) => {
     }
 
     const court = (session as any).courts;
-    const authKey = court?.clubs?.shelly_auth_key;
+    const courtClubId = court?.club_id;
+    const { data: courtSecrets } = courtClubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", courtClubId).maybeSingle() : { data: null };
+    const authKey = courtSecrets?.shelly_auth_key;
 
     // Turn off lights on current court
     if (court?.relay_device_id && authKey) {

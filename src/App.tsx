@@ -278,7 +278,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ClubProvider>
-            <AppRoutes />
+            <MemberProvider>
+              <AppRoutes />
+            </MemberProvider>
           </ClubProvider>
         </AuthProvider>
       </BrowserRouter>

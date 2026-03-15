@@ -302,6 +302,7 @@ export default function Dashboard() {
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/events")}>
             <CalendarDays className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Events</span>
+          </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
             <span className="text-xs font-medium">Account</span>

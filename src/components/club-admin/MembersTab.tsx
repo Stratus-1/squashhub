@@ -264,6 +264,17 @@ export function MembersTab({ clubId }: { clubId: string }) {
     return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q);
   });
 
+  const handleToggleAdmin = async (member: ClubMember) => {
+    if (member.role === "captain") return;
+    const newRole = member.role === "admin" ? "member" : "admin";
+    const { error } = await fromExt("club_members").update({ role: newRole }).eq("id", member.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(newRole === "admin" ? `${member.profiles?.name || member.name} granted admin rights` : `Admin rights removed from ${member.profiles?.name || member.name}`);
+      qc.invalidateQueries({ queryKey: ["club-members"] });
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Remove this member from the club?")) return;
     const { error } = await fromExt("club_members").delete().eq("id", id);

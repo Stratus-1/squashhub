@@ -12,6 +12,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useProfile } from "@/hooks/use-data";
 import { useMyClubMember, useMyClub, useFeeCategories, useLeagueAssociations, useMyLeagueRegistration, useLeagues, SKILL_LEVELS } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";

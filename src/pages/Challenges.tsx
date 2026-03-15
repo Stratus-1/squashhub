@@ -329,7 +329,12 @@ export default function Challenges() {
   };
 
   const handleEnterResult = (c: ChallengeWithProfiles) => {
-    navigate(`/add-result?challengeId=${c.id}&opponentId=${c.challenger_id === user?.id ? c.opponent_id : c.challenger_id}`);
+    const isChallenger = myMemberId
+      ? (c as any).challenger_member_id === myMemberId
+      : c.challenger_id === user?.id;
+    const oppMemberId = isChallenger ? (c as any).opponent_member_id : (c as any).challenger_member_id;
+    const oppUserId = isChallenger ? c.opponent_id : c.challenger_id;
+    navigate(`/add-result?challengeId=${c.id}${oppUserId ? `&opponentId=${oppUserId}` : ""}${oppMemberId ? `&opponentMemberId=${oppMemberId}` : ""}`);
   };
 
   const renderChallengeCard = (c: ChallengeWithProfiles, type: "incoming" | "outgoing" | "past") => {
@@ -342,7 +347,9 @@ export default function Challenges() {
     const hasCounter = !!(c as any).counter_date;
     const showResult = needsResult(c);
     const isCancellable = canCancel(c);
-    const isChallenger = c.challenger_id === user?.id;
+    const isChallenger = myMemberId
+      ? (c as any).challenger_member_id === myMemberId
+      : c.challenger_id === user?.id;
 
     // For outgoing with counter: challenger needs to accept or decline counter
     const needsCounterResponse = type === "outgoing" && c.status === "pending" && hasCounter;

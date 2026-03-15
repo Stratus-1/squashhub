@@ -848,6 +848,30 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
 
+              {/* Court Availability Warning */}
+              {courtConflicts && courtConflicts.length > 0 && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3 space-y-1.5">
+                  <p className="text-xs font-medium text-destructive">⚠ Court conflicts found</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    The following courts already have bookings that overlap with your event times:
+                  </p>
+                  <div className="max-h-32 overflow-y-auto space-y-0.5">
+                    {courtConflicts.map((c: any) => {
+                      const courtName = (courts || []).find((ct) => ct.id === c.court_id)?.name || `Court ${c.court_id}`;
+                      return (
+                        <p key={c.id} className="text-[11px] text-destructive">
+                          {courtName} · {c.date} · {String(c.start_time).slice(0, 5)}–{String(c.end_time).slice(0, 5)}
+                          {c.guest_name ? ` (${c.guest_name})` : ""}
+                        </p>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground italic">
+                    You can still create the event, but the conflicting slots are already booked.
+                  </p>
+                </div>
+              )}
+
               {/* Court Booking Assignment */}
               <div className="rounded-lg border border-border p-3 space-y-3">
                 <Label className="text-xs font-medium">Court Booking Names</Label>

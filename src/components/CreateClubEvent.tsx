@@ -900,16 +900,30 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           <p className="font-medium text-foreground">Booking split preview:</p>
                           {(() => {
                             const bookingIds = form.booking_member_ids.slice(0, sessionsNeeded);
-                            const slotMin = Math.min(60, Math.ceil(totalMin / bookingIds.length));
-                            let offset = 0;
-                            return bookingIds.map((mid) => {
-                              const m = invitedMembers.find((x) => x.id === mid);
-                              const slotEnd = Math.min(offset + slotMin, totalMin);
-                              const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
-                              const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
-                              offset = slotEnd;
+                            const slotMin = Math.min(60, Math.ceil(totalMin / hourSessionsPerCourt));
+                            let memberIdx = 0;
+                            const courtList = form.court_ids.length > 0 ? form.court_ids : [0];
+                            const courtNames = (courts || []).reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {} as Record<number, string>);
+                            return courtList.map((cid) => {
+                              let offset = 0;
+                              const slots: JSX.Element[] = [];
+                              while (offset < totalMin && memberIdx < bookingIds.length) {
+                                const mid = bookingIds[memberIdx];
+                                const m = invitedMembers.find((x) => x.id === mid);
+                                const slotEnd = Math.min(offset + slotMin, totalMin);
+                                const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
+                                const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
+                                slots.push(
+                                  <p key={`${cid}-${mid}`} className="pl-2">{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
+                                );
+                                offset = slotEnd;
+                                memberIdx++;
+                              }
                               return (
-                                <p key={mid}>{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
+                                <div key={cid}>
+                                  <p className="font-medium text-foreground">{courtNames[cid] || `Court ${cid}`}</p>
+                                  {slots}
+                                </div>
                               );
                             });
                           })()}

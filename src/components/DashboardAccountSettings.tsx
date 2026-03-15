@@ -388,26 +388,8 @@ export function DashboardAccountSettings() {
         </Accordion>
       </Card>
 
-      {/* Court check-ins */}
-      <Card className="p-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
-            <MapPin className="w-4 h-4 text-primary" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Court check-in reminders</p>
-            <p className="text-[11px] text-muted-foreground">Detect unbooked sessions (optional location).</p>
-          </div>
-        </div>
-        <Switch
-          checked={courtCheckinsEnabled}
-          disabled={saveProfilePrefs.isPending}
-          onCheckedChange={(checked) => {
-            setCourtCheckinsEnabled(checked);
-            saveProfilePrefs.mutate({ court_checkins_enabled: checked });
-          }}
-        />
-      </Card>
+
+
 
       {/* Push notifications */}
       {permission !== "unsupported" && (

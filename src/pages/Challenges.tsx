@@ -563,8 +563,8 @@ export default function Challenges() {
           <DialogHeader>
             <DialogTitle>{statsDialog.opponentName} — Stats</DialogTitle>
           </DialogHeader>
-          {statsDialog.open && user && (
-            <OpponentStatsPanel userId={statsDialog.opponentId} myUserId={user.id} />
+          {statsDialog.open && myMemberId && (
+            <OpponentStatsPanel memberId={statsDialog.opponentMemberId} myMemberId={myMemberId} />
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatsDialog((s) => ({ ...s, open: false }))}>Close</Button>

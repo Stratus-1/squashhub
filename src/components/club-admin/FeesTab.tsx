@@ -49,7 +49,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
     feeCategories.forEach(c => list.push({
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
-      dueMonth: (c as any).due_month ?? dueMonth,
+      dueMonth: (c as any).due_month ?? 1,
       source: "member_fee_categories", raw: c,
     }));
     associations.forEach(a => list.push({

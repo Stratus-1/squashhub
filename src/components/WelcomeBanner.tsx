@@ -75,7 +75,7 @@ export function WelcomeBanner() {
 
   if (dismissed || !profile) return null;
 
-  const firstName = profile.name?.split(" ")[0] || "Player";
+  const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Player";
 
   return (
     <AnimatePresence>

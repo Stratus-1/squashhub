@@ -51,7 +51,7 @@ export default function Dashboard() {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("matches")
-        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, submitted_by, notes")
+        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, disputed, submitted_by, notes")
         .order("match_date", { ascending: false })
         .limit(20);
       if (error) throw error;

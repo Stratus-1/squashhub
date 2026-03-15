@@ -89,22 +89,6 @@ export function FeesTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
-      {/* Payment due settings */}
-      <Card className="p-4 space-y-3">
-        <h3 className="font-semibold">Payment Due Date</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label>Default Due Month</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={dueMonth} onChange={e => handleDueSettings("member_fee_due_month", Number(e.target.value))}>
-              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label>Reminder Days Before</Label>
-            <Input type="number" min={1} max={90} value={reminderDays} onChange={e => handleDueSettings("fee_reminder_days_before", Number(e.target.value))} />
-          </div>
-        </div>
-      </Card>
 
       {/* Unified fees table */}
       <div>

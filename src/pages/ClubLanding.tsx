@@ -153,6 +153,38 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                 {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
               </p>
             )}
+
+            {/* Club Delegates */}
+            {(chairmanDelegate || secretaryDelegate || captainDelegate) && (
+              <div className="space-y-2 pt-2">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Club Officials</h2>
+                <div className="grid gap-2">
+                  {[
+                    { label: "Chairman", delegate: chairmanDelegate },
+                    { label: "Secretary", delegate: secretaryDelegate },
+                    { label: "Club Captain", delegate: captainDelegate },
+                  ].filter(d => d.delegate).map(({ label, delegate }) => (
+                    <Card key={label} className="p-3 bg-card/60 backdrop-blur-sm border-border/50">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
+                      <p className="text-sm font-semibold text-foreground">{delegate!.name || "—"}</p>
+                      <div className="flex flex-wrap gap-3 mt-1">
+                        {delegate!.email && (
+                          <a href={`mailto:${delegate!.email}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
+                            <Mail className="w-3 h-3" />{delegate!.email}
+                          </a>
+                        )}
+                        {delegate!.phone && (
+                          <a href={`tel:${delegate!.phone}`} className="text-xs text-primary flex items-center gap-1 hover:underline">
+                            <Phone className="w-3 h-3" />{delegate!.phone}
+                          </a>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="pt-3 space-y-3">
               <Button
                 size="lg"

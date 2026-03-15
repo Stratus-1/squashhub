@@ -362,22 +362,29 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   </div>
                 );
               })}
-              <div className="grid grid-cols-[1fr_60px_90px_90px] gap-1 px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
-                <span>Total</span>
-                <span />
-                <span className="text-right tabular-nums">
-                  R{Object.values(trialBalance).reduce((s, b) => s + b.debit, 0).toFixed(2)}
-                </span>
-                <span className="text-right tabular-nums">
-                  R{Object.values(trialBalance).reduce((s, b) => s + b.credit, 0).toFixed(2)}
-                </span>
-              </div>
+              {(() => {
+                const totalDebit = Object.values(trialBalance).reduce((s: number, b: any) => s + (b.debit || 0), 0);
+                const totalCredit = Object.values(trialBalance).reduce((s: number, b: any) => s + (b.credit || 0), 0);
+                return (
+                  <>
+                    <div className="grid grid-cols-[1fr_60px_90px_90px] gap-1 px-3 py-2.5 text-sm items-center bg-muted/40 font-bold border-t-2">
+                      <span>Total</span>
+                      <span />
+                      <span className="text-right tabular-nums">R{totalDebit.toFixed(2)}</span>
+                      <span className="text-right tabular-nums">R{totalCredit.toFixed(2)}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
-            <p className="text-[10px] text-muted-foreground text-center">
-              {Object.values(trialBalance).reduce((s, b) => s + b.debit, 0).toFixed(2) ===
-               Object.values(trialBalance).reduce((s, b) => s + b.credit, 0).toFixed(2)
-                ? "✅ Trial balance is in balance"
-                : "⚠️ Trial balance is out of balance"}
+            {(() => {
+              const totalDebit = Object.values(trialBalance).reduce((s: number, b: any) => s + (b.debit || 0), 0);
+              const totalCredit = Object.values(trialBalance).reduce((s: number, b: any) => s + (b.credit || 0), 0);
+              return (
+                <p className="text-[10px] text-muted-foreground text-center">
+                  {totalDebit.toFixed(2) === totalCredit.toFixed(2)
+                    ? "✅ Trial balance is in balance"
+                    : "⚠️ Trial balance is out of balance"}
             </p>
           </Card>
         </TabsContent>

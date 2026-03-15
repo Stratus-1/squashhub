@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Pencil, Camera, Trash2 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useProfile } from "@/hooks/use-data";
 import { useMyClubMember, useMyClub, useFeeCategories, useLeagueAssociations, useMyLeagueRegistration, useLeagues, SKILL_LEVELS } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,10 +52,32 @@ export default function Profile() {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: profile, isLoading } = useProfile();
-  const { data: clubMember, isLoading: memberLoading } = useMyClubMember();
+  const { data: defaultClubMember, isLoading: memberLoading } = useMyClubMember();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
+
+  // If a different member is active (family account switching), fetch their club_member record
+  const activeMemberId = activeMember?.id;
+  const { data: switchedClubMember } = useQuery({
+    queryKey: ["club-member-by-id", activeMemberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .eq("id", activeMemberId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!activeMemberId && activeMemberId !== defaultClubMember?.id,
+  });
+
+  // Use switched member's record if active, otherwise default
+  const clubMember = (activeMemberId && activeMemberId !== defaultClubMember?.id && switchedClubMember)
+    ? switchedClubMember
+    : defaultClubMember;
+
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: leagues = [] } = useLeagues(clubId);
@@ -87,11 +110,17 @@ export default function Profile() {
     navigate("/dashboard");
   };
 
+  const isViewingSwitchedMember = !!activeMemberId && activeMemberId !== defaultClubMember?.id;
+
   const resetDraft = () => {
-    if (!profile) return;
-    setName(String((profile as any).name || ""));
-    setPhone(String((profile as any).phone || ""));
-    setAvatarUrl(String((profile as any).avatar_url || ""));
+    if (!profile && !isViewingSwitchedMember) return;
+    // When viewing a switched member, use their club_member name/phone
+    const sourceName = isViewingSwitchedMember ? (clubMember?.name || "") : String((profile as any)?.name || "");
+    const sourcePhone = isViewingSwitchedMember ? (clubMember?.phone || "") : String((profile as any)?.phone || "");
+    const sourceAvatar = isViewingSwitchedMember ? "" : String((profile as any)?.avatar_url || "");
+    setName(sourceName);
+    setPhone(sourcePhone);
+    setAvatarUrl(sourceAvatar);
     setPreviewFile(null);
     // Club member fields
     if (clubMember) {
@@ -165,13 +194,15 @@ export default function Profile() {
       const phoneErr = validatePhone(phone);
       if (phoneErr) throw new Error(phoneErr);
 
-      // Update profile
-      const { error } = await supabase.from("profiles").update({
-        name: cleanName,
-        phone: phone.trim() || null,
-        avatar_url: avatarUrl.trim() || null,
-      }).eq("id", user.id);
-      if (error) throw error;
+      // Only update the profiles table if editing the primary user (not a switched family member)
+      if (!isViewingSwitchedMember) {
+        const { error } = await supabase.from("profiles").update({
+          name: cleanName,
+          phone: phone.trim() || null,
+          avatar_url: avatarUrl.trim() || null,
+        }).eq("id", user.id);
+        if (error) throw error;
+      }
 
       // Update club member record if exists
       if (clubMember?.id) {
@@ -228,6 +259,7 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: ["my-club-member"] }),
         queryClient.invalidateQueries({ queryKey: ["club-members"] }),
         queryClient.invalidateQueries({ queryKey: ["my-league-registration"] }),
+        queryClient.invalidateQueries({ queryKey: ["club-member-by-id", activeMemberId] }),
       ]);
       toast.success("Profile updated");
       setMode("view");
@@ -243,18 +275,18 @@ export default function Profile() {
       <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg max-h-[calc(100dvh-2rem)] sm:max-h-[85dvh] overflow-y-auto overscroll-contain p-4 sm:p-6">
         <SEO title="Profile" description="Your profile details." path="/profile" noIndex />
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit profile" : "Profile details"}</DialogTitle>
+          <DialogTitle>{mode === "edit" ? `Edit profile${isViewingSwitchedMember ? ` — ${activeMember?.name || ""}` : ""}` : `Profile details${isViewingSwitchedMember ? ` — ${activeMember?.name || ""}` : ""}`}</DialogTitle>
         </DialogHeader>
 
         {isLoading || memberLoading ? (
           <div className="py-10 flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : !profile ? (
+        ) : !profile && !isViewingSwitchedMember ? (
           <Card className="p-4 text-sm text-muted-foreground">Could not load your profile.</Card>
         ) : mode === "view" ? (
           <ViewMode
-            profile={profile}
+            profile={isViewingSwitchedMember ? { name: clubMember?.name, email: clubMember?.email, phone: clubMember?.phone, avatar_url: null } : profile}
             clubMember={clubMember}
             feeCategories={feeCategories}
             close={close}
@@ -262,7 +294,8 @@ export default function Profile() {
           />
         ) : (
           <div className="space-y-3">
-            {/* Photo upload */}
+            {/* Photo upload — only for primary user, not switched family members */}
+            {!isViewingSwitchedMember && (
             <div id="avatar-picker" className="flex flex-col items-center gap-3 py-2">
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden bg-muted border-2 border-border flex items-center justify-center">
@@ -299,6 +332,7 @@ export default function Profile() {
                 )}
               </div>
             </div>
+            )}
 
             {/* Personal info */}
             <div className="space-y-1.5">

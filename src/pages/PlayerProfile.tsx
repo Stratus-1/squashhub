@@ -8,6 +8,7 @@ import { IntegrationLogo } from "@/components/IntegrationLogo";
 import { useHeadToHead, usePlayerProfile, useProfile, useSquashTotals, useLadder } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity, Flame, Loader2, Swords, Target, Timer, Trophy, TrendingUp } from "lucide-react";
 import { useEffect, useMemo } from "react";

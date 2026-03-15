@@ -2,13 +2,20 @@ import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight } from "lucide-react";
+import { Loader2, Building2, ArrowRight, Mail, Phone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { SEO } from "@/components/SEO";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
+
+interface ClubDelegate {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+}
 
 interface ClubData {
   id: string;
@@ -18,6 +25,9 @@ interface ClubData {
   email: string | null;
   phone: string | null;
   logo_url: string | null;
+  chairman_member_id: string | null;
+  secretary_member_id: string | null;
+  club_captain_member_id: string | null;
 }
 
 interface ClubLandingProps {

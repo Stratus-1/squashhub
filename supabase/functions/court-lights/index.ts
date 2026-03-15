@@ -574,68 +574,94 @@ Deno.serve(async (req) => {
           if (feeCharged > 0) {
             const { data: bookingData } = await supabase
               .from("bookings")
-              .select("light_fee_split, club_member_id, opponent_member_id, user_id, opponent_id")
+              .select("light_fee_split, club_member_id, opponent_member_id, user_id, opponent_id, start_time, court_id")
               .eq("id", existingSession.booking_id)
               .maybeSingle();
 
-            const feeSplit = (bookingData as any)?.light_fee_split || "booker";
-            const opponentMemberId = (bookingData as any)?.opponent_member_id;
-
-            if (feeSplit === "shared" && opponentMemberId) {
-              const halfFee = Math.round((feeCharged / 2) * 100) / 100;
-              const bookerFee = feeCharged - halfFee;
-              const bookerMemberId = (bookingData as any)?.club_member_id;
-
-              await supabase.from("member_credit_transactions").insert({
-                user_id: existingSession.user_id,
-                club_id: existingSession.club_id,
-                club_member_id: bookerMemberId || null,
-                amount: -bookerFee,
-                type: "debit",
-                method: "system",
-                status: "confirmed",
-                confirmed_at: now.toISOString(),
-                description: `Court lights (50%) – ${durationMinutes}min on ${court.name}`,
-                reference: existingSession.booking_id,
-              });
-
-              let opponentUserId = (bookingData as any)?.opponent_id;
-              if (!opponentUserId) {
-                const { data: oppMember } = await supabase
-                  .from("club_members")
-                  .select("user_id")
-                  .eq("id", opponentMemberId)
-                  .maybeSingle();
-                opponentUserId = oppMember?.user_id;
+            // Check if this is a club event booking with attendee splitting
+            // The database trigger handles fee distribution for events
+            let isEventSplit = false;
+            if (bookingData && court.club_id) {
+              const { data: eventMatch } = await supabase
+                .from("club_events")
+                .select("id")
+                .eq("club_id", court.club_id)
+                .eq("status", "active")
+                .eq("light_fee_split", "attendees")
+                .eq("start_time", (bookingData as any).start_time)
+                .limit(1);
+              if (eventMatch && eventMatch.length > 0) {
+                const { data: courtMatch } = await supabase
+                  .from("club_event_courts")
+                  .select("id")
+                  .eq("event_id", eventMatch[0].id)
+                  .eq("court_id", court.id)
+                  .limit(1);
+                isEventSplit = !!(courtMatch && courtMatch.length > 0);
               }
-
-              await supabase.from("member_credit_transactions").insert({
-                user_id: opponentUserId || existingSession.user_id,
-                club_id: existingSession.club_id,
-                club_member_id: opponentMemberId,
-                amount: -halfFee,
-                type: "debit",
-                method: "system",
-                status: "confirmed",
-                confirmed_at: now.toISOString(),
-                description: `Court lights (50%) – ${durationMinutes}min on ${court.name}`,
-                reference: existingSession.booking_id,
-              });
-            } else {
-              const bookerMemberId = (bookingData as any)?.club_member_id;
-              await supabase.from("member_credit_transactions").insert({
-                user_id: existingSession.user_id,
-                club_id: existingSession.club_id,
-                club_member_id: bookerMemberId || null,
-                amount: -feeCharged,
-                type: "debit",
-                method: "system",
-                status: "confirmed",
-                confirmed_at: now.toISOString(),
-                description: `Court lights – ${durationMinutes}min on ${court.name}`,
-                reference: existingSession.booking_id,
-              });
             }
+
+            if (!isEventSplit) {
+              const feeSplit = (bookingData as any)?.light_fee_split || "booker";
+              const opponentMemberId = (bookingData as any)?.opponent_member_id;
+
+              if (feeSplit === "shared" && opponentMemberId) {
+                const halfFee = Math.round((feeCharged / 2) * 100) / 100;
+                const bookerFee = feeCharged - halfFee;
+                const bookerMemberId = (bookingData as any)?.club_member_id;
+
+                await supabase.from("member_credit_transactions").insert({
+                  user_id: existingSession.user_id,
+                  club_id: existingSession.club_id,
+                  club_member_id: bookerMemberId || null,
+                  amount: -bookerFee,
+                  type: "debit",
+                  method: "system",
+                  status: "confirmed",
+                  confirmed_at: now.toISOString(),
+                  description: `Court lights (50%) – ${durationMinutes}min on ${court.name}`,
+                  reference: existingSession.booking_id,
+                });
+
+                let opponentUserId = (bookingData as any)?.opponent_id;
+                if (!opponentUserId) {
+                  const { data: oppMember } = await supabase
+                    .from("club_members")
+                    .select("user_id")
+                    .eq("id", opponentMemberId)
+                    .maybeSingle();
+                  opponentUserId = oppMember?.user_id;
+                }
+
+                await supabase.from("member_credit_transactions").insert({
+                  user_id: opponentUserId || existingSession.user_id,
+                  club_id: existingSession.club_id,
+                  club_member_id: opponentMemberId,
+                  amount: -halfFee,
+                  type: "debit",
+                  method: "system",
+                  status: "confirmed",
+                  confirmed_at: now.toISOString(),
+                  description: `Court lights (50%) – ${durationMinutes}min on ${court.name}`,
+                  reference: existingSession.booking_id,
+                });
+              } else {
+                const bookerMemberId = (bookingData as any)?.club_member_id;
+                await supabase.from("member_credit_transactions").insert({
+                  user_id: existingSession.user_id,
+                  club_id: existingSession.club_id,
+                  club_member_id: bookerMemberId || null,
+                  amount: -feeCharged,
+                  type: "debit",
+                  method: "system",
+                  status: "confirmed",
+                  confirmed_at: now.toISOString(),
+                  description: `Court lights – ${durationMinutes}min on ${court.name}`,
+                  reference: existingSession.booking_id,
+                });
+              }
+            }
+            // else: event split — trigger handles fee distribution
           }
 
           results.push({

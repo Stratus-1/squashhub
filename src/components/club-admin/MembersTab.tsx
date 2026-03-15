@@ -70,11 +70,11 @@ function computeExpectedFees(
   const fees: ExpectedFee[] = [];
   const memberPayments = existingPayments.filter(p => p.club_member_id === member.id);
 
-  // 1. Club membership fee (from fee category, pro-rated for new members)
+  // 1. Club membership fee (full annual — pro-rating only for self-registering members)
   if (member.fee_category_id) {
     const cat = feeCategories.find(c => c.id === member.fee_category_id);
     if (cat) {
-      const amount = proRateClubFee(cat.annual_fee, member.joined_at, feeDueMonth);
+      const amount = cat.annual_fee;
       const existing = memberPayments.find(p => p.fee_type === "club" || p.fee_type === "membership");
       fees.push({ fee_type: "club", fee_label: `Club – ${cat.name}`, amount, existing });
     }

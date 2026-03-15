@@ -150,15 +150,22 @@ export default function Challenges() {
   }>({ open: false, opponentId: "", opponentName: "" });
 
   const { incoming, outgoing, past } = useMemo(() => {
-    if (!user || !challenges) return { incoming: [], outgoing: [], past: [] };
+    if (!challenges) return { incoming: [], outgoing: [], past: [] };
     const active = challenges.filter((c) => c.status === "pending" || c.status === "accepted");
     const done = challenges.filter((c) => c.status === "declined" || c.status === "completed");
+
+    // Use member_id matching when available, fall back to user_id
+    const isMyChallenge = (id: string | null, memberId: string | null) => {
+      if (myMemberId && memberId) return memberId === myMemberId;
+      return id === user?.id;
+    };
+
     return {
-      incoming: active.filter((c) => c.opponent_id === user.id),
-      outgoing: active.filter((c) => c.challenger_id === user.id),
+      incoming: active.filter((c) => isMyChallenge(c.opponent_id, c.opponent_member_id)),
+      outgoing: active.filter((c) => isMyChallenge(c.challenger_id, c.challenger_member_id)),
       past: done.slice(0, 20),
     };
-  }, [challenges, user]);
+  }, [challenges, user, myMemberId]);
 
   const handleAccept = async (c: ChallengeWithProfiles) => {
     try {

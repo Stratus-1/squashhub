@@ -280,23 +280,52 @@ export default function MyAccount() {
       if (!selectedFees.length) throw new Error("No fees selected");
       const totalAmount = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
 
+      // Helper to post GL journal entries for a payment
+      const postPaymentGL = async (txId: string, amount: number, feeLabel: string) => {
+        const journalRef = crypto.randomUUID();
+        await fromExt("club_journal_entries").insert([
+          {
+            club_id: clubId,
+            journal_ref: journalRef,
+            account: "bank" as any,
+            debit: amount,
+            credit: 0,
+            description: `Payment received: ${feeLabel}`,
+            club_member_id: clubMemberId,
+            transaction_id: txId,
+          },
+          {
+            club_id: clubId,
+            journal_ref: journalRef,
+            account: "debtors" as any,
+            debit: 0,
+            credit: amount,
+            description: `Payment received: ${feeLabel}`,
+            club_member_id: clubMemberId,
+            transaction_id: txId,
+          },
+        ]);
+      };
+
+      const feeDescription = selectedFees.map((f: any) => f.fee_label).join(", ");
+
       if (method === "credit") {
         if (creditBalance < totalAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
-        // Deduct from credit and mark paid
-        const { error: txErr } = await fromExt("member_credit_transactions").insert({
+        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: effectiveUserId!,
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: totalAmount,
           type: "payment",
           method: "credit",
-          description: `Fee payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
+          description: `Fee payment: ${feeDescription}`,
           status: "confirmed",
-        });
+        }).select("id").single();
         if (txErr) throw txErr;
-        // Mark all selected fees as paid
+        // GL: Dt Bank, Ct Debtors
+        await postPaymentGL(txData.id, totalAmount, feeDescription);
         for (const fee of selectedFees) {
           const { error } = await fromExt("club_member_fee_payments")
             .update({ paid: true, paid_at: new Date().toISOString() })
@@ -304,18 +333,19 @@ export default function MyAccount() {
           if (error) throw error;
         }
       } else if (method === "card") {
-        // Card payment — auto-confirm, mark fees paid immediately
-        const { error: txErr } = await fromExt("member_credit_transactions").insert({
+        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
           user_id: effectiveUserId!,
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: totalAmount,
           type: "payment",
           method: "card",
-          description: `Card payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
+          description: `Card payment: ${feeDescription}`,
           status: "confirmed",
-        });
+        }).select("id").single();
         if (txErr) throw txErr;
+        // GL: Dt Bank, Ct Debtors
+        await postPaymentGL(txData.id, totalAmount, feeDescription);
         for (const fee of selectedFees) {
           const { error } = await fromExt("club_member_fee_payments")
             .update({ paid: true, paid_at: new Date().toISOString() })

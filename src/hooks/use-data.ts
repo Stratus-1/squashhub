@@ -790,7 +790,12 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
       const allMemberIds = [
         ...new Set(
           challenges
-            .flatMap((c) => [c.challenger_member_id, c.opponent_member_id])
+            .flatMap((c) => [
+              c.challenger_member_id,
+              c.opponent_member_id,
+              c.challenger_id,
+              c.opponent_id,
+            ])
             .filter(Boolean) as string[]
         ),
       ];

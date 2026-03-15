@@ -282,11 +282,11 @@ export default function Profile() {
           <div className="py-10 flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : !profile ? (
+        ) : !profile && !isViewingSwitchedMember ? (
           <Card className="p-4 text-sm text-muted-foreground">Could not load your profile.</Card>
         ) : mode === "view" ? (
           <ViewMode
-            profile={profile}
+            profile={isViewingSwitchedMember ? { name: clubMember?.name, email: clubMember?.email, phone: clubMember?.phone, avatar_url: null } : profile}
             clubMember={clubMember}
             feeCategories={feeCategories}
             close={close}

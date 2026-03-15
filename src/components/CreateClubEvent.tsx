@@ -851,6 +851,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                                 }}
                               />
                               <span className="text-xs">{m.name || "Unnamed"}</span>
+                              {isBookingName && (
+                                <Badge variant="secondary" className="text-[9px] ml-auto">Booking {selIndex + 1}</Badge>
+                              )}
                             </label>
                           );
                         })}

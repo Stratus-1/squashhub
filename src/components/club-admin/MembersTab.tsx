@@ -917,7 +917,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           )}
           <div className="space-y-1">
             <Label>ID Number</Label>
-            <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value }))} placeholder="SA ID number (13 digits)" />
+            <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value.replace(/\D/g, "").slice(0, 13) }))} placeholder="SA ID number (13 digits)" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
           <div className="space-y-1">
@@ -926,7 +926,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
-            <Label>Fee Category</Label>
+            <Label>Fee Category *</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={form.fee_category_id}

@@ -167,7 +167,7 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium truncate">{displayName}</span>
-          <Badge variant={m.role === "captain" ? "default" : m.role === "admin" ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
+          <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
           {delegateTitle && (
             <Badge variant="default" className="text-[10px] bg-amber-600 hover:bg-amber-700">{delegateTitle}</Badge>
           )}

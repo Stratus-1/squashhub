@@ -291,7 +291,7 @@ export type Database = {
           court_id: number | null
           created_at: string
           id: string
-          opponent_id: string
+          opponent_id: string | null
           opponent_member_id: string | null
           proposed_date: string | null
           proposed_time: string | null
@@ -308,7 +308,7 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           id?: string
-          opponent_id: string
+          opponent_id?: string | null
           opponent_member_id?: string | null
           proposed_date?: string | null
           proposed_time?: string | null
@@ -325,7 +325,7 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           id?: string
-          opponent_id?: string
+          opponent_id?: string | null
           opponent_member_id?: string | null
           proposed_date?: string | null
           proposed_time?: string | null

@@ -194,7 +194,7 @@ export default function Ladder() {
     setSending(true);
     try {
       await createChallenge.mutateAsync({
-        opponentId: challengeDialog.player.user_id || challengeDialog.player.id,
+        opponentId: challengeDialog.player.user_id || null,
         proposedDate,
         proposedTime,
         courtId: courtId ? Number(courtId) : undefined,

@@ -1,0 +1,1 @@
+ALTER TABLE public.bookings ADD COLUMN club_member_id uuid REFERENCES public.club_members(id) ON DELETE SET NULL;

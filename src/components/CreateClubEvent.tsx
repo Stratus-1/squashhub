@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -176,6 +176,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
     enabled: !!myMemberId && eventIds.length > 0,
   });
+
+  // Pre-select the creator as an attendee
+  useEffect(() => {
+    if (activeMember?.id && form.selected_member_ids.length === 0) {
+      setForm((f) => ({
+        ...f,
+        selected_member_ids: [activeMember.id],
+        booking_member_ids: [activeMember.id],
+      }));
+    }
+  }, [activeMember?.id]);
 
   // Calculate instance dates based on recurrence
   const getInstanceDates = (): string[] => {

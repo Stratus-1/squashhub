@@ -227,9 +227,9 @@ export default function Ladder() {
             index={index}
             isMe={isMe(player)}
             isAdmin={false}
-            onNavigate={(id, isMe) => {
-              if (isMe) navigate("/profile");
-              else navigate(`/players/${id}`);
+            onNavigate={(playerId, isMePlayer) => {
+              if (isMePlayer) navigate("/profile");
+              else navigate(`/players/${playerId}`);
             }}
             onChallenge={() => handleChallengeClick(player)}
             challengeBlocked={!isChallengeable(player)}

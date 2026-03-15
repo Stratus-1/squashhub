@@ -316,6 +316,7 @@ export default function Bookings() {
   const { data: bookings, isLoading } = useBookings(dateStr, bookingClubId);
   const [terminatingSession, setTerminatingSession] = useState(false);
   const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
+  const [confirmEndSession, setConfirmEndSession] = useState<string | null>(null);
 
   // Active light sessions for the current user
   const { data: myActiveLightSessions = [], refetch: refetchSessions } = useQuery({

@@ -382,7 +382,7 @@ export default function Challenges() {
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-[10px] shrink-0"
-              onClick={() => setStatsDialog({ open: true, opponentId, opponentName })}
+              onClick={() => setStatsDialog({ open: true, opponentMemberId, opponentName })}
             >
               <BarChart3 className="w-3 h-3" />
             </Button>

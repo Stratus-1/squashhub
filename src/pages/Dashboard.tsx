@@ -510,6 +510,11 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Club Events */}
+      <div className="px-4 mt-4">
+        <CreateClubEvent />
+      </div>
+
       {/* More Actions */}
       <div className="px-4 mt-5">
         <p className="text-sm font-semibold font-heading mb-2">More</p>

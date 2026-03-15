@@ -537,42 +537,6 @@ export function DashboardAccountSettings() {
         )}
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Card className="overflow-hidden">
-          <button
-            className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
-            onClick={() => navigate("/availability")}
-          >
-            <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Availability</p>
-              <p className="text-[11px] text-muted-foreground truncate">Set when you’re free to play.</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </Card>
-
-        <Card className="overflow-hidden">
-          <button
-            className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
-            onClick={async () => {
-              await signOut();
-              navigate("/");
-            }}
-          >
-            <div className="w-9 h-9 rounded-md bg-destructive/10 flex items-center justify-center">
-              <LogOut className="w-4 h-4 text-destructive" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Sign out</p>
-              <p className="text-[11px] text-muted-foreground truncate">Sign out of this device.</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </Card>
-      </div>
 
       <p className="text-[11px] text-muted-foreground">
         Legal: <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">Terms</Link>{" "}

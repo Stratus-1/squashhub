@@ -388,17 +388,18 @@ export function useMyBookings(overrideUserId?: string | null) {
   });
 }
 
-export function useMyScheduledMatches() {
+export function useMyScheduledMatches(overrideUserId?: string | null) {
   const { user } = useAuth();
+  const targetId = overrideUserId || user?.id;
 
   return useQuery({
-    queryKey: ["my-scheduled-matches", user?.id],
+    queryKey: ["my-scheduled-matches", targetId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!targetId) return [];
       const today = new Date().toISOString().split("T")[0];
       const { data, error } = await fromAny("scheduled_matches")
         .select("*")
-        .or(`player_a.eq.${user.id},player_b.eq.${user.id}`)
+        .or(`player_a.eq.${targetId},player_b.eq.${targetId}`)
         .eq("status", "scheduled")
         .gte("scheduled_date", today)
         .order("scheduled_date", { ascending: true })
@@ -406,7 +407,7 @@ export function useMyScheduledMatches() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!targetId,
   });
 }
 

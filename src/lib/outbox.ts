@@ -130,11 +130,13 @@ async function flushBookingFlow(item: Extract<OutboxItem, { kind: "booking_flow"
       {
         id: booking.id,
         user_id: booking.user_id,
+        club_member_id: booking.club_member_id ?? null,
         court_id: booking.court_id,
         date: booking.date,
         start_time: booking.start_time,
         end_time: booking.end_time,
         opponent_id: booking.opponent_id,
+        opponent_member_id: booking.opponent_member_id ?? null,
         is_friendly: booking.is_friendly,
         status: "active",
       } as any,

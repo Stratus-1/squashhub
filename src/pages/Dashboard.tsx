@@ -239,6 +239,31 @@ export default function Dashboard() {
 
       <WelcomeBanner />
 
+      {/* Family Member Switcher */}
+      {showFamilySwitcher && (
+        <div className="px-4 mt-2">
+          <Card className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold">Switch Member</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {linkedMembers.map(m => (
+                <Button
+                  key={m.id}
+                  size="sm"
+                  variant={activeMember?.id === m.id ? "default" : "outline"}
+                  className="h-8 text-xs"
+                  onClick={() => switchMember(m.id)}
+                >
+                  {m.name || m.club_member_number || "Member"}
+                </Button>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Profile Completion — only show if incomplete */}
       <div className="px-4 mt-2">
         <ProfileCompletionMeter

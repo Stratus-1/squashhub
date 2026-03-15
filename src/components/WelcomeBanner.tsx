@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useLadder } from "@/hooks/use-data";
 import { useMyClubMember } from "@/hooks/use-club";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Swords, X, Trophy, Sparkles, HandMetal } from "lucide-react";
@@ -16,17 +17,19 @@ export function WelcomeBanner() {
   const { data: profile } = useProfile();
   const { data: myClubMember } = useMyClubMember();
   const { data: ladder } = useLadder();
+  const { activeMember, effectiveUserId } = useMemberContext();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(true);
 
   const isNewPlayer = profile && (profile.matches_played === 0);
 
-  // Find player's ladder_position (only set for ranked players)
+  // Find player's ladder_position using active member
+  const activeMemberId = activeMember?.id || (myClubMember as any)?.id;
   const myLadderPosition = useMemo(() => {
-    if (!ladder || !user?.id) return null;
-    const me = ladder.find((p: any) => p.user_id === user.id || p.club_member_id === (myClubMember as any)?.id);
+    if (!ladder || !activeMemberId) return null;
+    const me = ladder.find((p: any) => p.club_member_id === activeMemberId);
     return (me as any)?.ladder_position ?? null;
-  }, [ladder, myClubMember, user?.id]);
+  }, [ladder, activeMemberId]);
 
   useEffect(() => {
     if (!profile) return;
@@ -38,17 +41,15 @@ export function WelcomeBanner() {
 
   // Suggest an opponent based on current ladder position (same ladder group)
   const suggestedPlayer = useMemo(() => {
-    if (!user?.id || dismissed || !ladder) return null;
+    if (!activeMemberId || dismissed || !ladder) return null;
 
-    const me = ladder.find(
-      (p: any) => p.user_id === user.id || p.club_member_id === (myClubMember as any)?.id,
-    );
+    const me = ladder.find((p: any) => p.club_member_id === activeMemberId);
     if (!me?.ladder_position) return null;
 
     const myGroupIsLadies = ["female", "ladies", "f"].includes((me.gender || "").toLowerCase());
 
     const sameGroupPlayers = (ladder || []).filter((p: any) => {
-      if (p.id === me.id || p.user_id === user.id) return false;
+      if (p.club_member_id === activeMemberId) return false;
       if (typeof p.ladder_position !== "number") return false;
       const isLadies = ["female", "ladies", "f"].includes((p.gender || "").toLowerCase());
       return isLadies === myGroupIsLadies;
@@ -65,7 +66,7 @@ export function WelcomeBanner() {
     if (below.length > 0) return below[0];
 
     return sameGroupPlayers.sort((a: any, b: any) => a.ladder_position - b.ladder_position)[0] || null;
-  }, [dismissed, ladder, myClubMember, user?.id]);
+  }, [dismissed, ladder, activeMemberId]);
 
   const handleDismiss = () => {
     setDismissed(true);
@@ -74,7 +75,7 @@ export function WelcomeBanner() {
 
   if (dismissed || !profile) return null;
 
-  const firstName = profile.name?.split(" ")[0] || "Player";
+  const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Player";
 
   return (
     <AnimatePresence>

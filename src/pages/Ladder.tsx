@@ -149,6 +149,8 @@ export default function Ladder() {
         proposedDate,
         proposedTime,
         courtId: courtId ? Number(courtId) : undefined,
+        challengerMemberId: myClubMember?.id || null,
+        opponentMemberId: challengeDialog.player.club_member_id || null,
       });
       toast.success(`Challenge sent to ${challengeDialog.player.name}`);
       setChallengeDialog({ open: false, player: null });

@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { CalendarPlus, Loader2, Users, Trash2, Check, X } from "lucide-react";
+import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
 
 const fromExt = (table: string) => (supabase as any).from(table);
 
@@ -39,6 +39,19 @@ const TIME_OPTIONS = (() => {
   return opts;
 })();
 
+const RECURRENCE_OPTIONS = [
+  { value: "once", label: "Once (no repeat)" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+];
+
+const REMINDER_OPTIONS = [
+  { value: "24", label: "24 hours before" },
+  { value: "48", label: "48 hours before" },
+  { value: "72", label: "72 hours before" },
+];
+
 export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const { club } = useClubContext();
@@ -47,16 +60,21 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const clubId = club?.id;
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [step, setStep] = useState(1); // 1: Date/Time/Recurrence, 2: Details, 3: Invites & Fees
   const [form, setForm] = useState({
     title: "",
     description: "",
     event_type: "social",
-    day_of_week: "1",
+    event_date: format(new Date(), "yyyy-MM-dd"),
     start_time: "18:00",
     end_time: "19:00",
-    start_date: format(new Date(), "yyyy-MM-dd"),
+    recurrence: "once",
+    num_instances: 12,
+    reminder_hours: "48",
     invite_scope: "all",
     invite_scope_id: "",
+    selected_member_ids: [] as string[],
+    light_fee_split: "creator",
     is_club_booking: false,
     booked_by_member_id: "",
     court_ids: [] as number[],
@@ -73,7 +91,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!clubId,
   });
 
-  // Fetch club members for booker selection
+  // Fetch club members
   const { data: members } = useQuery({
     queryKey: ["club-members-list", clubId],
     queryFn: async () => {
@@ -106,7 +124,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!clubId && form.invite_scope === "league",
   });
 
-  // Fetch existing club events
+  // Fetch existing club events (for display below the create button)
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["club-events", clubId],
     queryFn: async () => {
@@ -114,7 +132,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .select("*, club_event_courts(court_id)")
         .eq("club_id", clubId!)
         .eq("status", "active")
-        .order("day_of_week");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -159,9 +177,28 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!myMemberId && eventIds.length > 0,
   });
 
+  // Calculate instance dates based on recurrence
+  const getInstanceDates = (): string[] => {
+    const baseDate = new Date(form.event_date + "T00:00:00");
+    if (form.recurrence === "once") return [form.event_date];
+    const dates: string[] = [];
+    const count = form.num_instances;
+    for (let i = 0; i < count; i++) {
+      let d: Date;
+      if (form.recurrence === "weekly") d = addWeeks(baseDate, i);
+      else if (form.recurrence === "monthly") d = addMonths(baseDate, i);
+      else d = addYears(baseDate, i);
+      dates.push(format(d, "yyyy-MM-dd"));
+    }
+    return dates;
+  };
+
   // Determine members to invite based on scope
   const getInviteeIds = async (): Promise<string[]> => {
     if (!clubId) return [];
+    if (form.invite_scope === "selected") {
+      return form.selected_member_ids;
+    }
     if (form.invite_scope === "all") {
       const { data } = await supabase.from("club_members").select("id").eq("club_id", clubId);
       return (data || []).map((m) => m.id);
@@ -183,6 +220,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (!form.title.trim()) throw new Error("Title is required");
       if (form.court_ids.length === 0) throw new Error("Select at least one court");
 
+      const dayOfWeek = new Date(form.event_date + "T00:00:00").getDay();
+
       // Create event
       const { data: event, error: eventError } = await fromExt("club_events").insert({
         club_id: clubId,
@@ -190,14 +229,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         title: form.title.trim(),
         description: form.description.trim() || null,
         event_type: form.event_type,
-        day_of_week: parseInt(form.day_of_week),
+        day_of_week: dayOfWeek,
         start_time: form.start_time + ":00",
         end_time: form.end_time + ":00",
-        start_date: form.start_date,
+        start_date: form.event_date,
         invite_scope: form.invite_scope,
         invite_scope_id: form.invite_scope_id || null,
         is_club_booking: form.is_club_booking,
         booked_by_member_id: form.is_club_booking ? null : (form.booked_by_member_id || null),
+        recurrence: form.recurrence,
+        light_fee_split: form.light_fee_split,
+        reminder_hours: parseInt(form.reminder_hours),
+        num_instances: form.recurrence === "once" ? 1 : form.num_instances,
       }).select("id").single();
       if (eventError) throw eventError;
 
@@ -208,24 +251,51 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const { error: courtError } = await fromExt("club_event_courts").insert(courtRows);
       if (courtError) throw courtError;
 
-      // Invite members
+      // Create instances
+      const instanceDates = getInstanceDates();
+      const instanceRows = instanceDates.map((d) => ({
+        event_id: eventId,
+        instance_date: d,
+        status: "scheduled",
+      }));
+      const { data: instances, error: instError } = await fromExt("club_event_instances")
+        .insert(instanceRows)
+        .select("id, instance_date");
+      if (instError) throw instError;
+
+      // Invite members - create RSVPs for both event-level and first instance
       const inviteeIds = await getInviteeIds();
+
+      // Event-level RSVPs (backwards compat)
       if (inviteeIds.length > 0) {
         const rsvpRows = inviteeIds.map((mid) => ({
           event_id: eventId,
           club_member_id: mid,
           status: "invited",
         }));
-        // Batch in chunks of 500
         for (let i = 0; i < rsvpRows.length; i += 500) {
           const chunk = rsvpRows.slice(i, i + 500);
-          const { error: rsvpError } = await fromExt("club_event_rsvps").insert(chunk);
-          if (rsvpError) throw rsvpError;
+          await fromExt("club_event_rsvps").insert(chunk);
         }
       }
 
-      // Create court bookings for the next occurrence
-      const nextDate = getNextOccurrence(parseInt(form.day_of_week), form.start_date);
+      // Instance-level RSVPs for each instance
+      if (inviteeIds.length > 0 && instances && instances.length > 0) {
+        for (const inst of instances) {
+          const instRsvpRows = inviteeIds.map((mid: string) => ({
+            instance_id: inst.id,
+            club_member_id: mid,
+            status: "invited",
+          }));
+          for (let i = 0; i < instRsvpRows.length; i += 500) {
+            const chunk = instRsvpRows.slice(i, i + 500);
+            await fromExt("club_event_instance_rsvps").insert(chunk);
+          }
+        }
+      }
+
+      // Create court bookings for the first instance
+      const firstDate = instanceDates[0];
       for (const cid of form.court_ids) {
         const bookingUserId = form.is_club_booking
           ? user.id
@@ -235,7 +305,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
         await supabase.from("bookings").insert({
           court_id: cid,
-          date: nextDate,
+          date: firstDate,
           start_time: form.start_time + ":00",
           end_time: form.end_time + ":00",
           user_id: bookingUserId,
@@ -244,16 +314,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         });
       }
 
-      // Send notifications to invited members
+      // Send notifications
       if (inviteeIds.length > 0) {
         const memberUsers = await supabase.from("club_members").select("user_id").in("id", inviteeIds).not("user_id", "is", null);
         const userIds = (memberUsers.data || []).map((m) => m.user_id).filter(Boolean) as string[];
+        const recurrenceText = form.recurrence === "once"
+          ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
+          : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
         const notifRows = userIds
           .filter((uid) => uid !== user.id)
           .map((uid) => ({
             user_id: uid,
             title: `${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event`,
-            message: `You're invited to "${form.title}" every ${DAYS[parseInt(form.day_of_week)]} at ${form.start_time}`,
+            message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}`,
             type: "booking",
           }));
         if (notifRows.length > 0) {
@@ -266,9 +339,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["club-events"] });
       queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
       toast.success("Event created and members invited!");
       setCreateOpen(false);
       resetForm();
+      onClose?.();
     },
     onError: (err: any) => toast.error(err.message || "Failed to create event"),
   });
@@ -292,6 +367,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["club-events"] });
+      queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
       toast.success("Event cancelled");
     },
   });
@@ -301,16 +377,21 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       title: "",
       description: "",
       event_type: "social",
-      day_of_week: "1",
+      event_date: format(new Date(), "yyyy-MM-dd"),
       start_time: "18:00",
       end_time: "19:00",
-      start_date: format(new Date(), "yyyy-MM-dd"),
+      recurrence: "once",
+      num_instances: 12,
+      reminder_hours: "48",
       invite_scope: "all",
       invite_scope_id: "",
+      selected_member_ids: [],
+      light_fee_split: "creator",
       is_club_booking: false,
       booked_by_member_id: "",
       court_ids: [],
     });
+    setStep(1);
   };
 
   const toggleCourt = (courtId: number) => {
@@ -322,6 +403,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     }));
   };
 
+  const toggleSelectedMember = (memberId: string) => {
+    setForm((f) => ({
+      ...f,
+      selected_member_ids: f.selected_member_ids.includes(memberId)
+        ? f.selected_member_ids.filter((id) => id !== memberId)
+        : [...f.selected_member_ids, memberId],
+    }));
+  };
+
+  const canGoStep2 = form.event_date && form.start_time && form.end_time;
+  const canGoStep3 = form.title.trim() && form.court_ids.length > 0;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -329,7 +422,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           <CalendarPlus className="w-4 h-4 text-primary" />
           <p className="text-xs font-semibold font-heading">Club Events</p>
         </div>
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { resetForm(); setCreateOpen(true); }}>
           <CalendarPlus className="w-3 h-3" /> Create
         </Button>
       </div>
@@ -345,6 +438,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             const myRsvp = myRsvps?.[e.id];
             const courtNames = (e.club_event_courts || []).map((c: any) => `Court ${c.court_id}`).join(", ");
             const isCreator = e.created_by === user?.id;
+            const recLabel = e.recurrence && e.recurrence !== "once" ? e.recurrence : null;
 
             return (
               <Card key={e.id}>
@@ -353,7 +447,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{e.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        Every {DAYS[e.day_of_week]} · {String(e.start_time).slice(0, 5)}–{String(e.end_time).slice(0, 5)}
+                        {recLabel
+                          ? `${recLabel.charAt(0).toUpperCase() + recLabel.slice(1)} · ${DAYS[e.day_of_week]}`
+                          : DAYS[e.day_of_week]
+                        } · {String(e.start_time).slice(0, 5)}–{String(e.end_time).slice(0, 5)}
                       </p>
                       {courtNames && <p className="text-[11px] text-muted-foreground">{courtNames}</p>}
                     </div>
@@ -370,6 +467,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-[11px] text-muted-foreground">
                       {counts ? `${counts.confirmed} confirmed · ${counts.invited} pending` : "Loading..."}
+                      {e.light_fee_split === "attendees" && (
+                        <span className="ml-1">· Lights shared</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       {myRsvp && myRsvp.status === "invited" && (
@@ -420,215 +520,343 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         </Card>
       )}
 
-      {/* Create Event Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      {/* Create Event Dialog - Multi-step */}
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-heading">Create Club Event</DialogTitle>
+            <DialogTitle className="font-heading">
+              Create Event
+              <span className="text-xs font-normal text-muted-foreground ml-2">Step {step} of 3</span>
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Title */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Title</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. Friday Social Night"
+
+          {/* Step indicators */}
+          <div className="flex gap-1 mb-2">
+            {[1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className={cn(
+                  "h-1 flex-1 rounded-full transition-colors",
+                  s <= step ? "bg-primary" : "bg-muted"
+                )}
               />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Description (optional)</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                className="min-h-[60px]"
-                placeholder="Details about the event..."
-              />
-            </div>
-
-            {/* Event Type */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Event Type</Label>
-              <Select
-                value={form.event_type}
-                onValueChange={(v) => {
-                  const isClubType = ["coaching", "training", "league"].includes(v);
-                  setForm((f) => ({
-                    ...f,
-                    event_type: v,
-                    // Auto-set club booking for admin-only types
-                    is_club_booking: isClubType ? true : f.is_club_booking,
-                  }));
-                }}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {EVENT_TYPES.filter((t) => !t.adminOnly || isAdmin).map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Day & Time */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Recurring Day</Label>
-              <Select value={form.day_of_week} onValueChange={(v) => setForm((f) => ({ ...f, day_of_week: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DAYS.map((d, i) => (
-                    <SelectItem key={i} value={String(i)}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Start Time</Label>
-                <Select value={form.start_time} onValueChange={(v) => setForm((f) => ({ ...f, start_time: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{TIME_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">End Time</Label>
-                <Select value={form.end_time} onValueChange={(v) => setForm((f) => ({ ...f, end_time: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{TIME_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs">Start Date</Label>
-              <Input
-                type="date"
-                value={form.start_date}
-                onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-              />
-            </div>
-
-            {/* Courts */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Courts</Label>
-              <div className="flex flex-wrap gap-2">
-                {(courts || []).map((c) => (
-                  <Button
-                    key={c.id}
-                    type="button"
-                    size="sm"
-                    variant={form.court_ids.includes(c.id) ? "default" : "outline"}
-                    className="h-8 text-xs"
-                    onClick={() => toggleCourt(c.id)}
-                  >
-                    {c.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Invite Scope */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Invite</Label>
-              <Select value={form.invite_scope} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope: v, invite_scope_id: "" }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Members</SelectItem>
-                  <SelectItem value="category">By Fee Category</SelectItem>
-                  <SelectItem value="league">By League</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {form.invite_scope === "category" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Category</Label>
-                <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {(feeCategories || []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {form.invite_scope === "league" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">League</Label>
-                <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select league" /></SelectTrigger>
-                  <SelectContent>
-                    {(leagues || []).map((l) => (
-                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Booking Name */}
-            <div className="rounded-lg border border-border p-3 space-y-3">
-              {isAdmin ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium">Book under Club name (free)</p>
-                      <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
-                    </div>
-                    <Switch
-                      checked={form.is_club_booking}
-                      onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booked_by_member_id: "" }))}
-                    />
-                  </div>
-
-                  {!form.is_club_booking && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Book under member</Label>
-                      <Select value={form.booked_by_member_id} onValueChange={(v) => setForm((f) => ({ ...f, booked_by_member_id: v }))}>
-                        <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
-                        <SelectContent>
-                          {(members || []).map((m) => (
-                            <SelectItem key={m.id} value={m.id}>{m.name || "Unnamed"}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium">Court booked under your name</p>
-                  <p className="text-[11px] text-muted-foreground">You will be responsible for the booking fee</p>
-                </div>
-              )}
-            </div>
+            ))}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Creating..." : "Create Event"}
-            </Button>
+          {/* STEP 1: Date, Time & Recurrence */}
+          {step === 1 && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Event Date</Label>
+                <Input
+                  type="date"
+                  value={form.event_date}
+                  onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Start Time</Label>
+                  <Select value={form.start_time} onValueChange={(v) => setForm((f) => ({ ...f, start_time: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{TIME_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">End Time</Label>
+                  <Select value={form.end_time} onValueChange={(v) => setForm((f) => ({ ...f, end_time: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{TIME_OPTIONS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Repeat</Label>
+                <Select value={form.recurrence} onValueChange={(v) => setForm((f) => ({ ...f, recurrence: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RECURRENCE_OPTIONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.recurrence !== "once" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Number of occurrences</Label>
+                  <Select
+                    value={String(form.num_instances)}
+                    onValueChange={(v) => setForm((f) => ({ ...f, num_instances: parseInt(v) }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[4, 8, 12, 24, 52].map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n} occurrences</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {form.recurrence === "weekly" && `Every ${DAYS[new Date(form.event_date + "T00:00:00").getDay()]} for ${form.num_instances} weeks`}
+                    {form.recurrence === "monthly" && `Same day each month for ${form.num_instances} months`}
+                    {form.recurrence === "yearly" && `Same date each year for ${form.num_instances} years`}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Reminder</Label>
+                <Select value={form.reminder_hours} onValueChange={(v) => setForm((f) => ({ ...f, reminder_hours: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {REMINDER_OPTIONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: Event Details, Courts & Booking */}
+          {step === 2 && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Title</Label>
+                <Input
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. Friday Social Night"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Description (optional)</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="min-h-[60px]"
+                  placeholder="Details about the event..."
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Event Type</Label>
+                <Select
+                  value={form.event_type}
+                  onValueChange={(v) => {
+                    const isClubType = ["coaching", "training", "league"].includes(v);
+                    setForm((f) => ({
+                      ...f,
+                      event_type: v,
+                      is_club_booking: isClubType ? true : f.is_club_booking,
+                    }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {EVENT_TYPES.filter((t) => !t.adminOnly || isAdmin).map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Courts</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(courts || []).map((c) => (
+                    <Button
+                      key={c.id}
+                      type="button"
+                      size="sm"
+                      variant={form.court_ids.includes(c.id) ? "default" : "outline"}
+                      className="h-8 text-xs"
+                      onClick={() => toggleCourt(c.id)}
+                    >
+                      {c.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Booking Name */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                {isAdmin ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium">Book under Club name (free)</p>
+                        <p className="text-[11px] text-muted-foreground">Court shows "{club?.name || "Club"} — {form.title || "Event"}"</p>
+                      </div>
+                      <Switch
+                        checked={form.is_club_booking}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, is_club_booking: v, booked_by_member_id: "" }))}
+                      />
+                    </div>
+
+                    {!form.is_club_booking && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Book under member</Label>
+                        <Select value={form.booked_by_member_id} onValueChange={(v) => setForm((f) => ({ ...f, booked_by_member_id: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
+                          <SelectContent>
+                            {(members || []).map((m) => (
+                              <SelectItem key={m.id} value={m.id}>{m.name || "Unnamed"}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium">Court booked under your name</p>
+                    <p className="text-[11px] text-muted-foreground">You will be responsible for the booking fee</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Invites & Light Fees */}
+          {step === 3 && (
+            <div className="space-y-4 py-2">
+              {/* Invite Scope */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Invite</Label>
+                <Select value={form.invite_scope} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope: v, invite_scope_id: "", selected_member_ids: [] }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Members</SelectItem>
+                    <SelectItem value="category">By Fee Category</SelectItem>
+                    <SelectItem value="league">By League</SelectItem>
+                    <SelectItem value="selected">Selected Members</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.invite_scope === "category" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Category</Label>
+                  <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectContent>
+                      {(feeCategories || []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {form.invite_scope === "league" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">League</Label>
+                  <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select league" /></SelectTrigger>
+                    <SelectContent>
+                      {(leagues || []).map((l) => (
+                        <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {form.invite_scope === "selected" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Select Members ({form.selected_member_ids.length} selected)</Label>
+                  <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
+                    {(members || []).map((m) => (
+                      <label
+                        key={m.id}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer hover:bg-accent/50 transition-colors text-sm",
+                          form.selected_member_ids.includes(m.id) && "bg-accent"
+                        )}
+                      >
+                        <Checkbox
+                          checked={form.selected_member_ids.includes(m.id)}
+                          onCheckedChange={() => toggleSelectedMember(m.id)}
+                        />
+                        <span className="text-xs">{m.name || "Unnamed"}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Light Fees */}
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <Label className="text-xs font-medium">Light Fees</Label>
+                <p className="text-[11px] text-muted-foreground">Who pays for the court lights?</p>
+                <Select value={form.light_fee_split} onValueChange={(v) => setForm((f) => ({ ...f, light_fee_split: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="creator">Myself (event creator)</SelectItem>
+                    <SelectItem value="attendees">Split equally among attendees</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.light_fee_split === "attendees" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Light fees will be split equally among all confirmed attendees when the session ends.
+                  </p>
+                )}
+              </div>
+
+              {/* Summary */}
+              <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                <p className="text-xs font-medium">Summary</p>
+                <p className="text-[11px] text-muted-foreground">
+                  <strong>{form.title || "Untitled"}</strong> · {form.event_type}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {format(new Date(form.event_date + "T00:00:00"), "EEE d MMM yyyy")} · {form.start_time}–{form.end_time}
+                </p>
+                {form.recurrence !== "once" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Repeats {form.recurrence} × {form.num_instances} occurrences
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Shared" : "Creator pays"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Reminder: {form.reminder_hours}h before each occurrence
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex-row gap-2">
+            {step > 1 && (
+              <Button variant="outline" onClick={() => setStep((s) => s - 1)} className="gap-1">
+                <ChevronLeft className="w-3 h-3" /> Back
+              </Button>
+            )}
+            <div className="flex-1" />
+            {step === 1 && (
+              <Button variant="outline" onClick={() => { setCreateOpen(false); onClose?.(); }}>Cancel</Button>
+            )}
+            {step < 3 ? (
+              <Button
+                onClick={() => setStep((s) => s + 1)}
+                disabled={step === 1 ? !canGoStep2 : !canGoStep3}
+                className="gap-1"
+              >
+                Next <ChevronRight className="w-3 h-3" />
+              </Button>
+            ) : (
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Creating..." : "Create Event"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
-}
-
-function getNextOccurrence(dayOfWeek: number, startDate: string): string {
-  const start = new Date(startDate);
-  const today = new Date();
-  const ref = start > today ? start : today;
-  const currentDay = ref.getDay();
-  let daysUntil = dayOfWeek - currentDay;
-  if (daysUntil <= 0) daysUntil += 7;
-  const next = new Date(ref);
-  next.setDate(ref.getDate() + daysUntil);
-  return format(next, "yyyy-MM-dd");
 }

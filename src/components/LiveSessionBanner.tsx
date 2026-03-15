@@ -31,6 +31,7 @@ export function LiveSessionBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [transferOpen, setTransferOpen] = useState<string | null>(null);
+  const [confirmEndOpen, setConfirmEndOpen] = useState<string | null>(null);
 
   // Active light sessions
   const { data: activeSessions = [], refetch: refetchSessions } = useQuery({

@@ -314,21 +314,23 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           });
         }
       } else {
-        // Member bookings: split time across first N selected booking members (max 60min each)
-        const sessionsNeeded = Math.ceil(totalMinutes / 60);
+        // Member bookings: distribute across courts × hour-sessions
+        // e.g. 3 courts × 2hr = 6 bookings, each assigned to a different member
+        const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
+        const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
         const bookingMembers = form.booking_member_ids
-          .slice(0, sessionsNeeded)
+          .slice(0, totalSessionsNeeded)
           .map((mid) => (members || []).find((m) => m.id === mid))
           .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
 
         if (bookingMembers.length > 0) {
-          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / bookingMembers.length));
-          let offsetMin = 0;
+          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
+          let memberIdx = 0;
 
           for (const cid of form.court_ids) {
-            offsetMin = 0; // reset per court
-            for (const bm of bookingMembers) {
-              if (offsetMin >= totalMinutes) break;
+            let offsetMin = 0;
+            while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
+              const bm = bookingMembers[memberIdx];
               const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
               const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
               const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
@@ -342,6 +344,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 status: "active",
               });
               offsetMin = slotEnd;
+              memberIdx++;
             }
           }
         }
@@ -853,12 +856,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   const startMin = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
                   const endMin = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
                   const totalMin = endMin - startMin;
-                  const sessionsNeeded = Math.ceil(totalMin / 60);
+                  const hourSessionsPerCourt = Math.ceil(totalMin / 60);
+                  const numCourts = form.court_ids.length || 1;
+                  const sessionsNeeded = hourSessionsPerCourt * numCourts;
 
                   return (
                     <div className="space-y-2">
                       <p className="text-[11px] text-muted-foreground">
-                        Event duration: {totalMin} min — {sessionsNeeded} booking session{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr each).
+                        {numCourts} court{numCourts !== 1 ? "s" : ""} × {hourSessionsPerCourt} hr session{hourSessionsPerCourt !== 1 ? "s" : ""} = {sessionsNeeded} booking{sessionsNeeded !== 1 ? "s" : ""} needed (max 1hr per member).
                         First {sessionsNeeded} selected member{sessionsNeeded !== 1 ? "s" : ""} will have bookings in their name.
                       </p>
                       <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
@@ -898,16 +903,30 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           <p className="font-medium text-foreground">Booking split preview:</p>
                           {(() => {
                             const bookingIds = form.booking_member_ids.slice(0, sessionsNeeded);
-                            const slotMin = Math.min(60, Math.ceil(totalMin / bookingIds.length));
-                            let offset = 0;
-                            return bookingIds.map((mid) => {
-                              const m = invitedMembers.find((x) => x.id === mid);
-                              const slotEnd = Math.min(offset + slotMin, totalMin);
-                              const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
-                              const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
-                              offset = slotEnd;
+                            const slotMin = Math.min(60, Math.ceil(totalMin / hourSessionsPerCourt));
+                            let memberIdx = 0;
+                            const courtList = form.court_ids.length > 0 ? form.court_ids : [0];
+                            const courtNames = (courts || []).reduce((acc, c) => ({ ...acc, [c.id]: c.name }), {} as Record<number, string>);
+                            return courtList.map((cid) => {
+                              let offset = 0;
+                              const slots: JSX.Element[] = [];
+                              while (offset < totalMin && memberIdx < bookingIds.length) {
+                                const mid = bookingIds[memberIdx];
+                                const m = invitedMembers.find((x) => x.id === mid);
+                                const slotEnd = Math.min(offset + slotMin, totalMin);
+                                const sTime = `${String(Math.floor((startMin + offset) / 60)).padStart(2, "0")}:${String((startMin + offset) % 60).padStart(2, "0")}`;
+                                const eTime = `${String(Math.floor((startMin + slotEnd) / 60)).padStart(2, "0")}:${String((startMin + slotEnd) % 60).padStart(2, "0")}`;
+                                slots.push(
+                                  <p key={`${cid}-${mid}`} className="pl-2">{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
+                                );
+                                offset = slotEnd;
+                                memberIdx++;
+                              }
                               return (
-                                <p key={mid}>{m?.name || "Unnamed"}: {sTime}–{eTime}</p>
+                                <div key={cid}>
+                                  <p className="font-medium text-foreground">{courtNames[cid] || `Court ${cid}`}</p>
+                                  {slots}
+                                </div>
                               );
                             });
                           })()}

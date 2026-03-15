@@ -29,6 +29,7 @@ import {
 } from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
+import { isCourtAvailable } from "@/lib/court-availability";
 
 function initials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);

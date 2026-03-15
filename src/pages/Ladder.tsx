@@ -229,6 +229,18 @@ export default function Ladder() {
 
     setSending(true);
     try {
+      // Check court availability before sending challenge
+      if (courtId) {
+        const { available, conflictMessage } = await isCourtAvailable(
+          Number(courtId), proposedDate, proposedTime
+        );
+        if (!available) {
+          toast.error(conflictMessage || "Court is not available at this time.");
+          setSending(false);
+          return;
+        }
+      }
+
       await createChallenge.mutateAsync({
         opponentId: challengeDialog.player.user_id || null,
         proposedDate,

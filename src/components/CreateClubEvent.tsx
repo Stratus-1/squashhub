@@ -193,6 +193,26 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     return dates;
   };
 
+  // Check court availability for the selected dates/times/courts
+  const instanceDatesForCheck = useMemo(() => getInstanceDates(), [form.event_date, form.recurrence, form.num_instances]);
+  const { data: courtConflicts } = useQuery({
+    queryKey: ["court-conflicts", form.court_ids, instanceDatesForCheck, form.start_time, form.end_time],
+    queryFn: async () => {
+      if (form.court_ids.length === 0 || instanceDatesForCheck.length === 0) return [];
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("id, court_id, date, start_time, end_time, guest_name, status")
+        .in("court_id", form.court_ids)
+        .in("date", instanceDatesForCheck)
+        .eq("status", "active")
+        .lt("start_time", form.end_time + ":00")
+        .gt("end_time", form.start_time + ":00");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: form.court_ids.length > 0 && instanceDatesForCheck.length > 0 && step >= 2,
+  });
+
   // Determine members to invite based on scope
   const getInviteeIds = async (): Promise<string[]> => {
     if (!clubId) return [];

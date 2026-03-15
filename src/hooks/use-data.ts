@@ -802,29 +802,22 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
           .select("id, name")
           .in("id", allMemberIds);
         if (memberErr) console.warn("[useChallenges] member name lookup failed:", memberErr);
-        console.log("[useChallenges] allMemberIds:", allMemberIds, "members returned:", members);
         memberNameMap = new Map((members || []).filter((m) => m.name).map((m) => [m.id, m.name!]));
-      } else {
-        console.warn("[useChallenges] No member IDs found in challenges. Challenges:", challenges.map(c => ({ id: c.id, challenger_member_id: c.challenger_member_id, opponent_member_id: c.opponent_member_id })));
       }
 
-      const result = challenges.map((c) => ({
+      return challenges.map((c) => ({
         ...c,
-        challenger_name: memberNameMap.get(c.challenger_member_id!) || profileMap.get(c.challenger_id!) || "Unknown",
-        opponent_name: memberNameMap.get(c.opponent_member_id!) || profileMap.get(c.opponent_id!) || "Unknown",
+        challenger_name:
+          memberNameMap.get(c.challenger_member_id || "") ||
+          memberNameMap.get(c.challenger_id || "") ||
+          profileMap.get(c.challenger_id || "") ||
+          "Unknown",
+        opponent_name:
+          memberNameMap.get(c.opponent_member_id || "") ||
+          memberNameMap.get(c.opponent_id || "") ||
+          profileMap.get(c.opponent_id || "") ||
+          "Unknown",
       })) as ChallengeWithProfiles[];
-      
-      // Debug: log any "Unknown" results
-      result.forEach(c => {
-        if (c.challenger_name === "Unknown" || c.opponent_name === "Unknown") {
-          console.warn("[useChallenges] Unknown name for challenge:", c.id, 
-            "challenger_member_id:", c.challenger_member_id, "->", c.challenger_name,
-            "opponent_member_id:", c.opponent_member_id, "->", c.opponent_name,
-            "memberMap has:", memberNameMap.has(c.challenger_member_id!), memberNameMap.has(c.opponent_member_id!));
-        }
-      });
-      
-      return result;
     },
     enabled: !!queryId,
   });

@@ -163,7 +163,7 @@ export default function Dashboard() {
   }, [myScheduledMatches, effectiveUserId]);
 
   const { data: opponentProfiles } = useQuery({
-    queryKey: ["scheduled-opponents", user?.id, scheduledOpponentIds.join(",")],
+    queryKey: ["scheduled-opponents", effectiveUserId, scheduledOpponentIds.join(",")],
     queryFn: async () => {
       if (scheduledOpponentIds.length === 0) return [];
       const { data, error } = await supabase

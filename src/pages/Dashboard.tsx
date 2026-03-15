@@ -26,6 +26,7 @@ import { toast } from "sonner";
 
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
   const { user } = useAuth();

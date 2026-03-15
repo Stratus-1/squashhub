@@ -65,14 +65,15 @@ export default function PlayerProfile() {
   );
 
   const { data: matches, isLoading: matchesLoading } = useQuery({
-    queryKey: ["player-matches", id],
+    queryKey: ["player-matches", playerMemberId || id],
     queryFn: async () => {
-      if (!id) return [];
+      if (!id && !playerMemberId) return [];
       const { data: matches, error } = await (supabase as any)
         .from("matches")
         .select("*")
-        .or(`player_a.eq.${id},player_b.eq.${id}`)
-        .eq("is_friendly", false)
+        .or(playerMemberId
+          ? `player_a_member_id.eq.${playerMemberId},player_b_member_id.eq.${playerMemberId}`
+          : `player_a.eq.${id},player_b.eq.${id}`)
         .order("match_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(50) as any;

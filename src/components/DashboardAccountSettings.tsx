@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
-import { Bell, ChevronRight, Flame, Lock, LogOut, Mail, MapPin, Shield, SlidersHorizontal, Users } from "lucide-react";
+import { Bell, ChevronRight, Flame, Lock, LogOut, Mail, MapPin, Search, Shield, SlidersHorizontal, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";

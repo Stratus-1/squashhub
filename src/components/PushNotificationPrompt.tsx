@@ -12,19 +12,33 @@ export function PushNotificationPrompt() {
   const [dismissed, setDismissed] = useState(false);
   const [show, setShow] = useState(false);
 
+  // Auto-subscribe on first visit if permission hasn't been asked yet
   useEffect(() => {
-    if (!user || isSubscribed || permission === "denied" || permission === "unsupported") return;
+    if (!user || isSubscribed || loading || permission === "denied" || permission === "unsupported") return;
 
-    const dismissedAt = localStorage.getItem("push-prompt-dismissed");
-    if (dismissedAt) {
-      const daysSince = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
-      if (daysSince < 7) return;
+    const autoSubscribed = localStorage.getItem("push-auto-subscribed");
+    if (autoSubscribed) {
+      // Already attempted auto-subscribe; fall back to manual prompt
+      const dismissedAt = localStorage.getItem("push-prompt-dismissed");
+      if (dismissedAt) {
+        const daysSince = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+        if (daysSince < 7) return;
+      }
+      const timer = setTimeout(() => setShow(true), 3000);
+      return () => clearTimeout(timer);
     }
 
-    // Show after a short delay
-    const timer = setTimeout(() => setShow(true), 3000);
+    // Auto-subscribe after a short delay
+    const timer = setTimeout(async () => {
+      localStorage.setItem("push-auto-subscribed", "1");
+      const success = await subscribe();
+      if (!success) {
+        // If user denied or it failed, show the manual prompt later
+        setShow(true);
+      }
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [user, isSubscribed, permission]);
+  }, [user, isSubscribed, permission, loading]);
 
   const handleDismiss = () => {
     setDismissed(true);

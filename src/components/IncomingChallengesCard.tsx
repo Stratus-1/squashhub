@@ -33,7 +33,9 @@ export function IncomingChallengesCard({
 
   const incoming = useMemo(() => {
     if (!userId) return [];
-    return (challenges || []).filter((c) => c.opponent_id === userId && c.status === "pending");
+    return (challenges || []).filter(
+      (c) => c.opponent_id === userId && c.status === "pending" && !(c as any).counter_date
+    );
   }, [challenges, userId]);
 
   if (!userId || incoming.length === 0) return null;

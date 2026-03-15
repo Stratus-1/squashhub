@@ -13,8 +13,6 @@ import heroBg from "@/assets/hero-bg.jpg";
 interface ClubDelegate {
   id: string;
   name: string | null;
-  email: string | null;
-  phone: string | null;
 }
 
 interface FeeCategory {

@@ -915,6 +915,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Shared" : "Creator pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
+                  Booked under: {form.is_club_booking ? `${club?.name || "Club"}` : `${form.booking_member_ids.length} member(s)`}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
                   Reminder: {form.reminder_hours}h before each occurrence
                 </p>
               </div>

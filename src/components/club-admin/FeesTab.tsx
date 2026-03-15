@@ -39,7 +39,6 @@ export function FeesTab({ clubId }: { clubId: string }) {
   const { data: clubData } = useMyClub();
   const qc = useQueryClient();
   const club = clubData?.club;
-  const [dueMonth, setDueMonth] = useState(club?.member_fee_due_month ?? 1);
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -50,7 +49,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
     feeCategories.forEach(c => list.push({
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
-      dueMonth: (c as any).due_month ?? dueMonth,
+      dueMonth: (c as any).due_month ?? 1,
       source: "member_fee_categories", raw: c,
     }));
     associations.forEach(a => list.push({
@@ -71,12 +70,11 @@ export function FeesTab({ clubId }: { clubId: string }) {
       });
     });
     return list;
-  }, [feeCategories, associations, nationalFees, dueMonth]);
+  }, [feeCategories, associations, nationalFees]);
 
-  const handleDueSettings = async (field: string, value: number) => {
-    if (field === "member_fee_due_month") setDueMonth(value);
-    else setReminderDays(value);
-    const { error } = await fromExt("clubs").update({ [field]: value }).eq("id", clubId);
+  const handleReminderDays = async (value: number) => {
+    setReminderDays(value);
+    const { error } = await fromExt("clubs").update({ fee_reminder_days_before: value }).eq("id", clubId);
     if (error) toast.error(error.message);
     else qc.invalidateQueries({ queryKey: ["my-club"] });
   };
@@ -91,22 +89,6 @@ export function FeesTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
-      {/* Payment due settings */}
-      <Card className="p-4 space-y-3">
-        <h3 className="font-semibold">Payment Due Date</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label>Default Due Month</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={dueMonth} onChange={e => handleDueSettings("member_fee_due_month", Number(e.target.value))}>
-              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label>Reminder Days Before</Label>
-            <Input type="number" min={1} max={90} value={reminderDays} onChange={e => handleDueSettings("fee_reminder_days_before", Number(e.target.value))} />
-          </div>
-        </div>
-      </Card>
 
       {/* Unified fees table */}
       <div>
@@ -173,12 +155,13 @@ export function FeesTab({ clubId }: { clubId: string }) {
         <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} />
       )}
 
-      <Card className="p-4 bg-muted/50">
-        <p className="text-sm text-muted-foreground">
-          <strong>Fee reminders:</strong> Members who play league are automatically notified about league and national body fees {club?.fee_reminder_days_before ?? 14} days before the due date.
-        </p>
-        <p className="text-sm text-muted-foreground mt-1">
-          <strong>Pro-rate:</strong> When enabled, self-registering members are charged a proportional fee based on months remaining. Admin-added members pay the full annual fee.
+      <Card className="p-4 bg-muted/50 space-y-3">
+        <div className="flex items-center gap-3">
+          <Label className="whitespace-nowrap">Reminder days before due date:</Label>
+          <Input type="number" min={1} max={90} className="w-20" value={reminderDays} onChange={e => handleReminderDays(Number(e.target.value))} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          <strong>Pro-rate:</strong> When enabled, self-registering members are charged a proportional fee based on months remaining.
         </p>
       </Card>
     </div>

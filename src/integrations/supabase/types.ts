@@ -2379,12 +2379,15 @@ export type Database = {
         Returns: {
           created_at: string
           duration_s: number
+          game_scores: string
+          is_player_a: boolean
           is_win: boolean
           match_date: string
           match_id: string
           opponent_id: string
           points_against: number
           points_for: number
+          score: string
           sets_against: number
           sets_for: number
         }[]

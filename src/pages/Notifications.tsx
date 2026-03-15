@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,6 +35,7 @@ function stripScripts(html: string) {
 
 export default function Notifications() {
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,14 +46,21 @@ export default function Notifications() {
   };
 
   const { data: notifications, isLoading } = useQuery({
-    queryKey: ["notifications", user?.id],
+    queryKey: ["notifications", user?.id, activeMember?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(50);
+
+      if (activeMember?.id) {
+        query = query.eq("club_member_id", activeMember.id);
+      } else {
+        query = query.eq("user_id", user!.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

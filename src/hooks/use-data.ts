@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 // Bypass strict typing for tables/functions that exist in the external Supabase
 // but aren't reflected in the generated types.
@@ -123,18 +124,25 @@ export function useHomeInsights(daysBack = 30) {
 
 export function useUnreadNotificationsCount() {
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
 
   return useQuery({
-    queryKey: ["notifications-unread-count", user?.id],
+    queryKey: ["notifications-unread-count", user?.id, activeMember?.id],
     queryFn: async () => {
       if (!user) return 0;
 
-      const { count, error } = await supabase
+      let query = supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
         .eq("read", false);
 
+      if (activeMember?.id) {
+        query = query.eq("club_member_id", activeMember.id);
+      } else {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { count, error } = await query;
       if (error) throw error;
       return count ?? 0;
     },
@@ -941,26 +949,25 @@ export function useCreateChallenge() {
         .single();
       if (error) throw error;
 
-      // Send notification to opponent if they have a user_id
-      if (opponentId && opponentId !== user.id) {
+      // Send notification to opponent — use club_member_id for member-scoped delivery
+      if (opponentMemberId || (opponentId && opponentId !== user.id)) {
         try {
-          // Look up opponent's user_id from member if needed
-          let notifyUserId = opponentId;
-          if (opponentMemberId) {
-            const { data: mem } = await supabase
-              .from("club_members")
-              .select("user_id")
-              .eq("id", opponentMemberId)
-              .maybeSingle();
-            if (mem?.user_id) notifyUserId = mem.user_id;
-          }
-          await fromAny("notifications").insert({
-            user_id: notifyUserId,
+          const notifPayload: Record<string, any> = {
             title: "New Challenge!",
             message: `You have been challenged! Proposed: ${proposedDate || "TBD"} at ${proposedTime?.slice(0, 5) || "TBD"}.`,
             type: "challenge",
             url: "/challenges",
-          });
+          };
+
+          if (opponentMemberId) {
+            notifPayload.club_member_id = opponentMemberId;
+            // user_id will be auto-resolved by the trigger
+          }
+          if (opponentId && opponentId !== user.id) {
+            notifPayload.user_id = opponentId;
+          }
+
+          await fromAny("notifications").insert(notifPayload);
         } catch { /* non-critical */ }
       }
 
@@ -1140,21 +1147,8 @@ export function useCreateMatch() {
         .single();
       if (error) throw error;
 
-      // Notify the other player to confirm
-      if (bothHaveAccounts) {
-        const otherPlayerId = playerA === user.id ? playerB : playerA;
-        try {
-          await fromAny("notifications").insert({
-            user_id: otherPlayerId,
-            title: "Confirm Match Result",
-            message: `A match result (${score || "no score"}) has been submitted and needs your confirmation.`,
-            type: "match",
-            url: "/dashboard",
-          });
-        } catch {
-          // non-critical
-        }
-      }
+      // Note: The DB trigger notify_on_match_events handles notification creation
+      // with club_member_id for member-scoped delivery. No client-side insert needed.
 
       return data;
     },

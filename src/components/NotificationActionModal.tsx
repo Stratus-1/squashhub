@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ function getActionLabel(type: string): string {
 
 export function NotificationActionModal() {
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -66,15 +68,22 @@ export function NotificationActionModal() {
 
   // Fetch unread notifications
   const { data: unreadNotifications } = useQuery({
-    queryKey: ["unread-notifications-modal", user?.id],
+    queryKey: ["unread-notifications-modal", user?.id, activeMember?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("notifications")
         .select("*")
-        .eq("user_id", user!.id)
         .eq("read", false)
         .order("created_at", { ascending: false })
         .limit(20);
+
+      if (activeMember?.id) {
+        query = query.eq("club_member_id", activeMember.id);
+      } else {
+        query = query.eq("user_id", user!.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as NotificationRow[];
     },
@@ -118,9 +127,9 @@ export function NotificationActionModal() {
       await supabase.from("notifications").update({ read: true }).eq("id", id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
     },
   });
 

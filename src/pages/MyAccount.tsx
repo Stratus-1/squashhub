@@ -309,6 +309,7 @@ export default function MyAccount() {
       const { error } = await fromExt("member_credit_transactions").insert({
         user_id: effectiveUserId!,
         club_id: clubId,
+        club_member_id: clubMemberId,
         amount,
         type: "topup",
         method,

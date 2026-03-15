@@ -329,17 +329,18 @@ export function useCancelBooking() {
   });
 }
 
-export function useMyBookings() {
+export function useMyBookings(overrideUserId?: string | null) {
   const { user } = useAuth();
+  const targetId = overrideUserId || user?.id;
 
   return useQuery({
-    queryKey: ["my-bookings"],
+    queryKey: ["my-bookings", targetId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!targetId) return [];
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", targetId)
         .eq("status", "active")
         .gte("date", new Date().toISOString().split("T")[0])
         .order("date")
@@ -383,7 +384,7 @@ export function useMyBookings() {
           opponent_rank: null,
         }));
     },
-    enabled: !!user,
+    enabled: !!targetId,
   });
 }
 

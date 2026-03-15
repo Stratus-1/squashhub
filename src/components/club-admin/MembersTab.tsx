@@ -414,6 +414,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
         address: addressIdx >= 0 ? cols[addressIdx] : undefined,
         gender: genderIdx >= 0 ? cols[genderIdx] : undefined,
+        ladder_position: rankingIdx >= 0 && cols[rankingIdx] ? parseInt(cols[rankingIdx], 10) || null : undefined,
       }, { onConflict: "club_id,email" }).select("id, fee_category_id, plays_league").single();
 
       if (!error && memberData) {

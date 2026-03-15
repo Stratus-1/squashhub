@@ -577,7 +577,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         <div className="space-y-2">
           {events.map((e: any) => {
             const counts = rsvpCounts?.[e.id];
-            const myRsvp = myRsvps?.[e.id];
+            const myRsvpList = myRsvps?.[e.id] || [];
             const courtNames = (e.club_event_courts || []).map((c: any) => `Court ${c.court_id}`).join(", ");
             const isCreator = e.created_by === user?.id;
             const recLabel = e.recurrence && e.recurrence !== "once" ? e.recurrence : null;
@@ -622,13 +622,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       )}
                     </div>
                     <div className="flex items-center gap-1">
-                      {myRsvp && myRsvp.status === "invited" && (
-                        <>
+                      {/* Show confirm/decline for each linked member with pending invite */}
+                      {myRsvpList.filter(r => r.status === "invited").map(r => (
+                        <span key={r.id} className="inline-flex items-center gap-0.5">
+                          {linkedMembers.length > 1 && (
+                            <span className="text-[9px] text-muted-foreground mr-0.5">{r.memberName}:</span>
+                          )}
                           <Button
                             size="sm"
                             variant="default"
                             className="h-6 text-[10px] px-2"
-                            onClick={() => respondMutation.mutate({ rsvpId: myRsvp.id, status: "confirmed" })}
+                            onClick={() => respondMutation.mutate({ rsvpId: r.id, status: "confirmed" })}
                           >
                             <Check className="w-3 h-3 mr-0.5" /> Confirm
                           </Button>
@@ -636,17 +640,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                             size="sm"
                             variant="outline"
                             className="h-6 text-[10px] px-2"
-                            onClick={() => respondMutation.mutate({ rsvpId: myRsvp.id, status: "declined" })}
+                            onClick={() => respondMutation.mutate({ rsvpId: r.id, status: "declined" })}
                           >
                             <X className="w-3 h-3 mr-0.5" /> Decline
                           </Button>
-                        </>
-                      )}
-                      {myRsvp && myRsvp.status !== "invited" && (
-                        <Badge variant={myRsvp.status === "confirmed" ? "default" : "outline"} className="text-[9px] capitalize">
-                          {myRsvp.status}
+                        </span>
+                      ))}
+                      {/* Show status badges for already-responded members */}
+                      {myRsvpList.filter(r => r.status !== "invited").map(r => (
+                        <Badge key={r.id} variant={r.status === "confirmed" ? "default" : "outline"} className="text-[9px] capitalize">
+                          {linkedMembers.length > 1 ? `${r.memberName}: ${r.status}` : r.status}
                         </Badge>
-                      )}
+                      ))}
                       {isCreator && (
                         <Button
                           size="icon"

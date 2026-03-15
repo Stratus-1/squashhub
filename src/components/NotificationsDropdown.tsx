@@ -92,8 +92,8 @@ export function NotificationsDropdown({
         .eq("read", false);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
     },
   });
 

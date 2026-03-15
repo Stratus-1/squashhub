@@ -15,16 +15,20 @@ export type BookingFlowPayload = {
   booking: {
     id: string;
     user_id: string;
+    club_member_id?: string | null;
     court_id: number;
     date: string;
     start_time: string;
     end_time: string;
     opponent_id: string | null;
+    opponent_member_id?: string | null;
     is_friendly: boolean;
   };
   challenge?: {
     id: string;
     opponent_id: string;
+    challenger_member_id?: string | null;
+    opponent_member_id?: string | null;
     proposed_date: string | null;
   };
 };

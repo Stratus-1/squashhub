@@ -27,6 +27,7 @@ interface UnifiedFee {
   amount: number;
   feeClass: "club_income" | "pass_through";
   proRate: boolean;
+  active: boolean;
   dueMonth: number; // 1-12
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;

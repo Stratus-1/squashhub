@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 type FeeType = "membership" | "league" | "national" | "other";
 
@@ -26,6 +27,7 @@ interface UnifiedFee {
   amount: number;
   feeClass: "club_income" | "pass_through";
   proRate: boolean;
+  dueMonth: number; // 1-12
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
@@ -48,20 +50,28 @@ export function FeesTab({ clubId }: { clubId: string }) {
     feeCategories.forEach(c => list.push({
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
+      dueMonth: (c as any).due_month ?? dueMonth,
       source: "member_fee_categories", raw: c,
     }));
     associations.forEach(a => list.push({
       id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
       amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
+      dueMonth: a.fee_due_month ?? 1,
       source: "league_associations", raw: a,
     }));
-    nationalFees.forEach(f => list.push({
-      id: f.id, name: f.body_name + (f.abbreviation ? ` (${f.abbreviation})` : ""), type: "national", typeLabel: "National Body",
-      amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
-      source: "national_body_fees", raw: f,
-    }));
+    nationalFees.forEach(f => {
+      const isOther = !(f.body_name || "").toLowerCase().includes("squash") && !(f.abbreviation || "").toLowerCase().includes("ssa");
+      list.push({
+        id: f.id, name: f.body_name + (f.abbreviation ? ` (${f.abbreviation})` : ""), 
+        type: (f as any).fee_type === "other" ? "other" : "national",
+        typeLabel: (f as any).fee_type === "other" ? "Other" : "National Body",
+        amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
+        dueMonth: f.fee_due_month ?? 1,
+        source: "national_body_fees", raw: f,
+      });
+    });
     return list;
-  }, [feeCategories, associations, nationalFees]);
+  }, [feeCategories, associations, nationalFees, dueMonth]);
 
   const handleDueSettings = async (field: string, value: number) => {
     if (field === "member_fee_due_month") setDueMonth(value);
@@ -86,7 +96,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
         <h3 className="font-semibold">Payment Due Date</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <Label>Due Month</Label>
+            <Label>Default Due Month</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={dueMonth} onChange={e => handleDueSettings("member_fee_due_month", Number(e.target.value))}>
               {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
             </select>
@@ -115,6 +125,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                 <TableHead>Fee Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Amount (R)</TableHead>
+                <TableHead>Due</TableHead>
                 <TableHead>Classification</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
@@ -123,7 +134,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
@@ -135,6 +146,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
+                  <TableCell className="text-sm">{SHORT_MONTHS[fee.dueMonth - 1]}</TableCell>
                   <TableCell>
                     <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
                       {fee.feeClass === "pass_through" ? "Pass-through" : "Club Income"}
@@ -155,19 +167,10 @@ export function FeesTab({ clubId }: { clubId: string }) {
       </div>
 
       {editFee && (
-        <FeeDialog
-          clubId={clubId}
-          open
-          onOpenChange={() => setEditFee(null)}
-          existing={editFee}
-        />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} />
       )}
       {addOpen && (
-        <FeeDialog
-          clubId={clubId}
-          open
-          onOpenChange={() => setAddOpen(false)}
-        />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} />
       )}
 
       <Card className="p-4 bg-muted/50">
@@ -196,7 +199,6 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? "membership");
   const qc = useQueryClient();
 
-  // Common fields
   const [name, setName] = useState(() => {
     if (!existing) return "";
     if (existing.source === "member_fee_categories") return (existing.raw as MemberFeeCategory).name;
@@ -210,8 +212,9 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     return "";
   });
   const [amount, setAmount] = useState(existing?.amount ?? 0);
-  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" ? "club_income" : "pass_through"));
+  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" ? "club_income" : "pass_through"));
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership"));
+  const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
   const [description, setDescription] = useState(() => {
     if (existing?.source === "member_fee_categories") return (existing.raw as MemberFeeCategory).description || "";
     return "";
@@ -219,12 +222,6 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const [sortOrder, setSortOrder] = useState(() => {
     if (existing?.source === "member_fee_categories") return (existing.raw as MemberFeeCategory).sort_order ?? 0;
     return 0;
-  });
-  // League / national extra fields
-  const [feeDueMonth, setFeeDueMonth] = useState(() => {
-    if (existing?.source === "league_associations") return (existing.raw as LeagueAssociation).fee_due_month ?? 1;
-    if (existing?.source === "national_body_fees") return (existing.raw as NationalBodyFee).fee_due_month ?? 1;
-    return 1;
   });
   const [payableTo, setPayableTo] = useState(() => {
     if (existing?.source === "league_associations") return (existing.raw as LeagueAssociation).fee_payable_to || "";
@@ -237,11 +234,10 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     return "";
   });
 
-  // Auto-set defaults when type changes (only for new)
   const handleTypeChange = (t: FeeType) => {
     setFeeType(t);
     if (!isEdit) {
-      setFeeClass(t === "membership" ? "club_income" : "pass_through");
+      setFeeClass(t === "membership" || t === "other" ? "club_income" : "pass_through");
       setProRate(t === "membership");
     }
   };
@@ -249,6 +245,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Fee name is required"); return; }
 
+    // "other" fees are stored in national_body_fees with fee_type='other'
     const table = feeType === "membership" ? "member_fee_categories"
       : feeType === "league" ? "league_associations"
       : "national_body_fees";
@@ -258,7 +255,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
       : "national-body-fees";
 
     if (table === "member_fee_categories") {
-      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate };
+      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -291,6 +288,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     onOpenChange(false);
   };
 
+  const nameLabel = feeType === "membership" ? "Category Name" : feeType === "other" ? "Fee Name" : "Organisation Name";
+  const namePlaceholder = feeType === "membership" ? "e.g. Student, Pensioner, Normal"
+    : feeType === "league" ? "e.g. Western Cape Squash"
+    : feeType === "other" ? "e.g. Parking, Locker Rental"
+    : "e.g. Squash South Africa";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -305,18 +308,19 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
                 <SelectItem value="membership">Membership</SelectItem>
                 <SelectItem value="league">League Association</SelectItem>
                 <SelectItem value="national">National Body (e.g. SSA)</SelectItem>
+                <SelectItem value="other">Other (e.g. Parking, Locker)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Name */}
           <div className="space-y-1">
-            <Label>{feeType === "membership" ? "Category Name" : "Organisation Name"}</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder={feeType === "membership" ? "e.g. Student, Pensioner, Normal" : feeType === "league" ? "e.g. Western Cape Squash" : "e.g. Squash South Africa"} />
+            <Label>{nameLabel}</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} />
           </div>
 
           {/* Abbreviation (league/national only) */}
-          {feeType !== "membership" && (
+          {(feeType === "league" || feeType === "national") && (
             <div className="space-y-1">
               <Label>Abbreviation</Label>
               <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} placeholder="e.g. WCS, SSA" />
@@ -331,28 +335,29 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
             </div>
           )}
 
-          {/* Amount + Sort/Due month */}
+          {/* Amount + Due Month */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Annual Fee (R)</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
             </div>
-            {feeType === "membership" ? (
-              <div className="space-y-1">
-                <Label>Sort Order</Label>
-                <Input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} />
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <Label>Due Month</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
-                  {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                </select>
-              </div>
-            )}
+            <div className="space-y-1">
+              <Label>Due Month</Label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
+                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              </select>
+            </div>
           </div>
 
-          {/* Payable to / Payment details (league/national) */}
+          {/* Sort order (membership only) */}
+          {feeType === "membership" && (
+            <div className="space-y-1">
+              <Label>Sort Order</Label>
+              <Input type="number" value={sortOrder} onChange={e => setSortOrder(Number(e.target.value))} />
+            </div>
+          )}
+
+          {/* Payable to / Payment details (league/national/other) */}
           {feeType !== "membership" && (
             <>
               <div className="space-y-1">

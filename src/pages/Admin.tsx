@@ -2095,7 +2095,7 @@ export default function Admin() {
               </Card>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <Card className="p-0 overflow-hidden">
+                <Card className="p-0 overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">

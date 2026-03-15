@@ -41,29 +41,32 @@ export default function Dashboard() {
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
-  const { data: challenges } = useChallenges(effectiveUserId);
+  const myMemberId = activeMember?.id || null;
+  const { data: challenges } = useChallenges(effectiveUserId, { memberId: myMemberId });
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: todayBookings } = useBookings(todayStr, clubId);
-  const { data: myBookings } = useMyBookings(effectiveUserId);
+  const { data: myBookings } = useMyBookings(effectiveUserId, { memberId: myMemberId });
   const { data: myScheduledMatches } = useMyScheduledMatches(effectiveUserId);
 
-  // Recent match results for the whole club
+  // Recent match results for the active member
   const { data: recentMatches } = useQuery({
-    queryKey: ["club-recent-matches", effectiveUserId],
+    queryKey: ["club-recent-matches", myMemberId || effectiveUserId],
     queryFn: async () => {
-      if (!effectiveUserId) return [];
+      if (!myMemberId && !effectiveUserId) return [];
       const { data, error } = await supabase
         .from("matches")
-        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, disputed, submitted_by, notes")
-        .or(`player_a.eq.${effectiveUserId},player_b.eq.${effectiveUserId}`)
+        .select("id, player_a, player_b, winner_id, score, game_scores, match_date, confirmed, disputed, submitted_by, notes, player_a_member_id, player_b_member_id, winner_member_id")
+        .or(myMemberId
+          ? `player_a_member_id.eq.${myMemberId},player_b_member_id.eq.${myMemberId}`
+          : `player_a.eq.${effectiveUserId},player_b.eq.${effectiveUserId}`)
         .order("match_date", { ascending: false })
         .limit(20);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!effectiveUserId,
+    enabled: !!(myMemberId || effectiveUserId),
   });
 
   // Get all player names for recent matches

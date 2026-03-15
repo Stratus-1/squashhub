@@ -318,6 +318,12 @@ export default function Dashboard() {
             <Settings className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>
           </Button>
+          {isClubAdmin && (
+            <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-primary/40 bg-primary/5" onClick={() => navigate("/club-admin")}>
+              <ShieldCheck className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">Club Admin</span>
+            </Button>
+          )}
         </div>
       </div>
 

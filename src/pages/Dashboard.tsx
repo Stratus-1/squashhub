@@ -155,12 +155,12 @@ export default function Dashboard() {
   }, [myBookings, todayStr]);
 
   const scheduledOpponentIds = useMemo(() => {
-    if (!user?.id) return [] as string[];
+    if (!effectiveUserId) return [] as string[];
     const ids = (myScheduledMatches || [])
-      .map((s: any) => (s.player_a === user.id ? s.player_b : s.player_a))
+      .map((s: any) => (s.player_a === effectiveUserId ? s.player_b : s.player_a))
       .filter(Boolean) as string[];
     return [...new Set(ids)];
-  }, [myScheduledMatches, user?.id]);
+  }, [myScheduledMatches, effectiveUserId]);
 
   const { data: opponentProfiles } = useQuery({
     queryKey: ["scheduled-opponents", user?.id, scheduledOpponentIds.join(",")],

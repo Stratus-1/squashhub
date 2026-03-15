@@ -38,6 +38,7 @@ const MemberContext = createContext<MemberContextType>({
   allMembers: [],
   isAdmin: false,
   activeMember: null,
+  effectiveUserId: null,
   isViewingAs: false,
   switchMember: () => {},
   resetToSelf: () => {},

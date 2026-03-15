@@ -751,7 +751,7 @@ export function useChallenges(overrideUserId?: string | null, opts?: { memberId?
       if (error) throw error;
 
       const ids = [
-        ...new Set(challenges.flatMap((c) => [c.challenger_id, c.opponent_id])),
+        ...new Set(challenges.flatMap((c) => [c.challenger_id, c.opponent_id]).filter(Boolean)),
       ];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")

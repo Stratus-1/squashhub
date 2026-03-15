@@ -39,7 +39,6 @@ export function FeesTab({ clubId }: { clubId: string }) {
   const { data: clubData } = useMyClub();
   const qc = useQueryClient();
   const club = clubData?.club;
-  const [dueMonth, setDueMonth] = useState(club?.member_fee_due_month ?? 1);
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);

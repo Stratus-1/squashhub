@@ -214,6 +214,7 @@ export default function Bookings() {
     isFriendly: boolean;
     duration: 30 | 60;
     lightsOn: boolean;
+    lightFeeSplit: "booker" | "shared";
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;
@@ -581,11 +582,14 @@ export default function Bookings() {
         opponentMemberId,
       });
 
-      // Mark lights_requested on the booking (edge function handles actual billing)
+      // Mark lights_requested and fee split on the booking
       if (bookingDialog.lightsOn && user?.id) {
         try {
           await fromExt("bookings")
-            .update({ lights_requested: true })
+            .update({
+              lights_requested: true,
+              light_fee_split: bookingDialog.lightFeeSplit || "booker",
+            })
             .eq("id", (created as any)?.id || bookingId);
         } catch (e: any) {
           console.error("Failed to set lights_requested:", e);
@@ -949,7 +953,7 @@ export default function Bookings() {
                       onClick={() => {
                         if (isPastSlot && !booking) return;
                         if (booking) setBookingDetails(booking);
-                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true });
+                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true, lightFeeSplit: "booker" });
                       }}
                     >
                       {booking ? (
@@ -1272,6 +1276,35 @@ export default function Bookings() {
                   />
                 )}
               </div>
+
+              {bookingDialog.lightsOn && lightFeePerHour > 0 && bookingDialog.playerMode === "member" && bookingDialog.opponentId && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Who pays for lights?</Label>
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant={bookingDialog.lightFeeSplit === "booker" ? "default" : "outline"}
+                      className="flex-1 text-xs rounded-lg"
+                      onClick={() => setBookingDialog((s) => s ? { ...s, lightFeeSplit: "booker" } : s)}
+                    >
+                      I'll pay
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={bookingDialog.lightFeeSplit === "shared" ? "default" : "outline"}
+                      className="flex-1 text-xs rounded-lg"
+                      onClick={() => setBookingDialog((s) => s ? { ...s, lightFeeSplit: "shared" } : s)}
+                    >
+                      Split 50/50
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {bookingDialog.lightFeeSplit === "shared"
+                      ? "Half the light fee will be deducted from each player's account"
+                      : "Full light fee will be deducted from your account"}
+                  </p>
+                </div>
+              )}
 
               {bookingDialog.lightsOn && lightFeePerHour > 0 && (
                 <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-xs">

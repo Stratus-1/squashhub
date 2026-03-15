@@ -59,7 +59,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const queryClient = useQueryClient();
   const clubId = club?.id;
 
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(!!onClose); // auto-open when embedded from Events page
   const [step, setStep] = useState(1); // 1: Date/Time/Recurrence, 2: Details, 3: Invites & Fees
   const [form, setForm] = useState({
     title: "",

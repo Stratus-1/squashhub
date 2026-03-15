@@ -400,6 +400,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     key={m.id}
                     member={m}
                     fees={getFeesForMember(m)}
+                    delegateTitle={getDelegateTitle(m.id)}
                     onEdit={() => setEditMember(m)}
                     onDelete={() => handleDelete(m.id)}
                     onTogglePaid={handleTogglePaid}

@@ -609,10 +609,19 @@ export function usePlayerProfile(playerId?: string | null) {
           matches_played: 0,
           rank: member.ladder_position,
           created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        phone: null,
-      };
-    },
+          updated_at: new Date().toISOString(),
+          phone: null,
+        };
+      }
+
+      // Fallback: playerId might be a legacy user_id
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", playerId)
+        .maybeSingle();
+      if (error) throw error;
+      return profile;
     enabled: !!playerId,
   });
 }

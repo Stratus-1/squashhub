@@ -534,6 +534,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   };
 
   const toggleSelectedMember = (memberId: string) => {
+    // Don't allow deselecting the organizer
+    if (memberId === activeMember?.id) return;
     setForm((f) => ({
       ...f,
       selected_member_ids: f.selected_member_ids.includes(memberId)

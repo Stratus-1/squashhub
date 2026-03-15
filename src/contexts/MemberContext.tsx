@@ -87,6 +87,17 @@ export function MemberProvider({ children }: { children: ReactNode }) {
             .eq("club_id", club.id)
             .eq("email", user.email.toLowerCase());
           linked = (emailMembers || []) as LinkedMember[];
+
+          // Auto-link unlinked members sharing the same email
+          const unlinked = linked.filter(m => !m.user_id);
+          if (unlinked.length > 0) {
+            for (const m of unlinked) {
+              await fromExt("club_members")
+                .update({ user_id: user.id })
+                .eq("id", m.id);
+              m.user_id = user.id;
+            }
+          }
         }
         // Ensure own membership is in linked list
         if (myMembership && !linked.find(m => m.id === myMembership.id)) {

@@ -70,11 +70,11 @@ function computeExpectedFees(
   const fees: ExpectedFee[] = [];
   const memberPayments = existingPayments.filter(p => p.club_member_id === member.id);
 
-  // 1. Club membership fee (from fee category, pro-rated for new members)
+  // 1. Club membership fee (full annual — pro-rating only for self-registering members)
   if (member.fee_category_id) {
     const cat = feeCategories.find(c => c.id === member.fee_category_id);
     if (cat) {
-      const amount = proRateClubFee(cat.annual_fee, member.joined_at, feeDueMonth);
+      const amount = cat.annual_fee;
       const existing = memberPayments.find(p => p.fee_type === "club" || p.fee_type === "membership");
       fees.push({ fee_type: "club", fee_label: `Club – ${cat.name}`, amount, existing });
     }
@@ -442,7 +442,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         if (m.fee_category_id) {
           const cat = (cats || []).find((c: any) => c.id === m.fee_category_id);
           if (cat) {
-            const amount = proRateClubFee(cat.annual_fee, m.joined_at, feeDueMonth);
+            const amount = cat.annual_fee;
             feeRecords.push({
               club_member_id: m.id, fee_type: "club",
               fee_label: `Club – ${cat.name}`, amount,
@@ -584,8 +584,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const selectedCat = feeCategories.find(c => c.id === feeCategoryId);
   const previewFees: { label: string; amount: number }[] = [];
   if (selectedCat) {
-    const proRated = proRateClubFee(selectedCat.annual_fee, new Date().toISOString(), feeDueMonth);
-    previewFees.push({ label: `Club – ${selectedCat.name}${proRated < selectedCat.annual_fee ? " (pro-rated)" : ""}`, amount: proRated });
+    previewFees.push({ label: `Club – ${selectedCat.name}`, amount: selectedCat.annual_fee });
   }
   if (playsLeague) {
     for (const a of associations) {

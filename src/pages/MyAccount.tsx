@@ -343,7 +343,7 @@ export default function MyAccount() {
         }
         // Deduct from credit and mark paid
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
-          user_id: user!.id,
+          user_id: effectiveUserId!,
           club_id: clubId,
           amount: totalAmount,
           type: "payment",

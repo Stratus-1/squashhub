@@ -145,9 +145,9 @@ export default function Challenges() {
   // Stats dialog
   const [statsDialog, setStatsDialog] = useState<{
     open: boolean;
-    opponentId: string;
+    opponentMemberId: string;
     opponentName: string;
-  }>({ open: false, opponentId: "", opponentName: "" });
+  }>({ open: false, opponentMemberId: "", opponentName: "" });
 
   const { incoming, outgoing, past } = useMemo(() => {
     if (!challenges) return { incoming: [], outgoing: [], past: [] };

@@ -1141,7 +1141,7 @@ export function useCreateMatch() {
       if (error) throw error;
 
       // Notify the other player to confirm
-      if (bothLinked) {
+      if (bothHaveAccounts) {
         const otherPlayerId = playerA === user.id ? playerB : playerA;
         try {
           await fromAny("notifications").insert({

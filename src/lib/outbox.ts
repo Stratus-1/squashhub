@@ -39,6 +39,10 @@ export type CreateMatchPayload = {
     player_a: string;
     player_b: string;
     winner_id: string | null;
+    player_a_member_id?: string | null;
+    player_b_member_id?: string | null;
+    winner_member_id?: string | null;
+    submitted_by_member_id?: string | null;
     score: string | null;
     game_scores: string | null;
     match_date: string;

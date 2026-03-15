@@ -371,8 +371,10 @@ export default function Dashboard() {
                 label = `${p1Name} vs ${p2Name}`;
               }
 
+              const needsMyConfirmation = !m.confirmed && !m.disputed && isParticipant && m.submitted_by !== user?.id;
+
               return (
-                <Card key={m.id} className="p-2.5 flex items-center justify-between gap-2">
+                <Card key={m.id} className={cn("p-2.5 flex items-center justify-between gap-2", needsMyConfirmation && "border-primary/40 bg-primary/5")}>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{label}</p>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -380,12 +382,23 @@ export default function Dashboard() {
                       {m.score && <Badge variant="outline" className="text-[10px] tabular-nums">{m.score}</Badge>}
                     </div>
                   </div>
-                  <Badge
-                    variant={m.confirmed ? "default" : "secondary"}
-                    className="text-[10px] shrink-0"
-                  >
-                    {m.confirmed ? "Confirmed" : "Pending"}
-                  </Badge>
+                  {needsMyConfirmation ? (
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:bg-green-100" onClick={() => handleConfirmMatch(m.id)}>
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => handleDisputeMatch(m.id)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge
+                      variant={m.confirmed ? "default" : m.disputed ? "destructive" : "secondary"}
+                      className="text-[10px] shrink-0"
+                    >
+                      {m.confirmed ? "Confirmed" : m.disputed ? "Disputed" : "Pending"}
+                    </Badge>
+                  )}
                 </Card>
               );
             })}

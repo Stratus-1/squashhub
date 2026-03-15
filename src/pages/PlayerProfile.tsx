@@ -48,8 +48,8 @@ export default function PlayerProfile() {
   // Resolve the club_member_id for this player from the ladder data
   const playerMemberId = useMemo(() => {
     if (!ladder || !id) return null;
-    const member = (ladder as any[]).find((m: any) => m.user_id === id || m.id === id);
-    return member?.club_member_id || member?.id || null;
+    const member = (ladder as any[]).find((m: any) => m.club_member_id === id || m.user_id === id || m.id === id);
+    return member?.club_member_id || id;
   }, [ladder, id]);
 
   const myMemberId = activeMember?.id || null;

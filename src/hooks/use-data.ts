@@ -500,7 +500,7 @@ export function useLadder(clubId?: string) {
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
         const ladderPos = m.ladder_position ?? null;
         return {
-          id: m.user_id || m.id,
+          id: m.id,
           club_member_id: m.id,
           name: m.name || profile?.name || "Unknown",
           avatar_url: profile?.avatar_url || null,

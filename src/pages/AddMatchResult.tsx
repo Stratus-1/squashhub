@@ -416,6 +416,7 @@ export default function AddMatchResult() {
           score: scoreString,
           matchDate,
           gameScores: gameScoresJson,
+          challengeId: urlChallengeId || null,
           notes: `Match type: ${matchType}`,
           playerAMemberId: player1.clubMemberId || null,
           playerBMemberId: player2.clubMemberId || null,

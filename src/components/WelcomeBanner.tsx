@@ -41,17 +41,15 @@ export function WelcomeBanner() {
 
   // Suggest an opponent based on current ladder position (same ladder group)
   const suggestedPlayer = useMemo(() => {
-    if (!user?.id || dismissed || !ladder) return null;
+    if (!activeMemberId || dismissed || !ladder) return null;
 
-    const me = ladder.find(
-      (p: any) => p.user_id === user.id || p.club_member_id === (myClubMember as any)?.id,
-    );
+    const me = ladder.find((p: any) => p.club_member_id === activeMemberId);
     if (!me?.ladder_position) return null;
 
     const myGroupIsLadies = ["female", "ladies", "f"].includes((me.gender || "").toLowerCase());
 
     const sameGroupPlayers = (ladder || []).filter((p: any) => {
-      if (p.id === me.id || p.user_id === user.id) return false;
+      if (p.club_member_id === activeMemberId) return false;
       if (typeof p.ladder_position !== "number") return false;
       const isLadies = ["female", "ladies", "f"].includes((p.gender || "").toLowerCase());
       return isLadies === myGroupIsLadies;
@@ -68,7 +66,7 @@ export function WelcomeBanner() {
     if (below.length > 0) return below[0];
 
     return sameGroupPlayers.sort((a: any, b: any) => a.ladder_position - b.ladder_position)[0] || null;
-  }, [dismissed, ladder, myClubMember, user?.id]);
+  }, [dismissed, ladder, activeMemberId]);
 
   const handleDismiss = () => {
     setDismissed(true);

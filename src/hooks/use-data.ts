@@ -1147,21 +1147,8 @@ export function useCreateMatch() {
         .single();
       if (error) throw error;
 
-      // Notify the other player to confirm
-      if (bothHaveAccounts) {
-        const otherPlayerId = playerA === user.id ? playerB : playerA;
-        try {
-          await fromAny("notifications").insert({
-            user_id: otherPlayerId,
-            title: "Confirm Match Result",
-            message: `A match result (${score || "no score"}) has been submitted and needs your confirmation.`,
-            type: "match",
-            url: "/dashboard",
-          });
-        } catch {
-          // non-critical
-        }
-      }
+      // Note: The DB trigger notify_on_match_events handles notification creation
+      // with club_member_id for member-scoped delivery. No client-side insert needed.
 
       return data;
     },

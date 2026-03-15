@@ -98,7 +98,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       {/* Associations */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">League Associations</h3>
+          <div>
+            <h3 className="font-semibold">League Associations</h3>
+            <p className="text-xs text-muted-foreground">Fee settings are managed in the Fees tab</p>
+          </div>
           <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
         </div>
         <div className="space-y-2">
@@ -106,7 +109,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             <Card key={a.id} className="p-3 flex items-center justify-between">
               <div>
                 <p className="font-medium">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
-                <p className="text-xs text-muted-foreground">Fee: R{a.fee_annual ?? 0}/year • Due: Month {a.fee_due_month}</p>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAssoc(a.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </Card>

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Club, useUpdateClub } from "@/hooks/use-club";
+import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -12,6 +13,8 @@ import { Send } from "lucide-react";
 export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   const { user } = useAuth();
   const updateClub = useUpdateClub();
+  const { data: secrets } = useClubSecrets(clubId);
+  const updateSecrets = useUpdateClubSecrets();
   const [sendingTest, setSendingTest] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState(user?.email || "");
 
@@ -20,13 +23,28 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     member_number_length: club.member_number_length ?? 4,
     member_number_start: club.member_number_start ?? 1,
     challenge_levels_up: club.challenge_levels_up ?? 2,
-    sender_email: (club as any).sender_email || "",
-    sender_name: (club as any).sender_name || "",
-    smtp_host: (club as any).smtp_host || "",
-    smtp_port: (club as any).smtp_port ?? "",
-    smtp_user: (club as any).smtp_user || "",
-    smtp_pass: (club as any).smtp_pass || "",
+    sender_email: "",
+    sender_name: "",
+    smtp_host: "",
+    smtp_port: "" as string | number,
+    smtp_user: "",
+    smtp_pass: "",
   });
+
+  // Populate SMTP fields from secrets when loaded
+  useEffect(() => {
+    if (secrets) {
+      setForm(p => ({
+        ...p,
+        sender_email: secrets.sender_email || "",
+        sender_name: secrets.sender_name || "",
+        smtp_host: secrets.smtp_host || "",
+        smtp_port: secrets.smtp_port ?? "",
+        smtp_user: secrets.smtp_user || "",
+        smtp_pass: secrets.smtp_pass || "",
+      }));
+    }
+  }, [secrets]);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }));
@@ -36,15 +54,26 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   const handleSave = async () => {
     try {
-      const payload: any = { ...form };
-      if (!payload.sender_email) payload.sender_email = null;
-      if (!payload.sender_name) payload.sender_name = null;
-      if (!payload.smtp_host) payload.smtp_host = null;
-      if (payload.smtp_port === "" || payload.smtp_port === 0) payload.smtp_port = null;
-      else payload.smtp_port = parseInt(payload.smtp_port) || null;
-      if (!payload.smtp_user) payload.smtp_user = null;
-      if (!payload.smtp_pass) payload.smtp_pass = null;
-      await updateClub.mutateAsync({ id: club.id, ...payload });
+      // Save non-sensitive settings to clubs table
+      await updateClub.mutateAsync({
+        id: club.id,
+        member_number_prefix: form.member_number_prefix,
+        member_number_length: form.member_number_length,
+        member_number_start: form.member_number_start,
+        challenge_levels_up: form.challenge_levels_up,
+      });
+
+      // Save sensitive SMTP settings to club_secrets table
+      await updateSecrets.mutateAsync({
+        club_id: clubId,
+        sender_email: form.sender_email || null,
+        sender_name: form.sender_name || null,
+        smtp_host: form.smtp_host || null,
+        smtp_port: form.smtp_port === "" || form.smtp_port === 0 ? null : (parseInt(String(form.smtp_port)) || null),
+        smtp_user: form.smtp_user || null,
+        smtp_pass: form.smtp_pass || null,
+      } as any);
+
       toast.success("Settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -189,8 +218,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         </p>
       </Card>
 
-      <Button onClick={handleSave} disabled={updateClub.isPending} className="w-full md:w-auto">
-        {updateClub.isPending ? "Saving..." : "Save Settings"}
+      <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
+        {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
       </Button>
     </div>
   );

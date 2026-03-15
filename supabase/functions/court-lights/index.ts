@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       // Get club info for fee
       const { data: courtInfo } = await supabase
         .from("courts")
-        .select("id, club_id, relay_device_id, relay_server, clubs(shelly_auth_key, light_fee_per_hour)")
+        .select("id, club_id, relay_device_id, relay_server, clubs(light_fee_per_hour)")
         .eq("id", booking.court_id)
         .maybeSingle();
 
@@ -100,8 +100,9 @@ Deno.serve(async (req) => {
       const feePerHour = club?.light_fee_per_hour ?? 0;
       const clubId = courtInfo?.club_id;
 
-      // Try to turn on the physical relay (skip if not configured)
-      const authKey = club?.shelly_auth_key;
+      // Get shelly auth key from club_secrets
+      const { data: secretsData } = clubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", clubId).maybeSingle() : { data: null };
+      const authKey = secretsData?.shelly_auth_key;
       if (courtInfo?.relay_device_id && authKey) {
         const shellyServer = (courtInfo as any).relay_server || "https://shelly-44-eu.shelly.cloud";
         try {
@@ -162,7 +163,7 @@ Deno.serve(async (req) => {
     // Fetch the active session (use service role to ensure we can read it)
     const { data: session, error: sessErr } = await supabase
       .from("light_sessions")
-      .select("*, courts(relay_device_id, relay_server, club_id, clubs(shelly_auth_key))")
+      .select("*, courts(relay_device_id, relay_server, club_id)")
       .eq("id", sessionId)
       .eq("user_id", userId)
       .eq("status", "active")
@@ -176,7 +177,9 @@ Deno.serve(async (req) => {
     }
 
     const court = (session as any).courts;
-    const authKey = court?.clubs?.shelly_auth_key;
+    const courtClubId = court?.club_id;
+    const { data: courtSecrets } = courtClubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", courtClubId).maybeSingle() : { data: null };
+    const authKey = courtSecrets?.shelly_auth_key;
 
     // Turn off lights on current court
     if (court?.relay_device_id && authKey) {
@@ -242,7 +245,7 @@ Deno.serve(async (req) => {
       // Get target court info
       const { data: targetCourt } = await supabase
         .from("courts")
-        .select("id, relay_device_id, relay_server, club_id, clubs(shelly_auth_key)")
+        .select("id, relay_device_id, relay_server, club_id")
         .eq("id", targetCourtId)
         .maybeSingle();
 
@@ -253,7 +256,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      const targetAuthKey = (targetCourt as any).clubs?.shelly_auth_key;
+      const targetClubId = targetCourt?.club_id;
+      const { data: targetSecrets } = targetClubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", targetClubId).maybeSingle() : { data: null };
+      const targetAuthKey = targetSecrets?.shelly_auth_key;
 
       // Turn on lights on target court
       if (targetCourt.relay_device_id && targetAuthKey) {
@@ -335,7 +340,7 @@ Deno.serve(async (req) => {
     // Get all courts with relays
     const { data: courts, error: courtsErr } = await supabase
       .from("courts")
-      .select("id, name, relay_device_id, relay_server, club_id, clubs(shelly_auth_key, light_fee_per_hour)")
+      .select("id, name, relay_device_id, relay_server, club_id, clubs(light_fee_per_hour)")
       .not("relay_device_id", "is", null);
 
     if (courtsErr) throw courtsErr;
@@ -344,6 +349,16 @@ Deno.serve(async (req) => {
         JSON.stringify({ message: "No courts with relays configured" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Fetch all club secrets for courts that have clubs
+    const clubIds = [...new Set(courts.map((c: any) => c.club_id).filter(Boolean))];
+    const { data: allSecrets } = clubIds.length > 0
+      ? await supabase.from("club_secrets").select("club_id, shelly_auth_key").in("club_id", clubIds)
+      : { data: [] };
+    const secretsMap = new Map<string, string>();
+    for (const s of (allSecrets || [])) {
+      if (s.shelly_auth_key) secretsMap.set(s.club_id, s.shelly_auth_key);
     }
 
     const courtIds = courts.map((c: any) => c.id);
@@ -381,7 +396,7 @@ Deno.serve(async (req) => {
     const results: any[] = [];
 
     for (const court of courts) {
-      const authKey = (court as any).clubs?.shelly_auth_key;
+      const authKey = court.club_id ? secretsMap.get(court.club_id) : undefined;
       const feePerHour = Number((court as any).clubs?.light_fee_per_hour) || 0;
       if (!authKey) {
         results.push({ court: court.name, status: "skipped", detail: "No Shelly auth key" });

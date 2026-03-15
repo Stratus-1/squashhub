@@ -619,6 +619,59 @@ export type Database = {
           },
         ]
       }
+      club_secrets: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          payment_gateway_secret_key: string | null
+          sender_email: string | null
+          sender_name: string | null
+          shelly_auth_key: string | null
+          smtp_host: string | null
+          smtp_pass: string | null
+          smtp_port: number | null
+          smtp_user: string | null
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          payment_gateway_secret_key?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          shelly_auth_key?: string | null
+          smtp_host?: string | null
+          smtp_pass?: string | null
+          smtp_port?: number | null
+          smtp_user?: string | null
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          payment_gateway_secret_key?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          shelly_auth_key?: string | null
+          smtp_host?: string | null
+          smtp_pass?: string | null
+          smtp_port?: number | null
+          smtp_user?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_secrets_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           address: string | null

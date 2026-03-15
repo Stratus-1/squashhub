@@ -582,11 +582,14 @@ export default function Bookings() {
         opponentMemberId,
       });
 
-      // Mark lights_requested on the booking (edge function handles actual billing)
+      // Mark lights_requested and fee split on the booking
       if (bookingDialog.lightsOn && user?.id) {
         try {
           await fromExt("bookings")
-            .update({ lights_requested: true })
+            .update({
+              lights_requested: true,
+              light_fee_split: bookingDialog.lightFeeSplit || "booker",
+            })
             .eq("id", (created as any)?.id || bookingId);
         } catch (e: any) {
           console.error("Failed to set lights_requested:", e);

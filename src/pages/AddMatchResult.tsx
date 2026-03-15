@@ -277,6 +277,7 @@ function getPlayerDisplayName(p: PlayerSelection, fallback = "Player"): string {
 export default function AddMatchResult() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNationalBodyFees, useMyClub, useFeeCategories, NationalBodyFee, Club, MemberFeeCategory } from "@/hooks/use-club";
+import { useNationalBodyFees, useMyClub, useFeeCategories, useLeagueAssociations, NationalBodyFee, Club, MemberFeeCategory, LeagueAssociation } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,38 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
+const FeeClassBadge = ({ feeClass }: { feeClass: string }) => (
+  <Badge variant={feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
+    {feeClass === "pass_through" ? "Pass-through" : "Club Income"}
+  </Badge>
+);
+
+const FeeClassSelect = ({ value, onChange }: { value: string; onChange: (v: "club_income" | "pass_through") => void }) => (
+  <div className="space-y-1">
+    <Label>Fee Class</Label>
+    <Select value={value} onValueChange={v => onChange(v as "club_income" | "pass_through")}>
+      <SelectTrigger><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="club_income">Club Income</SelectItem>
+        <SelectItem value="pass_through">Pass-through (Creditor)</SelectItem>
+      </SelectContent>
+    </Select>
+    <p className="text-[10px] text-muted-foreground">
+      {value === "pass_through" ? "Credits Creditors GL — club collects on behalf of external body" : "Credits Fee Income GL — revenue for the club"}
+    </p>
+  </div>
+);
+
 export function FeesTab({ clubId }: { clubId: string }) {
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
+  const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: clubData } = useMyClub();
   const [addNatOpen, setAddNatOpen] = useState(false);
   const [editNat, setEditNat] = useState<NationalBodyFee | null>(null);
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [editCat, setEditCat] = useState<MemberFeeCategory | null>(null);
+  const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const qc = useQueryClient();
   const club = clubData?.club;
   const [dueMonth, setDueMonth] = useState(club?.member_fee_due_month ?? 1);
@@ -83,9 +107,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{cat.name}</p>
-                  <Badge variant={cat.fee_class === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
-                    {cat.fee_class === "pass_through" ? "Pass-through" : "Club Income"}
-                  </Badge>
+                  <FeeClassBadge feeClass={cat.fee_class} />
                 </div>
                 <p className="text-xs text-muted-foreground">R{cat.annual_fee}/year{cat.description ? ` — ${cat.description}` : ""}</p>
               </div>
@@ -101,6 +123,36 @@ export function FeesTab({ clubId }: { clubId: string }) {
 
       {editCat && <FeeCategoryDialog clubId={clubId} open onOpenChange={() => { setEditCat(null); }} existing={editCat} />}
 
+      {/* League Association fees */}
+      {associations.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-semibold">League Association Fees</h3>
+              <p className="text-xs text-muted-foreground">Fee settings for league associations (created in Leagues tab)</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {associations.map(a => (
+              <Card key={a.id} className="p-3 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
+                    <FeeClassBadge feeClass={a.fee_class} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    R{a.fee_annual ?? 0}/year • Due: {MONTHS[(a.fee_due_month ?? 1) - 1]}
+                    {a.fee_payable_to ? ` • Payable to: ${a.fee_payable_to}` : ""}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditAssoc(a)}><Edit2 className="w-3.5 h-3.5" /></Button>
+              </Card>
+            ))}
+          </div>
+          {editAssoc && <AssociationFeeDialog open onOpenChange={() => setEditAssoc(null)} existing={editAssoc} />}
+        </div>
+      )}
+
       {/* National body fees */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -113,9 +165,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium">{f.body_name} {f.abbreviation ? `(${f.abbreviation})` : ""}</p>
-                  <Badge variant={f.fee_class === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
-                    {f.fee_class === "pass_through" ? "Pass-through" : "Club Income"}
-                  </Badge>
+                  <FeeClassBadge feeClass={f.fee_class} />
                 </div>
                 <p className="text-xs text-muted-foreground">R{f.fee_annual ?? 0}/year • Due: {MONTHS[(f.fee_due_month ?? 1) - 1]}</p>
                 {f.fee_payable_to && <p className="text-xs text-muted-foreground">Payable to: {f.fee_payable_to}</p>}
@@ -134,7 +184,6 @@ export function FeesTab({ clubId }: { clubId: string }) {
       <Card className="p-4 bg-muted/50">
         <p className="text-sm text-muted-foreground">
           <strong>Fee reminders:</strong> Members who elect to play league will be automatically notified about league association fees and SSA fees {club?.fee_reminder_days_before ?? 14} days before the due date.
-          Adjust the reminder days in the Club Details tab.
         </p>
       </Card>
     </div>
@@ -176,6 +225,7 @@ function FeeCategoryDialog({ clubId, open, onOpenChange, existing }: { clubId: s
             <div className="space-y-1"><Label>Annual Fee (R)</Label><Input type="number" value={form.annual_fee} onChange={e => setForm(p => ({ ...p, annual_fee: Number(e.target.value) }))} /></div>
             <div className="space-y-1"><Label>Sort Order</Label><Input type="number" value={form.sort_order} onChange={e => setForm(p => ({ ...p, sort_order: Number(e.target.value) }))} /></div>
           </div>
+          <FeeClassSelect value={form.fee_class} onChange={v => setForm(p => ({ ...p, fee_class: v }))} />
           <Button onClick={handleSave} className="w-full">{existing ? "Update" : "Save"}</Button>
         </div>
       </DialogContent>
@@ -191,6 +241,7 @@ function NationalFeeDialog({ clubId, open, onOpenChange, existing }: { clubId: s
     fee_due_month: existing?.fee_due_month ?? 1,
     fee_payable_to: existing?.fee_payable_to || "",
     fee_payment_details: existing?.fee_payment_details || "",
+    fee_class: existing?.fee_class || "pass_through",
   });
   const qc = useQueryClient();
 
@@ -221,7 +272,47 @@ function NationalFeeDialog({ clubId, open, onOpenChange, existing }: { clubId: s
           </div>
           <div className="space-y-1"><Label>Payable To</Label><Input value={form.fee_payable_to} onChange={e => setForm(p => ({ ...p, fee_payable_to: e.target.value }))} /></div>
           <div className="space-y-1"><Label>Payment Details</Label><Input value={form.fee_payment_details} onChange={e => setForm(p => ({ ...p, fee_payment_details: e.target.value }))} /></div>
+          <FeeClassSelect value={form.fee_class} onChange={v => setForm(p => ({ ...p, fee_class: v }))} />
           <Button onClick={handleSave} className="w-full">{existing ? "Update" : "Save"}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AssociationFeeDialog({ open, onOpenChange, existing }: { open: boolean; onOpenChange: (o: boolean) => void; existing: LeagueAssociation }) {
+  const [form, setForm] = useState({
+    fee_annual: existing.fee_annual ?? 0,
+    fee_due_month: existing.fee_due_month ?? 1,
+    fee_payable_to: existing.fee_payable_to || "",
+    fee_payment_details: existing.fee_payment_details || "",
+    fee_class: existing.fee_class || "pass_through",
+  });
+  const qc = useQueryClient();
+
+  const handleSave = async () => {
+    const { error } = await fromExt("league_associations").update({ ...form }).eq("id", existing.id);
+    if (error) toast.error(error.message);
+    else { toast.success("Updated"); onOpenChange(false); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit {existing.name} Fee Settings</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><Label>Annual Fee (R)</Label><Input type="number" value={form.fee_annual} onChange={e => setForm(p => ({ ...p, fee_annual: Number(e.target.value) }))} /></div>
+            <div className="space-y-1"><Label>Due Month</Label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.fee_due_month} onChange={e => setForm(p => ({ ...p, fee_due_month: Number(e.target.value) }))}>
+                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1"><Label>Payable To</Label><Input value={form.fee_payable_to} onChange={e => setForm(p => ({ ...p, fee_payable_to: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Payment Details</Label><Input value={form.fee_payment_details} onChange={e => setForm(p => ({ ...p, fee_payment_details: e.target.value }))} /></div>
+          <FeeClassSelect value={form.fee_class} onChange={v => setForm(p => ({ ...p, fee_class: v }))} />
+          <Button onClick={handleSave} className="w-full">Update</Button>
         </div>
       </DialogContent>
     </Dialog>

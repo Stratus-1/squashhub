@@ -98,7 +98,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       {/* Associations */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">League Associations</h3>
+          <div>
+            <h3 className="font-semibold">League Associations</h3>
+            <p className="text-xs text-muted-foreground">Fee settings are managed in the Fees tab</p>
+          </div>
           <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
         </div>
         <div className="space-y-2">
@@ -106,7 +109,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             <Card key={a.id} className="p-3 flex items-center justify-between">
               <div>
                 <p className="font-medium">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
-                <p className="text-xs text-muted-foreground">Fee: R{a.fee_annual ?? 0}/year • Due: Month {a.fee_due_month}</p>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAssoc(a.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </Card>
@@ -648,14 +650,14 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 
 // ─── Association Dialog ───
 function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const [form, setForm] = useState({ name: "", abbreviation: "", fee_annual: 0, fee_due_month: 1, fee_payable_to: "", fee_payment_details: "" });
+  const [form, setForm] = useState({ name: "", abbreviation: "" });
   const qc = useQueryClient();
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
     const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });
     if (error) toast.error(error.message);
-    else { toast.success("Association added"); onOpenChange(false); setForm({ name: "", abbreviation: "", fee_annual: 0, fee_due_month: 1, fee_payable_to: "", fee_payment_details: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+    else { toast.success("Association added"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
   };
 
   return (
@@ -666,12 +668,6 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
         <div className="space-y-3">
           <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Northerns Squash Federation" /></div>
           <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. NSF" /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Annual Fee (R)</Label><Input type="number" value={form.fee_annual} onChange={e => setForm(p => ({ ...p, fee_annual: Number(e.target.value) }))} /></div>
-            <div className="space-y-1"><Label>Due Month</Label><Input type="number" min={1} max={12} value={form.fee_due_month} onChange={e => setForm(p => ({ ...p, fee_due_month: Number(e.target.value) }))} /></div>
-          </div>
-          <div className="space-y-1"><Label>Payable To</Label><Input value={form.fee_payable_to} onChange={e => setForm(p => ({ ...p, fee_payable_to: e.target.value }))} /></div>
-          <div className="space-y-1"><Label>Payment Details</Label><Input value={form.fee_payment_details} onChange={e => setForm(p => ({ ...p, fee_payment_details: e.target.value }))} /></div>
           <Button onClick={handleSave} className="w-full">Save</Button>
         </div>
       </DialogContent>

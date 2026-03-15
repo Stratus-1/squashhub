@@ -32,6 +32,7 @@ export function PageHeader({
   backTo,
 }: PageHeaderProps) {
   const { user, signOut } = useAuth();
+  const { activeMember } = useMemberContext();
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,7 +43,7 @@ export function PageHeader({
   const shouldShowBack = showBack ?? !isTopLevel;
   const fallbackTo = backTo || getBackFallback(pathname);
   const canGoBack = typeof window !== "undefined" && window.history.length > 1;
-  const { data: incomingCount } = useIncomingChallengesCount();
+  const { data: incomingCount } = useIncomingChallengesCount(activeMember?.id);
 
   const avatarUrl = (profile as any)?.avatar_url || null;
   const playerName = (profile as any)?.name || "";

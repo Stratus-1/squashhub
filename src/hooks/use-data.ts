@@ -25,17 +25,23 @@ export type SquashTotals = {
   points_against: number;
 };
 
-export function useSquashTotals(playerId?: string | null) {
+export function useSquashTotals(playerId?: string | null, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const memberId = opts?.memberId;
   return useQuery({
-    queryKey: ["squash-totals", playerId],
+    queryKey: ["squash-totals", memberId || playerId],
     queryFn: async () => {
+      if (memberId) {
+        const { data, error } = await rpc("get_squash_totals_by_member", { target_member_id: memberId });
+        if (error) throw error;
+        return data as unknown as SquashTotals;
+      }
       if (!playerId) return null;
       const { data, error } = await rpc("get_squash_totals", { target_user_id: playerId });
       if (error) throw error;
       return data as unknown as SquashTotals;
     },
-    enabled: !!user && !!playerId,
+    enabled: !!user && !!(memberId || playerId),
   });
 }
 

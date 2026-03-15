@@ -496,6 +496,33 @@ export default function Challenges() {
             )}
           </div>
         )}
+
+        {/* Completed: show match result */}
+        {c.status === "completed" && challengeMatches[c.id] && (
+          <div className="mt-3 rounded-lg border bg-muted/30 p-2.5">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-medium">
+                {(() => {
+                  const m = challengeMatches[c.id];
+                  const winnerIsChallenger = m.winner_member_id
+                    ? m.winner_member_id === (c as any).challenger_member_id
+                    : m.winner_id === c.challenger_id;
+                  const winnerName = winnerIsChallenger ? c.challenger_name : c.opponent_name;
+                  return `${winnerName} won`;
+                })()}
+              </span>
+              {challengeMatches[c.id].score && (
+                <Badge variant="outline" className="text-[10px] ml-auto">
+                  {challengeMatches[c.id].score}
+                </Badge>
+              )}
+            </div>
+            {!challengeMatches[c.id].confirmed && (
+              <p className="text-[10px] text-muted-foreground mt-1 italic">Awaiting confirmation</p>
+            )}
+          </div>
+        )}
       </Card>
     );
   };

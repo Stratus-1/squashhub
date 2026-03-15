@@ -169,20 +169,7 @@ export default function MyAccount() {
     })();
   }, [fees, feesLoading, clubMemberId, feeCategoryId, playsLeague, clubId, club, queryClient]);
 
-  // Light sessions (debits for court lighting)
-  const { data: lightSessions, isLoading: lightSessionsLoading } = useQuery({
-    queryKey: ["light-sessions", effectiveUserId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("light_sessions")
-        .select("*")
-        .eq("user_id", effectiveUserId!)
-        .eq("status", "completed")
-        .order("ended_at", { ascending: true });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!effectiveUserId,
-  });
+  // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
   // Build unified statement lines sorted chronologically (oldest first)
   // NEW ACCOUNTING MODEL:

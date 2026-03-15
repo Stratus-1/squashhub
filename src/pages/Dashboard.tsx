@@ -583,6 +583,17 @@ export default function Dashboard() {
         )}
       </motion.div>
 
+      {/* Support — bottom of page */}
+      <div className="px-4 mt-5 mb-4">
+        <Button variant="outline" className="w-full justify-between h-11 px-3" onClick={() => navigate("/support")}>
+          <span className="inline-flex items-center gap-2">
+            <LifeBuoy className="w-4 h-4" />
+            Support
+          </span>
+          <ChevronRight className="w-4 h-4 opacity-70" />
+        </Button>
+      </div>
+
     </div>
   );
 }

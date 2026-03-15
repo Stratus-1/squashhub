@@ -39,7 +39,7 @@ const TIME_OPTIONS = (() => {
   return opts;
 })();
 
-export function CreateClubEvent() {
+export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();

@@ -521,11 +521,13 @@ export default function Bookings() {
             booking: {
               id: bookingId,
               user_id: user.id,
+              club_member_id: activeMember?.id || null,
               court_id: bookingDialog.courtId,
               date: dateStr,
               start_time: bookingDialog.time + ":00",
               end_time: endTime + ":00",
               opponent_id: bookingDialog.opponentId || null,
+              opponent_member_id: opponent?.memberId || null,
               is_friendly: bookingDialog.isFriendly,
             },
             ...(needsChallenge && bookingDialog.opponentId
@@ -533,6 +535,8 @@ export default function Bookings() {
                   challenge: {
                     id: challengeId,
                     opponent_id: bookingDialog.opponentId,
+                    challenger_member_id: activeMember?.id || null,
+                    opponent_member_id: opponent?.memberId || null,
                     proposed_date: dateStr,
                   },
                 }

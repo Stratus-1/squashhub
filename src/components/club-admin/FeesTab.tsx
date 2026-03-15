@@ -84,8 +84,30 @@ export function FeesTab({ clubId }: { clubId: string }) {
     const newActive = !fee.active;
     const { error } = await fromExt(fee.source as any).update({ active: newActive }).eq("id", fee.id);
     if (error) { toast.error(error.message); return; }
+
+    // Sync member fee payment records: inactive = mark paid, active = mark unpaid
+    const feeTypes = fee.source === "member_fee_categories"
+      ? ["club", "membership"]
+      : fee.source === "league_associations"
+        ? ["association"]
+        : ["national", "national_body"];
+
+    // Get all club members for this club
+    const { data: members } = await fromExt("club_members").select("id").eq("club_id", clubId);
+    const memberIds = (members || []).map((m: any) => m.id);
+
+    if (memberIds.length > 0) {
+      const { error: updateErr } = await fromExt("club_member_fee_payments")
+        .update({ paid: !newActive, paid_at: !newActive ? new Date().toISOString() : null })
+        .in("club_member_id", memberIds)
+        .in("fee_type", feeTypes);
+      if (updateErr) console.error("Failed to sync fee payments:", updateErr.message);
+    }
+
     const key = fee.source === "member_fee_categories" ? "fee-categories" : fee.source === "league_associations" ? "league-associations" : "national-body-fees";
     qc.invalidateQueries({ queryKey: [key] });
+    qc.invalidateQueries({ queryKey: ["club-member-fees"] });
+    toast.success(`Fee ${newActive ? "activated" : "deactivated"}`);
   };
 
   const handleDelete = async (fee: UnifiedFee) => {

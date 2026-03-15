@@ -307,7 +307,7 @@ export default function MyAccount() {
     mutationFn: async ({ amount, method }: { amount: number; method: string }) => {
       if (!clubId) throw new Error("No club membership found for this account.");
       const { error } = await fromExt("member_credit_transactions").insert({
-        user_id: user!.id,
+        user_id: effectiveUserId!,
         club_id: clubId,
         amount,
         type: "topup",

@@ -503,6 +503,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
 
   const resetForm = () => {
+    const selfId = activeMember?.id;
     setForm({
       title: "",
       description: "",
@@ -515,10 +516,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       reminder_hours: "48",
       invite_scope: "all",
       invite_scope_id: "",
-      selected_member_ids: [],
+      selected_member_ids: selfId ? [selfId] : [],
       light_fee_split: "creator",
       is_club_booking: false,
-      booking_member_ids: [],
+      booking_member_ids: selfId ? [selfId] : [],
       court_ids: [],
     });
     setStep(1);

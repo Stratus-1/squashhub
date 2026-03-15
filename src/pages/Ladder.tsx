@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";
+import { isCourtAvailable } from "@/lib/court-availability";
 import { toast } from "sonner";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { BarChart3 } from "lucide-react";

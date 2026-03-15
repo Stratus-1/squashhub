@@ -111,7 +111,12 @@ export function FeesTab({ clubId }: { clubId: string }) {
           {nationalFees.map(f => (
             <Card key={f.id} className="p-3 flex items-center justify-between">
               <div>
-                <p className="font-medium">{f.body_name} {f.abbreviation ? `(${f.abbreviation})` : ""}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{f.body_name} {f.abbreviation ? `(${f.abbreviation})` : ""}</p>
+                  <Badge variant={f.fee_class === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
+                    {f.fee_class === "pass_through" ? "Pass-through" : "Club Income"}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground">R{f.fee_annual ?? 0}/year • Due: {MONTHS[(f.fee_due_month ?? 1) - 1]}</p>
                 {f.fee_payable_to && <p className="text-xs text-muted-foreground">Payable to: {f.fee_payable_to}</p>}
               </div>

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Swords } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLadder, useCreateChallenge } from "@/hooks/use-data";
+import { useLadder, useCreateChallenge, useSquashTotals, useHeadToHead } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,44 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { BarChart3 } from "lucide-react";
+
+// Inline opponent stats for the challenge dialog
+function OpponentStatsInline({ userId, myUserId }: { userId: string; myUserId: string }) {
+  const { data: stats, isLoading } = useSquashTotals(userId);
+  const { data: h2h } = useHeadToHead(myUserId, 20);
+  const h2hRecord = useMemo(() => h2h?.find((r) => r.opponent_id === userId) || null, [h2h, userId]);
+
+  if (isLoading) return <p className="text-[11px] text-muted-foreground">Loading stats…</p>;
+  if (!stats) return null;
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+        <BarChart3 className="w-3 h-3" /> Match Stats
+      </p>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p className="text-base font-bold text-foreground">{stats.wins}</p>
+          <p className="text-[10px] text-muted-foreground">Wins</p>
+        </div>
+        <div>
+          <p className="text-base font-bold text-foreground">{stats.losses}</p>
+          <p className="text-[10px] text-muted-foreground">Losses</p>
+        </div>
+        <div>
+          <p className="text-base font-bold text-primary">{stats.win_rate}%</p>
+          <p className="text-[10px] text-muted-foreground">Win Rate</p>
+        </div>
+      </div>
+      {h2hRecord && (
+        <p className="text-[11px] text-muted-foreground border-t pt-1">
+          Head-to-head: <span className="text-primary font-medium">{h2hRecord.wins}W</span>–<span className="text-destructive font-medium">{h2hRecord.losses}L</span>
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function Ladder() {
   const navigate = useNavigate();
@@ -227,15 +265,20 @@ export default function Ladder() {
           </DialogHeader>
 
           {challengeDialog.player && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
-              <PlayerAvatar initials={getInitials(challengeDialog.player.name)} size="sm" avatarUrl={challengeDialog.player.avatar_url} />
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{challengeDialog.player.name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  #{positionMap.get(challengeDialog.player.id)} on ladder · {challengeDialog.player.wins}W-{challengeDialog.player.losses}L
-                </p>
+            <>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                <PlayerAvatar initials={getInitials(challengeDialog.player.name)} size="sm" avatarUrl={challengeDialog.player.avatar_url} />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{challengeDialog.player.name}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    #{positionMap.get(challengeDialog.player.id)} on ladder · {challengeDialog.player.wins}W-{challengeDialog.player.losses}L
+                  </p>
+                </div>
               </div>
-            </div>
+              {challengeDialog.player.user_id && user && (
+                <OpponentStatsInline userId={challengeDialog.player.user_id} myUserId={user.id} />
+              )}
+            </>
           )}
 
           <div className="space-y-3">

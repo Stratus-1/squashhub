@@ -175,6 +175,8 @@ export default function Challenges() {
       const matchDate = c.proposed_date;
       const matchTime = (c as any).proposed_time;
       const courtId = (c as any).court_id;
+      // The booking user_id must be a valid auth user; use challenger's user_id or fall back to current user
+      const bookingUserId = c.challenger_id || user!.id;
       if (matchDate && matchTime && courtId && user) {
         const endTimeStr = matchTime.replace(/^(\d{2}):(\d{2})/, (_: any, h: string, m: string) => {
           const endH = (parseInt(h) + 1) % 24;
@@ -182,8 +184,8 @@ export default function Challenges() {
         });
         try {
           await supabase.from("bookings").insert({
-            user_id: c.challenger_id,
-            opponent_id: c.opponent_id,
+            user_id: bookingUserId,
+            opponent_id: c.opponent_id || null,
             court_id: courtId,
             date: matchDate,
             start_time: matchTime.length === 5 ? matchTime + ":00" : matchTime,
@@ -197,16 +199,18 @@ export default function Challenges() {
         }
       }
 
-      // Notify challenger
-      try {
-        await fromExt("notifications").insert({
-          user_id: c.challenger_id,
-          title: "Challenge Accepted!",
-          message: `${c.opponent_name} has accepted your challenge${matchDate ? ` on ${matchDate}` : ""}.`,
-          type: "challenge",
-          url: "/challenges",
-        });
-      } catch { /* non-critical */ }
+      // Notify challenger (only if they have a user_id)
+      if (c.challenger_id) {
+        try {
+          await fromExt("notifications").insert({
+            user_id: c.challenger_id,
+            title: "Challenge Accepted!",
+            message: `${c.opponent_name} has accepted your challenge${matchDate ? ` on ${matchDate}` : ""}.`,
+            type: "challenge",
+            url: "/challenges",
+          });
+        } catch { /* non-critical */ }
+      }
 
       toast.success("Challenge accepted! Court booking created.");
     } catch (e: any) {

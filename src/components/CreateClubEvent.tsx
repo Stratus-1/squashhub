@@ -423,7 +423,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       selected_member_ids: [],
       light_fee_split: "creator",
       is_club_booking: false,
-      booked_by_member_id: "",
+      booking_member_ids: [],
       court_ids: [],
     });
     setStep(1);

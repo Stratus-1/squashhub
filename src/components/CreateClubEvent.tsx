@@ -182,22 +182,29 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const rsvpCounts = rsvpData?.counts;
   const confirmedNames = rsvpData?.confirmedNames;
 
-  // My RSVPs
+  // My RSVPs — check all linked members (family accounts sharing email)
+  const { linkedMembers } = useMemberContext();
+  const linkedMemberIds = useMemo(() => linkedMembers.map(m => m.id), [linkedMembers]);
   const myMemberId = activeMember?.id;
   const { data: myRsvps } = useQuery({
-    queryKey: ["club-event-my-rsvps", myMemberId, eventIds.join(",")],
+    queryKey: ["club-event-my-rsvps", linkedMemberIds.join(","), eventIds.join(",")],
     queryFn: async () => {
-      if (!myMemberId || eventIds.length === 0) return {};
+      if (linkedMemberIds.length === 0 || eventIds.length === 0) return {};
       const { data, error } = await fromExt("club_event_rsvps")
-        .select("event_id, status, id")
-        .eq("club_member_id", myMemberId)
+        .select("event_id, status, id, club_member_id")
+        .in("club_member_id", linkedMemberIds)
         .in("event_id", eventIds);
       if (error) throw error;
-      const map: Record<string, { id: string; status: string }> = {};
-      for (const r of data || []) map[r.event_id] = { id: r.id, status: r.status };
+      // Build map: event_id -> array of RSVPs (one per linked member)
+      const map: Record<string, { id: string; status: string; club_member_id: string; memberName: string }[]> = {};
+      for (const r of data || []) {
+        if (!map[r.event_id]) map[r.event_id] = [];
+        const member = linkedMembers.find(m => m.id === r.club_member_id);
+        map[r.event_id].push({ id: r.id, status: r.status, club_member_id: r.club_member_id, memberName: member?.name || "Unknown" });
+      }
       return map;
     },
-    enabled: !!myMemberId && eventIds.length > 0,
+    enabled: linkedMemberIds.length > 0 && eventIds.length > 0,
   });
 
   // Pre-select the creator as an attendee

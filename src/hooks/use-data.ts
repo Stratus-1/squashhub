@@ -949,25 +949,25 @@ export function useCreateChallenge() {
         .single();
       if (error) throw error;
 
-      // Send notification to opponent if they have a user_id
-      if (opponentId && opponentId !== user.id) {
+      // Send notification to opponent — use club_member_id for member-scoped delivery
+      if (opponentMemberId || (opponentId && opponentId !== user.id)) {
         try {
-          // Look up opponent's user_id from member if needed
-          let notifyUserId = opponentId;
-          if (opponentMemberId) {
-            const { data: mem } = await supabase
-              .from("club_members")
-              .select("user_id")
-              .eq("id", opponentMemberId)
-              .maybeSingle();
-            if (mem?.user_id) notifyUserId = mem.user_id;
-          }
-          await fromAny("notifications").insert({
-            user_id: notifyUserId,
+          const notifPayload: Record<string, any> = {
             title: "New Challenge!",
             message: `You have been challenged! Proposed: ${proposedDate || "TBD"} at ${proposedTime?.slice(0, 5) || "TBD"}.`,
             type: "challenge",
             url: "/challenges",
+          };
+
+          if (opponentMemberId) {
+            notifPayload.club_member_id = opponentMemberId;
+            // user_id will be auto-resolved by the trigger
+          }
+          if (opponentId && opponentId !== user.id) {
+            notifPayload.user_id = opponentId;
+          }
+
+          await fromAny("notifications").insert(notifPayload);
           });
         } catch { /* non-critical */ }
       }

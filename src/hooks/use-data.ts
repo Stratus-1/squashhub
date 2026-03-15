@@ -441,7 +441,8 @@ export function useMyScheduledMatches(overrideUserId?: string | null) {
         .from("challenge_schedules")
         .select("id, challenge_id, booking_id, proposed_date, start_time, end_time, status")
         .in("challenge_id", challengeIds)
-        .in("status", ["accepted", "proposed"])
+        .eq("status", "accepted")
+        .not("booking_id", "is", null)
         .gte("proposed_date", today)
         .order("proposed_date", { ascending: true })
         .order("start_time", { ascending: true });

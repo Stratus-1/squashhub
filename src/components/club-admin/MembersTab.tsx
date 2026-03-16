@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useClubMembers, useFeeCategories, useLeagueAssociations, useNationalBodyFees, useMyClub, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -621,6 +622,21 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const qc = useQueryClient();
 
+  // Auto-generate member number when dialog opens
+  useEffect(() => {
+    if (open && !memberNumber) {
+      (async () => {
+        const { data, error } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
+        if (!error && data) {
+          setMemberNumber(data as string);
+        }
+      })();
+    }
+    if (!open) {
+      setMemberNumber("");
+    }
+  }, [open, clubId]);
+
   const age = idNumber ? getAgeFromSaId(idNumber) : null;
 
   // Preview of fees that will be created
@@ -779,7 +795,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
               <option value="Ladies">Ladies</option>
             </select>
           </div>
-          <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Optional" /></div>
+          <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Auto-generated" /></div>
           <div className="space-y-1">
             <Label>ID Number</Label>
             <Input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="SA ID number (13 digits)" maxLength={13} />

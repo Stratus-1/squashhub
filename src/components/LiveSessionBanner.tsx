@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X, ChevronRight } from "lucide-react";
+import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";

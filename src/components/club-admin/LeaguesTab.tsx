@@ -520,6 +520,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               league_id: league.id,
               player_rank: i + 1,
               is_captain: p.is_captain,
+              league_association_number: p.league_association_number || null,
             }))
           );
           if (error) throw error;

@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 
-const LAST_UPDATED = "9 March 2026";
+const LAST_UPDATED = "16 March 2026";
 
 export default function Terms() {
   return (
@@ -83,13 +83,35 @@ export default function Terms() {
                 protect members, the club, or the Service.
               </p>
 
-              <h2>10. Changes to these Terms</h2>
+              <h2>10. Intellectual property</h2>
+              <p>
+                All content, branding, and technology of SquashHub remain the property of SquashHub.
+                You may not copy, modify, or reverse-engineer any part of the Service without written
+                permission. Content you submit (posts, results, avatars) remains yours, but you grant
+                SquashHub a licence to display it within the Service.
+              </p>
+
+              <h2>11. Fees and payments</h2>
+              <p>
+                Clubs may charge membership fees, light fees, or event fees through the Service.
+                Payment terms are set by each club. SquashHub facilitates the collection but is not
+                responsible for disputes between members and clubs regarding fees.
+              </p>
+
+              <h2>12. Governing law</h2>
+              <p>
+                These Terms are governed by the laws of the Republic of South Africa. Any disputes
+                arising from these Terms or the Service will be subject to the jurisdiction of the
+                South African courts.
+              </p>
+
+              <h2>13. Changes to these Terms</h2>
               <p>
                 We may update these Terms from time to time. If changes are material, we will take reasonable
                 steps to notify users in-app.
               </p>
 
-              <h2>11. Contact</h2>
+              <h2>14. Contact</h2>
               <p>
                 Questions about these Terms can be sent via the in-app Support page.
               </p>

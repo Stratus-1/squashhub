@@ -357,12 +357,24 @@ export default function AddMatchResult() {
   // Pre-fill both players from booking flow
   const [bookingPreFilled, setBookingPreFilled] = useState(false);
   useEffect(() => {
-    if (bookingPreFilled || !ladder || !urlPlayerAMemberId) return;
-    const memberA = ladder.find((p: any) => p.club_member_id === urlPlayerAMemberId);
-    const memberB = urlPlayerBMemberId ? ladder.find((p: any) => p.club_member_id === urlPlayerBMemberId) : null;
+    if (bookingPreFilled || !ladder) return;
+    if (!urlPlayerAMemberId && !urlPlayerAUserId) return;
+
+    // Find player A by member ID or user_id
+    const memberA = urlPlayerAMemberId
+      ? ladder.find((p: any) => p.club_member_id === urlPlayerAMemberId)
+      : urlPlayerAUserId
+        ? ladder.find((p: any) => p.user_id === urlPlayerAUserId)
+        : null;
+
+    // Find player B by member ID or user_id
+    const memberB = urlPlayerBMemberId
+      ? ladder.find((p: any) => p.club_member_id === urlPlayerBMemberId)
+      : urlPlayerBUserId
+        ? ladder.find((p: any) => p.user_id === urlPlayerBUserId)
+        : null;
 
     if (memberA) {
-      // Check if player A is the current user
       const isMe = memberA.user_id === user?.id || memberA.id === user?.id;
       setPlayer1({
         mode: isMe ? "myself" : "club",
@@ -384,13 +396,12 @@ export default function AddMatchResult() {
       });
     }
 
-    // Skip to step 2 (match settings & scores) if both players resolved
     if (memberA && memberB) {
       setStep(2);
     }
 
     setBookingPreFilled(true);
-  }, [ladder, urlPlayerAMemberId, urlPlayerBMemberId, user?.id, bookingPreFilled]);
+  }, [ladder, urlPlayerAMemberId, urlPlayerBMemberId, urlPlayerAUserId, urlPlayerBUserId, user?.id, bookingPreFilled]);
 
   const availableMembers = useMemo(() => {
     if (!ladder) return [];

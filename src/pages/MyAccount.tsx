@@ -266,7 +266,7 @@ export default function MyAccount() {
       toast.success(
         topUpMethod === "eft"
           ? "EFT top-up request submitted. Upload proof of payment for faster processing."
-          : "Card payment request submitted. Admin will confirm shortly."
+          : "Card top-up confirmed! Your balance has been updated."
       );
       setTopUpOpen(false);
     },

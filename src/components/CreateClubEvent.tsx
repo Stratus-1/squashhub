@@ -1064,6 +1064,22 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     Light fees will be split equally among all confirmed attendees when the session ends.
                   </p>
                 )}
+                {form.light_fee_split === "none" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    No light fees will be charged — the club covers the cost.
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div>
+                    <p className="text-xs font-medium">Auto switch on lights</p>
+                    <p className="text-[11px] text-muted-foreground">Automatically turn on court lights at event start time</p>
+                  </div>
+                  <Switch
+                    checked={form.lights_auto_on}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, lights_auto_on: v }))}
+                  />
+                </div>
               </div>
 
               {/* Summary */}

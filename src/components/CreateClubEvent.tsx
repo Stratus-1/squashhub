@@ -897,7 +897,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">
-              Create Event
+              {editingEventId ? "Edit Event" : "Create Event"}
               <span className="text-xs font-normal text-muted-foreground ml-2">Step {step} of 3</span>
             </DialogTitle>
           </DialogHeader>

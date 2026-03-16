@@ -228,7 +228,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
         Drag members into the desired order per gender, then save.
       </p>
 

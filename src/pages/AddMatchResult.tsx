@@ -763,6 +763,7 @@ export default function AddMatchResult() {
           </Card>
         )}
       </div>
+      <BackToDashboard />
     </div>
   );
 }

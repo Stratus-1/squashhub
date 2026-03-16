@@ -787,6 +787,7 @@ export default function MyAccount() {
           </div>
         </DialogContent>
       </Dialog>
+      <BackToDashboard />
     </div>
   );
 }

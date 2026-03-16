@@ -25,6 +25,7 @@ export default function Events() {
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 mb-20">
         <CreateClubEvent />
       </div>
+      <BackToDashboard />
     </div>
   );
 }

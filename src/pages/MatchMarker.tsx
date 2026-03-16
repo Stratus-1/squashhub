@@ -112,6 +112,7 @@ export default function MatchMarker() {
           />
         )}
       </div>
+      <BackToDashboard />
     </div>
   );
 }

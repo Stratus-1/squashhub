@@ -659,6 +659,7 @@ export default function Challenges() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BackToDashboard />
     </div>
   );
 }

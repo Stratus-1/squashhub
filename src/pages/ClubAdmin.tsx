@@ -63,6 +63,7 @@ export default function ClubAdmin() {
           <TabsContent value="settings"><SettingsTab club={club} clubId={club.id} /></TabsContent>
         </Tabs>
       </div>
+      <BackToDashboard />
     </div>
   );
 }

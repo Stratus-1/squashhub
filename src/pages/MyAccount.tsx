@@ -592,7 +592,7 @@ export default function MyAccount() {
                   </span>
                   <span className={cn(
                     "text-right font-semibold tabular-nums",
-                    line.balance > 0 ? "text-destructive" : line.balance < 0 ? "text-green-600" : ""
+                    line.balance > 0 ? "text-green-600" : line.balance < 0 ? "text-destructive" : ""
                   )}>
                     {line.balance < 0 ? "-" : ""}R{Math.abs(line.balance).toFixed(2)}
                   </span>

@@ -342,6 +342,7 @@ export function MemberOnboardingWizard({
       toast.success("Registration complete! Welcome to the club 🎉");
       onComplete();
     } catch (err: any) {
+      console.error("[MemberOnboardingWizard] Save error:", err);
       toast.error(err.message || "Failed to save registration");
     } finally {
       setSaving(false);

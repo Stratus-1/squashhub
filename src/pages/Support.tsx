@@ -5,6 +5,7 @@ import { MessageCircle, Plus, Send } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { SEO } from "@/components/SEO";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { SEO } from "@/components/SEO";
 import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { absoluteUrl } from "@/lib/site";

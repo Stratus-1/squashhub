@@ -291,6 +291,8 @@ export default function AddMatchResult() {
   const urlOpponentMemberId = searchParams.get("opponentMemberId");
   const urlPlayerAMemberId = searchParams.get("playerAMemberId");
   const urlPlayerBMemberId = searchParams.get("playerBMemberId");
+  const urlPlayerAUserId = searchParams.get("playerAUserId");
+  const urlPlayerBUserId = searchParams.get("playerBUserId");
   const urlMatchDate = searchParams.get("matchDate");
 
   const [step, setStep] = useState(1);

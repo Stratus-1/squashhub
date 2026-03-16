@@ -1101,7 +1101,9 @@ export default function Bookings() {
                         setBookingDetails(null);
                         const params = new URLSearchParams();
                         if (bd.club_member_id) params.set("playerAMemberId", bd.club_member_id);
+                        else if (bd.user_id) params.set("playerAUserId", bd.user_id);
                         if ((bd as any).opponent_member_id) params.set("playerBMemberId", (bd as any).opponent_member_id);
+                        else if ((bd as any).opponent_id) params.set("playerBUserId", (bd as any).opponent_id);
                         if (bd.date) params.set("matchDate", String(bd.date));
                         navigate(`/add-result?${params.toString()}`);
                       }}

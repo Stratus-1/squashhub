@@ -513,8 +513,194 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
   });
 
+  // Start editing an event — pre-fill form
+  const startEdit = (e: any) => {
+    const courtIds = (e.club_event_courts || []).map((c: any) => c.court_id);
+    setEditingEventId(e.id);
+    setForm({
+      title: e.title || "",
+      description: e.description || "",
+      event_type: e.event_type || "social",
+      event_date: e.start_date || format(new Date(), "yyyy-MM-dd"),
+      start_time: String(e.start_time).slice(0, 5),
+      end_time: String(e.end_time).slice(0, 5),
+      recurrence: e.recurrence || "once",
+      num_instances: e.num_instances || 12,
+      reminder_hours: String(e.reminder_hours || 48),
+      invite_scope: e.invite_scope || "all",
+      invite_scope_id: e.invite_scope_id || "",
+      selected_member_ids: [],
+      light_fee_split: e.light_fee_split || "creator",
+      is_club_booking: e.is_club_booking || false,
+      booking_member_ids: [],
+      court_ids: courtIds,
+      lights_auto_on: false,
+    });
+    setStep(1);
+    setCreateOpen(true);
+  };
+
+  // Edit mutation — update event and rebook courts if times/courts changed
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!user || !clubId || !editingEventId) throw new Error("Not authenticated");
+      if (!form.title.trim()) throw new Error("Title is required");
+      if (form.court_ids.length === 0) throw new Error("Select at least one court");
+
+      const dayOfWeek = new Date(form.event_date + "T00:00:00").getDay();
+
+      // Get old event for comparison
+      const { data: oldEvent } = await fromExt("club_events")
+        .select("start_time, end_time, start_date, title, is_club_booking")
+        .eq("id", editingEventId)
+        .single();
+      const { data: oldCourts } = await fromExt("club_event_courts")
+        .select("court_id")
+        .eq("event_id", editingEventId);
+      const oldCourtIds = (oldCourts || []).map((c: any) => c.court_id);
+
+      // Update event record
+      const { error: updateErr } = await fromExt("club_events").update({
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        event_type: form.event_type,
+        day_of_week: dayOfWeek,
+        start_time: form.start_time + ":00",
+        end_time: form.end_time + ":00",
+        start_date: form.event_date,
+        invite_scope: form.invite_scope,
+        invite_scope_id: form.invite_scope_id || null,
+        is_club_booking: form.is_club_booking,
+        recurrence: form.recurrence,
+        light_fee_split: form.light_fee_split,
+        reminder_hours: parseInt(form.reminder_hours),
+        num_instances: form.recurrence === "once" ? 1 : form.num_instances,
+        updated_at: new Date().toISOString(),
+      }).eq("id", editingEventId);
+      if (updateErr) throw updateErr;
+
+      // Update courts if changed
+      const courtsChanged = JSON.stringify([...oldCourtIds].sort()) !== JSON.stringify([...form.court_ids].sort());
+      if (courtsChanged) {
+        await fromExt("club_event_courts").delete().eq("event_id", editingEventId);
+        const courtRows = form.court_ids.map((cid) => ({ event_id: editingEventId, court_id: cid }));
+        await fromExt("club_event_courts").insert(courtRows);
+      }
+
+      // Check if times or courts changed — rebook if so
+      const timesChanged = oldEvent &&
+        (oldEvent.start_time !== form.start_time + ":00" ||
+         oldEvent.end_time !== form.end_time + ":00" ||
+         oldEvent.start_date !== form.event_date ||
+         oldEvent.title !== form.title.trim() ||
+         oldEvent.is_club_booking !== form.is_club_booking);
+
+      if (timesChanged || courtsChanged) {
+        // Get all instance dates
+        const { data: instances } = await fromExt("club_event_instances")
+          .select("instance_date")
+          .eq("event_id", editingEventId);
+
+        // Cancel old bookings on old courts/times
+        if (oldEvent && oldCourtIds.length && instances?.length) {
+          const dates = instances.map((i: any) => i.instance_date);
+          for (const date of dates) {
+            await supabase
+              .from("bookings")
+              .update({ status: "cancelled" })
+              .in("court_id", [...new Set([...oldCourtIds, ...form.court_ids])])
+              .eq("date", date)
+              .gte("start_time", oldEvent.start_time)
+              .lte("end_time", oldEvent.end_time);
+          }
+        }
+
+        // Update instance dates if start date changed
+        if (oldEvent?.start_date !== form.event_date && instances?.length) {
+          // Delete old instances and recreate
+          await fromExt("club_event_instances").delete().eq("event_id", editingEventId);
+          const instanceDates = getInstanceDates();
+          const instanceRows = instanceDates.map((d) => ({
+            event_id: editingEventId,
+            instance_date: d,
+            status: "scheduled",
+          }));
+          await fromExt("club_event_instances").insert(instanceRows);
+        }
+
+        // Recreate bookings for first instance date
+        const firstDate = form.event_date;
+        const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
+        const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
+
+        if (form.is_club_booking) {
+          for (const cid of form.court_ids) {
+            await supabase.from("bookings").insert({
+              court_id: cid,
+              date: firstDate,
+              start_time: form.start_time + ":00",
+              end_time: form.end_time + ":00",
+              user_id: user.id,
+              guest_name: `${club?.name || "Club"} — ${form.title}`,
+              lights_requested: form.lights_auto_on,
+              status: "active",
+            });
+          }
+        } else if (form.booking_member_ids.length > 0) {
+          const totalMinutes = endMinutes - startMinutes;
+          const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
+          const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
+          const bookingMembers = form.booking_member_ids
+            .slice(0, totalSessionsNeeded)
+            .map((mid) => (members || []).find((m) => m.id === mid))
+            .filter(Boolean) as { id: string; name: string | null; user_id: string | null }[];
+
+          const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
+          let memberIdx = 0;
+          for (const cid of form.court_ids) {
+            let offsetMin = 0;
+            while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
+              const bm = bookingMembers[memberIdx];
+              const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
+              const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
+              const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
+
+              await supabase.from("bookings").insert({
+                court_id: cid,
+                date: firstDate,
+                start_time: slotStartTime,
+                end_time: slotEndTime,
+                user_id: bm.user_id || user.id,
+                club_member_id: bm.id,
+                guest_name: `${form.title}${bm.name ? ` (${bm.name})` : ""}`,
+                lights_requested: form.lights_auto_on,
+                status: "active",
+                club_id: clubId || null,
+              } as any);
+              offsetMin = slotEnd;
+              memberIdx++;
+            }
+          }
+        }
+      }
+
+      return editingEventId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["club-events"] });
+      queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
+      toast.success("Event updated!");
+      setCreateOpen(false);
+      setEditingEventId(null);
+      resetForm();
+      onClose?.();
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to update event"),
+  });
+
   const resetForm = () => {
     const selfId = activeMember?.id;
+    setEditingEventId(null);
     setForm({
       title: "",
       description: "",

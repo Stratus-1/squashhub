@@ -1,23 +1,32 @@
-import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
 import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { absoluteUrl } from "@/lib/site";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, Plus } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useMyClub } from "@/hooks/use-club";
-import { useClubContext } from "@/contexts/ClubContext";
-import { format } from "date-fns";
-
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const fromExt = (table: string) => (supabase as any).from(table);
 
 export default function Events() {
+  return (
+    <div className="bottom-nav-safe">
+      <SEO
+        title="Events"
+        description="Upcoming squash events, socials, and tournaments."
+        path="/events"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Events — SquashHub",
+          description: "Upcoming squash events, socials, and tournaments.",
+          url: absoluteUrl("/events"),
+          isPartOf: { "@type": "WebSite", name: "SquashHub", url: absoluteUrl("/") },
+        }}
+      />
+      <PageHeader title="Events" subtitle="Upcoming club events" />
+
+      <div className="px-4 sm:px-6 lg:px-[5%] mt-3 mb-20">
+        <CreateClubEvent />
+      </div>
+    </div>
+  );
+}
   const { user } = useAuth();
   const { club: contextClub } = useClubContext();
   const { data: clubData } = useMyClub();

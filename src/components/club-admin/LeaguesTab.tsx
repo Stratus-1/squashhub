@@ -610,7 +610,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <p className="text-sm font-semibold">{league.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{league.code || ""} • {players.length} player{players.length !== 1 ? "s" : ""}</p>
+                        <p className="text-[10px] text-muted-foreground">{league.code || ""} • {players.length} player{players.length !== 1 ? "s" : ""} • League {getLeagueOrdinal(league)}</p>
                       </div>
                     </div>
                     <div className="space-y-0.5 min-h-[32px] border border-dashed rounded-md p-1">

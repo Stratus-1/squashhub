@@ -112,23 +112,46 @@ export default function Privacy() {
 
               <h2>9. Your rights</h2>
               <p>
-                Subject to POPIA and applicable exceptions, you may request access to, correction of, or deletion of
-                your personal information, and you may object to certain processing. You may also withdraw consent
-                where processing is based on consent.
+                Subject to POPIA and applicable exceptions, you may:
               </p>
+              <ul>
+                <li>Request access to your personal information.</li>
+                <li>Request correction of inaccurate information.</li>
+                <li>Request deletion of your personal information.</li>
+                <li>Request a copy of your data in a portable format.</li>
+                <li>Object to certain processing.</li>
+                <li>Withdraw consent where processing is based on consent.</li>
+              </ul>
               <p>
-                To make a request, contact us at <a href={`mailto:${contactEmail}`}>{contactEmail}</a> or via the
-                in-app Support page.
+                To exercise any of these rights, contact us at <a href={`mailto:${contactEmail}`}>{contactEmail}</a> or via the
+                in-app Support page. We will respond within a reasonable time as required by POPIA.
               </p>
 
-              <h2>10. Cookies / local storage</h2>
+              <h2>10. Account deletion</h2>
+              <p>
+                You may request deletion of your account and associated personal information at any time
+                by contacting us via the in-app Support page or at <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
+                Upon request, we will delete or de-identify your data, except where retention is required
+                for legal obligations or legitimate club record-keeping (for example, historical match results
+                and season records may be retained in anonymised form).
+              </p>
+
+              <h2>11. Children</h2>
+              <p>
+                The Service is not directed at children under the age of 18. If a minor wishes to use
+                the Service, a parent or legal guardian must provide consent and manage the account.
+                If we become aware that we have collected personal information from a child without
+                appropriate consent, we will take steps to delete that information.
+              </p>
+
+              <h2>12. Cookies / local storage</h2>
               <p>
                 The Service uses local storage and similar technologies to remember preferences (for example: theme)
                 and to support offline behavior. If we add analytics or marketing cookies in future, we will update
                 this policy and provide consent controls where required.
               </p>
 
-              <h2>11. Changes to this policy</h2>
+              <h2>13. Changes to this policy</h2>
               <p>
                 We may update this Privacy Policy from time to time. If changes are material, we will take
                 reasonable steps to notify users in-app.

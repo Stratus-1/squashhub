@@ -256,7 +256,8 @@ export default function MyAccount() {
         type: "topup",
         method,
         description: `Top-up via ${method.toUpperCase()}`,
-        status: method === "eft" ? "pending" : "pending",
+        status: method === "card" ? "confirmed" : "pending",
+        confirmed_at: method === "card" ? new Date().toISOString() : null,
       });
       if (error) throw error;
     },
@@ -265,7 +266,7 @@ export default function MyAccount() {
       toast.success(
         topUpMethod === "eft"
           ? "EFT top-up request submitted. Upload proof of payment for faster processing."
-          : "Card payment request submitted. Admin will confirm shortly."
+          : "Card top-up confirmed! Your balance has been updated."
       );
       setTopUpOpen(false);
     },

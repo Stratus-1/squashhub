@@ -351,7 +351,7 @@ export default function MyAccount() {
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: totalAmount,
-          type: "payment",
+          type: "debit",
           method: "eft",
           description: `EFT payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
           reference: `${memberNo} - Fees`,

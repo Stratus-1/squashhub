@@ -403,7 +403,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 end_time: slotEndTime,
                 user_id: bm.user_id || user.id,
                 club_member_id: bm.id,
-                guest_name: bm.user_id ? null : (bm.name || "Member"),
+                guest_name: `${form.title}${bm.name ? ` (${bm.name})` : ""}`,
                 status: "active",
                 club_id: clubId || null,
               } as any);

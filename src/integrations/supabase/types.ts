@@ -2557,11 +2557,14 @@ export type Database = {
           match_date: string
           match_id: string
           player_a: string
+          player_a_member_id: string
           player_a_name: string
           player_b: string
+          player_b_member_id: string
           player_b_name: string
           score: string
           winner_id: string
+          winner_member_id: string
         }[]
       }
       get_next_member_number: { Args: { _club_id: string }; Returns: string }

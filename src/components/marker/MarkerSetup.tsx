@@ -94,6 +94,12 @@ function PlayerField({
 
   return (
     <Card className="p-4 space-y-3">
+      {club && members.length > 0 && !player.clubMemberId && (
+        <p className="text-xs font-medium text-primary bg-primary/10 rounded-md px-3 py-1.5">
+          Not a member of the club? Enter information manually below.
+        </p>
+      )}
+
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold font-heading">{label}</p>
         {player.clubMemberId && (

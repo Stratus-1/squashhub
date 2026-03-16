@@ -1470,6 +1470,7 @@ export default function Bookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BackToDashboard />
     </div>
   );
 }

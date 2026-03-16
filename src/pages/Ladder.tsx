@@ -400,6 +400,7 @@ export default function Ladder() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BackToDashboard />
     </div>
   );
 }

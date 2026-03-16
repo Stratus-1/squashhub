@@ -64,19 +64,30 @@ export default function MyAccount() {
   const feeCategoryId = (activeClubMember as any)?.fee_category_id;
   const playsLeague = (activeClubMember as any)?.plays_league;
 
-  // Credit transactions scoped per club member
+  // Credit transactions scoped to the active member, with a user-level fallback
+  // so historical/backfilled rows don't disappear if one identifier is missing.
   const { data: transactions, isLoading: txLoading } = useQuery({
-    queryKey: ["credit-transactions", clubMemberId, clubId],
+    queryKey: ["credit-transactions", clubMemberId, clubId, effectiveUserId],
     queryFn: async () => {
-      const { data, error } = await fromExt("member_credit_transactions")
+      let query = fromExt("member_credit_transactions")
         .select("*")
-        .eq("club_member_id", clubMemberId!)
         .eq("club_id", clubId!)
         .order("created_at", { ascending: false });
+
+      if (clubMemberId && effectiveUserId) {
+        query = query.or(`club_member_id.eq.${clubMemberId},user_id.eq.${effectiveUserId}`);
+      } else if (clubMemberId) {
+        query = query.eq("club_member_id", clubMemberId);
+      } else if (effectiveUserId) {
+        query = query.eq("user_id", effectiveUserId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+
+      return Array.from(new Map((data || []).map((tx: any) => [tx.id, tx])).values());
     },
-    enabled: !!clubMemberId && !!clubId,
+    enabled: !!clubId && (!!clubMemberId || !!effectiveUserId),
   });
 
   const { data: fees, isLoading: feesLoading } = useQuery({

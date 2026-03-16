@@ -78,6 +78,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     is_club_booking: false,
     booking_member_ids: [] as string[],
     court_ids: [] as number[],
+    lights_auto_on: false,
   });
 
   // Fetch courts

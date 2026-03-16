@@ -1344,8 +1344,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 Next <ChevronRight className="w-3 h-3" />
               </Button>
             ) : (
-              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create Event"}
+              <Button
+                onClick={() => editingEventId ? editMutation.mutate() : createMutation.mutate()}
+                disabled={editingEventId ? editMutation.isPending : createMutation.isPending}
+              >
+                {editingEventId
+                  ? (editMutation.isPending ? "Saving..." : "Save Changes")
+                  : (createMutation.isPending ? "Creating..." : "Create Event")}
               </Button>
             )}
           </DialogFooter>

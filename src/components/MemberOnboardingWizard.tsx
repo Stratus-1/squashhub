@@ -330,6 +330,25 @@ export function MemberOnboardingWizard({
           const { error: feeErr } = await fromExt("club_member_fee_payments")
             .insert(feeRecords);
           if (feeErr) throw feeErr;
+
+          // 4. Create member_credit_transactions (debit) so fees appear on My Statement
+          const txRecords = feeBreakdown.map(fee => ({
+            user_id: user.id,
+            club_id: clubId,
+            club_member_id: cmData.id,
+            amount: -Math.abs(fee.amount),
+            type: "debit" as const,
+            description: fee.label,
+            status: "confirmed",
+            method: "system",
+            confirmed_at: new Date().toISOString(),
+          }));
+
+          const { error: txErr } = await fromExt("member_credit_transactions")
+            .insert(txRecords);
+          if (txErr) {
+            console.warn("[MemberOnboardingWizard] Failed to create statement entries:", txErr);
+          }
         }
       }
 

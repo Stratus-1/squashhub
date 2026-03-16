@@ -244,7 +244,7 @@ export default function MyAccount() {
         club_id: clubId,
         club_member_id: clubMemberId,
         amount,
-        type: "topup",
+        type: "debit",
         method,
         description: `Top-up via ${method.toUpperCase()}`,
         status: method === "card" ? "confirmed" : "pending",

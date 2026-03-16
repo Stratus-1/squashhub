@@ -18,7 +18,7 @@ import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function LiveSessionBanner() {

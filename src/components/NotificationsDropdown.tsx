@@ -42,32 +42,48 @@ export function NotificationsDropdown({
   triggerVariant?: ComponentProps<typeof Button>["variant"];
 }) {
   const { user } = useAuth();
-  const { activeMember } = useMemberContext();
+  const { activeMember, linkedMembers } = useMemberContext();
   const { data: unreadCount } = useUnreadNotificationsCount();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
 
   const canLoad = !!user?.id;
+  const linkedMemberIds = useMemo(
+    () => Array.from(new Set(linkedMembers.map((member) => member.id).filter(Boolean))),
+    [linkedMembers]
+  );
 
   const { data: notifications, isLoading } = useQuery({
-    queryKey: ["notifications", user?.id, activeMember?.id],
+    queryKey: ["notifications", user?.id, activeMember?.id, linkedMemberIds.join(",")],
     queryFn: async () => {
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(15);
+      if (!user?.id) return [] as NotificationRow[];
 
-      if (activeMember?.id) {
-        query = query.or(`club_member_id.eq.${activeMember.id},and(user_id.eq.${user!.id},club_member_id.is.null)`);
-      } else {
-        query = query.eq("user_id", user!.id);
-      }
+      const [memberResult, legacyResult] = await Promise.all([
+        linkedMemberIds.length > 0
+          ? supabase
+              .from("notifications")
+              .select("*")
+              .in("club_member_id", linkedMemberIds)
+              .order("created_at", { ascending: false })
+              .limit(15)
+          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .is("club_member_id", null)
+          .order("created_at", { ascending: false })
+          .limit(15),
+      ]);
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as NotificationRow[];
+      if (memberResult.error) throw memberResult.error;
+      if (legacyResult.error) throw legacyResult.error;
+
+      return [...(memberResult.data || []), ...(legacyResult.data || [])]
+        .filter((notification, index, all) => all.findIndex((item) => item.id === notification.id) === index)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 15) as NotificationRow[];
     },
     enabled: canLoad && open,
   });
@@ -85,11 +101,27 @@ export function NotificationsDropdown({
   const markAllRead = useMutation({
     mutationFn: async () => {
       if (!user?.id) return;
-      await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", user.id)
-        .eq("read", false);
+
+      const updates = [
+        supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("user_id", user.id)
+          .is("club_member_id", null)
+          .eq("read", false),
+      ];
+
+      if (linkedMemberIds.length > 0) {
+        updates.push(
+          supabase
+            .from("notifications")
+            .update({ read: true })
+            .in("club_member_id", linkedMemberIds)
+            .eq("read", false)
+        );
+      }
+
+      await Promise.all(updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });

@@ -35,7 +35,7 @@ function stripScripts(html: string) {
 
 export default function Notifications() {
   const { user } = useAuth();
-  const { activeMember } = useMemberContext();
+  const { activeMember, linkedMembers } = useMemberContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,25 +44,41 @@ export default function Notifications() {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
   };
+  const linkedMemberIds = useMemo(
+    () => Array.from(new Set(linkedMembers.map((member) => member.id).filter(Boolean))),
+    [linkedMembers]
+  );
 
   const { data: notifications, isLoading } = useQuery({
-    queryKey: ["notifications", user?.id, activeMember?.id],
+    queryKey: ["notifications", user?.id, activeMember?.id, linkedMemberIds.join(",")],
     queryFn: async () => {
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
+      if (!user?.id) return [];
 
-      if (activeMember?.id) {
-        query = query.eq("club_member_id", activeMember.id);
-      } else {
-        query = query.eq("user_id", user!.id);
-      }
+      const [memberResult, legacyResult] = await Promise.all([
+        linkedMemberIds.length > 0
+          ? supabase
+              .from("notifications")
+              .select("*")
+              .in("club_member_id", linkedMemberIds)
+              .order("created_at", { ascending: false })
+              .limit(50)
+          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .is("club_member_id", null)
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ]);
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      if (memberResult.error) throw memberResult.error;
+      if (legacyResult.error) throw legacyResult.error;
+
+      return [...(memberResult.data || []), ...(legacyResult.data || [])]
+        .filter((notification, index, all) => all.findIndex((item) => item.id === notification.id) === index)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 50);
     },
     enabled: !!user,
   });

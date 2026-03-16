@@ -238,9 +238,8 @@ export default function MyAccount() {
   // Top-up mutation
   const topUpMutation = useMutation({
     mutationFn: async ({ amount, method }: { amount: number; method: string }) => {
-      if (!clubId) throw new Error("No club membership found for this account.");
+      if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
       const { error } = await fromExt("member_credit_transactions").insert({
-        user_id: effectiveUserId!,
         club_id: clubId,
         club_member_id: clubMemberId,
         amount,

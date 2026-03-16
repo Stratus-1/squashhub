@@ -310,7 +310,7 @@ export default function MyAccount() {
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: totalAmount,
-          type: "payment",
+          type: "debit",
           method: "credit",
           description: `Fee payment: ${feeDescription}`,
           status: "confirmed",

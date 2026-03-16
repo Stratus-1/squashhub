@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
+import { PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

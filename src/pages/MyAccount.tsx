@@ -223,22 +223,20 @@ export default function MyAccount() {
     // Sort oldest first
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Compute running balance (credits - debits; positive = owes money)
+    // Compute running balance (debits - credits; positive = in credit, negative = owes money)
     let balance = 0;
     return lines.map((line) => {
       if (line.status === "confirmed" || line.status === "outstanding") {
-        balance = balance + line.credit - line.debit;
+        balance = balance + line.debit - line.credit;
       }
       return { ...line, balance };
     });
   })();
 
-  // Calculate credit balance (negative of statement balance for display)
-  // Positive credit balance = member has prepaid / in credit
+  // Balance is now debits - credits: positive = in credit, negative = owes money
   const creditBalance = (() => {
     if (statementLines.length === 0) return 0;
-    const lastBalance = statementLines[statementLines.length - 1]?.balance || 0;
-    return -lastBalance; // positive = in credit, negative = owes money
+    return statementLines[statementLines.length - 1]?.balance || 0;
   })();
 
   const pendingTopUps = (transactions || []).filter(
@@ -594,7 +592,7 @@ export default function MyAccount() {
                   </span>
                   <span className={cn(
                     "text-right font-semibold tabular-nums",
-                    line.balance > 0 ? "text-destructive" : line.balance < 0 ? "text-green-600" : ""
+                    line.balance > 0 ? "text-green-600" : line.balance < 0 ? "text-destructive" : ""
                   )}>
                     {line.balance < 0 ? "-" : ""}R{Math.abs(line.balance).toFixed(2)}
                   </span>

@@ -60,7 +60,7 @@ export function NotificationsDropdown({
         .limit(15);
 
       if (activeMember?.id) {
-        query = query.eq("club_member_id", activeMember.id);
+        query = query.or(`club_member_id.eq.${activeMember.id},and(user_id.eq.${user!.id},club_member_id.is.null)`);
       } else {
         query = query.eq("user_id", user!.id);
       }

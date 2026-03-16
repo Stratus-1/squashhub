@@ -50,15 +50,14 @@ export default function ClubAdmin() {
         <Tabs defaultValue="club" className="w-full [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
           <TabsList className="flex w-full overflow-x-auto h-8">
             <TabsTrigger value="club" className="text-[11px] flex-1 h-7 px-2"><Building2 className="w-3.5 h-3.5 mr-1 hidden md:inline" />Club</TabsTrigger>
-            <TabsTrigger value="members" className="text-[11px] flex-1 h-7 px-2"><Users className="w-3.5 h-3.5 mr-1 hidden md:inline" />Members</TabsTrigger>
-            <TabsTrigger value="finance" className="text-[11px] flex-1 h-7 px-2"><Landmark className="w-3.5 h-3.5 mr-1 hidden md:inline" />Finance</TabsTrigger>
-            <TabsTrigger value="banking" className="text-[11px] flex-1 h-7 px-2"><Banknote className="w-3.5 h-3.5 mr-1 hidden md:inline" />Banking</TabsTrigger>
+            <TabsTrigger value="settings" className="text-[11px] flex-1 h-7 px-2"><Settings className="w-3.5 h-3.5 mr-1 hidden md:inline" />Settings</TabsTrigger>
             <TabsTrigger value="fees" className="text-[11px] flex-1 h-7 px-2"><DollarSign className="w-3.5 h-3.5 mr-1 hidden md:inline" />Fees</TabsTrigger>
             <TabsTrigger value="courts" className="text-[11px] flex-1 h-7 px-2"><LayoutGrid className="w-3.5 h-3.5 mr-1 hidden md:inline" />Courts</TabsTrigger>
+            <TabsTrigger value="banking" className="text-[11px] flex-1 h-7 px-2"><Banknote className="w-3.5 h-3.5 mr-1 hidden md:inline" />Banking</TabsTrigger>
+            <TabsTrigger value="members" className="text-[11px] flex-1 h-7 px-2"><Users className="w-3.5 h-3.5 mr-1 hidden md:inline" />Members</TabsTrigger>
             <TabsTrigger value="ladder" className="text-[11px] flex-1 h-7 px-2"><ListOrdered className="w-3.5 h-3.5 mr-1 hidden md:inline" />Ladder</TabsTrigger>
             <TabsTrigger value="leagues" className="text-[11px] flex-1 h-7 px-2"><Trophy className="w-3.5 h-3.5 mr-1 hidden md:inline" />Leagues</TabsTrigger>
             <TabsTrigger value="champs" className="text-[11px] flex-1 h-7 px-2"><Medal className="w-3.5 h-3.5 mr-1 hidden md:inline" />Champs</TabsTrigger>
-            <TabsTrigger value="settings" className="text-[11px] flex-1 h-7 px-2"><Settings className="w-3.5 h-3.5 mr-1 hidden md:inline" />Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="club"><ClubInfoTab club={club} clubId={club.id} /></TabsContent>

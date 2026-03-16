@@ -528,6 +528,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       is_club_booking: false,
       booking_member_ids: selfId ? [selfId] : [],
       court_ids: [],
+      lights_auto_on: false,
     });
     setStep(1);
   };

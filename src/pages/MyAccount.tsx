@@ -373,6 +373,12 @@ export default function MyAccount() {
 
   const payingFee = (fees || []).find((f: any) => f.id === payFeeId);
 
+  const unpaidFees = (fees || []).filter((f: any) => !f.paid);
+  const paidFees = (fees || []).filter((f: any) => f.paid);
+  const selectedFeeTotal = unpaidFees
+    .filter((f: any) => selectedFeeIds.includes(f.id))
+    .reduce((s: number, f: any) => s + Number(f.amount), 0);
+
   if (memberContextLoading || clubLoading || activeClubMemberLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

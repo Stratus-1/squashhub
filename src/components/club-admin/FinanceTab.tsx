@@ -131,7 +131,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       ]);
 
       // Mark associated fees as paid if this was a fee payment (EFT)
-      if (tx.type === "payment" && tx.club_member_id) {
+      if (tx.type === "debit" && tx.club_member_id) {
         const { data: unpaidFees } = await fromExt("club_member_fee_payments")
           .select("id, fee_label")
           .eq("club_member_id", tx.club_member_id)

@@ -331,13 +331,13 @@ export function MemberOnboardingWizard({
             .insert(feeRecords);
           if (feeErr) throw feeErr;
 
-          // 4. Create member_credit_transactions (debit = fee charged to member) so fees appear on My Statement
+          // 4. Create member_credit_transactions (credit = fee charged to member) so fees appear on My Statement
           const txRecords = feeBreakdown.map(fee => ({
             user_id: user.id,
             club_id: clubId,
             club_member_id: cmData.id,
             amount: -Math.abs(fee.amount),
-            type: "debit" as const,
+            type: "credit" as const,
             description: fee.label,
             status: "confirmed",
             method: "system",

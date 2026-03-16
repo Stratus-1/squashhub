@@ -289,7 +289,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
         club_id: clubId,
         club_member_id: memberId,
         amount: isAccrual ? amount : -amount,
-        type: isAccrual ? "debit" : "refund",
+        type: isAccrual ? "credit" : "refund",
         method: "system",
         description: isAccrual ? `Fee charged: ${feeLabel}` : `Fee reversed: ${feeLabel}`,
         status: "confirmed",

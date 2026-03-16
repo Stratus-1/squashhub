@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight } from "lucide-react";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useClubContext } from "@/contexts/ClubContext";
+import { useMyClub } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -21,8 +21,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
-  const { club, isLoading: clubLoading } = useClubContext();
+  const { data: clubData, isLoading: clubLoading } = useMyClub();
   const queryClient = useQueryClient();
+  const club = clubData?.club as any;
 
   const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
     queryKey: ["account-club-member", club?.id, activeMember?.id],
@@ -30,7 +31,7 @@ export default function MyAccount() {
       const { data, error } = await fromExt("club_members")
         .select("*, fee_category:fee_category_id(id, name, annual_fee)")
         .eq("id", activeMember!.id)
-        .eq("club_id", club!.id)
+        .eq("club_id", club.id)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -50,12 +51,6 @@ export default function MyAccount() {
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
-
-  // Fee payments from club_member_fee_payments
-  const clubMemberId = (activeClubMember as any)?.id;
-  const clubId = (activeClubMember as any)?.club_id;
-  const feeCategoryId = (activeClubMember as any)?.fee_category_id;
-  const playsLeague = (activeClubMember as any)?.plays_league;
 
   // Credit transactions scoped by club_member_id (primary identity for all transactions)
   const { data: transactions, isLoading: txLoading } = useQuery({

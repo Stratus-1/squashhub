@@ -232,7 +232,7 @@ export default function MyAccount() {
   })();
 
   const pendingTopUps = (transactions || []).filter(
-    (tx: any) => tx.type === "topup" && tx.status === "pending"
+    (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );
 
   // Top-up mutation

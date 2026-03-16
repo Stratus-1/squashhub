@@ -372,6 +372,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             end_time: form.end_time + ":00",
             user_id: user.id,
             guest_name: `${club?.name || "Club"} — ${form.title}`,
+            lights_requested: form.lights_auto_on,
             status: "active",
           });
         }

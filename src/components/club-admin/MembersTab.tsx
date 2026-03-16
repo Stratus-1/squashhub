@@ -621,6 +621,21 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const qc = useQueryClient();
 
+  // Auto-generate member number when dialog opens
+  useEffect(() => {
+    if (open && !memberNumber) {
+      (async () => {
+        const { data, error } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
+        if (!error && data) {
+          setMemberNumber(data as string);
+        }
+      })();
+    }
+    if (!open) {
+      setMemberNumber("");
+    }
+  }, [open, clubId]);
+
   const age = idNumber ? getAgeFromSaId(idNumber) : null;
 
   // Preview of fees that will be created

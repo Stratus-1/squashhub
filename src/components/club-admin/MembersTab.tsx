@@ -156,8 +156,8 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
   onCreateFee: (fee: ExpectedFee, clubMemberId: string) => void;
   onToggleAdmin: () => void;
 }) {
-  const displayName = m.profiles?.name || m.name || "—";
-  const displayEmail = m.profiles?.email || m.email || "";
+  const displayName = m.name || m.profiles?.name || "—";
+  const displayEmail = m.email || m.profiles?.email || "";
   const isLinked = !!m.user_id;
   const isAdmin = m.role === "admin" || m.role === "captain";
   const isDelegate = !!delegateTitle;

@@ -232,6 +232,7 @@ function LeagueCard({ league, associations, onDelete, members }: {
       {expanded && regs.length > 0 && (
         <div className="mt-2 border-t pt-2 space-y-0.5">
           {regs.map((r: any) => {
+            const assoc = associations.find(a => a.id === league.association_id);
             const leagueNum = league.name.match(/(\d+)/)?.[1];
             const leagueOrd = leagueNum ? (() => {
               const n = parseInt(leagueNum);
@@ -243,7 +244,9 @@ function LeagueCard({ league, associations, onDelete, members }: {
                 <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
                 <span className="truncate">{getMemberName(r)}</span>
                 {leagueOrd && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 flex-shrink-0">{leagueOrd}</Badge>}
-                {r.league_association_number && <span className="text-muted-foreground flex-shrink-0">#{r.league_association_number}</span>}
+                {assoc && r.league_association_number && (
+                  <span className="text-muted-foreground flex-shrink-0">{assoc.abbreviation || assoc.name}: {r.league_association_number}</span>
+                )}
                 {r.is_captain && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
                 {r.is_captain && <span className="text-[10px] text-amber-600 font-semibold">(C)</span>}
               </div>

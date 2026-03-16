@@ -820,7 +820,18 @@ export default function Bookings() {
 
       {/* Time Grid */}
       <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-y border-border/50 pt-[env(safe-area-inset-top)]">
-        <div className="px-4 py-2">
+        {/* Selected date headline */}
+        <div className="px-4 pt-3 pb-1 text-center">
+          <h2 className="text-base font-bold font-heading uppercase tracking-wide text-foreground">
+            {format(selectedDate, "EEEE d MMMM yyyy")}
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
+            <CalendarIcon className="w-3 h-3" />
+            Tap a time slot to make a booking
+          </p>
+        </div>
+
+        <div className="px-4 py-1.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />

@@ -423,7 +423,6 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
             : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
           const notifRows = userIds
-            .filter((uid) => uid !== user.id)
             .map((uid) => ({
               user_id: uid,
               title: `${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event`,

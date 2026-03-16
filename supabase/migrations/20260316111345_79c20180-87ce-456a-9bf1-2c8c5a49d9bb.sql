@@ -1,0 +1,1 @@
+DELETE FROM club_member_fee_payments WHERE id = '23371c96-ab61-4c10-84ea-f527031d6972'

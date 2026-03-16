@@ -29,24 +29,12 @@ export default function ClubAdmin() {
   const club = data.club;
 
   return (
-    <div className="min-h-screen bg-background p-3 md:p-5 pb-20 text-[13px]">
-      <div className="max-w-7xl mx-auto space-y-4">
-        <div className="flex items-center gap-2">
-          {club.logo_url ? (
-            <img src={club.logo_url} alt={`${club.name} logo`} className="w-8 h-8 object-contain rounded-md" />
-          ) : (
-            <Building2 className="w-6 h-6 text-primary" />
-          )}
-          <div>
-            <h1 className="text-lg font-bold font-heading leading-tight">{club.name}</h1>
-            <p className="text-[11px] text-muted-foreground">Club Administration</p>
-            {club.subdomain && (
-              <p className="text-[10px] text-primary font-mono">
-                {club.subdomain}.squashhub.app
-              </p>
-            )}
-          </div>
-        </div>
+    <div className="min-h-screen bg-background pb-20 text-[13px]">
+      <PageHeader
+        title={club.name}
+        subtitle="Club Administration"
+      />
+      <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
 
         <Tabs defaultValue="club" className="w-full [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
           <TabsList className="flex w-full overflow-x-auto h-8">

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
@@ -243,8 +244,9 @@ export default function Bookings() {
     endTime: string;
     opponentName: string | null;
   }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin: isMemberAdmin } = useMemberContext();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
@@ -1077,46 +1079,74 @@ export default function Bookings() {
             </div>
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            {bookingDetails && bookingDetails.user_id === user?.id && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => {
-                    const bd = bookingDetails;
-                    setBookingDetails(null);
-                    setShareDialog({
-                      open: true,
-                      bookingId: bd.id,
-                      courtId: bd.court_id,
-                      dateStr: String(bd.date),
-                      startTime: String(bd.start_time || "").slice(0, 5),
-                      endTime: String(bd.end_time || "").slice(0, 5),
-                      opponentName: bd.opponent_name || null,
-                    });
-                  }}
-                >
-                  <Mail className="w-3.5 h-3.5" /> Share
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={cancelBooking.isPending}
-                  onClick={async () => {
-                    try {
-                      await cancelBooking.mutateAsync(String(bookingDetails.id));
-                      toast.success("Booking cancelled");
-                      setBookingDetails(null);
-                    } catch (e: any) {
-                      toast.error(e.message || "Failed to cancel booking");
-                    }
-                  }}
-                >
-                  {cancelBooking.isPending ? "Cancelling..." : "Cancel"}
-                </Button>
-              </>
-            )}
+            {bookingDetails && (() => {
+              const isBooker = bookingDetails.user_id === user?.id;
+              const isOpponent = !!(user?.id && (bookingDetails as any).opponent_id === user.id);
+              const isAdmin = isMemberAdmin;
+              const bookingDateStr = String(bookingDetails.date);
+              const endTimeStr = String(bookingDetails.end_time || "23:59:59").slice(0, 5);
+              const bookingEnd = new Date(`${bookingDateStr}T${endTimeStr}`);
+              const isPastBooking = bookingEnd < new Date();
+              const isBlocked = !!(bookingDetails as any).is_blocked;
+              const canEnterResult = isPastBooking && !isBlocked && (isBooker || isOpponent || isAdmin);
+
+              return (
+                <>
+                  {canEnterResult && (
+                    <Button
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => {
+                        setBookingDetails(null);
+                        navigate("/add-result");
+                      }}
+                    >
+                      <Swords className="w-3.5 h-3.5" /> Enter Result
+                    </Button>
+                  )}
+                  {isBooker && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          const bd = bookingDetails;
+                          setBookingDetails(null);
+                          setShareDialog({
+                            open: true,
+                            bookingId: bd.id,
+                            courtId: bd.court_id,
+                            dateStr: String(bd.date),
+                            startTime: String(bd.start_time || "").slice(0, 5),
+                            endTime: String(bd.end_time || "").slice(0, 5),
+                            opponentName: bd.opponent_name || null,
+                          });
+                        }}
+                      >
+                        <Mail className="w-3.5 h-3.5" /> Share
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={cancelBooking.isPending}
+                        onClick={async () => {
+                          try {
+                            await cancelBooking.mutateAsync(String(bookingDetails.id));
+                            toast.success("Booking cancelled");
+                            setBookingDetails(null);
+                          } catch (e: any) {
+                            toast.error(e.message || "Failed to cancel booking");
+                          }
+                        }}
+                      >
+                        {cancelBooking.isPending ? "Cancelling..." : "Cancel"}
+                      </Button>
+                    </>
+                  )}
+                </>
+              );
+            })()}
             <Button variant="outline" onClick={() => setBookingDetails(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>

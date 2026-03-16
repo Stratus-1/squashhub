@@ -843,15 +843,41 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           {linkedMembers.length > 1 ? `${r.memberName}: ${r.status}` : r.status}
                         </Badge>
                       ))}
-                      {isCreator && (
+                      {(isCreator || isAdmin) && (
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6"
-                          onClick={() => cancelMutation.mutate(e.id)}
+                          onClick={() => startEdit(e)}
                         >
-                          <Trash2 className="w-3 h-3 text-destructive" />
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
                         </Button>
+                      )}
+                      {(isCreator || isAdmin) && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-6 w-6">
+                              <Trash2 className="w-3 h-3 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Event</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will cancel "{e.title}" and all associated court bookings. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep Event</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={() => cancelMutation.mutate(e.id)}
+                              >
+                                Delete Event
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </div>

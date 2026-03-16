@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 
-const LAST_UPDATED = "9 March 2026";
+const LAST_UPDATED = "16 March 2026";
 
 export default function Terms() {
   return (

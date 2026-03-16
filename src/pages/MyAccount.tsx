@@ -373,7 +373,7 @@ export default function MyAccount() {
 
   const payingFee = (fees || []).find((f: any) => f.id === payFeeId);
 
-  if (profileLoading) {
+  if (memberContextLoading || clubLoading || activeClubMemberLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -381,16 +381,10 @@ export default function MyAccount() {
     );
   }
 
-  const unpaidFees = (fees || []).filter((f: any) => !f.paid);
-  const paidFees = (fees || []).filter((f: any) => f.paid);
-  const selectedFeeTotal = unpaidFees
-    .filter((f: any) => selectedFeeIds.includes(f.id))
-    .reduce((s: number, f: any) => s + Number(f.amount), 0);
-
   return (
     <div className="bottom-nav-safe">
       <SEO title="My Account" description="Manage your credit balance and fee payments." path="/my-account" noIndex />
-      <PageHeader title={isViewingSwitchedMember ? `${activeMember?.name}'s Account` : "My Account"} subtitle="Credit balance & fee payments" />
+      <PageHeader title={isViewingAs ? `${activeMember?.name}'s Account` : "My Account"} subtitle="Credit balance & fee payments" />
 
       {/* Credit Balance Card */}
       <motion.div

@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Bell, Swords, Calendar, Trophy, CheckCircle, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { getNotificationNavigation } from "@/lib/notification-navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";

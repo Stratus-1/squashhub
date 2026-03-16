@@ -244,6 +244,7 @@ export default function Bookings() {
     endTime: string;
     opponentName: string | null;
   }>({ open: false, bookingId: "", courtId: 1, dateStr: "", startTime: "", endTime: "", opponentName: null });
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const { data: me } = useProfile();

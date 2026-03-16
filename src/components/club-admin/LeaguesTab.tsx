@@ -309,6 +309,27 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const assignedMemberIds = Object.values(leagueData).flat().map(p => p.club_member_id);
   const unassignedMembers = genderMembers.filter(m => !assignedMemberIds.includes(m.id));
 
+  // Helper to get league number for a member (from league name ordinal)
+  const getMemberLeagueNo = (memberId: string): string | null => {
+    for (const league of leagues) {
+      const players = leagueData[league.id] || [];
+      if (players.some(p => p.club_member_id === memberId)) {
+        const match = league.name.match(/(\d+)/);
+        return match ? match[1] : null;
+      }
+    }
+    return null;
+  };
+
+  // Get league ordinal from league name
+  const getLeagueOrdinal = (league: League): string => {
+    const match = league.name.match(/(\d+)/);
+    if (!match) return "";
+    const num = parseInt(match[1]);
+    const suffix = num === 1 ? "st" : num === 2 ? "nd" : num === 3 ? "rd" : "th";
+    return `${num}${suffix}`;
+  };
+
   // Reshuffle: redistribute all league-eligible members across leagues based on ladder order
   const handleReshuffle = useCallback(() => {
     if (!ladderPlayers || leagues.length === 0) return;

@@ -250,14 +250,13 @@ export function LiveSessionBanner() {
               </div>
             </div>
 
-            {/* Navigate to booking */}
+            {/* Booking info inline */}
             {currentBooking && (
-              <button
-                className="w-full mt-2 flex items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => navigate("/bookings")}
-              >
-                View booking details <ChevronRight className="w-3 h-3" />
-              </button>
+              <div className="mt-2 pt-2 border-t border-foreground/10 flex items-center gap-3 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">{getCourtName(currentBooking.court_id)}</span>
+                <span>{currentBooking.start_time?.slice(0, 5)} – {currentBooking.end_time?.slice(0, 5)}</span>
+                {currentBooking.guest_name && <span>vs {currentBooking.guest_name}</span>}
+              </div>
             )}
           </div>
         </motion.div>

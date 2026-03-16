@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { SEO } from "@/components/SEO";
 import { LadderPlayerCard, type LadderPlayer } from "@/components/LadderPlayerCard";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";

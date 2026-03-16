@@ -1097,8 +1097,13 @@ export default function Bookings() {
                       size="sm"
                       className="gap-1.5"
                       onClick={() => {
+                        const bd = bookingDetails;
                         setBookingDetails(null);
-                        navigate("/add-result");
+                        const params = new URLSearchParams();
+                        if (bd.club_member_id) params.set("playerAMemberId", bd.club_member_id);
+                        if ((bd as any).opponent_member_id) params.set("playerBMemberId", (bd as any).opponent_member_id);
+                        if (bd.date) params.set("matchDate", String(bd.date));
+                        navigate(`/add-result?${params.toString()}`);
                       }}
                     >
                       <Swords className="w-3.5 h-3.5" /> Enter Result

@@ -285,10 +285,13 @@ export default function AddMatchResult() {
   const { data: ladder } = useLadder(clubId);
   const createMatch = useCreateMatch();
 
-  // URL params from challenge flow
+  // URL params from challenge flow or booking flow
   const urlChallengeId = searchParams.get("challengeId");
   const urlOpponentId = searchParams.get("opponentId");
   const urlOpponentMemberId = searchParams.get("opponentMemberId");
+  const urlPlayerAMemberId = searchParams.get("playerAMemberId");
+  const urlPlayerBMemberId = searchParams.get("playerBMemberId");
+  const urlMatchDate = searchParams.get("matchDate");
 
   const [step, setStep] = useState(1);
 
@@ -308,7 +311,7 @@ export default function AddMatchResult() {
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(5);
-  const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
+  const [matchDate, setMatchDate] = useState(urlMatchDate || new Date().toISOString().split("T")[0]);
 
   // Scores
   const [games, setGames] = useState<GameScore[]>(
@@ -348,6 +351,44 @@ export default function AddMatchResult() {
       setChallengePreFilled(true);
     }
   }, [ladder, urlOpponentMemberId, urlOpponentId, challengePreFilled]);
+
+  // Pre-fill both players from booking flow
+  const [bookingPreFilled, setBookingPreFilled] = useState(false);
+  useEffect(() => {
+    if (bookingPreFilled || !ladder || !urlPlayerAMemberId) return;
+    const memberA = ladder.find((p: any) => p.club_member_id === urlPlayerAMemberId);
+    const memberB = urlPlayerBMemberId ? ladder.find((p: any) => p.club_member_id === urlPlayerBMemberId) : null;
+
+    if (memberA) {
+      // Check if player A is the current user
+      const isMe = memberA.user_id === user?.id || memberA.id === user?.id;
+      setPlayer1({
+        mode: isMe ? "myself" : "club",
+        clubMemberId: memberA.club_member_id,
+        userId: memberA.user_id || null,
+        name: memberA.name,
+        externalClub: "",
+      });
+    }
+
+    if (memberB) {
+      const isMe = memberB.user_id === user?.id || memberB.id === user?.id;
+      setPlayer2({
+        mode: isMe ? "myself" : "club",
+        clubMemberId: memberB.club_member_id,
+        userId: memberB.user_id || null,
+        name: memberB.name,
+        externalClub: "",
+      });
+    }
+
+    // Skip to step 2 (match settings & scores) if both players resolved
+    if (memberA && memberB) {
+      setStep(2);
+    }
+
+    setBookingPreFilled(true);
+  }, [ladder, urlPlayerAMemberId, urlPlayerBMemberId, user?.id, bookingPreFilled]);
 
   const availableMembers = useMemo(() => {
     if (!ladder) return [];

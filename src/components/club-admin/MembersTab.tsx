@@ -281,21 +281,16 @@ export function MembersTab({ clubId }: { clubId: string }) {
     await fromExt("club_journal_entries").insert(entries);
 
     // Also create member credit transaction for their statement
-    // Find the member's user_id for the transaction
-    const userId = member?.user_id;
-    if (userId) {
-      await fromExt("member_credit_transactions").insert({
-        user_id: userId,
-        club_id: clubId,
-        club_member_id: memberId,
-        amount: isAccrual ? amount : -amount,
-        type: isAccrual ? "credit" : "refund",
-        method: "system",
-        description: isAccrual ? `Fee charged: ${feeLabel}` : `Fee reversed: ${feeLabel}`,
-        status: "confirmed",
-        reference: feeId,
-      });
-    }
+    await fromExt("member_credit_transactions").insert({
+      club_id: clubId,
+      club_member_id: memberId,
+      amount: isAccrual ? amount : -amount,
+      type: isAccrual ? "credit" : "refund",
+      method: "system",
+      description: isAccrual ? `Fee charged: ${feeLabel}` : `Fee reversed: ${feeLabel}`,
+      status: "confirmed",
+      reference: feeId,
+    });
   };
 
   const handleTogglePaid = async (feeId: string, paid: boolean) => {

@@ -176,19 +176,21 @@ export default function MyAccount() {
   // NEW ACCOUNTING MODEL:
   // - Fees charged → Credit on member statement (they owe the club)
   // - Payments/top-ups → Debit on member statement (reduces what they owe)
-  // - Light fees → Credit on member statement (charged to them)
-  // Balance: positive = member owes money, negative = member in credit
+  // Transaction types:
+  // - "credit" = fee/charge applied to member → shows in Credit column (member owes)
+  // - "debit"  = payment/topup by member → shows in Debit column (member paid)
+  // - "refund" = reversal → shows in Debit column
+  // Balance: debits - credits; positive = member in credit, negative = member owes
   type StatementLine = { id: string; date: string; description: string; debit: number; credit: number; balance: number; status: string };
   const statementLines: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
-    // Credit transactions from member_credit_transactions
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));
 
-      if (txType === "debit") {
-        // System debit = fee charged or light fee → Credit on member statement
+      if (txType === "credit") {
+        // Fee charged to member → Credit column
         lines.push({
           id: `tx-${(tx as any).id}`,
           date: (tx as any).created_at,
@@ -197,22 +199,12 @@ export default function MyAccount() {
           credit: amt,
           status: (tx as any).status,
         });
-      } else if (txType === "topup" || txType === "payment") {
-        // Payment or top-up → Debit on member statement (reduces balance owed)
+      } else if (txType === "debit" || txType === "refund") {
+        // Payment, top-up, or refund → Debit column
         lines.push({
           id: `tx-${(tx as any).id}`,
           date: (tx as any).created_at,
-          description: (tx as any).description || txType,
-          debit: amt,
-          credit: 0,
-          status: (tx as any).status,
-        });
-      } else if (txType === "refund") {
-        // Refund/reversal → Debit on member statement
-        lines.push({
-          id: `tx-${(tx as any).id}`,
-          date: (tx as any).created_at,
-          description: (tx as any).description || "Reversal",
+          description: (tx as any).description || (txType === "refund" ? "Reversal" : "Payment"),
           debit: amt,
           credit: 0,
           status: (tx as any).status,

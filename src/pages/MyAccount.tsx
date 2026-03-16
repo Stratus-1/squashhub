@@ -256,7 +256,8 @@ export default function MyAccount() {
         type: "topup",
         method,
         description: `Top-up via ${method.toUpperCase()}`,
-        status: method === "eft" ? "pending" : "pending",
+        status: method === "card" ? "confirmed" : "pending",
+        confirmed_at: method === "card" ? new Date().toISOString() : null,
       });
       if (error) throw error;
     },

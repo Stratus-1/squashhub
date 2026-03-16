@@ -8,12 +8,9 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Upload, Copy, ChevronRight } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight } from "lucide-react";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useProfile } from "@/hooks/use-data";
-import { useMyClub, useMyClubMember } from "@/hooks/use-club";
-import { supabase } from "@/integrations/supabase/client";
+import { useMyClub } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -23,33 +20,30 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export default function MyAccount() {
-  const { user } = useAuth();
-  const { activeMember, effectiveUserId } = useMemberContext();
-  const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: clubData } = useMyClub();
-  const { data: myClubMember } = useMyClubMember();
+  const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
+  const { data: clubData, isLoading: clubLoading } = useMyClub();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
 
-  // Use active member's club_member record when switched
-  const isViewingSwitchedMember = !!activeMember?.id && activeMember.id !== myClubMember?.id;
-
-  // Fetch the switched member's full club_member record if needed
-  const { data: switchedClubMember } = useQuery({
-    queryKey: ["club-member-by-id-account", activeMember?.id],
+  const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
+    queryKey: ["account-club-member", club?.id, activeMember?.id],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
         .select("*, fee_category:fee_category_id(id, name, annual_fee)")
         .eq("id", activeMember!.id)
+        .eq("club_id", club.id)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: isViewingSwitchedMember,
+    enabled: !!club?.id && !!activeMember?.id,
   });
 
-  const activeClubMember = isViewingSwitchedMember && switchedClubMember ? switchedClubMember : myClubMember;
-  const memberNo = (activeClubMember as any)?.club_member_number || "N/A";
+  const clubMemberId = (activeClubMember as any)?.id || activeMember?.id || null;
+  const clubId = (activeClubMember as any)?.club_id || club?.id || null;
+  const feeCategoryId = (activeClubMember as any)?.fee_category_id;
+  const playsLeague = !!(activeClubMember as any)?.plays_league;
+  const memberNo = (activeClubMember as any)?.club_member_number || activeMember?.club_member_number || "N/A";
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");
@@ -57,12 +51,6 @@ export default function MyAccount() {
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
-
-  // Fee payments from club_member_fee_payments
-  const clubMemberId = (activeClubMember as any)?.id;
-  const clubId = (activeClubMember as any)?.club_id;
-  const feeCategoryId = (activeClubMember as any)?.fee_category_id;
-  const playsLeague = (activeClubMember as any)?.plays_league;
 
   // Credit transactions scoped by club_member_id (primary identity for all transactions)
   const { data: transactions, isLoading: txLoading } = useQuery({
@@ -385,7 +373,7 @@ export default function MyAccount() {
 
   const payingFee = (fees || []).find((f: any) => f.id === payFeeId);
 
-  if (profileLoading) {
+  if (memberContextLoading || clubLoading || activeClubMemberLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -393,16 +381,10 @@ export default function MyAccount() {
     );
   }
 
-  const unpaidFees = (fees || []).filter((f: any) => !f.paid);
-  const paidFees = (fees || []).filter((f: any) => f.paid);
-  const selectedFeeTotal = unpaidFees
-    .filter((f: any) => selectedFeeIds.includes(f.id))
-    .reduce((s: number, f: any) => s + Number(f.amount), 0);
-
   return (
     <div className="bottom-nav-safe">
       <SEO title="My Account" description="Manage your credit balance and fee payments." path="/my-account" noIndex />
-      <PageHeader title={isViewingSwitchedMember ? `${activeMember?.name}'s Account` : "My Account"} subtitle="Credit balance & fee payments" />
+      <PageHeader title={isViewingAs ? `${activeMember?.name}'s Account` : "My Account"} subtitle="Credit balance & fee payments" />
 
       {/* Credit Balance Card */}
       <motion.div

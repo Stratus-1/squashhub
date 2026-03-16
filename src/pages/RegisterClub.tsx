@@ -51,14 +51,12 @@ export default function RegisterClub() {
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 pb-24">
-      <div className="max-w-lg mx-auto space-y-6">
+    <div className="min-h-screen bg-background pb-24">
+      <PageHeader title="Register Your Club" subtitle="Set up your squash club as a tenant" />
+      <div className="max-w-lg mx-auto space-y-6 p-4 md:p-8 pt-0">
         <div className="flex items-center gap-3">
           <Building2 className="w-8 h-8 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold font-heading">Register Your Club</h1>
-            <p className="text-sm text-muted-foreground">Set up your squash club as a tenant. You'll become the club captain with full admin rights.</p>
-          </div>
+          <p className="text-sm text-muted-foreground">You'll become the club captain with full admin rights.</p>
         </div>
 
         <Card className="p-6">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";

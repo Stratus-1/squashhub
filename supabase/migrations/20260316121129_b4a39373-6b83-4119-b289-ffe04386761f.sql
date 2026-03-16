@@ -1,0 +1,1 @@
+ALTER VIEW public.club_delegates_public SET (security_invoker = true);

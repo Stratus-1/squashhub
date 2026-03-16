@@ -266,7 +266,7 @@ export default function MyAccount() {
   // Pay fee mutation
   const payFeeMutation = useMutation({
     mutationFn: async ({ feeIds, method }: { feeIds: string[]; method: string }) => {
-      if (!clubId) throw new Error("No club membership found for this account.");
+      if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
       const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
       if (!selectedFees.length) throw new Error("No fees selected");
       const totalAmount = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
@@ -305,7 +305,6 @@ export default function MyAccount() {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
         const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
-          user_id: effectiveUserId!,
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: totalAmount,
@@ -315,7 +314,6 @@ export default function MyAccount() {
           status: "confirmed",
         }).select("id").single();
         if (txErr) throw txErr;
-        // GL: Dt Bank, Ct Debtors
         await postPaymentGL(txData.id, totalAmount, feeDescription);
         for (const fee of selectedFees) {
           const { error } = await fromExt("club_member_fee_payments")
@@ -325,7 +323,6 @@ export default function MyAccount() {
         }
       } else if (method === "card") {
         const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
-          user_id: effectiveUserId!,
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: totalAmount,
@@ -335,7 +332,6 @@ export default function MyAccount() {
           status: "confirmed",
         }).select("id").single();
         if (txErr) throw txErr;
-        // GL: Dt Bank, Ct Debtors
         await postPaymentGL(txData.id, totalAmount, feeDescription);
         for (const fee of selectedFees) {
           const { error } = await fromExt("club_member_fee_payments")
@@ -344,9 +340,7 @@ export default function MyAccount() {
           if (error) throw error;
         }
       } else {
-        // EFT — pending admin confirmation
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
-          user_id: effectiveUserId!,
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: totalAmount,
@@ -357,7 +351,6 @@ export default function MyAccount() {
           status: "pending",
         });
         if (txErr) throw txErr;
-        // Do NOT mark fees as paid — admin/secretary must confirm
       }
     },
     onSuccess: (_, vars) => {

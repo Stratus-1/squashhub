@@ -333,7 +333,6 @@ export function MemberOnboardingWizard({
 
           // 4. Create member_credit_transactions (credit = fee charged to member) so fees appear on My Statement
           const txRecords = feeBreakdown.map(fee => ({
-            user_id: user.id,
             club_id: clubId,
             club_member_id: cmData.id,
             amount: -Math.abs(fee.amount),

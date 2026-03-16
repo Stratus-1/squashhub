@@ -247,6 +247,7 @@ export default function Notifications() {
             ) : notifications && notifications.length > 0 ? (
               notifications.map((notif, i) => {
                 const Icon = iconMap[notif.type] || Bell;
+                const navigation = getNotificationNavigation(notif as any);
                 return (
                   <motion.div
                     key={notif.id}
@@ -255,14 +256,12 @@ export default function Notifications() {
                     transition={{ delay: i * 0.03 }}
                     onClick={() => {
                       if (!notif.read) markRead.mutate(notif.id);
-                      const url = String((notif as any).url || "/notifications");
-                      const shouldShowDetail = notif.type === "marketing" || url.startsWith("/notifications");
-                      if (shouldShowDetail) {
+                      if (navigation.shouldOpenDetail) {
                         setSelected(notif);
                         return;
                       }
                       close();
-                      navigate(url);
+                      navigate(navigation.targetUrl);
                     }}
                   >
                     <Card

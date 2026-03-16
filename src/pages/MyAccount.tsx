@@ -223,11 +223,11 @@ export default function MyAccount() {
     // Sort oldest first
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Compute running balance (credits - debits; positive = owes money)
+    // Compute running balance (debits - credits; positive = in credit, negative = owes money)
     let balance = 0;
     return lines.map((line) => {
       if (line.status === "confirmed" || line.status === "outstanding") {
-        balance = balance + line.credit - line.debit;
+        balance = balance + line.debit - line.credit;
       }
       return { ...line, balance };
     });

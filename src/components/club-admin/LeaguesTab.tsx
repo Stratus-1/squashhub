@@ -379,14 +379,18 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
 
       newData[league.id] = slice.map((memberId, i) => {
         const member = members.find(m => m.id === memberId);
-        const prevPlayers = leagueData[league.id] || [];
-        const wasCaptain = prevPlayers.find(p => p.club_member_id === memberId)?.is_captain ?? false;
+        // Preserve NSF number from any previous league assignment
+        const allPrevPlayers = Object.values(leagueData).flat();
+        const prevEntry = allPrevPlayers.find(p => p.club_member_id === memberId);
+        const wasCaptain = prevEntry?.is_captain ?? false;
+        const prevNsf = prevEntry?.league_association_number ?? null;
         return {
           id: `reshuffle-${Date.now()}-${memberId}`,
           club_member_id: memberId,
           league_id: league.id,
           player_rank: i + 1,
           is_captain: wasCaptain,
+          league_association_number: prevNsf,
           member,
         };
       });

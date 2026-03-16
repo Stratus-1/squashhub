@@ -175,8 +175,7 @@ export default function Notifications() {
               (() => {
                 const notif = selected as any;
                 const Icon = iconMap[notif.type] || Bell;
-                const url = String(notif?.url || "/notifications");
-                const canOpenLink = !url.startsWith("/notifications");
+                const navigation = getNotificationNavigation(notif);
                 const email = notif?.data?.email && typeof notif.data.email === "object" ? notif.data.email : null;
                 const htmlRaw = email && typeof email.html === "string" ? String(email.html) : "";
                 const textRaw = email && typeof email.text === "string" ? String(email.text) : "";
@@ -228,11 +227,11 @@ export default function Notifications() {
                     )}
 
                     <div className="flex items-center justify-end gap-2">
-                      {canOpenLink ? (
+                      {navigation.canNavigate ? (
                         <Button
                           onClick={() => {
                             close();
-                            navigate(url);
+                            navigate(navigation.targetUrl);
                           }}
                         >
                           Open

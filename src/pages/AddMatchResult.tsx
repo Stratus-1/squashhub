@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Trophy, UserPlus, Users, ChevronLeft, UserCheck } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -762,6 +763,7 @@ export default function AddMatchResult() {
           </Card>
         )}
       </div>
+      <BackToDashboard />
     </div>
   );
 }

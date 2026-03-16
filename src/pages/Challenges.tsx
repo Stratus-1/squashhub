@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -658,6 +659,7 @@ export default function Challenges() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BackToDashboard />
     </div>
   );
 }

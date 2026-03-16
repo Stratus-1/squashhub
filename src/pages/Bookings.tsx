@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1469,6 +1470,7 @@ export default function Bookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BackToDashboard />
     </div>
   );
 }

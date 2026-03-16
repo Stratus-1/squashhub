@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { SEO } from "@/components/SEO";
 import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { absoluteUrl } from "@/lib/site";
@@ -24,6 +25,7 @@ export default function Events() {
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 mb-20">
         <CreateClubEvent />
       </div>
+      <BackToDashboard />
     </div>
   );
 }

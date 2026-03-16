@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import { SEO } from "@/components/SEO";
@@ -111,6 +112,7 @@ export default function MatchMarker() {
           />
         )}
       </div>
+      <BackToDashboard />
     </div>
   );
 }

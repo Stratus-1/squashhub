@@ -8,6 +8,7 @@ import { useUnreadNotificationsCount } from "@/hooks/use-data";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getNotificationNavigation } from "@/lib/notification-navigation";
 import { cn } from "@/lib/utils";
 import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -20,6 +21,7 @@ type NotificationRow = {
   message: string;
   type: string;
   url?: string | null;
+  data?: Record<string, unknown> | null;
   read: boolean;
   created_at: string;
 };

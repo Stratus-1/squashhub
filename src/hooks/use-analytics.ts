@@ -64,6 +64,9 @@ export type MatchOfTheWeek = {
   game_scores: string | null;
   match_date: string;
   closeness_score: number;
+  player_a_member_id: string | null;
+  player_b_member_id: string | null;
+  winner_member_id: string | null;
 };
 
 export function useMatchOfTheWeek() {

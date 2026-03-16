@@ -21,7 +21,8 @@ export function MatchOfTheWeekCard() {
             <div className="text-center flex-1">
               <p className="text-sm font-bold font-heading">{motw.player_a_name || "Player A"}</p>
               <p className="text-[10px] text-muted-foreground">
-                {motw.winner_id === motw.player_a ? "🏆 Winner" : ""}
+                {(motw.winner_member_id && motw.winner_member_id === motw.player_a_member_id) ||
+                 (!motw.winner_member_id && motw.winner_id === motw.player_a) ? "🏆 Winner" : ""}
               </p>
             </div>
             <div className="px-3">
@@ -32,7 +33,8 @@ export function MatchOfTheWeekCard() {
             <div className="text-center flex-1">
               <p className="text-sm font-bold font-heading">{motw.player_b_name || "Player B"}</p>
               <p className="text-[10px] text-muted-foreground">
-                {motw.winner_id === motw.player_b ? "🏆 Winner" : ""}
+                {(motw.winner_member_id && motw.winner_member_id === motw.player_b_member_id) ||
+                 (!motw.winner_member_id && motw.winner_id === motw.player_b) ? "🏆 Winner" : ""}
               </p>
             </div>
           </div>

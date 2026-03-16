@@ -422,18 +422,22 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       // Send notifications (best-effort, don't block event creation)
       if (inviteeIds.length > 0) {
         try {
-          const memberUsers = await supabase.from("club_members").select("user_id").in("id", inviteeIds).not("user_id", "is", null);
-          const userIds = (memberUsers.data || []).map((m) => m.user_id).filter(Boolean) as string[];
+          const { data: memberData } = await supabase
+            .from("club_members")
+            .select("id, user_id")
+            .in("id", inviteeIds);
           const recurrenceText = form.recurrence === "once"
             ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
             : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
-          const notifRows = userIds
-            .map((uid) => ({
-              user_id: uid,
-              title: `${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event`,
-              message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}`,
-              type: "booking",
-            }));
+          const notifRows = (memberData || []).map((m) => ({
+            user_id: m.user_id || "00000000-0000-0000-0000-000000000000",
+            club_member_id: m.id,
+            title: `📅 ${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event Invitation`,
+            message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}. Please confirm or decline.`,
+            type: "booking",
+            url: `/events`,
+            data: JSON.stringify({ event_id: eventId }),
+          }));
           if (notifRows.length > 0) {
             await fromExt("notifications").insert(notifRows);
           }

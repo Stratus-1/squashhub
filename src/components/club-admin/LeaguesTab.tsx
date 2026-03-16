@@ -122,20 +122,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Leagues</h3>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setAllocateGender("men")} disabled={menLeagues.length === 0}>
-              <Users className="w-4 h-4 mr-1" />Allocate Men
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setAllocateGender("ladies")} disabled={ladiesLeagues.length === 0}>
-              <Users className="w-4 h-4 mr-1" />Allocate Ladies
-            </Button>
-            <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
-          </div>
+          <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Men's ({menLeagues.length})</h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold text-muted-foreground">Men's ({menLeagues.length})</h4>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAllocateGender("men")} disabled={menLeagues.length === 0}>
+                <Users className="w-3.5 h-3.5" />Allocate
+              </Button>
+            </div>
             <div className="space-y-2">
               {sortLeagues(menLeagues).map(l => (
                 <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
@@ -144,7 +141,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             </div>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Ladies ({ladiesLeagues.length})</h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold text-muted-foreground">Ladies ({ladiesLeagues.length})</h4>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAllocateGender("ladies")} disabled={ladiesLeagues.length === 0}>
+                <Users className="w-3.5 h-3.5" />Allocate
+              </Button>
+            </div>
             <div className="space-y-2">
               {sortLeagues(ladiesLeagues).map(l => (
                 <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />

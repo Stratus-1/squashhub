@@ -161,13 +161,16 @@ export function useMyClubMember() {
   return useQuery({
     queryKey: ["my-club-member", user?.id, clubId],
     queryFn: async () => {
+      // Use limit(1) instead of maybeSingle() because a user can have
+      // multiple club_member rows (family accounts / duplicates).
       const { data, error } = await fromExt("club_members")
         .select("*, fee_category:fee_category_id(id, name, annual_fee)")
         .eq("user_id", user!.id)
         .eq("club_id", clubId!)
-        .maybeSingle();
+        .order("joined_at", { ascending: true })
+        .limit(1);
       if (error) throw error;
-      return data as ClubMember | null;
+      return (data && data.length > 0 ? data[0] : null) as ClubMember | null;
     },
     enabled: !!user && !!clubId,
   });

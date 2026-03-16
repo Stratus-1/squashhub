@@ -231,20 +231,24 @@ function LeagueCard({ league, associations, onDelete, members }: {
       </div>
       {expanded && regs.length > 0 && (
         <div className="mt-2 border-t pt-2 space-y-0.5">
-          {regs.map((r: any) => (
-            <div key={r.id} className="flex items-center gap-2 text-xs py-0.5">
-              <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
-              <span className="truncate">{getMemberName(r)}</span>
-              {(() => {
-                const m = members.find(m => m.id === r.club_member_id);
-                const idNum = m?.id_number;
-                return idNum ? <span className="text-muted-foreground flex-shrink-0">ID: {idNum}</span> : null;
-              })()}
-              {r.league_association_number && <span className="text-muted-foreground flex-shrink-0">#{r.league_association_number}</span>}
-              {r.is_captain && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
-              {r.is_captain && <span className="text-[10px] text-amber-600 font-semibold">(C)</span>}
-            </div>
-          ))}
+          {regs.map((r: any) => {
+            const leagueNum = league.name.match(/(\d+)/)?.[1];
+            const leagueOrd = leagueNum ? (() => {
+              const n = parseInt(leagueNum);
+              const s = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+              return `${n}${s}`;
+            })() : null;
+            return (
+              <div key={r.id} className="flex items-center gap-2 text-xs py-0.5">
+                <span className="w-5 text-center font-bold text-primary">{r.player_rank}</span>
+                <span className="truncate">{getMemberName(r)}</span>
+                {leagueOrd && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 flex-shrink-0">{leagueOrd}</Badge>}
+                {r.league_association_number && <span className="text-muted-foreground flex-shrink-0">#{r.league_association_number}</span>}
+                {r.is_captain && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                {r.is_captain && <span className="text-[10px] text-amber-600 font-semibold">(C)</span>}
+              </div>
+            );
+          })}
         </div>
       )}
       {expanded && regs.length === 0 && (

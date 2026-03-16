@@ -883,8 +883,11 @@ export default function Bookings() {
                 </div>
                 {courts.map((courtId) => {
                   const booking = getBooking(courtId, time);
+                  // Event bookings have guest_name but no opponent_id — show event title instead of "X vs Y"
+                  const isEventBooking = !!(booking as any)?.guest_name && !(booking as any)?.opponent_id;
+                  const eventLabel = isEventBooking ? String((booking as any).guest_name) : null;
                   const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
-                  const b = (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
+                  const b = !isEventBooking && (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
                   const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);
                   const isBlocked = !!(booking as any)?.is_blocked;
                   const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";
@@ -923,8 +926,8 @@ export default function Bookings() {
                                 ? "text-primary"
                                 : "text-foreground/70"
                           )}>
-                            {isBlocked ? (blockReason || "Blocked") : (a || "Booked")}
-                            {!isBlocked && b ? ` vs ${b}` : ""}
+                            {isBlocked ? (blockReason || "Blocked") : isEventBooking ? eventLabel : (a || "Booked")}
+                            {!isBlocked && !isEventBooking && b ? ` vs ${b}` : ""}
                           </p>
                         </div>
                       ) : isPastSlot ? (

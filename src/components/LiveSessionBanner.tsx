@@ -14,16 +14,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X, ChevronRight } from "lucide-react";
+import { Zap, ZapOff, ArrowRightLeft, Lightbulb, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function LiveSessionBanner() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: myBookings } = useMyBookings();
   const { data: clubData } = useMyClub();
@@ -250,14 +248,13 @@ export function LiveSessionBanner() {
               </div>
             </div>
 
-            {/* Navigate to booking */}
+            {/* Booking info inline */}
             {currentBooking && (
-              <button
-                className="w-full mt-2 flex items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => navigate("/bookings")}
-              >
-                View booking details <ChevronRight className="w-3 h-3" />
-              </button>
+              <div className="mt-2 pt-2 border-t border-foreground/10 flex items-center gap-3 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">{getCourtName(currentBooking.court_id)}</span>
+                <span>{currentBooking.start_time?.slice(0, 5)} – {currentBooking.end_time?.slice(0, 5)}</span>
+                {currentBooking.guest_name && <span>vs {currentBooking.guest_name}</span>}
+              </div>
             )}
           </div>
         </motion.div>

@@ -1053,6 +1053,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 <Select value={form.light_fee_split} onValueChange={(v) => setForm((f) => ({ ...f, light_fee_split: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No fees (club covers)</SelectItem>
                     <SelectItem value="creator">Myself (event creator)</SelectItem>
                     <SelectItem value="attendees">Split equally among attendees</SelectItem>
                   </SelectContent>

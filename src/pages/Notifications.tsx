@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Bell, Swords, Calendar, Trophy, CheckCircle, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { getNotificationNavigation } from "@/lib/notification-navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -174,8 +175,7 @@ export default function Notifications() {
               (() => {
                 const notif = selected as any;
                 const Icon = iconMap[notif.type] || Bell;
-                const url = String(notif?.url || "/notifications");
-                const canOpenLink = !url.startsWith("/notifications");
+                const navigation = getNotificationNavigation(notif);
                 const email = notif?.data?.email && typeof notif.data.email === "object" ? notif.data.email : null;
                 const htmlRaw = email && typeof email.html === "string" ? String(email.html) : "";
                 const textRaw = email && typeof email.text === "string" ? String(email.text) : "";
@@ -227,11 +227,11 @@ export default function Notifications() {
                     )}
 
                     <div className="flex items-center justify-end gap-2">
-                      {canOpenLink ? (
+                      {navigation.canNavigate ? (
                         <Button
                           onClick={() => {
                             close();
-                            navigate(url);
+                            navigate(navigation.targetUrl);
                           }}
                         >
                           Open
@@ -247,6 +247,7 @@ export default function Notifications() {
             ) : notifications && notifications.length > 0 ? (
               notifications.map((notif, i) => {
                 const Icon = iconMap[notif.type] || Bell;
+                const navigation = getNotificationNavigation(notif as any);
                 return (
                   <motion.div
                     key={notif.id}
@@ -255,14 +256,12 @@ export default function Notifications() {
                     transition={{ delay: i * 0.03 }}
                     onClick={() => {
                       if (!notif.read) markRead.mutate(notif.id);
-                      const url = String((notif as any).url || "/notifications");
-                      const shouldShowDetail = notif.type === "marketing" || url.startsWith("/notifications");
-                      if (shouldShowDetail) {
+                      if (navigation.shouldOpenDetail) {
                         setSelected(notif);
                         return;
                       }
                       close();
-                      navigate(url);
+                      navigate(navigation.targetUrl);
                     }}
                   >
                     <Card

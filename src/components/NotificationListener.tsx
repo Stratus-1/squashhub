@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getNotificationNavigation } from "@/lib/notification-navigation";
 
 type NotificationRow = {
   id: string;
@@ -12,6 +13,7 @@ type NotificationRow = {
   message: string;
   type: string;
   url?: string | null;
+  data?: Record<string, unknown> | null;
   read: boolean;
   created_at: string;
 };
@@ -37,9 +39,7 @@ function playNotificationSound() {
 }
 
 function buildTargetUrl(row: NotificationRow) {
-  const resolvedUrl = String(row.url || "/notifications");
-  const shouldOpenDetail = row.type === "marketing" || resolvedUrl.startsWith("/notifications");
-  return shouldOpenDetail ? `/notifications?notificationId=${row.id}` : resolvedUrl;
+  return getNotificationNavigation(row).targetUrl;
 }
 
 export function NotificationListener() {

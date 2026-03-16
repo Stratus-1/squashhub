@@ -8,6 +8,7 @@ import { useUnreadNotificationsCount } from "@/hooks/use-data";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getNotificationNavigation } from "@/lib/notification-navigation";
 import { cn } from "@/lib/utils";
 import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -20,6 +21,7 @@ type NotificationRow = {
   message: string;
   type: string;
   url?: string | null;
+  data?: Record<string, unknown> | null;
   read: boolean;
   created_at: string;
 };
@@ -179,6 +181,7 @@ export function NotificationsDropdown({
             <div className="divide-y divide-border">
               {notifications.map((notif) => {
                 const Icon = iconMap[notif.type] || Bell;
+                const navigation = getNotificationNavigation(notif);
                 return (
                   <button
                     key={notif.id}
@@ -187,12 +190,9 @@ export function NotificationsDropdown({
                       !notif.read && "bg-primary/5"
                     )}
                     onClick={() => {
-                      const url = (notif as any).url as string | undefined;
                       if (!notif.read) markRead.mutate(notif.id);
-                      const resolvedUrl = url || "/notifications";
-                      const shouldOpenDetail = notif.type === "marketing" || resolvedUrl.startsWith("/notifications");
                       setOpen(false);
-                      navigate(shouldOpenDetail ? `/notifications?notificationId=${notif.id}` : resolvedUrl);
+                      navigate(navigation.targetUrl);
                     }}
                   >
                     <div

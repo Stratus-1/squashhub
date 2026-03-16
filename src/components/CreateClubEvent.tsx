@@ -406,6 +406,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 user_id: bm.user_id || user.id,
                 club_member_id: bm.id,
                 guest_name: `${form.title}${bm.name ? ` (${bm.name})` : ""}`,
+                lights_requested: form.lights_auto_on,
                 status: "active",
                 club_id: clubId || null,
               } as any);

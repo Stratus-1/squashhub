@@ -233,12 +233,10 @@ export default function MyAccount() {
     });
   })();
 
-  // Calculate credit balance (negative of statement balance for display)
-  // Positive credit balance = member has prepaid / in credit
+  // Balance is now debits - credits: positive = in credit, negative = owes money
   const creditBalance = (() => {
     if (statementLines.length === 0) return 0;
-    const lastBalance = statementLines[statementLines.length - 1]?.balance || 0;
-    return -lastBalance; // positive = in credit, negative = owes money
+    return statementLines[statementLines.length - 1]?.balance || 0;
   })();
 
   const pendingTopUps = (transactions || []).filter(

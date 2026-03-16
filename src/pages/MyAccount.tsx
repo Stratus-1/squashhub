@@ -590,7 +590,7 @@ export default function MyAccount() {
                     {line.debit > 0 ? `R${line.debit.toFixed(2)}` : ""}
                   </span>
                   <span className={cn("text-right tabular-nums", line.credit > 0 && "text-destructive")}>
-                    {line.credit > 0 ? `R${line.credit.toFixed(2)}` : ""}
+                    {line.credit > 0 ? `-R${line.credit.toFixed(2)}` : ""}
                   </span>
                   <span className={cn(
                     "text-right font-semibold tabular-nums",

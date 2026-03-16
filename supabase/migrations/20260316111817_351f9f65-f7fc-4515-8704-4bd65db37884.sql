@@ -1,0 +1,1 @@
+ALTER TABLE public.notifications DROP CONSTRAINT notifications_user_id_fkey;

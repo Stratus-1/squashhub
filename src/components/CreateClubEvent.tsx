@@ -784,10 +784,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{e.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {recLabel
-                          ? `${recLabel.charAt(0).toUpperCase() + recLabel.slice(1)} · ${DAYS[e.day_of_week]}`
-                          : DAYS[e.day_of_week]
-                        } · {String(e.start_time).slice(0, 5)}–{String(e.end_time).slice(0, 5)}
+                        {e.start_date ? format(new Date(e.start_date + "T00:00:00"), "EEE d MMM yyyy") : DAYS[e.day_of_week]}
+                        {recLabel ? ` · ${recLabel.charAt(0).toUpperCase() + recLabel.slice(1)}` : ""}
+                        {" · "}{String(e.start_time).slice(0, 5)}–{String(e.end_time).slice(0, 5)}
                       </p>
                       {courtNames && <p className="text-[11px] text-muted-foreground">{courtNames}</p>}
                     </div>

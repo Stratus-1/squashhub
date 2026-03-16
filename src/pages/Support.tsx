@@ -5,7 +5,6 @@ import { MessageCircle, Plus, Send } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { SEO } from "@/components/SEO";
-import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,7 +77,12 @@ export default function Support() {
     <div className="bottom-nav-safe">
       <SEO title="Support" description="Chat to support." path="/support" noIndex />
 
-      <PageHeader title="Support" subtitle="We'll get back to you as soon as we can." />
+      <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2 flex items-center justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold font-heading tracking-tight truncate">Support</h1>
+          <p className="text-sm text-muted-foreground truncate">We’ll get back to you as soon as we can.</p>
+        </div>
+      </div>
 
       <div className="px-4 sm:px-6 lg:px-[5%] space-y-3 mb-24">
         {threadsLoading ? (
@@ -92,7 +96,7 @@ export default function Support() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold font-heading">Start a support chat</p>
-                  <p className="text-xs text-muted-foreground">Describe your issue and we'll reply in-app.</p>
+                  <p className="text-xs text-muted-foreground">Describe your issue and we’ll reply in-app.</p>
                 </div>
               </div>
 

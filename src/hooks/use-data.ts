@@ -124,27 +124,35 @@ export function useHomeInsights(daysBack = 30) {
 
 export function useUnreadNotificationsCount() {
   const { user } = useAuth();
-  const { activeMember } = useMemberContext();
+  const { activeMember, linkedMembers } = useMemberContext();
 
   return useQuery({
-    queryKey: ["notifications-unread-count", user?.id, activeMember?.id],
+    queryKey: ["notifications-unread-count", user?.id, activeMember?.id, linkedMembers.map((member) => member.id).join(",")],
     queryFn: async () => {
       if (!user) return 0;
 
-      let query = supabase
-        .from("notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("read", false);
+      const linkedMemberIds = Array.from(new Set(linkedMembers.map((member) => member.id).filter(Boolean)));
 
-      if (activeMember?.id) {
-        query = query.or(`club_member_id.eq.${activeMember.id},and(user_id.eq.${user.id},club_member_id.is.null)`);
-      } else {
-        query = query.eq("user_id", user.id);
-      }
+      const [memberResult, legacyResult] = await Promise.all([
+        linkedMemberIds.length > 0
+          ? supabase
+              .from("notifications")
+              .select("id", { count: "exact", head: true })
+              .eq("read", false)
+              .in("club_member_id", linkedMemberIds)
+          : Promise.resolve({ count: 0, error: null }),
+        supabase
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("read", false)
+          .eq("user_id", user.id)
+          .is("club_member_id", null),
+      ]);
 
-      const { count, error } = await query;
-      if (error) throw error;
-      return count ?? 0;
+      if (memberResult.error) throw memberResult.error;
+      if (legacyResult.error) throw legacyResult.error;
+
+      return (memberResult.count ?? 0) + (legacyResult.count ?? 0);
     },
     enabled: !!user,
   });

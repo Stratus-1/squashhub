@@ -327,13 +327,14 @@ export default function SuperAdminSubscriptions() {
                   <TableHead className="text-center">Members</TableHead>
                   <TableHead className="text-right">Amount Due</TableHead>
                   <TableHead>Trial Ends</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {subsLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : subscriptions.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No subscriptions yet</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No subscriptions yet</TableCell></TableRow>
                 ) : (
                   subscriptions.map((sub) => (
                     <TableRow key={sub.id}>
@@ -376,6 +377,7 @@ export default function SuperAdminSubscriptions() {
                           <Pencil className="h-3 w-3" />
                         </Button>
                       </TableCell>
+                    </TableRow>
                   ))
                 )}
               </TableBody>

@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card, CardContent } from "@/components/ui/card";
 
-const LAST_UPDATED = "16 March 2026";
+const LAST_UPDATED = "17 March 2026";
 
 function getPrivacyContactEmail() {
   return (import.meta.env.VITE_PRIVACY_CONTACT_EMAIL as string | undefined)?.trim() || "admin@gbsquash.co.za";
@@ -27,14 +27,18 @@ export default function Privacy() {
             <div className="prose prose-sm max-w-none dark:prose-invert">
               <p>
                 This Privacy Policy explains how we collect, use, share, and protect personal information when you
-                use SquashHub (the &quot;Service&quot;). We aim to follow the principles of the
-                Protection of Personal Information Act 4 of 2013 (&quot;POPIA&quot;).
+                use SquashHub (the &quot;Service&quot;), operated by <strong>HKFT Services (Pty) Ltd</strong>{" "}
+                (Reg. No. 2025/624300/07) (&quot;HKFT&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;).
+                We process personal information in accordance with the Protection of Personal Information
+                Act 4 of 2013 (&quot;POPIA&quot;).
               </p>
 
               <h2>1. Responsible party</h2>
               <p>
-                SquashHub and the respective club administrators are the responsible parties for
-                processing personal information in the Service.
+                <strong>HKFT Services (Pty) Ltd</strong> (Reg. No. 2025/624300/07) is the responsible
+                party for processing personal information through the Service. Respective club
+                administrators act as operators processing member data on behalf of their clubs
+                within the platform.
               </p>
 
               <h2>2. What we collect</h2>
@@ -157,9 +161,8 @@ export default function Privacy() {
                 reasonable steps to notify users in-app.
               </p>
 
-              <p className="text-xs text-muted-foreground">
-                Note: This document is a starter template and should be reviewed by the club committee and/or legal
-                counsel to confirm POPIA compliance for your specific operations.
+              <p className="text-xs text-muted-foreground mt-6">
+                © {new Date().getFullYear()} HKFT Services (Pty) Ltd. All rights reserved.
               </p>
             </div>
           </CardContent>

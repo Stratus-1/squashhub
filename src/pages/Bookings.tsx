@@ -6,6 +6,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ChevronLeft,
   ChevronRight,

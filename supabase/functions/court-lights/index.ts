@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
       // Check if this booking belongs to a club event with attendee splitting
       // Check if this booking belongs to a club event:
       // - "attendees" split → database trigger handles distribution, skip here
-      // - "club" split → club covers fees, no one is charged, skip here
+      // - "none" split → club covers fees, no one is charged, skip here
       let isEventSplit = false;
       if (bookingData && session.club_id) {
         const { data: eventMatch } = await supabase

@@ -340,7 +340,7 @@ export default function Profile() {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
             </div>
             <div className="space-y-1.5">
-              <Label>Gender</Label>
+              <Label>Gender Group</Label>
               <select className={selectClasses} value={gender} onChange={(e) => setGender(e.target.value)}>
                 <option value="">— Select —</option>
                 <option value="Men">Men</option>

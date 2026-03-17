@@ -469,12 +469,12 @@ export function MemberOnboardingWizard({
                   )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Gender</Label>
+                      <Label>Gender Group</Label>
                       <Select value={gender} onValueChange={setGender}>
                         <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Men">Male</SelectItem>
-                          <SelectItem value="Ladies">Female</SelectItem>
+                          <SelectItem value="Men">Men</SelectItem>
+                          <SelectItem value="Ladies">Ladies</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

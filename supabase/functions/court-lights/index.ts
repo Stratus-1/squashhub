@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
       // Check if this booking belongs to a club event with attendee splitting
       // Check if this booking belongs to a club event:
       // - "attendees" split → database trigger handles distribution, skip here
-      // - "club" split → club covers fees, no one is charged, skip here
+      // - "none" split → club covers fees, no one is charged, skip here
       let isEventSplit = false;
       if (bookingData && session.club_id) {
         const { data: eventMatch } = await supabase
@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
           .select("id, light_fee_split")
           .eq("club_id", session.club_id)
           .eq("status", "active")
-          .in("light_fee_split", ["attendees", "club"])
+           .in("light_fee_split", ["attendees", "none"])
           .eq("start_time", (bookingData as any).start_time)
           .limit(1);
         if (eventMatch && eventMatch.length > 0) {
@@ -582,7 +582,7 @@ Deno.serve(async (req) => {
 
             // Check if this is a club event booking:
             // - "attendees" split → trigger handles it
-            // - "club" split → club covers, no charges
+            // - "none" split → club covers, no charges
             let isEventSplit = false;
             if (bookingData && court.club_id) {
               const { data: eventMatch } = await supabase
@@ -590,7 +590,7 @@ Deno.serve(async (req) => {
                 .select("id, light_fee_split")
                 .eq("club_id", court.club_id)
                 .eq("status", "active")
-                .in("light_fee_split", ["attendees", "club"])
+                .in("light_fee_split", ["attendees", "none"])
                 .eq("start_time", (bookingData as any).start_time)
                 .limit(1);
               if (eventMatch && eventMatch.length > 0) {

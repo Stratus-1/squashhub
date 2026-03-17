@@ -161,9 +161,8 @@ export default function Privacy() {
                 reasonable steps to notify users in-app.
               </p>
 
-              <p className="text-xs text-muted-foreground">
-                Note: This document is a starter template and should be reviewed by the club committee and/or legal
-                counsel to confirm POPIA compliance for your specific operations.
+              <p className="text-xs text-muted-foreground mt-6">
+                © {new Date().getFullYear()} HKFT Services (Pty) Ltd. All rights reserved.
               </p>
             </div>
           </CardContent>

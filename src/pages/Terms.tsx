@@ -142,14 +142,25 @@ export default function Terms() {
                 steps to notify users in-app.
               </p>
 
-              <h2>14. Contact</h2>
+              <h2>14. Entire agreement</h2>
               <p>
-                Questions about these Terms can be sent via the in-app Support page.
+                These Terms, together with the Privacy Policy, constitute the entire agreement between
+                you and HKFT regarding your use of the Service and supersede all prior agreements,
+                representations, and understandings.
               </p>
 
-              <p className="text-xs text-muted-foreground">
-                Note: This document is a starter template and should be reviewed by the club committee and/or
-                legal counsel to confirm suitability.
+              <h2>15. Contact</h2>
+              <p>
+                Questions about these Terms can be sent via the in-app Support page or by writing to:
+              </p>
+              <p>
+                <strong>HKFT Services (Pty) Ltd</strong><br />
+                Reg. No. 2025/624300/07<br />
+                Republic of South Africa
+              </p>
+
+              <p className="text-xs text-muted-foreground mt-6">
+                © {new Date().getFullYear()} HKFT Services (Pty) Ltd. All rights reserved.
               </p>
             </div>
           </CardContent>

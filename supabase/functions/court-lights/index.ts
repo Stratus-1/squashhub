@@ -618,7 +618,7 @@ Deno.serve(async (req) => {
                   club_id: existingSession.club_id,
                   club_member_id: bookerMemberId || null,
                   amount: -bookerFee,
-                  type: "debit",
+                  type: "charge",
                   method: "system",
                   status: "confirmed",
                   confirmed_at: now.toISOString(),

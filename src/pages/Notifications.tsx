@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Bell, Swords, Calendar, Trophy, CheckCircle, Loader2 } from "lucide-react";
+import { Bell, Swords, Calendar, Trophy, CheckCircle, Loader2, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getNotificationNavigation } from "@/lib/notification-navigation";

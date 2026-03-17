@@ -153,6 +153,40 @@ export default function SuperAdminSubscriptions() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateSub = useMutation({
+    mutationFn: async (vals: { id: string; plan_id: string; status: string; trial_ends_at: string | null; member_count: number; amount_due: number }) => {
+      const { error } = await fromExt("club_subscriptions").update({
+        plan_id: vals.plan_id || null,
+        status: vals.status,
+        trial_ends_at: vals.trial_ends_at || null,
+        member_count: vals.member_count,
+        amount_due: vals.amount_due,
+      }).eq("id", vals.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Subscription updated"); qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] }); setEditSub(null); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const openEditSub = (sub: ClubSub) => {
+    setEditSub(sub);
+    setSubForm({
+      plan_id: sub.plan_id || "",
+      status: sub.status,
+      trial_ends_at: sub.trial_ends_at ? sub.trial_ends_at.split("T")[0] : "",
+      member_count: String(sub.member_count),
+      amount_due: String(sub.amount_due),
+    });
+  };
+
+  const recalcAmount = (planId: string, memberCount: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+    const count = Number(memberCount) || 0;
+    const calculated = Math.max(count * plan.price_per_member, plan.minimum_charge);
+    setSubForm(f => ({ ...f, amount_due: String(calculated) }));
+  };
+
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
       setPlanForm({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", trial_days: "30", is_default: false, active: true });

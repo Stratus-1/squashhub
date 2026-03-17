@@ -1116,6 +1116,69 @@ export type Database = {
           },
         ]
       }
+      club_subscriptions: {
+        Row: {
+          amount_due: number
+          cancelled_at: string | null
+          club_id: string
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          last_payment_at: string | null
+          member_count: number
+          plan_id: string | null
+          status: string
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_due?: number
+          cancelled_at?: string | null
+          club_id: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          last_payment_at?: string | null
+          member_count?: number
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_due?: number
+          cancelled_at?: string | null
+          club_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          last_payment_at?: string | null
+          member_count?: number
+          plan_id?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_subscriptions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           address: string | null
@@ -2379,6 +2442,48 @@ export type Database = {
           name?: string
           start_date?: string
           status?: string
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          active: boolean
+          billing_cycle: string
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean
+          minimum_charge: number
+          name: string
+          price_per_member: number
+          trial_days: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          billing_cycle?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          minimum_charge?: number
+          name: string
+          price_per_member?: number
+          trial_days?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          billing_cycle?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          minimum_charge?: number
+          name?: string
+          price_per_member?: number
+          trial_days?: number
+          updated_at?: string
         }
         Relationships: []
       }

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getNotificationNavigation } from "@/lib/notification-navigation";
 import { cn } from "@/lib/utils";
-import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy } from "lucide-react";
+import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 

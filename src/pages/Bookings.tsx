@@ -966,7 +966,7 @@ export default function Bookings() {
                           </div>
                           {(booking as any).lights_requested && (
                             <p className="text-muted-foreground">
-                              Fee: {(booking as any).light_fee_split === "shared" ? "Split 50/50" : "Booker pays"}
+                              Fee: {(booking as any).light_fee_split === "shared" ? "Split 50/50" : (booking as any).light_fee_split === "none" || (booking as any).light_fee_split === "club" ? "Club Cost" : "Booker pays"}
                             </p>
                           )}
                           {(booking as any).is_friendly === false && (

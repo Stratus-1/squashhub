@@ -1068,6 +1068,7 @@ export type Database = {
           club_id: string
           created_at: string
           id: string
+          payment_gateway_credentials: Json | null
           payment_gateway_secret_key: string | null
           sender_email: string | null
           sender_name: string | null
@@ -1082,6 +1083,7 @@ export type Database = {
           club_id: string
           created_at?: string
           id?: string
+          payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
           sender_email?: string | null
           sender_name?: string | null
@@ -1096,6 +1098,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           id?: string
+          payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
           sender_email?: string | null
           sender_name?: string | null

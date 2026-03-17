@@ -959,9 +959,9 @@ export default function Bookings() {
                           <p className="text-muted-foreground">{String((booking as any).start_time || "").slice(0, 5)} – {String((booking as any).end_time || "").slice(0, 5)}</p>
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             {(booking as any).lights_requested ? (
-                              <><Zap className="w-3 h-3 text-amber-500" /> Lights on</>
+                              <><Zap className="w-3 h-3 text-amber-500" /> Auto Lights On</>
                             ) : (
-                              <><ZapOff className="w-3 h-3" /> No lights</>
+                              <><ZapOff className="w-3 h-3" /> Lights Manual On</>
                             )}
                           </div>
                           {(booking as any).lights_requested && (

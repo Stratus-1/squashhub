@@ -1233,10 +1233,6 @@ export default function Bookings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border p-3">
-                <span className="text-xs font-semibold text-muted-foreground">Player 1</span>
-                <span className="text-sm font-medium">{activeMember?.name || me?.name || "You"}</span>
-              </div>
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">2nd Player (optional)</Label>

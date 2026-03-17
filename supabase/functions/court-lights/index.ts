@@ -582,7 +582,7 @@ Deno.serve(async (req) => {
 
             // Check if this is a club event booking:
             // - "attendees" split → trigger handles it
-            // - "club" split → club covers, no charges
+            // - "none" split → club covers, no charges
             let isEventSplit = false;
             if (bookingData && court.club_id) {
               const { data: eventMatch } = await supabase

@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEO } from "@/components/SEO";
-import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard } from "lucide-react";
+import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Plan = {
@@ -56,6 +56,8 @@ export default function SuperAdminSubscriptions() {
   const qc = useQueryClient();
   const [planDialog, setPlanDialog] = useState<Plan | "new" | null>(null);
   const [planForm, setPlanForm] = useState({ name: "", description: "", price_per_member: "5", billing_cycle: "monthly", minimum_charge: "100", trial_days: "30", is_default: false, active: true });
+  const [editSub, setEditSub] = useState<ClubSub | null>(null);
+  const [subForm, setSubForm] = useState({ plan_id: "", status: "", trial_ends_at: "", member_count: "0", amount_due: "0" });
 
   // --- Queries ---
   const { data: plans = [], isLoading: plansLoading } = useQuery({
@@ -150,6 +152,40 @@ export default function SuperAdminSubscriptions() {
     onSuccess: () => { toast.success("Subscription assigned"); qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] }); },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const updateSub = useMutation({
+    mutationFn: async (vals: { id: string; plan_id: string; status: string; trial_ends_at: string | null; member_count: number; amount_due: number }) => {
+      const { error } = await fromExt("club_subscriptions").update({
+        plan_id: vals.plan_id || null,
+        status: vals.status,
+        trial_ends_at: vals.trial_ends_at || null,
+        member_count: vals.member_count,
+        amount_due: vals.amount_due,
+      }).eq("id", vals.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Subscription updated"); qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] }); setEditSub(null); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const openEditSub = (sub: ClubSub) => {
+    setEditSub(sub);
+    setSubForm({
+      plan_id: sub.plan_id || "",
+      status: sub.status,
+      trial_ends_at: sub.trial_ends_at ? sub.trial_ends_at.split("T")[0] : "",
+      member_count: String(sub.member_count),
+      amount_due: String(sub.amount_due),
+    });
+  };
+
+  const recalcAmount = (planId: string, memberCount: string) => {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return;
+    const count = Number(memberCount) || 0;
+    const calculated = Math.max(count * plan.price_per_member, plan.minimum_charge);
+    setSubForm(f => ({ ...f, amount_due: String(calculated) }));
+  };
 
   const openPlanDialog = (plan: Plan | "new") => {
     if (plan === "new") {
@@ -291,13 +327,14 @@ export default function SuperAdminSubscriptions() {
                   <TableHead className="text-center">Members</TableHead>
                   <TableHead className="text-right">Amount Due</TableHead>
                   <TableHead>Trial Ends</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {subsLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : subscriptions.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No subscriptions yet</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No subscriptions yet</TableCell></TableRow>
                 ) : (
                   subscriptions.map((sub) => (
                     <TableRow key={sub.id}>
@@ -334,6 +371,11 @@ export default function SuperAdminSubscriptions() {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -400,6 +442,61 @@ export default function SuperAdminSubscriptions() {
             <Button variant="outline" size="sm" onClick={() => setPlanDialog(null)}>Cancel</Button>
             <Button size="sm" onClick={handleSavePlan} disabled={savePlan.isPending || !planForm.name.trim()}>
               {savePlan.isPending ? "Saving..." : "Save Plan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Edit Subscription Dialog ─── */}
+      <Dialog open={!!editSub} onOpenChange={(o) => !o && setEditSub(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Subscription — {editSub?.clubs?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs">Subscription Plan</Label>
+              <Select value={subForm.plan_id} onValueChange={v => { setSubForm(f => ({ ...f, plan_id: v })); recalcAmount(v, subForm.member_count); }}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select plan" /></SelectTrigger>
+                <SelectContent>
+                  {plans.filter(p => p.active).map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name} — R{p.price_per_member}/member</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Status</Label>
+              <Select value={subForm.status} onValueChange={v => setSubForm(f => ({ ...f, status: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trial">Trial</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="past_due">Past Due</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Member Count</Label>
+                <Input type="number" min="0" value={subForm.member_count} onChange={e => { setSubForm(f => ({ ...f, member_count: e.target.value })); recalcAmount(subForm.plan_id, e.target.value); }} className="h-8 text-xs font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs">Amount Due (R)</Label>
+                <Input type="number" min="0" step="0.01" value={subForm.amount_due} onChange={e => setSubForm(f => ({ ...f, amount_due: e.target.value }))} className="h-8 text-xs font-mono" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Trial Ends</Label>
+              <Input type="date" value={subForm.trial_ends_at} onChange={e => setSubForm(f => ({ ...f, trial_ends_at: e.target.value }))} className="h-8 text-xs" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setEditSub(null)}>Cancel</Button>
+            <Button size="sm" onClick={() => editSub && updateSub.mutate({ id: editSub.id, plan_id: subForm.plan_id, status: subForm.status, trial_ends_at: subForm.trial_ends_at || null, member_count: Number(subForm.member_count), amount_due: Number(subForm.amount_due) })} disabled={updateSub.isPending}>
+              {updateSub.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

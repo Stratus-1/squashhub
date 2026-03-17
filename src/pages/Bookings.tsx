@@ -1217,9 +1217,11 @@ export default function Bookings() {
                 <div className="min-w-0">
                   <Label className="text-xs font-semibold">Switch on Lights Automatically</Label>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {lightFeePerHour > 0
-                      ? `Lights turn on when your booking starts · R${lightFeePerHour}/hr`
-                      : "Lights will activate automatically at booking time"}
+                    {bookingDialog.lightsOn
+                      ? (lightFeePerHour > 0
+                          ? `Lights turn on when your booking starts · R${lightFeePerHour}/hr`
+                          : "Lights will activate automatically at booking time")
+                      : "Member will be prompted to switch on the lights"}
                   </p>
                 </div>
                 <Switch

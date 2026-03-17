@@ -131,6 +131,17 @@ export function NotificationsDropdown({
     },
   });
 
+  const removeNotification = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("notifications").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+    },
+  });
+
   const hasUnread = useMemo(() => (unreadCount ?? 0) > 0, [unreadCount]);
 
   if (!user) return null;

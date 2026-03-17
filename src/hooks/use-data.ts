@@ -175,7 +175,14 @@ export function useBookings(date: string, clubId?: string) {
       const { data: bookings, error } = await query;
       if (error) throw error;
 
-      // Fetch player names for bookings
+      // Collect all member IDs and user IDs for name resolution
+      const memberIds = [
+        ...new Set(
+          bookings
+            .flatMap((b: any) => [b.club_member_id, b.opponent_member_id])
+            .filter(Boolean)
+        ),
+      ];
       const userIds = [
         ...new Set(
           bookings
@@ -183,6 +190,18 @@ export function useBookings(date: string, clubId?: string) {
             .filter(Boolean)
         ),
       ];
+
+      // Fetch member names (priority source for family accounts)
+      let memberMap = new Map<string, any>();
+      if (memberIds.length > 0) {
+        const { data: members } = await (supabase as any)
+          .from("club_members")
+          .select("id, name, user_id")
+          .in("id", memberIds);
+        memberMap = new Map((members || []).map((m: any) => [m.id, m]));
+      }
+
+      // Fetch profile names as fallback
       if (userIds.length === 0) return bookings.map((b: any) => ({
         ...b,
         player_name: "Unknown",
@@ -207,7 +226,7 @@ export function useBookings(date: string, clubId?: string) {
         clubMemberMap = new Map((members || []).map((m: any) => [m.id, m]));
       }
 
-      const getName = (id: string | null) => {
+      const getNameByUserId = (id: string | null) => {
         if (!id) return null;
         const profile = profileMap.get(id);
         if (profile) return profile.name;
@@ -216,13 +235,19 @@ export function useBookings(date: string, clubId?: string) {
         return "Unknown";
       };
 
-      return bookings.map(b => ({
-        ...b,
-        player_name: getName((b as any).user_id) || "Unknown",
-        player_rank: null,
-        opponent_name: (b as any).guest_name || getName((b as any).opponent_id),
-        opponent_rank: null,
-      }));
+      return bookings.map(b => {
+        // Prioritise club_member_id name (supports family/switched accounts)
+        const bookerMember = (b as any).club_member_id ? memberMap.get((b as any).club_member_id) : null;
+        const opponentMember = (b as any).opponent_member_id ? memberMap.get((b as any).opponent_member_id) : null;
+
+        return {
+          ...b,
+          player_name: bookerMember?.name || getNameByUserId((b as any).user_id) || "Unknown",
+          player_rank: null,
+          opponent_name: (b as any).guest_name || opponentMember?.name || getNameByUserId((b as any).opponent_id),
+          opponent_rank: null,
+        };
+      });
     },
     enabled: !!user,
   });

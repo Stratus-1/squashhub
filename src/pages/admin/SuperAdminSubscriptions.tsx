@@ -371,7 +371,11 @@ export default function SuperAdminSubscriptions() {
                       <TableCell className="text-xs text-muted-foreground">
                         {sub.trial_ends_at ? new Date(sub.trial_ends_at).toLocaleDateString() : "—"}
                       </TableCell>
-                    </TableRow>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditSub(sub)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </TableCell>
                   ))
                 )}
               </TableBody>

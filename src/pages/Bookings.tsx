@@ -1164,6 +1164,7 @@ export default function Bookings() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-heading">Book Court</DialogTitle>
+            <p className="text-xs text-muted-foreground">Booking as <span className="font-medium text-foreground">{activeMember?.name || me?.name || "You"}</span></p>
           </DialogHeader>
           {bookingDialog && (
             <div className="space-y-3 py-2">

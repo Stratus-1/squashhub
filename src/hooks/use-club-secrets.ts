@@ -11,6 +11,7 @@ export interface ClubSecrets {
   sender_email?: string;
   sender_name?: string;
   payment_gateway_secret_key?: string;
+  payment_gateway_credentials?: Record<string, string>;
   shelly_auth_key?: string;
 }
 

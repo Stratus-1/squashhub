@@ -1164,6 +1164,7 @@ export default function Bookings() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-heading">Book Court</DialogTitle>
+            <p className="text-xs text-muted-foreground">Booking as <span className="font-medium text-foreground">{activeMember?.name || me?.name || "You"}</span></p>
           </DialogHeader>
           {bookingDialog && (
             <div className="space-y-3 py-2">
@@ -1232,10 +1233,6 @@ export default function Bookings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border p-3">
-                <span className="text-xs font-semibold text-muted-foreground">Player 1</span>
-                <span className="text-sm font-medium">{activeMember?.name || me?.name || "You"}</span>
-              </div>
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">2nd Player (optional)</Label>

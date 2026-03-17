@@ -897,6 +897,21 @@ export default function Bookings() {
                 </div>
                 {courts.map((courtId) => {
                   const booking = getBooking(courtId, time);
+                  // Check if this is a continuation of the previous slot's booking (same booker + same opponent)
+                  const prevTime = idx > 0 ? timeSlots[idx - 1] : null;
+                  const prevBooking = prevTime ? getBooking(courtId, prevTime) : null;
+                  const isContinuation = !!(booking && prevBooking &&
+                    (booking as any).user_id === (prevBooking as any).user_id &&
+                    (booking as any).opponent_id === (prevBooking as any).opponent_id &&
+                    (booking as any).id === (prevBooking as any).id);
+                  // Check if next slot continues this booking
+                  const nextTime = idx < timeSlots.length - 1 ? timeSlots[idx + 1] : null;
+                  const nextBooking = nextTime ? getBooking(courtId, nextTime) : null;
+                  const continuesNext = !!(booking && nextBooking &&
+                    (booking as any).user_id === (nextBooking as any).user_id &&
+                    (booking as any).opponent_id === (nextBooking as any).opponent_id &&
+                    (booking as any).id === (nextBooking as any).id);
+
                   // Event bookings have guest_name but no opponent_id — show event title instead of "X vs Y"
                   const isEventBooking = !!(booking as any)?.guest_name && !(booking as any)?.opponent_id;
                   const eventLabel = isEventBooking ? String((booking as any).guest_name) : null;
@@ -915,7 +930,14 @@ export default function Bookings() {
                       key={courtId}
                       whileTap={isPastSlot && !booking ? undefined : { scale: 0.97 }}
                       className={cn(
-                        "h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
+                        "h-10 flex items-center justify-center text-xs transition-all border",
+                        // Rounded corners: only round top on first slot, bottom on last slot of a merged group
+                        isContinuation && continuesNext ? "rounded-none" :
+                        isContinuation ? "rounded-b-lg rounded-t-none" :
+                        continuesNext ? "rounded-t-lg rounded-b-none" :
+                        "rounded-lg",
+                        // Remove top border on continuation slots for seamless merge
+                        isContinuation && "border-t-0 -mt-[3px]",
                         isPastSlot && !booking
                           ? "bg-muted border-border/40 cursor-not-allowed opacity-60"
                           : booking
@@ -931,19 +953,21 @@ export default function Bookings() {
                       }}
                     >
                       {booking ? (
-                        <div className="px-1.5 min-w-0 text-center leading-tight">
-                          <p className={cn(
-                            "font-semibold text-[11px] truncate",
-                            isBlocked
-                              ? "text-destructive"
-                              : isMine
-                                ? "text-primary"
-                                : "text-foreground/70"
-                          )}>
-                            {isBlocked ? (blockReason || "Blocked") : isEventBooking ? eventLabel : (a || "Booked")}
-                            {!isBlocked && !isEventBooking && b ? ` vs ${b}` : ""}
-                          </p>
-                        </div>
+                        isContinuation ? null : (
+                          <div className="px-1.5 min-w-0 text-center leading-tight">
+                            <p className={cn(
+                              "font-semibold text-[11px] truncate",
+                              isBlocked
+                                ? "text-destructive"
+                                : isMine
+                                  ? "text-primary"
+                                  : "text-foreground/70"
+                            )}>
+                              {isBlocked ? (blockReason || "Blocked") : isEventBooking ? eventLabel : (a || "Booked")}
+                              {!isBlocked && !isEventBooking && b ? ` vs ${b}` : ""}
+                            </p>
+                          </div>
+                        )
                       ) : isPastSlot ? (
                         <span className="text-muted-foreground/20 text-[10px]">—</span>
                       ) : (

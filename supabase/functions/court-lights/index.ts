@@ -580,16 +580,17 @@ Deno.serve(async (req) => {
               .eq("id", existingSession.booking_id)
               .maybeSingle();
 
-            // Check if this is a club event booking with attendee splitting
-            // The database trigger handles fee distribution for events
+            // Check if this is a club event booking:
+            // - "attendees" split → trigger handles it
+            // - "club" split → club covers, no charges
             let isEventSplit = false;
             if (bookingData && court.club_id) {
               const { data: eventMatch } = await supabase
                 .from("club_events")
-                .select("id")
+                .select("id, light_fee_split")
                 .eq("club_id", court.club_id)
                 .eq("status", "active")
-                .eq("light_fee_split", "attendees")
+                .in("light_fee_split", ["attendees", "club"])
                 .eq("start_time", (bookingData as any).start_time)
                 .limit(1);
               if (eventMatch && eventMatch.length > 0) {

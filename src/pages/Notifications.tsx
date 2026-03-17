@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Bell, Swords, Calendar, Trophy, CheckCircle, Loader2 } from "lucide-react";
+import { Bell, Swords, Calendar, Trophy, CheckCircle, Loader2, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getNotificationNavigation } from "@/lib/notification-navigation";
@@ -91,6 +91,17 @@ export default function Notifications() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["notifications"] });
       await queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
+    },
+  });
+
+  const removeNotification = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("notifications").delete().eq("id", id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      await queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
     },
   });
 
@@ -287,7 +298,19 @@ export default function Notifications() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{notif.message}</p>
                       </div>
-                      {!notif.read && <div className="w-2 h-2 rounded-full bg-accent shrink-0 mt-2" />}
+                      <div className="flex items-center gap-1 shrink-0 mt-1">
+                        {!notif.read && <div className="w-2 h-2 rounded-full bg-accent" />}
+                        <button
+                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Remove notification"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeNotification.mutate(notif.id);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </Card>
                   </motion.div>
                 );

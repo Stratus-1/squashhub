@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getNotificationNavigation } from "@/lib/notification-navigation";
 import { cn } from "@/lib/utils";
-import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy } from "lucide-react";
+import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
@@ -131,6 +131,17 @@ export function NotificationsDropdown({
     },
   });
 
+  const removeNotification = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("notifications").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+    },
+  });
+
   const hasUnread = useMemo(() => (unreadCount ?? 0) > 0, [unreadCount]);
 
   if (!user) return null;
@@ -216,11 +227,23 @@ export function NotificationsDropdown({
                       </p>
                     </div>
 
-                    {!notif.read && (
-                      <Badge variant="secondary" className="text-[10px] bg-primary/15 text-primary shrink-0 mt-0.5">
-                        New
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                      {!notif.read && (
+                        <Badge variant="secondary" className="text-[10px] bg-primary/15 text-primary">
+                          New
+                        </Badge>
+                      )}
+                      <button
+                        className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Remove notification"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeNotification.mutate(notif.id);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </button>
                 );
               })}

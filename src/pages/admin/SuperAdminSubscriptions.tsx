@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEO } from "@/components/SEO";
-import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard } from "lucide-react";
+import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, CreditCard, Save } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Plan = {

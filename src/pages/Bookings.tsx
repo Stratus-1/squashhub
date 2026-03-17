@@ -880,12 +880,21 @@ export default function Bookings() {
         >
           {timeSlots.map((time, idx) => {
             const isHour = time.endsWith(":00");
+            // Check if ANY court on this row is a continuation of a merged booking
+            const hasContinuationOnRow = courts.some((cId) => {
+              const bk = getBooking(cId, time);
+              const pt = idx > 0 ? timeSlots[idx - 1] : null;
+              const pb = pt ? getBooking(cId, pt) : null;
+              return !!(bk && pb && (bk as any).id === (pb as any).id);
+            });
             return (
               <div
                 key={time}
                 className={cn(
                   "gap-x-1.5",
-                  isHour && idx !== 0 && "pt-1.5 mt-1.5 border-t border-border/40"
+                  hasContinuationOnRow
+                    ? "-mt-[3px]"
+                    : isHour && idx !== 0 && "pt-1.5 mt-1.5 border-t border-border/40"
                 )}
                 style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}
               >

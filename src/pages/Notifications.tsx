@@ -94,6 +94,17 @@ export default function Notifications() {
     },
   });
 
+  const removeNotification = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("notifications").delete().eq("id", id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      await queryClient.invalidateQueries({ queryKey: ["notifications-unread-count", user?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+    },
+  });
+
   const notificationIdToOpen = useMemo(() => (searchParams.get("notificationId") || "").trim(), [searchParams]);
   useEffect(() => {
     if (!notificationIdToOpen) return;

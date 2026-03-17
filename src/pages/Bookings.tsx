@@ -937,7 +937,7 @@ export default function Bookings() {
                         continuesNext ? "rounded-t-lg rounded-b-none" :
                         "rounded-lg",
                         // Remove top border on continuation slots for seamless merge
-                        isContinuation && "border-t-0 -mt-[3px]",
+                        isContinuation && "border-t-0",
                         isPastSlot && !booking
                           ? "bg-muted border-border/40 cursor-not-allowed opacity-60"
                           : booking

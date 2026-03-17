@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
           .select("id, light_fee_split")
           .eq("club_id", session.club_id)
           .eq("status", "active")
-          .in("light_fee_split", ["attendees", "club"])
+           .in("light_fee_split", ["attendees", "none"])
           .eq("start_time", (bookingData as any).start_time)
           .limit(1);
         if (eventMatch && eventMatch.length > 0) {

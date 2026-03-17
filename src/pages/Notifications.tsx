@@ -298,7 +298,19 @@ export default function Notifications() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{notif.message}</p>
                       </div>
-                      {!notif.read && <div className="w-2 h-2 rounded-full bg-accent shrink-0 mt-2" />}
+                      <div className="flex items-center gap-1 shrink-0 mt-1">
+                        {!notif.read && <div className="w-2 h-2 rounded-full bg-accent" />}
+                        <button
+                          className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Remove notification"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeNotification.mutate(notif.id);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </Card>
                   </motion.div>
                 );

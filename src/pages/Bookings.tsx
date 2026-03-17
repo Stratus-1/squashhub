@@ -912,45 +912,72 @@ export default function Bookings() {
                   const isPastSlot = slotDateTime < new Date();
 
                   return (
-                    <motion.div
-                      key={courtId}
-                      whileTap={isPastSlot && !booking ? undefined : { scale: 0.97 }}
-                      className={cn(
-                        "h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
-                        isPastSlot && !booking
-                          ? "bg-muted border-border/40 cursor-not-allowed opacity-60"
-                          : booking
-                            ? isMine
-                              ? "bg-primary/15 border-primary/50 hover:bg-primary/20 cursor-pointer shadow-sm"
-                              : "bg-secondary border-border/60 hover:bg-secondary/90 cursor-pointer shadow-sm"
-                            : "border-border bg-win/10 hover:border-primary/40 hover:bg-win/20 border-dashed cursor-pointer"
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <motion.div
+                          whileTap={isPastSlot && !booking ? undefined : { scale: 0.97 }}
+                          className={cn(
+                            "h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
+                            isPastSlot && !booking
+                              ? "bg-muted border-border/40 cursor-not-allowed opacity-60"
+                              : booking
+                                ? isMine
+                                  ? "bg-primary/15 border-primary/50 hover:bg-primary/20 cursor-pointer shadow-sm"
+                                  : "bg-secondary border-border/60 hover:bg-secondary/90 cursor-pointer shadow-sm"
+                                : "border-border bg-win/10 hover:border-primary/40 hover:bg-win/20 border-dashed cursor-pointer"
+                          )}
+                          onClick={() => {
+                            if (isPastSlot && !booking) return;
+                            if (booking) setBookingDetails(booking);
+                            else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true, lightFeeSplit: "booker" });
+                          }}
+                        >
+                          {booking ? (
+                            <div className="px-1.5 min-w-0 text-center leading-tight">
+                              <p className={cn(
+                                "font-semibold text-[11px] truncate",
+                                isBlocked
+                                  ? "text-destructive"
+                                  : isMine
+                                    ? "text-primary"
+                                    : "text-foreground/70"
+                              )}>
+                                {isBlocked ? (blockReason || "Blocked") : isEventBooking ? eventLabel : (a || "Booked")}
+                                {!isBlocked && !isEventBooking && b ? ` vs ${b}` : ""}
+                              </p>
+                            </div>
+                          ) : isPastSlot ? (
+                            <span className="text-muted-foreground/20 text-[10px]">—</span>
+                          ) : (
+                            <span className="text-muted-foreground/30 text-[10px]">·</span>
+                          )}
+                        </motion.div>
+                      </TooltipTrigger>
+                      {booking && !isBlocked && (
+                        <TooltipContent side="top" className="max-w-[220px] text-xs space-y-1 p-2.5">
+                          <p className="font-semibold">{isEventBooking ? eventLabel : `${(booking as any).player_name || "Unknown"}${b ? ` vs ${b}` : ""}`}</p>
+                          <p className="text-muted-foreground">{String((booking as any).start_time || "").slice(0, 5)} – {String((booking as any).end_time || "").slice(0, 5)}</p>
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            {(booking as any).lights_requested ? (
+                              <><Zap className="w-3 h-3 text-amber-500" /> Lights on</>
+                            ) : (
+                              <><ZapOff className="w-3 h-3" /> No lights</>
+                            )}
+                          </div>
+                          {(booking as any).lights_requested && (
+                            <p className="text-muted-foreground">
+                              Fee: {(booking as any).light_fee_split === "shared" ? "Split 50/50" : "Booker pays"}
+                            </p>
+                          )}
+                          {(booking as any).is_friendly === false && (
+                            <p className="text-muted-foreground">⚔️ Ladder match</p>
+                          )}
+                          {(booking as any).is_friendly === true && b && (
+                            <p className="text-muted-foreground">🤝 Friendly</p>
+                          )}
+                        </TooltipContent>
                       )}
-                      onClick={() => {
-                        if (isPastSlot && !booking) return;
-                        if (booking) setBookingDetails(booking);
-                        else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true, lightFeeSplit: "booker" });
-                      }}
-                    >
-                      {booking ? (
-                        <div className="px-1.5 min-w-0 text-center leading-tight">
-                          <p className={cn(
-                            "font-semibold text-[11px] truncate",
-                            isBlocked
-                              ? "text-destructive"
-                              : isMine
-                                ? "text-primary"
-                                : "text-foreground/70"
-                          )}>
-                            {isBlocked ? (blockReason || "Blocked") : isEventBooking ? eventLabel : (a || "Booked")}
-                            {!isBlocked && !isEventBooking && b ? ` vs ${b}` : ""}
-                          </p>
-                        </div>
-                      ) : isPastSlot ? (
-                        <span className="text-muted-foreground/20 text-[10px]">—</span>
-                      ) : (
-                        <span className="text-muted-foreground/30 text-[10px]">·</span>
-                      )}
-                    </motion.div>
+                    </Tooltip>
                   );
                 })}
               </div>

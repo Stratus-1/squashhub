@@ -61,6 +61,7 @@ import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
 import MyAccount from "./pages/MyAccount";
+import HonestyBar from "./pages/HonestyBar";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
@@ -229,6 +230,7 @@ function AppRoutes() {
         <Route path="/register-club" element={<ProtectedRoute><RegisterClub /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
+        <Route path="/honesty-bar" element={<ProtectedRoute><HonestyBar /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><ClubChampsView /></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>

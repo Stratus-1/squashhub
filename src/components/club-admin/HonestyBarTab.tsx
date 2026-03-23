@@ -274,10 +274,15 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       <div className="space-y-2">
         {items.map(item => {
           const cat = CATEGORIES.find(c => c.value === item.category);
-          const Icon = cat?.icon || Package;
           return (
             <div key={item.id} className="flex items-center gap-3 rounded-lg border p-2.5">
-              <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm">{CATEGORY_EMOJI[item.category] || "📦"}</span>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <span className={`text-sm font-medium ${!item.active ? "line-through text-muted-foreground" : ""}`}>
                   {item.name}
@@ -285,6 +290,18 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                 <span className="text-xs text-muted-foreground ml-2">R{item.price.toFixed(2)}</span>
               </div>
               <Badge variant="outline" className="text-[10px]">{cat?.label}</Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Set image"
+                onClick={() => {
+                  const url = prompt("Paste image URL for " + item.name, item.image_url || "");
+                  if (url !== null) handleUpdateImageUrl(item.id, url);
+                }}
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+              </Button>
               <Switch
                 checked={item.active}
                 onCheckedChange={() => handleToggleActive(item.id, item.active)}

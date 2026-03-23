@@ -5,7 +5,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen } from "lucide-react";
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
 import { BankingTab } from "@/components/club-admin/BankingTab";
@@ -16,6 +16,8 @@ import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { FeesTab } from "@/components/club-admin/FeesTab";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
+import { HonestyBarTab } from "@/components/club-admin/HonestyBarTab";
+import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
 
 export default function ClubAdmin() {
   const { user } = useAuth();

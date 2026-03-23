@@ -195,7 +195,9 @@ export default function Dashboard() {
 
     // Club admins (captains/admins) skip the member onboarding wizard entirely
     // — they created the club and should go straight to admin.
-    const isMemberAdmin = myClubMember?.role === "captain" || myClubMember?.role === "admin";
+    const isMemberAdmin =
+      myClubMember?.role === "captain" || myClubMember?.role === "admin" ||
+      clubData?.membership?.role === "captain" || clubData?.membership?.role === "admin";
     if (isMemberAdmin) return;
 
     const legacyNeedsOnboarding =
@@ -222,6 +224,7 @@ export default function Dashboard() {
     profile,
     effectiveClub,
     myClubMember,
+    clubData,
     onboardingDone,
   ]);
 

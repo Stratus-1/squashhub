@@ -328,7 +328,7 @@ export default function Dashboard() {
       </div>
 
       {/* Honesty Bar Quick Access */}
-      {effectiveClub && (effectiveClub as any).honesty_bar_enabled && (
+      {effectiveClub && (effectiveClub as any)?.honesty_bar_enabled && (
         <div className="px-4 mt-2">
           <Card
             className="p-3 flex items-center gap-3 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/30 bg-amber-500/5"

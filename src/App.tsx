@@ -268,7 +268,7 @@ function AppRoutes() {
       {user && <OutboxSync />}
       <PwaUpdatePrompt />
       <FeedbackFab />
-      <WhatsNewModal />
+      
     </div>
   );
 }

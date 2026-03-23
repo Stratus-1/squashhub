@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 declare global {
@@ -6,15 +6,15 @@ declare global {
     hcaptcha?: {
       render: (container: HTMLElement, params: Record<string, unknown>) => string;
       reset: (widgetId: string) => void;
+      execute: (widgetId: string) => void;
       getResponse: (widgetId: string) => string;
       remove: (widgetId: string) => void;
     };
   }
 }
 
-interface HCaptchaProps {
-  onVerify: (token: string) => void;
-  onExpire?: () => void;
+export interface HCaptchaHandle {
+  execute: () => Promise<string>;
 }
 
 let cachedSiteKey: string | null = null;
@@ -44,31 +44,33 @@ function getSiteKey(): Promise<string | null> {
   return siteKeyPromise;
 }
 
-// Global registry so each container only gets one widget
 const renderedWidgets = new WeakSet<HTMLElement>();
 
-export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
+export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const onVerifyRef = useRef(onVerify);
-  const onExpireRef = useRef(onExpire);
-
-  // Keep refs current without triggering effects
-  onVerifyRef.current = onVerify;
-  onExpireRef.current = onExpire;
+  const widgetIdRef = useRef<string | null>(null);
+  const resolveRef = useRef<((token: string) => void) | null>(null);
+  const readyRef = useRef(false);
 
   const renderWidget = useCallback((siteKey: string) => {
     const el = containerRef.current;
     if (!el || !window.hcaptcha) return;
-    // Already rendered in this DOM node — don't re-render
     if (renderedWidgets.has(el)) return;
 
     renderedWidgets.add(el);
-    window.hcaptcha.render(el, {
+    const id = window.hcaptcha.render(el, {
       sitekey: siteKey,
-      callback: (token: string) => onVerifyRef.current(token),
-      "expired-callback": () => onExpireRef.current?.(),
-      size: "compact",
+      size: "invisible",
+      callback: (token: string) => {
+        resolveRef.current?.(token);
+        resolveRef.current = null;
+      },
+      "error-callback": () => {
+        resolveRef.current = null;
+      },
     });
+    widgetIdRef.current = id;
+    readyRef.current = true;
   }, []);
 
   useEffect(() => {
@@ -100,14 +102,27 @@ export function HCaptcha({ onVerify, onExpire }: HCaptchaProps) {
       }
     });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <div ref={containerRef} className="flex justify-center my-2" />;
-}
+  useImperativeHandle(ref, () => ({
+    execute: () =>
+      new Promise<string>((resolve, reject) => {
+        if (!readyRef.current || !window.hcaptcha || widgetIdRef.current === null) {
+          reject(new Error("hCaptcha not ready"));
+          return;
+        }
+        resolveRef.current = resolve;
+        window.hcaptcha.reset(widgetIdRef.current);
+        window.hcaptcha.execute(widgetIdRef.current);
+      }),
+  }));
+
+  return <div ref={containerRef} />;
+});
+
+HCaptcha.displayName = "HCaptcha";
 
 export async function verifyCaptchaToken(token: string): Promise<boolean> {
   try {

@@ -116,7 +116,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         </div>
       </Card>
 
-      {(club as any).honesty_bar_enabled && (
+      {club.honesty_bar_enabled && (
         <>
           {/* Item Management */}
           <ItemManager clubId={clubId} items={items} loading={itemsLoading} />

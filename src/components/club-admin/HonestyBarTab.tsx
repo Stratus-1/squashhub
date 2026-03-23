@@ -193,11 +193,12 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       price: parseFloat(form.price),
       category: form.category,
       sort_order: items.length,
+      image_url: form.image_url.trim() || null,
     });
     if (error) toast.error(error.message);
     else {
       toast.success("Item added");
-      setForm({ name: "", price: "", category: "drinks" });
+      setForm({ name: "", price: "", category: "drinks", image_url: "" });
       setAdding(false);
       qc.invalidateQueries({ queryKey: ["bar-items"] });
     }
@@ -216,6 +217,16 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
     else qc.invalidateQueries({ queryKey: ["bar-items"] });
   };
 
+  const handleUpdateImageUrl = async (id: string, image_url: string) => {
+    const { error } = await fromExt("bar_items").update({ image_url: image_url.trim() || null }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Image updated"); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
+  };
+
+  const CATEGORY_EMOJI: Record<string, string> = {
+    drinks: "🥤", alcohol: "🍺", snacks: "🍿", other: "📦",
+  };
+
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -227,7 +238,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
 
       {adding && (
         <div className="rounded-lg border p-3 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Input
               value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
@@ -249,6 +260,11 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                 ))}
               </SelectContent>
             </Select>
+            <Input
+              value={form.image_url}
+              onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))}
+              placeholder="Image URL (optional)"
+            />
           </div>
           <Button size="sm" onClick={handleAdd}>Add Item</Button>
         </div>

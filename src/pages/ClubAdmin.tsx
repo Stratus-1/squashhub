@@ -18,11 +18,30 @@ import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
 import { HonestyBarTab } from "@/components/club-admin/HonestyBarTab";
 import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const ADMIN_TABS = [
+  { value: "club", label: "Club", icon: Building2 },
+  { value: "settings", label: "Settings", icon: Settings },
+  { value: "fees", label: "Fees", icon: DollarSign },
+  { value: "courts", label: "Courts", icon: LayoutGrid },
+  { value: "banking", label: "Banking", icon: Banknote },
+  { value: "finance", label: "Finance", icon: Landmark },
+  { value: "members", label: "Members", icon: Users },
+  { value: "ladder", label: "Ladder", icon: ListOrdered },
+  { value: "leagues", label: "Leagues", icon: Trophy },
+  { value: "champs", label: "Champs", icon: Medal },
+  { value: "bar", label: "Bar", icon: Beer },
+  { value: "access", label: "Access", icon: DoorOpen },
+] as const;
 
 export default function ClubAdmin() {
   const { user } = useAuth();
   const { data, isLoading } = useMyClub();
   const isAdmin = useIsClubAdmin();
+  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState("club");
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -30,6 +49,24 @@ export default function ClubAdmin() {
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const club = data.club;
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "club": return <ClubInfoTab club={club} clubId={club.id} />;
+      case "settings": return <SettingsTab club={club} clubId={club.id} />;
+      case "fees": return <FeesTab clubId={club.id} />;
+      case "courts": return <CourtsTab club={club} clubId={club.id} />;
+      case "banking": return <BankingTab club={club} clubId={club.id} />;
+      case "finance": return <FinanceTab club={club} clubId={club.id} />;
+      case "members": return <MembersTab clubId={club.id} />;
+      case "ladder": return <LadderTab clubId={club.id} />;
+      case "leagues": return <LeaguesTab clubId={club.id} />;
+      case "champs": return <ClubChampsTab clubId={club.id} />;
+      case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
+      case "access": return <AccessControlTab club={club} clubId={club.id} />;
+      default: return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20 text-[13px]">
@@ -39,35 +76,49 @@ export default function ClubAdmin() {
       />
       <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
 
-        <Tabs defaultValue="club" className="w-full [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
-          <TabsList className="flex w-full overflow-x-auto h-8">
-            <TabsTrigger value="club" className="text-[11px] flex-1 h-7 px-2"><Building2 className="w-3.5 h-3.5 mr-1 hidden md:inline" />Club</TabsTrigger>
-            <TabsTrigger value="settings" className="text-[11px] flex-1 h-7 px-2"><Settings className="w-3.5 h-3.5 mr-1 hidden md:inline" />Settings</TabsTrigger>
-            <TabsTrigger value="fees" className="text-[11px] flex-1 h-7 px-2"><DollarSign className="w-3.5 h-3.5 mr-1 hidden md:inline" />Fees</TabsTrigger>
-            <TabsTrigger value="courts" className="text-[11px] flex-1 h-7 px-2"><LayoutGrid className="w-3.5 h-3.5 mr-1 hidden md:inline" />Courts</TabsTrigger>
-            <TabsTrigger value="banking" className="text-[11px] flex-1 h-7 px-2"><Banknote className="w-3.5 h-3.5 mr-1 hidden md:inline" />Banking</TabsTrigger>
-            <TabsTrigger value="finance" className="text-[11px] flex-1 h-7 px-2"><Landmark className="w-3.5 h-3.5 mr-1 hidden md:inline" />Finance</TabsTrigger>
-            <TabsTrigger value="members" className="text-[11px] flex-1 h-7 px-2"><Users className="w-3.5 h-3.5 mr-1 hidden md:inline" />Members</TabsTrigger>
-            <TabsTrigger value="ladder" className="text-[11px] flex-1 h-7 px-2"><ListOrdered className="w-3.5 h-3.5 mr-1 hidden md:inline" />Ladder</TabsTrigger>
-            <TabsTrigger value="leagues" className="text-[11px] flex-1 h-7 px-2"><Trophy className="w-3.5 h-3.5 mr-1 hidden md:inline" />Leagues</TabsTrigger>
-            <TabsTrigger value="champs" className="text-[11px] flex-1 h-7 px-2"><Medal className="w-3.5 h-3.5 mr-1 hidden md:inline" />Champs</TabsTrigger>
-            <TabsTrigger value="bar" className="text-[11px] flex-1 h-7 px-2"><Beer className="w-3.5 h-3.5 mr-1 hidden md:inline" />Bar</TabsTrigger>
-            <TabsTrigger value="access" className="text-[11px] flex-1 h-7 px-2"><DoorOpen className="w-3.5 h-3.5 mr-1 hidden md:inline" />Access</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="club"><ClubInfoTab club={club} clubId={club.id} /></TabsContent>
-          <TabsContent value="members"><MembersTab clubId={club.id} /></TabsContent>
-          <TabsContent value="finance"><FinanceTab club={club} clubId={club.id} /></TabsContent>
-          <TabsContent value="banking"><BankingTab club={club} clubId={club.id} /></TabsContent>
-          <TabsContent value="fees"><FeesTab clubId={club.id} /></TabsContent>
-          <TabsContent value="courts"><CourtsTab club={club} clubId={club.id} /></TabsContent>
-          <TabsContent value="ladder"><LadderTab clubId={club.id} /></TabsContent>
-          <TabsContent value="leagues"><LeaguesTab clubId={club.id} /></TabsContent>
-          <TabsContent value="champs"><ClubChampsTab clubId={club.id} /></TabsContent>
-          <TabsContent value="bar"><HonestyBarTab club={club} clubId={club.id} /></TabsContent>
-          <TabsContent value="access"><AccessControlTab club={club} clubId={club.id} /></TabsContent>
-          <TabsContent value="settings"><SettingsTab club={club} clubId={club.id} /></TabsContent>
-        </Tabs>
+        {/* Mobile: icon tile grid */}
+        {isMobile ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-4 gap-2">
+              {ADMIN_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    onClick={() => setActiveTab(tab.value)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1 rounded-lg border p-2.5 transition-colors text-center",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <Icon className="w-4.5 h-4.5" />
+                    <span className="text-[10px] font-medium leading-tight">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div>{renderContent()}</div>
+          </div>
+        ) : (
+          /* Desktop: horizontal tabs */
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
+            <TabsList className="flex w-full overflow-x-auto h-8">
+              {ADMIN_TABS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} className="text-[11px] flex-1 h-7 px-2">
+                  <tab.icon className="w-3.5 h-3.5 mr-1" />{tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {ADMIN_TABS.map((tab) => (
+              <TabsContent key={tab.value} value={tab.value}>
+                {renderContent()}
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </div>
       <BackToDashboard />
     </div>

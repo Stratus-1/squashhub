@@ -97,7 +97,7 @@ export default function Home() {
       {/* ─── Top Bar ─── */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b border-border/40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <img src={shLogoFull} alt="SquashHub" className="h-8 object-contain" />
+          <img src={shLogoFull} alt="SquashHub" className="h-10 object-contain" />
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate("/auth")}>
               Sign In
@@ -119,9 +119,6 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
 
         <div className="relative max-w-5xl mx-auto px-4 pt-24 pb-20 text-center space-y-6">
-          <motion.div {...fadeUp} transition={{ duration: 0.5 }}>
-            <img src={shLogoFull} alt="SquashHub" className="h-28 sm:h-36 md:h-44 object-contain mx-auto mb-4" />
-          </motion.div>
 
           <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.05 }}>
             <Badge variant="secondary" className="mb-4 text-sm font-medium">

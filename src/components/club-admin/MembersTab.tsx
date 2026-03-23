@@ -898,17 +898,19 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   useEffect(() => {
     if (member.plays_league) {
       fromExt("member_league_registrations")
-        .select("league_id, league_association_number, player_rank, leagues:league_id(association_id)")
+        .select("id, league_id, league_association_number, player_rank, leagues:league_id(association_id)")
         .eq("club_member_id", member.id)
-        .maybeSingle()
-        .then(({ data }: any) => {
-          if (data) {
-            const assocId = (data.leagues as any)?.association_id || "";
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .then(({ data, error }: any) => {
+          const row = data && data.length > 0 ? data[0] : null;
+          if (row) {
+            const assocId = (row.leagues as any)?.association_id || "";
             setForm(p => ({
               ...p,
               association_id: assocId,
-              association_number: data.league_association_number || "",
-              ladder_position: data.player_rank ?? p.ladder_position,
+              association_number: row.league_association_number || "",
+              ladder_position: row.player_rank ?? p.ladder_position,
             }));
           }
           setRegLoaded(true);

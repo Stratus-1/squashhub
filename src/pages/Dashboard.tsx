@@ -327,7 +327,25 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Ladder Position */}
+      {/* Honesty Bar Quick Access */}
+      {effectiveClub && (effectiveClub as any).honesty_bar_enabled && (
+        <div className="px-4 mt-2">
+          <Card
+            className="p-3 flex items-center gap-3 cursor-pointer hover:bg-accent/50 transition-colors border-amber-500/30 bg-amber-500/5"
+            onClick={() => navigate("/honesty-bar")}
+          >
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-amber-500/15">
+              <Wine className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Honesty Bar</p>
+              <p className="text-xs text-muted-foreground">Log drinks & snacks to your tab</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </Card>
+        </div>
+      )}
+
       {myLadderPosition != null && (
         <div className="mx-4 mt-2 p-2.5 rounded-lg border bg-green-500/10 border-green-500/30 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />

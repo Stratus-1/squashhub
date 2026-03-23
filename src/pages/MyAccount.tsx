@@ -377,6 +377,77 @@ export default function MyAccount() {
     onError: (e: any) => toast.error(e.message || "Payment failed"),
   });
 
+  // Pay bar tab mutation
+  const payBarMutation = useMutation({
+    mutationFn: async ({ method }: { method: string }) => {
+      if (!clubId || !clubMemberId) throw new Error("No club membership found.");
+      if (barTabTotal <= 0) throw new Error("No outstanding bar tab.");
+
+      const desc = `Honesty Bar payment (${(barTabEntries as any[]).length} items)`;
+
+      // Record transaction
+      const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
+        club_id: clubId,
+        club_member_id: clubMemberId,
+        amount: barTabTotal,
+        type: "debit",
+        method,
+        description: desc,
+        status: method === "card" ? "confirmed" : method === "credit" ? "confirmed" : "pending",
+        confirmed_at: method !== "eft" ? new Date().toISOString() : null,
+      }).select("id").single();
+      if (txErr) throw txErr;
+
+      // Post GL entries for confirmed payments
+      if (method !== "eft") {
+        const journalRef = crypto.randomUUID();
+        await fromExt("club_journal_entries").insert([
+          {
+            club_id: clubId,
+            journal_ref: journalRef,
+            account: "bank" as any,
+            debit: barTabTotal,
+            credit: 0,
+            description: desc,
+            club_member_id: clubMemberId,
+            transaction_id: txData.id,
+          },
+          {
+            club_id: clubId,
+            journal_ref: journalRef,
+            account: "debtors" as any,
+            debit: 0,
+            credit: barTabTotal,
+            description: desc,
+            club_member_id: clubMemberId,
+            transaction_id: txData.id,
+          },
+        ]);
+      }
+
+      // Mark entries as settled
+      if (method !== "eft") {
+        for (const entry of (barTabEntries as any[])) {
+          await fromExt("bar_tab_entries")
+            .update({ settled: true, settled_at: new Date().toISOString() })
+            .eq("id", entry.id);
+        }
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["my-bar-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["bar-tab-unsettled"] });
+      setPayBarOpen(false);
+      if (vars.method === "eft") {
+        toast.success("EFT payment recorded. Admin will confirm and settle your bar tab.");
+      } else {
+        toast.success("Bar tab paid! Items have been settled.");
+      }
+    },
+    onError: (e: any) => toast.error(e.message || "Payment failed"),
+  });
+
   const copyBankDetails = () => {
     const details = [
       club?.bank_name && `Bank: ${club.bank_name}`,

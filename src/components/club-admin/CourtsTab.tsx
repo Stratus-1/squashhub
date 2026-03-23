@@ -131,8 +131,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
           {/* Unsupported device notice */}
           {isUnsupported && (
-            <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="md:col-span-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="text-sm font-medium">Coming Soon</p>
                 <p className="text-xs text-muted-foreground">

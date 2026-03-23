@@ -56,6 +56,20 @@ export default function SuperAdminUsers() {
     },
   });
 
+  // Build club name lookup
+  const clubNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    clubs.forEach((c: any) => m.set(c.id, c.name));
+    return m;
+  }, [clubs]);
+
+  // Build club creator set
+  const clubCreatorIds = useMemo(() => {
+    const s = new Set<string>();
+    clubs.forEach((c: any) => { if (c.created_by) s.add(c.created_by); });
+    return s;
+  }, [clubs]);
+
   // Build maps: club-linked user ids, club admin user ids, and user->club name
   const { clubLinkedUserIds, clubAdminUserIds, userClubMap } = useMemo(() => {
     const linked = new Set<string>();
@@ -64,15 +78,22 @@ export default function SuperAdminUsers() {
     clubMembers.forEach((cm: any) => {
       if (cm.user_id) {
         linked.add(cm.user_id);
-        const clubName = (cm.clubs as any)?.name;
+        const clubName = clubNameMap.get(cm.club_id);
         if (clubName) clubMap.set(cm.user_id, clubName);
         if (cm.role === 'admin' || cm.role === 'captain') {
           admins.add(cm.user_id);
         }
       }
     });
+    // Also mark club creators as admins and link their club
+    clubs.forEach((c: any) => {
+      if (c.created_by) {
+        if (!clubMap.has(c.created_by) && c.name) clubMap.set(c.created_by, c.name);
+        admins.add(c.created_by);
+      }
+    });
     return { clubLinkedUserIds: linked, clubAdminUserIds: admins, userClubMap: clubMap };
-  }, [clubMembers]);
+  }, [clubMembers, clubNameMap, clubs]);
 
   const roleMap = useMemo(() => {
     const m = new Map<string, string[]>();

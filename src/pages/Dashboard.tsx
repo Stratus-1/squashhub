@@ -247,7 +247,7 @@ export default function Dashboard() {
           setOnboardingDone(true);
         }}
       />
-      <DashboardTutorial />
+      
 
       <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
 

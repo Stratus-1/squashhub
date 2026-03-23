@@ -166,35 +166,29 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
   const isDelegate = !!delegateTitle;
   const isProtected = isDelegate;
   return (
-    <Card className="p-3 flex items-start justify-between gap-2">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium truncate">{displayName}</span>
-          <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
-          {delegateTitle && (
-            <Badge variant="default" className="text-[10px] bg-amber-600 hover:bg-amber-700">{delegateTitle}</Badge>
-          )}
-          <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
-            {isLinked ? "✓ Registered" : "✗ Not registered"}
-          </Badge>
-          {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
-          {m.skill_level && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
-          {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
+    <Card className="p-2.5 space-y-2">
+      {/* Row 1: Name + action buttons */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-medium text-sm truncate">{displayName}</span>
+            <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
+            {delegateTitle && (
+              <Badge variant="default" className="text-[10px] bg-amber-600 hover:bg-amber-700">{delegateTitle}</Badge>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+            {displayEmail}
+            {m.club_member_number ? ` • #${m.club_member_number}` : ""}
+            {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground truncate">
-          {displayEmail}
-          {m.club_member_number ? ` • #${m.club_member_number}` : ""}
-          {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
-        </p>
-      </div>
-      <div className="flex items-start gap-3 shrink-0">
-        <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
-        <div className="flex gap-1">
+        <div className="flex gap-0.5 shrink-0">
           {!isProtected && (
             <Button
               variant="ghost"
               size="icon"
-              className={`h-8 w-8 ${isAdmin ? "text-primary" : "text-muted-foreground"}`}
+              className={`h-7 w-7 ${isAdmin ? "text-primary" : "text-muted-foreground"}`}
               onClick={onToggleAdmin}
               title={isAdmin ? "Remove admin rights" : "Grant admin rights"}
             >
@@ -202,14 +196,31 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
             </Button>
           )}
           {isProtected && isAdmin && (
-            <ShieldCheck className="w-3.5 h-3.5 text-primary mx-2 mt-2" />
+            <ShieldCheck className="w-3.5 h-3.5 text-primary mx-1.5 mt-1.5" />
           )}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
           {!isProtected && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
           )}
         </div>
       </div>
+
+      {/* Row 2: Status badges */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
+          {isLinked ? "✓ Registered" : "✗ Not registered"}
+        </Badge>
+        {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
+        {m.skill_level && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
+        {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
+      </div>
+
+      {/* Row 3: Fees */}
+      {fees.length > 0 && (
+        <div className="border-t border-border pt-1.5">
+          <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+        </div>
+      )}
     </Card>
   );
 }
@@ -505,13 +516,13 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="space-y-2">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search members..." className="pl-9" />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => {
+        <div className="flex flex-wrap gap-1.5">
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
             const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_type"];
             const sample = [
               headers.join(","),
@@ -524,9 +535,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
             a.href = url; a.download = "member_import_template.csv"; a.click();
             URL.revokeObjectURL(url);
           }}>
-            <Download className="w-4 h-4 mr-1" />Template
+            <Download className="w-3.5 h-3.5 mr-1" />Template
           </Button>
-          <Button variant="outline" size="sm" onClick={() => {
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
             const escape = (v: string) => v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
             const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_category", "skill_level"];
             const rows = members.map((m: any) => [
@@ -544,10 +555,10 @@ export function MembersTab({ clubId }: { clubId: string }) {
             a.href = url; a.download = "members_export.csv"; a.click();
             URL.revokeObjectURL(url);
           }}>
-            <Download className="w-4 h-4 mr-1" />Export
+            <Download className="w-3.5 h-3.5 mr-1" />Export
           </Button>
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload className="w-4 h-4 mr-1" />CSV Import
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => fileRef.current?.click()}>
+            <Upload className="w-3.5 h-3.5 mr-1" />Import
           </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
           <AddMemberDialog clubId={clubId} open={addOpen} onOpenChange={setAddOpen} />

@@ -69,21 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    // Send branded welcome email via club/platform SMTP (auto-confirm is on, so no default email)
-    if (!error && data?.user && club?.subdomain) {
-      try {
-        await supabase.functions.invoke("auth-email-hook?action=welcome", {
-          body: {
-            to: email,
-            name,
-            subdomain: club.subdomain,
-            source: "club",
-          },
-        });
-      } catch (e) {
-        console.warn("[signUp] Failed to send branded welcome email:", e);
-      }
-    }
+    // Email verification is now required — welcome email sent after verification
 
     return { error: error as Error | null };
   };

@@ -97,7 +97,7 @@ export default function Home() {
       {/* ─── Top Bar ─── */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b border-border/40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <img src={shLogoFull} alt="SquashHub" className="h-10 object-contain" />
+          <span className="text-lg font-bold font-heading">SquashHub</span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate("/auth")}>
               Sign In

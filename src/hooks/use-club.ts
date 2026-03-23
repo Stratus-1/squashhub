@@ -309,14 +309,18 @@ export function useCreateClub() {
         .single();
 
       if (profile?.email) {
-        supabase.functions.invoke("auth-email-hook", {
-          body: {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const fnUrl = `https://${projectId}.supabase.co/functions/v1/auth-email-hook?action=club-registered`;
+        fetch(fnUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": anonKey },
+          body: JSON.stringify({
             to: profile.email,
             name: profile.name || "",
             clubName: newClub.name || club.name || "Your Club",
             clubAdminUrl: `${window.location.origin}/club-admin`,
-          },
-          headers: { action: "club-registered" },
+          }),
         }).catch((err) => console.warn("Club registration email failed:", err));
       }
 

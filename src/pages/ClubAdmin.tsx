@@ -61,6 +61,7 @@ export default function ClubAdmin() {
       case "banking": return <BankingTab club={club} clubId={club.id} />;
       case "finance": return <FinanceTab club={club} clubId={club.id} />;
       case "members": return <MembersTab clubId={club.id} />;
+      case "users": return <UsersTab clubId={club.id} />;
       case "ladder": return <LadderTab clubId={club.id} />;
       case "leagues": return <LeaguesTab clubId={club.id} />;
       case "champs": return <ClubChampsTab clubId={club.id} />;

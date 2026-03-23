@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.create-club]
 verify_jwt = false
+
+[functions.maintenance]
+verify_jwt = false

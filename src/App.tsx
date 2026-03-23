@@ -21,7 +21,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { FeedbackFab } from "@/components/FeedbackFab";
 import { LiveSessionBanner } from "@/components/LiveSessionBanner";
-import { WhatsNewModal } from "@/components/WhatsNewModal";
+
 import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -268,7 +268,7 @@ function AppRoutes() {
       {user && <OutboxSync />}
       <PwaUpdatePrompt />
       <FeedbackFab />
-      <WhatsNewModal />
+      
     </div>
   );
 }

@@ -8,7 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight } from "lucide-react";
+import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight, Wine } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
@@ -24,6 +25,7 @@ export default function MyAccount() {
   const { data: clubData, isLoading: clubLoading } = useMyClub();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
+  const navigate = useNavigate();
 
   const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
     queryKey: ["account-club-member", club?.id, activeMember?.id],
@@ -79,6 +81,24 @@ export default function MyAccount() {
     },
     enabled: !!clubMemberId,
   });
+
+  // Honesty bar unsettled entries
+  const { data: barTabEntries = [], isLoading: barTabLoading } = useQuery({
+    queryKey: ["my-bar-tab", clubMemberId, clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_tab_entries")
+        .select("*, bar_items:bar_item_id(name, category)")
+        .eq("club_member_id", clubMemberId!)
+        .eq("club_id", clubId!)
+        .eq("settled", false)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubMemberId && !!clubId && !!club?.honesty_bar_enabled,
+  });
+
+  const barTabTotal = (barTabEntries as any[]).reduce((s: number, e: any) => s + Number(e.total), 0);
 
   // Auto-create missing fee records (self-healing for failed onboarding inserts)
   const healingDone = useRef(false);
@@ -490,6 +510,57 @@ export default function MyAccount() {
           </Card>
         )}
       </motion.div>
+
+      {/* Honesty Bar Tab */}
+      {club?.honesty_bar_enabled && (
+        <motion.div
+          className="px-4 mt-4"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.07 }}
+        >
+          <h2 className="text-sm font-semibold font-heading mb-2 flex items-center gap-1.5">
+            <Wine className="w-3.5 h-3.5 text-primary" />
+            Honesty Bar
+          </h2>
+          {barTabLoading ? (
+            <Card className="p-4 flex justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </Card>
+          ) : barTabTotal > 0 ? (
+            <Card className="p-3 space-y-2 border-destructive/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">{(barTabEntries as any[]).length} unsettled item{(barTabEntries as any[]).length !== 1 ? "s" : ""}</p>
+                  <p className="text-lg font-bold text-destructive">R{barTabTotal.toFixed(2)}</p>
+                </div>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/honesty-bar")}>
+                  <Wine className="w-3.5 h-3.5" />
+                  View Bar Tab
+                </Button>
+              </div>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {(barTabEntries as any[]).slice(0, 5).map((e: any) => (
+                  <div key={e.id} className="flex justify-between text-xs text-muted-foreground">
+                    <span>{e.quantity}× {e.bar_items?.name || "Item"}</span>
+                    <span>R{Number(e.total).toFixed(2)}</span>
+                  </div>
+                ))}
+                {(barTabEntries as any[]).length > 5 && (
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    +{(barTabEntries as any[]).length - 5} more items
+                  </p>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-3 text-center text-sm text-muted-foreground">
+              <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto mb-1" />
+              No outstanding bar tab 🎉
+            </Card>
+          )}
+        </motion.div>
+      )}
 
       {/* Paid Fees */}
       {paidFees.length > 0 && (

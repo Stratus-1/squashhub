@@ -116,35 +116,36 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   if (fees.length === 0) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
   const total = fees.reduce((s, f) => s + f.amount, 0);
   const totalPaid = fees.filter(f => f.existing?.paid).reduce((s, f) => s + f.amount, 0);
+  const allPaid = totalPaid === total;
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex items-center gap-2 flex-wrap">
       {fees.map((f, i) => (
-        <div key={i} className="flex items-center gap-1.5 text-[11px]">
+        <div key={i} className="flex items-center gap-1 text-[10px]">
           {f.existing ? (
             <Checkbox
               checked={f.existing.paid}
               onCheckedChange={(v) => onToggle(f.existing!.id, !!v)}
-              className="h-3.5 w-3.5"
+              className="h-3 w-3"
             />
           ) : (
             <Checkbox
               checked={false}
               onCheckedChange={() => onCreateFee(f)}
-              className="h-3.5 w-3.5"
+              className="h-3 w-3"
             />
           )}
-          <span className="truncate max-w-[110px]">{f.fee_label}</span>
+          <span className="truncate max-w-[100px]">{f.fee_label}</span>
           <span className="text-muted-foreground">R{f.amount}</span>
           {f.existing?.paid ? (
-            <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
+            <CheckCircle2 className="w-2.5 h-2.5 text-green-600 shrink-0" />
           ) : (
-            <XCircle className="w-3 h-3 text-destructive shrink-0" />
+            <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />
           )}
         </div>
       ))}
-      <div className="text-[10px] font-medium border-t border-border pt-0.5 mt-0.5">
+      <span className={`text-[10px] font-semibold ml-auto ${allPaid ? "text-green-600" : "text-destructive"}`}>
         R{totalPaid} / R{total}
-      </div>
+      </span>
     </div>
   );
 }
@@ -166,58 +167,44 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
   const isDelegate = !!delegateTitle;
   const isProtected = isDelegate;
   return (
-    <Card className="p-2.5 space-y-2">
-      {/* Row 1: Name + action buttons */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-sm truncate">{displayName}</span>
-            <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[10px]">{m.role}</Badge>
-            {delegateTitle && (
-              <Badge variant="default" className="text-[10px] bg-amber-600 hover:bg-amber-700">{delegateTitle}</Badge>
-            )}
-          </div>
-          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-            {displayEmail}
-            {m.club_member_number ? ` • #${m.club_member_number}` : ""}
-            {m.id_number ? ` • Age: ${getAgeFromSaId(m.id_number) ?? "?"}` : ""}
-          </p>
-        </div>
-        <div className="flex gap-0.5 shrink-0">
+    <Card className="p-2 space-y-1.5">
+      {/* Row 1: Name, role, actions — single compact line */}
+      <div className="flex items-center gap-1.5">
+        <span className="font-medium text-[12px] truncate flex-1 min-w-0">{displayName}</span>
+        <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[9px] px-1 py-0 shrink-0">{m.role}</Badge>
+        {delegateTitle && (
+          <Badge variant="default" className="text-[9px] px-1 py-0 bg-amber-600 hover:bg-amber-700 shrink-0">{delegateTitle}</Badge>
+        )}
+        <div className="flex shrink-0 ml-auto">
           {!isProtected && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`h-7 w-7 ${isAdmin ? "text-primary" : "text-muted-foreground"}`}
-              onClick={onToggleAdmin}
-              title={isAdmin ? "Remove admin rights" : "Grant admin rights"}
-            >
-              {isAdmin ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldOff className="w-3.5 h-3.5" />}
+            <Button variant="ghost" size="icon" className={`h-6 w-6 ${isAdmin ? "text-primary" : "text-muted-foreground"}`} onClick={onToggleAdmin} title={isAdmin ? "Remove admin" : "Grant admin"}>
+              {isAdmin ? <ShieldCheck className="w-3 h-3" /> : <ShieldOff className="w-3 h-3" />}
             </Button>
           )}
-          {isProtected && isAdmin && (
-            <ShieldCheck className="w-3.5 h-3.5 text-primary mx-1.5 mt-1.5" />
-          )}
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Edit2 className="w-3.5 h-3.5" /></Button>
+          {isProtected && isAdmin && <ShieldCheck className="w-3 h-3 text-primary mx-1" />}
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onEdit}><Edit2 className="w-3 h-3" /></Button>
           {!isProtected && (
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={onDelete}><Trash2 className="w-3 h-3" /></Button>
           )}
         </div>
       </div>
 
-      {/* Row 2: Status badges */}
-      <div className="flex items-center gap-1 flex-wrap">
-        <Badge variant="outline" className={`text-[10px] ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
-          {isLinked ? "✓ Registered" : "✗ Not registered"}
+      {/* Row 2: Email, member #, status — compact inline */}
+      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-wrap">
+        {displayEmail && <span className="truncate max-w-[140px]">{displayEmail}</span>}
+        {m.club_member_number && <span>#{m.club_member_number}</span>}
+        {m.id_number && <span>Age: {getAgeFromSaId(m.id_number) ?? "?"}</span>}
+        <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
+          {isLinked ? "✓ Reg" : "✗ Unreg"}
         </Badge>
-        {m.plays_league && <Badge variant="outline" className="text-[10px] text-primary">League</Badge>}
-        {m.skill_level && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
-        {m.fee_category && <Badge variant="outline" className="text-[10px]">{m.fee_category.name}</Badge>}
+        {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">League</Badge>}
+        {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
+        {m.fee_category && <Badge variant="outline" className="text-[9px] px-1 py-0">{m.fee_category.name}</Badge>}
       </div>
 
-      {/* Row 3: Fees */}
+      {/* Row 3: Fees — horizontal compact */}
       {fees.length > 0 && (
-        <div className="border-t border-border pt-1.5">
+        <div className="border-t border-border pt-1">
           <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
         </div>
       )}

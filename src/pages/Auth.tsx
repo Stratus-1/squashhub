@@ -405,7 +405,7 @@ export default function Auth() {
                     minLength={6}
                   />
                 </div>
-                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                <HCaptcha ref={captchaRef} />
                 <div className="flex items-start gap-2 pt-1">
                   <Checkbox
                     checked={acceptTerms}

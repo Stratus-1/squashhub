@@ -13,7 +13,7 @@ interface AuthContextType {
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
     club?: { clubName: string; subdomain: string }
-  ) => Promise<{ error: Error | null }>;
+  ) => Promise<{ error: Error | null; userId: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;

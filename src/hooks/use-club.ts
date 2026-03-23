@@ -29,6 +29,7 @@ export interface Club {
   member_number_start?: number;
   challenge_levels_up?: number;
   light_fee_per_hour?: number;
+  honesty_bar_enabled?: boolean;
   created_by?: string;
   created_at: string;
   updated_at: string;

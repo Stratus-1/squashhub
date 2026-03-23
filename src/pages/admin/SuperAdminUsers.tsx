@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,26 @@ export default function SuperAdminUsers() {
     },
   });
 
+  // Fetch all club_members to know which user_ids are club-linked
+  const { data: clubMembers = [] } = useQuery({
+    queryKey: ["sa-club-members-linked"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("user_id")
+        .not("user_id", "is", null);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const clubLinkedUserIds = useMemo(() => {
+    const s = new Set<string>();
+    clubMembers.forEach((cm: any) => {
+      if (cm.user_id) s.add(cm.user_id);
+    });
+    return s;
+  }, [clubMembers]);
+
   const roleMap = useMemo(() => {
     const m = new Map<string, string[]>();
     roles.forEach((r: any) => {
@@ -43,7 +64,17 @@ export default function SuperAdminUsers() {
     return m;
   }, [roles]);
 
-  const filtered = profiles.filter((p: any) => {
+  // Show only: platform role holders OR users NOT linked to any club
+  const platformUsers = useMemo(() => {
+    return profiles.filter((p: any) => {
+      const hasRole = roleMap.has(p.id);
+      const isClubLinked = clubLinkedUserIds.has(p.id);
+      // Always show platform admins/moderators; also show unaffiliated users
+      return hasRole || !isClubLinked;
+    });
+  }, [profiles, roleMap, clubLinkedUserIds]);
+
+  const filtered = platformUsers.filter((p: any) => {
     const q = search.toLowerCase();
     if (!q) return true;
     return (
@@ -56,8 +87,11 @@ export default function SuperAdminUsers() {
     <div className="space-y-6">
       <SEO title="Users — Super Admin" noIndex />
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Users</h2>
-        <p className="text-sm text-muted-foreground mt-1">{profiles.length} registered users</p>
+        <h2 className="text-2xl font-bold text-foreground">Platform Users</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          {platformUsers.length} platform users (admins &amp; unaffiliated).
+          Club-linked users appear under each club's admin panel.
+        </p>
       </div>
 
       <div className="relative max-w-sm">
@@ -72,7 +106,6 @@ export default function SuperAdminUsers() {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Roles</TableHead>
-              <TableHead className="text-center">Rank</TableHead>
               <TableHead className="text-center">Matches</TableHead>
               <TableHead>Joined</TableHead>
             </TableRow>
@@ -80,11 +113,11 @@ export default function SuperAdminUsers() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No users found</TableCell>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No users found</TableCell>
               </TableRow>
             ) : (
               filtered.map((p: any) => {
@@ -97,7 +130,7 @@ export default function SuperAdminUsers() {
                       <div className="flex gap-1">
                         {userRoles.length === 0 && (
                           <Badge variant="outline" className="text-xs gap-1">
-                            <User className="h-3 w-3" /> member
+                            <User className="h-3 w-3" /> unaffiliated
                           </Badge>
                         )}
                         {userRoles.map((r) => (
@@ -107,7 +140,6 @@ export default function SuperAdminUsers() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">—</TableCell>
                     <TableCell className="text-center">{p.matches_played}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(p.created_at), "dd MMM yyyy")}

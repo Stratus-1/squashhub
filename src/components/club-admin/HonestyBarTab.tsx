@@ -183,7 +183,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 function ItemManager({ clubId, items, loading }: { clubId: string; items: BarItem[]; loading: boolean }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", price: "", category: "drinks" });
+  const [form, setForm] = useState({ name: "", price: "", category: "drinks", image_url: "" });
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.price) return;

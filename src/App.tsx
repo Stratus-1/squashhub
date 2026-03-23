@@ -99,6 +99,7 @@ function AuthGate() {
   const { user, signOut } = useAuth();
   const { subdomain: clubSubdomain } = useClubContext();
   const { data: roles, isLoading: rolesLoading } = useMyRoles();
+  const { data: clubData, isLoading: clubDataLoading } = useMyClub();
   const [params] = useSearchParams();
   const redirectTo = (params.get("redirectTo") || "").trim();
   const hardLogout = params.get("hardLogout") === "1" || params.get("logout") === "1";
@@ -127,14 +128,15 @@ function AuthGate() {
     return <Auth />;
   }
 
-  // Wait for roles to load before deciding where to redirect
-  if (rolesLoading) {
+  if (rolesLoading || (clubSubdomain && clubDataLoading)) {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   }
 
-  // On a club subdomain, always redirect to club home (never /admin)
-  const isAdmin = !clubSubdomain && (roles || []).includes("admin");
-  const defaultRedirect = isAdmin ? "/admin" : "/";
+  const isPlatformAdmin = !clubSubdomain && (roles || []).includes("admin");
+  const isClubAdmin = clubData?.membership?.role === "captain" || clubData?.membership?.role === "admin";
+  const defaultRedirect = clubSubdomain
+    ? (isClubAdmin ? "/club-admin" : "/")
+    : (isPlatformAdmin ? "/admin" : "/");
 
   const safeRedirect =
     redirectTo.startsWith("/") && !redirectTo.startsWith("//")

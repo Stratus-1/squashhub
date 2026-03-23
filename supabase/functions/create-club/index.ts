@@ -17,19 +17,22 @@ Deno.serve(async (req) => {
     );
 
     const { userId, clubName, subdomain, userName, userEmail } = await req.json();
+    const normalizedSubdomain = String(subdomain || "").trim().toLowerCase();
+    const normalizedClubName = String(clubName || "").trim();
+    const normalizedUserName = String(userName || "").trim();
+    const normalizedUserEmail = String(userEmail || "").trim().toLowerCase();
 
-    if (!userId || !clubName || !subdomain) {
+    if (!userId || !normalizedClubName || !normalizedSubdomain) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check subdomain uniqueness
     const { data: existing } = await supabaseAdmin
       .from("clubs")
       .select("id")
-      .eq("subdomain", subdomain)
+      .eq("subdomain", normalizedSubdomain)
       .maybeSingle();
 
     if (existing) {
@@ -39,7 +42,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if user already has a club
     const { data: existingMember } = await supabaseAdmin
       .from("club_members")
       .select("club_id")
@@ -53,12 +55,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create the club
+    const { error: profileErr } = await supabaseAdmin
+      .from("profiles")
+      .upsert({
+        id: userId,
+        name: normalizedUserName || "",
+        email: normalizedUserEmail || null,
+      }, { onConflict: "id" });
+
+    if (profileErr) {
+      console.error("Failed to ensure creator profile:", profileErr);
+      return new Response(JSON.stringify({ error: "Failed to prepare creator profile" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: newClub, error: clubErr } = await supabaseAdmin
       .from("clubs")
       .insert({
-        name: clubName,
-        subdomain,
+        name: normalizedClubName,
+        subdomain: normalizedSubdomain,
         created_by: userId,
       })
       .select()
@@ -72,20 +89,42 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Add creator as captain
-    const { error: memErr } = await supabaseAdmin.from("club_members").insert({
-      club_id: newClub.id,
-      user_id: userId,
-      role: "captain",
-      name: userName || "",
-      email: userEmail || "",
-    });
+    const { data: captainMember, error: memErr } = await supabaseAdmin
+      .from("club_members")
+      .insert({
+        club_id: newClub.id,
+        user_id: userId,
+        role: "captain",
+        name: normalizedUserName || "",
+        email: normalizedUserEmail || null,
+      })
+      .select("id")
+      .single();
 
-    if (memErr) {
+    if (memErr || !captainMember) {
       console.error("Failed to add captain:", memErr);
+      await supabaseAdmin.from("clubs").delete().eq("id", newClub.id);
+
+      return new Response(JSON.stringify({ error: memErr?.message || "Failed to add club captain" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    return new Response(JSON.stringify({ club: newClub }), {
+    const { error: updateClubErr } = await supabaseAdmin
+      .from("clubs")
+      .update({ club_captain_member_id: captainMember.id })
+      .eq("id", newClub.id);
+
+    if (updateClubErr) {
+      console.error("Failed to set club captain member:", updateClubErr);
+      return new Response(JSON.stringify({ error: "Club created, but captain setup failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ club: { ...newClub, club_captain_member_id: captainMember.id } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

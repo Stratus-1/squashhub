@@ -118,15 +118,50 @@ export default function Auth() {
     }
     setLoading(true);
     const nowIso = new Date().toISOString();
-    const { error } = await signUp(email, signupPassword, name, phone || undefined, {
+    const { error, userId } = await signUp(email, signupPassword, name, phone || undefined, {
       termsAcceptedAt: nowIso,
       privacyAcceptedAt: nowIso,
     }, { clubName: club, subdomain: sub });
     if (error) {
       toast.error(error.message);
-    } else {
-      setSignupDone(true);
+      setLoading(false);
+      return;
     }
+
+    // Create the club immediately via edge function (before email verification)
+    if (userId) {
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const res = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/create-club`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: anonKey },
+            body: JSON.stringify({
+              userId,
+              clubName: club,
+              subdomain: sub,
+              userName: name,
+              userEmail: email,
+            }),
+          }
+        );
+        const result = await res.json();
+        if (!res.ok) {
+          toast.error(result.error || "Failed to create club");
+          setLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Club creation failed:", err);
+        toast.error("Failed to create club. Please try again.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    setSignupDone(true);
     setLoading(false);
   };
 

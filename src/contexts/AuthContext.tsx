@@ -13,7 +13,7 @@ interface AuthContextType {
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
     club?: { clubName: string; subdomain: string }
-  ) => Promise<{ error: Error | null }>;
+  ) => Promise<{ error: Error | null; userId: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Email verification is now required — welcome email sent after verification
 
-    return { error: error as Error | null };
+    return { error: error as Error | null, userId: data?.user?.id ?? null };
   };
 
   const signIn = async (email: string, password: string) => {

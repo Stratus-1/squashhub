@@ -53,6 +53,8 @@ export default function MyAccount() {
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
+  const [payBarOpen, setPayBarOpen] = useState(false);
+  const [payBarMethod, setPayBarMethod] = useState<"eft" | "card" | "credit">("card");
 
   // Credit transactions scoped by club_member_id (primary identity for all transactions)
   const { data: transactions, isLoading: txLoading } = useQuery({

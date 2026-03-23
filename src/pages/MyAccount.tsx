@@ -245,6 +245,16 @@ export default function MyAccount() {
     return statementLines[statementLines.length - 1]?.balance || 0;
   })();
 
+  // Auto-open bar payment dialog if navigated with ?payBar=1
+  useEffect(() => {
+    if (searchParams.get("payBar") === "1" && !barPayAutoOpened.current && barTabTotal > 0) {
+      barPayAutoOpened.current = true;
+      setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+      setPayBarOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, barTabTotal, creditBalance]);
+
   const pendingTopUps = (transactions || []).filter(
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );

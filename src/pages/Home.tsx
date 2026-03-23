@@ -119,9 +119,6 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
 
         <div className="relative max-w-5xl mx-auto px-4 pt-24 pb-20 text-center space-y-6">
-          <motion.div {...fadeUp} transition={{ duration: 0.5 }}>
-            <img src={shLogoFull} alt="SquashHub" className="h-28 sm:h-36 md:h-44 object-contain mx-auto mb-4" />
-          </motion.div>
 
           <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.05 }}>
             <Badge variant="secondary" className="mb-4 text-sm font-medium">

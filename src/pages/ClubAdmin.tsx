@@ -18,6 +18,7 @@ import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
 import { HonestyBarTab } from "@/components/club-admin/HonestyBarTab";
 import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
+import { UsersTab } from "@/components/club-admin/UsersTab";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 

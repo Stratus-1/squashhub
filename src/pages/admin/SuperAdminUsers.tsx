@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SEO } from "@/components/SEO";
-import { Search, Shield, User } from "lucide-react";
+import { Search, Shield, User, Building2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function SuperAdminUsers() {

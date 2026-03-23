@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ClubProvider, useClubContext } from "@/contexts/ClubContext";
+import { DynamicPwaManifest } from "@/components/DynamicPwaManifest";
 import { MemberProvider } from "@/contexts/MemberContext";
 import { BottomNav } from "@/components/BottomNav";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";

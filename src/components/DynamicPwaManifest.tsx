@@ -11,9 +11,11 @@ const DEFAULT_ICON_512 = "/pwa-512x512.png";
  * Falls back to SquashHub defaults when no club or no logo.
  */
 export function DynamicPwaManifest() {
-  const { club } = useClubContext();
+  const { club, subdomain } = useClubContext();
 
   useEffect(() => {
+    // Only override manifest on club subdomains
+    if (!subdomain) return;
     const name = club?.name || DEFAULT_NAME;
     const hasLogo = !!club?.logo_url;
     const iconSrc = hasLogo ? club.logo_url! : DEFAULT_ICON_192;

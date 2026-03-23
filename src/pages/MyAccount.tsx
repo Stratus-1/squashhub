@@ -911,6 +911,104 @@ export default function MyAccount() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Pay Bar Tab Dialog */}
+      <Dialog open={payBarOpen} onOpenChange={setPayBarOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wine className="w-4 h-4 text-primary" />
+              Pay Honesty Bar Tab
+            </DialogTitle>
+            <DialogDescription>
+              {(barTabEntries as any[]).length} item{(barTabEntries as any[]).length !== 1 ? "s" : ""} — Total R{barTabTotal.toFixed(2)}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 mt-1">
+            <div className="space-y-1 max-h-28 overflow-y-auto">
+              {(barTabEntries as any[]).map((e: any) => (
+                <div key={e.id} className="flex justify-between text-xs">
+                  <span className="truncate text-muted-foreground">{e.quantity}× {e.bar_items?.name || "Item"}</span>
+                  <span className="font-medium shrink-0 ml-2">R{Number(e.total).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={payBarMethod === "credit" ? "default" : "outline"}
+                className="gap-1.5 h-12 text-xs flex-col"
+                onClick={() => setPayBarMethod("credit")}
+                disabled={creditBalance < barTabTotal}
+              >
+                <Wallet className="w-4 h-4" />
+                Credit
+              </Button>
+              <Button
+                variant={payBarMethod === "eft" ? "default" : "outline"}
+                className="gap-1.5 h-12 text-xs flex-col"
+                onClick={() => setPayBarMethod("eft")}
+              >
+                <Building2 className="w-4 h-4" />
+                EFT
+              </Button>
+              <Button
+                variant={payBarMethod === "card" ? "default" : "outline"}
+                className="gap-1.5 h-12 text-xs flex-col"
+                onClick={() => setPayBarMethod("card")}
+              >
+                <CreditCard className="w-4 h-4" />
+                Card
+              </Button>
+            </div>
+
+            {payBarMethod === "credit" && (
+              <Card className="p-3 bg-green-500/5 border-green-500/20">
+                <p className="text-xs text-green-700 dark:text-green-400">
+                  Pay from your credit balance of R{creditBalance.toFixed(2)}
+                </p>
+              </Card>
+            )}
+
+            {payBarMethod === "card" && (
+              <Card className="p-3 bg-muted/50">
+                <p className="text-xs text-muted-foreground">
+                  Card payment via {club?.payment_gateway || "Yoco"}. Your bar tab will be settled immediately.
+                </p>
+              </Card>
+            )}
+
+            {payBarMethod === "eft" && club?.bank_name && (
+              <Card className="p-3 bg-muted/50 space-y-1">
+                <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
+                {club.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {club.bank_name}</p>}
+                {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
+                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Bar</p>
+              </Card>
+            )}
+
+            {payBarMethod === "eft" && (
+              <Card className="p-2.5 bg-amber-500/5 border-amber-500/20">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  After making your EFT, admin will confirm and settle your bar tab.
+                </p>
+              </Card>
+            )}
+
+            <Button
+              className="w-full"
+              disabled={payBarMutation.isPending || barTabTotal <= 0}
+              onClick={() => payBarMutation.mutate({ method: payBarMethod })}
+            >
+              {payBarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Pay R{barTabTotal.toFixed(2)} via {payBarMethod === "credit" ? "Credit" : payBarMethod.toUpperCase()}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <BackToDashboard />
     </div>
   );

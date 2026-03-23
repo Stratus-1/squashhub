@@ -100,8 +100,8 @@ export default function SuperAdminUsers() {
       <div>
         <h2 className="text-2xl font-bold text-foreground">Platform Users</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {platformUsers.length} platform users (admins &amp; unaffiliated).
-          Club-linked users appear under each club's admin panel.
+          {platformUsers.length} platform users (admins, club admins &amp; unaffiliated).
+          Regular club members appear under each club's admin panel.
         </p>
       </div>
 

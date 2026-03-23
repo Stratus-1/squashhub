@@ -82,6 +82,24 @@ export default function MyAccount() {
     enabled: !!clubMemberId,
   });
 
+  // Honesty bar unsettled entries
+  const { data: barTabEntries = [], isLoading: barTabLoading } = useQuery({
+    queryKey: ["my-bar-tab", clubMemberId, clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_tab_entries")
+        .select("*, bar_items:bar_item_id(name, category)")
+        .eq("club_member_id", clubMemberId!)
+        .eq("club_id", clubId!)
+        .eq("settled", false)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubMemberId && !!clubId && !!club?.honesty_bar_enabled,
+  });
+
+  const barTabTotal = (barTabEntries as any[]).reduce((s: number, e: any) => s + Number(e.total), 0);
+
   // Auto-create missing fee records (self-healing for failed onboarding inserts)
   const healingDone = useRef(false);
   useEffect(() => {

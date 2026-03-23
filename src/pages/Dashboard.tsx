@@ -193,6 +193,11 @@ export default function Dashboard() {
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
 
+    // Club admins (captains/admins) skip the member onboarding wizard entirely
+    // — they created the club and should go straight to admin.
+    const isMemberAdmin = myClubMember?.role === "captain" || myClubMember?.role === "admin";
+    if (isMemberAdmin) return;
+
     const legacyNeedsOnboarding =
       !profile.name || profile.name === "" || profile.name === "New Player";
 

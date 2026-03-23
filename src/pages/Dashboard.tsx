@@ -9,7 +9,7 @@ import { SEO } from "@/components/SEO";
 import { Users } from "lucide-react";
 
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
-import { DashboardTutorial } from "@/components/DashboardTutorial";
+
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine } from "lucide-react";

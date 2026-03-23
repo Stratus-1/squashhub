@@ -307,8 +307,50 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Club registered email action ──
+    if (action === "club-registered") {
+      const body = await req.json();
+      const recipientEmail = body.to;
+      const recipientName = body.name || "";
+      const clubName = body.clubName || "Your Club";
+      const clubAdminUrl = body.clubAdminUrl || "";
 
-    const payload = await req.json();
+      if (!recipientEmail) {
+        return new Response(JSON.stringify({ error: "Missing 'to' field" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Use platform SMTP for club registration (club doesn't have SMTP yet)
+      let smtpConfig = await getPlatformSmtp();
+      if (!smtpConfig || !hasSmtpConfig(smtpConfig)) {
+        console.log("[auth-email-hook] No platform SMTP config for club-registered email, skipping");
+        return new Response(JSON.stringify({ skipped: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Override the config name with the new club name for branding
+      const emailConfig = { ...smtpConfig, name: clubName };
+      const subject = `Welcome to SquashHub — ${clubName} is live!`;
+      const html = buildConfirmationHtml(emailConfig, clubAdminUrl, recipientName, "club_registered");
+      const text = `Congratulations! ${clubName} has been registered on SquashHub. You are the club captain with full admin rights. Visit your Club Admin panel to get started.`;
+
+      const sendPromise = sendViaSmtp(smtpConfig, recipientEmail, subject, html, text);
+      const timeoutPromise = new Promise<{ ok: false; reason: string }>((resolve) =>
+        setTimeout(() => resolve({ ok: false, reason: "SMTP timeout after 15s" }), 15000),
+      );
+
+      const result = await Promise.race([sendPromise, timeoutPromise]);
+
+      return new Response(JSON.stringify({ success: result.ok, reason: result.ok ? undefined : result.reason }), {
+        status: result.ok ? 200 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     const user = payload?.user;
     const emailData = payload?.email_data;
 

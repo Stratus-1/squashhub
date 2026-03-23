@@ -110,6 +110,11 @@ export default function Home() {
         </div>
       </header>
 
+      {/* ─── Logo ─── */}
+      <div className="px-4 sm:px-6 lg:px-[5%] pt-6">
+        <img src={shLogoFull} alt="SquashHub" className="h-20 sm:h-24 md:h-28 object-contain" />
+      </div>
+
       {/* ─── Hero ─── */}
       <section className="relative overflow-hidden">
         <div
@@ -118,7 +123,7 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
 
-        <div className="relative max-w-5xl mx-auto px-4 pt-24 pb-20 text-center space-y-6">
+        <div className="relative max-w-5xl mx-auto px-4 pt-16 pb-20 text-center space-y-6">
 
           <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.05 }}>
             <Badge variant="secondary" className="mb-4 text-sm font-medium">

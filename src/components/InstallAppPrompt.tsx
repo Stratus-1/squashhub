@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useClubContext } from "@/contexts/ClubContext";
 import { Capacitor } from "@capacitor/core";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, Share2, PlusSquare, Smartphone } from "lucide-react";

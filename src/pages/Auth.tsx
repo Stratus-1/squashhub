@@ -62,14 +62,18 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (captchaToken) {
-      const valid = await verifyCaptchaToken(captchaToken);
-      if (!valid) { toast.error("Captcha verification failed"); return; }
-    }
     setLoading(true);
-    const { error } = await signIn(loginEmail.trim(), loginPassword);
-    if (error) toast.error(error.message);
-    setLoading(false);
+    try {
+      const token = await captchaRef.current?.execute().catch(() => null);
+      if (token) {
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+      const { error } = await signIn(loginEmail.trim(), loginPassword);
+      if (error) toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {

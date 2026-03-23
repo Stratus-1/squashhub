@@ -134,15 +134,30 @@ export default function SuperAdminUsers() {
             ) : (
               filtered.map((p: any) => {
                 const userRoles = roleMap.get(p.id) || [];
+                const clubName = userClubMap.get(p.id);
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.email || "—"}</TableCell>
                     <TableCell>
+                      {clubName ? (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          <Building2 className="h-3 w-3" /> {clubName}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-1">
-                        {userRoles.length === 0 && (
+                        {userRoles.length === 0 && !clubAdminUserIds.has(p.id) && (
                           <Badge variant="outline" className="text-xs gap-1">
                             <User className="h-3 w-3" /> unaffiliated
+                          </Badge>
+                        )}
+                        {clubAdminUserIds.has(p.id) && !userRoles.includes("admin") && (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Shield className="h-3 w-3" /> club admin
                           </Badge>
                         )}
                         {userRoles.map((r) => (

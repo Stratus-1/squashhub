@@ -516,13 +516,13 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="space-y-2">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search members..." className="pl-9" />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => {
+        <div className="flex flex-wrap gap-1.5">
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
             const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_type"];
             const sample = [
               headers.join(","),
@@ -535,9 +535,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
             a.href = url; a.download = "member_import_template.csv"; a.click();
             URL.revokeObjectURL(url);
           }}>
-            <Download className="w-4 h-4 mr-1" />Template
+            <Download className="w-3.5 h-3.5 mr-1" />Template
           </Button>
-          <Button variant="outline" size="sm" onClick={() => {
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
             const escape = (v: string) => v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v;
             const headers = ["name", "email", "phone", "gender", "member_number", "id_number", "address", "plays_league", "ranking", "fee_category", "skill_level"];
             const rows = members.map((m: any) => [
@@ -555,10 +555,10 @@ export function MembersTab({ clubId }: { clubId: string }) {
             a.href = url; a.download = "members_export.csv"; a.click();
             URL.revokeObjectURL(url);
           }}>
-            <Download className="w-4 h-4 mr-1" />Export
+            <Download className="w-3.5 h-3.5 mr-1" />Export
           </Button>
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload className="w-4 h-4 mr-1" />CSV Import
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => fileRef.current?.click()}>
+            <Upload className="w-3.5 h-3.5 mr-1" />Import
           </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
           <AddMemberDialog clubId={clubId} open={addOpen} onOpenChange={setAddOpen} />

@@ -120,6 +120,10 @@ function buildConfirmationHtml(
     heading = "Welcome! 🎉";
     bodyText = `Your account with <strong>${clubName}</strong> has been created successfully. You can now log in and start using the platform.`;
     buttonText = "";
+  } else if (emailType === "club_registered") {
+    heading = "Club Registered! 🏸";
+    bodyText = `Congratulations! Your club <strong>${clubName}</strong> has been successfully registered on SquashHub. You are now the club captain with full admin rights. Head to your Club Admin panel to start setting up courts, members, and more.`;
+    buttonText = "Go to Club Admin";
   }
 
   const greeting = recipientName ? `Hi ${escapeHtml(recipientName)},` : "Hi,";

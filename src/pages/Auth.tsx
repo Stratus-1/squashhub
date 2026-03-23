@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
-import { HCaptcha, verifyCaptchaToken } from "@/components/HCaptcha";
+import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.jpeg";
 
 export default function Auth() {

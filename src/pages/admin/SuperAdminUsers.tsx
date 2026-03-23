@@ -39,8 +39,18 @@ export default function SuperAdminUsers() {
     queryKey: ["sa-club-members-linked"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("user_id, role, club_id, clubs(name)")
+        .select("user_id, role, club_id")
         .not("user_id", "is", null);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch all clubs for name lookup
+  const { data: clubs = [] } = useQuery({
+    queryKey: ["sa-clubs-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clubs").select("id, name, created_by");
       if (error) throw error;
       return data || [];
     },

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SEO } from "@/components/SEO";
-import { Search, Shield, User } from "lucide-react";
+import { Search, Shield, User, Building2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function SuperAdminUsers() {
@@ -34,24 +34,34 @@ export default function SuperAdminUsers() {
     },
   });
 
-  // Fetch all club_members to know which user_ids are club-linked
+  // Fetch all club_members with club info to know linkage and admin status
   const { data: clubMembers = [] } = useQuery({
     queryKey: ["sa-club-members-linked"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("user_id")
+        .select("user_id, role, club_id, clubs(name)")
         .not("user_id", "is", null);
       if (error) throw error;
       return data || [];
     },
   });
 
-  const clubLinkedUserIds = useMemo(() => {
-    const s = new Set<string>();
+  // Build maps: club-linked user ids, club admin user ids, and user->club name
+  const { clubLinkedUserIds, clubAdminUserIds, userClubMap } = useMemo(() => {
+    const linked = new Set<string>();
+    const admins = new Set<string>();
+    const clubMap = new Map<string, string>();
     clubMembers.forEach((cm: any) => {
-      if (cm.user_id) s.add(cm.user_id);
+      if (cm.user_id) {
+        linked.add(cm.user_id);
+        const clubName = (cm.clubs as any)?.name;
+        if (clubName) clubMap.set(cm.user_id, clubName);
+        if (cm.role === 'admin' || cm.role === 'captain') {
+          admins.add(cm.user_id);
+        }
+      }
     });
-    return s;
+    return { clubLinkedUserIds: linked, clubAdminUserIds: admins, userClubMap: clubMap };
   }, [clubMembers]);
 
   const roleMap = useMemo(() => {
@@ -64,15 +74,16 @@ export default function SuperAdminUsers() {
     return m;
   }, [roles]);
 
-  // Show only: platform role holders OR users NOT linked to any club
+  // Show: platform role holders, club admins/captains, OR unaffiliated users
   const platformUsers = useMemo(() => {
     return profiles.filter((p: any) => {
       const hasRole = roleMap.has(p.id);
+      const isClubAdmin = clubAdminUserIds.has(p.id);
       const isClubLinked = clubLinkedUserIds.has(p.id);
-      // Always show platform admins/moderators; also show unaffiliated users
-      return hasRole || !isClubLinked;
+      // Show platform admins/moderators, club admins, and unaffiliated users
+      return hasRole || isClubAdmin || !isClubLinked;
     });
-  }, [profiles, roleMap, clubLinkedUserIds]);
+  }, [profiles, roleMap, clubAdminUserIds, clubLinkedUserIds]);
 
   const filtered = platformUsers.filter((p: any) => {
     const q = search.toLowerCase();
@@ -89,8 +100,8 @@ export default function SuperAdminUsers() {
       <div>
         <h2 className="text-2xl font-bold text-foreground">Platform Users</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {platformUsers.length} platform users (admins &amp; unaffiliated).
-          Club-linked users appear under each club's admin panel.
+          {platformUsers.length} platform users (admins, club admins &amp; unaffiliated).
+          Regular club members appear under each club's admin panel.
         </p>
       </div>
 
@@ -105,6 +116,7 @@ export default function SuperAdminUsers() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Club</TableHead>
               <TableHead>Roles</TableHead>
               <TableHead className="text-center">Matches</TableHead>
               <TableHead>Joined</TableHead>
@@ -113,24 +125,39 @@ export default function SuperAdminUsers() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No users found</TableCell>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No users found</TableCell>
               </TableRow>
             ) : (
               filtered.map((p: any) => {
                 const userRoles = roleMap.get(p.id) || [];
+                const clubName = userClubMap.get(p.id);
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.email || "—"}</TableCell>
                     <TableCell>
+                      {clubName ? (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          <Building2 className="h-3 w-3" /> {clubName}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-1">
-                        {userRoles.length === 0 && (
+                        {userRoles.length === 0 && !clubAdminUserIds.has(p.id) && (
                           <Badge variant="outline" className="text-xs gap-1">
                             <User className="h-3 w-3" /> unaffiliated
+                          </Badge>
+                        )}
+                        {clubAdminUserIds.has(p.id) && !userRoles.includes("admin") && (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Shield className="h-3 w-3" /> club admin
                           </Badge>
                         )}
                         {userRoles.map((r) => (

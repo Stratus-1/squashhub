@@ -34,24 +34,34 @@ export default function SuperAdminUsers() {
     },
   });
 
-  // Fetch all club_members to know which user_ids are club-linked
+  // Fetch all club_members with club info to know linkage and admin status
   const { data: clubMembers = [] } = useQuery({
     queryKey: ["sa-club-members-linked"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("user_id")
+        .select("user_id, role, club_id, clubs(name)")
         .not("user_id", "is", null);
       if (error) throw error;
       return data || [];
     },
   });
 
-  const clubLinkedUserIds = useMemo(() => {
-    const s = new Set<string>();
+  // Build maps: club-linked user ids, club admin user ids, and user->club name
+  const { clubLinkedUserIds, clubAdminUserIds, userClubMap } = useMemo(() => {
+    const linked = new Set<string>();
+    const admins = new Set<string>();
+    const clubMap = new Map<string, string>();
     clubMembers.forEach((cm: any) => {
-      if (cm.user_id) s.add(cm.user_id);
+      if (cm.user_id) {
+        linked.add(cm.user_id);
+        const clubName = (cm.clubs as any)?.name;
+        if (clubName) clubMap.set(cm.user_id, clubName);
+        if (cm.role === 'admin' || cm.role === 'captain') {
+          admins.add(cm.user_id);
+        }
+      }
     });
-    return s;
+    return { clubLinkedUserIds: linked, clubAdminUserIds: admins, userClubMap: clubMap };
   }, [clubMembers]);
 
   const roleMap = useMemo(() => {

@@ -42,6 +42,7 @@ const CATEGORIES = [
 ];
 
 export default function HonestyBar() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { club } = useClubContext();
   const { activeMember } = useMemberContext();

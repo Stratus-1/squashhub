@@ -210,7 +210,8 @@ function CourtsSection({ clubId, relayDeviceType }: { clubId: string; relayDevic
     <Card className="p-6 space-y-4">
       <h3 className="font-semibold">Courts ({courts.length})</h3>
       <p className="text-xs text-muted-foreground">
-        💡 To enable automatic court lights, add the Shelly device ID for each court.
+        💡 To enable automatic court lights, add the relay device ID for each court.
+      </p>
       </p>
       <div className="space-y-3">
         {courts.map(c => {

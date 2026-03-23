@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package } from "lucide-react";
+import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface BarItem {
   id: string;
@@ -20,6 +21,7 @@ interface BarItem {
   category: string;
   active: boolean;
   sort_order: number;
+  image_url?: string | null;
 }
 
 interface BarTabEntry {
@@ -182,7 +184,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 function ItemManager({ clubId, items, loading }: { clubId: string; items: BarItem[]; loading: boolean }) {
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", price: "", category: "drinks" });
+  const [form, setForm] = useState({ name: "", price: "", category: "drinks", image_url: "" });
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.price) return;
@@ -192,11 +194,12 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       price: parseFloat(form.price),
       category: form.category,
       sort_order: items.length,
+      image_url: form.image_url.trim() || null,
     });
     if (error) toast.error(error.message);
     else {
       toast.success("Item added");
-      setForm({ name: "", price: "", category: "drinks" });
+      setForm({ name: "", price: "", category: "drinks", image_url: "" });
       setAdding(false);
       qc.invalidateQueries({ queryKey: ["bar-items"] });
     }
@@ -215,6 +218,16 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
     else qc.invalidateQueries({ queryKey: ["bar-items"] });
   };
 
+  const handleUpdateImageUrl = async (id: string, image_url: string) => {
+    const { error } = await fromExt("bar_items").update({ image_url: image_url.trim() || null }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success("Image updated"); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
+  };
+
+  const CATEGORY_EMOJI: Record<string, string> = {
+    drinks: "🥤", alcohol: "🍺", snacks: "🍿", other: "📦",
+  };
+
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -226,7 +239,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
 
       {adding && (
         <div className="rounded-lg border p-3 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Input
               value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
@@ -248,6 +261,11 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                 ))}
               </SelectContent>
             </Select>
+            <Input
+              value={form.image_url}
+              onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))}
+              placeholder="Image URL (optional)"
+            />
           </div>
           <Button size="sm" onClick={handleAdd}>Add Item</Button>
         </div>
@@ -256,10 +274,15 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       <div className="space-y-2">
         {items.map(item => {
           const cat = CATEGORIES.find(c => c.value === item.category);
-          const Icon = cat?.icon || Package;
           return (
             <div key={item.id} className="flex items-center gap-3 rounded-lg border p-2.5">
-              <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm">{CATEGORY_EMOJI[item.category] || "📦"}</span>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <span className={`text-sm font-medium ${!item.active ? "line-through text-muted-foreground" : ""}`}>
                   {item.name}
@@ -267,6 +290,18 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                 <span className="text-xs text-muted-foreground ml-2">R{item.price.toFixed(2)}</span>
               </div>
               <Badge variant="outline" className="text-[10px]">{cat?.label}</Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Set image"
+                onClick={() => {
+                  const url = prompt("Paste image URL for " + item.name, item.image_url || "");
+                  if (url !== null) handleUpdateImageUrl(item.id, url);
+                }}
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+              </Button>
               <Switch
                 checked={item.active}
                 onCheckedChange={() => handleToggleActive(item.id, item.active)}

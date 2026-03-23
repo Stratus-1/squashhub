@@ -75,6 +75,7 @@ export type Database = {
           club_id: string
           created_at: string
           id: string
+          image_url: string | null
           name: string
           price: number
           sort_order: number
@@ -86,6 +87,7 @@ export type Database = {
           club_id: string
           created_at?: string
           id?: string
+          image_url?: string | null
           name: string
           price?: number
           sort_order?: number
@@ -97,6 +99,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           name?: string
           price?: number
           sort_order?: number

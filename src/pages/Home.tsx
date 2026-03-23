@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
-import shLogoFull from "@/assets/shub-logo-full.jpeg";
+import shLogoFull from "@/assets/shub-logo-full.png";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },

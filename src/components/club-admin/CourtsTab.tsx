@@ -29,11 +29,16 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const [lightsForm, setLightsForm] = useState({
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
     shelly_auth_key: "",
+    relay_device_type: "shelly" as RelayDevice,
   });
 
   useEffect(() => {
     if (secrets) {
-      setLightsForm(p => ({ ...p, shelly_auth_key: secrets.shelly_auth_key || "" }));
+      setLightsForm(p => ({
+        ...p,
+        shelly_auth_key: secrets.shelly_auth_key || "",
+        relay_device_type: (secrets as any).relay_device_type || "shelly",
+      }));
     }
   }, [secrets]);
 
@@ -45,7 +50,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       });
       await updateSecrets.mutateAsync({
         club_id: clubId,
-        shelly_auth_key: lightsForm.shelly_auth_key || null,
+        shelly_auth_key: lightsForm.relay_device_type === "shelly" ? (lightsForm.shelly_auth_key || null) : null,
+        relay_device_type: lightsForm.relay_device_type,
       } as any);
       toast.success("Court light settings saved");
     } catch (err: any) {
@@ -53,15 +59,45 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
+  const selectedDevice = RELAY_DEVICES.find(d => d.value === lightsForm.relay_device_type);
+  const isSupported = lightsForm.relay_device_type === "shelly";
+  const isOther = lightsForm.relay_device_type === "other";
+  const isUnsupported = !isSupported && !isOther;
+
   return (
     <div className="space-y-6 mt-4">
-      <CourtsSection clubId={clubId} />
+      <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} />
 
       {/* Court Lights */}
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Court Lights</h3>
-        <p className="text-sm text-muted-foreground">Configure automatic court light control via Shelly smart relays.</p>
+        <p className="text-sm text-muted-foreground">Configure automatic court light control via smart relays.</p>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Device type selector */}
+          <div className="space-y-1">
+            <Label>Relay Device Type</Label>
+            <Select
+              value={lightsForm.relay_device_type}
+              onValueChange={(v: RelayDevice) => setLightsForm(p => ({ ...p, relay_device_type: v }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RELAY_DEVICES.map(d => (
+                  <SelectItem key={d.value} value={d.value}>
+                    <span className="flex items-center gap-2">
+                      {d.label}
+                      {d.value === "shelly" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Supported</span>}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{selectedDevice?.description}</p>
+          </div>
+
           <div className="space-y-1">
             <Label>Light Fee per Hour (R)</Label>
             <Input
@@ -70,27 +106,59 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
               onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
               placeholder="e.g. 50"
             />
-          </div>
-          <div className="flex items-end">
-            <p className="text-sm text-muted-foreground pb-2">
-              {lightsForm.light_fee_per_hour > 0
-                ? <>Members will be charged <span className="font-semibold text-foreground">R{lightsForm.light_fee_per_hour}</span>/hour when lights are enabled.</>
-                : "No light fee configured — lights are free."}
-            </p>
-          </div>
-          <div className="space-y-1 md:col-span-2">
-            <Label>Shelly Cloud Auth Key</Label>
-            <Input
-              type="password"
-              value={lightsForm.shelly_auth_key}
-              onChange={e => setLightsForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
-              placeholder="Paste your Shelly Cloud auth key"
-            />
             <p className="text-xs text-muted-foreground">
-              Find this in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key.
+              {lightsForm.light_fee_per_hour > 0
+                ? <>Members will be charged <span className="font-semibold text-foreground">R{lightsForm.light_fee_per_hour}</span>/hour.</>
+                : "No fee — lights are free."}
             </p>
           </div>
+
+          {/* Shelly-specific fields */}
+          {isSupported && (
+            <div className="space-y-1 md:col-span-2">
+              <Label>Shelly Cloud Auth Key</Label>
+              <Input
+                type="password"
+                value={lightsForm.shelly_auth_key}
+                onChange={e => setLightsForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
+                placeholder="Paste your Shelly Cloud auth key"
+              />
+              <p className="text-xs text-muted-foreground">
+                Find this in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key.
+              </p>
+            </div>
+          )}
+
+          {/* Unsupported device notice */}
+          {isUnsupported && (
+            <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Coming Soon</p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedDevice?.label} integration is on our roadmap. For now, you can still configure light fees and court details.
+                  Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a> for early access or integration assistance.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Other device notice */}
+          {isOther && (
+            <div className="md:col-span-2 rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Custom Integration</p>
+                <p className="text-xs text-muted-foreground">
+                  Using a different relay system? We can help integrate it. Contact us at{" "}
+                  <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
+                  with your device details and we'll work with you to set it up.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
+
         <Button onClick={handleSaveLights} disabled={updateClub.isPending} className="w-full md:w-auto">
           {updateClub.isPending ? "Saving..." : "Save Light Settings"}
         </Button>

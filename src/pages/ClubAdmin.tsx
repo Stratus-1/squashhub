@@ -51,6 +51,8 @@ export default function ClubAdmin() {
             <TabsTrigger value="ladder" className="text-[11px] flex-1 h-7 px-2"><ListOrdered className="w-3.5 h-3.5 mr-1 hidden md:inline" />Ladder</TabsTrigger>
             <TabsTrigger value="leagues" className="text-[11px] flex-1 h-7 px-2"><Trophy className="w-3.5 h-3.5 mr-1 hidden md:inline" />Leagues</TabsTrigger>
             <TabsTrigger value="champs" className="text-[11px] flex-1 h-7 px-2"><Medal className="w-3.5 h-3.5 mr-1 hidden md:inline" />Champs</TabsTrigger>
+            <TabsTrigger value="bar" className="text-[11px] flex-1 h-7 px-2"><Beer className="w-3.5 h-3.5 mr-1 hidden md:inline" />Bar</TabsTrigger>
+            <TabsTrigger value="access" className="text-[11px] flex-1 h-7 px-2"><DoorOpen className="w-3.5 h-3.5 mr-1 hidden md:inline" />Access</TabsTrigger>
           </TabsList>
 
           <TabsContent value="club"><ClubInfoTab club={club} clubId={club.id} /></TabsContent>
@@ -62,6 +64,8 @@ export default function ClubAdmin() {
           <TabsContent value="ladder"><LadderTab clubId={club.id} /></TabsContent>
           <TabsContent value="leagues"><LeaguesTab clubId={club.id} /></TabsContent>
           <TabsContent value="champs"><ClubChampsTab clubId={club.id} /></TabsContent>
+          <TabsContent value="bar"><HonestyBarTab club={club} clubId={club.id} /></TabsContent>
+          <TabsContent value="access"><AccessControlTab club={club} clubId={club.id} /></TabsContent>
           <TabsContent value="settings"><SettingsTab club={club} clubId={club.id} /></TabsContent>
         </Tabs>
       </div>

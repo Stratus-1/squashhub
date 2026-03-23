@@ -37,6 +37,7 @@ function isAndroidDevice() {
 }
 
 export function InstallAppPrompt() {
+  const { subdomain } = useClubContext();
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [installed, setInstalled] = useState(false);

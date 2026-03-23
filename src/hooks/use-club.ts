@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 
 export interface Club {
@@ -299,6 +300,30 @@ export function useCreateClub() {
         role: "captain",
       });
       if (memErr) throw memErr;
+
+      // Send club registration confirmation email (fire-and-forget)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, email")
+        .eq("id", user!.id)
+        .single();
+
+      if (profile?.email) {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const fnUrl = `https://${projectId}.supabase.co/functions/v1/auth-email-hook?action=club-registered`;
+        fetch(fnUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": anonKey },
+          body: JSON.stringify({
+            to: profile.email,
+            name: profile.name || "",
+            clubName: newClub.name || club.name || "Your Club",
+            clubAdminUrl: `${window.location.origin}/club-admin`,
+          }),
+        }).catch((err) => console.warn("Club registration email failed:", err));
+      }
+
       return newClub as Club;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-club"] }),

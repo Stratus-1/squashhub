@@ -6,9 +6,20 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, AlertCircle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+const RELAY_DEVICES = [
+  { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
+  { value: "sonoff", label: "Sonoff", description: "Sonoff eWeLink smart switches" },
+  { value: "tasmota", label: "Tasmota", description: "Tasmota-flashed devices (ESP-based)" },
+  { value: "home_assistant", label: "Home Assistant", description: "HA hub with relay automations" },
+  { value: "other", label: "Other", description: "Contact SquashHub for integration assistance" },
+] as const;
+
+type RelayDevice = typeof RELAY_DEVICES[number]["value"];
 
 export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();

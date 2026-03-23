@@ -66,6 +66,7 @@ import HonestyBar from "./pages/HonestyBar";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import { SiteFooter } from "@/components/SiteFooter";

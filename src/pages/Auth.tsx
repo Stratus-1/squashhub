@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
-import { HCaptcha, verifyCaptchaToken } from "@/components/HCaptcha";
+import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.jpeg";
 
 export default function Auth() {
@@ -20,7 +20,7 @@ export default function Auth() {
   const [showReset, setShowReset] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptchaHandle>(null);
 
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
@@ -62,14 +62,18 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (captchaToken) {
-      const valid = await verifyCaptchaToken(captchaToken);
-      if (!valid) { toast.error("Captcha verification failed"); return; }
-    }
     setLoading(true);
-    const { error } = await signIn(loginEmail.trim(), loginPassword);
-    if (error) toast.error(error.message);
-    setLoading(false);
+    try {
+      const token = await captchaRef.current?.execute().catch(() => null);
+      if (token) {
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+      const { error } = await signIn(loginEmail.trim(), loginPassword);
+      if (error) toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -113,12 +117,15 @@ export default function Auth() {
       return;
     }
 
-    if (!captchaToken) {
-      toast.error("Please complete the captcha verification");
-      return;
+    setLoading(true);
+    try {
+      const token = await captchaRef.current?.execute().catch(() => null);
+      if (!token) { toast.error("Please complete the captcha verification"); setLoading(false); return; }
+      const valid = await verifyCaptchaToken(token);
+      if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+    } catch {
+      toast.error("Captcha verification failed"); setLoading(false); return;
     }
-    const valid = await verifyCaptchaToken(captchaToken);
-    if (!valid) { toast.error("Captcha verification failed"); return; }
     setLoading(true);
     const nowIso = new Date().toISOString();
     const { error, userId } = await signUp(email, signupPassword, name, phone || undefined, {
@@ -259,7 +266,7 @@ export default function Auth() {
                     </button>
                   </div>
                 </div>
-                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                <HCaptcha ref={captchaRef} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -398,7 +405,7 @@ export default function Auth() {
                     minLength={6}
                   />
                 </div>
-                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                <HCaptcha ref={captchaRef} />
                 <div className="flex items-start gap-2 pt-1">
                   <Checkbox
                     checked={acceptTerms}

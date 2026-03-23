@@ -18,6 +18,7 @@ interface ClubContextType {
     chairman_member_id: string | null;
     secretary_member_id: string | null;
     club_captain_member_id: string | null;
+    honesty_bar_enabled: boolean;
   } | null;
   isLoading: boolean;
 }

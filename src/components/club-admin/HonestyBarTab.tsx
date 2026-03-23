@@ -91,7 +91,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
   const toggleBarEnabled = async () => {
     try {
-      await updateClub.mutateAsync({ id: club.id, honesty_bar_enabled: !club.honesty_bar_enabled } as any);
+      await updateClub.mutateAsync({ id: club.id, honesty_bar_enabled: !club.honesty_bar_enabled });
       toast.success(club.honesty_bar_enabled ? "Honesty bar disabled" : "Honesty bar enabled");
     } catch (err: any) {
       toast.error(err.message);

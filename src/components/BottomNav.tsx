@@ -13,7 +13,7 @@ const baseNavItems = [
 
 export function BottomNav() {
   const { club } = useClubContext();
-  const honestyBarEnabled = !!(club as any)?.honesty_bar_enabled;
+  const honestyBarEnabled = !!club?.honesty_bar_enabled;
 
   const navItems = honestyBarEnabled
     ? [

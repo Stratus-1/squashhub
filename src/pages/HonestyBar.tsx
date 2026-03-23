@@ -133,7 +133,7 @@ export default function HonestyBar() {
     items: items.filter(i => i.category === cat.value),
   })).filter(g => g.items.length > 0);
 
-  if (!clubId || !(club as any)?.honesty_bar_enabled) {
+  if (!clubId || !club?.honesty_bar_enabled) {
     return (
       <div className="bottom-nav-safe">
         <PageHeader title="Honesty Bar" backTo="/" />

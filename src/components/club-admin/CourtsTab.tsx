@@ -167,7 +167,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   );
 }
 
-function CourtsSection({ clubId }: { clubId: string }) {
+function CourtsSection({ clubId, relayDeviceType }: { clubId: string; relayDeviceType: RelayDevice }) {
   const qc = useQueryClient();
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});

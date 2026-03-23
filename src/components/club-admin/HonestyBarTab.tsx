@@ -110,7 +110,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             </p>
           </div>
           <Switch
-            checked={!!(club as any).honesty_bar_enabled}
+            checked={!!club.honesty_bar_enabled}
             onCheckedChange={toggleBarEnabled}
           />
         </div>

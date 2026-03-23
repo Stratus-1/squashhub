@@ -30,6 +30,7 @@ const ADMIN_TABS = [
   { value: "banking", label: "Banking", icon: Banknote },
   { value: "finance", label: "Finance", icon: Landmark },
   { value: "members", label: "Members", icon: Users },
+  { value: "users", label: "Users", icon: UserCheck },
   { value: "ladder", label: "Ladder", icon: ListOrdered },
   { value: "leagues", label: "Leagues", icon: Trophy },
   { value: "champs", label: "Champs", icon: Medal },

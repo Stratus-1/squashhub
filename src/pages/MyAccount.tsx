@@ -601,7 +601,7 @@ export default function MyAccount() {
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </Card>
           ) : barTabTotal > 0 ? (
-            <Card className="p-3 space-y-2 border-destructive/20">
+            <Card className="p-3 space-y-3 border-destructive/20">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">{(barTabEntries as any[]).length} unsettled item{(barTabEntries as any[]).length !== 1 ? "s" : ""}</p>
@@ -609,7 +609,7 @@ export default function MyAccount() {
                 </div>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/honesty-bar")}>
                   <Wine className="w-3.5 h-3.5" />
-                  View Bar Tab
+                  View Tab
                 </Button>
               </div>
               <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -625,6 +625,16 @@ export default function MyAccount() {
                   </p>
                 )}
               </div>
+              <Button
+                className="w-full gap-2"
+                onClick={() => {
+                  setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+                  setPayBarOpen(true);
+                }}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Pay Now · R{barTabTotal.toFixed(2)}
+              </Button>
             </Card>
           ) : (
             <Card className="p-3 text-center text-sm text-muted-foreground">

@@ -56,6 +56,18 @@ export default function MyAccount() {
   const [payBarOpen, setPayBarOpen] = useState(false);
   const [payBarMethod, setPayBarMethod] = useState<"eft" | "card" | "credit">("card");
 
+  // Auto-open bar payment dialog from URL param
+  const [searchParams, setSearchParams] = useSearchParams();
+  const barPayAutoOpened = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("payBar") === "1" && !barPayAutoOpened.current && barTabTotal > 0) {
+      barPayAutoOpened.current = true;
+      setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+      setPayBarOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, barTabTotal, creditBalance]);
+
   // Credit transactions scoped by club_member_id (primary identity for all transactions)
   const { data: transactions, isLoading: txLoading } = useQuery({
     queryKey: ["credit-transactions", clubMemberId, clubId],

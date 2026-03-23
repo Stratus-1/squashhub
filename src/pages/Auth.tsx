@@ -242,10 +242,15 @@ export default function Auth() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-bold font-heading">Check Your Email</h2>
+                <h2 className="text-lg font-bold font-heading">Verify Your Email</h2>
                 <p className="text-sm text-muted-foreground">
-                  We've sent a confirmation link to <span className="font-medium text-foreground">{signupEmail}</span>. Click the link to activate your account and start setting up your club.
+                  We've sent a verification link to <span className="font-medium text-foreground">{signupEmail}</span>. Click the link to verify your email, create your club, and be redirected to your club's login page.
                 </p>
+                {subdomain && (
+                  <p className="text-xs text-muted-foreground">
+                    Your club URL will be: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
+                  </p>
+                )}
                 <Button variant="outline" className="w-full" onClick={() => setSignupDone(false)}>
                   Back to Sign Up
                 </Button>

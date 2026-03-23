@@ -192,12 +192,23 @@ export default function HonestyBar() {
                 {group.items.map(item => {
                   const qty = cart[item.id] || 0;
                   return (
-                    <Card key={item.id} className="p-2.5 flex items-center gap-3">
+                    <Card
+                      key={item.id}
+                      className="p-2 flex items-center gap-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                      onClick={() => updateCart(item.id, 1)}
+                    >
+                      <div className="w-10 h-10 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-lg">{CATEGORY_ICONS[item.category] || "📦"}</span>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.name}</p>
                         <p className="text-xs text-muted-foreground">R{item.price.toFixed(2)}</p>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                         {qty > 0 && (
                           <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateCart(item.id, -1)}>
                             <Minus className="w-3.5 h-3.5" />

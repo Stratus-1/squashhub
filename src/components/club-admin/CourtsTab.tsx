@@ -228,7 +228,7 @@ function CourtsSection({ clubId, relayDeviceType }: { clubId: string; relayDevic
                 <Input
                   value={relayValue}
                   onChange={e => setEditingRelay(prev => ({ ...prev, [courtId]: e.target.value }))}
-                  placeholder="Shelly Device ID (e.g. 98cdac123456)"
+                  placeholder={relayDeviceType === "shelly" ? "Shelly Device ID (e.g. 98cdac123456)" : "Relay Device ID"}
                   className="flex-1 text-xs h-8"
                 />
                 {editingRelay[courtId] !== undefined && (

@@ -1070,6 +1070,7 @@ export type Database = {
           id: string
           payment_gateway_credentials: Json | null
           payment_gateway_secret_key: string | null
+          relay_device_type: string
           sender_email: string | null
           sender_name: string | null
           shelly_auth_key: string | null
@@ -1085,6 +1086,7 @@ export type Database = {
           id?: string
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
+          relay_device_type?: string
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null
@@ -1100,6 +1102,7 @@ export type Database = {
           id?: string
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
+          relay_device_type?: string
           sender_email?: string | null
           sender_name?: string | null
           shelly_auth_key?: string | null

@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { fromExt } from "@/lib/supabase-ext";
 import { fromExt } from "@/lib/supabase-ext";
 
 export interface Club {

@@ -280,6 +280,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ClubProvider>
+            <DynamicPwaManifest />
             <MemberProvider>
               <AppRoutes />
             </MemberProvider>

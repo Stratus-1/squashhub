@@ -300,6 +300,26 @@ export function useCreateClub() {
         role: "captain",
       });
       if (memErr) throw memErr;
+
+      // Send club registration confirmation email (fire-and-forget)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, email")
+        .eq("id", user!.id)
+        .single();
+
+      if (profile?.email) {
+        supabase.functions.invoke("auth-email-hook", {
+          body: {
+            to: profile.email,
+            name: profile.name || "",
+            clubName: newClub.name || club.name || "Your Club",
+            clubAdminUrl: `${window.location.origin}/club-admin`,
+          },
+          headers: { action: "club-registered" },
+        }).catch((err) => console.warn("Club registration email failed:", err));
+      }
+
       return newClub as Club;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-club"] }),

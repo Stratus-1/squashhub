@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useClubContext } from "@/contexts/ClubContext";
 import { Capacitor } from "@capacitor/core";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, Share2, PlusSquare, Smartphone } from "lucide-react";
@@ -36,6 +37,7 @@ function isAndroidDevice() {
 }
 
 export function InstallAppPrompt() {
+  const { subdomain } = useClubContext();
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [installed, setInstalled] = useState(false);
@@ -121,7 +123,8 @@ export function InstallAppPrompt() {
     }
   };
 
-  if (!show || dismissed || installed || isNative || !isMobile) return null;
+  // Only show on club subdomains, not the root marketing site
+  if (!show || dismissed || installed || isNative || !isMobile || !subdomain) return null;
 
   return (
     <>

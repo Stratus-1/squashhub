@@ -105,16 +105,17 @@ export default function SuperAdminUsers() {
     return m;
   }, [roles]);
 
-  // Show: platform role holders, club admins/captains, OR unaffiliated users
+  // Show: platform role holders, club admins/captains/creators, OR unaffiliated users
   const platformUsers = useMemo(() => {
     return profiles.filter((p: any) => {
       const hasRole = roleMap.has(p.id);
       const isClubAdmin = clubAdminUserIds.has(p.id);
+      const isClubCreator = clubCreatorIds.has(p.id);
       const isClubLinked = clubLinkedUserIds.has(p.id);
-      // Show platform admins/moderators, club admins, and unaffiliated users
-      return hasRole || isClubAdmin || !isClubLinked;
+      // Show platform admins/moderators, club admins/creators, and unaffiliated users
+      return hasRole || isClubAdmin || isClubCreator || !isClubLinked;
     });
-  }, [profiles, roleMap, clubAdminUserIds, clubLinkedUserIds]);
+  }, [profiles, roleMap, clubAdminUserIds, clubCreatorIds, clubLinkedUserIds]);
 
   const filtered = platformUsers.filter((p: any) => {
     const q = search.toLowerCase();

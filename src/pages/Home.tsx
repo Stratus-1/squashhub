@@ -93,6 +93,22 @@ export default function Home() {
         path="/"
       />
 
+      {/* ─── Top Bar ─── */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b border-border/40">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+          <span className="font-heading font-bold text-lg text-foreground tracking-tight">SquashHub</span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/auth")}>
+              Sign In
+            </Button>
+            <Button size="sm" onClick={() => navigate("/auth")} className="gap-1.5">
+              Register Club
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
       {/* ─── Hero ─── */}
       <section className="relative overflow-hidden">
         <div

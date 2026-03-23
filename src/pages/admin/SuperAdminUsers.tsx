@@ -39,12 +39,36 @@ export default function SuperAdminUsers() {
     queryKey: ["sa-club-members-linked"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("user_id, role, club_id, clubs(name)")
+        .select("user_id, role, club_id")
         .not("user_id", "is", null);
       if (error) throw error;
       return data || [];
     },
   });
+
+  // Fetch all clubs for name lookup
+  const { data: clubs = [] } = useQuery({
+    queryKey: ["sa-clubs-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clubs").select("id, name, created_by");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Build club name lookup
+  const clubNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    clubs.forEach((c: any) => m.set(c.id, c.name));
+    return m;
+  }, [clubs]);
+
+  // Build club creator set
+  const clubCreatorIds = useMemo(() => {
+    const s = new Set<string>();
+    clubs.forEach((c: any) => { if (c.created_by) s.add(c.created_by); });
+    return s;
+  }, [clubs]);
 
   // Build maps: club-linked user ids, club admin user ids, and user->club name
   const { clubLinkedUserIds, clubAdminUserIds, userClubMap } = useMemo(() => {
@@ -54,15 +78,22 @@ export default function SuperAdminUsers() {
     clubMembers.forEach((cm: any) => {
       if (cm.user_id) {
         linked.add(cm.user_id);
-        const clubName = (cm.clubs as any)?.name;
+        const clubName = clubNameMap.get(cm.club_id);
         if (clubName) clubMap.set(cm.user_id, clubName);
         if (cm.role === 'admin' || cm.role === 'captain') {
           admins.add(cm.user_id);
         }
       }
     });
+    // Also mark club creators as admins and link their club
+    clubs.forEach((c: any) => {
+      if (c.created_by) {
+        if (!clubMap.has(c.created_by) && c.name) clubMap.set(c.created_by, c.name);
+        admins.add(c.created_by);
+      }
+    });
     return { clubLinkedUserIds: linked, clubAdminUserIds: admins, userClubMap: clubMap };
-  }, [clubMembers]);
+  }, [clubMembers, clubNameMap, clubs]);
 
   const roleMap = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -74,16 +105,17 @@ export default function SuperAdminUsers() {
     return m;
   }, [roles]);
 
-  // Show: platform role holders, club admins/captains, OR unaffiliated users
+  // Show: platform role holders, club admins/captains/creators, OR unaffiliated users
   const platformUsers = useMemo(() => {
     return profiles.filter((p: any) => {
       const hasRole = roleMap.has(p.id);
       const isClubAdmin = clubAdminUserIds.has(p.id);
+      const isClubCreator = clubCreatorIds.has(p.id);
       const isClubLinked = clubLinkedUserIds.has(p.id);
-      // Show platform admins/moderators, club admins, and unaffiliated users
-      return hasRole || isClubAdmin || !isClubLinked;
+      // Show platform admins/moderators, club admins/creators, and unaffiliated users
+      return hasRole || isClubAdmin || isClubCreator || !isClubLinked;
     });
-  }, [profiles, roleMap, clubAdminUserIds, clubLinkedUserIds]);
+  }, [profiles, roleMap, clubAdminUserIds, clubCreatorIds, clubLinkedUserIds]);
 
   const filtered = platformUsers.filter((p: any) => {
     const q = search.toLowerCase();

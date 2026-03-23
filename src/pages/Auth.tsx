@@ -117,12 +117,15 @@ export default function Auth() {
       return;
     }
 
-    if (!captchaToken) {
-      toast.error("Please complete the captcha verification");
-      return;
+    setLoading(true);
+    try {
+      const token = await captchaRef.current?.execute().catch(() => null);
+      if (!token) { toast.error("Please complete the captcha verification"); setLoading(false); return; }
+      const valid = await verifyCaptchaToken(token);
+      if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+    } catch {
+      toast.error("Captcha verification failed"); setLoading(false); return;
     }
-    const valid = await verifyCaptchaToken(captchaToken);
-    if (!valid) { toast.error("Captcha verification failed"); return; }
     setLoading(true);
     const nowIso = new Date().toISOString();
     const { error, userId } = await signUp(email, signupPassword, name, phone || undefined, {

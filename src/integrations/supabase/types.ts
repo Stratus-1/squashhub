@@ -68,6 +68,135 @@ export type Database = {
         }
         Relationships: []
       }
+      bar_items: {
+        Row: {
+          active: boolean
+          category: string
+          club_id: string
+          created_at: string
+          id: string
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          club_id: string
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_items_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_tab_entries: {
+        Row: {
+          bar_item_id: string
+          club_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          logged_by: string | null
+          quantity: number
+          settled: boolean
+          settled_at: string | null
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          bar_item_id: string
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          logged_by?: string | null
+          quantity?: number
+          settled?: boolean
+          settled_at?: string | null
+          total: number
+          unit_price: number
+        }
+        Update: {
+          bar_item_id?: string
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          logged_by?: string | null
+          quantity?: number
+          settled?: boolean
+          settled_at?: string | null
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_tab_entries_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_entries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_entries_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_entries_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_entries_logged_by_fkey"
+            columns: ["logged_by"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_tab_entries_logged_by_fkey"
+            columns: ["logged_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_invites: {
         Row: {
           booking_id: string
@@ -1065,6 +1194,9 @@ export type Database = {
       }
       club_secrets: {
         Row: {
+          access_control_api_key: string | null
+          access_control_api_url: string | null
+          access_control_type: string | null
           club_id: string
           created_at: string
           id: string
@@ -1081,6 +1213,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_control_api_key?: string | null
+          access_control_api_url?: string | null
+          access_control_type?: string | null
           club_id: string
           created_at?: string
           id?: string
@@ -1097,6 +1232,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_control_api_key?: string | null
+          access_control_api_url?: string | null
+          access_control_type?: string | null
           club_id?: string
           created_at?: string
           id?: string
@@ -1200,6 +1338,7 @@ export type Database = {
           created_by: string | null
           email: string | null
           fee_reminder_days_before: number | null
+          honesty_bar_enabled: boolean
           id: string
           light_fee_per_hour: number | null
           logo_url: string | null
@@ -1238,6 +1377,7 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           fee_reminder_days_before?: number | null
+          honesty_bar_enabled?: boolean
           id?: string
           light_fee_per_hour?: number | null
           logo_url?: string | null
@@ -1276,6 +1416,7 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           fee_reminder_days_before?: number | null
+          honesty_bar_enabled?: boolean
           id?: string
           light_fee_per_hour?: number | null
           logo_url?: string | null

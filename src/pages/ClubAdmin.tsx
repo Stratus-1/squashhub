@@ -5,7 +5,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen } from "lucide-react";
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
 import { BankingTab } from "@/components/club-admin/BankingTab";
@@ -16,6 +16,8 @@ import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { FeesTab } from "@/components/club-admin/FeesTab";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
+import { HonestyBarTab } from "@/components/club-admin/HonestyBarTab";
+import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
 
 export default function ClubAdmin() {
   const { user } = useAuth();
@@ -49,6 +51,8 @@ export default function ClubAdmin() {
             <TabsTrigger value="ladder" className="text-[11px] flex-1 h-7 px-2"><ListOrdered className="w-3.5 h-3.5 mr-1 hidden md:inline" />Ladder</TabsTrigger>
             <TabsTrigger value="leagues" className="text-[11px] flex-1 h-7 px-2"><Trophy className="w-3.5 h-3.5 mr-1 hidden md:inline" />Leagues</TabsTrigger>
             <TabsTrigger value="champs" className="text-[11px] flex-1 h-7 px-2"><Medal className="w-3.5 h-3.5 mr-1 hidden md:inline" />Champs</TabsTrigger>
+            <TabsTrigger value="bar" className="text-[11px] flex-1 h-7 px-2"><Beer className="w-3.5 h-3.5 mr-1 hidden md:inline" />Bar</TabsTrigger>
+            <TabsTrigger value="access" className="text-[11px] flex-1 h-7 px-2"><DoorOpen className="w-3.5 h-3.5 mr-1 hidden md:inline" />Access</TabsTrigger>
           </TabsList>
 
           <TabsContent value="club"><ClubInfoTab club={club} clubId={club.id} /></TabsContent>
@@ -60,6 +64,8 @@ export default function ClubAdmin() {
           <TabsContent value="ladder"><LadderTab clubId={club.id} /></TabsContent>
           <TabsContent value="leagues"><LeaguesTab clubId={club.id} /></TabsContent>
           <TabsContent value="champs"><ClubChampsTab clubId={club.id} /></TabsContent>
+          <TabsContent value="bar"><HonestyBarTab club={club} clubId={club.id} /></TabsContent>
+          <TabsContent value="access"><AccessControlTab club={club} clubId={club.id} /></TabsContent>
           <TabsContent value="settings"><SettingsTab club={club} clubId={club.id} /></TabsContent>
         </Tabs>
       </div>

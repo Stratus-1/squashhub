@@ -125,11 +125,11 @@ export default function SuperAdminUsers() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No users found</TableCell>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No users found</TableCell>
               </TableRow>
             ) : (
               filtered.map((p: any) => {

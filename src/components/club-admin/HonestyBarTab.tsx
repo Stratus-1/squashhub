@@ -20,6 +20,7 @@ interface BarItem {
   category: string;
   active: boolean;
   sort_order: number;
+  image_url?: string | null;
 }
 
 interface BarTabEntry {

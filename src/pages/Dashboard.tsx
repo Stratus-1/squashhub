@@ -224,6 +224,7 @@ export default function Dashboard() {
     profile,
     effectiveClub,
     myClubMember,
+    clubData,
     onboardingDone,
   ]);
 

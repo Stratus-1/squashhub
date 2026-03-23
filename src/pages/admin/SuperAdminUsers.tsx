@@ -116,6 +116,7 @@ export default function SuperAdminUsers() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Club</TableHead>
               <TableHead>Roles</TableHead>
               <TableHead className="text-center">Matches</TableHead>
               <TableHead>Joined</TableHead>

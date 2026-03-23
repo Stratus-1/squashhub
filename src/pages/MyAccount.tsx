@@ -53,6 +53,8 @@ export default function MyAccount() {
   const [payFeeId, setPayFeeId] = useState<string | null>(null);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
+  const [payBarOpen, setPayBarOpen] = useState(false);
+  const [payBarMethod, setPayBarMethod] = useState<"eft" | "card" | "credit">("card");
 
   // Credit transactions scoped by club_member_id (primary identity for all transactions)
   const { data: transactions, isLoading: txLoading } = useQuery({
@@ -375,6 +377,77 @@ export default function MyAccount() {
     onError: (e: any) => toast.error(e.message || "Payment failed"),
   });
 
+  // Pay bar tab mutation
+  const payBarMutation = useMutation({
+    mutationFn: async ({ method }: { method: string }) => {
+      if (!clubId || !clubMemberId) throw new Error("No club membership found.");
+      if (barTabTotal <= 0) throw new Error("No outstanding bar tab.");
+
+      const desc = `Honesty Bar payment (${(barTabEntries as any[]).length} items)`;
+
+      // Record transaction
+      const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
+        club_id: clubId,
+        club_member_id: clubMemberId,
+        amount: barTabTotal,
+        type: "debit",
+        method,
+        description: desc,
+        status: method === "card" ? "confirmed" : method === "credit" ? "confirmed" : "pending",
+        confirmed_at: method !== "eft" ? new Date().toISOString() : null,
+      }).select("id").single();
+      if (txErr) throw txErr;
+
+      // Post GL entries for confirmed payments
+      if (method !== "eft") {
+        const journalRef = crypto.randomUUID();
+        await fromExt("club_journal_entries").insert([
+          {
+            club_id: clubId,
+            journal_ref: journalRef,
+            account: "bank" as any,
+            debit: barTabTotal,
+            credit: 0,
+            description: desc,
+            club_member_id: clubMemberId,
+            transaction_id: txData.id,
+          },
+          {
+            club_id: clubId,
+            journal_ref: journalRef,
+            account: "debtors" as any,
+            debit: 0,
+            credit: barTabTotal,
+            description: desc,
+            club_member_id: clubMemberId,
+            transaction_id: txData.id,
+          },
+        ]);
+      }
+
+      // Mark entries as settled
+      if (method !== "eft") {
+        for (const entry of (barTabEntries as any[])) {
+          await fromExt("bar_tab_entries")
+            .update({ settled: true, settled_at: new Date().toISOString() })
+            .eq("id", entry.id);
+        }
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["my-bar-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["bar-tab-unsettled"] });
+      setPayBarOpen(false);
+      if (vars.method === "eft") {
+        toast.success("EFT payment recorded. Admin will confirm and settle your bar tab.");
+      } else {
+        toast.success("Bar tab paid! Items have been settled.");
+      }
+    },
+    onError: (e: any) => toast.error(e.message || "Payment failed"),
+  });
+
   const copyBankDetails = () => {
     const details = [
       club?.bank_name && `Bank: ${club.bank_name}`,
@@ -528,7 +601,7 @@ export default function MyAccount() {
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </Card>
           ) : barTabTotal > 0 ? (
-            <Card className="p-3 space-y-2 border-destructive/20">
+            <Card className="p-3 space-y-3 border-destructive/20">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">{(barTabEntries as any[]).length} unsettled item{(barTabEntries as any[]).length !== 1 ? "s" : ""}</p>
@@ -536,7 +609,7 @@ export default function MyAccount() {
                 </div>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/honesty-bar")}>
                   <Wine className="w-3.5 h-3.5" />
-                  View Bar Tab
+                  View Tab
                 </Button>
               </div>
               <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -552,6 +625,16 @@ export default function MyAccount() {
                   </p>
                 )}
               </div>
+              <Button
+                className="w-full gap-2"
+                onClick={() => {
+                  setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+                  setPayBarOpen(true);
+                }}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Pay Now · R{barTabTotal.toFixed(2)}
+              </Button>
             </Card>
           ) : (
             <Card className="p-3 text-center text-sm text-muted-foreground">
@@ -824,6 +907,104 @@ export default function MyAccount() {
             >
               {payFeeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Pay R{selectedFeeTotal.toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pay Bar Tab Dialog */}
+      <Dialog open={payBarOpen} onOpenChange={setPayBarOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wine className="w-4 h-4 text-primary" />
+              Pay Honesty Bar Tab
+            </DialogTitle>
+            <DialogDescription>
+              {(barTabEntries as any[]).length} item{(barTabEntries as any[]).length !== 1 ? "s" : ""} — Total R{barTabTotal.toFixed(2)}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 mt-1">
+            <div className="space-y-1 max-h-28 overflow-y-auto">
+              {(barTabEntries as any[]).map((e: any) => (
+                <div key={e.id} className="flex justify-between text-xs">
+                  <span className="truncate text-muted-foreground">{e.quantity}× {e.bar_items?.name || "Item"}</span>
+                  <span className="font-medium shrink-0 ml-2">R{Number(e.total).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={payBarMethod === "credit" ? "default" : "outline"}
+                className="gap-1.5 h-12 text-xs flex-col"
+                onClick={() => setPayBarMethod("credit")}
+                disabled={creditBalance < barTabTotal}
+              >
+                <Wallet className="w-4 h-4" />
+                Credit
+              </Button>
+              <Button
+                variant={payBarMethod === "eft" ? "default" : "outline"}
+                className="gap-1.5 h-12 text-xs flex-col"
+                onClick={() => setPayBarMethod("eft")}
+              >
+                <Building2 className="w-4 h-4" />
+                EFT
+              </Button>
+              <Button
+                variant={payBarMethod === "card" ? "default" : "outline"}
+                className="gap-1.5 h-12 text-xs flex-col"
+                onClick={() => setPayBarMethod("card")}
+              >
+                <CreditCard className="w-4 h-4" />
+                Card
+              </Button>
+            </div>
+
+            {payBarMethod === "credit" && (
+              <Card className="p-3 bg-green-500/5 border-green-500/20">
+                <p className="text-xs text-green-700 dark:text-green-400">
+                  Pay from your credit balance of R{creditBalance.toFixed(2)}
+                </p>
+              </Card>
+            )}
+
+            {payBarMethod === "card" && (
+              <Card className="p-3 bg-muted/50">
+                <p className="text-xs text-muted-foreground">
+                  Card payment via {club?.payment_gateway || "Yoco"}. Your bar tab will be settled immediately.
+                </p>
+              </Card>
+            )}
+
+            {payBarMethod === "eft" && club?.bank_name && (
+              <Card className="p-3 bg-muted/50 space-y-1">
+                <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
+                {club.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {club.bank_name}</p>}
+                {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
+                <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Bar</p>
+              </Card>
+            )}
+
+            {payBarMethod === "eft" && (
+              <Card className="p-2.5 bg-amber-500/5 border-amber-500/20">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  After making your EFT, admin will confirm and settle your bar tab.
+                </p>
+              </Card>
+            )}
+
+            <Button
+              className="w-full"
+              disabled={payBarMutation.isPending || barTabTotal <= 0}
+              onClick={() => payBarMutation.mutate({ method: payBarMethod })}
+            >
+              {payBarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Pay R{barTabTotal.toFixed(2)} via {payBarMethod === "credit" ? "Credit" : payBarMethod.toUpperCase()}
             </Button>
           </div>
         </DialogContent>

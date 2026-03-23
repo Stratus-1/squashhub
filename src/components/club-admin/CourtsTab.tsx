@@ -212,7 +212,6 @@ function CourtsSection({ clubId, relayDeviceType }: { clubId: string; relayDevic
       <p className="text-xs text-muted-foreground">
         💡 To enable automatic court lights, add the relay device ID for each court.
       </p>
-      </p>
       <div className="space-y-3">
         {courts.map(c => {
           const courtId = c.id;

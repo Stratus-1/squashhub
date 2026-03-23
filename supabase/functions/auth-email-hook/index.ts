@@ -351,6 +351,8 @@ Deno.serve(async (req) => {
     }
 
 
+    // Parse the webhook payload from the auth system
+    const payload = await req.json();
     const user = payload?.user;
     const emailData = payload?.email_data;
 

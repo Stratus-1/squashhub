@@ -397,9 +397,6 @@ export default function Auth() {
                   />
                 </div>
                 <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating club..." : "Create Club"}
-                </Button>
                 <div className="flex items-start gap-2 pt-1">
                   <Checkbox
                     checked={acceptTerms}
@@ -418,6 +415,9 @@ export default function Auth() {
                     .
                   </p>
                 </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Creating club..." : "Create Club"}
+                </Button>
               </form>
             </Card>
             )}

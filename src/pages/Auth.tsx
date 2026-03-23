@@ -12,6 +12,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { HCaptcha, verifyCaptchaToken } from "@/components/HCaptcha";
+import shLogo from "@/assets/sh-logo.jpeg";
 
 export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth();
@@ -219,9 +220,7 @@ export default function Auth() {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-3">
-            <span className="text-primary-foreground font-heading font-bold text-lg">SH</span>
-          </div>
+          <img src={shLogo} alt="SquashHub logo" className="w-14 h-14 rounded-2xl object-contain mx-auto mb-3" />
           <h1 className="text-2xl font-bold font-heading">SquashHub</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage your club, leagues & players</p>
         </div>

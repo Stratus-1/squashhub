@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-bg.jpg";
+import shLogoFull from "@/assets/shub-logo-full.jpeg";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -96,7 +97,7 @@ export default function Home() {
       {/* ─── Top Bar ─── */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b border-border/40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <span className="font-heading font-bold text-lg text-foreground tracking-tight">SquashHub</span>
+          <img src={shLogoFull} alt="SquashHub" className="h-8 object-contain" />
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => navigate("/auth")}>
               Sign In

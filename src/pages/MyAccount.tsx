@@ -9,12 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight, Wine } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,10 @@ export default function MyAccount() {
   const [payMethod, setPayMethod] = useState<"eft" | "card" | "credit">("credit");
   const [payBarOpen, setPayBarOpen] = useState(false);
   const [payBarMethod, setPayBarMethod] = useState<"eft" | "card" | "credit">("card");
+
+  // Auto-open bar payment dialog from URL param
+  const [searchParams, setSearchParams] = useSearchParams();
+  const barPayAutoOpened = useRef(false);
 
   // Credit transactions scoped by club_member_id (primary identity for all transactions)
   const { data: transactions, isLoading: txLoading } = useQuery({
@@ -240,6 +244,16 @@ export default function MyAccount() {
     if (statementLines.length === 0) return 0;
     return statementLines[statementLines.length - 1]?.balance || 0;
   })();
+
+  // Auto-open bar payment dialog if navigated with ?payBar=1
+  useEffect(() => {
+    if (searchParams.get("payBar") === "1" && !barPayAutoOpened.current && barTabTotal > 0) {
+      barPayAutoOpened.current = true;
+      setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+      setPayBarOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, barTabTotal, creditBalance]);
 
   const pendingTopUps = (transactions || []).filter(
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"

@@ -155,12 +155,19 @@ export default function HonestyBar() {
       <div className="px-4 space-y-4 mt-2">
         {/* Outstanding balance */}
         {unsettledTotal > 0 && (
-          <Card className="p-3 bg-destructive/10 border-destructive/30 cursor-pointer hover:bg-destructive/15 transition-colors" onClick={() => navigate("/my-account")}>
+          <Card className="p-3 bg-destructive/10 border-destructive/30">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Outstanding Balance</span>
               <Badge variant="destructive">R{unsettledTotal.toFixed(2)}</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Tap to pay via your account →</p>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="w-full mt-2 gap-1.5"
+              onClick={() => navigate("/my-account?payBar=1")}
+            >
+              Pay Now
+            </Button>
           </Card>
         )}
 

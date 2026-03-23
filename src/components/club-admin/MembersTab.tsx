@@ -1016,21 +1016,25 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       // Find the league linked to the selected association
       const { data: league } = await fromExt("leagues")
         .select("id")
+        .eq("club_id", clubId)
         .eq("association_id", form.association_id)
         .limit(1)
         .maybeSingle();
 
       if (league) {
-        // Upsert league registration
-        const { data: existing } = await fromExt("member_league_registrations")
-          .select("id")
+        // Check for ANY existing registration for this member (regardless of league_id)
+        const { data: existingRows } = await fromExt("member_league_registrations")
+          .select("id, league_id")
           .eq("club_member_id", member.id)
-          .eq("league_id", league.id)
-          .maybeSingle();
+          .order("created_at", { ascending: true })
+          .limit(1);
+
+        const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
 
         if (existing) {
           await fromExt("member_league_registrations")
             .update({
+              league_id: league.id,
               league_association_number: form.association_number.trim(),
               player_rank: form.ladder_position ? Number(form.ladder_position) : null,
             })

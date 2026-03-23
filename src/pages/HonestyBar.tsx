@@ -21,7 +21,15 @@ interface BarItem {
   price: number;
   category: string;
   active: boolean;
+  image_url?: string | null;
 }
+
+const CATEGORY_ICONS: Record<string, string> = {
+  drinks: "🥤",
+  alcohol: "🍺",
+  snacks: "🍿",
+  other: "📦",
+};
 
 interface BarTabEntry {
   id: string;

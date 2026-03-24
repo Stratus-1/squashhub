@@ -54,13 +54,16 @@ export default function ClubAuth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (captchaToken) {
-      const valid = await verifyCaptchaToken(captchaToken);
-      if (!valid) { toast.error("Captcha verification failed"); return; }
-    }
     setLoading(true);
-    const { error } = await signIn(loginEmail.trim(), loginPassword);
-    if (error) toast.error(error.message);
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+      const { error } = await signIn(loginEmail.trim(), loginPassword);
+      if (error) toast.error(error.message);
+    } catch { toast.error("Captcha verification failed"); }
     setLoading(false);
   };
 

@@ -30,8 +30,10 @@ export function DynamicPwaManifest() {
     // 3) Update apple-touch-icon
     setLink("apple-touch-icon", iconSrc);
 
-    // 4) Update favicon
-    setLinkBySelector('link[rel="icon"][type="image/png"]', iconSrc);
+    // 4) Update all favicon links
+    document.querySelectorAll('link[rel="icon"]').forEach((el) => {
+      (el as HTMLLinkElement).href = iconSrc;
+    });
 
     // 5) Generate and inject a dynamic manifest blob
     const manifest = {

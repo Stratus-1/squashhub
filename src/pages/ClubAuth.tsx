@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Eye, EyeOff, Building2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
-import { HCaptcha, verifyCaptchaToken } from "@/components/HCaptcha";
+import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCaptcha";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -23,7 +23,7 @@ export default function ClubAuth() {
   const [showReset, setShowReset] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptchaHandle>(null);
 
   // Login
   const [loginEmail, setLoginEmail] = useState("");
@@ -54,13 +54,16 @@ export default function ClubAuth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (captchaToken) {
-      const valid = await verifyCaptchaToken(captchaToken);
-      if (!valid) { toast.error("Captcha verification failed"); return; }
-    }
     setLoading(true);
-    const { error } = await signIn(loginEmail.trim(), loginPassword);
-    if (error) toast.error(error.message);
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+      const { error } = await signIn(loginEmail.trim(), loginPassword);
+      if (error) toast.error(error.message);
+    } catch { toast.error("Captcha verification failed"); }
     setLoading(false);
   };
 
@@ -86,10 +89,13 @@ export default function ClubAuth() {
       return;
     }
 
-    if (captchaToken) {
-      const valid = await verifyCaptchaToken(captchaToken);
-      if (!valid) { toast.error("Captcha verification failed"); return; }
-    }
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); return; }
+      }
+    } catch { toast.error("Captcha verification failed"); return; }
     setLoading(true);
     const nowIso = new Date().toISOString();
     // Pass member_number and club info in metadata so the handle_new_user trigger can link
@@ -136,10 +142,13 @@ export default function ClubAuth() {
       return;
     }
 
-    if (captchaToken) {
-      const valid = await verifyCaptchaToken(captchaToken);
-      if (!valid) { toast.error("Captcha verification failed"); return; }
-    }
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); return; }
+      }
+    } catch { toast.error("Captcha verification failed"); return; }
     setLoading(true);
     const nowIso = new Date().toISOString();
     const { error } = await signUp(
@@ -313,7 +322,7 @@ export default function ClubAuth() {
                     </button>
                   </div>
                 </div>
-                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                <HCaptcha ref={captchaRef} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -390,7 +399,7 @@ export default function ClubAuth() {
                   />
                 </div>
                 <TermsCheckbox checked={existingAcceptTerms} onCheckedChange={setExistingAcceptTerms} />
-                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                <HCaptcha ref={captchaRef} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Registering..." : "Register"}
                 </Button>
@@ -474,7 +483,7 @@ export default function ClubAuth() {
                   />
                 </div>
                 <TermsCheckbox checked={newAcceptTerms} onCheckedChange={setNewAcceptTerms} />
-                <HCaptcha onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                <HCaptcha ref={captchaRef} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Creating account..." : "Join Club"}
                 </Button>

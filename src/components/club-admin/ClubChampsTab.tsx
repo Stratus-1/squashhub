@@ -14,19 +14,21 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil } from "lucide-react";
+import { Calendar, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
 
 interface ClubChampsTabProps {
   clubId: string;
 }
 
-type WizardStep = "gender" | "players" | "groups" | "schedule" | "review";
+type WizardStep = "category" | "players" | "groups" | "schedule" | "review";
+type GenderCategory = "men" | "ladies" | "mixed";
+type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["gender", "players", "groups", "schedule", "review"];
+const STEPS: WizardStep[] = ["category", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
-  gender: "Category",
-  players: "Select Players",
+  category: "Category",
+  players: "Players",
   groups: "Groups",
   schedule: "Schedule",
   review: "Review & Generate",
@@ -34,34 +36,44 @@ const STEP_LABELS: Record<WizardStep, string> = {
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function generateRoundRobinRounds(playerIds: string[]): [string, string][][] {
-  const players = [...playerIds];
-  if (players.length % 2 !== 0) players.push("BYE");
-  const n = players.length;
+interface DoublePair {
+  id: string; // temporary id for UI
+  player1Id: string;
+  player2Id: string;
+}
+
+function generateRoundRobinRounds(entityIds: string[]): [string, string][][] {
+  const entities = [...entityIds];
+  if (entities.length % 2 !== 0) entities.push("BYE");
+  const n = entities.length;
   const rounds: [string, string][][] = [];
   for (let round = 0; round < n - 1; round++) {
     const matches: [string, string][] = [];
     for (let i = 0; i < n / 2; i++) {
-      const a = players[i];
-      const b = players[n - 1 - i];
+      const a = entities[i];
+      const b = entities[n - 1 - i];
       if (a !== "BYE" && b !== "BYE") {
         matches.push([a, b]);
       }
     }
     rounds.push(matches);
-    // rotate: fix first, rotate rest
-    const last = players.pop()!;
-    players.splice(1, 0, last);
+    const last = entities.pop()!;
+    entities.splice(1, 0, last);
   }
   return rounds;
 }
+
+const GENDER_LABELS: Record<GenderCategory, string> = {
+  men: "Men's",
+  ladies: "Ladies'",
+  mixed: "Mixed",
+};
 
 export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: members = [] } = useClubMembers(clubId);
 
-  // Fetch courts
   const { data: courts = [] } = useQuery({
     queryKey: ["club-courts", clubId],
     queryFn: async () => {
@@ -72,7 +84,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!clubId,
   });
 
-  // Fetch existing champs
   const { data: existingChamps = [], isLoading: champsLoading } = useQuery({
     queryKey: ["club-champs", clubId],
     queryFn: async () => {
@@ -86,11 +97,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!clubId,
   });
 
-  const [step, setStep] = useState<WizardStep>("gender");
+  const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
+
   // Wizard state
-  const [gender, setGender] = useState<"men" | "ladies">("men");
+  const [gender, setGender] = useState<GenderCategory>("men");
+  const [matchType, setMatchType] = useState<MatchType>("singles");
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [numGroups, setNumGroups] = useState(2);
   const [champName, setChampName] = useState("");
@@ -103,30 +116,63 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
 
+  // Doubles-specific state
+  const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);
+  const [pairGroupAssignments, setPairGroupAssignments] = useState<Map<string, number>>(new Map());
+
   const stepIdx = STEPS.indexOf(step);
 
   // Filter members by gender
   const genderMembers = useMemo(() => {
+    if (gender === "mixed") {
+      return members.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
+    }
     const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()))
       .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members, gender]);
 
-  // When entering players step, pre-select all; when entering groups, auto-seed assignments
+  const menMembers = useMemo(() => {
+    return members
+      .filter((m) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()))
+      .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
+  }, [members]);
+
+  const ladiesMembers = useMemo(() => {
+    return members
+      .filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()))
+      .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
+  }, [members]);
+
+  // Entities for scheduling = players (singles) or pair IDs (doubles)
+  const isDoubles = matchType === "doubles";
+
   const goToStep = (s: WizardStep) => {
-    if (s === "players" && step === "gender") {
-      setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+    if (s === "players" && step === "category") {
+      if (!isDoubles) {
+        setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+      }
     }
     if (s === "groups") {
-      // Auto-seed group assignments via snake draft
-      const newMap = new Map<string, number>();
-      selectedPlayers.forEach((p, i) => {
-        const cycle = Math.floor(i / numGroups);
-        const idx = cycle % 2 === 0 ? i % numGroups : numGroups - 1 - (i % numGroups);
-        newMap.set(p.id, idx);
-      });
-      setGroupAssignments(newMap);
+      if (isDoubles) {
+        // Auto-seed pair group assignments via snake draft
+        const newMap = new Map<string, number>();
+        doublesPairs.forEach((p, i) => {
+          const cycle = Math.floor(i / numGroups);
+          const idx = cycle % 2 === 0 ? i % numGroups : numGroups - 1 - (i % numGroups);
+          newMap.set(p.id, idx);
+        });
+        setPairGroupAssignments(newMap);
+      } else {
+        const newMap = new Map<string, number>();
+        selectedPlayers.forEach((p, i) => {
+          const cycle = Math.floor(i / numGroups);
+          const idx = cycle % 2 === 0 ? i % numGroups : numGroups - 1 - (i % numGroups);
+          newMap.set(p.id, idx);
+        });
+        setGroupAssignments(newMap);
+      }
     }
     setStep(s);
   };
@@ -136,17 +182,28 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     [genderMembers, selectedPlayerIds]
   );
 
-  // Build groups from assignments map
+  // Number of "entities" (players for singles, pairs for doubles)
+  const entityCount = isDoubles ? doublesPairs.length : selectedPlayerIds.size;
+
+  // Build groups
   const groups = useMemo(() => {
+    if (isDoubles) {
+      const g: DoublePair[][] = Array.from({ length: numGroups }, () => []);
+      doublesPairs.forEach((p) => {
+        const gi = pairGroupAssignments.get(p.id) ?? 0;
+        if (gi < numGroups) g[gi].push(p);
+      });
+      return g;
+    }
     const g: ClubMember[][] = Array.from({ length: numGroups }, () => []);
     selectedPlayers.forEach((p) => {
       const gi = groupAssignments.get(p.id) ?? 0;
       if (gi < numGroups) g[gi].push(p);
     });
     return g;
-  }, [selectedPlayers, numGroups, groupAssignments]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, pairGroupAssignments]);
 
-  // Generate schedule preview
+  // Schedule preview
   const schedulePreview = useMemo(() => {
     if (!startDate || !endDate || playDays.size === 0 || selectedCourtIds.size === 0) return null;
 
@@ -156,7 +213,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       end: new Date(endDate),
     }).filter((d) => playDays.has(getDay(d)));
 
-    // Time slots
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
     const startMins = sh * 60 + sm;
@@ -171,37 +227,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       timeSlots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
     }
 
-    // Total available slots
     const totalSlots = allDates.length * timeSlots.length * courtIds.length;
 
-    // Generate all matches for all groups
-    type MatchDef = { groupNum: number; roundNum: number; playerA: string; playerB: string; date?: string; time?: string; courtId?: number };
+    type MatchDef = {
+      groupNum: number; roundNum: number;
+      entityA: string; entityB: string; // player ID or pair ID
+      date?: string; time?: string; courtId?: number;
+    };
     const allMatches: MatchDef[] = [];
 
-    groups.forEach((groupPlayers, gi) => {
-      const playerIds = groupPlayers.map((p) => p.id);
-      const rounds = generateRoundRobinRounds(playerIds);
-      rounds.forEach((roundMatches, ri) => {
-        roundMatches.forEach(([a, b]) => {
-          allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, playerA: a, playerB: b });
+    if (isDoubles) {
+      (groups as DoublePair[][]).forEach((groupPairs, gi) => {
+        const pairIds = groupPairs.map((p) => p.id);
+        const rounds = generateRoundRobinRounds(pairIds);
+        rounds.forEach((roundMatches, ri) => {
+          roundMatches.forEach(([a, b]) => {
+            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b });
+          });
         });
       });
-    });
+    } else {
+      (groups as ClubMember[][]).forEach((groupPlayers, gi) => {
+        const playerIds = groupPlayers.map((p) => p.id);
+        const rounds = generateRoundRobinRounds(playerIds);
+        rounds.forEach((roundMatches, ri) => {
+          roundMatches.forEach(([a, b]) => {
+            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b });
+          });
+        });
+      });
+    }
 
-    // Assign matches to slots ensuring each player plays at most once every 2 days
-    // Track the last date each player was scheduled
-    const playerLastDate = new Map<string, string>(); // memberId -> "yyyy-MM-dd"
-
-    const canScheduleOn = (playerId: string, dateStr: string): boolean => {
-      const last = playerLastDate.get(playerId);
+    // Scheduling with 2-day gap per entity
+    const entityLastDate = new Map<string, string>();
+    const canScheduleOn = (entityId: string, dateStr: string): boolean => {
+      const last = entityLastDate.get(entityId);
       if (!last) return true;
-      const lastDate = new Date(last);
-      const thisDate = new Date(dateStr);
-      const diffDays = Math.round((thisDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 2; // at least every other day (gap of 1 day)
+      const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 2;
     };
 
-    // Build a flat list of available slots
+    // For doubles, also check individual players
+    const getPlayersForEntity = (entityId: string): string[] => {
+      if (!isDoubles) return [entityId];
+      const pair = doublesPairs.find((p) => p.id === entityId);
+      return pair ? [pair.player1Id, pair.player2Id] : [entityId];
+    };
+
     type Slot = { date: string; time: string; courtId: number };
     const allSlots: Slot[] = [];
     for (const d of allDates) {
@@ -213,40 +285,41 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
-    // Greedily assign each match to the earliest available slot where both players can play
     const usedSlots = new Set<number>();
     for (const match of allMatches) {
+      const playersA = getPlayersForEntity(match.entityA);
+      const playersB = getPlayersForEntity(match.entityB);
+      const allPlayers = [...playersA, ...playersB];
+
       for (let si = 0; si < allSlots.length; si++) {
         if (usedSlots.has(si)) continue;
         const slot = allSlots[si];
-        if (canScheduleOn(match.playerA, slot.date) && canScheduleOn(match.playerB, slot.date)) {
+        if (allPlayers.every((pid) => canScheduleOn(pid, slot.date))) {
           match.date = slot.date;
           match.time = slot.time;
           match.courtId = slot.courtId;
           usedSlots.add(si);
-          playerLastDate.set(match.playerA, slot.date);
-          playerLastDate.set(match.playerB, slot.date);
+          allPlayers.forEach((pid) => entityLastDate.set(pid, slot.date));
           break;
         }
       }
     }
 
     return { allMatches, totalSlots, totalMatches: allMatches.length, allDates, timeSlots };
-  }, [groups, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration]);
 
-  // Create champ mutation
+  // Create/update champ
   const createChamp = useMutation({
     mutationFn: async () => {
       if (!schedulePreview) throw new Error("No schedule generated");
 
       let champId: string;
+      const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`;
 
       if (editingChampId) {
-        // Editing: delete old entries, matches, and bookings first
         const { data: oldMatches } = await fromExt("club_champs_matches")
           .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
           .eq("champ_id", editingChampId);
-
         if (oldMatches && oldMatches.length > 0) {
           const memberIds = [...new Set(oldMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
           const { data: memberUsers } = await fromExt("club_members").select("id, user_id").in("id", memberIds);
@@ -259,15 +332,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               .eq("start_time", m.scheduled_time).eq("court_id", m.court_id);
           }
         }
-
         await fromExt("club_champs_matches").delete().eq("champ_id", editingChampId);
         await fromExt("club_champs_entries").delete().eq("champ_id", editingChampId);
 
-        // Update the champ record
         const { error: updateErr } = await fromExt("club_champs")
           .update({
-            name: champName || `${gender === "men" ? "Men's" : "Ladies'"} Club Champs ${new Date().getFullYear()}`,
+            name: champName || defaultName,
             gender,
+            match_type: matchType,
             num_groups: numGroups,
             start_date: startDate,
             end_date: endDate,
@@ -280,12 +352,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (updateErr) throw updateErr;
         champId = editingChampId;
       } else {
-        // Creating new
         const { data: champ, error: champErr } = await fromExt("club_champs")
           .insert({
             club_id: clubId,
-            name: champName || `${gender === "men" ? "Men's" : "Ladies'"} Club Champs ${new Date().getFullYear()}`,
+            name: champName || defaultName,
             gender,
+            match_type: matchType,
             num_groups: numGroups,
             start_date: startDate,
             end_date: endDate,
@@ -300,57 +372,103 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         champId = champ.id;
       }
 
-      // 2. Create entries
-      const entries = groups.flatMap((groupPlayers, gi) =>
-        groupPlayers.map((p) => ({
-          champ_id: champId,
-          club_member_id: p.id,
-          group_number: gi + 1,
-        }))
-      );
-      const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
-      if (entryErr) throw entryErr;
+      // Create entries
+      if (isDoubles) {
+        const entries = doublesPairs.flatMap((pair) => {
+          const gi = pairGroupAssignments.get(pair.id) ?? 0;
+          return [
+            {
+              champ_id: champId,
+              club_member_id: pair.player1Id,
+              partner_member_id: pair.player2Id,
+              group_number: gi + 1,
+            },
+          ];
+        });
+        const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
+        if (entryErr) throw entryErr;
+      } else {
+        const entries = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
+          groupPlayers.map((p) => ({
+            champ_id: champId,
+            club_member_id: p.id,
+            group_number: gi + 1,
+          }))
+        );
+        const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
+        if (entryErr) throw entryErr;
+      }
 
-      // 3. Create matches
-      const matches = schedulePreview.allMatches.map((m) => ({
-        champ_id: champId,
-        group_number: m.groupNum,
-        round_number: m.roundNum,
-        player_a_member_id: m.playerA,
-        player_b_member_id: m.playerB,
-        scheduled_date: m.date,
-        scheduled_time: m.time,
-        court_id: m.courtId,
-      }));
+      // Build pair lookup for doubles
+      const pairMap = new Map<string, DoublePair>();
+      doublesPairs.forEach((p) => pairMap.set(p.id, p));
+
+      // Create matches
+      const matches = schedulePreview.allMatches.map((m) => {
+        if (isDoubles) {
+          const pairA = pairMap.get(m.entityA);
+          const pairB = pairMap.get(m.entityB);
+          return {
+            champ_id: champId,
+            group_number: m.groupNum,
+            round_number: m.roundNum,
+            player_a_member_id: pairA?.player1Id || m.entityA,
+            partner_a_member_id: pairA?.player2Id || null,
+            player_b_member_id: pairB?.player1Id || m.entityB,
+            partner_b_member_id: pairB?.player2Id || null,
+            scheduled_date: m.date,
+            scheduled_time: m.time,
+            court_id: m.courtId,
+          };
+        }
+        return {
+          champ_id: champId,
+          group_number: m.groupNum,
+          round_number: m.roundNum,
+          player_a_member_id: m.entityA,
+          player_b_member_id: m.entityB,
+          scheduled_date: m.date,
+          scheduled_time: m.time,
+          court_id: m.courtId,
+        };
+      });
       if (matches.length > 0) {
         const { error: matchErr } = await fromExt("club_champs_matches").insert(matches);
         if (matchErr) throw matchErr;
       }
 
-      // 4. Auto-book courts for matches with linked user accounts
-      const memberMap = new Map<string, string>(); // club_member_id -> user_id
-      selectedPlayers.forEach((p) => { if (p.user_id) memberMap.set(p.id, p.user_id); });
+      // Auto-book courts
+      const memberUserMap = new Map<string, string>();
+      members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
 
       const bookings = schedulePreview.allMatches
-        .filter((m) => m.date && m.time && m.courtId && memberMap.has(m.playerA))
+        .filter((m) => m.date && m.time && m.courtId)
         .map((m) => {
+          let bookerId: string | undefined;
+          if (isDoubles) {
+            const pairA = pairMap.get(m.entityA);
+            bookerId = pairA ? memberUserMap.get(pairA.player1Id) : undefined;
+          } else {
+            bookerId = memberUserMap.get(m.entityA);
+          }
+          if (!bookerId) return null;
+
           const [h, min] = m.time!.split(":").map(Number);
           const endMins = h * 60 + min + matchDuration;
           const endH = Math.floor(endMins / 60);
           const endM = endMins % 60;
           const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
           return {
-            user_id: memberMap.get(m.playerA)!,
-            opponent_id: memberMap.get(m.playerB) || null,
+            user_id: bookerId,
             court_id: m.courtId!,
             date: m.date!,
             start_time: m.time!,
             end_time: endTimeStr,
             status: "active",
             is_friendly: false,
-            guest_name: !memberMap.has(m.playerB) ? getMemberName(m.playerB) : null,
           };
-        });
+        })
+        .filter(Boolean);
 
       if (bookings.length > 0) {
         const { error: bookErr } = await fromExt("bookings").insert(bookings);
@@ -377,33 +495,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const deleteChamp = useMutation({
     mutationFn: async ({ id, withBookings }: { id: string; withBookings: boolean }) => {
       if (withBookings) {
-        // Get all champ matches to find their court bookings
         const { data: champMatches } = await fromExt("club_champs_matches")
           .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
           .eq("champ_id", id);
-
         if (champMatches && champMatches.length > 0) {
-          // Get member -> user_id mapping
           const memberIds = [...new Set(champMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
-          const { data: memberUsers } = await fromExt("club_members")
-            .select("id, user_id")
-            .in("id", memberIds);
+          const { data: memberUsers } = await fromExt("club_members").select("id, user_id").in("id", memberIds);
           const memberMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
-
-          // Delete matching bookings
           for (const m of champMatches) {
             const userId = memberMap.get(m.player_a_member_id);
             if (!userId || !m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
-            await fromExt("bookings")
-              .delete()
-              .eq("user_id", userId)
-              .eq("date", m.scheduled_date)
-              .eq("start_time", m.scheduled_time)
-              .eq("court_id", m.court_id);
+            await fromExt("bookings").delete()
+              .eq("user_id", userId).eq("date", m.scheduled_date)
+              .eq("start_time", m.scheduled_time).eq("court_id", m.court_id);
           }
         }
       }
-
       const { error } = await fromExt("club_champs").delete().eq("id", id);
       if (error) throw error;
     },
@@ -417,8 +524,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   });
 
   const resetWizard = () => {
-    setStep("gender");
+    setStep("category");
     setGender("men");
+    setMatchType("singles");
     setSelectedPlayerIds(new Set());
     setNumGroups(2);
     setChampName("");
@@ -430,14 +538,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(30);
     setSelectedCourtIds(new Set());
     setGroupAssignments(new Map());
+    setDoublesPairs([]);
+    setPairGroupAssignments(new Map());
     setEditingChampId(null);
   };
 
-  // Load existing champ into wizard for editing
   const loadChampForEdit = async (champ: any) => {
     resetWizard();
     setEditingChampId(champ.id);
     setGender(champ.gender);
+    setMatchType(champ.match_type || "singles");
     setChampName(champ.name);
     setNumGroups(champ.num_groups);
     setStartDate(champ.start_date);
@@ -447,19 +557,32 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 30);
 
-    // Load entries to restore player selection and group assignments
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
       .eq("champ_id", champ.id);
 
     if (entries) {
-      setSelectedPlayerIds(new Set(entries.map((e: any) => e.club_member_id)));
-      const assignments = new Map<string, number>();
-      entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
-      setGroupAssignments(assignments);
+      if (champ.match_type === "doubles") {
+        const pairs: DoublePair[] = entries.map((e: any) => ({
+          id: crypto.randomUUID(),
+          player1Id: e.club_member_id,
+          player2Id: e.partner_member_id,
+        }));
+        setDoublesPairs(pairs);
+        const assignments = new Map<string, number>();
+        pairs.forEach((p, i) => {
+          const entry = entries[i];
+          assignments.set(p.id, (entry as any).group_number - 1);
+        });
+        setPairGroupAssignments(assignments);
+      } else {
+        setSelectedPlayerIds(new Set(entries.map((e: any) => e.club_member_id)));
+        const assignments = new Map<string, number>();
+        entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
+        setGroupAssignments(assignments);
+      }
     }
 
-    // Pre-select courts from existing matches
     const { data: champMatches } = await fromExt("club_champs_matches")
       .select("court_id")
       .eq("champ_id", champ.id);
@@ -479,11 +602,42 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   const getCourtName = (id: number) => courts.find((c) => c.id === id)?.name || `Court ${id}`;
 
+  const getPairLabel = (pair: DoublePair) =>
+    `${getMemberName(pair.player1Id)} & ${getMemberName(pair.player2Id)}`;
+
+  const getEntityLabel = (entityId: string) => {
+    if (isDoubles) {
+      const pair = doublesPairs.find((p) => p.id === entityId);
+      return pair ? getPairLabel(pair) : "Unknown pair";
+    }
+    return getMemberName(entityId);
+  };
+
+  // Doubles pair builder helpers
+  const usedPlayerIds = useMemo(() => {
+    const ids = new Set<string>();
+    doublesPairs.forEach((p) => {
+      ids.add(p.player1Id);
+      ids.add(p.player2Id);
+    });
+    return ids;
+  }, [doublesPairs]);
+
+  const availableForPairing = useMemo(() => {
+    if (gender === "mixed") return members.filter((m) => !usedPlayerIds.has(m.id));
+    const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
+    return members
+      .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()) && !usedPlayerIds.has(m.id));
+  }, [members, gender, usedPlayerIds]);
+
   const canProceed = () => {
     switch (step) {
-      case "gender": return true;
-      case "players": return selectedPlayerIds.size >= 3;
-      case "groups": return numGroups >= 1 && numGroups <= Math.floor(selectedPlayerIds.size / 2);
+      case "category": return true;
+      case "players":
+        if (isDoubles) return doublesPairs.length >= 2;
+        return selectedPlayerIds.size >= 3;
+      case "groups":
+        return numGroups >= 1 && numGroups <= Math.floor(entityCount / 2);
       case "schedule":
         return startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
       case "review": return true;
@@ -491,6 +645,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
   };
 
+  // ── LIST VIEW ──
   if (!showWizard) {
     return (
       <div className="space-y-4">
@@ -513,7 +668,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <div>
                     <p className="font-medium">{c.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {c.gender === "men" ? "Men's" : "Ladies'"} · {c.num_groups} groups · {c.status}
+                      {GENDER_LABELS[c.gender as GenderCategory] || c.gender} · {c.match_type === "doubles" ? "Doubles" : "Singles"} · {c.num_groups} groups · {c.status}
                     </p>
                     <p className="text-xs text-muted-foreground">{c.start_date} to {c.end_date}</p>
                   </div>
@@ -533,15 +688,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             ))}
           </div>
         )}
-        {/* Delete confirmation dialog */}
+
         <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
           <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Delete Championship</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Delete Championship</DialogTitle></DialogHeader>
             <div className="space-y-4 py-2">
               <p className="text-sm text-muted-foreground">
-                Are you sure you want to delete this championship? This will remove all matches and entries.
+                Are you sure? This will remove all matches and entries.
               </p>
               <div className="flex items-center gap-3">
                 <Switch
@@ -549,20 +702,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   checked={deleteConfirm?.withBookings ?? true}
                   onCheckedChange={(v) => deleteConfirm && setDeleteConfirm({ ...deleteConfirm, withBookings: v })}
                 />
-                <Label htmlFor="delete-bookings" className="text-sm">
-                  Also delete associated court bookings
-                </Label>
+                <Label htmlFor="delete-bookings" className="text-sm">Also delete associated court bookings</Label>
               </div>
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
               <Button
-                variant="destructive"
-                size="sm"
+                variant="destructive" size="sm"
                 disabled={deleteChamp.isPending}
                 onClick={() => deleteConfirm && deleteChamp.mutate({ id: deleteConfirm.id, withBookings: deleteConfirm.withBookings })}
               >
-                {deleteChamp.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                {deleteChamp.isPending && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
                 Delete
               </Button>
             </DialogFooter>
@@ -572,6 +722,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     );
   }
 
+  // ── WIZARD VIEW ──
   return (
     <div className="space-y-4">
       {/* Step indicator */}
@@ -586,27 +737,51 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         ))}
       </div>
 
-      {/* Step content */}
-      {step === "gender" && (
+      {/* ── STEP: CATEGORY ── */}
+      {step === "category" && (
         <Card>
           <CardHeader><CardTitle>Select Category</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {(["men", "ladies"] as const).map((g) => (
-                <Button
-                  key={g}
-                  variant={gender === g ? "default" : "outline"}
-                  className="h-20 text-lg"
-                  onClick={() => setGender(g)}
-                >
-                  {g === "men" ? "🏆 Men's" : "🏆 Ladies'"}
-                </Button>
-              ))}
+          <CardContent className="space-y-6">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {(["men", "ladies", "mixed"] as GenderCategory[]).map((g) => (
+                  <Button
+                    key={g}
+                    variant={gender === g ? "default" : "outline"}
+                    className="h-16 text-base"
+                    onClick={() => setGender(g)}
+                  >
+                    {g === "men" ? "🏆 Men's" : g === "ladies" ? "🏆 Ladies'" : "🏆 Mixed"}
+                  </Button>
+                ))}
+              </div>
             </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Match Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant={matchType === "singles" ? "default" : "outline"}
+                  className="h-16 text-base"
+                  onClick={() => setMatchType("singles")}
+                >
+                  👤 Singles
+                </Button>
+                <Button
+                  variant={matchType === "doubles" ? "default" : "outline"}
+                  className="h-16 text-base"
+                  onClick={() => setMatchType("doubles")}
+                >
+                  👥 Doubles
+                </Button>
+              </div>
+            </div>
+
             <div>
               <Label>Championship Name (optional)</Label>
               <Input
-                placeholder={`${gender === "men" ? "Men's" : "Ladies'"} Club Champs ${new Date().getFullYear()}`}
+                placeholder={`${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
                 value={champName}
                 onChange={(e) => setChampName(e.target.value)}
               />
@@ -615,14 +790,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
-      {step === "players" && (
+      {/* ── STEP: PLAYERS (Singles) ── */}
+      {step === "players" && !isDoubles && (
         <Card>
-           <CardHeader>
+          <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Select Players — {gender === "men" ? "Men" : "Ladies"}</CardTitle>
+              <CardTitle>Select Players — {GENDER_LABELS[gender]}</CardTitle>
               <Button
-                variant="outline"
-                size="sm"
+                variant="outline" size="sm"
                 onClick={() => {
                   if (selectedPlayerIds.size === genderMembers.length) {
                     setSelectedPlayerIds(new Set());
@@ -635,12 +810,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedPlayerIds.size} of {genderMembers.length} selected. Uncheck to remove.
+              {selectedPlayerIds.size} of {genderMembers.length} selected
             </p>
           </CardHeader>
           <CardContent>
             {genderMembers.length === 0 ? (
-              <p className="text-muted-foreground py-4">No {gender === "men" ? "male" : "female"} members found. Check member gender settings.</p>
+              <p className="text-muted-foreground py-4">No matching members found. Check member gender settings.</p>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {genderMembers.map((m, i) => (
@@ -655,9 +830,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
                     <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
-                    {m.ladder_position && (
-                      <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>
-                    )}
+                    {m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
+                    {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
                   </label>
                 ))}
               </div>
@@ -666,29 +840,83 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
+      {/* ── STEP: PLAYERS (Doubles — Pair Builder) ── */}
+      {step === "players" && isDoubles && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Form Doubles Pairs — {GENDER_LABELS[gender]}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {doublesPairs.length} pair{doublesPairs.length !== 1 ? "s" : ""} formed. Select two players to create each pair.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Existing pairs */}
+            {doublesPairs.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Pairs</Label>
+                {doublesPairs.map((pair) => (
+                  <div key={pair.id} className="flex items-center gap-2 p-2 rounded bg-muted/50 border">
+                    <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium text-sm flex-1">{getPairLabel(pair)}</span>
+                    <Button
+                      variant="ghost" size="icon" className="h-7 w-7"
+                      onClick={() => setDoublesPairs(doublesPairs.filter((p) => p.id !== pair.id))}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Pair builder */}
+            <PairBuilder
+              availablePlayers={availableForPairing}
+              gender={gender}
+              menMembers={menMembers}
+              ladiesMembers={ladiesMembers}
+              onAddPair={(p1, p2) => {
+                setDoublesPairs([...doublesPairs, { id: crypto.randomUUID(), player1Id: p1, player2Id: p2 }]);
+              }}
+              getMemberName={getMemberName}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── STEP: GROUPS ── */}
       {step === "groups" && (
         <Card>
           <CardHeader><CardTitle>Number of Groups</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Divide {selectedPlayerIds.size} players into how many groups?</Label>
+              <Label>Divide {entityCount} {isDoubles ? "pairs" : "players"} into how many groups?</Label>
               <Select value={String(numGroups)} onValueChange={(v) => {
                 const n = Number(v);
                 setNumGroups(n);
-                // Re-seed assignments for new group count
-                const newMap = new Map<string, number>();
-                selectedPlayers.forEach((p, i) => {
-                  const cycle = Math.floor(i / n);
-                  const idx = cycle % 2 === 0 ? i % n : n - 1 - (i % n);
-                  newMap.set(p.id, idx);
-                });
-                setGroupAssignments(newMap);
+                if (isDoubles) {
+                  const newMap = new Map<string, number>();
+                  doublesPairs.forEach((p, i) => {
+                    const cycle = Math.floor(i / n);
+                    const idx = cycle % 2 === 0 ? i % n : n - 1 - (i % n);
+                    newMap.set(p.id, idx);
+                  });
+                  setPairGroupAssignments(newMap);
+                } else {
+                  const newMap = new Map<string, number>();
+                  selectedPlayers.forEach((p, i) => {
+                    const cycle = Math.floor(i / n);
+                    const idx = cycle % 2 === 0 ? i % n : n - 1 - (i % n);
+                    newMap.set(p.id, idx);
+                  });
+                  setGroupAssignments(newMap);
+                }
               }}>
-                <SelectTrigger className="w-32 mt-1">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-32 mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: Math.floor(selectedPlayerIds.size / 2) }, (_, i) => i + 1).map((n) => (
+                  {Array.from({ length: Math.floor(entityCount / 2) }, (_, i) => i + 1).map((n) => (
                     <SelectItem key={n} value={String(n)}>{n} group{n > 1 ? "s" : ""}</SelectItem>
                   ))}
                 </SelectContent>
@@ -696,59 +924,81 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
             <Separator />
             <p className="text-xs text-muted-foreground">
-              Players are auto-distributed by ranking. Use the dropdown next to each player to move them between groups.
+              {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Use the dropdown to move between groups.
             </p>
             <div className="space-y-4">
-              {groups.map((g, gi) => (
-                <div key={gi} className="border rounded-lg p-3">
-                  <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
-                  <div className="space-y-1">
-                    {g.map((p) => (
-                      <div key={p.id} className="flex items-center gap-2 py-1">
-                        <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
-                        {p.ladder_position && (
-                          <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>
-                        )}
-                        <Select
-                          value={String(groupAssignments.get(p.id) ?? 0)}
-                          onValueChange={(v) => {
-                            const newMap = new Map(groupAssignments);
-                            newMap.set(p.id, Number(v));
-                            setGroupAssignments(newMap);
-                          }}
-                        >
-                          <SelectTrigger className="w-28 h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: numGroups }, (_, i) => (
-                              <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ))}
+              {isDoubles ? (
+                (groups as DoublePair[][]).map((g, gi) => (
+                  <div key={gi} className="border rounded-lg p-3">
+                    <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} pairs)</span></h4>
+                    <div className="space-y-1">
+                      {g.map((pair) => (
+                        <div key={pair.id} className="flex items-center gap-2 py-1">
+                          <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="flex-1 text-sm font-medium">{getPairLabel(pair)}</span>
+                          <Select
+                            value={String(pairGroupAssignments.get(pair.id) ?? 0)}
+                            onValueChange={(v) => {
+                              const newMap = new Map(pairGroupAssignments);
+                              newMap.set(pair.id, Number(v));
+                              setPairGroupAssignments(newMap);
+                            }}
+                          >
+                            <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: numGroups }, (_, i) => (
+                                <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                (groups as ClubMember[][]).map((g, gi) => (
+                  <div key={gi} className="border rounded-lg p-3">
+                    <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
+                    <div className="space-y-1">
+                      {g.map((p) => (
+                        <div key={p.id} className="flex items-center gap-2 py-1">
+                          <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                          {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                          <Select
+                            value={String(groupAssignments.get(p.id) ?? 0)}
+                            onValueChange={(v) => {
+                              const newMap = new Map(groupAssignments);
+                              newMap.set(p.id, Number(v));
+                              setGroupAssignments(newMap);
+                            }}
+                          >
+                            <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: numGroups }, (_, i) => (
+                                <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
+      {/* ── STEP: SCHEDULE ── */}
       {step === "schedule" && (
         <Card>
           <CardHeader><CardTitle>Schedule Configuration</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Start Date</Label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <Label>End Date</Label>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
+              <div><Label>Start Date</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+              <div><Label>End Date</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
             </div>
 
             <div>
@@ -771,14 +1021,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label>Start Time</Label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-              </div>
-              <div>
-                <Label>End Time</Label>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-              </div>
+              <div><Label>Start Time</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
+              <div><Label>End Time</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
               <div>
                 <Label>Match Duration</Label>
                 <Select value={String(matchDuration)} onValueChange={(v) => setMatchDuration(Number(v))}>
@@ -816,7 +1060,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <div className="p-3 rounded bg-muted text-sm space-y-1">
                 <p>📊 <strong>{schedulePreview.totalMatches}</strong> matches to schedule</p>
                 <p>📅 <strong>{schedulePreview.allDates.length}</strong> play days available</p>
-                <p>🏟️ <strong>{schedulePreview.totalSlots}</strong> total slots ({schedulePreview.timeSlots.length} time slots × {selectedCourtIds.size} courts × {schedulePreview.allDates.length} days)</p>
+                <p>🏟️ <strong>{schedulePreview.totalSlots}</strong> total slots</p>
                 {schedulePreview.totalSlots < schedulePreview.totalMatches && (
                   <p className="text-destructive font-medium">⚠️ Not enough slots! Add more days, courts, or extend the time range.</p>
                 )}
@@ -826,13 +1070,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
+      {/* ── STEP: REVIEW ── */}
       {step === "review" && (
         <Card>
           <CardHeader><CardTitle>Review & Generate</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
-              <p><strong>Name:</strong> {champName || `${gender === "men" ? "Men's" : "Ladies'"} Club Champs ${new Date().getFullYear()}`}</p>
-              <p><strong>Players:</strong> {selectedPlayerIds.size} in {numGroups} group{numGroups > 1 ? "s" : ""}</p>
+              <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
+              <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoubles ? "Doubles" : "Singles"}</p>
+              <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {entityCount} in {numGroups} group{numGroups > 1 ? "s" : ""}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
               <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
               <p><strong>Time:</strong> {startTime} – {endTime} ({matchDuration} min per match)</p>
@@ -843,7 +1089,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
             {schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                {groups.map((g, gi) => {
+                {Array.from({ length: numGroups }, (_, gi) => {
                   const groupMatches = schedulePreview.allMatches.filter((m) => m.groupNum === gi + 1);
                   return (
                     <div key={gi}>
@@ -853,9 +1099,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           <div key={mi} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">
                             <span className="text-muted-foreground w-20">{m.date ? format(new Date(m.date), "EEE dd MMM") : "TBD"}</span>
                             <span className="text-muted-foreground w-12">{m.time || "TBD"}</span>
-                            <span className="font-medium">{getMemberName(m.playerA)}</span>
+                            <span className="font-medium">{getEntityLabel(m.entityA)}</span>
                             <span className="text-muted-foreground">vs</span>
-                            <span className="font-medium">{getMemberName(m.playerB)}</span>
+                            <span className="font-medium">{getEntityLabel(m.entityB)}</span>
                             {m.courtId && <Badge variant="outline" className="ml-auto text-[10px]">{getCourtName(m.courtId)}</Badge>}
                           </div>
                         ))}
@@ -885,6 +1131,82 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Pair Builder sub-component ──
+function PairBuilder({
+  availablePlayers,
+  gender,
+  menMembers,
+  ladiesMembers,
+  onAddPair,
+  getMemberName,
+}: {
+  availablePlayers: ClubMember[];
+  gender: GenderCategory;
+  menMembers: ClubMember[];
+  ladiesMembers: ClubMember[];
+  onAddPair: (p1: string, p2: string) => void;
+  getMemberName: (id: string) => string;
+}) {
+  const [player1, setPlayer1] = useState("");
+  const [player2, setPlayer2] = useState("");
+
+  // For mixed doubles, show men for P1 and ladies for P2
+  const isMixed = gender === "mixed";
+
+  const pool1 = isMixed
+    ? availablePlayers.filter((m) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()))
+    : availablePlayers;
+
+  const pool2 = isMixed
+    ? availablePlayers.filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()))
+    : availablePlayers.filter((m) => m.id !== player1);
+
+  const handleAdd = () => {
+    if (player1 && player2 && player1 !== player2) {
+      onAddPair(player1, player2);
+      setPlayer1("");
+      setPlayer2("");
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <Label className="text-xs text-muted-foreground uppercase tracking-wide">Add a pair</Label>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">{isMixed ? "Player (Men)" : "Player 1"}</Label>
+          <Select value={player1} onValueChange={setPlayer1}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <SelectContent>
+              {pool1.map((m) => (
+                <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">{isMixed ? "Player (Ladies)" : "Player 2"}</Label>
+          <Select value={player2} onValueChange={setPlayer2}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <SelectContent>
+              {pool2.map((m) => (
+                <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || "—"}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <Button
+        size="sm"
+        onClick={handleAdd}
+        disabled={!player1 || !player2 || player1 === player2}
+      >
+        <Plus className="w-4 h-4 mr-1" /> Add Pair
+      </Button>
     </div>
   );
 }

@@ -556,7 +556,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* My Championships */}
+      {/* My Tournaments */}
       <div className="px-4 mt-4">
         <MyChampionships />
       </div>

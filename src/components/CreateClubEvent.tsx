@@ -58,7 +58,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();
   const queryClient = useQueryClient();
-  const clubId = club?.id;
+  const clubId = club?.id || activeMember?.club_id;
 
   const [createOpen, setCreateOpen] = useState(!!onClose);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);

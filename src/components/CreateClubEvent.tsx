@@ -57,8 +57,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();
+  const { data: myClubData } = useQuery({
+    queryKey: ["my-club-fallback"],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await (supabase as any).from("club_members").select("club_id").eq("user_id", user.id).limit(1).maybeSingle();
+      return data?.club_id as string | null;
+    },
+    enabled: !club?.id && !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
   const queryClient = useQueryClient();
-  const clubId = club?.id || activeMember?.club_id;
+  const clubId = club?.id || myClubData || null;
 
   const [createOpen, setCreateOpen] = useState(!!onClose);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);

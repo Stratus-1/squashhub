@@ -384,6 +384,31 @@ export function MemberOnboardingWizard({
         if (memErr) throw memErr;
       }
 
+      // 2b. Upload face photo if captured
+      if (capturedPhoto && faceRequired) {
+        try {
+          const blob = await (await fetch(capturedPhoto)).blob();
+          const filePath = `${clubId}/${user.id}.jpg`;
+          const { error: uploadErr } = await supabase.storage
+            .from("member-faces")
+            .upload(filePath, blob, { contentType: "image/jpeg", upsert: true });
+          if (uploadErr) {
+            console.warn("[MemberOnboardingWizard] Face upload error:", uploadErr);
+          } else {
+            // Also store as avatar_url on the member record
+            const { data: urlData } = supabase.storage.from("member-faces").getPublicUrl(filePath);
+            if (urlData?.publicUrl) {
+              await fromExt("club_members")
+                .update({ avatar_url: urlData.publicUrl })
+                .eq("club_id", clubId)
+                .eq("user_id", user.id);
+            }
+          }
+        } catch (faceErr) {
+          console.warn("[MemberOnboardingWizard] Face photo processing error:", faceErr);
+        }
+      }
+
       // 3. Create fee payment records
       if (feeBreakdown.length > 0) {
         // Get the club_member_id

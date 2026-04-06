@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Trophy, ChevronRight, Calendar } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
@@ -20,36 +21,55 @@ export function MyChampionships() {
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
 
-  // Get champs this member is entered in
-  const { data: myEntries = [] } = useQuery({
-    queryKey: ["my-champ-entries", memberId],
+  // Get all active champs for the club
+  const { data: allChamps = [] } = useQuery({
+    queryKey: ["club-champs-active", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_champs_entries")
-        .select("*, champ:champ_id(id, name, gender, match_type, status, start_date, end_date, play_days, start_time, end_time), partner:partner_member_id(id, name, profiles:user_id(name))")
-        .or(`club_member_id.eq.${memberId},partner_member_id.eq.${memberId}`);
+      const { data, error } = await fromExt("club_champs")
+        .select("id, name, gender, match_type, status, start_date, end_date")
+        .eq("club_id", clubId!)
+        .neq("status", "completed")
+        .order("start_date");
       if (error) throw error;
-      return (data || []).filter((e: any) => e.champ?.status !== "completed");
+      return data || [];
     },
-    enabled: !!memberId,
+    enabled: !!clubId,
   });
 
-  // Get upcoming matches for this member across all champs
-  const champIds = [...new Set(myEntries.map((e: any) => e.champ?.id).filter(Boolean))];
+  const champIds = allChamps.map((c: any) => c.id);
+
+  // Get entries for these champs (to find which ones the member is in)
+  const { data: myEntries = [] } = useQuery({
+    queryKey: ["my-champ-entries-dashboard", memberId, champIds],
+    queryFn: async () => {
+      if (!champIds.length || !memberId) return [];
+      const { data, error } = await fromExt("club_champs_entries")
+        .select("*, partner:partner_member_id(id, name, profiles:user_id(name))")
+        .in("champ_id", champIds)
+        .or(`club_member_id.eq.${memberId},partner_member_id.eq.${memberId}`);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: champIds.length > 0 && !!memberId,
+  });
+
+  // Get upcoming matches for this member
+  const myChampIds = [...new Set(myEntries.map((e: any) => e.champ_id))];
 
   const { data: myMatches = [] } = useQuery({
-    queryKey: ["my-champ-matches", memberId, champIds],
+    queryKey: ["my-champ-matches-dashboard", memberId, myChampIds],
     queryFn: async () => {
-      if (!champIds.length) return [];
+      if (!myChampIds.length || !memberId) return [];
       const { data, error } = await fromExt("club_champs_matches")
-        .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name), champ:champ_id(id, name, match_type)")
-        .in("champ_id", champIds)
+        .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name)")
+        .in("champ_id", myChampIds)
         .or(`player_a_member_id.eq.${memberId},player_b_member_id.eq.${memberId},partner_a_member_id.eq.${memberId},partner_b_member_id.eq.${memberId}`)
         .order("scheduled_date")
         .order("scheduled_time");
       if (error) throw error;
       return data || [];
     },
-    enabled: champIds.length > 0,
+    enabled: myChampIds.length > 0 && !!memberId,
   });
 
   if (!myEntries.length) return null;
@@ -66,20 +86,22 @@ export function MyChampionships() {
         <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
           <Trophy className="w-4 h-4" /> My Championships
         </h2>
+        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/events")}>
+          View all <ChevronRight className="w-3 h-3 ml-1" />
+        </Button>
       </div>
 
-      {/* Championship cards */}
       {myEntries.map((entry: any) => {
-        const champ = entry.champ;
+        const champ = allChamps.find((c: any) => c.id === entry.champ_id);
         if (!champ) return null;
         const isDoubles = champ.match_type === "doubles";
         const partnerName = entry.partner ? getName(entry.partner) : null;
-        const champMatches = upcomingMatches.filter((m: any) => m.champ_id === champ.id);
+        const champUpcoming = upcomingMatches.filter((m: any) => m.champ_id === champ.id);
         const champCompleted = completedMatches.filter((m: any) => m.champ_id === champ.id);
 
         return (
-          <Card key={entry.id} className="p-3 mb-2">
-            <div className="flex items-center justify-between mb-1.5">
+          <Card key={entry.id} className="p-3 mb-2 border-primary/20" onClick={() => navigate(`/club-champs/${champ.id}`)} role="button">
+            <div className="flex items-center justify-between mb-1">
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate">{champ.name}</p>
                 <p className="text-[11px] text-muted-foreground">
@@ -87,20 +109,12 @@ export function MyChampionships() {
                   {isDoubles && partnerName && <> · Partner: <span className="font-medium text-foreground">{partnerName}</span></>}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 h-7 text-[11px]"
-                onClick={() => navigate(`/club-champs/${champ.id}`)}
-              >
-                View <ChevronRight className="w-3 h-3 ml-0.5" />
-              </Button>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </div>
 
-            {/* Next upcoming fixture */}
-            {champMatches.length > 0 ? (
-              <div className="space-y-1">
-                {champMatches.slice(0, 2).map((m: any) => {
+            {champUpcoming.length > 0 ? (
+              <div className="space-y-1 mt-1.5">
+                {champUpcoming.slice(0, 2).map((m: any) => {
                   const isA = m.player_a_member_id === memberId || m.partner_a_member_id === memberId;
                   const opponent = isA
                     ? (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b))
@@ -109,7 +123,10 @@ export function MyChampionships() {
                   const today = matchDate && isToday(matchDate);
 
                   return (
-                    <div key={m.id} className={`flex items-center gap-2 text-[12px] p-1.5 rounded ${today ? "bg-primary/10 border border-primary/20" : "bg-muted/50"}`}>
+                    <div key={m.id} className={cn(
+                      "flex items-center gap-2 text-[12px] p-1.5 rounded",
+                      today ? "bg-primary/10 border border-primary/20" : "bg-muted/50"
+                    )}>
                       <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
                       <span className="text-muted-foreground shrink-0">
                         {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
@@ -121,20 +138,19 @@ export function MyChampionships() {
                     </div>
                   );
                 })}
-                {champMatches.length > 2 && (
-                  <p className="text-[11px] text-muted-foreground text-center">+{champMatches.length - 2} more fixtures</p>
+                {champUpcoming.length > 2 && (
+                  <p className="text-[11px] text-muted-foreground text-center">+{champUpcoming.length - 2} more</p>
                 )}
               </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">
-                {champCompleted.length > 0 ? `${champCompleted.length} matches played` : "No upcoming fixtures"}
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {champCompleted.length > 0 ? `${champCompleted.length} matches played` : `${champ.start_date} – ${champ.end_date}`}
               </p>
             )}
 
-            {/* Record summary */}
             {champCompleted.length > 0 && (
               <div className="flex gap-3 mt-1.5 text-[11px]">
-                <span className="text-green-600 font-medium">
+                <span className="text-primary font-medium">
                   W {champCompleted.filter((m: any) => m.winner_member_id === memberId).length}
                 </span>
                 <span className="text-destructive font-medium">

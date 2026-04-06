@@ -110,7 +110,8 @@ export function MemberOnboardingWizard({
 
   const club = clubData?.club;
   const clubId = club?.id || ctxClub?.id;
-  const faceRequired = !!(club as any)?.face_enrolment_required;
+  // Check face_enrolment_required from useMyClub data OR fetch directly from ClubContext
+  const faceRequired = !!(club as any)?.face_enrolment_required || !!(ctxClub as any)?.face_enrolment_required;
 
   const STEPS = useMemo(() => {
     const steps = [...BASE_STEPS];

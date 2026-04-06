@@ -26,12 +26,14 @@ export default function AuthCallback() {
           const user = data.session.user;
           const meta = user.user_metadata || {};
           const clubSubdomain = meta.club_subdomain as string | undefined;
+          const registrationType = meta.club_registration_type as string | undefined;
 
           // If this user signed up with club registration metadata, redirect to their club
-          if (clubSubdomain) {
+          // Only do the sign-out + redirect flow for club OWNERS (not members)
+          if (clubSubdomain && registrationType === "club_owner") {
             // Clear club metadata so it doesn't re-trigger
             await supabase.auth.updateUser({
-              data: { club_name: null, club_subdomain: null },
+              data: { club_name: null, club_subdomain: null, club_registration_type: null },
             });
 
             // Send club registration confirmation email (fire-and-forget)
@@ -68,7 +70,16 @@ export default function AuthCallback() {
             return;
           }
 
-          navigate("/", { replace: true });
+          // For club members, preserve club context via query param
+          if (clubSubdomain && registrationType !== "club_owner") {
+            // Clear metadata so it doesn't re-trigger
+            await supabase.auth.updateUser({
+              data: { club_name: null, club_subdomain: null, club_registration_type: null },
+            });
+            navigate(`/?club=${encodeURIComponent(clubSubdomain)}`, { replace: true });
+          } else {
+            navigate("/", { replace: true });
+          }
         } else {
           navigate("/auth", { replace: true });
         }

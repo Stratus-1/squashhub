@@ -19,6 +19,7 @@ interface ClubContextType {
     secretary_member_id: string | null;
     club_captain_member_id: string | null;
     honesty_bar_enabled: boolean;
+    face_enrolment_required: boolean;
   } | null;
   isLoading: boolean;
 }
@@ -36,7 +37,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, honesty_bar_enabled")
+        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, honesty_bar_enabled, face_enrolment_required")
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;

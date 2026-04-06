@@ -131,7 +131,7 @@ export default function Auth() {
     const { error, userId } = await signUp(email, signupPassword, name, phone || undefined, {
       termsAcceptedAt: nowIso,
       privacyAcceptedAt: nowIso,
-    }, { clubName: club, subdomain: sub });
+    }, { clubName: club, subdomain: sub, registrationType: "club_owner" });
     if (error) {
       toast.error(error.message);
       setLoading(false);

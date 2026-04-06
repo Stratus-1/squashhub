@@ -105,7 +105,7 @@ export default function ClubAuth() {
       memberNum, // name will be populated from club_members record
       undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
-      club ? { clubName: club.name, subdomain: subdomain || "" } : undefined
+      club ? { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member" } : undefined
     );
     if (error) {
       toast.error(error.message);
@@ -157,7 +157,7 @@ export default function ClubAuth() {
       name,
       phone || undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
-      club ? { clubName: club.name, subdomain: subdomain || "" } : undefined
+      club ? { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member" } : undefined
     );
     if (error) {
       toast.error(error.message);

@@ -1343,6 +1343,11 @@ export type Database = {
           access_control_api_key: string | null
           access_control_api_url: string | null
           access_control_type: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_branch_code: string | null
+          bank_name: string | null
+          bank_reference: string | null
           club_id: string
           created_at: string
           id: string
@@ -1362,6 +1367,11 @@ export type Database = {
           access_control_api_key?: string | null
           access_control_api_url?: string | null
           access_control_type?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_branch_code?: string | null
+          bank_name?: string | null
+          bank_reference?: string | null
           club_id: string
           created_at?: string
           id?: string
@@ -1381,6 +1391,11 @@ export type Database = {
           access_control_api_key?: string | null
           access_control_api_url?: string | null
           access_control_type?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_branch_code?: string | null
+          bank_name?: string | null
+          bank_reference?: string | null
           club_id?: string
           created_at?: string
           id?: string

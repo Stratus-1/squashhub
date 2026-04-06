@@ -324,6 +324,7 @@ export default function AddMatchResult() {
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(5);
+  const [deuceRule, setDeuceRule] = useState<DeuceRule>("win_by_2");
   const [matchDate, setMatchDate] = useState(urlMatchDate || new Date().toISOString().split("T")[0]);
 
   // Scores

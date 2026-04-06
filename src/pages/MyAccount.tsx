@@ -12,6 +12,7 @@ import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, Ch
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
+import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -25,6 +26,7 @@ export default function MyAccount() {
   const { data: clubData, isLoading: clubLoading } = useMyClub();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
+  const { data: clubSecrets } = useClubSecrets(club?.id);
   const navigate = useNavigate();
 
   const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
@@ -464,10 +466,10 @@ export default function MyAccount() {
 
   const copyBankDetails = () => {
     const details = [
-      club?.bank_name && `Bank: ${club.bank_name}`,
-      club?.bank_account_name && `Account: ${club.bank_account_name}`,
-      club?.bank_account_number && `Number: ${club.bank_account_number}`,
-      club?.bank_branch_code && `Branch: ${club.bank_branch_code}`,
+      clubSecrets?.bank_name && `Bank: ${clubSecrets?.bank_name}`,
+      clubSecrets?.bank_account_name && `Account: ${clubSecrets?.bank_account_name}`,
+      clubSecrets?.bank_account_number && `Number: ${clubSecrets?.bank_account_number}`,
+      clubSecrets?.bank_branch_code && `Branch: ${clubSecrets?.bank_branch_code}`,
       `Reference: ${memberNo} - Top-up`,
     ]
       .filter(Boolean)
@@ -544,7 +546,11 @@ export default function MyAccount() {
         transition={{ delay: 0.05 }}
       >
         <h2 className="text-sm font-semibold font-heading mb-2">Outstanding Fees</h2>
-        {feesLoading || !clubMemberId ? (
+        {!clubMemberId ? (
+          <Card className="p-3 text-center text-sm text-muted-foreground">
+            No member profile linked to your account yet.
+          </Card>
+        ) : feesLoading ? (
           <Card className="p-4 flex justify-center">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </Card>
@@ -785,7 +791,7 @@ export default function MyAccount() {
               </Button>
             </div>
 
-            {topUpMethod === "eft" && club?.bank_name && (
+            {topUpMethod === "eft" && clubSecrets?.bank_name && (
               <Card className="p-3 bg-muted/50 space-y-1">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
@@ -793,10 +799,10 @@ export default function MyAccount() {
                     <Copy className="w-3 h-3" /> Copy
                   </Button>
                 </div>
-                {club.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {club.bank_name}</p>}
-                {club.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {club.bank_account_name}</p>}
-                {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
-                {club.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {club.bank_branch_code}</p>}
+                {clubSecrets?.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {clubSecrets?.bank_name}</p>}
+                {clubSecrets?.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {clubSecrets?.bank_account_name}</p>}
+                {clubSecrets?.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {clubSecrets?.bank_account_number}</p>}
+                {clubSecrets?.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {clubSecrets?.bank_branch_code}</p>}
                 <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Top-up</p>
               </Card>
             )}
@@ -882,7 +888,7 @@ export default function MyAccount() {
               </Card>
             )}
 
-            {payMethod === "eft" && club?.bank_name && (
+            {payMethod === "eft" && clubSecrets?.bank_name && (
               <Card className="p-3 bg-muted/50 space-y-1">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
@@ -890,10 +896,10 @@ export default function MyAccount() {
                     <Copy className="w-3 h-3" /> Copy
                   </Button>
                 </div>
-                {club.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {club.bank_name}</p>}
-                {club.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {club.bank_account_name}</p>}
-                {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
-                {club.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {club.bank_branch_code}</p>}
+                {clubSecrets?.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {clubSecrets?.bank_name}</p>}
+                {clubSecrets?.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {clubSecrets?.bank_account_name}</p>}
+                {clubSecrets?.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {clubSecrets?.bank_account_number}</p>}
+                {clubSecrets?.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {clubSecrets?.bank_branch_code}</p>}
                 <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Fees</p>
               </Card>
             )}
@@ -995,11 +1001,11 @@ export default function MyAccount() {
               </Card>
             )}
 
-            {payBarMethod === "eft" && club?.bank_name && (
+            {payBarMethod === "eft" && clubSecrets?.bank_name && (
               <Card className="p-3 bg-muted/50 space-y-1">
                 <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
-                {club.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {club.bank_name}</p>}
-                {club.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {club.bank_account_number}</p>}
+                {clubSecrets?.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {clubSecrets?.bank_name}</p>}
+                {clubSecrets?.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {clubSecrets?.bank_account_number}</p>}
                 <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {memberNo} - Bar</p>
               </Card>
             )}

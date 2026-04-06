@@ -682,8 +682,62 @@ export function MemberOnboardingWizard({
               </motion.div>
             )}
 
+            {/* ─── FACE ENROLMENT ─── */}
+            {currentStepId === "face" && (
+              <motion.div key="face" {...slideVariants} className="flex-1 space-y-4 pt-2">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-heading">Face Enrolment</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Your club requires face recognition for court access. Please take a clear photo of your face.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex flex-col items-center gap-3">
+                  {cameraError ? (
+                    <Card className="p-4 text-center space-y-2">
+                      <ScanFace className="w-10 h-10 text-muted-foreground mx-auto" />
+                      <p className="text-sm text-destructive">{cameraError}</p>
+                      <Button size="sm" variant="outline" onClick={startCamera}>
+                        <Camera className="w-4 h-4 mr-1" /> Try Again
+                      </Button>
+                    </Card>
+                  ) : capturedPhoto ? (
+                    <div className="space-y-2 text-center">
+                      <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20">
+                        <img src={capturedPhoto} alt="Your face" className="w-full h-full object-cover" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Looking good! ✓</p>
+                      <Button size="sm" variant="outline" onClick={retakePhoto}>
+                        <Camera className="w-4 h-4 mr-1" /> Retake Photo
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-center">
+                      <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20 bg-muted">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <Button size="sm" onClick={capturePhoto} disabled={!cameraStream}>
+                        <Camera className="w-4 h-4 mr-1" /> Capture Photo
+                      </Button>
+                    </div>
+                  )}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Your photo is stored securely and used only for court access verification.
+                </p>
+              </motion.div>
+            )}
+
             {/* ─── DONE ─── */}
-            {step === 4 && (
+            {currentStepId === "done" && (
               <motion.div key="done" {...slideVariants}
                 className="flex-1 flex flex-col items-center justify-center text-center gap-4 py-6"
               >

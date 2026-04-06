@@ -588,21 +588,46 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <DialogHeader>
             <DialogTitle>Enter Transaction</DialogTitle>
             <DialogDescription>
-              Record a bank, cash, or card transaction to the general ledger. Card payments automatically incur a 3.5% gateway fee.
+              Record a payment. The system automatically posts the correct double entry based on your selections. Card payments incur a 3.5% gateway fee.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            {/* Income or Expense */}
+            <div>
+              <Label className="text-xs">Transaction Type</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Button
+                  type="button"
+                  variant={txDirection === "income" ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => { setTxDirection("income"); setTxAccount(""); }}
+                >
+                  💰 Income (Money In)
+                </Button>
+                <Button
+                  type="button"
+                  variant={txDirection === "expense" ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => { setTxDirection("expense"); setTxAccount(""); }}
+                >
+                  💸 Expense (Money Out)
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Date</Label>
                 <Input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="h-9 text-xs" />
               </div>
               <div>
-                <Label className="text-xs">Payment Method</Label>
+                <Label className="text-xs">Paid via</Label>
                 <Select value={txMethod} onValueChange={v => setTxMethod(v as any)}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="eft">EFT / Bank Transfer</SelectItem>
+                    <SelectItem value="bank">Bank / EFT</SelectItem>
                     <SelectItem value="cash">Cash</SelectItem>
                     <SelectItem value="card">Card</SelectItem>
                   </SelectContent>
@@ -621,33 +646,44 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
 
             <div>
-              <Label className="text-xs">Description</Label>
-              <Textarea placeholder="e.g. Monthly rent payment" value={txDescription} onChange={e => setTxDescription(e.target.value)} className="text-xs min-h-[60px]" />
+              <Label className="text-xs">{txDirection === "income" ? "Income Account" : "Expense Account"}</Label>
+              <Select value={txAccount} onValueChange={setTxAccount}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select account..." /></SelectTrigger>
+                <SelectContent>
+                  {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
+                    .filter(a => !["bank", "bank_current", "cash", "debtors"].includes(a))
+                    .map(a => (
+                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {txAccount && txAmount && parseFloat(txAmount) > 0 && (
+                <div className="mt-2 p-2 rounded bg-muted/60 text-[10px] text-muted-foreground space-y-0.5">
+                  <p className="font-semibold text-foreground text-xs">GL Preview:</p>
+                  {txDirection === "income" ? (
+                    <>
+                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} R{parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Credit {getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>• Debit {getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} R{parseFloat(txAmount).toFixed(2)}</p>
+                    </>
+                  )}
+                  {txMethod === "card" && (
+                    <>
+                      <p>• Debit Gateway Fees R{(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                      <p>• Credit Current Account R{(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Debit Account</Label>
-                <Select value={txDebitAccount} onValueChange={setTxDebitAccount}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {ALL_ACCOUNTS.map(a => (
-                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Credit Account</Label>
-                <Select value={txCreditAccount} onValueChange={setTxCreditAccount}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {ALL_ACCOUNTS.map(a => (
-                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label className="text-xs">Description</Label>
+              <Textarea placeholder="e.g. Monthly rent payment" value={txDescription} onChange={e => setTxDescription(e.target.value)} className="text-xs min-h-[60px]" />
             </div>
 
             <div>

@@ -47,6 +47,28 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true, deleted: targetUserId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
+  if (action === "update-user-email") {
+    const authHeader = req.headers.get("authorization") || "";
+    const { data: { user: caller }, error: authErr } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (authErr || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { data: roleRow } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", caller.id).eq("role", "admin").maybeSingle();
+    if (!roleRow) {
+      return new Response(JSON.stringify({ error: "Forbidden: platform admin required" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const body = await req.json();
+    const { userId, newEmail } = body;
+    if (!userId || !newEmail) {
+      return new Response(JSON.stringify({ error: "userId and newEmail required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, { email: newEmail, email_confirm: true });
+    if (updateErr) {
+      return new Response(JSON.stringify({ error: updateErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ ok: true, userId, newEmail }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
   // Internal secret check for other actions
   const expected = Deno.env.get("MAINTENANCE_INTERNAL_SECRET") || Deno.env.get("PUSH_INTERNAL_SECRET") || "";
   const got = req.headers.get("x-internal-secret") || "";

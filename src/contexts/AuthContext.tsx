@@ -12,7 +12,7 @@ interface AuthContextType {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" }
   ) => Promise<{ error: Error | null; userId: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" }
   ) => {
     const metadata: Record<string, string> = { name };
     if (phone) metadata.phone = phone;
@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (consents?.privacyAcceptedAt) metadata.privacy_accepted_at = consents.privacyAcceptedAt;
     if (club?.clubName) metadata.club_name = club.clubName;
     if (club?.subdomain) metadata.club_subdomain = club.subdomain;
+    if (club?.registrationType) metadata.club_registration_type = club.registrationType;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

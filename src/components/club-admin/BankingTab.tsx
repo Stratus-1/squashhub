@@ -125,6 +125,14 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   // Load saved credentials from secrets
   useEffect(() => {
     if (secrets) {
+      // Load bank details from secrets
+      setBankForm({
+        bank_name: (secrets as any).bank_name || "",
+        bank_account_name: (secrets as any).bank_account_name || "",
+        bank_account_number: (secrets as any).bank_account_number || "",
+        bank_branch_code: (secrets as any).bank_branch_code || "",
+        bank_reference: (secrets as any).bank_reference || "",
+      });
       const saved = (secrets as any).payment_gateway_credentials;
       if (saved && typeof saved === "object") {
         setCredentials(saved);

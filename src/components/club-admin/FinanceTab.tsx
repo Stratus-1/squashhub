@@ -523,28 +523,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         </TabsContent>
       </Tabs>
 
-      {/* Pay-Over Dialog */}
-      <Dialog open={payOverOpen} onOpenChange={setPayOverOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Record Pay-Over</DialogTitle>
-            <DialogDescription>
-              Confirm that R{outstandingCreditors.toFixed(2)} has been paid to associations/suppliers.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 mt-2">
-            <Card className="p-3 bg-muted/50 text-sm space-y-1">
-              <p>This will create GL entries:</p>
-              <p className="text-xs text-muted-foreground">• Debit Creditors R{outstandingCreditors.toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground">• Credit Current Account R{outstandingCreditors.toFixed(2)}</p>
-            </Card>
-            <Button className="w-full" onClick={handlePayOver}>
-              Confirm Pay-Over · R{outstandingCreditors.toFixed(2)}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Enter Transaction Dialog */}
       <Dialog open={txOpen} onOpenChange={setTxOpen}>
         <DialogContent className="max-w-md">

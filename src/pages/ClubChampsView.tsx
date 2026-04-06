@@ -16,6 +16,8 @@ const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'",
 
 export default function ClubChampsView() {
   const { champId } = useParams<{ champId: string }>();
+  const { activeMember } = useMemberContext();
+  const myMemberId = activeMember?.id;
 
   const { data: champ, isLoading } = useQuery({
     queryKey: ["club-champ", champId],

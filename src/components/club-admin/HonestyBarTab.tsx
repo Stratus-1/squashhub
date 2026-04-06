@@ -24,6 +24,7 @@ interface BarItem {
   image_url?: string | null;
   stock_qty: number;
   low_stock_threshold: number;
+  cost_price: number;
 }
 
 interface BarTabEntry {
@@ -187,6 +188,8 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: "", price: "", category: "drinks", image_url: "" });
+  const [restockItem, setRestockItem] = useState<BarItem | null>(null);
+  const [restockForm, setRestockForm] = useState({ qty: "1", unitCost: "", supplierNote: "" });
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.price) return;
@@ -226,12 +229,27 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
     else { toast.success("Image updated"); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
   };
 
-  const handleRestock = async (id: string, addQty: number) => {
-    const item = items.find(i => i.id === id);
-    if (!item) return;
-    const { error } = await fromExt("bar_items").update({ stock_qty: item.stock_qty + addQty }).eq("id", id);
+  const handleRestock = async () => {
+    if (!restockItem) return;
+    const qty = parseInt(restockForm.qty);
+    const unitCost = parseFloat(restockForm.unitCost) || 0;
+    if (qty <= 0) { toast.error("Quantity must be at least 1"); return; }
+
+    const { error } = await fromExt("bar_stock_purchases").insert({
+      club_id: clubId,
+      bar_item_id: restockItem.id,
+      quantity: qty,
+      unit_cost: unitCost,
+      total_cost: unitCost * qty,
+      supplier_note: restockForm.supplierNote.trim() || null,
+    });
     if (error) toast.error(error.message);
-    else { toast.success(`Added ${addQty} to ${item.name}`); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
+    else {
+      toast.success(`Stocked ${qty}× ${restockItem.name} — R${(unitCost * qty).toFixed(2)} recorded as bar expense`);
+      setRestockItem(null);
+      setRestockForm({ qty: "1", unitCost: "", supplierNote: "" });
+      qc.invalidateQueries({ queryKey: ["bar-items"] });
+    }
   };
 
   const CATEGORY_EMOJI: Record<string, string> = {
@@ -239,6 +257,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
   };
 
   return (
+    <>
     <Card className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Bar Items ({items.length})</h3>
@@ -261,7 +280,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
               step={0.5}
               value={form.price}
               onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
-              placeholder="Price (R)"
+              placeholder="Sell Price (R)"
             />
             <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -284,7 +303,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       <div className="space-y-2">
         {items.map(item => {
           const cat = CATEGORIES.find(c => c.value === item.category);
-          const isLowStock = item.stock_qty <= item.low_stock_threshold;
+          const isLowStock = item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
           const isOutOfStock = item.stock_qty <= 0;
           return (
             <div key={item.id} className="flex items-center gap-3 rounded-lg border p-2.5">
@@ -308,7 +327,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                     <AlertTriangle className="w-3 h-3" /> Out
                   </Badge>
                 ) : isLowStock ? (
-                  <Badge variant="secondary" className="text-[10px] gap-0.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                  <Badge variant="secondary" className="text-[10px] gap-0.5 border-orange-300 text-orange-700 dark:text-orange-400">
                     <AlertTriangle className="w-3 h-3" /> {item.stock_qty}
                   </Badge>
                 ) : (
@@ -321,8 +340,8 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                 className="h-7 w-7"
                 title="Add stock"
                 onClick={() => {
-                  const qty = prompt(`Add stock for ${item.name}\nCurrent: ${item.stock_qty}\n\nHow many to add?`, "10");
-                  if (qty !== null && parseInt(qty) > 0) handleRestock(item.id, parseInt(qty));
+                  setRestockItem(item);
+                  setRestockForm({ qty: "1", unitCost: item.cost_price ? String(item.cost_price) : "", supplierNote: "" });
                 }}
               >
                 <PackagePlus className="w-3.5 h-3.5" />
@@ -356,6 +375,60 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
         )}
       </div>
     </Card>
+
+    {/* Restock Dialog */}
+    <Dialog open={!!restockItem} onOpenChange={open => !open && setRestockItem(null)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Restock: {restockItem?.name}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Current stock: <strong>{restockItem?.stock_qty}</strong>. Record a supplier purchase below — this will update stock levels and create a bar expense journal entry.
+        </p>
+        <div className="space-y-3 mt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Quantity</Label>
+              <Input
+                type="number"
+                min={1}
+                value={restockForm.qty}
+                onChange={e => setRestockForm(p => ({ ...p, qty: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Cost per unit (R)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={restockForm.unitCost}
+                onChange={e => setRestockForm(p => ({ ...p, unitCost: e.target.value }))}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          {restockForm.unitCost && restockForm.qty && (
+            <p className="text-sm font-medium">
+              Total cost: R{(parseFloat(restockForm.unitCost || "0") * parseInt(restockForm.qty || "0")).toFixed(2)}
+            </p>
+          )}
+          <div>
+            <Label className="text-xs">Supplier / Invoice note (optional)</Label>
+            <Input
+              value={restockForm.supplierNote}
+              onChange={e => setRestockForm(p => ({ ...p, supplierNote: e.target.value }))}
+              placeholder="e.g. Invoice #1234 from Makro"
+            />
+          </div>
+          <Button className="w-full" onClick={handleRestock}>
+            <PackagePlus className="w-4 h-4 mr-1.5" />
+            Record Purchase
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 

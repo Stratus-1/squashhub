@@ -73,6 +73,7 @@ export type Database = {
           active: boolean
           category: string
           club_id: string
+          cost_price: number
           created_at: string
           id: string
           image_url: string | null
@@ -87,6 +88,7 @@ export type Database = {
           active?: boolean
           category?: string
           club_id: string
+          cost_price?: number
           created_at?: string
           id?: string
           image_url?: string | null
@@ -101,6 +103,7 @@ export type Database = {
           active?: boolean
           category?: string
           club_id?: string
+          cost_price?: number
           created_at?: string
           id?: string
           image_url?: string | null
@@ -117,6 +120,71 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_stock_purchases: {
+        Row: {
+          bar_item_id: string
+          club_id: string
+          created_at: string
+          id: string
+          purchased_by: string | null
+          quantity: number
+          supplier_note: string | null
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          bar_item_id: string
+          club_id: string
+          created_at?: string
+          id?: string
+          purchased_by?: string | null
+          quantity: number
+          supplier_note?: string | null
+          total_cost?: number
+          unit_cost?: number
+        }
+        Update: {
+          bar_item_id?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          purchased_by?: string | null
+          quantity?: number
+          supplier_note?: string | null
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_stock_purchases_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_stock_purchases_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_stock_purchases_purchased_by_fkey"
+            columns: ["purchased_by"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_stock_purchases_purchased_by_fkey"
+            columns: ["purchased_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -2936,7 +3004,13 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       club_member_role: "captain" | "admin" | "member"
-      gl_account: "debtors" | "fee_income" | "bank" | "creditors"
+      gl_account:
+        | "debtors"
+        | "fee_income"
+        | "bank"
+        | "creditors"
+        | "bar_income"
+        | "bar_expense"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -3071,7 +3145,14 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       club_member_role: ["captain", "admin", "member"],
-      gl_account: ["debtors", "fee_income", "bank", "creditors"],
+      gl_account: [
+        "debtors",
+        "fee_income",
+        "bank",
+        "creditors",
+        "bar_income",
+        "bar_expense",
+      ],
       integration_provider: [
         "strava",
         "apple_health",

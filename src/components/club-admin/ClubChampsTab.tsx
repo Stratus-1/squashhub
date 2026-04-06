@@ -342,6 +342,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             gender,
             match_type: matchType,
             num_groups: numGroups,
+            enable_playoffs: enablePlayoffs,
             start_date: startDate,
             end_date: endDate,
             play_days: Array.from(playDays),
@@ -360,6 +361,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             gender,
             match_type: matchType,
             num_groups: numGroups,
+            enable_playoffs: enablePlayoffs,
             start_date: startDate,
             end_date: endDate,
             play_days: Array.from(playDays),
@@ -528,7 +530,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStep("category");
     setGender("men");
     setMatchType("singles");
-    setSelectedPlayerIds(new Set());
+    setEnablePlayoffs(false);
     setNumGroups(2);
     setChampName("");
     setStartDate("");
@@ -549,6 +551,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEditingChampId(champ.id);
     setGender(champ.gender);
     setMatchType(champ.match_type || "singles");
+    setEnablePlayoffs(champ.enable_playoffs || false);
     setChampName(champ.name);
     setNumGroups(champ.num_groups);
     setStartDate(champ.start_date);

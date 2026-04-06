@@ -703,6 +703,7 @@ export default function AddMatchResult() {
               </div>
             </div>
 
+            <div>
               <Label className="text-xs">Match Date</Label>
               <Input
                 type="date"

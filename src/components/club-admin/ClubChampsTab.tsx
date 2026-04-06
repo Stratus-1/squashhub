@@ -793,6 +793,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
 
 
+            <div>
               <Label>Championship Name (optional)</Label>
               <Input
                 placeholder={`${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}

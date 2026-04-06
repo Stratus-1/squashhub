@@ -1472,11 +1472,6 @@ export type Database = {
       clubs: {
         Row: {
           address: string | null
-          bank_account_name: string | null
-          bank_account_number: string | null
-          bank_branch_code: string | null
-          bank_name: string | null
-          bank_reference: string | null
           chairman_member_id: string | null
           challenge_levels_up: number | null
           club_captain_member_id: string | null
@@ -1497,26 +1492,13 @@ export type Database = {
           name: string
           payment_gateway: string | null
           payment_gateway_public_key: string | null
-          payment_gateway_secret_key: string | null
           phone: string | null
           secretary_member_id: string | null
-          sender_email: string | null
-          sender_name: string | null
-          shelly_auth_key: string | null
-          smtp_host: string | null
-          smtp_pass: string | null
-          smtp_port: number | null
-          smtp_user: string | null
           subdomain: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
-          bank_account_name?: string | null
-          bank_account_number?: string | null
-          bank_branch_code?: string | null
-          bank_name?: string | null
-          bank_reference?: string | null
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null
@@ -1537,26 +1519,13 @@ export type Database = {
           name: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
-          payment_gateway_secret_key?: string | null
           phone?: string | null
           secretary_member_id?: string | null
-          sender_email?: string | null
-          sender_name?: string | null
-          shelly_auth_key?: string | null
-          smtp_host?: string | null
-          smtp_pass?: string | null
-          smtp_port?: number | null
-          smtp_user?: string | null
           subdomain?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
-          bank_account_name?: string | null
-          bank_account_number?: string | null
-          bank_branch_code?: string | null
-          bank_name?: string | null
-          bank_reference?: string | null
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null
@@ -1577,16 +1546,8 @@ export type Database = {
           name?: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
-          payment_gateway_secret_key?: string | null
           phone?: string | null
           secretary_member_id?: string | null
-          sender_email?: string | null
-          sender_name?: string | null
-          shelly_auth_key?: string | null
-          smtp_host?: string | null
-          smtp_pass?: string | null
-          smtp_port?: number | null
-          smtp_user?: string | null
           subdomain?: string | null
           updated_at?: string
         }

@@ -79,7 +79,7 @@ function determineGameWinner(scoreA: number, scoreB: number, format: ScoringForm
   return null;
 }
 
-function computeMatchResult(games: GameScore[], format: ScoringFormat) {
+function computeMatchResult(games: GameScore[], format: ScoringFormat, deuceRule: DeuceRule = "win_by_2") {
   let gamesA = 0;
   let gamesB = 0;
   const validGames: { a: number; b: number; winner: "a" | "b" }[] = [];
@@ -87,7 +87,7 @@ function computeMatchResult(games: GameScore[], format: ScoringFormat) {
   for (const g of games) {
     const a = parseInt(g.playerA) || 0;
     const b = parseInt(g.playerB) || 0;
-    const winner = determineGameWinner(a, b, format);
+    const winner = determineGameWinner(a, b, format, deuceRule);
     if (winner) {
       validGames.push({ a, b, winner });
       if (winner === "a") gamesA++;

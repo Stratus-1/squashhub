@@ -140,9 +140,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     return meta.normal === "Dr" ? b.debit - b.credit : b.credit - b.debit;
   };
 
-  const outstandingDebtors = getBalance("debtors");
-  const outstandingCreditors = getBalance("creditors");
+  const totalIncome = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Income").reduce((s, a) => s + getBalance(a), 0);
+  const totalExpenses = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Expense").reduce((s, a) => s + getBalance(a), 0);
   const bankBalance = getBalance("bank") + getBalance("bank_current");
+  const cashBalance = getBalance("cash");
 
   const filteredEntries = accountFilter === "all"
     ? (journalEntries || [])

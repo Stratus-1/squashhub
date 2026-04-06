@@ -1,0 +1,150 @@
+import { useQuery } from "@tanstack/react-query";
+import { fromExt } from "@/lib/supabase-ext";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { useClubContext } from "@/contexts/ClubContext";
+import { useMyClub } from "@/hooks/use-club";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Trophy, ChevronRight, Calendar } from "lucide-react";
+import { format, isPast, isToday } from "date-fns";
+import { useNavigate } from "react-router-dom";
+
+const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
+
+export function MyChampionships() {
+  const navigate = useNavigate();
+  const { activeMember } = useMemberContext();
+  const { club: contextClub } = useClubContext();
+  const { data: clubData } = useMyClub();
+  const clubId = contextClub?.id || clubData?.club?.id;
+  const memberId = activeMember?.id;
+
+  // Get champs this member is entered in
+  const { data: myEntries = [] } = useQuery({
+    queryKey: ["my-champ-entries", memberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_entries")
+        .select("*, champ:champ_id(id, name, gender, match_type, status, start_date, end_date, play_days, start_time, end_time), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .or(`club_member_id.eq.${memberId},partner_member_id.eq.${memberId}`);
+      if (error) throw error;
+      return (data || []).filter((e: any) => e.champ?.status !== "completed");
+    },
+    enabled: !!memberId,
+  });
+
+  // Get upcoming matches for this member across all champs
+  const champIds = [...new Set(myEntries.map((e: any) => e.champ?.id).filter(Boolean))];
+
+  const { data: myMatches = [] } = useQuery({
+    queryKey: ["my-champ-matches", memberId, champIds],
+    queryFn: async () => {
+      if (!champIds.length) return [];
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name), champ:champ_id(id, name, match_type)")
+        .in("champ_id", champIds)
+        .or(`player_a_member_id.eq.${memberId},player_b_member_id.eq.${memberId},partner_a_member_id.eq.${memberId},partner_b_member_id.eq.${memberId}`)
+        .order("scheduled_date")
+        .order("scheduled_time");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: champIds.length > 0,
+  });
+
+  if (!myEntries.length) return null;
+
+  const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
+  const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);
+
+  const upcomingMatches = myMatches.filter((m: any) => m.status === "scheduled" && m.scheduled_date && !isPast(new Date(m.scheduled_date + "T23:59:59")));
+  const completedMatches = myMatches.filter((m: any) => m.status === "completed");
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
+          <Trophy className="w-4 h-4" /> My Championships
+        </h2>
+      </div>
+
+      {/* Championship cards */}
+      {myEntries.map((entry: any) => {
+        const champ = entry.champ;
+        if (!champ) return null;
+        const isDoubles = champ.match_type === "doubles";
+        const partnerName = entry.partner ? getName(entry.partner) : null;
+        const champMatches = upcomingMatches.filter((m: any) => m.champ_id === champ.id);
+        const champCompleted = completedMatches.filter((m: any) => m.champ_id === champ.id);
+
+        return (
+          <Card key={entry.id} className="p-3 mb-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{champ.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"}
+                  {isDoubles && partnerName && <> · Partner: <span className="font-medium text-foreground">{partnerName}</span></>}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-7 text-[11px]"
+                onClick={() => navigate(`/club-champs/${champ.id}`)}
+              >
+                View <ChevronRight className="w-3 h-3 ml-0.5" />
+              </Button>
+            </div>
+
+            {/* Next upcoming fixture */}
+            {champMatches.length > 0 ? (
+              <div className="space-y-1">
+                {champMatches.slice(0, 2).map((m: any) => {
+                  const isA = m.player_a_member_id === memberId || m.partner_a_member_id === memberId;
+                  const opponent = isA
+                    ? (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b))
+                    : (isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a));
+                  const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
+                  const today = matchDate && isToday(matchDate);
+
+                  return (
+                    <div key={m.id} className={`flex items-center gap-2 text-[12px] p-1.5 rounded ${today ? "bg-primary/10 border border-primary/20" : "bg-muted/50"}`}>
+                      <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground shrink-0">
+                        {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
+                      </span>
+                      <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
+                      <span className="font-medium truncate">vs {opponent}</span>
+                      {m.court && <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{m.court.name}</Badge>}
+                      {today && <Badge className="text-[9px] shrink-0">Today</Badge>}
+                    </div>
+                  );
+                })}
+                {champMatches.length > 2 && (
+                  <p className="text-[11px] text-muted-foreground text-center">+{champMatches.length - 2} more fixtures</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                {champCompleted.length > 0 ? `${champCompleted.length} matches played` : "No upcoming fixtures"}
+              </p>
+            )}
+
+            {/* Record summary */}
+            {champCompleted.length > 0 && (
+              <div className="flex gap-3 mt-1.5 text-[11px]">
+                <span className="text-green-600 font-medium">
+                  W {champCompleted.filter((m: any) => m.winner_member_id === memberId).length}
+                </span>
+                <span className="text-destructive font-medium">
+                  L {champCompleted.filter((m: any) => m.winner_member_id && m.winner_member_id !== memberId).length}
+                </span>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}

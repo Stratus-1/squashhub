@@ -163,21 +163,21 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
 
   const handleSave = async () => {
     try {
-      // Save bank details + selected gateway to clubs table
+      // Save selected gateway to clubs table (non-sensitive)
       await updateClub.mutateAsync({
         id: club.id,
+        payment_gateway: gateway || null,
+        payment_gateway_public_key: null, // migrated to credentials JSON
+      } as any);
+
+      // Save bank details + credentials to club_secrets
+      await updateSecrets.mutateAsync({
+        club_id: clubId,
         bank_name: bankForm.bank_name || null,
         bank_account_name: bankForm.bank_account_name || null,
         bank_account_number: bankForm.bank_account_number || null,
         bank_branch_code: bankForm.bank_branch_code || null,
         bank_reference: bankForm.bank_reference || null,
-        payment_gateway: gateway || null,
-        payment_gateway_public_key: null, // migrated to credentials JSON
-      } as any);
-
-      // Save credentials to club_secrets
-      await updateSecrets.mutateAsync({
-        club_id: clubId,
         payment_gateway_credentials: credentials,
       } as any);
 

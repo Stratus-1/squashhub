@@ -592,6 +592,7 @@ export type Database = {
         Row: {
           club_id: string
           created_at: string
+          enable_playoffs: boolean
           end_date: string
           end_time: string
           gender: string
@@ -609,6 +610,7 @@ export type Database = {
         Insert: {
           club_id: string
           created_at?: string
+          enable_playoffs?: boolean
           end_date: string
           end_time?: string
           gender: string
@@ -626,6 +628,7 @@ export type Database = {
         Update: {
           club_id?: string
           created_at?: string
+          enable_playoffs?: boolean
           end_date?: string
           end_time?: string
           gender?: string

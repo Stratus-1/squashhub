@@ -76,9 +76,11 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          low_stock_threshold: number
           name: string
           price: number
           sort_order: number
+          stock_qty: number
           updated_at: string
         }
         Insert: {
@@ -88,9 +90,11 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          low_stock_threshold?: number
           name: string
           price?: number
           sort_order?: number
+          stock_qty?: number
           updated_at?: string
         }
         Update: {
@@ -100,9 +104,11 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          low_stock_threshold?: number
           name?: string
           price?: number
           sort_order?: number
+          stock_qty?: number
           updated_at?: string
         }
         Relationships: [

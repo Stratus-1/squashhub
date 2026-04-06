@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon } from "lucide-react";
+import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +22,8 @@ interface BarItem {
   active: boolean;
   sort_order: number;
   image_url?: string | null;
+  stock_qty: number;
+  low_stock_threshold: number;
 }
 
 interface BarTabEntry {
@@ -224,6 +226,14 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
     else { toast.success("Image updated"); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
   };
 
+  const handleRestock = async (id: string, addQty: number) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const { error } = await fromExt("bar_items").update({ stock_qty: item.stock_qty + addQty }).eq("id", id);
+    if (error) toast.error(error.message);
+    else { toast.success(`Added ${addQty} to ${item.name}`); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
+  };
+
   const CATEGORY_EMOJI: Record<string, string> = {
     drinks: "🥤", alcohol: "🍺", snacks: "🍿", other: "📦",
   };
@@ -274,6 +284,8 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       <div className="space-y-2">
         {items.map(item => {
           const cat = CATEGORIES.find(c => c.value === item.category);
+          const isLowStock = item.stock_qty <= item.low_stock_threshold;
+          const isOutOfStock = item.stock_qty <= 0;
           return (
             <div key={item.id} className="flex items-center gap-3 rounded-lg border p-2.5">
               <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
@@ -289,6 +301,32 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                 </span>
                 <span className="text-xs text-muted-foreground ml-2">R{item.price.toFixed(2)}</span>
               </div>
+              {/* Stock indicator */}
+              <div className="flex items-center gap-1">
+                {isOutOfStock ? (
+                  <Badge variant="destructive" className="text-[10px] gap-0.5">
+                    <AlertTriangle className="w-3 h-3" /> Out
+                  </Badge>
+                ) : isLowStock ? (
+                  <Badge variant="secondary" className="text-[10px] gap-0.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                    <AlertTriangle className="w-3 h-3" /> {item.stock_qty}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px]">{item.stock_qty} in stock</Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Add stock"
+                onClick={() => {
+                  const qty = prompt(`Add stock for ${item.name}\nCurrent: ${item.stock_qty}\n\nHow many to add?`, "10");
+                  if (qty !== null && parseInt(qty) > 0) handleRestock(item.id, parseInt(qty));
+                }}
+              >
+                <PackagePlus className="w-3.5 h-3.5" />
+              </Button>
               <Badge variant="outline" className="text-[10px]">{cat?.label}</Badge>
               <Button
                 variant="ghost"

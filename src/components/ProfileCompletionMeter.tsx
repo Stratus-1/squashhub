@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
+import { useClubContext } from "@/contexts/ClubContext";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Step = { key: string; label: string; done: boolean; action?: string };
@@ -25,7 +26,10 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
   const { user } = useAuth();
   const { data: clubData } = useMyClub();
   const { data: myClubMember } = useMyClubMember();
+  const { club: ctxClub } = useClubContext();
   const clubMemberId = myClubMember?.id;
+  const club = clubData?.club || ctxClub;
+  const faceRequired = !!(club as any)?.face_enrolment_required;
 
   // Check if fee payment records exist for this member
   const { data: feePayments } = useQuery({
@@ -66,12 +70,19 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
   // Step 4: All fees paid
   const allFeesPaid = feesCaptured && (feePayments || []).every((f: any) => f.paid);
 
+  // Step 5 (conditional): Face enrolled
+  const faceEnrolled = !!myClubMember?.avatar_url;
+
   const steps: Step[] = [
     { key: "profile", label: "Complete your profile", done: profileDone, action: "edit" },
     { key: "member", label: "Member details captured", done: memberDataDone, action: "edit" },
     { key: "fees-captured", label: "Fees allocated", done: feesCaptured, action: "account" },
     { key: "fees-paid", label: "All fees paid", done: allFeesPaid, action: "account" },
   ];
+
+  if (faceRequired) {
+    steps.push({ key: "face", label: "Face enrolled for access", done: faceEnrolled, action: "edit" });
+  }
 
   const done = steps.filter((s) => s.done).length;
   const pct = Math.round((done / steps.length) * 100);

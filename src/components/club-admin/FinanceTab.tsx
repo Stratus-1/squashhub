@@ -234,8 +234,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     try {
       const journalRef = crypto.randomUUID();
       const entries: any[] = [
-        { club_id: clubId, journal_ref: journalRef, account: txDebitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: txMemberId || null, created_at: new Date(txDate).toISOString() },
-        { club_id: clubId, journal_ref: journalRef, account: txCreditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: txMemberId || null, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: txDebitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: txCreditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
       ];
 
       // Auto-charge 3.5% gateway fee for card payments

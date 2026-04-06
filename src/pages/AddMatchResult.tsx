@@ -431,8 +431,8 @@ export default function AddMatchResult() {
 
   // Match result computation
   const { gamesA, gamesB, validGames } = useMemo(
-    () => computeMatchResult(games.slice(0, bestOf), scoringFormat),
-    [games, bestOf, scoringFormat]
+    () => computeMatchResult(games.slice(0, bestOf), scoringFormat, deuceRule),
+    [games, bestOf, scoringFormat, deuceRule]
   );
 
   const neededToWin = Math.ceil(bestOf / 2);

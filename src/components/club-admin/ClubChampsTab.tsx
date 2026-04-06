@@ -104,6 +104,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Wizard state
   const [gender, setGender] = useState<GenderCategory>("men");
   const [matchType, setMatchType] = useState<MatchType>("singles");
+  const [enablePlayoffs, setEnablePlayoffs] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [numGroups, setNumGroups] = useState(2);
   const [champName, setChampName] = useState("");
@@ -341,6 +342,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             gender,
             match_type: matchType,
             num_groups: numGroups,
+            enable_playoffs: enablePlayoffs,
             start_date: startDate,
             end_date: endDate,
             play_days: Array.from(playDays),
@@ -359,6 +361,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             gender,
             match_type: matchType,
             num_groups: numGroups,
+            enable_playoffs: enablePlayoffs,
             start_date: startDate,
             end_date: endDate,
             play_days: Array.from(playDays),
@@ -527,7 +530,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStep("category");
     setGender("men");
     setMatchType("singles");
-    setSelectedPlayerIds(new Set());
+    setEnablePlayoffs(false);
     setNumGroups(2);
     setChampName("");
     setStartDate("");
@@ -548,6 +551,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEditingChampId(champ.id);
     setGender(champ.gender);
     setMatchType(champ.match_type || "singles");
+    setEnablePlayoffs(champ.enable_playoffs || false);
     setChampName(champ.name);
     setNumGroups(champ.num_groups);
     setStartDate(champ.start_date);
@@ -777,6 +781,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </Button>
               </div>
             </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Enable Playoffs</Label>
+                <p className="text-xs text-muted-foreground">
+                  After group stages, matching positions play off (e.g. #1 vs #1, #2 vs #2). With 4+ groups, semi-finals and a final are added.
+                </p>
+              </div>
+              <Switch checked={enablePlayoffs} onCheckedChange={setEnablePlayoffs} />
+            </div>
+
 
             <div>
               <Label>Championship Name (optional)</Label>
@@ -1083,6 +1098,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
               <p><strong>Time:</strong> {startTime} – {endTime} ({matchDuration} min per match)</p>
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
+              <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
             </div>
 
             <Separator />

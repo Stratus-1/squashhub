@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,15 +17,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy } from "lucide-react";
+import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace } from "lucide-react";
 
-const STEPS = [
+interface StepDef {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+}
+
+const BASE_STEPS: StepDef[] = [
   { id: "welcome", label: "Welcome", icon: User },
   { id: "personal", label: "Personal Details", icon: FileText },
   { id: "membership", label: "Membership", icon: Users },
   { id: "fees", label: "Fees & Payment", icon: CreditCard },
-  { id: "done", label: "Complete", icon: Check },
 ];
+
+const FACE_STEP: StepDef = { id: "face", label: "Face Enrolment", icon: ScanFace };
+const DONE_STEP: StepDef = { id: "done", label: "Complete", icon: Check };
 
 /** Extract date of birth from SA ID number (first 6 digits = YYMMDD) */
 function getAgeFromSAId(idNumber: string): number | null {
@@ -102,6 +110,75 @@ export function MemberOnboardingWizard({
 
   const club = clubData?.club;
   const clubId = club?.id || ctxClub?.id;
+  const faceRequired = !!(club as any)?.face_enrolment_required;
+
+  const STEPS = useMemo(() => {
+    const steps = [...BASE_STEPS];
+    if (faceRequired) steps.push(FACE_STEP);
+    steps.push(DONE_STEP);
+    return steps;
+  }, [faceRequired]);
+
+  // Face enrolment state
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const currentStepId = STEPS[step]?.id;
+
+  // Start camera when entering face step
+  useEffect(() => {
+    if (currentStepId === "face" && !capturedPhoto) {
+      startCamera();
+    }
+    return () => {
+      if (currentStepId !== "face") stopCamera();
+    };
+  }, [currentStepId, capturedPhoto]);
+
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      setCameraError("Could not access your camera. Please grant camera permissions and try again.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    setCapturedPhoto(dataUrl);
+    stopCamera();
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
+    startCamera();
+  };
 
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: leagueAssocs = [] } = useLeagueAssociations(clubId);
@@ -307,6 +384,31 @@ export function MemberOnboardingWizard({
         if (memErr) throw memErr;
       }
 
+      // 2b. Upload face photo if captured
+      if (capturedPhoto && faceRequired) {
+        try {
+          const blob = await (await fetch(capturedPhoto)).blob();
+          const filePath = `${clubId}/${user.id}.jpg`;
+          const { error: uploadErr } = await supabase.storage
+            .from("member-faces")
+            .upload(filePath, blob, { contentType: "image/jpeg", upsert: true });
+          if (uploadErr) {
+            console.warn("[MemberOnboardingWizard] Face upload error:", uploadErr);
+          } else {
+            // Also store as avatar_url on the member record
+            const { data: urlData } = supabase.storage.from("member-faces").getPublicUrl(filePath);
+            if (urlData?.publicUrl) {
+              await fromExt("club_members")
+                .update({ avatar_url: urlData.publicUrl })
+                .eq("club_id", clubId)
+                .eq("user_id", user.id);
+            }
+          }
+        } catch (faceErr) {
+          console.warn("[MemberOnboardingWizard] Face photo processing error:", faceErr);
+        }
+      }
+
       // 3. Create fee payment records
       if (feeBreakdown.length > 0) {
         // Get the club_member_id
@@ -379,6 +481,7 @@ export function MemberOnboardingWizard({
   const canProceed = () => {
     if (step === 1) return name.trim().length >= 2;
     if (step === 2) return !!feeCategoryId;
+    if (currentStepId === "face") return !!capturedPhoto;
     return true;
   };
 
@@ -604,8 +707,62 @@ export function MemberOnboardingWizard({
               </motion.div>
             )}
 
+            {/* ─── FACE ENROLMENT ─── */}
+            {currentStepId === "face" && (
+              <motion.div key="face" {...slideVariants} className="flex-1 space-y-4 pt-2">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-heading">Face Enrolment</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Your club requires face recognition for court access. Please take a clear photo of your face.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex flex-col items-center gap-3">
+                  {cameraError ? (
+                    <Card className="p-4 text-center space-y-2">
+                      <ScanFace className="w-10 h-10 text-muted-foreground mx-auto" />
+                      <p className="text-sm text-destructive">{cameraError}</p>
+                      <Button size="sm" variant="outline" onClick={startCamera}>
+                        <Camera className="w-4 h-4 mr-1" /> Try Again
+                      </Button>
+                    </Card>
+                  ) : capturedPhoto ? (
+                    <div className="space-y-2 text-center">
+                      <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20">
+                        <img src={capturedPhoto} alt="Your face" className="w-full h-full object-cover" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Looking good! ✓</p>
+                      <Button size="sm" variant="outline" onClick={retakePhoto}>
+                        <Camera className="w-4 h-4 mr-1" /> Retake Photo
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-center">
+                      <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20 bg-muted">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <Button size="sm" onClick={capturePhoto} disabled={!cameraStream}>
+                        <Camera className="w-4 h-4 mr-1" /> Capture Photo
+                      </Button>
+                    </div>
+                  )}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Your photo is stored securely and used only for court access verification.
+                </p>
+              </motion.div>
+            )}
+
             {/* ─── DONE ─── */}
-            {step === 4 && (
+            {currentStepId === "done" && (
               <motion.div key="done" {...slideVariants}
                 className="flex-1 flex flex-col items-center justify-center text-center gap-4 py-6"
               >

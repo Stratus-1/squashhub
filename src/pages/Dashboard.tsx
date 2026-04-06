@@ -81,6 +81,30 @@ export default function Dashboard() {
     return [...ids];
   }, [recentMatches]);
 
+  // Collect member IDs for name resolution (prioritise club_members over profiles)
+  const matchMemberIds = useMemo(() => {
+    if (!recentMatches) return [] as string[];
+    const ids = new Set<string>();
+    for (const m of recentMatches) {
+      if ((m as any).player_a_member_id) ids.add((m as any).player_a_member_id);
+      if ((m as any).player_b_member_id) ids.add((m as any).player_b_member_id);
+    }
+    return [...ids];
+  }, [recentMatches]);
+
+  const { data: matchMemberNames } = useQuery({
+    queryKey: ["match-member-names", matchMemberIds.join(",")],
+    queryFn: async () => {
+      if (matchMemberIds.length === 0) return [];
+      const { data } = await (supabase as any)
+        .from("club_members")
+        .select("id, name, user_id")
+        .in("id", matchMemberIds);
+      return data || [];
+    },
+    enabled: matchMemberIds.length > 0,
+  });
+
   const { data: matchPlayerProfiles } = useQuery({
     queryKey: ["match-player-profiles", matchPlayerIds.join(",")],
     queryFn: async () => {
@@ -96,9 +120,14 @@ export default function Dashboard() {
 
   const matchPlayerNameMap = useMemo(() => {
     const map = new Map<string, string>();
+    // First load profile names (fallback)
     for (const p of matchPlayerProfiles || []) map.set(p.id, p.name || "Unknown");
+    // Then overlay member names (priority) — map member's user_id to their member name
+    for (const m of (matchMemberNames || []) as any[]) {
+      if (m.user_id && m.name) map.set(m.user_id, m.name);
+    }
     return map;
-  }, [matchPlayerProfiles]);
+  }, [matchPlayerProfiles, matchMemberNames]);
 
   // Find player's position on gender-specific ladder
   const myLadderPosition = useMemo(() => {

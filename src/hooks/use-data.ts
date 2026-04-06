@@ -419,23 +419,25 @@ export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?
       if (error) throw error;
 
       // Map court names & opponent names (check profiles first, then club_members)
-      const opponentIds = [...new Set((data as any[]).map((b) => b.opponent_id).filter(Boolean))] as string[];
-      let opponentMap = new Map<string, any>();
-      if (opponentIds.length > 0) {
-        const { data: oppProfiles } = await supabase
+      // Resolve opponent names: prioritise club_members (member identity), fallback to profiles
+      const opponentMemberIds = [...new Set((data as any[]).map((b) => b.opponent_member_id).filter(Boolean))] as string[];
+      const opponentUserIds = [...new Set((data as any[]).map((b) => b.opponent_id).filter(Boolean))] as string[];
+      let opponentMemberMap = new Map<string, any>();
+      let opponentProfileMap = new Map<string, any>();
+
+      if (opponentMemberIds.length > 0) {
+        const { data: members } = await (supabase as any)
+          .from("club_members")
+          .select("id,name,user_id")
+          .in("id", opponentMemberIds);
+        (members || []).forEach((m: any) => opponentMemberMap.set(m.id, m));
+      }
+      if (opponentUserIds.length > 0) {
+        const { data: profiles } = await supabase
           .from("profiles")
           .select("id,name,rank")
-          .in("id", opponentIds);
-        (oppProfiles || []).forEach((p: any) => opponentMap.set(p.id, p));
-
-        const unmatchedIds = opponentIds.filter(id => !opponentMap.has(id));
-        if (unmatchedIds.length > 0) {
-          const { data: members } = await (supabase as any)
-            .from("club_members")
-            .select("id,name")
-            .in("id", unmatchedIds);
-          (members || []).forEach((m: any) => opponentMap.set(m.id, m));
-        }
+          .in("id", opponentUserIds);
+        (profiles || []).forEach((p: any) => opponentProfileMap.set(p.id, p));
       }
 
       const now = new Date();
@@ -447,12 +449,17 @@ export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?
           if (b.date === todayStr && b.end_time && b.end_time.slice(0, 5) <= nowTime) return false;
           return true;
         })
-        .map((b: any) => ({
-          ...b,
-          court_name: b.court_id === 1 ? "Court 1" : "Court 2",
-          opponent_name: b.guest_name || (b.opponent_id ? (opponentMap.get(b.opponent_id)?.name || "Unknown") : null),
-          opponent_rank: null,
-        }));
+        .map((b: any) => {
+          // Prioritise member name over profile name for family account accuracy
+          const memberName = b.opponent_member_id ? opponentMemberMap.get(b.opponent_member_id)?.name : null;
+          const profileName = b.opponent_id ? opponentProfileMap.get(b.opponent_id)?.name : null;
+          return {
+            ...b,
+            court_name: b.court_id === 1 ? "Court 1" : "Court 2",
+            opponent_name: b.guest_name || memberName || profileName || (b.opponent_id ? "Unknown" : null),
+            opponent_rank: null,
+          };
+        });
     },
     enabled: !!queryId,
   });
@@ -516,7 +523,7 @@ export function useLadder(clubId?: string) {
       // 1. Get club members scoped to the user's club
       let query = supabase
         .from("club_members")
-        .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position");
+        .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position, avatar_url");
       if (clubId) {
         query = query.eq("club_id", clubId);
       }
@@ -544,7 +551,7 @@ export function useLadder(clubId?: string) {
           id: m.id,
           club_member_id: m.id,
           name: m.name || profile?.name || "Unknown",
-          avatar_url: profile?.avatar_url || null,
+          avatar_url: (m as any).avatar_url || profile?.avatar_url || null,
           wins: profile?.wins ?? 0,
           losses: profile?.losses ?? 0,
           matches_played: profile?.matches_played ?? 0,

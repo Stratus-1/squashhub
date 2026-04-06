@@ -11,14 +11,8 @@ export interface Club {
   address?: string;
   email?: string;
   phone?: string;
-  bank_name?: string;
-  bank_account_name?: string;
-  bank_account_number?: string;
-  bank_branch_code?: string;
-  bank_reference?: string;
   payment_gateway?: string;
   payment_gateway_public_key?: string;
-  payment_gateway_secret_key?: string;
   member_fee_annual?: number;
   member_fee_due_month?: number;
   fee_reminder_days_before?: number;

@@ -456,6 +456,7 @@ export function MemberOnboardingWizard({
   const canProceed = () => {
     if (step === 1) return name.trim().length >= 2;
     if (step === 2) return !!feeCategoryId;
+    if (currentStepId === "face") return !!capturedPhoto;
     return true;
   };
 

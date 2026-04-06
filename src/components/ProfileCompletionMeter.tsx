@@ -81,7 +81,7 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
   ];
 
   if (faceRequired) {
-    steps.push({ key: "face", label: "Face enrolled for access", done: faceEnrolled, action: "edit" });
+    steps.push({ key: "face", label: "Face enrolled for access", done: faceEnrolled, action: "face" });
   }
 
   const done = steps.filter((s) => s.done).length;

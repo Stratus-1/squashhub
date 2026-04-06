@@ -13,6 +13,7 @@ import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
+import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -219,6 +220,7 @@ export default function Dashboard() {
   // Onboarding
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(false);
+  const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);
 
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
@@ -317,6 +319,7 @@ export default function Dashboard() {
           onAction={(action) => {
             if (action === "edit") openProfile("/profile?edit=1");
             if (action === "account") navigate("/my-account");
+            if (action === "face") setShowFaceEnrolment(true);
           }}
         />
       </div>
@@ -649,7 +652,7 @@ export default function Dashboard() {
           <ChevronRight className="w-4 h-4 opacity-70" />
         </Button>
       </div>
-
+      <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
     </div>
   );
 }

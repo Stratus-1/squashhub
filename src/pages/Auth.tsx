@@ -131,8 +131,7 @@ export default function Auth() {
     const { error, userId } = await signUp(email, signupPassword, name, phone || undefined, {
       termsAcceptedAt: nowIso,
       privacyAcceptedAt: nowIso,
-    }, { clubName: club, subdomain: sub });
-    // Note: Auth.tsx is the main domain "Register Club" flow — always club_owner
+    }, { clubName: club, subdomain: sub, registrationType: "club_owner" });
     if (error) {
       toast.error(error.message);
       setLoading(false);

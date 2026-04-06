@@ -13,6 +13,11 @@ export interface ClubSecrets {
   payment_gateway_secret_key?: string;
   payment_gateway_credentials?: Record<string, string>;
   shelly_auth_key?: string;
+  bank_name?: string;
+  bank_account_name?: string;
+  bank_account_number?: string;
+  bank_branch_code?: string;
+  bank_reference?: string;
 }
 
 /** Fetch sensitive club settings (admin-only via RLS) */

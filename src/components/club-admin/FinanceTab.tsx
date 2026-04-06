@@ -648,7 +648,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Select value={txMemberId} onValueChange={setTxMemberId}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {(members || []).map((m: any) => (
                     <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || m.email || "Unnamed"}</SelectItem>
                   ))}

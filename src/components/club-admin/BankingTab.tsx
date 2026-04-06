@@ -109,11 +109,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateSecrets = useUpdateClubSecrets();
 
   const [bankForm, setBankForm] = useState({
-    bank_name: club.bank_name || "",
-    bank_account_name: club.bank_account_name || "",
-    bank_account_number: club.bank_account_number || "",
-    bank_branch_code: club.bank_branch_code || "",
-    bank_reference: club.bank_reference || "",
+    bank_name: (secrets as any)?.bank_name || "",
+    bank_account_name: (secrets as any)?.bank_account_name || "",
+    bank_account_number: (secrets as any)?.bank_account_number || "",
+    bank_branch_code: (secrets as any)?.bank_branch_code || "",
+    bank_reference: (secrets as any)?.bank_reference || "",
   });
 
   const [gateway, setGateway] = useState(club.payment_gateway || "");

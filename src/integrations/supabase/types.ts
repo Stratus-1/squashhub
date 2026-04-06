@@ -130,6 +130,9 @@ export type Database = {
           club_id: string
           created_at: string
           id: string
+          invoice_date: string
+          invoice_number: string | null
+          payment_method: string
           purchased_by: string | null
           quantity: number
           supplier_note: string | null
@@ -141,6 +144,9 @@ export type Database = {
           club_id: string
           created_at?: string
           id?: string
+          invoice_date?: string
+          invoice_number?: string | null
+          payment_method?: string
           purchased_by?: string | null
           quantity: number
           supplier_note?: string | null
@@ -152,6 +158,9 @@ export type Database = {
           club_id?: string
           created_at?: string
           id?: string
+          invoice_date?: string
+          invoice_number?: string | null
+          payment_method?: string
           purchased_by?: string | null
           quantity?: number
           supplier_note?: string | null

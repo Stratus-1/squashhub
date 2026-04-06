@@ -22,12 +22,15 @@ export interface PlayerInfo {
   clubMemberId?: string;
 }
 
+export type DeuceRule = "win_by_2" | "sudden_death";
+
 export interface MarkerConfig {
   playerA: PlayerInfo;
   playerB: PlayerInfo;
   matchType: MatchType;
   scoringFormat: ScoringFormat;
   bestOf: BestOf;
+  deuceRule: DeuceRule;
 }
 
 interface Props {
@@ -212,6 +215,7 @@ export function MarkerSetup({ onStart }: Props) {
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(3);
+  const [deuceRule, setDeuceRule] = useState<DeuceRule>("win_by_2");
 
   const canStart = playerA.name.trim().length > 0 && playerB.name.trim().length > 0;
 
@@ -223,7 +227,7 @@ export function MarkerSetup({ onStart }: Props) {
       <Card className="p-4 space-y-3">
         <p className="text-sm font-semibold font-heading">Match Settings</p>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div>
             <Label className="text-xs">Type</Label>
             <Select value={matchType} onValueChange={(v) => setMatchType(v as MatchType)}>
@@ -258,10 +262,20 @@ export function MarkerSetup({ onStart }: Props) {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label className="text-xs">Deuce Rule</Label>
+            <Select value={deuceRule} onValueChange={(v) => setDeuceRule(v as DeuceRule)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="win_by_2">Win by 2</SelectItem>
+                <SelectItem value="sudden_death">Sudden Death</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 
-      <Button className="w-full" size="lg" disabled={!canStart} onClick={() => onStart({ playerA, playerB, matchType, scoringFormat, bestOf })}>
+      <Button className="w-full" size="lg" disabled={!canStart} onClick={() => onStart({ playerA, playerB, matchType, scoringFormat, bestOf, deuceRule })}>
         Start Marking
       </Button>
     </div>

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Undo2, RotateCcw, Flag, Clock, Pause, Play } from "lucide-react";
-import type { MarkerConfig, ScoringFormat } from "./MarkerSetup";
+import type { MarkerConfig, ScoringFormat, DeuceRule } from "./MarkerSetup";
 
 type ServeSide = "R" | "L";
 
@@ -31,11 +31,17 @@ function getPointsToWin(format: ScoringFormat): number {
   }
 }
 
-function isGameWon(scoreA: number, scoreB: number, pointsToWin: number): "a" | "b" | null {
+function isGameWon(scoreA: number, scoreB: number, pointsToWin: number, deuceRule: DeuceRule = "win_by_2"): "a" | "b" | null {
   const max = Math.max(scoreA, scoreB);
   const min = Math.min(scoreA, scoreB);
   if (max < pointsToWin) return null;
   if (min >= pointsToWin - 1) {
+    if (deuceRule === "sudden_death") {
+      // At deuce (e.g. 10-10), next point wins
+      if (max > min) return scoreA > scoreB ? "a" : "b";
+      return null;
+    }
+    // Win by 2
     if (max - min >= 2) return scoreA > scoreB ? "a" : "b";
     return null;
   }
@@ -192,7 +198,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
       ]);
 
       // Check game won
-      const gameWinner = isGameWon(newA, newB, pointsToWin);
+      const gameWinner = isGameWon(newA, newB, pointsToWin, config.deuceRule);
       if (gameWinner) {
         const newGamesA = gameWinner === "a" ? gamesA + 1 : gamesA;
         const newGamesB = gameWinner === "b" ? gamesB + 1 : gamesB;

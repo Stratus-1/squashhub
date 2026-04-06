@@ -23,6 +23,7 @@ import { useMyClub } from "@/hooks/use-club";
 type MatchType = "friendly" | "league" | "ladder" | "club_champs" | "tournament";
 type ScoringFormat = "par11" | "par15" | "english9";
 type BestOf = 3 | 5;
+type DeuceRule = "win_by_2" | "sudden_death";
 
 type GameScore = { playerA: string; playerB: string };
 
@@ -61,14 +62,24 @@ function getMaxScore(format: ScoringFormat) {
   return SCORING_FORMATS.find((f) => f.value === format)?.maxScore ?? 11;
 }
 
-function determineGameWinner(scoreA: number, scoreB: number, format: ScoringFormat): "a" | "b" | null {
+function determineGameWinner(scoreA: number, scoreB: number, format: ScoringFormat, deuceRule: DeuceRule = "win_by_2"): "a" | "b" | null {
   const target = getMaxScore(format);
+  if (deuceRule === "sudden_death") {
+    // At deuce, next point wins (no need for 2-point lead)
+    if (scoreA >= target && scoreA > scoreB) return "a";
+    if (scoreB >= target && scoreB > scoreA) return "b";
+    // Both at target-1 or above and tied → not won yet
+    if (scoreA >= target - 1 && scoreB >= target - 1 && scoreA === scoreB) return null;
+    if (scoreA >= target) return "a";
+    if (scoreB >= target) return "b";
+    return null;
+  }
   if (scoreA >= target && scoreA - scoreB >= 2) return "a";
   if (scoreB >= target && scoreB - scoreA >= 2) return "b";
   return null;
 }
 
-function computeMatchResult(games: GameScore[], format: ScoringFormat) {
+function computeMatchResult(games: GameScore[], format: ScoringFormat, deuceRule: DeuceRule = "win_by_2") {
   let gamesA = 0;
   let gamesB = 0;
   const validGames: { a: number; b: number; winner: "a" | "b" }[] = [];
@@ -76,7 +87,7 @@ function computeMatchResult(games: GameScore[], format: ScoringFormat) {
   for (const g of games) {
     const a = parseInt(g.playerA) || 0;
     const b = parseInt(g.playerB) || 0;
-    const winner = determineGameWinner(a, b, format);
+    const winner = determineGameWinner(a, b, format, deuceRule);
     if (winner) {
       validGames.push({ a, b, winner });
       if (winner === "a") gamesA++;
@@ -313,6 +324,7 @@ export default function AddMatchResult() {
   const [matchType, setMatchType] = useState<MatchType>("friendly");
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(5);
+  const [deuceRule, setDeuceRule] = useState<DeuceRule>("win_by_2");
   const [matchDate, setMatchDate] = useState(urlMatchDate || new Date().toISOString().split("T")[0]);
 
   // Scores
@@ -419,8 +431,8 @@ export default function AddMatchResult() {
 
   // Match result computation
   const { gamesA, gamesB, validGames } = useMemo(
-    () => computeMatchResult(games.slice(0, bestOf), scoringFormat),
-    [games, bestOf, scoringFormat]
+    () => computeMatchResult(games.slice(0, bestOf), scoringFormat, deuceRule),
+    [games, bestOf, scoringFormat, deuceRule]
   );
 
   const neededToWin = Math.ceil(bestOf / 2);
@@ -675,6 +687,23 @@ export default function AddMatchResult() {
             </div>
 
             <div>
+              <Label className="text-xs">Deuce Rule</Label>
+              <div className="flex gap-2 mt-1">
+                {([{ value: "win_by_2", label: "Win by 2" }, { value: "sudden_death", label: "Sudden Death" }] as const).map((opt) => (
+                  <Button
+                    key={opt.value}
+                    variant={deuceRule === opt.value ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setDeuceRule(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <Label className="text-xs">Match Date</Label>
               <Input
                 type="date"
@@ -724,11 +753,11 @@ export default function AddMatchResult() {
               const game = games[i];
               const a = parseInt(game.playerA) || 0;
               const b = parseInt(game.playerB) || 0;
-              const winner = determineGameWinner(a, b, scoringFormat);
+              const winner = determineGameWinner(a, b, scoringFormat, deuceRule);
               const previousGamesComplete = i === 0 || games.slice(0, i).every((g) => {
                 const ga = parseInt(g.playerA) || 0;
                 const gb = parseInt(g.playerB) || 0;
-                return determineGameWinner(ga, gb, scoringFormat) !== null;
+                return determineGameWinner(ga, gb, scoringFormat, deuceRule) !== null;
               });
 
               const gamesBeforeThis = games.slice(0, i);
@@ -736,7 +765,7 @@ export default function AddMatchResult() {
               for (const g of gamesBeforeThis) {
                 const ga = parseInt(g.playerA) || 0;
                 const gb = parseInt(g.playerB) || 0;
-                const w = determineGameWinner(ga, gb, scoringFormat);
+                const w = determineGameWinner(ga, gb, scoringFormat, deuceRule);
                 if (w === "a") winsA++;
                 if (w === "b") winsB++;
               }

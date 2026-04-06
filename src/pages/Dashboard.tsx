@@ -220,6 +220,7 @@ export default function Dashboard() {
   // Onboarding
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(false);
+  const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);
 
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
@@ -651,7 +652,7 @@ export default function Dashboard() {
           <ChevronRight className="w-4 h-4 opacity-70" />
         </Button>
       </div>
-
+      <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
     </div>
   );
 }

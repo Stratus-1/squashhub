@@ -544,7 +544,11 @@ export default function MyAccount() {
         transition={{ delay: 0.05 }}
       >
         <h2 className="text-sm font-semibold font-heading mb-2">Outstanding Fees</h2>
-        {feesLoading || !clubMemberId ? (
+        {!clubMemberId ? (
+          <Card className="p-3 text-center text-sm text-muted-foreground">
+            No member profile linked to your account yet.
+          </Card>
+        ) : feesLoading ? (
           <Card className="p-4 flex justify-center">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </Card>

@@ -41,8 +41,8 @@ export default function MyAccount() {
     enabled: !!club?.id && !!activeMember?.id,
   });
 
-  const clubMemberId = (activeClubMember as any)?.id || activeMember?.id || null;
-  const clubId = (activeClubMember as any)?.club_id || club?.id || null;
+  const clubMemberId = activeMember?.id || (activeClubMember as any)?.id || null;
+  const clubId = club?.id || (activeClubMember as any)?.club_id || null;
   const feeCategoryId = (activeClubMember as any)?.fee_category_id;
   const playsLeague = !!(activeClubMember as any)?.plays_league;
   const memberNo = (activeClubMember as any)?.club_member_number || activeMember?.club_member_number || "N/A";

@@ -198,7 +198,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
       ]);
 
       // Check game won
-      const gameWinner = isGameWon(newA, newB, pointsToWin);
+      const gameWinner = isGameWon(newA, newB, pointsToWin, config.deuceRule);
       if (gameWinner) {
         const newGamesA = gameWinner === "a" ? gamesA + 1 : gamesA;
         const newGamesB = gameWinner === "b" ? gamesB + 1 : gamesB;

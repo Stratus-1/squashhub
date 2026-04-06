@@ -687,6 +687,22 @@ export default function AddMatchResult() {
             </div>
 
             <div>
+              <Label className="text-xs">Deuce Rule</Label>
+              <div className="flex gap-2 mt-1">
+                {([{ value: "win_by_2", label: "Win by 2" }, { value: "sudden_death", label: "Sudden Death" }] as const).map((opt) => (
+                  <Button
+                    key={opt.value}
+                    variant={deuceRule === opt.value ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setDeuceRule(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
               <Label className="text-xs">Match Date</Label>
               <Input
                 type="date"

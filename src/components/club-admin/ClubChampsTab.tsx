@@ -314,7 +314,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (!schedulePreview) throw new Error("No schedule generated");
 
       let champId: string;
-      const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`;
+      const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (editingChampId) {
         const { data: oldMatches } = await fromExt("club_champs_matches")
@@ -478,7 +478,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return { id: champId };
     },
     onSuccess: () => {
-      toast.success(editingChampId ? "Club Champs updated & rescheduled!" : "Club Champs created with all matches scheduled!");
+      toast.success(editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       qc.invalidateQueries({ queryKey: ["club-champ-entries"] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
@@ -487,7 +487,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       setShowWizard(false);
       resetWizard();
     },
-    onError: (err: any) => toast.error(err.message || "Failed to create champs"),
+    onError: (err: any) => toast.error(err.message || "Failed to create tournament"),
   });
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
@@ -515,7 +515,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Champs deleted");
+      toast.success("Tournament deleted");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
@@ -650,16 +650,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Club Championships</h2>
+          <h2 className="text-lg font-semibold">Club Tournaments</h2>
           <Button onClick={() => { resetWizard(); setShowWizard(true); }}>
-            <Trophy className="w-4 h-4 mr-2" /> Plan New Champs
+            <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
           </Button>
         </div>
 
         {champsLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
         ) : existingChamps.length === 0 ? (
-          <Card><CardContent className="py-8 text-center text-muted-foreground">No club championships planned yet.</CardContent></Card>
+          <Card><CardContent className="py-8 text-center text-muted-foreground">No tournaments planned yet.</CardContent></Card>
         ) : (
           <div className="space-y-3">
             {existingChamps.map((c: any) => (

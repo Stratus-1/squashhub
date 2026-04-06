@@ -136,7 +136,7 @@ export default function ClubChampsView() {
   }
 
   if (!champ) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Championship not found.</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Tournament not found.</div>;
   }
 
   return (
@@ -159,7 +159,7 @@ export default function ClubChampsView() {
         <div className="text-center">
           <h1 className="text-2xl md:text-3xl font-bold font-heading">{champ.name}</h1>
           <p className="text-muted-foreground">
-            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"} Championship · {champ.start_date} to {champ.end_date}
+            {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"} Tournament · {champ.start_date} to {champ.end_date}
           </p>
           <p className="text-sm text-muted-foreground">
             {(champ.play_days as number[])?.map((d: number) => DAY_NAMES[d]).join(", ")} · {champ.start_time?.slice(0, 5)} – {champ.end_time?.slice(0, 5)}

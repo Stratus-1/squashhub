@@ -100,7 +100,7 @@ export default function Events() {
           isPartOf: { "@type": "WebSite", name: "SquashHub", url: absoluteUrl("/") },
         }}
       />
-      <PageHeader title="Events" subtitle="Upcoming club events & championships" />
+      <PageHeader title="Events" subtitle="Upcoming club events & tournaments" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 mb-20">
         <Tabs defaultValue="events">
@@ -109,7 +109,7 @@ export default function Events() {
               <CalendarDays className="w-3.5 h-3.5" /> Events
             </TabsTrigger>
             <TabsTrigger value="championships" className="flex-1 gap-1.5">
-              <Trophy className="w-3.5 h-3.5" /> Championships
+              <Trophy className="w-3.5 h-3.5" /> Tournaments
             </TabsTrigger>
           </TabsList>
 
@@ -124,7 +124,7 @@ export default function Events() {
               </div>
             ) : champs.length === 0 ? (
               <Card className="p-6 text-center text-sm text-muted-foreground">
-                No active championships at the moment
+                No active tournaments at the moment
               </Card>
             ) : (
               <>

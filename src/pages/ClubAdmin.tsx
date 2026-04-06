@@ -33,7 +33,7 @@ const ADMIN_TABS = [
   { value: "users", label: "Users", icon: UserCheck },
   { value: "ladder", label: "Ladder", icon: ListOrdered },
   { value: "leagues", label: "Leagues", icon: Trophy },
-  { value: "champs", label: "Champs", icon: Medal },
+  { value: "champs", label: "Tournaments", icon: Medal },
   { value: "bar", label: "Bar", icon: Beer },
   { value: "access", label: "Access", icon: DoorOpen },
 ] as const;

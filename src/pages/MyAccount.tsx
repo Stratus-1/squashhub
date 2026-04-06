@@ -12,6 +12,7 @@ import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, Ch
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
+import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useMemo } from "react";

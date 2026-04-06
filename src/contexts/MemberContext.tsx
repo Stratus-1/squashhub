@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useMyClub } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface LinkedMember {
   id: string;
@@ -47,7 +47,9 @@ const MemberContext = createContext<MemberContextType>({
 
 export function MemberProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { club } = useClubContext();
+  const { club: contextClub } = useClubContext();
+  const { data: myClubData } = useMyClub();
+  const club = contextClub || myClubData?.club || null;
   const [linkedMembers, setLinkedMembers] = useState<LinkedMember[]>([]);
   const [allMembers, setAllMembers] = useState<LinkedMember[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,60 +70,51 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // 1. Fetch user's own club membership(s)
         const { data: ownMembers, error: ownErr } = await fromExt("club_members")
           .select("id, name, email, club_member_number, gender, user_id, role")
           .eq("club_id", club.id)
-          .eq("user_id", user.id);
+          .eq("user_id", user.id)
+          .order("joined_at", { ascending: true });
         if (ownErr) throw ownErr;
 
         const myMembership = (ownMembers || [])[0] as any;
         const adminRole = myMembership?.role === "captain" || myMembership?.role === "admin";
         setIsAdmin(adminRole);
 
-        // 2. Fetch linked members (same email, family accounts)
         let linked: LinkedMember[] = [];
         if (user.email) {
-          const { data: emailMembers } = await fromExt("club_members")
+          const { data: emailMembers, error: emailErr } = await fromExt("club_members")
             .select("id, name, email, club_member_number, gender, user_id")
             .eq("club_id", club.id)
-            .eq("email", user.email.toLowerCase());
+            .eq("email", user.email.toLowerCase())
+            .order("joined_at", { ascending: true });
+          if (emailErr) throw emailErr;
           linked = (emailMembers || []) as LinkedMember[];
-
-          // Keep unlinked members as-is; linked login is optional and not required for member visibility.
         }
-        // Ensure own membership is in linked list
-        if (myMembership && !linked.find(m => m.id === myMembership.id)) {
+
+        if (myMembership && !linked.find((m) => m.id === myMembership.id)) {
           linked.unshift(myMembership as LinkedMember);
         }
         setLinkedMembers(linked);
 
-        // 3. For admins, fetch all club members
         if (adminRole) {
-          const { data: all } = await fromExt("club_members")
+          const { data: all, error: allErr } = await fromExt("club_members")
             .select("id, name, email, club_member_number, gender, user_id")
             .eq("club_id", club.id)
             .order("name", { ascending: true });
+          if (allErr) throw allErr;
           setAllMembers((all || []) as LinkedMember[]);
         } else {
           setAllMembers([]);
         }
 
-        // Set default active member
         const stored = localStorage.getItem(`active_member_${club.id}_${user.id}`);
         const selfId = myMembership?.id || linked[0]?.id || null;
         setSelfMemberId(selfId);
 
         if (stored) {
-          // Validate stored ID is still accessible
-          const validStored = adminRole
-            ? true // admin can view anyone
-            : linked.find(m => m.id === stored);
-          if (validStored) {
-            setActiveMemberId(stored);
-          } else {
-            setActiveMemberId(selfId);
-          }
+          const validStored = adminRole ? true : linked.find((m) => m.id === stored);
+          setActiveMemberId(validStored ? stored : selfId);
         } else {
           setActiveMemberId(selfId);
         }
@@ -151,7 +144,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     }
   }, [selfMemberId, club?.id, user?.id]);
 
-  const activeMember = [...linkedMembers, ...allMembers].find(m => m.id === activeMemberId) || null;
+  const activeMember = [...linkedMembers, ...allMembers].find((m) => m.id === activeMemberId) || null;
   const isViewingAs = !!activeMemberId && activeMemberId !== selfMemberId;
   const effectiveUserId = activeMember?.user_id || user?.id || null;
 

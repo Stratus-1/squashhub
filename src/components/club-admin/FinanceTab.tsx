@@ -77,9 +77,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [txDate, setTxDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [txDescription, setTxDescription] = useState("");
   const [txAmount, setTxAmount] = useState("");
-  const [txDebitAccount, setTxDebitAccount] = useState<string>("");
-  const [txCreditAccount, setTxCreditAccount] = useState<string>("");
-  const [txMethod, setTxMethod] = useState<"eft" | "cash" | "card">("eft");
+  const [txDirection, setTxDirection] = useState<"income" | "expense">("expense");
+  const [txAccount, setTxAccount] = useState<string>("");
+  const [txMethod, setTxMethod] = useState<"bank" | "cash" | "card">("bank");
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
 
@@ -226,16 +226,24 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const handleRecordTransaction = async () => {
     const amount = parseFloat(txAmount);
     if (!amount || amount <= 0) { toast.error("Enter a valid amount"); return; }
-    if (!txDebitAccount || !txCreditAccount) { toast.error("Select both debit and credit accounts"); return; }
-    if (txDebitAccount === txCreditAccount) { toast.error("Debit and credit accounts must differ"); return; }
+    if (!txAccount) { toast.error("Select an account"); return; }
     if (!txDescription.trim()) { toast.error("Enter a description"); return; }
+
+    // Determine the money account based on payment method
+    const moneyAccount = txMethod === "cash" ? "cash" : "bank_current";
+
+    // Income: Debit money account, Credit the selected income account
+    // Expense: Debit the selected expense account, Credit money account
+    const debitAccount = txDirection === "income" ? moneyAccount : txAccount;
+    const creditAccount = txDirection === "income" ? txAccount : moneyAccount;
 
     setTxSubmitting(true);
     try {
+      const memberId = (txMemberId && txMemberId !== "__none__") ? txMemberId : null;
       const journalRef = crypto.randomUUID();
       const entries: any[] = [
-        { club_id: clubId, journal_ref: journalRef, account: txDebitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
-        { club_id: clubId, journal_ref: journalRef, account: txCreditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: debitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
       ];
 
       // Auto-charge 3.5% gateway fee for card payments
@@ -255,8 +263,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       setTxOpen(false);
       setTxDescription("");
       setTxAmount("");
-      setTxDebitAccount("");
-      setTxCreditAccount("");
+      setTxAccount("");
       setTxMemberId("");
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
     } catch (err: any) {
@@ -581,21 +588,46 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <DialogHeader>
             <DialogTitle>Enter Transaction</DialogTitle>
             <DialogDescription>
-              Record a bank, cash, or card transaction to the general ledger. Card payments automatically incur a 3.5% gateway fee.
+              Record a payment. The system automatically posts the correct double entry based on your selections. Card payments incur a 3.5% gateway fee.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            {/* Income or Expense */}
+            <div>
+              <Label className="text-xs">Transaction Type</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Button
+                  type="button"
+                  variant={txDirection === "income" ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => { setTxDirection("income"); setTxAccount(""); }}
+                >
+                  💰 Income (Money In)
+                </Button>
+                <Button
+                  type="button"
+                  variant={txDirection === "expense" ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => { setTxDirection("expense"); setTxAccount(""); }}
+                >
+                  💸 Expense (Money Out)
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Date</Label>
                 <Input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className="h-9 text-xs" />
               </div>
               <div>
-                <Label className="text-xs">Payment Method</Label>
+                <Label className="text-xs">Paid via</Label>
                 <Select value={txMethod} onValueChange={v => setTxMethod(v as any)}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="eft">EFT / Bank Transfer</SelectItem>
+                    <SelectItem value="bank">Bank / EFT</SelectItem>
                     <SelectItem value="cash">Cash</SelectItem>
                     <SelectItem value="card">Card</SelectItem>
                   </SelectContent>
@@ -614,33 +646,44 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
 
             <div>
-              <Label className="text-xs">Description</Label>
-              <Textarea placeholder="e.g. Monthly rent payment" value={txDescription} onChange={e => setTxDescription(e.target.value)} className="text-xs min-h-[60px]" />
+              <Label className="text-xs">{txDirection === "income" ? "Income Account" : "Expense Account"}</Label>
+              <Select value={txAccount} onValueChange={setTxAccount}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select account..." /></SelectTrigger>
+                <SelectContent>
+                  {(txDirection === "income" ? CREDIT_ACCOUNTS : DEBIT_ACCOUNTS)
+                    .filter(a => !["bank", "bank_current", "cash", "debtors"].includes(a))
+                    .map(a => (
+                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {txAccount && txAmount && parseFloat(txAmount) > 0 && (
+                <div className="mt-2 p-2 rounded bg-muted/60 text-[10px] text-muted-foreground space-y-0.5">
+                  <p className="font-semibold text-foreground text-xs">GL Preview:</p>
+                  {txDirection === "income" ? (
+                    <>
+                      <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} R{parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Credit {getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>• Debit {getLabel(txAccount)} R{parseFloat(txAmount).toFixed(2)}</p>
+                      <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} R{parseFloat(txAmount).toFixed(2)}</p>
+                    </>
+                  )}
+                  {txMethod === "card" && (
+                    <>
+                      <p>• Debit Gateway Fees R{(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                      <p>• Credit Current Account R{(parseFloat(txAmount) * GATEWAY_FEE_RATE).toFixed(2)}</p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Debit Account</Label>
-                <Select value={txDebitAccount} onValueChange={setTxDebitAccount}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {ALL_ACCOUNTS.map(a => (
-                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Credit Account</Label>
-                <Select value={txCreditAccount} onValueChange={setTxCreditAccount}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {ALL_ACCOUNTS.map(a => (
-                      <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label className="text-xs">Description</Label>
+              <Textarea placeholder="e.g. Monthly rent payment" value={txDescription} onChange={e => setTxDescription(e.target.value)} className="text-xs min-h-[60px]" />
             </div>
 
             <div>

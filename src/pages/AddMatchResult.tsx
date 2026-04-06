@@ -23,6 +23,7 @@ import { useMyClub } from "@/hooks/use-club";
 type MatchType = "friendly" | "league" | "ladder" | "club_champs" | "tournament";
 type ScoringFormat = "par11" | "par15" | "english9";
 type BestOf = 3 | 5;
+type DeuceRule = "win_by_2" | "sudden_death";
 
 type GameScore = { playerA: string; playerB: string };
 
@@ -61,8 +62,18 @@ function getMaxScore(format: ScoringFormat) {
   return SCORING_FORMATS.find((f) => f.value === format)?.maxScore ?? 11;
 }
 
-function determineGameWinner(scoreA: number, scoreB: number, format: ScoringFormat): "a" | "b" | null {
+function determineGameWinner(scoreA: number, scoreB: number, format: ScoringFormat, deuceRule: DeuceRule = "win_by_2"): "a" | "b" | null {
   const target = getMaxScore(format);
+  if (deuceRule === "sudden_death") {
+    // At deuce, next point wins (no need for 2-point lead)
+    if (scoreA >= target && scoreA > scoreB) return "a";
+    if (scoreB >= target && scoreB > scoreA) return "b";
+    // Both at target-1 or above and tied → not won yet
+    if (scoreA >= target - 1 && scoreB >= target - 1 && scoreA === scoreB) return null;
+    if (scoreA >= target) return "a";
+    if (scoreB >= target) return "b";
+    return null;
+  }
   if (scoreA >= target && scoreA - scoreB >= 2) return "a";
   if (scoreB >= target && scoreB - scoreA >= 2) return "b";
   return null;

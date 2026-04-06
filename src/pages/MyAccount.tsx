@@ -486,11 +486,7 @@ export default function MyAccount() {
     .filter((f: any) => selectedFeeIds.includes(f.id))
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
 
-  const dataStillLoading = memberContextLoading || clubLoading || activeClubMemberLoading;
-  // Also treat as loading if we have a user but member context hasn't resolved yet
-  const waitingForMember = !dataStillLoading && !activeMember && !!club;
-
-  if (dataStillLoading || waitingForMember) {
+  if (memberContextLoading || clubLoading || activeClubMemberLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />

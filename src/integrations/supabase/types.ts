@@ -1253,6 +1253,7 @@ export type Database = {
       club_members: {
         Row: {
           address: string | null
+          avatar_url: string | null
           club_id: string
           club_member_number: string | null
           email: string | null
@@ -1272,6 +1273,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          avatar_url?: string | null
           club_id: string
           club_member_number?: string | null
           email?: string | null
@@ -1291,6 +1293,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          avatar_url?: string | null
           club_id?: string
           club_member_number?: string | null
           email?: string | null

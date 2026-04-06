@@ -43,6 +43,13 @@ Deno.serve(async (req) => {
       .single();
     if (bookErr || !booking) throw new Error("Booking not found");
 
+    // Ownership check: only the booking owner can send invites
+    if ((booking as any).user_id !== user.id) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get inviter profile
     const { data: inviter } = await supabaseAdmin
       .from("profiles")

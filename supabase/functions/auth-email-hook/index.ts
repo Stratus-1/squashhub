@@ -208,8 +208,25 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
+    // ── Helper: verify JWT and return user ──
+    async function requireAuth(): Promise<{ id: string; email?: string } | null> {
+      const authHeader = req.headers.get("authorization") ?? "";
+      const token = authHeader.replace("Bearer ", "");
+      if (!token) return null;
+      const { data: { user: u }, error: e } = await supabaseAdmin.auth.getUser(token);
+      if (e || !u) return null;
+      return u;
+    }
+
     // ── Test email action ──
     if (action === "test") {
+      const authedUser = await requireAuth();
+      if (!authedUser) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const body = await req.json();
       const recipientEmail = body.to;
       const source = body.source || "platform"; // "platform" or "club"
@@ -220,6 +237,23 @@ Deno.serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // Verify caller is a club admin if testing club SMTP
+      if (source === "club" && subdomain) {
+        const { data: club } = await supabaseAdmin
+          .from("clubs")
+          .select("id")
+          .eq("subdomain", subdomain)
+          .single();
+        if (club) {
+          const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", { _user_id: authedUser.id, _club_id: club.id });
+          if (!isAdmin) {
+            return new Response(JSON.stringify({ error: "Forbidden: not a club admin" }), {
+              status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
       }
 
       let smtpConfig: SmtpConfig | null = null;
@@ -264,6 +298,12 @@ Deno.serve(async (req) => {
 
     // ── Welcome email action (sent after auto-confirmed signup) ──
     if (action === "welcome") {
+      const authedUser = await requireAuth();
+      if (!authedUser) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const body = await req.json();
       const recipientEmail = body.to;
       const recipientName = body.name || "";
@@ -309,6 +349,12 @@ Deno.serve(async (req) => {
 
     // ── Club registered email action ──
     if (action === "club-registered") {
+      const authedUser = await requireAuth();
+      if (!authedUser) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const body = await req.json();
       const recipientEmail = body.to;
       const recipientName = body.name || "";

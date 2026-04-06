@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, AlertTriangle, ArrowRightLeft, Plus, ListTree } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
   const [accountFilter, setAccountFilter] = useState<string>("all");
-  const [payOverOpen, setPayOverOpen] = useState(false);
   const [txOpen, setTxOpen] = useState(false);
 
   // Manual transaction form state
@@ -140,9 +139,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     return meta.normal === "Dr" ? b.debit - b.credit : b.credit - b.debit;
   };
 
-  const outstandingDebtors = getBalance("debtors");
-  const outstandingCreditors = getBalance("creditors");
+  const totalIncome = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Income").reduce((s, a) => s + getBalance(a), 0);
+  const totalExpenses = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Expense").reduce((s, a) => s + getBalance(a), 0);
   const bankBalance = getBalance("bank") + getBalance("bank_current");
+  const cashBalance = getBalance("cash");
 
   const filteredEntries = accountFilter === "all"
     ? (journalEntries || [])
@@ -159,13 +159,14 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         .eq("id", txId);
       if (error) throw error;
 
+      // Cash-basis: Payment received → Debit Bank, Credit Membership Income
       const journalRef = crypto.randomUUID();
       const memberName = getMemberName(tx.club_member_id);
       const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
 
       await fromExt("club_journal_entries").insert([
         { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: Math.abs(Number(tx.amount)), credit: 0, description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
-        { club_id: clubId, journal_ref: journalRef, account: "debtors", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
+        { club_id: clubId, journal_ref: journalRef, account: "membership_income", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
       ]);
 
       if (tx.type === "debit" && tx.club_member_id) {
@@ -183,7 +184,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
       }
 
-      toast.success("Payment confirmed with GL entries");
+      toast.success("Payment confirmed & recorded as income");
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
     } catch (err: any) {
@@ -201,24 +202,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to reject");
-    }
-  };
-
-  /* ─── Pay-over to associations ─── */
-  const handlePayOver = async () => {
-    if (outstandingCreditors <= 0) return;
-    try {
-      const journalRef = crypto.randomUUID();
-      const desc = `Pay-over to associations/federations`;
-      await fromExt("club_journal_entries").insert([
-        { club_id: clubId, journal_ref: journalRef, account: "creditors", debit: outstandingCreditors, credit: 0, description: desc },
-        { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: 0, credit: outstandingCreditors, description: desc },
-      ]);
-      toast.success("Pay-over recorded. Creditors cleared.");
-      setPayOverOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
-    } catch (err: any) {
-      toast.error(err.message || "Failed to record pay-over");
     }
   };
 
@@ -291,55 +274,34 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-4 text-center">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Debtors</p>
-          <p className={cn("text-xl font-bold tabular-nums", outstandingDebtors > 0 ? "text-amber-600" : "text-green-600")}>
-            R{outstandingDebtors.toFixed(2)}
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Income</p>
+          <p className="text-xl font-bold tabular-nums text-green-600">
+            R{totalIncome.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Owed by members</p>
+          <p className="text-[10px] text-muted-foreground">Revenue received</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Income</p>
-          <p className="text-xl font-bold tabular-nums text-green-600">
-            R{(getBalance("fee_income") + getBalance("membership_income") + getBalance("bar_income") + getBalance("league_fees_income") + getBalance("national_body_income")).toFixed(2)}
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Expenses</p>
+          <p className={cn("text-xl font-bold tabular-nums", totalExpenses > 0 ? "text-destructive" : "text-muted-foreground")}>
+            R{totalExpenses.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Total revenue</p>
+          <p className="text-[10px] text-muted-foreground">Costs paid</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Bank</p>
           <p className={cn("text-xl font-bold tabular-nums", bankBalance >= 0 ? "text-green-600" : "text-destructive")}>
             R{bankBalance.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Current + legacy</p>
+          <p className="text-[10px] text-muted-foreground">Current account</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Creditors</p>
-          <p className={cn("text-xl font-bold tabular-nums", outstandingCreditors > 0 ? "text-amber-600" : "text-green-600")}>
-            R{outstandingCreditors.toFixed(2)}
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Cash</p>
+          <p className={cn("text-xl font-bold tabular-nums", cashBalance >= 0 ? "text-green-600" : "text-destructive")}>
+            R{cashBalance.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Owed to suppliers</p>
+          <p className="text-[10px] text-muted-foreground">Petty cash</p>
         </Card>
       </div>
-
-      {/* Creditors Pay-Over Reminder */}
-      {outstandingCreditors > 0 && (
-        <Card className="p-4 border-amber-500/30 bg-amber-500/5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
-              <div>
-                <p className="font-semibold text-sm">Outstanding Creditors</p>
-                <p className="text-xs text-muted-foreground">
-                  R{outstandingCreditors.toFixed(2)} needs to be paid to associations/suppliers.
-                </p>
-              </div>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setPayOverOpen(true)} className="gap-1.5">
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              Record Pay-Over
-            </Button>
-          </div>
-        </Card>
-      )}
 
       <Tabs defaultValue="journal" className="w-full">
         <TabsList className="flex-wrap h-auto gap-1">
@@ -559,28 +521,6 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Pay-Over Dialog */}
-      <Dialog open={payOverOpen} onOpenChange={setPayOverOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Record Pay-Over</DialogTitle>
-            <DialogDescription>
-              Confirm that R{outstandingCreditors.toFixed(2)} has been paid to associations/suppliers.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 mt-2">
-            <Card className="p-3 bg-muted/50 text-sm space-y-1">
-              <p>This will create GL entries:</p>
-              <p className="text-xs text-muted-foreground">• Debit Creditors R{outstandingCreditors.toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground">• Credit Current Account R{outstandingCreditors.toFixed(2)}</p>
-            </Card>
-            <Button className="w-full" onClick={handlePayOver}>
-              Confirm Pay-Over · R{outstandingCreditors.toFixed(2)}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Enter Transaction Dialog */}
       <Dialog open={txOpen} onOpenChange={setTxOpen}>

@@ -22,6 +22,7 @@ interface BarItem {
   category: string;
   active: boolean;
   image_url?: string | null;
+  stock_qty: number;
 }
 
 const CATEGORY_ICONS: Record<string, string> = {

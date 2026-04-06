@@ -110,6 +110,75 @@ export function MemberOnboardingWizard({
 
   const club = clubData?.club;
   const clubId = club?.id || ctxClub?.id;
+  const faceRequired = !!(club as any)?.face_enrolment_required;
+
+  const STEPS = useMemo(() => {
+    const steps = [...BASE_STEPS];
+    if (faceRequired) steps.push(FACE_STEP);
+    steps.push(DONE_STEP);
+    return steps;
+  }, [faceRequired]);
+
+  // Face enrolment state
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const currentStepId = STEPS[step]?.id;
+
+  // Start camera when entering face step
+  useEffect(() => {
+    if (currentStepId === "face" && !capturedPhoto) {
+      startCamera();
+    }
+    return () => {
+      if (currentStepId !== "face") stopCamera();
+    };
+  }, [currentStepId, capturedPhoto]);
+
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      setCameraError("Could not access your camera. Please grant camera permissions and try again.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      setCameraStream(null);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    setCapturedPhoto(dataUrl);
+    stopCamera();
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
+    startCamera();
+  };
 
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: leagueAssocs = [] } = useLeagueAssociations(clubId);

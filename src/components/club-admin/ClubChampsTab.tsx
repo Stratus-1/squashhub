@@ -782,7 +782,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
-            <div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Enable Playoffs</Label>
+                <p className="text-xs text-muted-foreground">
+                  After group stages, matching positions play off (e.g. #1 vs #1, #2 vs #2). With 4+ groups, semi-finals and a final are added.
+                </p>
+              </div>
+              <Switch checked={enablePlayoffs} onCheckedChange={setEnablePlayoffs} />
+            </div>
+
+
               <Label>Championship Name (optional)</Label>
               <Input
                 placeholder={`${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}

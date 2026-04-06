@@ -275,55 +275,34 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-4 text-center">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Debtors</p>
-          <p className={cn("text-xl font-bold tabular-nums", outstandingDebtors > 0 ? "text-amber-600" : "text-green-600")}>
-            R{outstandingDebtors.toFixed(2)}
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Income</p>
+          <p className="text-xl font-bold tabular-nums text-green-600">
+            R{totalIncome.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Owed by members</p>
+          <p className="text-[10px] text-muted-foreground">Revenue received</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Income</p>
-          <p className="text-xl font-bold tabular-nums text-green-600">
-            R{(getBalance("fee_income") + getBalance("membership_income") + getBalance("bar_income") + getBalance("league_fees_income") + getBalance("national_body_income")).toFixed(2)}
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total Expenses</p>
+          <p className={cn("text-xl font-bold tabular-nums", totalExpenses > 0 ? "text-destructive" : "text-muted-foreground")}>
+            R{totalExpenses.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Total revenue</p>
+          <p className="text-[10px] text-muted-foreground">Costs paid</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Bank</p>
           <p className={cn("text-xl font-bold tabular-nums", bankBalance >= 0 ? "text-green-600" : "text-destructive")}>
             R{bankBalance.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Current + legacy</p>
+          <p className="text-[10px] text-muted-foreground">Current account</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Creditors</p>
-          <p className={cn("text-xl font-bold tabular-nums", outstandingCreditors > 0 ? "text-amber-600" : "text-green-600")}>
-            R{outstandingCreditors.toFixed(2)}
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Cash</p>
+          <p className={cn("text-xl font-bold tabular-nums", cashBalance >= 0 ? "text-green-600" : "text-destructive")}>
+            R{cashBalance.toFixed(2)}
           </p>
-          <p className="text-[10px] text-muted-foreground">Owed to suppliers</p>
+          <p className="text-[10px] text-muted-foreground">Petty cash</p>
         </Card>
       </div>
-
-      {/* Creditors Pay-Over Reminder */}
-      {outstandingCreditors > 0 && (
-        <Card className="p-4 border-amber-500/30 bg-amber-500/5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
-              <div>
-                <p className="font-semibold text-sm">Outstanding Creditors</p>
-                <p className="text-xs text-muted-foreground">
-                  R{outstandingCreditors.toFixed(2)} needs to be paid to associations/suppliers.
-                </p>
-              </div>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setPayOverOpen(true)} className="gap-1.5">
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              Record Pay-Over
-            </Button>
-          </div>
-        </Card>
-      )}
 
       <Tabs defaultValue="journal" className="w-full">
         <TabsList className="flex-wrap h-auto gap-1">

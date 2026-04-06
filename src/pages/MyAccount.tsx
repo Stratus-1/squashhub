@@ -26,6 +26,7 @@ export default function MyAccount() {
   const { data: clubData, isLoading: clubLoading } = useMyClub();
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
+  const { data: clubSecrets } = useClubSecrets(club?.id);
   const navigate = useNavigate();
 
   const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({

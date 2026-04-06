@@ -349,6 +349,12 @@ Deno.serve(async (req) => {
 
     // ── Club registered email action ──
     if (action === "club-registered") {
+      const authedUser = await requireAuth();
+      if (!authedUser) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const body = await req.json();
       const recipientEmail = body.to;
       const recipientName = body.name || "";

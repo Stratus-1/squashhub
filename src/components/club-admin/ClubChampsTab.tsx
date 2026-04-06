@@ -104,6 +104,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Wizard state
   const [gender, setGender] = useState<GenderCategory>("men");
   const [matchType, setMatchType] = useState<MatchType>("singles");
+  const [enablePlayoffs, setEnablePlayoffs] = useState(false);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [numGroups, setNumGroups] = useState(2);
   const [champName, setChampName] = useState("");

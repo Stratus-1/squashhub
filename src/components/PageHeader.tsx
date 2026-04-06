@@ -1,14 +1,16 @@
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LogOut, Swords, User } from "lucide-react";
+import { ChevronLeft, LogOut, Swords } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
 import { useIncomingChallengesCount, useProfile } from "@/hooks/use-data";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useMyClubMember } from "@/hooks/use-club";
+import { fromExt } from "@/lib/supabase-ext";
 
 interface PageHeaderProps {
   title: string;
@@ -34,6 +36,7 @@ export function PageHeader({
   const { user, signOut } = useAuth();
   const { activeMember } = useMemberContext();
   const { data: profile } = useProfile();
+  const { data: myClubMember } = useMyClubMember();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: clubData } = useMyClub();
@@ -43,10 +46,24 @@ export function PageHeader({
   const shouldShowBack = showBack ?? !isTopLevel;
   const fallbackTo = backTo || getBackFallback(pathname);
   const canGoBack = typeof window !== "undefined" && window.history.length > 1;
+  const activeMemberId = activeMember?.id;
+  const { data: switchedMember } = useQuery({
+    queryKey: ["club-member-by-id", activeMemberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members")
+        .select("id, name, avatar_url")
+        .eq("id", activeMemberId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; name: string | null; avatar_url: string | null } | null;
+    },
+    enabled: !!activeMemberId && activeMemberId !== myClubMember?.id,
+  });
   const { data: incomingCount } = useIncomingChallengesCount(activeMember?.id);
 
-  const avatarUrl = (profile as any)?.avatar_url || null;
-  const playerName = (profile as any)?.name || "";
+  const memberName = switchedMember?.name || myClubMember?.name || activeMember?.name || "";
+  const avatarUrl = switchedMember?.avatar_url || myClubMember?.avatar_url || (profile as any)?.avatar_url || null;
+  const playerName = memberName || (profile as any)?.name || "";
   const initials = playerName
     .trim()
     .split(/\s+/)

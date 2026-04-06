@@ -9,6 +9,7 @@ import { SEO } from "@/components/SEO";
 import { Users } from "lucide-react";
 
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
+import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
@@ -553,6 +554,11 @@ export default function Dashboard() {
           challenges={challenges}
           onViewAll={() => navigate("/challenges")}
         />
+      </div>
+
+      {/* My Championships */}
+      <div className="px-4 mt-4">
+        <MyChampionships />
       </div>
 
       {/* Club Events */}

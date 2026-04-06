@@ -117,7 +117,7 @@ export default function Profile() {
 
     const sourceName = clubMember?.name || String((profile as any)?.name || "");
     const sourcePhone = clubMember?.phone || String((profile as any)?.phone || "");
-    const sourceAvatar = clubMember?.avatar_url || (!isViewingSwitchedMember ? String((profile as any)?.avatar_url || "") : "");
+    const sourceAvatar = clubMember ? (clubMember.avatar_url || "") : String((profile as any)?.avatar_url || "");
 
     setName(sourceName);
     setPhone(sourcePhone);

@@ -13,6 +13,7 @@ import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
+import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -317,6 +318,7 @@ export default function Dashboard() {
           onAction={(action) => {
             if (action === "edit") openProfile("/profile?edit=1");
             if (action === "account") navigate("/my-account");
+            if (action === "face") setShowFaceEnrolment(true);
           }}
         />
       </div>

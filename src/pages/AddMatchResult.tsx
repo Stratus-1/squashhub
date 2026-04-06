@@ -736,11 +736,11 @@ export default function AddMatchResult() {
               const game = games[i];
               const a = parseInt(game.playerA) || 0;
               const b = parseInt(game.playerB) || 0;
-              const winner = determineGameWinner(a, b, scoringFormat);
+              const winner = determineGameWinner(a, b, scoringFormat, deuceRule);
               const previousGamesComplete = i === 0 || games.slice(0, i).every((g) => {
                 const ga = parseInt(g.playerA) || 0;
                 const gb = parseInt(g.playerB) || 0;
-                return determineGameWinner(ga, gb, scoringFormat) !== null;
+                return determineGameWinner(ga, gb, scoringFormat, deuceRule) !== null;
               });
 
               const gamesBeforeThis = games.slice(0, i);
@@ -748,7 +748,7 @@ export default function AddMatchResult() {
               for (const g of gamesBeforeThis) {
                 const ga = parseInt(g.playerA) || 0;
                 const gb = parseInt(g.playerB) || 0;
-                const w = determineGameWinner(ga, gb, scoringFormat);
+                const w = determineGameWinner(ga, gb, scoringFormat, deuceRule);
                 if (w === "a") winsA++;
                 if (w === "b") winsB++;
               }

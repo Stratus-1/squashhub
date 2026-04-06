@@ -42,7 +42,7 @@ export default function MyAccount() {
   });
 
   const clubMemberId = activeMember?.id || (activeClubMember as any)?.id || null;
-  const clubId = (activeClubMember as any)?.club_id || club?.id || null;
+  const clubId = club?.id || (activeClubMember as any)?.club_id || null;
   const feeCategoryId = (activeClubMember as any)?.fee_category_id;
   const playsLeague = !!(activeClubMember as any)?.plays_league;
   const memberNo = (activeClubMember as any)?.club_member_number || activeMember?.club_member_number || "N/A";

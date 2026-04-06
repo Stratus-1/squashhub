@@ -275,6 +275,8 @@ export default function Dashboard() {
         onComplete={() => {
           setShowOnboarding(false);
           setOnboardingDone(true);
+          // Force full reload so all queries (fees, member data, etc.) refresh cleanly
+          setTimeout(() => window.location.reload(), 300);
         }}
       />
       

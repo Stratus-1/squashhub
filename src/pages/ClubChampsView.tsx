@@ -5,14 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ArrowLeft, FileSpreadsheet, Printer } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User } from "lucide-react";
 import { format } from "date-fns";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { cn } from "@/lib/utils";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
 export default function ClubChampsView() {
   const { champId } = useParams<{ champId: string }>();
+  const { activeMember } = useMemberContext();
+  const myMemberId = activeMember?.id;
 
   const { data: champ, isLoading } = useQuery({
     queryKey: ["club-champ", champId],
@@ -92,6 +97,14 @@ export default function ClubChampsView() {
   const getMatchTeamA = (m: any) => isDoubles ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a);
   const getMatchTeamB = (m: any) => isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b);
 
+  const isMyMatch = (m: any) =>
+    myMemberId && (m.player_a_member_id === myMemberId || m.player_b_member_id === myMemberId ||
+      m.partner_a_member_id === myMemberId || m.partner_b_member_id === myMemberId);
+
+  const myMatches = matches.filter(isMyMatch);
+  const myGroupNumbers = [...new Set(entries.filter((e: any) => e.club_member_id === myMemberId || e.partner_member_id === myMemberId).map((e: any) => e.group_number as number))];
+
+
   const exportCSV = () => {
     if (!champ) return;
     const rows = [["Date", "Time", "Court", "Group", isDoubles ? "Team A" : "Player A", isDoubles ? "Team B" : "Player B", "Status", "Winner", "Score"]];
@@ -153,71 +166,175 @@ export default function ClubChampsView() {
           </p>
         </div>
 
-        {groupNumbers.map((gn: number) => {
-          const standings = getGroupStandings(gn);
-          const groupMatches = matches.filter((m: any) => m.group_number === gn);
+        {myMemberId && myMatches.length > 0 ? (
+          <Tabs defaultValue="my-fixtures" className="space-y-4">
+            <TabsList className="w-full">
+              <TabsTrigger value="my-fixtures" className="flex-1 gap-1"><User className="w-3.5 h-3.5" /> My Fixtures</TabsTrigger>
+              <TabsTrigger value="all-groups" className="flex-1">All Groups</TabsTrigger>
+            </TabsList>
 
-          return (
-            <Card key={gn}>
-              <CardHeader><CardTitle className="text-lg">Group {gn}</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="pb-2 font-medium">#</th>
-                        <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
-                        <th className="pb-2 font-medium text-center">P</th>
-                        <th className="pb-2 font-medium text-center">W</th>
-                        <th className="pb-2 font-medium text-center">L</th>
-                        <th className="pb-2 font-medium text-center">Pts</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {standings.map((s: any, i: number) => (
-                        <tr key={s.id} className="border-b border-border/50">
-                          <td className="py-2 text-muted-foreground">{i + 1}</td>
-                          <td className="py-2 font-medium">{s.name}</td>
-                          <td className="py-2 text-center">{s.played}</td>
-                          <td className="py-2 text-center">{s.won}</td>
-                          <td className="py-2 text-center">{s.lost}</td>
-                          <td className="py-2 text-center font-semibold">{s.points}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Fixtures</h4>
-                  <div className="space-y-1.5">
-                    {groupMatches.map((m: any) => (
-                      <div key={m.id} className="flex items-center gap-2 text-sm p-2 rounded bg-muted/50">
-                        <span className="text-muted-foreground w-24 shrink-0">
-                          {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
-                        </span>
-                        <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
-                        <span className={`font-medium ${m.winner_member_id === m.player_a_member_id ? "text-primary" : ""}`}>
-                          {getMatchTeamA(m)}
-                        </span>
-                        <span className="text-muted-foreground">vs</span>
-                        <span className={`font-medium ${m.winner_member_id === m.player_b_member_id ? "text-primary" : ""}`}>
-                          {getMatchTeamB(m)}
-                        </span>
-                        {m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
-                        {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
-                        <Badge variant={m.status === "completed" ? "default" : "secondary"} className="text-[10px]">{m.status}</Badge>
+            <TabsContent value="my-fixtures" className="space-y-4">
+              {/* My group standings */}
+              {myGroupNumbers.map((gn: number) => {
+                const standings = getGroupStandings(gn);
+                return (
+                  <Card key={gn}>
+                    <CardHeader><CardTitle className="text-lg">Group {gn}</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left">
+                              <th className="pb-2 font-medium">#</th>
+                              <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+                              <th className="pb-2 font-medium text-center">P</th>
+                              <th className="pb-2 font-medium text-center">W</th>
+                              <th className="pb-2 font-medium text-center">L</th>
+                              <th className="pb-2 font-medium text-center">Pts</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {standings.map((s: any, i: number) => {
+                              const isMe = s.club_member_id === myMemberId || s.partner_member_id === myMemberId;
+                              return (
+                                <tr key={s.id} className={cn("border-b border-border/50", isMe && "bg-primary/5 font-semibold")}>
+                                  <td className="py-2 text-muted-foreground">{i + 1}</td>
+                                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}</td>
+                                  <td className="py-2 text-center">{s.played}</td>
+                                  <td className="py-2 text-center">{s.won}</td>
+                                  <td className="py-2 text-center">{s.lost}</td>
+                                  <td className="py-2 text-center font-semibold">{s.points}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
+              {/* My fixtures list */}
+              <Card>
+                <CardHeader><CardTitle className="text-lg">My Schedule</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-1.5">
+                    {myMatches.map((m: any) => {
+                      const isA = m.player_a_member_id === myMemberId || m.partner_a_member_id === myMemberId;
+                      const opponent = isA ? getMatchTeamB(m) : getMatchTeamA(m);
+                      const won = m.winner_member_id === myMemberId;
+                      const lost = m.winner_member_id && m.winner_member_id !== myMemberId;
+
+                      return (
+                        <div key={m.id} className={cn(
+                          "flex items-center gap-2 text-sm p-2 rounded",
+                          m.status === "completed"
+                            ? won ? "bg-green-500/10" : lost ? "bg-destructive/10" : "bg-muted/50"
+                            : "bg-muted/50"
+                        )}>
+                          <span className="text-muted-foreground w-24 shrink-0">
+                            {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
+                          </span>
+                          <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
+                          <span className="font-medium">vs {opponent}</span>
+                          {m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
+                          {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
+                          <Badge variant={m.status === "completed" ? (won ? "default" : "secondary") : "secondary"} className="text-[10px]">
+                            {m.status === "completed" ? (won ? "Won" : lost ? "Lost" : "Played") : m.status}
+                          </Badge>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="all-groups" className="space-y-4">
+              {renderAllGroups()}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="space-y-4">{renderAllGroups()}</div>
+        )}
       </div>
     </div>
   );
+
+  function renderAllGroups() {
+    return groupNumbers.map((gn: number) => {
+      const standings = getGroupStandings(gn);
+      const groupMatches = matches.filter((m: any) => m.group_number === gn);
+
+      return (
+        <Card key={gn}>
+          <CardHeader><CardTitle className="text-lg">Group {gn}</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="pb-2 font-medium">#</th>
+                    <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+                    <th className="pb-2 font-medium text-center">P</th>
+                    <th className="pb-2 font-medium text-center">W</th>
+                    <th className="pb-2 font-medium text-center">L</th>
+                    <th className="pb-2 font-medium text-center">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {standings.map((s: any, i: number) => {
+                    const isMe = myMemberId && (s.club_member_id === myMemberId || s.partner_member_id === myMemberId);
+                    return (
+                      <tr key={s.id} className={cn("border-b border-border/50", isMe && "bg-primary/5")}>
+                        <td className="py-2 text-muted-foreground">{i + 1}</td>
+                        <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}</td>
+                        <td className="py-2 text-center">{s.played}</td>
+                        <td className="py-2 text-center">{s.won}</td>
+                        <td className="py-2 text-center">{s.lost}</td>
+                        <td className="py-2 text-center font-semibold">{s.points}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h4 className="font-medium text-sm mb-2">Fixtures</h4>
+              <div className="space-y-1.5">
+                {groupMatches.map((m: any) => {
+                  const mine = isMyMatch(m);
+                  return (
+                    <div key={m.id} className={cn(
+                      "flex items-center gap-2 text-sm p-2 rounded",
+                      mine ? "bg-primary/10 border border-primary/20" : "bg-muted/50"
+                    )}>
+                      <span className="text-muted-foreground w-24 shrink-0">
+                        {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
+                      </span>
+                      <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
+                      <span className={`font-medium ${m.winner_member_id === m.player_a_member_id ? "text-primary" : ""}`}>
+                        {getMatchTeamA(m)}
+                      </span>
+                      <span className="text-muted-foreground">vs</span>
+                      <span className={`font-medium ${m.winner_member_id === m.player_b_member_id ? "text-primary" : ""}`}>
+                        {getMatchTeamB(m)}
+                      </span>
+                      {m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
+                      {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
+                      <Badge variant={m.status === "completed" ? "default" : "secondary"} className="text-[10px]">{m.status}</Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    });
+  }
 }

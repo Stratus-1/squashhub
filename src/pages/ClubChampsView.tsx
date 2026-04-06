@@ -97,6 +97,14 @@ export default function ClubChampsView() {
   const getMatchTeamA = (m: any) => isDoubles ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a);
   const getMatchTeamB = (m: any) => isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b);
 
+  const isMyMatch = (m: any) =>
+    myMemberId && (m.player_a_member_id === myMemberId || m.player_b_member_id === myMemberId ||
+      m.partner_a_member_id === myMemberId || m.partner_b_member_id === myMemberId);
+
+  const myMatches = matches.filter(isMyMatch);
+  const myGroupNumbers = [...new Set(entries.filter((e: any) => e.club_member_id === myMemberId || e.partner_member_id === myMemberId).map((e: any) => e.group_number as number))];
+
+
   const exportCSV = () => {
     if (!champ) return;
     const rows = [["Date", "Time", "Court", "Group", isDoubles ? "Team A" : "Player A", isDoubles ? "Team B" : "Player B", "Status", "Winner", "Score"]];

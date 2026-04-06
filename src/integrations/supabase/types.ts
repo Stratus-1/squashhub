@@ -1477,6 +1477,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          face_enrolment_required: boolean
           fee_reminder_days_before: number | null
           honesty_bar_enabled: boolean
           id: string
@@ -1516,6 +1517,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           honesty_bar_enabled?: boolean
           id?: string
@@ -1555,6 +1557,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           honesty_bar_enabled?: boolean
           id?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN face_enrolment_required boolean NOT NULL DEFAULT false;

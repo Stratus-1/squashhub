@@ -5,9 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle } from "lucide-react";
+import { fromExt } from "@/lib/supabase-ext";
 
 const ACCESS_METHODS = [
   { value: "none", label: "No Access Control", icon: Lock, description: "Courts are open — no electronic access system" },
@@ -30,6 +32,8 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     access_control_api_url: "",
   });
 
+  const [faceEnrolmentRequired, setFaceEnrolmentRequired] = useState(false);
+
   useEffect(() => {
     if (secrets) {
       setForm({
@@ -40,6 +44,10 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     }
   }, [secrets]);
 
+  useEffect(() => {
+    setFaceEnrolmentRequired(!!(club as any)?.face_enrolment_required);
+  }, [club]);
+
   const handleSave = async () => {
     try {
       await updateSecrets.mutateAsync({
@@ -48,6 +56,15 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         access_control_api_key: form.access_control_api_key || null,
         access_control_api_url: form.access_control_api_url || null,
       } as any);
+
+      // Save face enrolment flag on clubs table
+      if (form.access_control_type === "face_recognition") {
+        await fromExt("clubs").update({ face_enrolment_required: faceEnrolmentRequired }).eq("id", clubId);
+      } else if ((club as any)?.face_enrolment_required) {
+        // Turn off if switching away from face recognition
+        await fromExt("clubs").update({ face_enrolment_required: false }).eq("id", clubId);
+      }
+
       toast.success("Access control settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -117,21 +134,41 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
-        {/* Face recognition notice */}
+        {/* Face recognition notice + enrolment checkbox */}
         {isFaceRec && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
-            <ScanFace className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Face Recognition Integration</p>
-              <p className="text-xs text-muted-foreground">
-                Face recognition requires camera hardware at your venue and enrolment of each member's facial data
-                during the registration process. This has <strong>POPIA compliance implications</strong> — biometric data
-                requires explicit consent.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
-                to discuss setup, hardware recommendations, and compliance requirements.
-              </p>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
+              <ScanFace className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Face Recognition Integration</p>
+                <p className="text-xs text-muted-foreground">
+                  Face recognition requires camera hardware at your venue and enrolment of each member's facial data
+                  during the registration process. This has <strong>POPIA compliance implications</strong> — biometric data
+                  requires explicit consent.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
+                  to discuss setup, hardware recommendations, and compliance requirements.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-lg border border-border p-4">
+              <Checkbox
+                id="face-enrolment"
+                checked={faceEnrolmentRequired}
+                onCheckedChange={(checked) => setFaceEnrolmentRequired(!!checked)}
+                className="mt-0.5"
+              />
+              <div>
+                <Label htmlFor="face-enrolment" className="text-sm font-medium cursor-pointer">
+                  Require face enrolment during member registration
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  When enabled, new and existing members will be required to complete face recognition enrolment
+                  as part of the sign-up process before gaining court access.
+                </p>
+              </div>
             </div>
           </div>
         )}

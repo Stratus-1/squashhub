@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,15 +17,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy } from "lucide-react";
+import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace } from "lucide-react";
 
-const STEPS = [
+interface StepDef {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+}
+
+const BASE_STEPS: StepDef[] = [
   { id: "welcome", label: "Welcome", icon: User },
   { id: "personal", label: "Personal Details", icon: FileText },
   { id: "membership", label: "Membership", icon: Users },
   { id: "fees", label: "Fees & Payment", icon: CreditCard },
-  { id: "done", label: "Complete", icon: Check },
 ];
+
+const FACE_STEP: StepDef = { id: "face", label: "Face Enrolment", icon: ScanFace };
+const DONE_STEP: StepDef = { id: "done", label: "Complete", icon: Check };
 
 /** Extract date of birth from SA ID number (first 6 digits = YYMMDD) */
 function getAgeFromSAId(idNumber: string): number | null {

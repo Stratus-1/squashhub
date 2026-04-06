@@ -113,16 +113,17 @@ export default function Profile() {
   const isViewingSwitchedMember = !!activeMemberId && activeMemberId !== defaultClubMember?.id;
 
   const resetDraft = () => {
-    if (!profile && !isViewingSwitchedMember) return;
-    // When viewing a switched member, use their club_member name/phone
-    const sourceName = isViewingSwitchedMember ? (clubMember?.name || "") : String((profile as any)?.name || "");
-    const sourcePhone = isViewingSwitchedMember ? (clubMember?.phone || "") : String((profile as any)?.phone || "");
-    const sourceAvatar = isViewingSwitchedMember ? "" : String((profile as any)?.avatar_url || "");
+    if (!profile && !clubMember) return;
+
+    const sourceName = clubMember?.name || String((profile as any)?.name || "");
+    const sourcePhone = clubMember?.phone || String((profile as any)?.phone || "");
+    const sourceAvatar = clubMember ? (clubMember.avatar_url || "") : String((profile as any)?.avatar_url || "");
+
     setName(sourceName);
     setPhone(sourcePhone);
     setAvatarUrl(sourceAvatar);
     setPreviewFile(null);
-    // Club member fields
+
     if (clubMember) {
       setGender(clubMember.gender || "");
       setIdNumber(clubMember.id_number || "");
@@ -132,9 +133,8 @@ export default function Profile() {
       setFeeCategoryId(clubMember.fee_category_id || "");
       setPlaysLeague(clubMember.plays_league || false);
     }
-    // League registration fields
+
     if (leagueRegistration) {
-      // Derive associationId from the league's association_id
       const league = leagues.find((l: any) => l.id === leagueRegistration.league_id);
       setAssociationId(league?.association_id || "");
       setAssociationNumber(leagueRegistration.league_association_number || "");
@@ -165,7 +165,7 @@ export default function Profile() {
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const filePath = `${user.id}/profile.${ext}`;
+      const filePath = clubMember?.id ? `${user.id}/${clubMember.id}/profile.${ext}` : `${user.id}/profile.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("profile-pictures")
         .upload(filePath, file, { upsert: true, contentType: file.type });
@@ -194,21 +194,11 @@ export default function Profile() {
       const phoneErr = validatePhone(phone);
       if (phoneErr) throw new Error(phoneErr);
 
-      // Only update the profiles table if editing the primary user (not a switched family member)
-      if (!isViewingSwitchedMember) {
-        const { error } = await supabase.from("profiles").update({
-          name: cleanName,
-          phone: phone.trim() || null,
-          avatar_url: avatarUrl.trim() || null,
-        }).eq("id", user.id);
-        if (error) throw error;
-      }
-
-      // Update club member record if exists
       if (clubMember?.id) {
         const memberPatch: any = {
           name: cleanName,
           phone: phone.trim() || null,
+          avatar_url: avatarUrl.trim() || null,
           gender: gender || null,
           id_number: idNumber.trim() || null,
           address: address.trim() || null,
@@ -217,18 +207,16 @@ export default function Profile() {
           fee_category_id: feeCategoryId || null,
           plays_league: playsLeague,
         };
+
         const { error: memErr } = await fromExt("club_members")
           .update(memberPatch)
           .eq("id", clubMember.id);
         if (memErr) throw memErr;
 
-        // Save league registration if plays league
         if (playsLeague && associationId) {
-          // Find a league belonging to this association
           const targetLeague = leagues.find((l: any) => l.association_id === associationId);
           if (targetLeague) {
             if (leagueRegistration?.id) {
-              // Update existing
               const { error: regErr } = await fromExt("member_league_registrations")
                 .update({
                   league_id: targetLeague.id,
@@ -237,7 +225,6 @@ export default function Profile() {
                 .eq("id", leagueRegistration.id);
               if (regErr) throw regErr;
             } else {
-              // Insert new
               const { error: regErr } = await fromExt("member_league_registrations")
                 .insert({
                   club_member_id: clubMember.id,
@@ -247,10 +234,16 @@ export default function Profile() {
               if (regErr) throw regErr;
             }
           }
-        } else if (!playsLeague && leagueRegistration?.id) {
-          // Remove registration if no longer plays league
-          await fromExt("member_league_registrations").delete().eq("id", leagueRegistration.id);
+        } else if (!playsLeague) {
+          await fromExt("member_league_registrations").delete().eq("club_member_id", clubMember.id);
         }
+      } else {
+        const { error } = await supabase.from("profiles").update({
+          name: cleanName,
+          phone: phone.trim() || null,
+          avatar_url: avatarUrl.trim() || null,
+        }).eq("id", user.id);
+        if (error) throw error;
       }
     },
     onSuccess: async () => {
@@ -269,6 +262,15 @@ export default function Profile() {
   });
 
   const selectClasses = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+  const profileViewData = clubMember ? {
+    name: clubMember.name || String((profile as any)?.name || ""),
+    email: clubMember.email || String((profile as any)?.email || ""),
+    phone: clubMember.phone || String((profile as any)?.phone || ""),
+    avatar_url: clubMember.avatar_url || (!isViewingSwitchedMember ? (profile as any)?.avatar_url || null : null),
+  } : profile;
+  const associationName = associationId
+    ? associations.find((association) => association.id === associationId)?.name || null
+    : null;
 
   return (
     <Dialog open onOpenChange={(open) => (!open ? close() : null)}>
@@ -282,20 +284,20 @@ export default function Profile() {
           <div className="py-10 flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : !profile && !isViewingSwitchedMember ? (
+        ) : !profile && !clubMember ? (
           <Card className="p-4 text-sm text-muted-foreground">Could not load your profile.</Card>
         ) : mode === "view" ? (
           <ViewMode
-            profile={isViewingSwitchedMember ? { name: clubMember?.name, email: clubMember?.email, phone: clubMember?.phone, avatar_url: null } : profile}
+            profile={profileViewData}
             clubMember={clubMember}
             feeCategories={feeCategories}
+            associationName={associationName}
+            associationNumber={associationNumber || null}
             close={close}
             setMode={setMode}
           />
         ) : (
           <div className="space-y-3">
-            {/* Photo upload — only for primary user, not switched family members */}
-            {!isViewingSwitchedMember && (
             <div id="avatar-picker" className="flex flex-col items-center gap-3 py-2">
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden bg-muted border-2 border-border flex items-center justify-center">
@@ -332,9 +334,7 @@ export default function Profile() {
                 )}
               </div>
             </div>
-            )}
 
-            {/* Personal info */}
             <div className="space-y-1.5">
               <Label>Full Name *</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
@@ -362,7 +362,6 @@ export default function Profile() {
               <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Optional" />
             </div>
 
-            {/* Club-specific fields (only if member of a club) */}
             {clubMember && (
               <>
                 <div className="border-t border-border pt-3 mt-3">
@@ -437,12 +436,16 @@ function ViewMode({
   profile,
   clubMember,
   feeCategories,
+  associationName,
+  associationNumber,
   close,
   setMode,
 }: {
   profile: any;
   clubMember: any;
   feeCategories: any[];
+  associationName: string | null;
+  associationNumber: string | null;
   close: () => void;
   setMode: (m: "edit") => void;
 }) {
@@ -478,6 +481,8 @@ function ViewMode({
             )}
             {skillLabel && <p className="text-xs text-muted-foreground">Skill: {skillLabel}</p>}
             {feeCategory && <p className="text-xs text-muted-foreground">Fee: {feeCategory.name} (R{feeCategory.annual_fee}/yr)</p>}
+            {associationName && <p className="text-xs text-muted-foreground">Association: {associationName}</p>}
+            {associationNumber && <p className="text-xs text-muted-foreground">Association #: {associationNumber}</p>}
             {clubMember.address && <p className="text-xs text-muted-foreground">Address: {clubMember.address}</p>}
             {clubMember.id_number && <p className="text-xs text-muted-foreground">ID: •••••{clubMember.id_number.slice(-4)}</p>}
             <p className="text-xs text-muted-foreground">Plays league: {clubMember.plays_league ? "Yes" : "No"}</p>

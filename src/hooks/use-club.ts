@@ -52,6 +52,7 @@ export interface ClubMember {
   phone?: string;
   address?: string;
   fee_category_id?: string;
+  avatar_url?: string | null;
   joined_at: string;
   updated_at: string;
   profiles?: { name: string; email: string; phone?: string; avatar_url?: string };
@@ -231,11 +232,30 @@ export function useMyLeagueRegistration(clubMemberId?: string) {
     queryKey: ["my-league-registration", clubMemberId],
     queryFn: async () => {
       const { data, error } = await fromExt("member_league_registrations")
-        .select("*")
+        .select("*, leagues:league_id(association_id)")
         .eq("club_member_id", clubMemberId!)
-        .maybeSingle();
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return data as { id: string; league_id: string; league_association_number: string | null; ssa_number: string | null; is_captain: boolean; player_rank: number | null; club_member_id: string } | null;
+
+      const rows = (data || []) as Array<{
+        id: string;
+        club_member_id: string;
+        league_id: string;
+        league_association_number: string | null;
+        ssa_number: string | null;
+        is_captain: boolean;
+        player_rank: number | null;
+        leagues?: { association_id?: string | null } | null;
+      }>;
+
+      const bestRow = rows.find((row) => !!row.league_association_number?.trim()) || rows[0] || null;
+
+      return bestRow
+        ? {
+            ...bestRow,
+            association_id: bestRow.leagues?.association_id || null,
+          }
+        : null;
     },
     enabled: !!clubMemberId,
   });

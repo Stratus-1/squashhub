@@ -3020,6 +3020,19 @@ export type Database = {
         | "creditors"
         | "bar_income"
         | "bar_expense"
+        | "bank_current"
+        | "cash"
+        | "membership_income"
+        | "league_fees_income"
+        | "national_body_income"
+        | "league_fees_expense"
+        | "national_body_expense"
+        | "maintenance"
+        | "electricity"
+        | "rent"
+        | "bank_charges"
+        | "gateway_fees"
+        | "general_expense"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -3161,6 +3174,19 @@ export const Constants = {
         "creditors",
         "bar_income",
         "bar_expense",
+        "bank_current",
+        "cash",
+        "membership_income",
+        "league_fees_income",
+        "national_body_income",
+        "league_fees_expense",
+        "national_body_expense",
+        "maintenance",
+        "electricity",
+        "rent",
+        "bank_charges",
+        "gateway_fees",
+        "general_expense",
       ],
       integration_provider: [
         "strava",

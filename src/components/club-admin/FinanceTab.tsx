@@ -77,9 +77,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [txDate, setTxDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [txDescription, setTxDescription] = useState("");
   const [txAmount, setTxAmount] = useState("");
-  const [txDebitAccount, setTxDebitAccount] = useState<string>("");
-  const [txCreditAccount, setTxCreditAccount] = useState<string>("");
-  const [txMethod, setTxMethod] = useState<"eft" | "cash" | "card">("eft");
+  const [txDirection, setTxDirection] = useState<"income" | "expense">("expense");
+  const [txAccount, setTxAccount] = useState<string>("");
+  const [txMethod, setTxMethod] = useState<"bank" | "cash" | "card">("bank");
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
 

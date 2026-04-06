@@ -234,8 +234,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     try {
       const journalRef = crypto.randomUUID();
       const entries: any[] = [
-        { club_id: clubId, journal_ref: journalRef, account: txDebitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: txMemberId || null, created_at: new Date(txDate).toISOString() },
-        { club_id: clubId, journal_ref: journalRef, account: txCreditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: txMemberId || null, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: txDebitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: txCreditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
       ];
 
       // Auto-charge 3.5% gateway fee for card payments
@@ -648,7 +648,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Select value={txMemberId} onValueChange={setTxMemberId}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {(members || []).map((m: any) => (
                     <SelectItem key={m.id} value={m.id}>{m.name || m.profiles?.name || m.email || "Unnamed"}</SelectItem>
                   ))}

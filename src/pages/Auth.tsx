@@ -132,6 +132,7 @@ export default function Auth() {
       termsAcceptedAt: nowIso,
       privacyAcceptedAt: nowIso,
     }, { clubName: club, subdomain: sub });
+    // Note: Auth.tsx is the main domain "Register Club" flow — always club_owner
     if (error) {
       toast.error(error.message);
       setLoading(false);

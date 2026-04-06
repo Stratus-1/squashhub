@@ -19,35 +19,28 @@ export default function MatchMarker() {
     winnerId: "a" | "b";
     durationSeconds: number;
   }) => {
-    if (!user || !config) return;
+    if (!config) return;
 
-    const playerAId = config.playerA.clubMemberId;
-    const playerBId = config.playerB.clubMemberId;
+    const playerAMemberId = config.playerA.clubMemberId;
+    const playerBMemberId = config.playerB.clubMemberId;
 
-    // Both players need to be linked club members (with user_id) to save to matches table
-    // For now, save if both have clubMemberIds - we look up their user_ids
+    if (!playerAMemberId || !playerBMemberId) {
+      toast.info("Match scored! Both players must be club members to save results.");
+      return;
+    }
+
     try {
-      // Look up user_ids for the club members
-      const memberIds = [playerAId, playerBId].filter(Boolean);
-      if (memberIds.length < 2) {
-        toast.info("Match scored! Results are shown above but not saved (both players must be club members).");
-        return;
-      }
-
+      // Look up user_ids — they may be null for unregistered members
       const { data: members } = await supabase
         .from("club_members")
         .select("id, user_id")
-        .in("id", memberIds as string[]);
+        .in("id", [playerAMemberId, playerBMemberId]);
 
-      const memberA = members?.find((m) => m.id === playerAId);
-      const memberB = members?.find((m) => m.id === playerBId);
+      const memberA = members?.find((m) => m.id === playerAMemberId);
+      const memberB = members?.find((m) => m.id === playerBMemberId);
 
-      if (!memberA?.user_id || !memberB?.user_id) {
-        toast.info("Match scored! Both players need linked accounts to save results.");
-        return;
-      }
-
-      const winnerUserId = result.winnerId === "a" ? memberA.user_id : memberB.user_id;
+      const winnerMemberId = result.winnerId === "a" ? playerAMemberId : playerBMemberId;
+      const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
 
       const gameScoresJson = JSON.stringify({
         sets: result.games.map((g) => ({ a: g.a, b: g.b })),
@@ -55,37 +48,43 @@ export default function MatchMarker() {
 
       const scoreStr = result.games.map((g) => `${g.a}-${g.b}`).join(", ");
 
+      // Use member IDs as primary — user_ids are optional (may be null for unlinked members)
       const { error } = await supabase.from("matches").insert({
-        player_a: memberA.user_id,
-        player_b: memberB.user_id,
-        winner_id: winnerUserId,
+        player_a: memberA?.user_id || user?.id || "00000000-0000-0000-0000-000000000000",
+        player_b: memberB?.user_id || "00000000-0000-0000-0000-000000000000",
+        player_a_member_id: playerAMemberId,
+        player_b_member_id: playerBMemberId,
+        winner_id: winnerUserId || null,
+        winner_member_id: winnerMemberId,
         score: scoreStr,
         game_scores: gameScoresJson,
         duration_s: result.durationSeconds,
-        submitted_by: user.id,
+        submitted_by: user?.id || null,
+        submitted_by_member_id: null,
         confirmed: false,
         notes: `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}.`,
       });
 
-      // Notify the other player to confirm
-      if (!error) {
-        const otherUserId = memberA.user_id === user.id ? memberB.user_id : memberA.user_id;
+      if (error) {
+        console.error("Failed to save match:", error);
+        toast.error("Could not save match result");
+        return;
+      }
+
+      toast.success("Match result saved! Awaiting player confirmation.");
+
+      // Notify opponent if they have a linked account
+      const otherMember = memberA?.user_id === user?.id ? memberB : memberA;
+      if (otherMember?.user_id) {
         try {
           await supabase.from("notifications" as any).insert({
-            user_id: otherUserId,
+            user_id: otherMember.user_id,
             title: "Confirm Match Result",
             message: `A match result (${scoreStr}) has been submitted and needs your confirmation.`,
             type: "match",
             url: "/dashboard",
           });
         } catch { /* non-critical */ }
-      }
-
-      if (error) {
-        console.error("Failed to save match:", error);
-        toast.error("Could not save match result");
-      } else {
-        toast.success("Match result saved! Awaiting player confirmation.");
       }
     } catch (err) {
       console.error("Error saving match:", err);

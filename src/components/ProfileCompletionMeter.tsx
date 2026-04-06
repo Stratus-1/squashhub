@@ -41,7 +41,7 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
     staleTime: 30_000,
   });
 
-  if (!profile || dismissed) return null;
+  if (!profile || dismissed || !clubMemberId) return null;
 
   // Step 1: Profile basics (name + phone)
   const profileDone =

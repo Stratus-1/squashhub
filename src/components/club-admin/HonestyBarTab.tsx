@@ -24,6 +24,7 @@ interface BarItem {
   image_url?: string | null;
   stock_qty: number;
   low_stock_threshold: number;
+  cost_price: number;
 }
 
 interface BarTabEntry {

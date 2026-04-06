@@ -226,16 +226,24 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const handleRecordTransaction = async () => {
     const amount = parseFloat(txAmount);
     if (!amount || amount <= 0) { toast.error("Enter a valid amount"); return; }
-    if (!txDebitAccount || !txCreditAccount) { toast.error("Select both debit and credit accounts"); return; }
-    if (txDebitAccount === txCreditAccount) { toast.error("Debit and credit accounts must differ"); return; }
+    if (!txAccount) { toast.error("Select an account"); return; }
     if (!txDescription.trim()) { toast.error("Enter a description"); return; }
+
+    // Determine the money account based on payment method
+    const moneyAccount = txMethod === "cash" ? "cash" : "bank_current";
+
+    // Income: Debit money account, Credit the selected income account
+    // Expense: Debit the selected expense account, Credit money account
+    const debitAccount = txDirection === "income" ? moneyAccount : txAccount;
+    const creditAccount = txDirection === "income" ? txAccount : moneyAccount;
 
     setTxSubmitting(true);
     try {
+      const memberId = (txMemberId && txMemberId !== "__none__") ? txMemberId : null;
       const journalRef = crypto.randomUUID();
       const entries: any[] = [
-        { club_id: clubId, journal_ref: journalRef, account: txDebitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
-        { club_id: clubId, journal_ref: journalRef, account: txCreditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: (txMemberId && txMemberId !== "__none__") ? txMemberId : null, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: debitAccount, debit: amount, credit: 0, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
+        { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: 0, credit: amount, description: txDescription.trim(), club_member_id: memberId, created_at: new Date(txDate).toISOString() },
       ];
 
       // Auto-charge 3.5% gateway fee for card payments
@@ -255,8 +263,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       setTxOpen(false);
       setTxDescription("");
       setTxAmount("");
-      setTxDebitAccount("");
-      setTxCreditAccount("");
+      setTxAccount("");
       setTxMemberId("");
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
     } catch (err: any) {

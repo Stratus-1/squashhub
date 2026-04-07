@@ -442,8 +442,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           return [
             {
               champ_id: champId,
-              club_member_id: pair.player1Id,
-              partner_member_id: pair.player2Id,
+              club_member_id: toDbId(pair.player1Id),
+              partner_member_id: toDbId(pair.player2Id),
               group_number: gi + 1,
             },
           ];

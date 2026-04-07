@@ -330,30 +330,62 @@ export default function ClubChampsView() {
 
             <Separator />
 
-            <div>
-              <h4 className="font-medium text-sm mb-2">Fixtures</h4>
+              <div>
+              <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
               <div className="space-y-1.5">
                 {groupMatches.map((m: any) => {
                   const mine = isMyMatch(m);
+                  const completed = m.status === "completed";
+                  const winnerIsA = completed && m.winner_member_id === m.player_a_member_id;
+                  const winnerIsB = completed && m.winner_member_id === m.player_b_member_id;
+
+                  // Parse game scores for display
+                  let gameBadges: { a: number; b: number }[] = [];
+                  if (m.game_scores) {
+                    try {
+                      const gs = JSON.parse(m.game_scores);
+                      gameBadges = gs.sets || [];
+                    } catch { /* ignore */ }
+                  }
+
                   return (
                     <div key={m.id} className={cn(
-                      "flex items-center gap-2 text-sm p-2 rounded",
-                      mine ? "bg-primary/10 border border-primary/20" : "bg-muted/50"
+                      "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded",
+                      mine ? "bg-primary/10 border border-primary/20" : completed ? "bg-muted/30" : "bg-muted/50"
                     )}>
-                      <span className="text-muted-foreground w-24 shrink-0">
+                      <span className="text-muted-foreground w-24 shrink-0 text-xs">
                         {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
                       </span>
-                      <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
-                      <span className={`font-medium ${m.winner_member_id === m.player_a_member_id ? "text-primary" : ""}`}>
+                      <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
+                      <span className={cn("font-medium", winnerIsA && "text-primary")}>
                         {getMatchTeamA(m)}
                       </span>
-                      <span className="text-muted-foreground">vs</span>
-                      <span className={`font-medium ${m.winner_member_id === m.player_b_member_id ? "text-primary" : ""}`}>
+                      <span className="text-muted-foreground text-xs">vs</span>
+                      <span className={cn("font-medium", winnerIsB && "text-primary")}>
                         {getMatchTeamB(m)}
                       </span>
-                      {m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
+
+                      {/* Game-by-game scores */}
+                      {gameBadges.length > 0 && (
+                        <div className="flex gap-1 ml-auto">
+                          {gameBadges.map((g, i) => (
+                            <Badge key={i} variant="outline" className="text-[10px] tabular-nums px-1.5">
+                              {g.a}-{g.b}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {!gameBadges.length && m.score && (
+                        <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>
+                      )}
+
                       {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
-                      <Badge variant={m.status === "completed" ? "default" : "secondary"} className="text-[10px]">{m.status}</Badge>
+                      <Badge
+                        variant={completed ? "default" : "secondary"}
+                        className={cn("text-[10px]", completed && "bg-primary")}
+                      >
+                        {completed ? (winnerIsA ? `${getPlayerName(m.player_a)} won` : winnerIsB ? `${getPlayerName(m.player_b)} won` : "Completed") : m.status}
+                      </Badge>
                     </div>
                   );
                 })}

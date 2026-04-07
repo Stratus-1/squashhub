@@ -260,8 +260,12 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
     setServeSide(side);
   }, [history, matchOver, resting]);
 
-  const playerAName = config.playerA.name.split(" ")[0];
-  const playerBName = config.playerB.name.split(" ")[0];
+  const playerAFirst = config.playerA.name.split(" ")[0];
+  const playerBFirst = config.playerB.name.split(" ")[0];
+  const partnerAFirst = config.partnerA?.name?.split(" ")[0];
+  const partnerBFirst = config.partnerB?.name?.split(" ")[0];
+  const playerAName = config.isDoubles && partnerAFirst ? `${playerAFirst} & ${partnerAFirst}` : playerAFirst;
+  const playerBName = config.isDoubles && partnerBFirst ? `${playerBFirst} & ${partnerBFirst}` : playerBFirst;
 
   return (
     <div className="space-y-3">
@@ -411,7 +415,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
           <div className="flex items-center gap-2 justify-center">
             <Flag className="w-5 h-5 text-[hsl(var(--win))]" />
             <p className="text-sm font-heading font-bold">
-              {matchWinner === "a" ? config.playerA.name : config.playerB.name} wins!
+              {matchWinner === "a" ? playerAName : playerBName} wins!
             </p>
           </div>
           <p className="text-xs text-center text-muted-foreground mt-1">

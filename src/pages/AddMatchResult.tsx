@@ -120,6 +120,9 @@ function PlayerSelector({
   search,
   onSearchChange,
   excludeUserId,
+  visitors,
+  visitorSearch,
+  onVisitorSearchChange,
 }: {
   label: string;
   player: PlayerSelection;
@@ -131,6 +134,9 @@ function PlayerSelector({
   search: string;
   onSearchChange: (s: string) => void;
   excludeUserId?: string | null;
+  visitors?: any[];
+  visitorSearch?: string;
+  onVisitorSearchChange?: (s: string) => void;
 }) {
   const filteredMembers = useMemo(() => {
     let list = availableMembers;

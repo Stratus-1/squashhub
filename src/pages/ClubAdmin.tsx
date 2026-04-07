@@ -5,7 +5,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe } from "lucide-react";
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
 import { BankingTab } from "@/components/club-admin/BankingTab";
@@ -19,6 +19,7 @@ import { SettingsTab } from "@/components/club-admin/SettingsTab";
 import { HonestyBarTab } from "@/components/club-admin/HonestyBarTab";
 import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
+import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -31,6 +32,7 @@ const ADMIN_TABS = [
   { value: "finance", label: "Finance", icon: Landmark },
   { value: "members", label: "Members", icon: Users },
   { value: "users", label: "Users", icon: UserCheck },
+  { value: "visitors", label: "Visitors", icon: Globe },
   { value: "ladder", label: "Ladder", icon: ListOrdered },
   { value: "leagues", label: "Leagues", icon: Trophy },
   { value: "champs", label: "Tournaments", icon: Medal },
@@ -62,6 +64,7 @@ export default function ClubAdmin() {
       case "finance": return <FinanceTab club={club} clubId={club.id} />;
       case "members": return <MembersTab clubId={club.id} />;
       case "users": return <UsersTab clubId={club.id} />;
+      case "visitors": return <VisitorsTab clubId={club.id} />;
       case "ladder": return <LadderTab clubId={club.id} />;
       case "leagues": return <LeaguesTab clubId={club.id} />;
       case "champs": return <ClubChampsTab clubId={club.id} />;

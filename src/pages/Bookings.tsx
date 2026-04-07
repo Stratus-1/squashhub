@@ -462,7 +462,20 @@ export default function Bookings() {
     enabled: !!user,
   });
 
-  const { data: availableForSlotUserIds } = useQuery({
+  const { data: clubVisitors = [] } = useQuery({
+    queryKey: ["club-visitors-booking", bookingClubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_visitors")
+        .select("id, first_name, last_name, home_club_name, category")
+        .eq("club_id", bookingClubId!)
+        .order("first_name");
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; first_name: string; last_name: string; home_club_name: string; category: string }>;
+    },
+    enabled: !!bookingClubId,
+  });
+
+
     queryKey: ["available-for-slot", dateStr, bookingDialog?.time],
     queryFn: async () => {
       if (!bookingDialog?.time) return [] as string[];

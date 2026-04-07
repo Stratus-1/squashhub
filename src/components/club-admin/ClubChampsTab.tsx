@@ -121,6 +121,43 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);
   const [pairGroupAssignments, setPairGroupAssignments] = useState<Map<string, number>>(new Map());
 
+  // Visitor inclusion state
+  const [includeVisitors, setIncludeVisitors] = useState(false);
+  const [selectedVisitorClubs, setSelectedVisitorClubs] = useState<Set<string>>(new Set());
+
+  // Fetch registered visitors
+  const { data: allVisitors = [] } = useQuery({
+    queryKey: ["club-visitors-tournament", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_visitors")
+        .select("id, first_name, last_name, home_club_name, category, member_number")
+        .eq("club_id", clubId)
+        .order("first_name");
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; first_name: string; last_name: string; home_club_name: string; category: string; member_number: string | null }>;
+    },
+    enabled: !!clubId,
+  });
+
+  // Unique visitor clubs for filter
+  const visitorClubs = useMemo(() => {
+    return [...new Set(allVisitors.map((v) => v.home_club_name))].sort();
+  }, [allVisitors]);
+
+  // Filter visitors by gender and selected clubs
+  const filteredVisitors = useMemo(() => {
+    if (!includeVisitors) return [];
+    let list = allVisitors;
+    if (selectedVisitorClubs.size > 0) {
+      list = list.filter((v) => selectedVisitorClubs.has(v.home_club_name));
+    }
+    if (gender !== "mixed") {
+      const genderValue = gender === "men" ? "Men" : "Ladies";
+      list = list.filter((v) => v.category === genderValue);
+    }
+    return list;
+  }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
+
   const stepIdx = STEPS.indexOf(step);
 
   // Filter members by gender
@@ -152,7 +189,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const goToStep = (s: WizardStep) => {
     if (s === "players" && step === "category") {
       if (!isDoubles) {
-        setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+        const memberIds = genderMembers.map((m) => m.id);
+        const visitorIds = filteredVisitors.map((v) => `visitor-${v.id}`);
+        setSelectedPlayerIds(new Set([...memberIds, ...visitorIds]));
       }
     }
     if (s === "groups") {
@@ -178,9 +217,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStep(s);
   };
 
+  // Build visitor entries as pseudo-members for the player list
+  const visitorAsMembers = useMemo(() => {
+    return filteredVisitors.map((v) => ({
+      id: `visitor-${v.id}`,
+      name: `${v.first_name} ${v.last_name}`,
+      gender: v.category === "Ladies" ? "Ladies" : "Men",
+      ladder_position: null as number | null,
+      profiles: null,
+      _isVisitor: true,
+      _homeClub: v.home_club_name,
+    }));
+  }, [filteredVisitors]);
+
+  // Combined list of members + visitors for player selection
+  const allSelectablePlayers = useMemo(() => {
+    return [...genderMembers, ...visitorAsMembers] as any[];
+  }, [genderMembers, visitorAsMembers]);
+
   const selectedPlayers = useMemo(
-    () => genderMembers.filter((m) => selectedPlayerIds.has(m.id)),
-    [genderMembers, selectedPlayerIds]
+    () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),
+    [allSelectablePlayers, selectedPlayerIds]
   );
 
   // Number of "entities" (players for singles, pairs for doubles)
@@ -792,6 +849,48 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <Switch checked={enablePlayoffs} onCheckedChange={setEnablePlayoffs} />
             </div>
 
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Include Visitors</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add registered visitors to the tournament player pool
+                </p>
+              </div>
+              <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
+            </div>
+
+            {includeVisitors && visitorClubs.length > 0 && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label className="text-sm font-medium">Filter by Home Club</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Leave all unchecked to include visitors from all clubs ({filteredVisitors.length} visitor{filteredVisitors.length !== 1 ? "s" : ""} matching)
+                </p>
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                  {visitorClubs.map((club) => (
+                    <label key={club} className="flex items-center gap-2 cursor-pointer hover:bg-accent rounded px-2 py-1">
+                      <Checkbox
+                        checked={selectedVisitorClubs.has(club)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedVisitorClubs);
+                          checked ? next.add(club) : next.delete(club);
+                          setSelectedVisitorClubs(next);
+                        }}
+                      />
+                      <span className="text-sm">{club}</span>
+                      <Badge variant="secondary" className="ml-auto text-[10px]">
+                        {allVisitors.filter((v) => v.home_club_name === club).length}
+                      </Badge>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {includeVisitors && visitorClubs.length === 0 && (
+              <p className="text-xs text-muted-foreground rounded-lg border p-3">
+                No visitors registered yet. Visitors can register from the club sign-in page.
+              </p>
+            )}
 
             <div>
               <Label>Championship Name (optional)</Label>
@@ -814,26 +913,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
-                  if (selectedPlayerIds.size === genderMembers.length) {
+                  if (selectedPlayerIds.size === allSelectablePlayers.length) {
                     setSelectedPlayerIds(new Set());
                   } else {
-                    setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+                    setSelectedPlayerIds(new Set(allSelectablePlayers.map((m: any) => m.id)));
                   }
                 }}
               >
-                {selectedPlayerIds.size === genderMembers.length ? "Deselect All" : "Select All"}
+                {selectedPlayerIds.size === allSelectablePlayers.length ? "Deselect All" : "Select All"}
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedPlayerIds.size} of {genderMembers.length} selected
+              {selectedPlayerIds.size} of {allSelectablePlayers.length} selected
+              {visitorAsMembers.length > 0 && ` (incl. ${visitorAsMembers.filter((v: any) => selectedPlayerIds.has(v.id)).length} visitors)`}
             </p>
           </CardHeader>
           <CardContent>
-            {genderMembers.length === 0 ? (
-              <p className="text-muted-foreground py-4">No matching members found. Check member gender settings.</p>
+            {allSelectablePlayers.length === 0 ? (
+              <p className="text-muted-foreground py-4">No matching players found. Check member gender settings.</p>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {genderMembers.map((m, i) => (
+                {allSelectablePlayers.map((m: any, i: number) => (
                   <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
                     <Checkbox
                       checked={selectedPlayerIds.has(m.id)}
@@ -845,7 +945,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
                     <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
-                    {m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
+                    {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
+                    {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
                     {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
                   </label>
                 ))}

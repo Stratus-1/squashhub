@@ -913,26 +913,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
-                  if (selectedPlayerIds.size === genderMembers.length) {
+                  if (selectedPlayerIds.size === allSelectablePlayers.length) {
                     setSelectedPlayerIds(new Set());
                   } else {
-                    setSelectedPlayerIds(new Set(genderMembers.map((m) => m.id)));
+                    setSelectedPlayerIds(new Set(allSelectablePlayers.map((m: any) => m.id)));
                   }
                 }}
               >
-                {selectedPlayerIds.size === genderMembers.length ? "Deselect All" : "Select All"}
+                {selectedPlayerIds.size === allSelectablePlayers.length ? "Deselect All" : "Select All"}
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedPlayerIds.size} of {genderMembers.length} selected
+              {selectedPlayerIds.size} of {allSelectablePlayers.length} selected
+              {visitorAsMembers.length > 0 && ` (incl. ${visitorAsMembers.filter((v: any) => selectedPlayerIds.has(v.id)).length} visitors)`}
             </p>
           </CardHeader>
           <CardContent>
-            {genderMembers.length === 0 ? (
-              <p className="text-muted-foreground py-4">No matching members found. Check member gender settings.</p>
+            {allSelectablePlayers.length === 0 ? (
+              <p className="text-muted-foreground py-4">No matching players found. Check member gender settings.</p>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {genderMembers.map((m, i) => (
+                {allSelectablePlayers.map((m: any, i: number) => (
                   <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
                     <Checkbox
                       checked={selectedPlayerIds.has(m.id)}
@@ -944,7 +945,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     />
                     <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
                     <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
-                    {m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
+                    {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
+                    {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
                     {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
                   </label>
                 ))}

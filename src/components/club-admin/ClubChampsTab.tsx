@@ -217,6 +217,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStep(s);
   };
 
+  // Helper to strip "visitor-" prefix for DB inserts
+  const toDbId = (id: string) => id.replace(/^visitor-/, "");
+
   // Build visitor entries as pseudo-members for the player list
   const visitorAsMembers = useMemo(() => {
     return filteredVisitors.map((v) => ({
@@ -439,8 +442,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           return [
             {
               champ_id: champId,
-              club_member_id: pair.player1Id,
-              partner_member_id: pair.player2Id,
+              club_member_id: toDbId(pair.player1Id),
+              partner_member_id: toDbId(pair.player2Id),
               group_number: gi + 1,
             },
           ];
@@ -451,7 +454,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const entries = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
           groupPlayers.map((p) => ({
             champ_id: champId,
-            club_member_id: p.id,
+            club_member_id: toDbId(p.id),
             group_number: gi + 1,
           }))
         );
@@ -472,10 +475,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             champ_id: champId,
             group_number: m.groupNum,
             round_number: m.roundNum,
-            player_a_member_id: pairA?.player1Id || m.entityA,
-            partner_a_member_id: pairA?.player2Id || null,
-            player_b_member_id: pairB?.player1Id || m.entityB,
-            partner_b_member_id: pairB?.player2Id || null,
+            player_a_member_id: toDbId(pairA?.player1Id || m.entityA),
+            partner_a_member_id: pairA?.player2Id ? toDbId(pairA.player2Id) : null,
+            player_b_member_id: toDbId(pairB?.player1Id || m.entityB),
+            partner_b_member_id: pairB?.player2Id ? toDbId(pairB.player2Id) : null,
             scheduled_date: m.date,
             scheduled_time: m.time,
             court_id: m.courtId,
@@ -485,8 +488,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           champ_id: champId,
           group_number: m.groupNum,
           round_number: m.roundNum,
-          player_a_member_id: m.entityA,
-          player_b_member_id: m.entityB,
+          player_a_member_id: toDbId(m.entityA),
+          player_b_member_id: toDbId(m.entityB),
           scheduled_date: m.date,
           scheduled_time: m.time,
           court_id: m.courtId,

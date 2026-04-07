@@ -1329,6 +1329,30 @@ export default function Bookings() {
                     className="rounded-xl"
                   />
                 )}
+
+                {bookingDialog.playerMode === "visitor" && (
+                  <Select
+                    value={bookingDialog.guestName}
+                    onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, guestName: v } : s))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Choose a registered visitor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clubVisitors.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          No visitors registered yet.
+                        </div>
+                      ) : (
+                        clubVisitors.map((v) => (
+                          <SelectItem key={v.id} value={`${v.first_name} ${v.last_name} (${v.home_club_name})`}>
+                            {v.first_name} {v.last_name} · {v.home_club_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {bookingDialog.lightsOn && lightFeePerHour > 0 && bookingDialog.playerMode === "member" && bookingDialog.opponentId && (

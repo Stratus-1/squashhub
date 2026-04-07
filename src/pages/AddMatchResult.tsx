@@ -354,6 +354,7 @@ function getPlayerDisplayName(p: PlayerSelection, fallback = "Player"): string {
   if (p.mode === "myself") return p.name || "You";
   if (p.mode === "club") return p.name || fallback;
   if (p.mode === "external") return p.name || fallback;
+  if (p.mode === "visitor") return p.name || fallback;
   return fallback;
 }
 

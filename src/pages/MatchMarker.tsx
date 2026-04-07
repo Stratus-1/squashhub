@@ -51,8 +51,8 @@ export default function MatchMarker() {
 
       // Use member IDs as primary — user_ids are optional (may be null for unlinked members)
       const { error } = await supabase.from("matches").insert({
-        player_a: memberA?.user_id || user?.id || "00000000-0000-0000-0000-000000000000",
-        player_b: memberB?.user_id || "00000000-0000-0000-0000-000000000000",
+        player_a: memberA?.user_id || null,
+        player_b: memberB?.user_id || null,
         player_a_member_id: playerAMemberId,
         player_b_member_id: playerBMemberId,
         winner_id: winnerUserId || null,

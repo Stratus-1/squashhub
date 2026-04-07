@@ -1277,16 +1277,16 @@ export default function Bookings() {
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">2nd Player (optional)</Label>
-                <div className="flex gap-1.5">
-                  {(["none", "member", "guest"] as const).map((mode) => (
+                <div className="flex flex-wrap gap-1.5">
+                  {(["none", "member", "guest", "visitor"] as const).map((mode) => (
                     <Button
                       key={mode}
                       size="sm"
                       variant={bookingDialog.playerMode === mode ? "default" : "outline"}
-                      className="flex-1 text-xs rounded-lg"
+                      className="flex-1 text-xs rounded-lg min-w-[60px]"
                       onClick={() => setBookingDialog((s) => s ? { ...s, playerMode: mode, opponentId: "", guestName: "" } : s)}
                     >
-                      {mode === "none" ? "Solo" : mode === "member" ? "Club Member" : "Guest"}
+                      {mode === "none" ? "Solo" : mode === "member" ? "Member" : mode === "guest" ? "Guest" : "Visitor"}
                     </Button>
                   ))}
                 </div>

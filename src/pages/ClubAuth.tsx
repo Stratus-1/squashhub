@@ -51,6 +51,7 @@ export default function ClubAuth() {
   const [visitorPhone, setVisitorPhone] = useState("");
   const [visitorHomeClub, setVisitorHomeClub] = useState("");
   const [visitorMemberNumber, setVisitorMemberNumber] = useState("");
+  const [visitorEmail, setVisitorEmail] = useState("");
   const [visitorDone, setVisitorDone] = useState(false);
 
   // Reset
@@ -207,11 +208,13 @@ export default function ClubAuth() {
 
     setLoading(true);
     try {
+      const visEmail = visitorEmail.trim();
       const { error } = await fromExt("club_visitors").insert({
         club_id: club.id,
         first_name: firstName,
         last_name: lastName,
         phone: phone || null,
+        email: visEmail || null,
         home_club_name: homeClub,
         member_number: memNum || null,
       });
@@ -341,7 +344,7 @@ export default function ClubAuth() {
             <p className="text-sm text-muted-foreground">
               You've been registered as a visitor at <span className="font-medium text-foreground">{clubName}</span>. The club admin can now select you for tournaments and league matches.
             </p>
-            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); }}>
+            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); }}>
               Register Another Visitor
             </Button>
           </Card>
@@ -608,6 +611,17 @@ export default function ClubAuth() {
                     onChange={(e) => setVisitorLastName(e.target.value)}
                     required
                     maxLength={50}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="visitor-email">Email</Label>
+                  <Input
+                    id="visitor-email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={visitorEmail}
+                    onChange={(e) => setVisitorEmail(e.target.value)}
+                    maxLength={255}
                   />
                 </div>
                 <div>

@@ -1488,6 +1488,7 @@ export type Database = {
         Row: {
           club_id: string
           created_at: string
+          email: string | null
           first_name: string
           home_club_name: string
           id: string
@@ -1498,6 +1499,7 @@ export type Database = {
         Insert: {
           club_id: string
           created_at?: string
+          email?: string | null
           first_name: string
           home_club_name: string
           id?: string
@@ -1508,6 +1510,7 @@ export type Database = {
         Update: {
           club_id?: string
           created_at?: string
+          email?: string | null
           first_name?: string
           home_club_name?: string
           id?: string

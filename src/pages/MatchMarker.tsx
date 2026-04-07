@@ -25,8 +25,8 @@ export default function MatchMarker() {
     const playerAMemberId = config.playerA.clubMemberId;
     const playerBMemberId = config.playerB.clubMemberId;
 
-    if (!playerAMemberId || !playerBMemberId) {
-      toast.info("Match scored! Both players must be club members to save results.");
+    if (!playerAMemberId && !playerBMemberId) {
+      toast.info("Match scored! Players must be club members to save results.");
       return;
     }
 

@@ -32,13 +32,18 @@ export default function MatchMarker() {
 
     try {
       // Look up user_ids — they may be null for unregistered members
-      const { data: members } = await supabase
-        .from("club_members")
-        .select("id, user_id")
-        .in("id", [playerAMemberId, playerBMemberId]);
+      const memberIdsToLookup = [playerAMemberId, playerBMemberId].filter(Boolean) as string[];
+      let memberA: { id: string; user_id: string | null } | undefined;
+      let memberB: { id: string; user_id: string | null } | undefined;
 
-      const memberA = members?.find((m) => m.id === playerAMemberId);
-      const memberB = members?.find((m) => m.id === playerBMemberId);
+      if (memberIdsToLookup.length > 0) {
+        const { data: members } = await supabase
+          .from("club_members")
+          .select("id, user_id")
+          .in("id", memberIdsToLookup);
+        memberA = members?.find((m) => m.id === playerAMemberId);
+        memberB = members?.find((m) => m.id === playerBMemberId);
+      }
 
       const winnerMemberId = result.winnerId === "a" ? playerAMemberId : playerBMemberId;
       const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;

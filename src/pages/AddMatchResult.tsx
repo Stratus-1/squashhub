@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Trophy, UserPlus, Users, ChevronLeft, UserCheck } from "lucide-react";
+import { Trophy, UserPlus, Users, ChevronLeft, UserCheck, Globe } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
@@ -19,6 +19,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateMatch } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
+import { useQuery } from "@tanstack/react-query";
+import { fromExt } from "@/lib/supabase-ext";
 
 type MatchType = "friendly" | "league" | "ladder" | "club_champs" | "tournament";
 type ScoringFormat = "par11" | "par15" | "english9";
@@ -28,7 +30,7 @@ type DeuceRule = "win_by_2" | "sudden_death";
 type GameScore = { playerA: string; playerB: string };
 
 interface PlayerSelection {
-  mode: "myself" | "club" | "external";
+  mode: "myself" | "club" | "external" | "visitor";
   clubMemberId: string | null;
   userId: string | null;
   name: string;
@@ -98,7 +100,7 @@ function computeMatchResult(games: GameScore[], format: ScoringFormat, deuceRule
   return { gamesA, gamesB, validGames };
 }
 
-const emptyPlayer = (mode: "myself" | "club" | "external" = "myself"): PlayerSelection => ({
+const emptyPlayer = (mode: "myself" | "club" | "external" | "visitor" = "myself"): PlayerSelection => ({
   mode,
   clubMemberId: null,
   userId: null,

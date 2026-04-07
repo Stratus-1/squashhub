@@ -71,12 +71,32 @@ export default function ClubChampsView() {
 
     return groupEntries.map((e: any) => {
       const memberId = e.club_member_id;
-      let played = 0, won = 0, lost = 0;
+      const partnerId = e.partner_member_id;
+      let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0;
+
       groupMatches.forEach((m: any) => {
-        if (m.player_a_member_id === memberId || m.player_b_member_id === memberId) {
-          played++;
-          if (m.winner_member_id === memberId) won++;
-          else lost++;
+        const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
+        const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
+        if (!isA && !isB) return;
+        played++;
+        if (m.winner_member_id === memberId || (isDoubles && (
+          (isA && m.winner_member_id === m.player_a_member_id) ||
+          (isB && m.winner_member_id === m.player_b_member_id)
+        ))) {
+          won++;
+        } else {
+          lost++;
+        }
+        // Tally game scores for game difference
+        if (m.game_scores) {
+          try {
+            const gs = JSON.parse(m.game_scores);
+            const sets = gs.sets || [];
+            sets.forEach((s: any) => {
+              if (isA) { gamesWon += s.a || 0; gamesLost += s.b || 0; }
+              else { gamesWon += s.b || 0; gamesLost += s.a || 0; }
+            });
+          } catch { /* ignore */ }
         }
       });
       return {
@@ -84,12 +104,15 @@ export default function ClubChampsView() {
         played,
         won,
         lost,
+        gamesWon,
+        gamesLost,
+        gameDiff: gamesWon - gamesLost,
         points: won * 2 + (played - won - lost),
         name: isDoubles
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
       };
-    }).sort((a: any, b: any) => b.points - a.points || b.won - a.won);
+    }).sort((a: any, b: any) => b.points - a.points || b.gameDiff - a.gameDiff || b.won - a.won);
   };
 
   const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();

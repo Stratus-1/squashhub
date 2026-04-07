@@ -82,7 +82,7 @@ export default function MatchMarker() {
         return;
       }
 
-      toast.success("Match result saved! Awaiting player confirmation.");
+      toast.success(autoConfirm ? "Match result saved and confirmed!" : "Match result saved! Awaiting player confirmation.");
 
       // If this was a tournament match, update the club_champs_matches record too
       if (config.source === "tournament" && config.sourceId) {

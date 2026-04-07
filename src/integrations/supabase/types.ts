@@ -2145,9 +2145,9 @@ export type Database = {
           id: string
           match_date: string
           notes: string | null
-          player_a: string
+          player_a: string | null
           player_a_member_id: string | null
-          player_b: string
+          player_b: string | null
           player_b_member_id: string | null
           score: string | null
           submitted_by: string | null
@@ -2167,9 +2167,9 @@ export type Database = {
           id?: string
           match_date?: string
           notes?: string | null
-          player_a: string
+          player_a?: string | null
           player_a_member_id?: string | null
-          player_b: string
+          player_b?: string | null
           player_b_member_id?: string | null
           score?: string | null
           submitted_by?: string | null
@@ -2189,9 +2189,9 @@ export type Database = {
           id?: string
           match_date?: string
           notes?: string | null
-          player_a?: string
+          player_a?: string | null
           player_a_member_id?: string | null
-          player_b?: string
+          player_b?: string | null
           player_b_member_id?: string | null
           score?: string | null
           submitted_by?: string | null

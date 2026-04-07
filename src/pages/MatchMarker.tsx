@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
+import { fromExt } from "@/lib/supabase-ext";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";

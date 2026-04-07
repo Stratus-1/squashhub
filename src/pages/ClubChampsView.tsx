@@ -305,6 +305,7 @@ export default function ClubChampsView() {
                     <th className="pb-2 font-medium text-center">P</th>
                     <th className="pb-2 font-medium text-center">W</th>
                     <th className="pb-2 font-medium text-center">L</th>
+                    <th className="pb-2 font-medium text-center">GD</th>
                     <th className="pb-2 font-medium text-center">Pts</th>
                   </tr>
                 </thead>
@@ -318,6 +319,7 @@ export default function ClubChampsView() {
                         <td className="py-2 text-center">{s.played}</td>
                         <td className="py-2 text-center">{s.won}</td>
                         <td className="py-2 text-center">{s.lost}</td>
+                        <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
                         <td className="py-2 text-center font-semibold">{s.points}</td>
                       </tr>
                     );

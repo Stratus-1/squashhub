@@ -391,6 +391,22 @@ export default function AddMatchResult() {
   const [player2, setPlayer2] = useState<PlayerSelection>(emptyPlayer("club"));
   const [search1, setSearch1] = useState("");
   const [search2, setSearch2] = useState("");
+  const [visitorSearch1, setVisitorSearch1] = useState("");
+  const [visitorSearch2, setVisitorSearch2] = useState("");
+
+  // Fetch registered visitors for the club
+  const { data: clubVisitors = [] } = useQuery({
+    queryKey: ["club-visitors-match", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_visitors")
+        .select("id, first_name, last_name, home_club_name, category, member_number")
+        .eq("club_id", clubId!)
+        .order("first_name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubId,
+  });
 
   // Match settings
   const [matchType, setMatchType] = useState<MatchType>("friendly");

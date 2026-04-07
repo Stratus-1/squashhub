@@ -209,7 +209,7 @@ export default function Bookings() {
     time: string;
     opponentId: string;
     guestName: string;
-    playerMode: "none" | "member" | "guest";
+    playerMode: "none" | "member" | "guest" | "visitor";
     isFriendly: boolean;
     duration: 30 | 60;
     lightsOn: boolean;

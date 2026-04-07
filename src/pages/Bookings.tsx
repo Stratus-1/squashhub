@@ -956,7 +956,8 @@ export default function Bookings() {
                                     : "text-foreground/70"
                               )}>
                                 {isBlocked ? (blockReason || "Blocked") : isEventBooking ? eventLabel : (a || "Booked")}
-                                {!isBlocked && !isEventBooking && b ? ` vs ${b}` : ""}
+                                {!isBlocked && !isEventBooking && b ? <span className="font-normal text-muted-foreground"> v </span> : ""}
+                                {!isBlocked && !isEventBooking && b ? b : ""}
                               </p>
                             </div>
                           ) : isPastSlot ? (

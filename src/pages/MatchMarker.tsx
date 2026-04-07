@@ -45,7 +45,10 @@ export default function MatchMarker() {
         memberB = members?.find((m) => m.id === playerBMemberId);
       }
 
-      const winnerMemberId = result.winnerId === "a" ? playerAMemberId : playerBMemberId;
+      // Only use member IDs that were found in club_members (not visitors)
+      const validAMemberId = memberA ? playerAMemberId : null;
+      const validBMemberId = memberB ? playerBMemberId : null;
+      const winnerMemberId = result.winnerId === "a" ? validAMemberId : validBMemberId;
       const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
 
       const gameScoresJson = JSON.stringify({

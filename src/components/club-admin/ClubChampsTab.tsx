@@ -217,6 +217,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStep(s);
   };
 
+  // Helper to strip "visitor-" prefix for DB inserts
+  const toDbId = (id: string) => id.replace(/^visitor-/, "");
+
   // Build visitor entries as pseudo-members for the player list
   const visitorAsMembers = useMemo(() => {
     return filteredVisitors.map((v) => ({

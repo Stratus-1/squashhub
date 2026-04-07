@@ -1484,6 +1484,47 @@ export type Database = {
           },
         ]
       }
+      club_visitors: {
+        Row: {
+          club_id: string
+          created_at: string
+          first_name: string
+          home_club_name: string
+          id: string
+          last_name: string
+          member_number: string | null
+          phone: string | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          first_name: string
+          home_club_name: string
+          id?: string
+          last_name: string
+          member_number?: string | null
+          phone?: string | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          first_name?: string
+          home_club_name?: string
+          id?: string
+          last_name?: string
+          member_number?: string | null
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_visitors_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           address: string | null

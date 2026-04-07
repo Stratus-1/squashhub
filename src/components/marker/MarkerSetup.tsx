@@ -70,13 +70,27 @@ function PlayerField({
     queryKey: ["club-members-marker", club?.id],
     queryFn: async () => {
       if (!club?.id) return [];
-      const { data, error } = await supabase
+      // Fetch club members
+      const { data: clubMembers, error } = await supabase
         .from("club_members")
         .select("id, name, club_member_number, gender")
         .eq("club_id", club.id)
         .order("name");
       if (error) throw error;
-      return data || [];
+      // Also fetch visitors
+      const { data: visitors } = await supabase
+        .from("club_visitors")
+        .select("id, first_name, last_name, member_number, category, home_club_name")
+        .eq("club_id", club.id);
+      const visitorRows = (visitors || []).map((v) => ({
+        id: v.id,
+        name: `${v.first_name} ${v.last_name}`,
+        club_member_number: v.member_number || null,
+        gender: v.category === "Ladies" ? "Ladies" : "Men",
+        _isVisitor: true,
+        _homeClub: v.home_club_name,
+      }));
+      return [...(clubMembers || []), ...visitorRows];
     },
     enabled: !!club?.id,
     staleTime: 5 * 60 * 1000,
@@ -87,9 +101,10 @@ function PlayerField({
     const q = searchTerm.toLowerCase();
     return members
       .filter(
-        (m) =>
+        (m: any) =>
           m.name?.toLowerCase().includes(q) ||
-          m.club_member_number?.toLowerCase().includes(q)
+          m.club_member_number?.toLowerCase().includes(q) ||
+          m._homeClub?.toLowerCase().includes(q)
       )
       .slice(0, 20);
   }, [members, searchTerm]);

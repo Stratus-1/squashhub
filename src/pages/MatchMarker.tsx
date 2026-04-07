@@ -62,7 +62,7 @@ export default function MatchMarker() {
         submitted_by: user?.id || null,
         submitted_by_member_id: null,
         confirmed: false,
-        notes: `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}.`,
+        notes: `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}.${config.source !== 'manual' ? ` Source: ${config.source} ${config.sourceId || ''}` : ''}`,
       });
 
       if (error) {

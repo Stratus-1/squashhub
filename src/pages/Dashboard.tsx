@@ -459,15 +459,22 @@ export default function Dashboard() {
               const isSamePlayer = m.player_a && m.player_b && m.player_a === m.player_b;
 
               // Resolve names: try user_id first, then member_id
-              let p1Name = matchPlayerNameMap.get(m.player_a) || matchPlayerNameMap.get(m.player_a_member_id) || "Player 1";
-              let p2Name = matchPlayerNameMap.get(m.player_b) || matchPlayerNameMap.get(m.player_b_member_id) || "Player 2";
+              let p1Name = matchPlayerNameMap.get(m.player_a) || matchPlayerNameMap.get(m.player_a_member_id) || null;
+              let p2Name = matchPlayerNameMap.get(m.player_b) || matchPlayerNameMap.get(m.player_b_member_id) || null;
 
-              if (isSamePlayer && m.notes) {
-                const notesNames = m.notes.match(/Player\s*1[:\s]+([^.;\n]+)/i);
-                const notesNames2 = m.notes.match(/Player\s*2[:\s]+([^.;\n]+)/i);
-                if (notesNames) p1Name = notesNames[1].trim();
-                if (notesNames2) p2Name = notesNames2[1].trim();
+              // Parse names from notes for unresolved players (visitors, external players)
+              if (m.notes) {
+                if (!p1Name || (isSamePlayer)) {
+                  const notesNames = m.notes.match(/Player\s*1[:\s]+([^.;\n]+)/i);
+                  if (notesNames) p1Name = notesNames[1].trim();
+                }
+                if (!p2Name || (isSamePlayer)) {
+                  const notesNames2 = m.notes.match(/Player\s*2[:\s]+([^.;\n]+)/i);
+                  if (notesNames2) p2Name = notesNames2[1].trim();
+                }
               }
+              if (!p1Name) p1Name = "Player 1";
+              if (!p2Name) p2Name = "Player 2";
 
               let label = "";
               if (isSamePlayer) {

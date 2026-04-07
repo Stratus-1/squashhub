@@ -556,8 +556,8 @@ export default function AddMatchResult() {
     if (!user || !canSubmit) return;
     setSubmitting(true);
     try {
-      const p1HasAccount = player1.mode !== "external" && !!player1.userId;
-      const p2HasAccount = player2.mode !== "external" && !!player2.userId;
+      const p1HasAccount = player1.mode !== "external" && player1.mode !== "visitor" && !!player1.userId;
+      const p2HasAccount = player2.mode !== "external" && player2.mode !== "visitor" && !!player2.userId;
 
       // Determine if we can create a proper match record (need user_ids for both)
       if (p1HasAccount && p2HasAccount) {

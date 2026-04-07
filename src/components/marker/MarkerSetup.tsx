@@ -110,10 +110,11 @@ function PlayerField({
   }, [members, searchTerm]);
 
   const selectMember = (m: (typeof members)[0]) => {
+    const isVisitor = (m as any)._isVisitor;
     onChange({
       name: m.name || "",
       number: m.club_member_number || "",
-      club: clubName,
+      club: isVisitor ? (m as any)._homeClub || "" : clubName,
       clubMemberId: m.id,
     });
     setSearchOpen(false);
@@ -171,7 +172,7 @@ function PlayerField({
             onClick={() => setSearchOpen(!searchOpen)}
           >
             <Search className="w-3.5 h-3.5" />
-            Search club members…
+            Search members & visitors…
           </Button>
           {searchOpen && (
             <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -196,9 +197,12 @@ function PlayerField({
                     className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center justify-between"
                     onClick={() => selectMember(m)}
                   >
-                    <span className="text-sm font-medium truncate">{m.name}</span>
+                    <span className="text-sm font-medium truncate">
+                      {m.name}
+                      {(m as any)._isVisitor && <span className="text-xs text-muted-foreground ml-1">({(m as any)._homeClub})</span>}
+                    </span>
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                      {m.club_member_number || "—"}
+                      {(m as any)._isVisitor ? "Visitor" : (m.club_member_number || "—")}
                     </span>
                   </button>
                 ))

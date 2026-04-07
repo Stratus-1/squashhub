@@ -454,7 +454,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const entries = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
           groupPlayers.map((p) => ({
             champ_id: champId,
-            club_member_id: p.id,
+            club_member_id: toDbId(p.id),
             group_number: gi + 1,
           }))
         );
@@ -488,8 +488,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           champ_id: champId,
           group_number: m.groupNum,
           round_number: m.roundNum,
-          player_a_member_id: m.entityA,
-          player_b_member_id: m.entityB,
+          player_a_member_id: toDbId(m.entityA),
+          player_b_member_id: toDbId(m.entityB),
           scheduled_date: m.date,
           scheduled_time: m.time,
           court_id: m.courtId,

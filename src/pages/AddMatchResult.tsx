@@ -285,6 +285,59 @@ function PlayerSelector({
           </div>
         </div>
       )}
+
+      {player.mode === "visitor" && (
+        <div className="space-y-2">
+          <Input
+            placeholder="Search visitors…"
+            value={visitorSearch || ""}
+            onChange={(e) => onVisitorSearchChange?.(e.target.value)}
+          />
+          <div className="max-h-52 overflow-y-auto space-y-1">
+            {(() => {
+              const term = (visitorSearch || "").toLowerCase();
+              const filtered = (visitors || []).filter((v: any) =>
+                !term || `${v.first_name} ${v.last_name}`.toLowerCase().includes(term) || v.home_club_name.toLowerCase().includes(term)
+              );
+              if (filtered.length === 0) {
+                return <p className="text-xs text-muted-foreground text-center py-4">No visitors found</p>;
+              }
+              return filtered.map((v: any) => {
+                const vName = `${v.first_name} ${v.last_name}`;
+                const isSelected = player.name === vName && player.externalClub === v.home_club_name;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        mode: "visitor",
+                        clubMemberId: null,
+                        userId: null,
+                        name: vName,
+                        externalClub: v.home_club_name,
+                      })
+                    }
+                    className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
+                      isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                    }`}
+                  >
+                    <PlayerAvatar initials={initials(vName)} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{vName}</p>
+                      <div className="flex gap-2 mt-0.5">
+                        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor</Badge>
+                        <span className="text-[10px] text-muted-foreground">{v.home_club_name}</span>
+                        {v.member_number && <span className="text-[10px] text-muted-foreground">#{v.member_number}</span>}
+                      </div>
+                    </div>
+                  </button>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -293,6 +346,7 @@ function isPlayerValid(p: PlayerSelection): boolean {
   if (p.mode === "myself") return !!p.userId;
   if (p.mode === "club") return !!p.clubMemberId;
   if (p.mode === "external") return p.name.trim().length > 0;
+  if (p.mode === "visitor") return p.name.trim().length > 0;
   return false;
 }
 

@@ -209,7 +209,7 @@ export default function Bookings() {
     time: string;
     opponentId: string;
     guestName: string;
-    playerMode: "none" | "member" | "guest";
+    playerMode: "none" | "member" | "guest" | "visitor";
     isFriendly: boolean;
     duration: 30 | 60;
     lightsOn: boolean;
@@ -460,6 +460,19 @@ export default function Bookings() {
       return combined as any;
     },
     enabled: !!user,
+  });
+
+  const { data: clubVisitors = [] } = useQuery({
+    queryKey: ["club-visitors-booking", bookingClubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_visitors")
+        .select("id, first_name, last_name, home_club_name, category")
+        .eq("club_id", bookingClubId!)
+        .order("first_name");
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; first_name: string; last_name: string; home_club_name: string; category: string }>;
+    },
+    enabled: !!bookingClubId,
   });
 
   const { data: availableForSlotUserIds } = useQuery({
@@ -1264,16 +1277,16 @@ export default function Bookings() {
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">2nd Player (optional)</Label>
-                <div className="flex gap-1.5">
-                  {(["none", "member", "guest"] as const).map((mode) => (
+                <div className="flex flex-wrap gap-1.5">
+                  {(["none", "member", "guest", "visitor"] as const).map((mode) => (
                     <Button
                       key={mode}
                       size="sm"
                       variant={bookingDialog.playerMode === mode ? "default" : "outline"}
-                      className="flex-1 text-xs rounded-lg"
+                      className="flex-1 text-xs rounded-lg min-w-[60px]"
                       onClick={() => setBookingDialog((s) => s ? { ...s, playerMode: mode, opponentId: "", guestName: "" } : s)}
                     >
-                      {mode === "none" ? "Solo" : mode === "member" ? "Club Member" : "Guest"}
+                      {mode === "none" ? "Solo" : mode === "member" ? "Member" : mode === "guest" ? "Guest" : "Visitor"}
                     </Button>
                   ))}
                 </div>
@@ -1315,6 +1328,30 @@ export default function Bookings() {
                     onChange={(e) => setBookingDialog((s) => s ? { ...s, guestName: e.target.value } : s)}
                     className="rounded-xl"
                   />
+                )}
+
+                {bookingDialog.playerMode === "visitor" && (
+                  <Select
+                    value={bookingDialog.guestName}
+                    onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, guestName: v } : s))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Choose a registered visitor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clubVisitors.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          No visitors registered yet.
+                        </div>
+                      ) : (
+                        clubVisitors.map((v) => (
+                          <SelectItem key={v.id} value={`${v.first_name} ${v.last_name} (${v.home_club_name})`}>
+                            {v.first_name} {v.last_name} · {v.home_club_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
 

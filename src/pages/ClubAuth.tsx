@@ -15,6 +15,7 @@ import { Link, Navigate } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCaptcha";
+import { fromExt } from "@/lib/supabase-ext";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -43,6 +44,14 @@ export default function ClubAuth() {
   const [newPassword, setNewPassword] = useState("");
   const [newConfirm, setNewConfirm] = useState("");
   const [newAcceptTerms, setNewAcceptTerms] = useState(false);
+
+  // Visitor form
+  const [visitorFirstName, setVisitorFirstName] = useState("");
+  const [visitorLastName, setVisitorLastName] = useState("");
+  const [visitorPhone, setVisitorPhone] = useState("");
+  const [visitorHomeClub, setVisitorHomeClub] = useState("");
+  const [visitorMemberNumber, setVisitorMemberNumber] = useState("");
+  const [visitorDone, setVisitorDone] = useState(false);
 
   // Reset
   const [resetEmail, setResetEmail] = useState("");
@@ -98,11 +107,10 @@ export default function ClubAuth() {
     } catch { toast.error("Captcha verification failed"); return; }
     setLoading(true);
     const nowIso = new Date().toISOString();
-    // Pass member_number and club info in metadata so the handle_new_user trigger can link
     const { error } = await signUp(
       email,
       existingPassword,
-      memberNum, // name will be populated from club_members record
+      memberNum,
       undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
       club ? { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member" } : undefined
@@ -163,6 +171,58 @@ export default function ClubAuth() {
       toast.error(error.message);
     } else {
       setSignupDone(true);
+    }
+    setLoading(false);
+  };
+
+  const handleVisitorRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const firstName = visitorFirstName.trim();
+    const lastName = visitorLastName.trim();
+    const phone = visitorPhone.trim();
+    const homeClub = visitorHomeClub.trim();
+    const memNum = visitorMemberNumber.trim();
+
+    if (!firstName || firstName.length < 2) {
+      toast.error("Please enter your first name");
+      return;
+    }
+    if (!lastName || lastName.length < 2) {
+      toast.error("Please enter your last name");
+      return;
+    }
+    if (!homeClub || homeClub.length < 2) {
+      toast.error("Please enter your home club name");
+      return;
+    }
+    if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) {
+      toast.error("Please enter a valid phone number");
+      return;
+    }
+
+    if (!club?.id) {
+      toast.error("Club not found");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await fromExt("club_visitors").insert({
+        club_id: club.id,
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone || null,
+        home_club_name: homeClub,
+        member_number: memNum || null,
+      });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        setVisitorDone(true);
+        toast.success("Visitor registered successfully!");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to register visitor");
     }
     setLoading(false);
   };
@@ -264,6 +324,33 @@ export default function ClubAuth() {
     );
   }
 
+  if (visitorDone) {
+    return (
+      <div className="min-h-screen relative flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        <SEO title={`Visitor Registered | ${clubName}`} description="Visitor registered." path="/auth" noIndex />
+        <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="p-6 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold font-heading">Welcome, Visitor! 🏸</h2>
+            <p className="text-sm text-muted-foreground">
+              You've been registered as a visitor at <span className="font-medium text-foreground">{clubName}</span>. The club admin can now select you for tournaments and league matches.
+            </p>
+            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); }}>
+              Register Another Visitor
+            </Button>
+          </Card>
+          <PoweredBySquashHub />
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen relative flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
@@ -291,8 +378,9 @@ export default function ClubAuth() {
         <Tabs defaultValue="login">
           <TabsList className="w-full mb-4 h-auto flex-wrap gap-1">
             <TabsTrigger value="login" className="flex-1">Log In</TabsTrigger>
-            <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing Member<br/>Register</TabsTrigger>
-            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">New?<br/>Join the Club</TabsTrigger>
+            <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
+            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">New<br/>Member</TabsTrigger>
+            <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
           </TabsList>
 
           {/* ─── LOG IN ─── */}
@@ -486,6 +574,78 @@ export default function ClubAuth() {
                 <HCaptcha ref={captchaRef} />
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Creating account..." : "Join Club"}
+                </Button>
+              </form>
+            </Card>
+          </TabsContent>
+
+          {/* ─── VISITOR ─── */}
+          <TabsContent value="visitor">
+            <Card className="p-6">
+              <p className="text-xs text-muted-foreground mb-4">
+                Visiting {clubName} for a tournament or league? Register your details below — no account needed.
+              </p>
+              <form onSubmit={handleVisitorRegister} className="space-y-3">
+                <div>
+                  <Label htmlFor="visitor-first-name">First Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="visitor-first-name"
+                    type="text"
+                    placeholder="John"
+                    value={visitorFirstName}
+                    onChange={(e) => setVisitorFirstName(e.target.value)}
+                    required
+                    maxLength={50}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="visitor-last-name">Last Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="visitor-last-name"
+                    type="text"
+                    placeholder="Smith"
+                    value={visitorLastName}
+                    onChange={(e) => setVisitorLastName(e.target.value)}
+                    required
+                    maxLength={50}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="visitor-phone">Phone Number</Label>
+                  <Input
+                    id="visitor-phone"
+                    type="tel"
+                    placeholder="+27 82 123 4567"
+                    value={visitorPhone}
+                    onChange={(e) => setVisitorPhone(e.target.value)}
+                    maxLength={20}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="visitor-home-club">Home Club <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="visitor-home-club"
+                    type="text"
+                    placeholder="e.g. Pretoria Squash Club"
+                    value={visitorHomeClub}
+                    onChange={(e) => setVisitorHomeClub(e.target.value)}
+                    required
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="visitor-member-number">Member Number at Home Club</Label>
+                  <Input
+                    id="visitor-member-number"
+                    type="text"
+                    placeholder="e.g. PSC042"
+                    value={visitorMemberNumber}
+                    onChange={(e) => setVisitorMemberNumber(e.target.value)}
+                    maxLength={20}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Registering..." : "Register as Visitor"}
                 </Button>
               </form>
             </Card>

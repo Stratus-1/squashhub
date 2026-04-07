@@ -673,6 +673,9 @@ export default function AddMatchResult() {
               search={search1}
               onSearchChange={setSearch1}
               excludeUserId={excludeForPlayer1}
+              visitors={clubVisitors}
+              visitorSearch={visitorSearch1}
+              onVisitorSearchChange={setVisitorSearch1}
             />
 
             <Separator />
@@ -688,6 +691,9 @@ export default function AddMatchResult() {
               search={search2}
               onSearchChange={setSearch2}
               excludeUserId={excludeForPlayer2}
+              visitors={clubVisitors}
+              visitorSearch={visitorSearch2}
+              onVisitorSearchChange={setVisitorSearch2}
             />
 
             {player1.userId && player2.userId && player1.userId === player2.userId && (

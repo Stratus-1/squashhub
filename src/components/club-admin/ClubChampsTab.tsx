@@ -849,6 +849,48 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <Switch checked={enablePlayoffs} onCheckedChange={setEnablePlayoffs} />
             </div>
 
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label className="text-sm font-medium">Include Visitors</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add registered visitors to the tournament player pool
+                </p>
+              </div>
+              <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
+            </div>
+
+            {includeVisitors && visitorClubs.length > 0 && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label className="text-sm font-medium">Filter by Home Club</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Leave all unchecked to include visitors from all clubs ({filteredVisitors.length} visitor{filteredVisitors.length !== 1 ? "s" : ""} matching)
+                </p>
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                  {visitorClubs.map((club) => (
+                    <label key={club} className="flex items-center gap-2 cursor-pointer hover:bg-accent rounded px-2 py-1">
+                      <Checkbox
+                        checked={selectedVisitorClubs.has(club)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedVisitorClubs);
+                          checked ? next.add(club) : next.delete(club);
+                          setSelectedVisitorClubs(next);
+                        }}
+                      />
+                      <span className="text-sm">{club}</span>
+                      <Badge variant="secondary" className="ml-auto text-[10px]">
+                        {allVisitors.filter((v) => v.home_club_name === club).length}
+                      </Badge>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {includeVisitors && visitorClubs.length === 0 && (
+              <p className="text-xs text-muted-foreground rounded-lg border p-3">
+                No visitors registered yet. Visitors can register from the club sign-in page.
+              </p>
+            )}
 
             <div>
               <Label>Championship Name (optional)</Label>

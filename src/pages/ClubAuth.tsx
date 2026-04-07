@@ -344,7 +344,7 @@ export default function ClubAuth() {
             <p className="text-sm text-muted-foreground">
               You've been registered as a visitor at <span className="font-medium text-foreground">{clubName}</span>. The club admin can now select you for tournaments and league matches.
             </p>
-            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); }}>
+            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); }}>
               Register Another Visitor
             </Button>
           </Card>

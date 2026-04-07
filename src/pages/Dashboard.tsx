@@ -119,13 +119,17 @@ export default function Dashboard() {
     enabled: matchPlayerIds.length > 0,
   });
 
+  // Map both user_id AND member_id to names for flexible resolution
   const matchPlayerNameMap = useMemo(() => {
     const map = new Map<string, string>();
     // First load profile names (fallback)
     for (const p of matchPlayerProfiles || []) map.set(p.id, p.name || "Unknown");
-    // Then overlay member names (priority) — map member's user_id to their member name
+    // Then overlay member names (priority) — map both user_id and member id
     for (const m of (matchMemberNames || []) as any[]) {
-      if (m.user_id && m.name) map.set(m.user_id, m.name);
+      if (m.name) {
+        if (m.user_id) map.set(m.user_id, m.name);
+        if (m.id) map.set(m.id, m.name); // Also map by member ID for visitors/unlinked
+      }
     }
     return map;
   }, [matchPlayerProfiles, matchMemberNames]);
@@ -449,14 +453,14 @@ export default function Dashboard() {
         {recentMatches && recentMatches.length > 0 ? (
           <div className="space-y-1.5">
             {recentMatches.slice(0, 10).map((m: any) => {
-              const isPlayerA = m.player_a === effectiveUserId;
-              const isPlayerB = m.player_b === effectiveUserId;
+              const isPlayerA = m.player_a === effectiveUserId || (myMemberId && m.player_a_member_id === myMemberId);
+              const isPlayerB = m.player_b === effectiveUserId || (myMemberId && m.player_b_member_id === myMemberId);
               const isParticipant = isPlayerA || isPlayerB;
-              const isSamePlayer = m.player_a === m.player_b;
+              const isSamePlayer = m.player_a && m.player_b && m.player_a === m.player_b;
 
-              // When both player IDs are the same (external/unlinked players), parse names from notes
-              let p1Name = matchPlayerNameMap.get(m.player_a) || "Player 1";
-              let p2Name = matchPlayerNameMap.get(m.player_b) || "Player 2";
+              // Resolve names: try user_id first, then member_id
+              let p1Name = matchPlayerNameMap.get(m.player_a) || matchPlayerNameMap.get(m.player_a_member_id) || "Player 1";
+              let p2Name = matchPlayerNameMap.get(m.player_b) || matchPlayerNameMap.get(m.player_b_member_id) || "Player 2";
 
               if (isSamePlayer && m.notes) {
                 const notesNames = m.notes.match(/Player\s*1[:\s]+([^.;\n]+)/i);

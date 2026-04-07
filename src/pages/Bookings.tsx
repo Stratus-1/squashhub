@@ -475,7 +475,7 @@ export default function Bookings() {
     enabled: !!bookingClubId,
   });
 
-
+  const { data: availableForSlotUserIds } = useQuery({
     queryKey: ["available-for-slot", dateStr, bookingDialog?.time],
     queryFn: async () => {
       if (!bookingDialog?.time) return [] as string[];

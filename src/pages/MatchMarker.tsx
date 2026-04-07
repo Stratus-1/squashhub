@@ -25,20 +25,25 @@ export default function MatchMarker() {
     const playerAMemberId = config.playerA.clubMemberId;
     const playerBMemberId = config.playerB.clubMemberId;
 
-    if (!playerAMemberId || !playerBMemberId) {
-      toast.info("Match scored! Both players must be club members to save results.");
+    if (!playerAMemberId && !playerBMemberId) {
+      toast.info("Match scored! Players must be club members to save results.");
       return;
     }
 
     try {
       // Look up user_ids — they may be null for unregistered members
-      const { data: members } = await supabase
-        .from("club_members")
-        .select("id, user_id")
-        .in("id", [playerAMemberId, playerBMemberId]);
+      const memberIdsToLookup = [playerAMemberId, playerBMemberId].filter(Boolean) as string[];
+      let memberA: { id: string; user_id: string | null } | undefined;
+      let memberB: { id: string; user_id: string | null } | undefined;
 
-      const memberA = members?.find((m) => m.id === playerAMemberId);
-      const memberB = members?.find((m) => m.id === playerBMemberId);
+      if (memberIdsToLookup.length > 0) {
+        const { data: members } = await supabase
+          .from("club_members")
+          .select("id, user_id")
+          .in("id", memberIdsToLookup);
+        memberA = members?.find((m) => m.id === playerAMemberId);
+        memberB = members?.find((m) => m.id === playerBMemberId);
+      }
 
       const winnerMemberId = result.winnerId === "a" ? playerAMemberId : playerBMemberId;
       const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
@@ -51,8 +56,8 @@ export default function MatchMarker() {
 
       // Use member IDs as primary — user_ids are optional (may be null for unlinked members)
       const { error } = await supabase.from("matches").insert({
-        player_a: memberA?.user_id || user?.id || "00000000-0000-0000-0000-000000000000",
-        player_b: memberB?.user_id || "00000000-0000-0000-0000-000000000000",
+        player_a: memberA?.user_id || null,
+        player_b: memberB?.user_id || null,
         player_a_member_id: playerAMemberId,
         player_b_member_id: playerBMemberId,
         winner_id: winnerUserId || null,

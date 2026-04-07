@@ -911,8 +911,8 @@ export default function Bookings() {
                 </div>
                 {courts.map((courtId) => {
                   const booking = getBooking(courtId, time);
-                  // Event bookings have guest_name but no opponent_id — show event title instead of "X vs Y"
-                  const isEventBooking = !!(booking as any)?.guest_name && !(booking as any)?.opponent_id;
+                  // Event bookings are club bookings with a guest_name acting as event title
+                  const isEventBooking = !!(booking as any)?.is_club_booking && !!(booking as any)?.guest_name;
                   const eventLabel = isEventBooking ? String((booking as any).guest_name) : null;
                   const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
                   const b = !isEventBooking && (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;

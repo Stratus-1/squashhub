@@ -217,9 +217,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStep(s);
   };
 
+  // Build visitor entries as pseudo-members for the player list
+  const visitorAsMembers = useMemo(() => {
+    return filteredVisitors.map((v) => ({
+      id: `visitor-${v.id}`,
+      name: `${v.first_name} ${v.last_name}`,
+      gender: v.category === "Ladies" ? "Ladies" : "Men",
+      ladder_position: null as number | null,
+      profiles: null,
+      _isVisitor: true,
+      _homeClub: v.home_club_name,
+    }));
+  }, [filteredVisitors]);
+
+  // Combined list of members + visitors for player selection
+  const allSelectablePlayers = useMemo(() => {
+    return [...genderMembers, ...visitorAsMembers] as any[];
+  }, [genderMembers, visitorAsMembers]);
+
   const selectedPlayers = useMemo(
-    () => genderMembers.filter((m) => selectedPlayerIds.has(m.id)),
-    [genderMembers, selectedPlayerIds]
+    () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),
+    [allSelectablePlayers, selectedPlayerIds]
   );
 
   // Number of "entities" (players for singles, pairs for doubles)

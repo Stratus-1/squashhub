@@ -478,9 +478,9 @@ export default function Dashboard() {
                 if (winnerName) label += ` — ${winnerName} won`;
               } else if (isParticipant) {
                 const opponentName = isPlayerA ? p2Name : p1Name;
-                const won = m.winner_id === effectiveUserId;
+                const won = m.winner_id === effectiveUserId || (myMemberId && m.winner_member_id === myMemberId);
                 label = `vs ${opponentName}`;
-                if (m.winner_id) label += won ? " — Won" : " — Lost";
+                if (m.winner_id || m.winner_member_id) label += won ? " — Won" : " — Lost";
               } else {
                 label = `${p1Name} vs ${p2Name}`;
               }

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Trophy, UserPlus, Users, ChevronLeft, UserCheck } from "lucide-react";
+import { Trophy, UserPlus, Users, ChevronLeft, UserCheck, Globe } from "lucide-react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
@@ -19,6 +19,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateMatch } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
+import { useQuery } from "@tanstack/react-query";
+import { fromExt } from "@/lib/supabase-ext";
 
 type MatchType = "friendly" | "league" | "ladder" | "club_champs" | "tournament";
 type ScoringFormat = "par11" | "par15" | "english9";
@@ -28,7 +30,7 @@ type DeuceRule = "win_by_2" | "sudden_death";
 type GameScore = { playerA: string; playerB: string };
 
 interface PlayerSelection {
-  mode: "myself" | "club" | "external";
+  mode: "myself" | "club" | "external" | "visitor";
   clubMemberId: string | null;
   userId: string | null;
   name: string;
@@ -98,7 +100,7 @@ function computeMatchResult(games: GameScore[], format: ScoringFormat, deuceRule
   return { gamesA, gamesB, validGames };
 }
 
-const emptyPlayer = (mode: "myself" | "club" | "external" = "myself"): PlayerSelection => ({
+const emptyPlayer = (mode: "myself" | "club" | "external" | "visitor" = "myself"): PlayerSelection => ({
   mode,
   clubMemberId: null,
   userId: null,
@@ -118,6 +120,9 @@ function PlayerSelector({
   search,
   onSearchChange,
   excludeUserId,
+  visitors,
+  visitorSearch,
+  onVisitorSearchChange,
 }: {
   label: string;
   player: PlayerSelection;
@@ -129,6 +134,9 @@ function PlayerSelector({
   search: string;
   onSearchChange: (s: string) => void;
   excludeUserId?: string | null;
+  visitors?: any[];
+  visitorSearch?: string;
+  onVisitorSearchChange?: (s: string) => void;
 }) {
   const filteredMembers = useMemo(() => {
     let list = availableMembers;
@@ -180,6 +188,15 @@ function PlayerSelector({
         >
           <UserPlus className="w-4 h-4 mr-1" />
           External
+        </Button>
+        <Button
+          variant={player.mode === "visitor" ? "default" : "outline"}
+          size="sm"
+          className="flex-1"
+          onClick={() => onChange(emptyPlayer("visitor"))}
+        >
+          <Globe className="w-4 h-4 mr-1" />
+          Visitor
         </Button>
       </div>
 
@@ -268,6 +285,59 @@ function PlayerSelector({
           </div>
         </div>
       )}
+
+      {player.mode === "visitor" && (
+        <div className="space-y-2">
+          <Input
+            placeholder="Search visitors…"
+            value={visitorSearch || ""}
+            onChange={(e) => onVisitorSearchChange?.(e.target.value)}
+          />
+          <div className="max-h-52 overflow-y-auto space-y-1">
+            {(() => {
+              const term = (visitorSearch || "").toLowerCase();
+              const filtered = (visitors || []).filter((v: any) =>
+                !term || `${v.first_name} ${v.last_name}`.toLowerCase().includes(term) || v.home_club_name.toLowerCase().includes(term)
+              );
+              if (filtered.length === 0) {
+                return <p className="text-xs text-muted-foreground text-center py-4">No visitors found</p>;
+              }
+              return filtered.map((v: any) => {
+                const vName = `${v.first_name} ${v.last_name}`;
+                const isSelected = player.name === vName && player.externalClub === v.home_club_name;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        mode: "visitor",
+                        clubMemberId: null,
+                        userId: null,
+                        name: vName,
+                        externalClub: v.home_club_name,
+                      })
+                    }
+                    className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
+                      isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                    }`}
+                  >
+                    <PlayerAvatar initials={initials(vName)} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{vName}</p>
+                      <div className="flex gap-2 mt-0.5">
+                        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor</Badge>
+                        <span className="text-[10px] text-muted-foreground">{v.home_club_name}</span>
+                        {v.member_number && <span className="text-[10px] text-muted-foreground">#{v.member_number}</span>}
+                      </div>
+                    </div>
+                  </button>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -276,6 +346,7 @@ function isPlayerValid(p: PlayerSelection): boolean {
   if (p.mode === "myself") return !!p.userId;
   if (p.mode === "club") return !!p.clubMemberId;
   if (p.mode === "external") return p.name.trim().length > 0;
+  if (p.mode === "visitor") return p.name.trim().length > 0;
   return false;
 }
 
@@ -283,6 +354,7 @@ function getPlayerDisplayName(p: PlayerSelection, fallback = "Player"): string {
   if (p.mode === "myself") return p.name || "You";
   if (p.mode === "club") return p.name || fallback;
   if (p.mode === "external") return p.name || fallback;
+  if (p.mode === "visitor") return p.name || fallback;
   return fallback;
 }
 
@@ -319,6 +391,22 @@ export default function AddMatchResult() {
   const [player2, setPlayer2] = useState<PlayerSelection>(emptyPlayer("club"));
   const [search1, setSearch1] = useState("");
   const [search2, setSearch2] = useState("");
+  const [visitorSearch1, setVisitorSearch1] = useState("");
+  const [visitorSearch2, setVisitorSearch2] = useState("");
+
+  // Fetch registered visitors for the club
+  const { data: clubVisitors = [] } = useQuery({
+    queryKey: ["club-visitors-match", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_visitors")
+        .select("id, first_name, last_name, home_club_name, category, member_number")
+        .eq("club_id", clubId!)
+        .order("first_name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubId,
+  });
 
   // Match settings
   const [matchType, setMatchType] = useState<MatchType>("friendly");
@@ -468,8 +556,8 @@ export default function AddMatchResult() {
     if (!user || !canSubmit) return;
     setSubmitting(true);
     try {
-      const p1HasAccount = player1.mode !== "external" && !!player1.userId;
-      const p2HasAccount = player2.mode !== "external" && !!player2.userId;
+      const p1HasAccount = player1.mode !== "external" && player1.mode !== "visitor" && !!player1.userId;
+      const p2HasAccount = player2.mode !== "external" && player2.mode !== "visitor" && !!player2.userId;
 
       // Determine if we can create a proper match record (need user_ids for both)
       if (p1HasAccount && p2HasAccount) {
@@ -585,6 +673,9 @@ export default function AddMatchResult() {
               search={search1}
               onSearchChange={setSearch1}
               excludeUserId={excludeForPlayer1}
+              visitors={clubVisitors}
+              visitorSearch={visitorSearch1}
+              onVisitorSearchChange={setVisitorSearch1}
             />
 
             <Separator />
@@ -600,6 +691,9 @@ export default function AddMatchResult() {
               search={search2}
               onSearchChange={setSearch2}
               excludeUserId={excludeForPlayer2}
+              visitors={clubVisitors}
+              visitorSearch={visitorSearch2}
+              onVisitorSearchChange={setVisitorSearch2}
             />
 
             {player1.userId && player2.userId && player1.userId === player2.userId && (

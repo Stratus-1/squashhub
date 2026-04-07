@@ -71,12 +71,32 @@ export default function ClubChampsView() {
 
     return groupEntries.map((e: any) => {
       const memberId = e.club_member_id;
-      let played = 0, won = 0, lost = 0;
+      const partnerId = e.partner_member_id;
+      let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0;
+
       groupMatches.forEach((m: any) => {
-        if (m.player_a_member_id === memberId || m.player_b_member_id === memberId) {
-          played++;
-          if (m.winner_member_id === memberId) won++;
-          else lost++;
+        const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
+        const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
+        if (!isA && !isB) return;
+        played++;
+        if (m.winner_member_id === memberId || (isDoubles && (
+          (isA && m.winner_member_id === m.player_a_member_id) ||
+          (isB && m.winner_member_id === m.player_b_member_id)
+        ))) {
+          won++;
+        } else {
+          lost++;
+        }
+        // Tally game scores for game difference
+        if (m.game_scores) {
+          try {
+            const gs = JSON.parse(m.game_scores);
+            const sets = gs.sets || [];
+            sets.forEach((s: any) => {
+              if (isA) { gamesWon += s.a || 0; gamesLost += s.b || 0; }
+              else { gamesWon += s.b || 0; gamesLost += s.a || 0; }
+            });
+          } catch { /* ignore */ }
         }
       });
       return {
@@ -84,12 +104,15 @@ export default function ClubChampsView() {
         played,
         won,
         lost,
+        gamesWon,
+        gamesLost,
+        gameDiff: gamesWon - gamesLost,
         points: won * 2 + (played - won - lost),
         name: isDoubles
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
       };
-    }).sort((a: any, b: any) => b.points - a.points || b.won - a.won);
+    }).sort((a: any, b: any) => b.points - a.points || b.gameDiff - a.gameDiff || b.won - a.won);
   };
 
   const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();
@@ -182,7 +205,7 @@ export default function ClubChampsView() {
                     <CardHeader><CardTitle className="text-lg">Group {gn}</CardTitle></CardHeader>
                     <CardContent>
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                      <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b text-left">
                               <th className="pb-2 font-medium">#</th>
@@ -190,6 +213,7 @@ export default function ClubChampsView() {
                               <th className="pb-2 font-medium text-center">P</th>
                               <th className="pb-2 font-medium text-center">W</th>
                               <th className="pb-2 font-medium text-center">L</th>
+                              <th className="pb-2 font-medium text-center">GD</th>
                               <th className="pb-2 font-medium text-center">Pts</th>
                             </tr>
                           </thead>
@@ -203,6 +227,7 @@ export default function ClubChampsView() {
                                   <td className="py-2 text-center">{s.played}</td>
                                   <td className="py-2 text-center">{s.won}</td>
                                   <td className="py-2 text-center">{s.lost}</td>
+                                  <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
                                   <td className="py-2 text-center font-semibold">{s.points}</td>
                                 </tr>
                               );
@@ -280,6 +305,7 @@ export default function ClubChampsView() {
                     <th className="pb-2 font-medium text-center">P</th>
                     <th className="pb-2 font-medium text-center">W</th>
                     <th className="pb-2 font-medium text-center">L</th>
+                    <th className="pb-2 font-medium text-center">GD</th>
                     <th className="pb-2 font-medium text-center">Pts</th>
                   </tr>
                 </thead>
@@ -293,6 +319,7 @@ export default function ClubChampsView() {
                         <td className="py-2 text-center">{s.played}</td>
                         <td className="py-2 text-center">{s.won}</td>
                         <td className="py-2 text-center">{s.lost}</td>
+                        <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
                         <td className="py-2 text-center font-semibold">{s.points}</td>
                       </tr>
                     );
@@ -303,30 +330,62 @@ export default function ClubChampsView() {
 
             <Separator />
 
-            <div>
-              <h4 className="font-medium text-sm mb-2">Fixtures</h4>
+              <div>
+              <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
               <div className="space-y-1.5">
                 {groupMatches.map((m: any) => {
                   const mine = isMyMatch(m);
+                  const completed = m.status === "completed";
+                  const winnerIsA = completed && m.winner_member_id === m.player_a_member_id;
+                  const winnerIsB = completed && m.winner_member_id === m.player_b_member_id;
+
+                  // Parse game scores for display
+                  let gameBadges: { a: number; b: number }[] = [];
+                  if (m.game_scores) {
+                    try {
+                      const gs = JSON.parse(m.game_scores);
+                      gameBadges = gs.sets || [];
+                    } catch { /* ignore */ }
+                  }
+
                   return (
                     <div key={m.id} className={cn(
-                      "flex items-center gap-2 text-sm p-2 rounded",
-                      mine ? "bg-primary/10 border border-primary/20" : "bg-muted/50"
+                      "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded",
+                      mine ? "bg-primary/10 border border-primary/20" : completed ? "bg-muted/30" : "bg-muted/50"
                     )}>
-                      <span className="text-muted-foreground w-24 shrink-0">
+                      <span className="text-muted-foreground w-24 shrink-0 text-xs">
                         {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
                       </span>
-                      <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
-                      <span className={`font-medium ${m.winner_member_id === m.player_a_member_id ? "text-primary" : ""}`}>
+                      <span className="text-muted-foreground w-12 shrink-0 text-xs">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
+                      <span className={cn("font-medium", winnerIsA && "text-primary")}>
                         {getMatchTeamA(m)}
                       </span>
-                      <span className="text-muted-foreground">vs</span>
-                      <span className={`font-medium ${m.winner_member_id === m.player_b_member_id ? "text-primary" : ""}`}>
+                      <span className="text-muted-foreground text-xs">vs</span>
+                      <span className={cn("font-medium", winnerIsB && "text-primary")}>
                         {getMatchTeamB(m)}
                       </span>
-                      {m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
+
+                      {/* Game-by-game scores */}
+                      {gameBadges.length > 0 && (
+                        <div className="flex gap-1 ml-auto">
+                          {gameBadges.map((g, i) => (
+                            <Badge key={i} variant="outline" className="text-[10px] tabular-nums px-1.5">
+                              {g.a}-{g.b}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {!gameBadges.length && m.score && (
+                        <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>
+                      )}
+
                       {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
-                      <Badge variant={m.status === "completed" ? "default" : "secondary"} className="text-[10px]">{m.status}</Badge>
+                      <Badge
+                        variant={completed ? "default" : "secondary"}
+                        className={cn("text-[10px]", completed && "bg-primary")}
+                      >
+                        {completed ? (winnerIsA ? `${getPlayerName(m.player_a)} won` : winnerIsB ? `${getPlayerName(m.player_b)} won` : "Completed") : m.status}
+                      </Badge>
                     </div>
                   );
                 })}

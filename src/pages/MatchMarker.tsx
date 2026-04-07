@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
+import { fromExt } from "@/lib/supabase-ext";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,7 +74,21 @@ export default function MatchMarker() {
 
       toast.success("Match result saved! Awaiting player confirmation.");
 
-      // Notify opponent if they have a linked account
+      // If this was a tournament match, update the club_champs_matches record too
+      if (config.source === "tournament" && config.sourceId) {
+        try {
+          await fromExt("club_champs_matches")
+            .update({
+              score: scoreStr,
+              game_scores: gameScoresJson,
+              winner_member_id: winnerMemberId,
+              status: "completed",
+            })
+            .eq("id", config.sourceId);
+        } catch (e) {
+          console.warn("Could not update tournament match:", e);
+        }
+      }
       const otherMember = memberA?.user_id === user?.id ? memberB : memberA;
       if (otherMember?.user_id) {
         try {

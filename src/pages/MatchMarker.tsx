@@ -55,6 +55,11 @@ export default function MatchMarker() {
       const scoreStr = result.games.map((g) => `${g.a}-${g.b}`).join(", ");
 
       // Use member IDs as primary — user_ids are optional (may be null for unlinked members)
+      // Auto-confirm friendly matches and matches where opponent has no user account
+      const isFriendly = config.matchType === "friendly";
+      const opponentHasAccount = result.winnerId === "a" ? !!memberB?.user_id : !!memberA?.user_id;
+      const autoConfirm = isFriendly || !opponentHasAccount;
+
       const { error } = await supabase.from("matches").insert({
         player_a: memberA?.user_id || null,
         player_b: memberB?.user_id || null,
@@ -67,7 +72,7 @@ export default function MatchMarker() {
         duration_s: result.durationSeconds,
         submitted_by: user?.id || null,
         submitted_by_member_id: null,
-        confirmed: false,
+        confirmed: autoConfirm,
         notes: `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}.${config.source !== 'manual' ? ` Source: ${config.source} ${config.sourceId || ''}` : ''}`,
       });
 

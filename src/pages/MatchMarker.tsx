@@ -26,7 +26,7 @@ export default function MatchMarker() {
     const playerBMemberId = config.playerB.clubMemberId;
 
     if (!playerAMemberId && !playerBMemberId) {
-      toast.info("Match scored! Players must be club members to save results.");
+      toast.info("Match scored! Players must be members or visitors to save results.");
       return;
     }
 
@@ -45,7 +45,10 @@ export default function MatchMarker() {
         memberB = members?.find((m) => m.id === playerBMemberId);
       }
 
-      const winnerMemberId = result.winnerId === "a" ? playerAMemberId : playerBMemberId;
+      // Only use member IDs that were found in club_members (not visitors)
+      const validAMemberId = memberA ? playerAMemberId : null;
+      const validBMemberId = memberB ? playerBMemberId : null;
+      const winnerMemberId = result.winnerId === "a" ? validAMemberId : validBMemberId;
       const winnerUserId = result.winnerId === "a" ? memberA?.user_id : memberB?.user_id;
 
       const gameScoresJson = JSON.stringify({
@@ -55,11 +58,22 @@ export default function MatchMarker() {
       const scoreStr = result.games.map((g) => `${g.a}-${g.b}`).join(", ");
 
       // Use member IDs as primary — user_ids are optional (may be null for unlinked members)
+      // Auto-confirm friendly matches and matches where opponent has no user account
+      const isFriendly = config.matchType === "friendly";
+      const opponentHasAccount = result.winnerId === "a" ? !!memberB?.user_id : !!memberA?.user_id;
+      const autoConfirm = isFriendly || !opponentHasAccount;
+
+      // Build notes with player names (especially important for visitors not in club_members)
+      const noteParts = [`Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}`];
+      if (!memberA) noteParts.push(`Player 1: ${config.playerA.name} (${config.playerA.club})`);
+      if (!memberB) noteParts.push(`Player 2: ${config.playerB.name} (${config.playerB.club})`);
+      if (config.source !== 'manual') noteParts.push(`Source: ${config.source} ${config.sourceId || ''}`);
+
       const { error } = await supabase.from("matches").insert({
         player_a: memberA?.user_id || null,
         player_b: memberB?.user_id || null,
-        player_a_member_id: playerAMemberId,
-        player_b_member_id: playerBMemberId,
+        player_a_member_id: validAMemberId,
+        player_b_member_id: validBMemberId,
         winner_id: winnerUserId || null,
         winner_member_id: winnerMemberId,
         score: scoreStr,
@@ -67,8 +81,8 @@ export default function MatchMarker() {
         duration_s: result.durationSeconds,
         submitted_by: user?.id || null,
         submitted_by_member_id: null,
-        confirmed: false,
-        notes: `Marked via live scorer. Format: ${config.scoringFormat}, Best of ${config.bestOf}${config.isDoubles ? ', Doubles' : ''}.${config.source !== 'manual' ? ` Source: ${config.source} ${config.sourceId || ''}` : ''}`,
+        confirmed: autoConfirm,
+        notes: noteParts.join(". "),
       });
 
       if (error) {
@@ -77,7 +91,7 @@ export default function MatchMarker() {
         return;
       }
 
-      toast.success("Match result saved! Awaiting player confirmation.");
+      toast.success(autoConfirm ? "Match result saved and confirmed!" : "Match result saved! Awaiting player confirmation.");
 
       // If this was a tournament match, update the club_champs_matches record too
       if (config.source === "tournament" && config.sourceId) {

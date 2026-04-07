@@ -70,13 +70,27 @@ function PlayerField({
     queryKey: ["club-members-marker", club?.id],
     queryFn: async () => {
       if (!club?.id) return [];
-      const { data, error } = await supabase
+      // Fetch club members
+      const { data: clubMembers, error } = await supabase
         .from("club_members")
         .select("id, name, club_member_number, gender")
         .eq("club_id", club.id)
         .order("name");
       if (error) throw error;
-      return data || [];
+      // Also fetch visitors
+      const { data: visitors } = await supabase
+        .from("club_visitors")
+        .select("id, first_name, last_name, member_number, category, home_club_name")
+        .eq("club_id", club.id);
+      const visitorRows = (visitors || []).map((v) => ({
+        id: v.id,
+        name: `${v.first_name} ${v.last_name}`,
+        club_member_number: v.member_number || null,
+        gender: v.category === "Ladies" ? "Ladies" : "Men",
+        _isVisitor: true,
+        _homeClub: v.home_club_name,
+      }));
+      return [...(clubMembers || []), ...visitorRows];
     },
     enabled: !!club?.id,
     staleTime: 5 * 60 * 1000,
@@ -87,18 +101,20 @@ function PlayerField({
     const q = searchTerm.toLowerCase();
     return members
       .filter(
-        (m) =>
+        (m: any) =>
           m.name?.toLowerCase().includes(q) ||
-          m.club_member_number?.toLowerCase().includes(q)
+          m.club_member_number?.toLowerCase().includes(q) ||
+          m._homeClub?.toLowerCase().includes(q)
       )
       .slice(0, 20);
   }, [members, searchTerm]);
 
   const selectMember = (m: (typeof members)[0]) => {
+    const isVisitor = (m as any)._isVisitor;
     onChange({
       name: m.name || "",
       number: m.club_member_number || "",
-      club: clubName,
+      club: isVisitor ? (m as any)._homeClub || "" : clubName,
       clubMemberId: m.id,
     });
     setSearchOpen(false);
@@ -156,7 +172,7 @@ function PlayerField({
             onClick={() => setSearchOpen(!searchOpen)}
           >
             <Search className="w-3.5 h-3.5" />
-            Search club members…
+            Search members & visitors…
           </Button>
           {searchOpen && (
             <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -181,9 +197,12 @@ function PlayerField({
                     className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors flex items-center justify-between"
                     onClick={() => selectMember(m)}
                   >
-                    <span className="text-sm font-medium truncate">{m.name}</span>
+                    <span className="text-sm font-medium truncate">
+                      {m.name}
+                      {(m as any)._isVisitor && <span className="text-xs text-muted-foreground ml-1">({(m as any)._homeClub})</span>}
+                    </span>
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                      {m.club_member_number || "—"}
+                      {(m as any)._isVisitor ? "Visitor" : (m.club_member_number || "—")}
                     </span>
                   </button>
                 ))

@@ -1486,6 +1486,7 @@ export type Database = {
       }
       club_visitors: {
         Row: {
+          category: string
           club_id: string
           created_at: string
           email: string | null
@@ -1497,6 +1498,7 @@ export type Database = {
           phone: string | null
         }
         Insert: {
+          category?: string
           club_id: string
           created_at?: string
           email?: string | null
@@ -1508,6 +1510,7 @@ export type Database = {
           phone?: string | null
         }
         Update: {
+          category?: string
           club_id?: string
           created_at?: string
           email?: string | null

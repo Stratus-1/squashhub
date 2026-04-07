@@ -52,6 +52,7 @@ export default function ClubAuth() {
   const [visitorHomeClub, setVisitorHomeClub] = useState("");
   const [visitorMemberNumber, setVisitorMemberNumber] = useState("");
   const [visitorEmail, setVisitorEmail] = useState("");
+  const [visitorCategory, setVisitorCategory] = useState("Men");
   const [visitorDone, setVisitorDone] = useState(false);
 
   // Reset
@@ -217,6 +218,7 @@ export default function ClubAuth() {
         email: visEmail || null,
         home_club_name: homeClub,
         member_number: memNum || null,
+        category: visitorCategory,
       });
       if (error) {
         toast.error(error.message);
@@ -344,7 +346,7 @@ export default function ClubAuth() {
             <p className="text-sm text-muted-foreground">
               You've been registered as a visitor at <span className="font-medium text-foreground">{clubName}</span>. The club admin can now select you for tournaments and league matches.
             </p>
-            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); }}>
+            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); setVisitorCategory("Men"); }}>
               Register Another Visitor
             </Button>
           </Card>
@@ -623,6 +625,18 @@ export default function ClubAuth() {
                     onChange={(e) => setVisitorEmail(e.target.value)}
                     maxLength={255}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="visitor-category">Category <span className="text-destructive">*</span></Label>
+                  <select
+                    id="visitor-category"
+                    value={visitorCategory}
+                    onChange={(e) => setVisitorCategory(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="Men">Men</option>
+                    <option value="Ladies">Ladies</option>
+                  </select>
                 </div>
                 <div>
                   <Label htmlFor="visitor-phone">Phone Number</Label>

@@ -1,0 +1,1 @@
+ALTER TABLE public.club_visitors ADD COLUMN category TEXT NOT NULL DEFAULT 'Men';

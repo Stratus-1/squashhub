@@ -121,6 +121,43 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);
   const [pairGroupAssignments, setPairGroupAssignments] = useState<Map<string, number>>(new Map());
 
+  // Visitor inclusion state
+  const [includeVisitors, setIncludeVisitors] = useState(false);
+  const [selectedVisitorClubs, setSelectedVisitorClubs] = useState<Set<string>>(new Set());
+
+  // Fetch registered visitors
+  const { data: allVisitors = [] } = useQuery({
+    queryKey: ["club-visitors-tournament", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_visitors")
+        .select("id, first_name, last_name, home_club_name, category, member_number")
+        .eq("club_id", clubId)
+        .order("first_name");
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; first_name: string; last_name: string; home_club_name: string; category: string; member_number: string | null }>;
+    },
+    enabled: !!clubId,
+  });
+
+  // Unique visitor clubs for filter
+  const visitorClubs = useMemo(() => {
+    return [...new Set(allVisitors.map((v) => v.home_club_name))].sort();
+  }, [allVisitors]);
+
+  // Filter visitors by gender and selected clubs
+  const filteredVisitors = useMemo(() => {
+    if (!includeVisitors) return [];
+    let list = allVisitors;
+    if (selectedVisitorClubs.size > 0) {
+      list = list.filter((v) => selectedVisitorClubs.has(v.home_club_name));
+    }
+    if (gender !== "mixed") {
+      const genderValue = gender === "men" ? "Men" : "Ladies";
+      list = list.filter((v) => v.category === genderValue);
+    }
+    return list;
+  }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
+
   const stepIdx = STEPS.indexOf(step);
 
   // Filter members by gender

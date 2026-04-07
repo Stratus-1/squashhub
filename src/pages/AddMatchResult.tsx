@@ -189,6 +189,15 @@ function PlayerSelector({
           <UserPlus className="w-4 h-4 mr-1" />
           External
         </Button>
+        <Button
+          variant={player.mode === "visitor" ? "default" : "outline"}
+          size="sm"
+          className="flex-1"
+          onClick={() => onChange(emptyPlayer("visitor"))}
+        >
+          <Globe className="w-4 h-4 mr-1" />
+          Visitor
+        </Button>
       </div>
 
       {player.mode === "myself" && (

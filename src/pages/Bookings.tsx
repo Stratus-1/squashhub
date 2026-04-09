@@ -28,8 +28,10 @@ import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, us
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { toast } from "sonner";
-import { Zap, ZapOff, ArrowRightLeft } from "lucide-react";
+import { Zap, ZapOff, ArrowRightLeft, ChevronsUpDown, Check } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -204,6 +206,8 @@ function UpcomingGamesSection() {
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [bookingDetails, setBookingDetails] = useState<any | null>(null);
+  const [memberSearchOpen, setMemberSearchOpen] = useState(false);
+  const [visitorSearchOpen, setVisitorSearchOpen] = useState(false);
   const [bookingDialog, setBookingDialog] = useState<{
     courtId: number;
     time: string;
@@ -1293,33 +1297,48 @@ export default function Bookings() {
                 </div>
 
                 {bookingDialog.playerMode === "member" && (
-                  <Select
-                    value={bookingDialog.opponentId}
-                    onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, opponentId: v } : s))}
-                  >
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue placeholder={bookingDialog.isFriendly ? "Choose anyone" : "Choose eligible opponent"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eligibleOpponents.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">
-                          {bookingDialog.isFriendly
-                            ? "No other players found."
-                            : !me?.rank
-                              ? "You need a ladder rank first. Toggle Friendly to book anyone."
-                              : availableForSlotUserIds
-                                ? "No eligible opponents available. Toggle Friendly to book anyone."
-                                : "Loading availability…"}
-                        </div>
-                      ) : (
-                        eligibleOpponents.map((p: any) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} {typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={memberSearchOpen} onOpenChange={setMemberSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between rounded-xl font-normal">
+                        {bookingDialog.opponentId
+                          ? (() => {
+                              const p = eligibleOpponents.find((op: any) => op.id === bookingDialog.opponentId);
+                              return p ? `${p.name} ${typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}` : "Select member...";
+                            })()
+                          : (bookingDialog.isFriendly ? "Choose anyone" : "Choose eligible opponent")}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[280px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search member..." />
+                        <CommandList>
+                          <CommandEmpty>
+                            {bookingDialog.isFriendly
+                              ? "No other players found."
+                              : !me?.rank
+                                ? "You need a ladder rank first."
+                                : "No eligible opponents available."}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {eligibleOpponents.map((p: any) => (
+                              <CommandItem
+                                key={p.id}
+                                value={`${p.name} ${typeof p.rank === "number" ? `#${p.rank}` : ""}`}
+                                onSelect={() => {
+                                  setBookingDialog((s) => (s ? { ...s, opponentId: p.id } : s));
+                                  setMemberSearchOpen(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", bookingDialog.opponentId === p.id ? "opacity-100" : "opacity-0")} />
+                                {p.name} {typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
 
                 {bookingDialog.playerMode === "guest" && (
@@ -1332,27 +1351,40 @@ export default function Bookings() {
                 )}
 
                 {bookingDialog.playerMode === "visitor" && (
-                  <Select
-                    value={bookingDialog.guestName}
-                    onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, guestName: v } : s))}
-                  >
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue placeholder="Choose a registered visitor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clubVisitors.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">
-                          No visitors registered yet.
-                        </div>
-                      ) : (
-                        clubVisitors.map((v) => (
-                          <SelectItem key={v.id} value={`${v.first_name} ${v.last_name} (${v.home_club_name})`}>
-                            {v.first_name} {v.last_name} · {v.home_club_name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={visitorSearchOpen} onOpenChange={setVisitorSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between rounded-xl font-normal">
+                        {bookingDialog.guestName || "Choose a registered visitor"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[280px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search visitor..." />
+                        <CommandList>
+                          <CommandEmpty>No visitors registered yet.</CommandEmpty>
+                          <CommandGroup>
+                            {clubVisitors.map((v) => {
+                              const val = `${v.first_name} ${v.last_name} (${v.home_club_name})`;
+                              return (
+                                <CommandItem
+                                  key={v.id}
+                                  value={`${v.first_name} ${v.last_name} ${v.home_club_name}`}
+                                  onSelect={() => {
+                                    setBookingDialog((s) => (s ? { ...s, guestName: val } : s));
+                                    setVisitorSearchOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", bookingDialog.guestName === val ? "opacity-100" : "opacity-0")} />
+                                  {v.first_name} {v.last_name} · {v.home_club_name}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
 

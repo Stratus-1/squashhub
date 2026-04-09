@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
 import { useClubMembers, useFeeCategories, useLeagueAssociations, useNationalBodyFees, useMyClub, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -784,7 +785,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       <DialogContent>
         <DialogHeader><DialogTitle>Add Member</DialogTitle></DialogHeader>
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-          <div className="space-y-1"><Label>Full Name *</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="John Smith" /></div>
+          <div className="space-y-1"><Label>Full Name *</Label><Input value={name} onChange={e => setName(toTitleCase(e.target.value))} placeholder="John Smith" /></div>
           <div className="space-y-1"><Label>Email *</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="member@example.com" /></div>
           <div className="space-y-1">
             <Label>Gender Group *</Label>
@@ -802,7 +803,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
           </div>
           <div className="space-y-1">
             <Label>Mobile Number</Label>
-            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+27 82 123 4567" />
+            <Input value={phone} onChange={e => setPhone(formatPhoneNumber(e.target.value))} placeholder="+27 82 123 4567" />
             <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
@@ -823,7 +824,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
               </p>
             )}
           </div>
-          <div className="space-y-1"><Label>Address</Label><Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Optional" /></div>
+          <div className="space-y-1"><Label>Address</Label><Input value={address} onChange={e => setAddress(toTitleCase(e.target.value))} placeholder="Optional" /></div>
           <div className="space-y-1">
             <Label>Skill Level</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={skillLevel} onChange={e => setSkillLevel(e.target.value)}>
@@ -1057,7 +1058,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       <DialogContent>
         <DialogHeader><DialogTitle>Edit {form.name || member.profiles?.name || "Member"}</DialogTitle></DialogHeader>
         <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-          <div className="space-y-1"><Label>Full Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Full Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: toTitleCase(e.target.value) }))} /></div>
           <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
           <div className="space-y-1">
             <Label>Gender Group *</Label>
@@ -1116,7 +1117,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           </div>
           <div className="space-y-1">
             <Label>Mobile Number</Label>
-            <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="+27 82 123 4567" />
+            <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: formatPhoneNumber(e.target.value) }))} placeholder="+27 82 123 4567" />
             <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
           </div>
           <div className="space-y-1">
@@ -1137,7 +1138,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               </p>
             )}
           </div>
-          <div className="space-y-1"><Label>Address</Label><Input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></div>
+          <div className="space-y-1"><Label>Address</Label><Input value={form.address} onChange={e => setForm(p => ({ ...p, address: toTitleCase(e.target.value) }))} /></div>
           <Button onClick={handleSave} className="w-full">Save</Button>
         </div>
       </DialogContent>

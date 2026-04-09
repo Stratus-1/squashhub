@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,7 +147,7 @@ export function OnboardingWizard({
                     <Input
                       id="onb-name"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => setName(toTitleCase(e.target.value))}
                       placeholder="e.g. John Smith"
                       autoFocus
                     />
@@ -156,7 +157,7 @@ export function OnboardingWizard({
                     <Input
                       id="onb-phone"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
                       placeholder="+27 82 123 4567"
                     />
                   </div>
@@ -165,7 +166,7 @@ export function OnboardingWizard({
                     <Input
                       id="onb-location"
                       value={location}
-                      onChange={(e) => setLocation(e.target.value)}
+                      onChange={(e) => setLocation(toTitleCase(e.target.value))}
                       placeholder="e.g. Cape Town"
                     />
                   </div>

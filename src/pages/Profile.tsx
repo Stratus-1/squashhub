@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toTitleCase, formatPhoneNumber, validatePhoneNumber } from "@/lib/input-formatting";
 
 import { SEO } from "@/components/SEO";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -89,6 +90,7 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const phoneError = useMemo(() => validatePhoneNumber(phone), [phone]);
   const [uploading, setUploading] = useState(false);
   const [previewFile, setPreviewFile] = useState<string | null>(null);
   // Club member fields
@@ -337,7 +339,7 @@ export default function Profile() {
 
             <div className="space-y-1.5">
               <Label>Full Name *</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+              <Input value={name} onChange={(e) => setName(toTitleCase(e.target.value))} placeholder="Your name" />
             </div>
             <div className="space-y-1.5">
               <Label>Gender Group</Label>
@@ -354,12 +356,13 @@ export default function Profile() {
             </div>
             <div className="space-y-1.5">
               <Label>Mobile Number</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+27 82 123 4567" />
+              <Input value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} placeholder="+27 82 123 4567" />
+              {phoneError && <p className="text-[10px] text-destructive">{phoneError}</p>}
               <p className="text-[10px] text-muted-foreground">International format, e.g. +27821234567</p>
             </div>
             <div className="space-y-1.5">
               <Label>Address</Label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Optional" />
+              <Input value={address} onChange={(e) => setAddress(toTitleCase(e.target.value))} placeholder="Optional" />
             </div>
 
             {clubMember && (

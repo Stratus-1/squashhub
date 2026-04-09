@@ -126,6 +126,22 @@ export default function MyAccount() {
   const statementLines: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
+    // Inject unpaid fee records as opening balance entries (legacy/outstanding fees)
+    for (const fee of (fees || [])) {
+      if (!(fee as any).paid) {
+        const amt = Math.abs(Number((fee as any).amount));
+        if (amt <= 0) continue;
+        lines.push({
+          id: `fee-${(fee as any).id}`,
+          date: (fee as any).created_at,
+          description: `Opening balance: ${(fee as any).fee_label || "Outstanding fee"}`,
+          debit: 0,
+          credit: amt,
+          status: "confirmed",
+        });
+      }
+    }
+
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));

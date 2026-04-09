@@ -164,7 +164,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
             transition={{ duration: 0.5 }}
           >
             {club.logo_url ? (
-              <img src={club.logo_url} alt={`${club.name} logo`} className="w-24 h-24 object-contain mx-auto rounded-xl shadow-lg" />
+              <img src={club.logo_url} alt={`${club.name} logo`} className="w-32 h-32 sm:w-36 sm:h-36 object-contain mx-auto rounded-xl shadow-lg" />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
                 <Building2 className="w-10 h-10 text-primary-foreground" />

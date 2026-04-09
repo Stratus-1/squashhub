@@ -203,6 +203,45 @@ export function MemberOnboardingWizard({
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);
 
+  // Pre-populate fields from existing member record (for pre-existing / imported members)
+  useEffect(() => {
+    if (!open || !clubId || !user?.id) return;
+    (async () => {
+      // Try by user_id first, then email
+      let member: any = null;
+      const { data: byUserId } = await fromExt("club_members")
+        .select("*")
+        .eq("club_id", clubId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      member = byUserId;
+
+      if (!member && user.email) {
+        const { data: byEmail } = await fromExt("club_members")
+          .select("*")
+          .eq("club_id", clubId)
+          .eq("email", user.email.toLowerCase())
+          .maybeSingle();
+        member = byEmail;
+      }
+
+      if (member) {
+        if (member.name && !name) setName(member.name);
+        if (member.phone && !phone) setPhone(member.phone);
+        if (member.id_number) setIdNumber(member.id_number);
+        if (member.gender) setGender(member.gender);
+        if (member.address) setAddress(member.address);
+        if (member.skill_level) setSkillLevel(member.skill_level);
+        if (member.club_member_number) setMemberNumber(member.club_member_number);
+        if (member.fee_category_id) {
+          setFeeCategoryId(member.fee_category_id);
+          setCategoryAutoSet(true);
+        }
+        if (member.plays_league) setPlaysLeague(member.plays_league);
+      }
+    })();
+  }, [open, clubId, user?.id, user?.email]);
+
   /** Calculate age from a date of birth string (YYYY-MM-DD) */
   function getAgeFromDob(dob: string): number | null {
     if (!dob) return null;
@@ -257,10 +296,37 @@ export function MemberOnboardingWizard({
     }
   }, [idNumber, dateOfBirth, feeCategories, gender, categoryAutoSet]);
 
-  // Auto-generate member number when reaching membership step (uses DB function to bypass RLS)
+  // Auto-generate member number when reaching membership step — but keep existing number for pre-existing members
   useEffect(() => {
-    if (step === 2 && clubId && !memberNumber) {
+    if (step === 2 && clubId && !memberNumber && user?.id) {
       (async () => {
+        // First check if member already has a number assigned (pre-existing / imported member)
+        const { data: existing } = await fromExt("club_members")
+          .select("club_member_number")
+          .eq("club_id", clubId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existing?.club_member_number) {
+          setMemberNumber(existing.club_member_number);
+          return;
+        }
+
+        // Also check by email match (member may not be linked by user_id yet)
+        if (user.email) {
+          const { data: emailMatch } = await fromExt("club_members")
+            .select("club_member_number")
+            .eq("club_id", clubId)
+            .eq("email", user.email.toLowerCase())
+            .maybeSingle();
+
+          if (emailMatch?.club_member_number) {
+            setMemberNumber(emailMatch.club_member_number);
+            return;
+          }
+        }
+
+        // No existing number — generate a new one
         const { data, error } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
         if (!error && data) {
           setMemberNumber(data as string);
@@ -269,7 +335,7 @@ export function MemberOnboardingWizard({
         }
       })();
     }
-  }, [step, clubId, memberNumber]);
+  }, [step, clubId, memberNumber, user?.id, user?.email]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
   const dueMonth = (club as any)?.member_fee_due_month || 1;

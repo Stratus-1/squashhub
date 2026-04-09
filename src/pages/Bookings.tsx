@@ -1293,33 +1293,48 @@ export default function Bookings() {
                 </div>
 
                 {bookingDialog.playerMode === "member" && (
-                  <Select
-                    value={bookingDialog.opponentId}
-                    onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, opponentId: v } : s))}
-                  >
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue placeholder={bookingDialog.isFriendly ? "Choose anyone" : "Choose eligible opponent"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eligibleOpponents.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">
-                          {bookingDialog.isFriendly
-                            ? "No other players found."
-                            : !me?.rank
-                              ? "You need a ladder rank first. Toggle Friendly to book anyone."
-                              : availableForSlotUserIds
-                                ? "No eligible opponents available. Toggle Friendly to book anyone."
-                                : "Loading availability…"}
-                        </div>
-                      ) : (
-                        eligibleOpponents.map((p: any) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} {typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={memberSearchOpen} onOpenChange={setMemberSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between rounded-xl font-normal">
+                        {bookingDialog.opponentId
+                          ? (() => {
+                              const p = eligibleOpponents.find((op: any) => op.id === bookingDialog.opponentId);
+                              return p ? `${p.name} ${typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}` : "Select member...";
+                            })()
+                          : (bookingDialog.isFriendly ? "Choose anyone" : "Choose eligible opponent")}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[280px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search member..." />
+                        <CommandList>
+                          <CommandEmpty>
+                            {bookingDialog.isFriendly
+                              ? "No other players found."
+                              : !me?.rank
+                                ? "You need a ladder rank first."
+                                : "No eligible opponents available."}
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {eligibleOpponents.map((p: any) => (
+                              <CommandItem
+                                key={p.id}
+                                value={`${p.name} ${typeof p.rank === "number" ? `#${p.rank}` : ""}`}
+                                onSelect={() => {
+                                  setBookingDialog((s) => (s ? { ...s, opponentId: p.id } : s));
+                                  setMemberSearchOpen(false);
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", bookingDialog.opponentId === p.id ? "opacity-100" : "opacity-0")} />
+                                {p.name} {typeof p.rank === "number" ? `(#${p.rank})` : "(Unranked)"}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
 
                 {bookingDialog.playerMode === "guest" && (

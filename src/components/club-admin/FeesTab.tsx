@@ -420,10 +420,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2 h-10">
-              <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
-              <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
-            </div>
+            {feeType !== "registration" && (
+              <div className="flex items-center gap-2 h-10">
+                <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
+                <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
+              </div>
+            )}
           </div>
 
           <p className="text-[10px] text-muted-foreground">

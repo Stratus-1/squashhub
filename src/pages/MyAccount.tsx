@@ -548,9 +548,11 @@ export default function MyAccount() {
                 onClick={() => {
                   setPayFeeId("batch");
                   setPayMethod(creditBalance >= selectedFeeTotal ? "credit" : "eft");
+                  setPayMode("full");
+                  setPartialAmount("");
                 }}
               >
-                Pay Selected ({selectedFeeIds.length}) · R{selectedFeeTotal.toFixed(2)}
+                Make Payment · R{selectedFeeTotal.toFixed(2)}
                 <ChevronRight className="w-3.5 h-3.5" />
               </Button>
             )}

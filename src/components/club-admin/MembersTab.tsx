@@ -60,7 +60,9 @@ function proRateClubFee(annualFee: number, joinedAt: string, feeDueMonth: number
   return Math.round((annualFee / 12) * monthsRemaining);
 }
 
-/** Compute expected fees for a member */
+/** Compute expected fees for a member.
+ *  Only shows fees that have been explicitly allocated (existing payment record).
+ *  Also surfaces legacy balance records. */
 function computeExpectedFees(
   member: ClubMember,
   feeCategories: MemberFeeCategory[],
@@ -72,39 +74,44 @@ function computeExpectedFees(
   const fees: ExpectedFee[] = [];
   const memberPayments = existingPayments.filter(p => p.club_member_id === member.id);
 
-  // 1. Club membership fee — skip inactive categories
+  // 1. Club membership fee — only if an allocated payment record exists
   if (member.fee_category_id) {
     const cat = feeCategories.find(c => c.id === member.fee_category_id);
     if (cat && (cat as any).active !== false) {
-      const amount = cat.annual_fee;
       const existing = memberPayments.find(p => p.fee_type === "club" || p.fee_type === "membership");
-      fees.push({ fee_type: "club", fee_label: `Club – ${cat.name}`, amount, existing });
+      if (existing) {
+        fees.push({ fee_type: "club", fee_label: `Club – ${cat.name}`, amount: existing.amount, existing });
+      }
     }
   }
 
-  // 2. Association fee (if plays league) — skip inactive associations
+  // 2. Association fee — only if allocated
   if (member.plays_league) {
     for (const assoc of associations) {
       if (assoc.active === false) continue;
-      if (assoc.fee_annual && assoc.fee_annual > 0) {
-        const label = assoc.abbreviation || assoc.name;
-        const existing = memberPayments.find(p => p.fee_type === "association");
-        fees.push({ fee_type: "association", fee_label: label, amount: assoc.fee_annual, existing });
+      const existing = memberPayments.find(p => p.fee_type === "association");
+      if (existing) {
+        fees.push({ fee_type: "association", fee_label: assoc.abbreviation || assoc.name, amount: existing.amount, existing });
       }
     }
   }
 
-  // 3. National body / other fees (if plays league) — skip inactive and registration (once-off)
+  // 3. National body fees — only if allocated
   if (member.plays_league) {
     for (const nat of nationalFees) {
       if (nat.active === false) continue;
-      if (nat.fee_type === "registration") continue; // registration fees are once-off, not recurring
-      if (nat.fee_annual && nat.fee_annual > 0) {
-        const label = nat.abbreviation || nat.body_name;
-        const existing = memberPayments.find(p => p.fee_type === "national" || p.fee_type === "national_body");
-        fees.push({ fee_type: "national", fee_label: label, amount: nat.fee_annual, existing });
+      if (nat.fee_type === "registration") continue;
+      const existing = memberPayments.find(p => p.fee_type === "national" || p.fee_type === "national_body");
+      if (existing) {
+        fees.push({ fee_type: "national", fee_label: nat.abbreviation || nat.body_name, amount: existing.amount, existing });
       }
     }
+  }
+
+  // 4. Legacy balances
+  const legacyPayments = memberPayments.filter(p => p.fee_type === "Legacy" || p.fee_type === "legacy");
+  for (const lp of legacyPayments) {
+    fees.push({ fee_type: lp.fee_type, fee_label: lp.fee_label, amount: lp.amount, existing: lp });
   }
 
   return fees;

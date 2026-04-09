@@ -17,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-type FeeType = "membership" | "league" | "national" | "other";
+type FeeType = "membership" | "league" | "national" | "registration" | "other";
 
 interface UnifiedFee {
   id: string;
@@ -61,11 +61,12 @@ export function FeesTab({ clubId }: { clubId: string }) {
       source: "league_associations", raw: a,
     }));
     nationalFees.forEach(f => {
-      const isOther = !(f.body_name || "").toLowerCase().includes("squash") && !(f.abbreviation || "").toLowerCase().includes("ssa");
+      const ft = (f as any).fee_type;
+      const type: FeeType = ft === "other" ? "other" : ft === "registration" ? "registration" : "national";
+      const typeLabel = ft === "other" ? "Other" : ft === "registration" ? "Registration" : "National Body";
       list.push({
         id: f.id, name: f.body_name + (f.abbreviation ? ` (${f.abbreviation})` : ""), 
-        type: (f as any).fee_type === "other" ? "other" : "national",
-        typeLabel: (f as any).fee_type === "other" ? "Other" : "National Body",
+        type, typeLabel,
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
         active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,
         source: "national_body_fees", raw: f,
@@ -231,7 +232,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     return "";
   });
   const [amount, setAmount] = useState(existing?.amount ?? 0);
-  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" ? "club_income" : "pass_through"));
+  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" || feeType === "registration" ? "club_income" : "pass_through"));
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
   const [feeDueDay, setFeeDueDay] = useState(existing?.dueDay ?? 1);
@@ -257,7 +258,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const handleTypeChange = (t: FeeType) => {
     setFeeType(t);
     if (!isEdit) {
-      setFeeClass(t === "membership" || t === "other" ? "club_income" : "pass_through");
+      setFeeClass(t === "membership" || t === "other" || t === "registration" ? "club_income" : "pass_through");
       setProRate(t === "membership");
     }
   };
@@ -265,7 +266,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Fee name is required"); return; }
 
-    // "other" fees are stored in national_body_fees with fee_type='other'
+    // "other" and "registration" fees are stored in national_body_fees with fee_type column
     const table = feeType === "membership" ? "member_fee_categories"
       : feeType === "league" ? "league_associations"
       : "national_body_fees";
@@ -293,7 +294,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: feeType === "other" ? "other" : feeType === "registration" ? "registration" : "national" };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -308,9 +309,10 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     onOpenChange(false);
   };
 
-  const nameLabel = feeType === "membership" ? "Category Name" : feeType === "other" ? "Fee Name" : "Organisation Name";
+  const nameLabel = feeType === "membership" ? "Category Name" : feeType === "registration" ? "Fee Name" : feeType === "other" ? "Fee Name" : "Organisation Name";
   const namePlaceholder = feeType === "membership" ? "e.g. Student, Pensioner, Normal"
     : feeType === "league" ? "e.g. Western Cape Squash"
+    : feeType === "registration" ? "e.g. Registration Fee, Joining Fee"
     : feeType === "other" ? "e.g. Parking, Locker Rental"
     : "e.g. Squash South Africa";
 
@@ -328,6 +330,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
                 <SelectItem value="membership">Membership</SelectItem>
                 <SelectItem value="league">League Association</SelectItem>
                 <SelectItem value="national">National Body (e.g. SSA)</SelectItem>
+                <SelectItem value="registration">Registration (once-off, new members only)</SelectItem>
                 <SelectItem value="other">Other (e.g. Parking, Locker)</SelectItem>
               </SelectContent>
             </Select>

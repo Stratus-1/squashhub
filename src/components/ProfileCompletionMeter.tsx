@@ -64,11 +64,14 @@ export function ProfileCompletionMeter({ profile, onAction }: ProfileCompletionM
     !!myClubMember.fee_category_id &&
     !!myClubMember.club_member_number;
 
-  // Step 3: Fees captured (fee payment records exist)
-  const feesCaptured = (feePayments || []).length > 0;
+  // Step 3: Fees captured — if no fee records exist, treat as complete
+  // (fees are only outstanding when explicitly allocated by the club captain)
+  const hasFeeRecords = (feePayments || []).length > 0;
+  const hasUnpaidFees = hasFeeRecords && (feePayments || []).some((f: any) => !f.paid);
+  const feesCaptured = true; // Always green — fees appear only when admin allocates them
 
-  // Step 4: All fees paid
-  const allFeesPaid = feesCaptured && (feePayments || []).every((f: any) => f.paid);
+  // Step 4: All fees paid — true if no records or all paid
+  const allFeesPaid = !hasUnpaidFees;
 
   // Step 5 (conditional): Face enrolled
   const faceEnrolled = !!myClubMember?.avatar_url;

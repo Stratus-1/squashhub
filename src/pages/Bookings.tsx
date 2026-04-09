@@ -28,8 +28,10 @@ import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, us
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { toast } from "sonner";
-import { Zap, ZapOff, ArrowRightLeft } from "lucide-react";
+import { Zap, ZapOff, ArrowRightLeft, ChevronsUpDown, Check } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,

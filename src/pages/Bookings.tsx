@@ -1350,27 +1350,40 @@ export default function Bookings() {
                 )}
 
                 {bookingDialog.playerMode === "visitor" && (
-                  <Select
-                    value={bookingDialog.guestName}
-                    onValueChange={(v) => setBookingDialog((s) => (s ? { ...s, guestName: v } : s))}
-                  >
-                    <SelectTrigger className="rounded-xl">
-                      <SelectValue placeholder="Choose a registered visitor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clubVisitors.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-muted-foreground">
-                          No visitors registered yet.
-                        </div>
-                      ) : (
-                        clubVisitors.map((v) => (
-                          <SelectItem key={v.id} value={`${v.first_name} ${v.last_name} (${v.home_club_name})`}>
-                            {v.first_name} {v.last_name} · {v.home_club_name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={visitorSearchOpen} onOpenChange={setVisitorSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between rounded-xl font-normal">
+                        {bookingDialog.guestName || "Choose a registered visitor"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[280px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search visitor..." />
+                        <CommandList>
+                          <CommandEmpty>No visitors registered yet.</CommandEmpty>
+                          <CommandGroup>
+                            {clubVisitors.map((v) => {
+                              const val = `${v.first_name} ${v.last_name} (${v.home_club_name})`;
+                              return (
+                                <CommandItem
+                                  key={v.id}
+                                  value={`${v.first_name} ${v.last_name} ${v.home_club_name}`}
+                                  onSelect={() => {
+                                    setBookingDialog((s) => (s ? { ...s, guestName: val } : s));
+                                    setVisitorSearchOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", bookingDialog.guestName === val ? "opacity-100" : "opacity-0")} />
+                                  {v.first_name} {v.last_name} · {v.home_club_name}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
 

@@ -797,12 +797,12 @@ export default function MyAccount() {
       </Dialog>
 
       {/* Pay Fee Dialog */}
-      <Dialog open={!!payFeeId} onOpenChange={(open) => { if (!open) { setPayFeeId(null); } }}>
+      <Dialog open={!!payFeeId} onOpenChange={(open) => { if (!open) { setPayFeeId(null); setPayMode("full"); setPartialAmount(""); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Pay Fees</DialogTitle>
+            <DialogTitle>Make Payment</DialogTitle>
             <DialogDescription>
-              {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} — Total R{selectedFeeTotal.toFixed(2)}
+              {selectedFeeIds.length} fee{selectedFeeIds.length !== 1 ? "s" : ""} — Outstanding R{selectedFeeTotal.toFixed(2)}
             </DialogDescription>
           </DialogHeader>
 
@@ -818,12 +818,56 @@ export default function MyAccount() {
 
             <Separator />
 
+            {/* Pay Full / Pay Partial toggle */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={payMode === "full" ? "default" : "outline"}
+                className="h-10 text-xs"
+                onClick={() => { setPayMode("full"); setPartialAmount(""); }}
+              >
+                Pay in Full
+              </Button>
+              <Button
+                variant={payMode === "partial" ? "default" : "outline"}
+                className="h-10 text-xs"
+                onClick={() => { setPayMode("partial"); setPartialAmount(""); }}
+              >
+                Pay Partial
+              </Button>
+            </div>
+
+            {payMode === "partial" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Amount to pay (R)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={selectedFeeTotal}
+                  step="0.01"
+                  placeholder={`Max R${selectedFeeTotal.toFixed(2)}`}
+                  value={partialAmount}
+                  onChange={(e) => setPartialAmount(e.target.value)}
+                />
+                {Number(partialAmount) > selectedFeeTotal && (
+                  <p className="text-[10px] text-destructive">Amount cannot exceed R{selectedFeeTotal.toFixed(2)}</p>
+                )}
+                {Number(partialAmount) > 0 && Number(partialAmount) < selectedFeeTotal && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Remaining after payment: R{(selectedFeeTotal - Number(partialAmount)).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Payment method */}
             <div className="grid grid-cols-3 gap-2">
               <Button
                 variant={payMethod === "credit" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"
                 onClick={() => setPayMethod("credit")}
-                disabled={creditBalance < selectedFeeTotal}
+                disabled={creditBalance < actualPayAmount}
               >
                 <Wallet className="w-4 h-4" />
                 Credit
@@ -888,11 +932,15 @@ export default function MyAccount() {
 
             <Button
               className="w-full"
-              disabled={payFeeMutation.isPending || selectedFeeIds.length === 0}
-              onClick={() => payFeeMutation.mutate({ feeIds: selectedFeeIds, method: payMethod })}
+              disabled={payFeeMutation.isPending || selectedFeeIds.length === 0 || actualPayAmount <= 0 || (payMode === "partial" && Number(partialAmount) > selectedFeeTotal)}
+              onClick={() => payFeeMutation.mutate({
+                feeIds: selectedFeeIds,
+                method: payMethod,
+                customAmount: payMode === "partial" ? Number(partialAmount) : undefined,
+              })}
             >
               {payFeeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Pay R{selectedFeeTotal.toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
+              Pay R{actualPayAmount.toFixed(2)} via {payMethod === "credit" ? "Credit" : payMethod.toUpperCase()}
             </Button>
           </div>
         </DialogContent>

@@ -228,7 +228,7 @@ export default function EventDetail() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 {format(starts, "EEE, d MMM yyyy · HH:mm")}
                 {ends ? ` – ${format(ends, "HH:mm")}` : ""}
-                {event.court_id ? ` · ${event.court_name || `Court ${event.court_id}`}` : ""}
+                {event.court_id ? ` · Court ${event.court_id}` : ""}
                 {event.location ? ` · ${event.location}` : ""}
               </p>
             </div>

@@ -235,6 +235,17 @@ export function useBookings(date: string, clubId?: string) {
         return "Unknown";
       };
 
+      // Fetch court names for display
+      const courtIds = [...new Set(bookings.map((b: any) => b.court_id).filter(Boolean))];
+      let courtNameMap = new Map<number, string>();
+      if (courtIds.length > 0) {
+        const { data: courts } = await (supabase as any)
+          .from("courts")
+          .select("id, name")
+          .in("id", courtIds);
+        courtNameMap = new Map((courts || []).map((c: any) => [c.id, c.name]));
+      }
+
       return bookings.map(b => {
         // Prioritise club_member_id name (supports family/switched accounts)
         const bookerMember = (b as any).club_member_id ? memberMap.get((b as any).club_member_id) : null;
@@ -246,6 +257,7 @@ export function useBookings(date: string, clubId?: string) {
           player_rank: null,
           opponent_name: (b as any).guest_name || opponentMember?.name || getNameByUserId((b as any).opponent_id),
           opponent_rank: null,
+          court_name: courtNameMap.get((b as any).court_id) || null,
         };
       });
     },

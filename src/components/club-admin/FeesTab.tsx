@@ -128,7 +128,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="font-semibold">Fee Schedule</h3>
-            <p className="text-xs text-muted-foreground">All fees charged to members — membership, league, national body, and other</p>
+            <p className="text-xs text-muted-foreground">All fees charged to members — membership, league, national body, registration, and other</p>
           </div>
           <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
         </div>

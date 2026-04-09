@@ -81,12 +81,12 @@ export function InstallAppPrompt() {
   }, [isNative]);
 
   useEffect(() => {
-    if (!isMobile || installed || isNative) return;
+    if (installed || isNative) return;
     try {
       const dismissedAt = localStorage.getItem(DISMISSED_KEY);
       if (dismissedAt) {
         const daysSince = (Date.now() - parseInt(dismissedAt, 10)) / (1000 * 60 * 60 * 24);
-        if (daysSince < 14) return;
+        if (daysSince < 3) return;
       }
     } catch {
       // ignore
@@ -94,7 +94,7 @@ export function InstallAppPrompt() {
 
     const t = setTimeout(() => setShow(true), 3500);
     return () => clearTimeout(t);
-  }, [installed, isMobile, isNative]);
+  }, [installed, isNative]);
 
   const onDismiss = () => {
     setDismissed(true);
@@ -123,7 +123,7 @@ export function InstallAppPrompt() {
   };
 
   // Only show on club subdomains, not the root marketing site
-  if (!show || dismissed || installed || isNative || !isMobile || !subdomain) return null;
+  if (!show || dismissed || installed || isNative || !subdomain) return null;
 
   return (
     <>

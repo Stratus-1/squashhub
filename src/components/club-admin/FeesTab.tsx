@@ -29,6 +29,7 @@ interface UnifiedFee {
   proRate: boolean;
   active: boolean;
   dueMonth: number; // 1-12
+  dueDay: number; // 1-31
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
@@ -50,13 +51,13 @@ export function FeesTab({ clubId }: { clubId: string }) {
     feeCategories.forEach(c => list.push({
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
-      active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1,
+      active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
       source: "member_fee_categories", raw: c,
     }));
     associations.forEach(a => list.push({
       id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
       amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
-      active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1,
+      active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
       source: "league_associations", raw: a,
     }));
     nationalFees.forEach(f => {
@@ -66,7 +67,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
         type: (f as any).fee_type === "other" ? "other" : "national",
         typeLabel: (f as any).fee_type === "other" ? "Other" : "National Body",
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
-        active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1,
+        active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,
         source: "national_body_fees", raw: f,
       });
     });
@@ -160,7 +161,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
-                  <TableCell className="text-sm">{SHORT_MONTHS[fee.dueMonth - 1]}</TableCell>
+                  <TableCell className="text-sm">{fee.dueDay} {SHORT_MONTHS[fee.dueMonth - 1]}</TableCell>
                   <TableCell>
                     <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
                       {fee.feeClass === "pass_through" ? "Pass-through" : "Club Income"}
@@ -233,6 +234,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" ? "club_income" : "pass_through"));
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
+  const [feeDueDay, setFeeDueDay] = useState(existing?.dueDay ?? 1);
   const [description, setDescription] = useState(() => {
     if (existing?.source === "member_fee_categories") return (existing.raw as MemberFeeCategory).description || "";
     return "";
@@ -273,7 +275,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
       : "national-body-fees";
 
     if (table === "member_fee_categories") {
-      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth };
+      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -282,7 +284,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -291,7 +293,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -354,10 +356,16 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
           )}
 
           {/* Amount + Due Month */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label>Annual Fee (R)</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Due Day</Label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
+                {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+              </select>
             </div>
             <div className="space-y-1">
               <Label>Due Month</Label>

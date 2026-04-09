@@ -949,12 +949,8 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       toast.error("Fee category is required");
       return;
     }
-    if (form.plays_league && !form.association_id) {
-      toast.error("Please select a league association");
-      return;
-    }
-    if (form.plays_league && !form.association_number.trim()) {
-      toast.error("Please enter the association number");
+    if (form.plays_league && form.association_id && !form.association_number.trim()) {
+      toast.error("Please enter the association number for the selected association");
       return;
     }
 

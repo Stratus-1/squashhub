@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toTitleCase, formatPhoneNumber, validatePhoneNumber } from "@/lib/input-formatting";
 
 import { SEO } from "@/components/SEO";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -89,6 +90,7 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const phoneError = useMemo(() => validatePhoneNumber(phone), [phone]);
   const [uploading, setUploading] = useState(false);
   const [previewFile, setPreviewFile] = useState<string | null>(null);
   // Club member fields

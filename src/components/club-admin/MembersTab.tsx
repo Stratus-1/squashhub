@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { toTitleCase, formatPhoneNumber } from "@/lib/input-formatting";
 import { useClubMembers, useFeeCategories, useLeagueAssociations, useNationalBodyFees, useMyClub, ClubMember, MemberFeeCategory, SKILL_LEVELS, getSkillLabel } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";

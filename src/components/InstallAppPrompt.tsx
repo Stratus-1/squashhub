@@ -37,7 +37,8 @@ function isAndroidDevice() {
 }
 
 export function InstallAppPrompt() {
-  const { subdomain } = useClubContext();
+  const { subdomain, club } = useClubContext();
+  const appName = club?.name || "SquashHub";
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [installed, setInstalled] = useState(false);
@@ -142,11 +143,11 @@ export function InstallAppPrompt() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Install the app</p>
+                <p className="text-sm font-semibold">Install {appName}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {isIos
-                    ? "On iPhone, install via “Add to Home Screen” so it behaves like a real app."
-                    : "Install SquashHub so it opens faster and feels like a real app."}
+                    ? "Install {appName} via “Add to Home Screen” so it behaves like a real app."
+                    : "Install {appName} so it opens faster and feels like a real app."}
                 </p>
 
                 <div className="flex flex-wrap gap-2 mt-3">

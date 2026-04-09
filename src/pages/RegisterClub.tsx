@@ -40,9 +40,21 @@ export default function RegisterClub() {
     e.preventDefault();
     if (!form.name.trim()) { toast.error("Club name is required"); return; }
     try {
-      await createClub.mutateAsync(form);
+      const newClub = await createClub.mutateAsync(form);
       toast.success("Club registered! You are now the club captain.");
-      navigate("/club-admin");
+      // Redirect to the club's subdomain if available
+      if (newClub.subdomain) {
+        const isLocalhost = window.location.hostname === "localhost";
+        if (isLocalhost) {
+          navigate(`/c/${newClub.subdomain}/club-admin`);
+        } else {
+          // Redirect to subdomain-based URL
+          const baseHost = window.location.hostname.split(".").slice(-2).join(".");
+          window.location.href = `${window.location.protocol}//${newClub.subdomain}.${baseHost}/club-admin`;
+        }
+      } else {
+        navigate("/club-admin");
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to register club");
     }

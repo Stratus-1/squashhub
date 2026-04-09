@@ -2552,6 +2552,7 @@ export type Database = {
           fee_due_month: number | null
           fee_payable_to: string | null
           fee_payment_details: string | null
+          fee_type: string
           id: string
           pro_rate: boolean
           updated_at: string
@@ -2568,6 +2569,7 @@ export type Database = {
           fee_due_month?: number | null
           fee_payable_to?: string | null
           fee_payment_details?: string | null
+          fee_type?: string
           id?: string
           pro_rate?: boolean
           updated_at?: string
@@ -2584,6 +2586,7 @@ export type Database = {
           fee_due_month?: number | null
           fee_payable_to?: string | null
           fee_payment_details?: string | null
+          fee_type?: string
           id?: string
           pro_rate?: boolean
           updated_at?: string

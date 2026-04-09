@@ -42,7 +42,7 @@ export function InstallAppPrompt() {
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [installed, setInstalled] = useState(false);
-  const [iosHelpOpen, setIosHelpOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const installInFlight = useRef(false);
@@ -58,7 +58,6 @@ export function InstallAppPrompt() {
     setInstalled(isStandalone());
 
     const onBip = (e: Event) => {
-      // Android/Chrome install banner event.
       e.preventDefault?.();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
@@ -117,7 +116,6 @@ export function InstallAppPrompt() {
       await deferredPrompt.prompt();
       await deferredPrompt.userChoice.catch(() => null);
       setDeferredPrompt(null);
-      // `appinstalled` event will hide the prompt if accepted.
       onDismiss();
     } finally {
       installInFlight.current = false;
@@ -143,21 +141,19 @@ export function InstallAppPrompt() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Install {appName}</p>
+                <p className="text-sm font-semibold">{`Install ${appName}`}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {isIos
-                    ? "Install {appName} via “Add to Home Screen” so it behaves like a real app."
-                    : "Install {appName} so it opens faster and feels like a real app."}
+                  {`Install ${appName} so it opens faster and feels like a real app.`}
                 </p>
 
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {isIos ? (
-                    <Button size="sm" className="h-8 text-xs" onClick={() => setIosHelpOpen(true)}>
-                      How to install
+                  {canAndroidPromptInstall ? (
+                    <Button size="sm" className="h-8 text-xs" onClick={onAndroidInstall}>
+                      Install
                     </Button>
                   ) : (
-                    <Button size="sm" className="h-8 text-xs" onClick={onAndroidInstall} disabled={!canAndroidPromptInstall}>
-                      {canAndroidPromptInstall ? "Install" : "Install (open browser menu)"}
+                    <Button size="sm" className="h-8 text-xs" onClick={() => setHelpOpen(true)}>
+                      How to install
                     </Button>
                   )}
 
@@ -171,41 +167,56 @@ export function InstallAppPrompt() {
         </motion.div>
       </AnimatePresence>
 
-      <Dialog open={iosHelpOpen} onOpenChange={setIosHelpOpen}>
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-heading">Install on iPhone</DialogTitle>
+            <DialogTitle className="font-heading">{`Install ${appName}`}</DialogTitle>
             <DialogDescription>
-              iPhone doesn’t show an install button like Android. Use “Add to Home Screen”.
+              {isIos
+                ? "On iPhone, use Safari's \"Add to Home Screen\" feature."
+                : "Use your browser menu to add this app to your home screen."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 text-sm">
-            <div className="flex items-start gap-3">
-              <Smartphone className="w-5 h-5 text-primary mt-0.5" />
-              <p>
-                Open this site in <strong>Safari</strong> (recommended).
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Share2 className="w-5 h-5 text-primary mt-0.5" />
-              <p>
-                Tap the <strong>Share</strong> button.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <PlusSquare className="w-5 h-5 text-primary mt-0.5" />
-              <p>
-                Choose <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.
-              </p>
-            </div>
+            {isIos ? (
+              <>
+                <div className="flex items-start gap-3">
+                  <Smartphone className="w-5 h-5 text-primary mt-0.5" />
+                  <p>Open this site in <strong>Safari</strong> (recommended).</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Share2 className="w-5 h-5 text-primary mt-0.5" />
+                  <p>Tap the <strong>Share</strong> button.</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <PlusSquare className="w-5 h-5 text-primary mt-0.5" />
+                  <p>Choose <strong>Add to Home Screen</strong>, then tap <strong>Add</strong>.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-start gap-3">
+                  <Smartphone className="w-5 h-5 text-primary mt-0.5" />
+                  <p>Tap the <strong>three-dot menu</strong> (&#8942;) in the top-right of your browser.</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <PlusSquare className="w-5 h-5 text-primary mt-0.5" />
+                  <p>Choose <strong>Add to Home screen</strong> or <strong>Install app</strong>.</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Download className="w-5 h-5 text-primary mt-0.5" />
+                  <p>Tap <strong>Install</strong> to confirm.</p>
+                </div>
+              </>
+            )}
             <p className="text-xs text-muted-foreground">
-              Tip: Push notifications on iPhone only work reliably when the app is installed to your Home Screen.
+              Tip: Push notifications only work reliably when the app is installed to your Home Screen.
             </p>
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIosHelpOpen(false)}>
+            <Button variant="outline" onClick={() => setHelpOpen(false)}>
               Close
             </Button>
           </div>
@@ -214,4 +225,3 @@ export function InstallAppPrompt() {
     </>
   );
 }
-

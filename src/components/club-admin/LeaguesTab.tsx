@@ -158,7 +158,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
         {otherLeagues.length > 0 && (
           <div className="mt-4">
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Mixed ({otherLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(otherLeagues).map(l => (
                 <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />

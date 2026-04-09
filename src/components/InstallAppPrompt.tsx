@@ -123,7 +123,7 @@ export function InstallAppPrompt() {
   };
 
   // Only show on club subdomains, not the root marketing site
-  if (!show || dismissed || installed || isNative || !isMobile || !subdomain) return null;
+  if (!show || dismissed || installed || isNative || !subdomain) return null;
 
   return (
     <>

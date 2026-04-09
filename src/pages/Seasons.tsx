@@ -416,7 +416,7 @@ export default function Seasons() {
                                       {m.player_a_name} vs {m.player_b_name}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      {m.match_date} · Court {m.court_id || "—"}
+                                      {m.match_date} · {m.court_name || `Court ${m.court_id || "—"}`}
                                     </p>
                                   </div>
                                   <div className="shrink-0 text-right">

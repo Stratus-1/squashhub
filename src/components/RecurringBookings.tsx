@@ -83,7 +83,7 @@ export function RecurringBookings() {
             <Card key={b.id}>
               <CardContent className="p-3 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{DAYS[b.day_of_week]} · Court {b.court_id}</p>
+                  <p className="text-sm font-medium">{DAYS[b.day_of_week]} · {b.court_name || `Court ${b.court_id}`}</p>
                   <p className="text-xs text-muted-foreground">
                     {String(b.start_time).slice(0, 5)} - {String(b.end_time).slice(0, 5)}
                   </p>

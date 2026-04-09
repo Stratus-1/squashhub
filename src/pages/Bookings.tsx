@@ -1014,7 +1014,7 @@ export default function Bookings() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">
-                    Court {bookingDetails.court_id} · {format(selectedDate, "EEE d MMM yyyy")}
+                    {getCourtName(bookingDetails.court_id)} · {format(selectedDate, "EEE d MMM yyyy")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {String(bookingDetails.start_time || "").slice(0, 5)} - {String(bookingDetails.end_time || "").slice(0, 5)}
@@ -1216,7 +1216,7 @@ export default function Bookings() {
                     <MapPin className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">Court {bookingDialog.courtId}</p>
+                    <p className="text-sm font-semibold">{getCourtName(bookingDialog.courtId)}</p>
                     <p className="text-xs text-muted-foreground">
                       {format(selectedDate, "EEE d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, bookingDialog.duration)}
                     </p>
@@ -1473,7 +1473,7 @@ export default function Bookings() {
                   : "Squash booking";
                 const details = [
                   calendarPrompt.isFriendly ? "Friendly match." : "Ladder match.",
-                  `Court ${calendarPrompt.courtId}`,
+                  getCourtName(calendarPrompt.courtId),
                   `Time: ${calendarPrompt.startTime}-${calendarPrompt.endTime}`,
                   "Booked via SquashHub.",
                 ].join("\n");
@@ -1482,7 +1482,7 @@ export default function Bookings() {
                   startLocal: start,
                   endLocal: end,
                   details,
-                  location: `Court ${calendarPrompt.courtId}`,
+                  location: getCourtName(calendarPrompt.courtId),
                   guestEmail: calendarPrompt.opponentEmail,
                 });
                 await openExternalUrl(url);

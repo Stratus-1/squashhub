@@ -234,6 +234,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" ? "club_income" : "pass_through"));
   const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
+  const [feeDueDay, setFeeDueDay] = useState(existing?.dueDay ?? 1);
   const [description, setDescription] = useState(() => {
     if (existing?.source === "member_fee_categories") return (existing.raw as MemberFeeCategory).description || "";
     return "";
@@ -274,7 +275,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
       : "national-body-fees";
 
     if (table === "member_fee_categories") {
-      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth };
+      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -283,7 +284,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -292,7 +293,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -355,10 +356,16 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
           )}
 
           {/* Amount + Due Month */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label>Annual Fee (R)</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Due Day</Label>
+              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
+                {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+              </select>
             </div>
             <div className="space-y-1">
               <Label>Due Month</Label>

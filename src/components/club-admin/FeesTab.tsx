@@ -29,6 +29,7 @@ interface UnifiedFee {
   proRate: boolean;
   active: boolean;
   dueMonth: number; // 1-12
+  dueDay: number; // 1-31
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
@@ -50,13 +51,13 @@ export function FeesTab({ clubId }: { clubId: string }) {
     feeCategories.forEach(c => list.push({
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
-      active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1,
+      active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
       source: "member_fee_categories", raw: c,
     }));
     associations.forEach(a => list.push({
       id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
       amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
-      active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1,
+      active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
       source: "league_associations", raw: a,
     }));
     nationalFees.forEach(f => {
@@ -66,7 +67,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
         type: (f as any).fee_type === "other" ? "other" : "national",
         typeLabel: (f as any).fee_type === "other" ? "Other" : "National Body",
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
-        active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1,
+        active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,
         source: "national_body_fees", raw: f,
       });
     });
@@ -160,7 +161,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
-                  <TableCell className="text-sm">{SHORT_MONTHS[fee.dueMonth - 1]}</TableCell>
+                  <TableCell className="text-sm">{fee.dueDay} {SHORT_MONTHS[fee.dueMonth - 1]}</TableCell>
                   <TableCell>
                     <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
                       {fee.feeClass === "pass_through" ? "Pass-through" : "Club Income"}

@@ -1926,6 +1926,7 @@ export type Database = {
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          due_day: number
           fee_annual: number | null
           fee_class: string
           fee_due_month: number | null
@@ -1944,6 +1945,7 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          due_day?: number
           fee_annual?: number | null
           fee_class?: string
           fee_due_month?: number | null
@@ -1962,6 +1964,7 @@ export type Database = {
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          due_day?: number
           fee_annual?: number | null
           fee_class?: string
           fee_due_month?: number | null
@@ -2345,6 +2348,7 @@ export type Database = {
           club_id: string
           created_at: string
           description: string | null
+          due_day: number
           due_month: number
           fee_class: string
           id: string
@@ -2359,6 +2363,7 @@ export type Database = {
           club_id: string
           created_at?: string
           description?: string | null
+          due_day?: number
           due_month?: number
           fee_class?: string
           id?: string
@@ -2373,6 +2378,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           description?: string | null
+          due_day?: number
           due_month?: number
           fee_class?: string
           id?: string
@@ -2456,6 +2462,7 @@ export type Database = {
           body_name: string
           club_id: string
           created_at: string
+          due_day: number
           fee_annual: number | null
           fee_class: string
           fee_due_month: number | null
@@ -2471,6 +2478,7 @@ export type Database = {
           body_name?: string
           club_id: string
           created_at?: string
+          due_day?: number
           fee_annual?: number | null
           fee_class?: string
           fee_due_month?: number | null
@@ -2486,6 +2494,7 @@ export type Database = {
           body_name?: string
           club_id?: string
           created_at?: string
+          due_day?: number
           fee_annual?: number | null
           fee_class?: string
           fee_due_month?: number | null

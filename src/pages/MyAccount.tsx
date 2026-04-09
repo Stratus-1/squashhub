@@ -216,11 +216,15 @@ export default function MyAccount() {
 
   // Pay fee mutation
   const payFeeMutation = useMutation({
-    mutationFn: async ({ feeIds, method }: { feeIds: string[]; method: string }) => {
+    mutationFn: async ({ feeIds, method, customAmount }: { feeIds: string[]; method: string; customAmount?: number }) => {
       if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
       const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
       if (!selectedFees.length) throw new Error("No fees selected");
-      const totalAmount = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
+      const totalOwed = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
+      const payAmount = customAmount != null ? customAmount : totalOwed;
+      if (payAmount <= 0) throw new Error("Payment amount must be greater than zero");
+      if (payAmount > totalOwed) throw new Error("Payment amount exceeds outstanding balance");
+      const isPartial = payAmount < totalOwed;
 
       // Helper to post GL journal entries for a payment
       const postPaymentGL = async (txId: string, amount: number, feeLabel: string) => {
@@ -250,54 +254,84 @@ export default function MyAccount() {
       };
 
       const feeDescription = selectedFees.map((f: any) => f.fee_label).join(", ");
+      const txDescription = isPartial
+        ? `Partial payment: ${feeDescription}`
+        : `Fee payment: ${feeDescription}`;
 
       if (method === "credit") {
-        if (creditBalance < totalAmount) {
+        if (creditBalance < payAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
         const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
           club_id: clubId,
           club_member_id: clubMemberId,
-          amount: totalAmount,
+          amount: payAmount,
           type: "debit",
           method: "credit",
-          description: `Fee payment: ${feeDescription}`,
+          description: txDescription,
           status: "confirmed",
         }).select("id").single();
         if (txErr) throw txErr;
-        await postPaymentGL(txData.id, totalAmount, feeDescription);
-        for (const fee of selectedFees) {
-          const { error } = await fromExt("club_member_fee_payments")
-            .update({ paid: true, paid_at: new Date().toISOString() })
-            .eq("id", fee.id);
-          if (error) throw error;
+        await postPaymentGL(txData.id, payAmount, feeDescription);
+
+        if (isPartial) {
+          // Reduce the fee amount by the partial payment (distribute across selected fees)
+          let remaining = payAmount;
+          for (const fee of selectedFees) {
+            const feeAmt = Number(fee.amount);
+            const deduction = Math.min(remaining, feeAmt);
+            remaining -= deduction;
+            const newAmount = feeAmt - deduction;
+            if (newAmount <= 0) {
+              await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString(), amount: 0 }).eq("id", fee.id);
+            } else {
+              await fromExt("club_member_fee_payments").update({ amount: newAmount }).eq("id", fee.id);
+            }
+          }
+        } else {
+          for (const fee of selectedFees) {
+            await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString() }).eq("id", fee.id);
+          }
         }
       } else if (method === "card") {
         const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
           club_id: clubId,
           club_member_id: clubMemberId,
-          amount: totalAmount,
+          amount: payAmount,
           type: "debit",
           method: "card",
-          description: `Card payment: ${feeDescription}`,
+          description: txDescription.replace("Fee payment", "Card payment").replace("Partial payment", "Partial card payment"),
           status: "confirmed",
         }).select("id").single();
         if (txErr) throw txErr;
-        await postPaymentGL(txData.id, totalAmount, feeDescription);
-        for (const fee of selectedFees) {
-          const { error } = await fromExt("club_member_fee_payments")
-            .update({ paid: true, paid_at: new Date().toISOString() })
-            .eq("id", fee.id);
-          if (error) throw error;
+        await postPaymentGL(txData.id, payAmount, feeDescription);
+
+        if (isPartial) {
+          let remaining = payAmount;
+          for (const fee of selectedFees) {
+            const feeAmt = Number(fee.amount);
+            const deduction = Math.min(remaining, feeAmt);
+            remaining -= deduction;
+            const newAmount = feeAmt - deduction;
+            if (newAmount <= 0) {
+              await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString(), amount: 0 }).eq("id", fee.id);
+            } else {
+              await fromExt("club_member_fee_payments").update({ amount: newAmount }).eq("id", fee.id);
+            }
+          }
+        } else {
+          for (const fee of selectedFees) {
+            await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString() }).eq("id", fee.id);
+          }
         }
       } else {
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           club_id: clubId,
           club_member_id: clubMemberId,
-          amount: totalAmount,
+          amount: payAmount,
           type: "debit",
           method: "eft",
-          description: `EFT payment: ${selectedFees.map((f: any) => f.fee_label).join(", ")}`,
+          description: `EFT payment: ${feeDescription}`,
           reference: `${memberNo} - Fees`,
           status: "pending",
         });

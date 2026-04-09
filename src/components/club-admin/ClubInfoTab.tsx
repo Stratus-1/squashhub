@@ -5,9 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { Upload, X, ChevronsUpDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
@@ -28,9 +30,6 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }));
-
-  const setSelect = (k: string) => (value: string) =>
-    setForm(p => ({ ...p, [k]: value === "__none__" ? "" : value }));
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,25 +74,49 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     return phone ? `${name} (${phone})` : name;
   };
 
-  const MemberSelect = ({ label, value, field }: { label: string; value: string; field: string }) => (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <Select value={value || "__none__"} onValueChange={setSelect(field)}>
-        <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__">— None —</SelectItem>
-          {members.map(m => (
-            <SelectItem key={m.id} value={m.id}>{getMemberLabel(m)}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {value && members.find(m => m.id === value) && (
-        <p className="text-xs text-muted-foreground">
-          Tel: {members.find(m => m.id === value)?.phone || members.find(m => m.id === value)?.profiles?.phone || "N/A"}
-        </p>
-      )}
-    </div>
-  );
+  const SearchableMemberSelect = ({ label, value, field }: { label: string; value: string; field: string }) => {
+    const [open, setOpen] = useState(false);
+    const selected = members.find(m => m.id === value);
+
+    return (
+      <div className="space-y-1">
+        <Label>{label}</Label>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
+              {selected ? getMemberLabel(selected) : "Select member..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Search member..." />
+              <CommandList>
+                <CommandEmpty>No member found.</CommandEmpty>
+                <CommandGroup>
+                  <CommandItem onSelect={() => { setForm(p => ({ ...p, [field]: "" })); setOpen(false); }}>
+                    <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                    — None —
+                  </CommandItem>
+                  {members.map(m => (
+                    <CommandItem key={m.id} value={getMemberLabel(m)} onSelect={() => { setForm(p => ({ ...p, [field]: m.id })); setOpen(false); }}>
+                      <Check className={cn("mr-2 h-4 w-4", value === m.id ? "opacity-100" : "opacity-0")} />
+                      {getMemberLabel(m)}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {selected && (
+          <p className="text-xs text-muted-foreground">
+            Tel: {selected.phone || selected.profiles?.phone || "N/A"}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 mt-4">
@@ -138,9 +161,9 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Office Bearers</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MemberSelect label="Chairman" value={form.chairman_member_id} field="chairman_member_id" />
-          <MemberSelect label="Secretary" value={form.secretary_member_id} field="secretary_member_id" />
-          <MemberSelect label="Club Captain" value={form.club_captain_member_id} field="club_captain_member_id" />
+          <SearchableMemberSelect label="Chairman" value={form.chairman_member_id} field="chairman_member_id" />
+          <SearchableMemberSelect label="Secretary" value={form.secretary_member_id} field="secretary_member_id" />
+          <SearchableMemberSelect label="Club Captain" value={form.club_captain_member_id} field="club_captain_member_id" />
         </div>
       </Card>
 

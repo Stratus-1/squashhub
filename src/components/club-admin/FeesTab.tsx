@@ -394,8 +394,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
             </div>
           )}
 
-          {/* Payable to / Payment details (league/national/other) */}
-          {feeType !== "membership" && (
+          {/* Payable to / Payment details (league/national/other — not registration, since it's always club income) */}
+          {feeType !== "membership" && feeType !== "registration" && (
             <>
               <div className="space-y-1">
                 <Label>Payable To</Label>

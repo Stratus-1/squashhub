@@ -93,10 +93,11 @@ function computeExpectedFees(
     }
   }
 
-  // 3. National body / other fees (if plays league) — skip inactive
+  // 3. National body / other fees (if plays league) — skip inactive and registration (once-off)
   if (member.plays_league) {
     for (const nat of nationalFees) {
       if (nat.active === false) continue;
+      if (nat.fee_type === "registration") continue; // registration fees are once-off, not recurring
       if (nat.fee_annual && nat.fee_annual > 0) {
         const label = nat.abbreviation || nat.body_name;
         const existing = memberPayments.find(p => p.fee_type === "national" || p.fee_type === "national_body");

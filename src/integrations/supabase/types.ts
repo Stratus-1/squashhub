@@ -3175,6 +3175,10 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      is_club_admin_or_permitted: {
+        Args: { _club_id: string; _permission: string; _user_id: string }
+        Returns: boolean
+      }
       is_club_mate: {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean

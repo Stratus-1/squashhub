@@ -1253,6 +1253,55 @@ export type Database = {
           },
         ]
       }
+      club_member_permissions: {
+        Row: {
+          club_member_id: string
+          created_at: string
+          custom_permissions: string[]
+          id: string
+          permission_role_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          club_member_id: string
+          created_at?: string
+          custom_permissions?: string[]
+          id?: string
+          permission_role_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          club_member_id?: string
+          created_at?: string
+          custom_permissions?: string[]
+          id?: string
+          permission_role_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_member_permissions_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_member_permissions_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_member_permissions_permission_role_id_fkey"
+            columns: ["permission_role_id"]
+            isOneToOne: false
+            referencedRelation: "club_permission_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_members: {
         Row: {
           address: string | null
@@ -1334,6 +1383,41 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_permission_roles: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          permissions: string[]
+          role_name: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          permissions?: string[]
+          role_name: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          permissions?: string[]
+          role_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_permission_roles_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -3100,6 +3184,10 @@ export type Database = {
         Returns: boolean
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
+      member_has_permission: {
+        Args: { _member_id: string; _permission: string }
+        Returns: boolean
+      }
       respond_to_booking_invite: {
         Args: { invite_token: string; new_status: string; reason?: string }
         Returns: undefined

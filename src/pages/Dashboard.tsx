@@ -20,6 +20,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
+import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format } from "date-fns";
@@ -43,6 +44,8 @@ export default function Dashboard() {
   const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
+  const myPermissions = useMyPermissions();
+  const hasAnyAdminAccess = isClubAdmin || myPermissions.size > 0;
   const myMemberId = activeMember?.id || null;
   const { data: challenges } = useChallenges(effectiveUserId, { memberId: myMemberId });
   const clubId = effectiveClub?.id || clubData?.club?.id;
@@ -365,7 +368,7 @@ export default function Dashboard() {
             <Settings className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>
           </Button>
-          {isClubAdmin && (
+          {hasAnyAdminAccess && (
             <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-500/20" onClick={() => navigate("/club-admin")}>
               <ShieldCheck className="w-5 h-5" />
               <span className="text-xs font-medium leading-tight text-center">Club Admin</span>

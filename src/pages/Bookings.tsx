@@ -1216,7 +1216,7 @@ export default function Bookings() {
                     <MapPin className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">Court {bookingDialog.courtId}</p>
+                    <p className="text-sm font-semibold">{getCourtName(bookingDialog.courtId)}</p>
                     <p className="text-xs text-muted-foreground">
                       {format(selectedDate, "EEE d MMM yyyy")} · {bookingDialog.time} - {addMinutesToTime(bookingDialog.time, bookingDialog.duration)}
                     </p>

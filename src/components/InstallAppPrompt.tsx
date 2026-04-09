@@ -37,7 +37,8 @@ function isAndroidDevice() {
 }
 
 export function InstallAppPrompt() {
-  const { subdomain } = useClubContext();
+  const { subdomain, club } = useClubContext();
+  const appName = club?.name || "SquashHub";
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [installed, setInstalled] = useState(false);

@@ -1,0 +1,1 @@
+ALTER TABLE public.national_body_fees ADD COLUMN IF NOT EXISTS fee_type text NOT NULL DEFAULT 'national';

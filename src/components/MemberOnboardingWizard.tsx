@@ -286,6 +286,17 @@ export function MemberOnboardingWizard({
       });
     }
 
+    // Registration fees (once-off for new members) — always included
+    for (const nbf of nationalFees) {
+      if ((nbf as any).fee_type === "registration" && (nbf as any).active !== false && nbf.fee_annual && (nbf.fee_annual as number) > 0) {
+        items.push({
+          label: nbf.body_name + (nbf.abbreviation ? ` (${nbf.abbreviation})` : ""),
+          amount: nbf.fee_annual as number,
+          type: "registration",
+        });
+      }
+    }
+
     if (playsLeague) {
       // League association fees
       for (const assoc of leagueAssocs) {
@@ -297,8 +308,10 @@ export function MemberOnboardingWizard({
           });
         }
       }
-      // National body fees (e.g. SSA)
+      // National body fees (e.g. SSA) — exclude registration type
       for (const nbf of nationalFees) {
+        if ((nbf as any).fee_type === "registration") continue;
+        if ((nbf as any).active === false) continue;
         if (nbf.fee_annual && (nbf.fee_annual as number) > 0) {
           items.push({
             label: `${nbf.body_name}${nbf.abbreviation ? ` (${nbf.abbreviation})` : ""}`,

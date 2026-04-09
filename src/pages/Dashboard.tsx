@@ -631,13 +631,13 @@ export default function Dashboard() {
               <Card key={booking.id} className="p-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-xs font-bold text-primary">{booking.court_id}</span>
+                    <span className="text-xs font-bold text-primary">{booking.court_name || booking.court_id}</span>
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">
                       {booking.player_name || "Unknown"}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">Court {booking.court_id}</p>
+                    <p className="text-[11px] text-muted-foreground">{booking.court_name || `Court ${booking.court_id}`}</p>
                   </div>
                 </div>
                 <Badge variant="secondary" className="text-[10px] shrink-0">

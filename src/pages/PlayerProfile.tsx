@@ -645,7 +645,7 @@ export default function PlayerProfile() {
                           vs {m.opponent_name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {m.match_date} · Court {m.court_id || "—"}
+                          {m.match_date} · {m.court_name || `Court ${m.court_id || "—"}`}
                         </p>
                         {m.sets_text && (
                           <p className="text-[11px] text-muted-foreground mt-1">

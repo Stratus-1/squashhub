@@ -387,6 +387,10 @@ export function MemberOnboardingWizard({
         club_member_number: memberNumber || null,
       };
 
+      // Track whether this is a pre-existing member (admin-created, imported, or club founder)
+      // vs a genuinely new member joining. Fees only apply to new members.
+      const isPreExistingMember = !!existingMember;
+
       if (existingMember) {
         const { error: memErr } = await fromExt("club_members")
           .update(memberData)

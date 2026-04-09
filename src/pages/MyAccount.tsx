@@ -48,6 +48,7 @@ export default function MyAccount() {
   const feeCategoryId = (activeClubMember as any)?.fee_category_id;
   const playsLeague = !!(activeClubMember as any)?.plays_league;
   const memberNo = (activeClubMember as any)?.club_member_number || activeMember?.club_member_number || "N/A";
+  const accountName = (activeClubMember as any)?.name || activeMember?.name || "Unknown member";
 
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("100");
@@ -107,84 +108,6 @@ export default function MyAccount() {
   });
 
   const barTabTotal = (barTabEntries as any[]).reduce((s: number, e: any) => s + Number(e.total), 0);
-
-  // Auto-create missing fee records (self-healing for failed onboarding inserts)
-  const healingDone = useRef(false);
-  useEffect(() => {
-    if (healingDone.current || feesLoading || !clubMemberId || !feeCategoryId || !fees) return;
-    if (fees.length > 0) return; // fees already exist
-    healingDone.current = true;
-
-    (async () => {
-      try {
-        // Fetch fee category
-        const { data: cat } = await fromExt("member_fee_categories")
-          .select("name, annual_fee")
-          .eq("id", feeCategoryId)
-          .single();
-        if (!cat) return;
-
-        const currentYear = new Date().getFullYear();
-        const dueMonth = (club as any)?.member_fee_due_month || 1;
-        const now = new Date();
-        const currentMonth = now.getMonth() + 1;
-        const monthsRemaining = currentMonth <= dueMonth ? dueMonth - currentMonth : 12 - currentMonth + dueMonth;
-        const proRated = monthsRemaining < 12 ? Math.round((cat.annual_fee as number) * (monthsRemaining / 12)) : (cat.annual_fee as number);
-
-        const items: { club_member_id: string; fee_label: string; fee_type: string; amount: number; season_year: number; paid: boolean }[] = [];
-        items.push({
-          club_member_id: clubMemberId,
-          fee_label: `Club Membership (${cat.name})${proRated < (cat.annual_fee as number) ? " — Pro-rated" : ""}`,
-          fee_type: "club",
-          amount: proRated,
-          season_year: currentYear,
-          paid: false,
-        });
-
-        if (playsLeague && clubId) {
-          const { data: assocs } = await fromExt("league_associations")
-            .select("name, abbreviation, fee_annual")
-            .eq("club_id", clubId);
-          for (const a of (assocs || [])) {
-            if (a.fee_annual && (a.fee_annual as number) > 0) {
-              items.push({
-                club_member_id: clubMemberId,
-                fee_label: `${a.name}${a.abbreviation ? ` (${a.abbreviation})` : ""} Registration`,
-                fee_type: "association",
-                amount: a.fee_annual as number,
-                season_year: currentYear,
-                paid: false,
-              });
-            }
-          }
-          const { data: nbfs } = await fromExt("national_body_fees")
-            .select("body_name, abbreviation, fee_annual")
-            .eq("club_id", clubId);
-          for (const n of (nbfs || [])) {
-            if (n.fee_annual && (n.fee_annual as number) > 0) {
-              items.push({
-                club_member_id: clubMemberId,
-                fee_label: `${n.body_name}${n.abbreviation ? ` (${n.abbreviation})` : ""}`,
-                fee_type: "national",
-                amount: n.fee_annual as number,
-                season_year: currentYear,
-                paid: false,
-              });
-            }
-          }
-        }
-
-        if (items.length > 0) {
-          const { error } = await fromExt("club_member_fee_payments").insert(items);
-          if (!error) {
-            queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments", clubMemberId] });
-          }
-        }
-      } catch {
-        // Silent — don't block the page
-      }
-    })();
-  }, [fees, feesLoading, clubMemberId, feeCategoryId, playsLeague, clubId, club, queryClient]);
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
@@ -499,7 +422,10 @@ export default function MyAccount() {
   return (
     <div className="bottom-nav-safe">
       <SEO title="My Account" description="Manage your credit balance and fee payments." path="/my-account" noIndex />
-      <PageHeader title={isViewingAs ? `${activeMember?.name}'s Account` : "My Account"} subtitle="Credit balance & fee payments" />
+      <PageHeader
+        title={isViewingAs ? `${accountName}'s Account` : "My Account"}
+        subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : ""}`}
+      />
 
       {/* Credit Balance Card */}
       <motion.div

@@ -387,6 +387,10 @@ export function MemberOnboardingWizard({
         club_member_number: memberNumber || null,
       };
 
+      // Track whether this is a pre-existing member (admin-created, imported, or club founder)
+      // vs a genuinely new member joining. Fees only apply to new members.
+      const isPreExistingMember = !!existingMember;
+
       if (existingMember) {
         const { error: memErr } = await fromExt("club_members")
           .update(memberData)
@@ -423,8 +427,9 @@ export function MemberOnboardingWizard({
         }
       }
 
-      // 3. Create fee payment records
-      if (feeBreakdown.length > 0) {
+      // 3. Create fee payment records — only for genuinely new members, not pre-existing ones
+      //    Pre-existing = admin-created, CSV-imported, or the club founder/captain
+      if (feeBreakdown.length > 0 && !isPreExistingMember) {
         // Get the club_member_id
         const { data: cmData } = await fromExt("club_members")
           .select("id")

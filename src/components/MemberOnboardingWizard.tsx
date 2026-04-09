@@ -560,7 +560,7 @@ export function MemberOnboardingWizard({
                 <div className="space-y-3">
                   <div>
                     <Label htmlFor="onb-name">Full Name <span className="text-destructive">*</span></Label>
-                    <Input id="onb-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Smith" autoFocus />
+                    <Input id="onb-name" value={name} onChange={(e) => setName(toTitleCase(e.target.value))} placeholder="e.g. John Smith" autoFocus />
                   </div>
                   <div>
                     <Label htmlFor="onb-id">SA ID Number</Label>
@@ -602,12 +602,12 @@ export function MemberOnboardingWizard({
                     </div>
                     <div>
                       <Label htmlFor="onb-phone">Phone</Label>
-                      <Input id="onb-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+27 82 123 4567" />
+                      <Input id="onb-phone" value={phone} onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} placeholder="+27 82 123 4567" />
                     </div>
                   </div>
                   <div>
                     <Label htmlFor="onb-address">Address</Label>
-                    <Input id="onb-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City" />
+                    <Input id="onb-address" value={address} onChange={(e) => setAddress(toTitleCase(e.target.value))} placeholder="Street, City" />
                   </div>
                   <div>
                     <Label>Skill Level</Label>

@@ -206,6 +206,7 @@ function UpcomingGamesSection() {
 export default function Bookings() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [bookingDetails, setBookingDetails] = useState<any | null>(null);
+  const [memberSearchOpen, setMemberSearchOpen] = useState(false);
   const [bookingDialog, setBookingDialog] = useState<{
     courtId: number;
     time: string;

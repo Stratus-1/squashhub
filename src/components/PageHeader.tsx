@@ -102,7 +102,7 @@ export function PageHeader({
           </div>
         </div>
 
-        {user && (showNotifications || showChallengesInbox || showProfile) && (
+        {user && (
           <div className="flex items-center gap-1.5">
             {showNotifications && <NotificationsDropdown />}
             {showChallengesInbox ? (
@@ -122,22 +122,23 @@ export function PageHeader({
                 ) : null}
               </Button>
             ) : null}
-            {showProfile && (
-              <button
-                type="button"
-                className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => {
-                  if (profileTo === "/profile") {
-                    navigate(profileTo, { state: { backgroundLocation: location } });
-                    return;
-                  }
-                  navigate(profileTo);
-                }}
-                aria-label="Profile"
-              >
-                <PlayerAvatar initials={initials} avatarUrl={avatarUrl} size="sm" />
-              </button>
-            )}
+            <button
+              type="button"
+              className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5"
+              onClick={() => {
+                if (profileTo === "/profile") {
+                  navigate(profileTo, { state: { backgroundLocation: location } });
+                  return;
+                }
+                navigate(profileTo);
+              }}
+              aria-label="Profile"
+            >
+              <PlayerAvatar initials={initials} avatarUrl={avatarUrl} size="sm" />
+              <span className="hidden md:inline text-xs font-medium text-muted-foreground max-w-[120px] truncate">
+                {playerName}
+              </span>
+            </button>
             <Button
               type="button"
               variant="ghost"

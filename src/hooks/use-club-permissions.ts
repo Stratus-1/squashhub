@@ -70,14 +70,23 @@ export function useMemberPermission(memberId: string | undefined) {
 
 /**
  * Check if the current active member has a specific admin permission.
- * Captain/Chairman/Secretary/Admin roles always return true.
+ * Captain/Admin roles always return true.
  */
 export function useHasPermission(permission: PermissionSlug): boolean {
   const { activeMember } = useMemberContext();
   const memberId = activeMember?.id;
-  const memberRole = activeMember?.role;
 
-  // Captain and admin roles always have full access
+  // Fetch member's club role
+  const { data: memberRow } = useQuery({
+    queryKey: ["member-role", memberId],
+    queryFn: async () => {
+      const { data } = await fromExt("club_members").select("role").eq("id", memberId!).single();
+      return data as { role: string } | null;
+    },
+    enabled: !!memberId,
+  });
+
+  const memberRole = memberRow?.role;
   const isFullAccess = memberRole === "captain" || memberRole === "admin";
 
   const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
@@ -85,10 +94,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   if (isFullAccess) return true;
   if (!perm) return false;
 
-  // Check custom permissions
   if (perm.custom_permissions?.includes(permission)) return true;
-
-  // Check role-based permissions
   if (perm.club_permission_roles?.permissions?.includes(permission)) return true;
 
   return false;
@@ -96,13 +102,23 @@ export function useHasPermission(permission: PermissionSlug): boolean {
 
 /**
  * Get all effective permissions for the current member.
- * Returns all slugs for captain/admin, otherwise merges role + custom.
  */
 export function useMyPermissions(): Set<string> {
   const { activeMember } = useMemberContext();
-  const memberRole = activeMember?.role;
+  const memberId = activeMember?.id;
+
+  const { data: memberRow } = useQuery({
+    queryKey: ["member-role", memberId],
+    queryFn: async () => {
+      const { data } = await fromExt("club_members").select("role").eq("id", memberId!).single();
+      return data as { role: string } | null;
+    },
+    enabled: !!memberId,
+  });
+
+  const memberRole = memberRow?.role;
   const isFullAccess = memberRole === "captain" || memberRole === "admin";
-  const { data: perm } = useMemberPermission(isFullAccess ? undefined : activeMember?.id);
+  const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
 
   if (isFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
 

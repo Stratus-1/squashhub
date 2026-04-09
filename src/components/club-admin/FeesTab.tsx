@@ -162,7 +162,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
-                  <TableCell className="text-sm">{fee.dueDay} {SHORT_MONTHS[fee.dueMonth - 1]}</TableCell>
+                  <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell>
                     <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
                       {fee.feeClass === "pass_through" ? "Pass-through" : "Club Income"}

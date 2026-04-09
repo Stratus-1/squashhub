@@ -427,8 +427,9 @@ export function MemberOnboardingWizard({
         }
       }
 
-      // 3. Create fee payment records
-      if (feeBreakdown.length > 0) {
+      // 3. Create fee payment records — only for genuinely new members, not pre-existing ones
+      //    Pre-existing = admin-created, CSV-imported, or the club founder/captain
+      if (feeBreakdown.length > 0 && !isPreExistingMember) {
         // Get the club_member_id
         const { data: cmData } = await fromExt("club_members")
           .select("id")

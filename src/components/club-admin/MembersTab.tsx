@@ -343,8 +343,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const filtered = members.filter(m => {
     const name = m.profiles?.name || m.name || "";
     const email = m.profiles?.email || m.email || "";
+    const phone = m.phone || m.profiles?.phone || "";
     const q = search.toLowerCase();
-    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q);
+    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q) || phone.toLowerCase().includes(q);
   });
 
   // Resolve delegate titles from club data

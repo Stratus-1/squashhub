@@ -162,7 +162,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
-                  <TableCell className="text-sm">{fee.dueDay} {SHORT_MONTHS[fee.dueMonth - 1]}</TableCell>
+                  <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell>
                     <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
                       {fee.feeClass === "pass_through" ? "Pass-through" : "Club Income"}
@@ -358,25 +358,33 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
             </div>
           )}
 
-          {/* Amount + Due Month */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Amount + Due Month (hide date for registration — it's once-off on join) */}
+          {feeType === "registration" ? (
             <div className="space-y-1">
-              <Label>Annual Fee (R)</Label>
+              <Label>Registration Fee (R)</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+              <p className="text-[10px] text-muted-foreground">Once-off fee charged when a new member joins the club</p>
             </div>
-            <div className="space-y-1">
-              <Label>Due Day</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
-                {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
-              </select>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label>Annual Fee (R)</Label>
+                <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+              </div>
+              <div className="space-y-1">
+                <Label>Due Day</Label>
+                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueDay} onChange={e => setFeeDueDay(Number(e.target.value))}>
+                  {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Due Month</Label>
+                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
+                  {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                </select>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Due Month</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={feeDueMonth} onChange={e => setFeeDueMonth(Number(e.target.value))}>
-                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-              </select>
-            </div>
-          </div>
+          )}
 
           {/* Sort order (membership only) */}
           {feeType === "membership" && (
@@ -412,10 +420,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2 h-10">
-              <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
-              <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
-            </div>
+            {feeType !== "registration" && (
+              <div className="flex items-center gap-2 h-10">
+                <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
+                <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
+              </div>
+            )}
           </div>
 
           <p className="text-[10px] text-muted-foreground">

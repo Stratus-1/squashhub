@@ -348,6 +348,8 @@ export default function MyAccount() {
       }
       setPayFeeId(null);
       setSelectedFeeIds([]);
+      setPayMode("full");
+      setPartialAmount("");
     },
     onError: (e: any) => toast.error(e.message || "Payment failed"),
   });

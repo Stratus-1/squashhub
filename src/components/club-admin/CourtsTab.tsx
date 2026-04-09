@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
@@ -13,6 +14,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const RELAY_DEVICES = [
   { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
+  { value: "magnet", label: "Magnet", description: "Magnetic contactor / relay switch" },
   { value: "sonoff", label: "Sonoff", description: "Sonoff eWeLink smart switches" },
   { value: "tasmota", label: "Tasmota", description: "Tasmota-flashed devices (ESP-based)" },
   { value: "home_assistant", label: "Home Assistant", description: "HA hub with relay automations" },
@@ -98,19 +100,32 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             <p className="text-xs text-muted-foreground">{selectedDevice?.description}</p>
           </div>
 
-          <div className="space-y-1">
-            <Label>Light Fee per Hour (R)</Label>
-            <Input
-              type="number" min={0} step={0.01}
-              value={lightsForm.light_fee_per_hour}
-              onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
-              placeholder="e.g. 50"
-            />
-            <p className="text-xs text-muted-foreground">
-              {lightsForm.light_fee_per_hour > 0
-                ? <>Members will be charged <span className="font-semibold text-foreground">R{lightsForm.light_fee_per_hour}</span>/hour.</>
-                : "No fee — lights are free."}
-            </p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Charge light fees</Label>
+              <Switch
+                checked={lightsForm.light_fee_per_hour > 0}
+                onCheckedChange={(checked) =>
+                  setLightsForm(p => ({ ...p, light_fee_per_hour: checked ? 50 : 0 }))
+                }
+              />
+            </div>
+            {lightsForm.light_fee_per_hour > 0 ? (
+              <div className="space-y-1">
+                <Label>Fee per Hour (R)</Label>
+                <Input
+                  type="number" min={1} step={1}
+                  value={lightsForm.light_fee_per_hour}
+                  onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
+                  placeholder="e.g. 50"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Members will be charged <span className="font-semibold text-foreground">R{lightsForm.light_fee_per_hour}</span>/hour.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No fees — lights are free for members.</p>
+            )}
           </div>
 
           {/* Shelly-specific fields */}

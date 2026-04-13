@@ -288,18 +288,29 @@ export default function LeagueGameDetail() {
 
   // ---- Summary ----
   const summary = useMemo(() => {
-    let homeTotalGames = 0, awayTotalGames = 0, homeBonusPoints = 0, awayBonusPoints = 0;
+    let homeTotalGames = 0, awayTotalGames = 0;
+    let homeMatchWins = 0, awayMatchWins = 0;
     const posResults: { homeWins: number; awayWins: number }[] = [];
     for (const pos of positions) {
       let hw = 0, aw = 0;
       for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
       homeTotalGames += hw; awayTotalGames += aw;
-      if (hw > aw) homeBonusPoints++; else if (aw > hw) awayBonusPoints++;
+      if (hw > aw) homeMatchWins++; else if (aw > hw) awayMatchWins++;
       posResults.push({ homeWins: hw, awayWins: aw });
     }
+    // Bonus points: only the overall fixture winner gets them (= their match wins count)
+    const homeGamesOnly = homeTotalGames;
+    const awayGamesOnly = awayTotalGames;
+    // Determine fixture winner based on total games + match wins first
+    const homeRaw = homeGamesOnly + homeMatchWins;
+    const awayRaw = awayGamesOnly + awayMatchWins;
+    const fixtureWinner = homeRaw > awayRaw ? "home" : awayRaw > homeRaw ? "away" : (homeMatchWins > awayMatchWins ? "home" : awayMatchWins > homeMatchWins ? "away" : "draw");
+    // Only the winner gets bonus points
+    const homeBonusPoints = fixtureWinner === "home" ? homeMatchWins : 0;
+    const awayBonusPoints = fixtureWinner === "away" ? awayMatchWins : 0;
     const homeTotal = homeTotalGames + homeBonusPoints;
     const awayTotal = awayTotalGames + awayBonusPoints;
-    const winner = homeTotal > awayTotal ? "home" : awayTotal > homeTotal ? "away" : "draw";
+    const winner = fixtureWinner;
     return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homeTotal, awayTotal, winner, posResults };
   }, [positions]);
 

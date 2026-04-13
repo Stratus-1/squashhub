@@ -89,6 +89,7 @@ export default function LeagueGameDetail() {
   const [homeSig, setHomeSig] = useState("");
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [savingSetup, setSavingSetup] = useState(false);
 
   const { data: fixture } = useQuery({
     queryKey: ["league-fixture", fixtureId],

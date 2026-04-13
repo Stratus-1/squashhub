@@ -95,6 +95,7 @@ export interface LeagueAssociation {
   fee_payable_to?: string;
   fee_payment_details?: string;
   fee_class: "club_income" | "pass_through";
+  platform_association_id?: string | null;
 }
 
 export interface League {

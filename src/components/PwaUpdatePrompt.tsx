@@ -39,7 +39,26 @@ export function PwaUpdatePrompt() {
 
     (window as any).__gb_update_sw__ = updateSW;
 
+    // Periodically check for new service worker updates (every 60s)
+    const interval = setInterval(() => {
+      navigator.serviceWorker?.getRegistration().then((reg) => {
+        reg?.update().catch(() => {});
+      });
+    }, 60_000);
+
+    // Also check on app resume (visibility change)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        navigator.serviceWorker?.getRegistration().then((reg) => {
+          reg?.update().catch(() => {});
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
       try {
         delete (window as any).__gb_update_sw__;
       } catch {

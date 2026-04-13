@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, UserCheck, X, Trophy, CalendarDays, Users } from "lucide-react";
+import { Search, UserCheck, X, Trophy, CalendarDays, Users, ListOrdered } from "lucide-react";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,7 @@ import { format } from "date-fns";
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
 export type ScoringFormat = "par11" | "par15" | "english9";
 export type BestOf = 3 | 5;
-export type MatchSource = "manual" | "tournament" | "booking";
+export type MatchSource = "manual" | "tournament" | "booking" | "league";
 
 export interface PlayerInfo {
   name: string;
@@ -425,7 +425,51 @@ export function MarkerSetup({ onStart }: Props) {
     staleTime: 60 * 1000,
   });
 
-  // Auto-populate players when a source item is selected
+  // Fetch leagues and their registered players
+  const { data: leaguesWithPlayers = [] } = useQuery({
+    queryKey: ["marker-leagues", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+      const { data: leagues, error } = await fromExt("leagues").select("id, name, code").eq("club_id", clubId!);
+      if (error) throw error;
+      if (!leagues || leagues.length === 0) return [];
+
+      // Fetch all registrations for these leagues
+      const leagueIds = leagues.map((l: any) => l.id) as string[];
+      const { data: regs } = await fromExt("member_league_registrations")
+        .select("league_id, club_member_id, player_rank")
+        .in("league_id", leagueIds);
+
+      // Fetch member names
+      const memberIds = [...new Set((regs || []).map((r: any) => r.club_member_id))] as string[];
+      const { data: members } = memberIds.length > 0
+        ? await supabase.from("club_members").select("id, name, club_member_number").in("id", memberIds as string[])
+        : { data: [] };
+      const memberMap = new Map((members || []).map((m) => [m.id, m]));
+
+      return leagues.map((l: any) => ({
+        ...l,
+        players: (regs || [])
+          .filter((r: any) => r.league_id === l.id)
+          .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99))
+          .map((r: any) => {
+            const m = memberMap.get(r.club_member_id);
+            return {
+              clubMemberId: r.club_member_id,
+              name: m?.name || "Unknown",
+              number: m?.club_member_number || "",
+              rank: r.player_rank,
+            };
+          }),
+      }));
+    },
+    enabled: !!clubId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [selectedLeagueId, setSelectedLeagueId] = useState("");
+  const selectedLeague = leaguesWithPlayers.find((l: any) => l.id === selectedLeagueId);
+
   useEffect(() => {
     if (source === "tournament" && selectedSourceId) {
       const match = tournamentMatches.find((m) => m.id === selectedSourceId);
@@ -485,6 +529,7 @@ export function MarkerSetup({ onStart }: Props) {
   // Reset when source changes
   useEffect(() => {
     setSelectedSourceId("");
+    setSelectedLeagueId("");
     setPlayerA(emptyPlayer());
     setPlayerB(emptyPlayer());
     setPartnerA(emptyPlayer());
@@ -492,10 +537,12 @@ export function MarkerSetup({ onStart }: Props) {
     setIsDoubles(false);
     if (source === "manual") {
       setMatchType("friendly");
+    } else if (source === "league") {
+      setMatchType("league");
     }
   }, [source]);
 
-  const playersFromSource = source !== "manual" && !!selectedSourceId;
+  const playersFromSource = (source === "tournament" || source === "booking") && !!selectedSourceId;
   const canStart =
     playerA.name.trim().length > 0 &&
     playerB.name.trim().length > 0 &&
@@ -507,20 +554,30 @@ export function MarkerSetup({ onStart }: Props) {
       {clubId && (
         <Card className="p-4 space-y-3">
           <p className="text-sm font-semibold font-heading">Match Source</p>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant={source === "manual" ? "default" : "outline"}
               size="sm"
-              className="flex-1 text-xs"
+              className="text-xs"
               onClick={() => setSource("manual")}
             >
               <Users className="w-3.5 h-3.5 mr-1" />
               Manual
             </Button>
             <Button
+              variant={source === "league" ? "default" : "outline"}
+              size="sm"
+              className="text-xs"
+              onClick={() => setSource("league")}
+              disabled={leaguesWithPlayers.length === 0}
+            >
+              <ListOrdered className="w-3.5 h-3.5 mr-1" />
+              League
+            </Button>
+            <Button
               variant={source === "tournament" ? "default" : "outline"}
               size="sm"
-              className="flex-1 text-xs"
+              className="text-xs"
               onClick={() => setSource("tournament")}
               disabled={tournamentMatches.length === 0}
             >
@@ -530,7 +587,7 @@ export function MarkerSetup({ onStart }: Props) {
             <Button
               variant={source === "booking" ? "default" : "outline"}
               size="sm"
-              className="flex-1 text-xs"
+              className="text-xs"
               onClick={() => setSource("booking")}
               disabled={todayBookings.length === 0}
             >
@@ -601,6 +658,82 @@ export function MarkerSetup({ onStart }: Props) {
                     </button>
                   );
                 })
+              )}
+            </div>
+          )}
+
+          {/* League selector */}
+          {source === "league" && (
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs">Select League</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={selectedLeagueId}
+                  onChange={(e) => {
+                    setSelectedLeagueId(e.target.value);
+                    setPlayerA(emptyPlayer());
+                    setPlayerB(emptyPlayer());
+                  }}
+                >
+                  <option value="">Choose a league…</option>
+                  {leaguesWithPlayers.map((l: any) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name} {l.code ? `(${l.code})` : ""} — {l.players.length} players
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedLeague && selectedLeague.players.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs mb-1 block">Player A</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                      value={playerA.clubMemberId || ""}
+                      onChange={(e) => {
+                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
+                        if (p) setPlayerA({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
+                        else setPlayerA(emptyPlayer());
+                      }}
+                    >
+                      <option value="">Select player…</option>
+                      {selectedLeague.players
+                        .filter((p: any) => p.clubMemberId !== playerB.clubMemberId)
+                        .map((p: any) => (
+                          <option key={p.clubMemberId} value={p.clubMemberId}>
+                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Player B</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                      value={playerB.clubMemberId || ""}
+                      onChange={(e) => {
+                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
+                        if (p) setPlayerB({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
+                        else setPlayerB(emptyPlayer());
+                      }}
+                    >
+                      <option value="">Select player…</option>
+                      {selectedLeague.players
+                        .filter((p: any) => p.clubMemberId !== playerA.clubMemberId)
+                        .map((p: any) => (
+                          <option key={p.clubMemberId} value={p.clubMemberId}>
+                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {selectedLeague && selectedLeague.players.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-3">No players registered in this league</p>
               )}
             </div>
           )}
@@ -720,7 +853,7 @@ export function MarkerSetup({ onStart }: Props) {
             bestOf,
             deuceRule,
             source,
-            sourceId: selectedSourceId || undefined,
+            sourceId: selectedSourceId || selectedLeagueId || undefined,
           })
         }
       >

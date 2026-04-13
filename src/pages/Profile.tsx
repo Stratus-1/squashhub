@@ -401,7 +401,7 @@ export default function Profile() {
                   <input type="checkbox" id="plays-league" checked={playsLeague} onChange={(e) => setPlaysLeague(e.target.checked)} />
                   <Label htmlFor="plays-league">Plays League</Label>
                 </div>
-                {playsLeague && associations.length > 0 && (
+                {playsLeague && (associations.length > 0 || leagues.length > 0) && (
                   <>
                     <div className="space-y-1.5">
                       <Label>League Association</Label>

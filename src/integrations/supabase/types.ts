@@ -2655,6 +2655,98 @@ export type Database = {
           },
         ]
       }
+      platform_league_associations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          region: string
+          season_year: number
+          short_code: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          region?: string
+          season_year?: number
+          short_code: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          region?: string
+          season_year?: number
+          short_code?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_league_fixtures: {
+        Row: {
+          association_id: string
+          away_team_code: string
+          created_at: string
+          division: string
+          fixture_date: string
+          game_scores: string | null
+          home_team_code: string
+          id: string
+          notes: string | null
+          score: string | null
+          status: string
+          updated_at: string
+          venue_name: string
+          winner_team_code: string | null
+        }
+        Insert: {
+          association_id: string
+          away_team_code: string
+          created_at?: string
+          division: string
+          fixture_date: string
+          game_scores?: string | null
+          home_team_code: string
+          id?: string
+          notes?: string | null
+          score?: string | null
+          status?: string
+          updated_at?: string
+          venue_name: string
+          winner_team_code?: string | null
+        }
+        Update: {
+          association_id?: string
+          away_team_code?: string
+          created_at?: string
+          division?: string
+          fixture_date?: string
+          game_scores?: string | null
+          home_team_code?: string
+          id?: string
+          notes?: string | null
+          score?: string | null
+          status?: string
+          updated_at?: string
+          venue_name?: string
+          winner_team_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_league_fixtures_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_availability: {
         Row: {
           created_at: string

@@ -748,7 +748,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
         platform_association_id: selected.id,
       });
       if (error) toast.error(error.message);
-      else { toast.success(`Joined ${selected.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+      else { toast.success(`Joined ${selected.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     } else {
       if (!form.name.trim()) return;
       const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });

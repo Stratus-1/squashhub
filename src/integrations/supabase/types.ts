@@ -2093,6 +2093,7 @@ export type Database = {
           home_total_games: number
           home_total_points: number
           id: string
+          match_format: Json | null
           status: string
           submitted_at: string | null
           submitted_by: string | null
@@ -2111,6 +2112,7 @@ export type Database = {
           home_total_games?: number
           home_total_points?: number
           id?: string
+          match_format?: Json | null
           status?: string
           submitted_at?: string | null
           submitted_by?: string | null
@@ -2129,6 +2131,7 @@ export type Database = {
           home_total_games?: number
           home_total_points?: number
           id?: string
+          match_format?: Json | null
           status?: string
           submitted_at?: string | null
           submitted_by?: string | null

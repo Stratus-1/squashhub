@@ -536,11 +536,11 @@ export default function LeagueGameDetail() {
                     </td>
                     <td className="p-0" colSpan={bestOf + 5}>
                       {/* Home row */}
-                      <div className={cn("grid items-center border-b",
-                        setupDone
-                          ? `grid-cols-[28px_60px_1fr_repeat(${bestOf},24px)_24px_24px_32px]`
-                          : "grid-cols-[28px_80px_1fr_32px]"
-                      )}>
+                      <div className="grid items-center border-b"
+                        style={setupDone
+                          ? { gridTemplateColumns: `28px 60px 1fr ${Array(bestOf).fill('24px').join(' ')} 24px 24px 32px` }
+                          : { gridTemplateColumns: '28px 80px 1fr 32px' }
+                        }>
                         <span className="text-[10px] font-semibold text-center bg-primary/10 py-1">H</span>
                         {!setupDone ? (
                           <>

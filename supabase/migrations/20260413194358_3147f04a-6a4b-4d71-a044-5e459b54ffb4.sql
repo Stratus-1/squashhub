@@ -1,0 +1,1 @@
+ALTER FUNCTION public.validate_challenge_insert() SET search_path = public;

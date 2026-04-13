@@ -467,6 +467,25 @@ export function MarkerSetup({ onStart }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Check if any league fixtures have completed setup (captain has set up players)
+  const { data: readyLeagueFixtures = [] } = useQuery({
+    queryKey: ["marker-league-fixtures-ready", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+      // Get fixture results that have setup done (status = setup, draft, submitted, confirmed)
+      const { data, error } = await supabase
+        .from("league_fixture_results" as any)
+        .select("fixture_id, status")
+        .in("status", ["setup", "draft", "submitted", "confirmed"]);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const leagueAvailable = leaguesWithPlayers.length > 0 && readyLeagueFixtures.length > 0;
+
   const [selectedLeagueId, setSelectedLeagueId] = useState("");
   const selectedLeague = leaguesWithPlayers.find((l: any) => l.id === selectedLeagueId);
 
@@ -569,7 +588,8 @@ export function MarkerSetup({ onStart }: Props) {
               size="sm"
               className="text-xs"
               onClick={() => setSource("league")}
-              disabled={leaguesWithPlayers.length === 0}
+              disabled={!leagueAvailable}
+              title={!leagueAvailable ? "League setup must be completed by the captain first" : undefined}
             >
               <ListOrdered className="w-3.5 h-3.5 mr-1" />
               League

@@ -704,7 +704,7 @@ export default function LeagueGameDetail() {
         )}
 
         <p className="text-[10px] text-muted-foreground text-center">
-          One (1) bonus point for each match winner in winning team
+          Bonus points are awarded only to the winning team — one point per individual match won
         </p>
       </div>
 

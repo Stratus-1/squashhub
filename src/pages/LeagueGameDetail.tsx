@@ -288,18 +288,29 @@ export default function LeagueGameDetail() {
 
   // ---- Summary ----
   const summary = useMemo(() => {
-    let homeTotalGames = 0, awayTotalGames = 0, homeBonusPoints = 0, awayBonusPoints = 0;
+    let homeTotalGames = 0, awayTotalGames = 0;
+    let homeMatchWins = 0, awayMatchWins = 0;
     const posResults: { homeWins: number; awayWins: number }[] = [];
     for (const pos of positions) {
       let hw = 0, aw = 0;
       for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
       homeTotalGames += hw; awayTotalGames += aw;
-      if (hw > aw) homeBonusPoints++; else if (aw > hw) awayBonusPoints++;
+      if (hw > aw) homeMatchWins++; else if (aw > hw) awayMatchWins++;
       posResults.push({ homeWins: hw, awayWins: aw });
     }
+    // Bonus points: only the overall fixture winner gets them (= their match wins count)
+    const homeGamesOnly = homeTotalGames;
+    const awayGamesOnly = awayTotalGames;
+    // Determine fixture winner based on total games + match wins first
+    const homeRaw = homeGamesOnly + homeMatchWins;
+    const awayRaw = awayGamesOnly + awayMatchWins;
+    const fixtureWinner = homeRaw > awayRaw ? "home" : awayRaw > homeRaw ? "away" : (homeMatchWins > awayMatchWins ? "home" : awayMatchWins > homeMatchWins ? "away" : "draw");
+    // Only the winner gets bonus points
+    const homeBonusPoints = fixtureWinner === "home" ? homeMatchWins : 0;
+    const awayBonusPoints = fixtureWinner === "away" ? awayMatchWins : 0;
     const homeTotal = homeTotalGames + homeBonusPoints;
     const awayTotal = awayTotalGames + awayBonusPoints;
-    const winner = homeTotal > awayTotal ? "home" : awayTotal > homeTotal ? "away" : "draw";
+    const winner = fixtureWinner;
     return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homeTotal, awayTotal, winner, posResults };
   }, [positions]);
 
@@ -525,11 +536,11 @@ export default function LeagueGameDetail() {
                     </td>
                     <td className="p-0" colSpan={bestOf + 5}>
                       {/* Home row */}
-                      <div className={cn("grid items-center border-b",
-                        setupDone
-                          ? `grid-cols-[28px_60px_1fr_repeat(${bestOf},24px)_24px_24px_32px]`
-                          : "grid-cols-[28px_80px_1fr_32px]"
-                      )}>
+                      <div className="grid items-center border-b"
+                        style={setupDone
+                          ? { gridTemplateColumns: `28px 60px 1fr ${Array(bestOf).fill('24px').join(' ')} 24px 24px 32px` }
+                          : { gridTemplateColumns: '28px 80px 1fr 32px' }
+                        }>
                         <span className="text-[10px] font-semibold text-center bg-primary/10 py-1">H</span>
                         {!setupDone ? (
                           <>
@@ -555,11 +566,11 @@ export default function LeagueGameDetail() {
                         )}
                       </div>
                       {/* Away row */}
-                      <div className={cn("grid items-center",
-                        setupDone
-                          ? `grid-cols-[28px_60px_1fr_repeat(${bestOf},24px)_24px_24px_32px]`
-                          : "grid-cols-[28px_80px_1fr_32px]"
-                      )}>
+                      <div className="grid items-center"
+                        style={setupDone
+                          ? { gridTemplateColumns: `28px 60px 1fr ${Array(bestOf).fill('24px').join(' ')} 24px 24px 32px` }
+                          : { gridTemplateColumns: '28px 80px 1fr 32px' }
+                        }>
                         <span className="text-[10px] font-semibold text-center bg-secondary/30 py-1">V</span>
                         {!setupDone ? (
                           <>
@@ -693,7 +704,7 @@ export default function LeagueGameDetail() {
         )}
 
         <p className="text-[10px] text-muted-foreground text-center">
-          One (1) bonus point for each match winner in winning team
+          Bonus points are awarded only to the winning team — one point per individual match won
         </p>
       </div>
 

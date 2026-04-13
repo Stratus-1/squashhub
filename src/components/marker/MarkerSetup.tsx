@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, UserCheck, X, Trophy, CalendarDays, Users } from "lucide-react";
+import { Search, UserCheck, X, Trophy, CalendarDays, Users, ListOrdered } from "lucide-react";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";

@@ -34,7 +34,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
-  const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | null>(null);
+  const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | "mixed" | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -85,7 +85,11 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
   const menLeagues = leagues.filter(l => l.name.toLowerCase().includes("men's") || l.name.toLowerCase().startsWith("men"));
   const ladiesLeagues = leagues.filter(l => l.name.toLowerCase().includes("ladies") || l.name.toLowerCase().includes("women"));
-  const otherLeagues = leagues.filter(l => !menLeagues.includes(l) && !ladiesLeagues.includes(l));
+  const mixedLeagues = leagues.filter(l => {
+    const n = l.name.toLowerCase();
+    return n.includes("mixed") && !menLeagues.includes(l) && !ladiesLeagues.includes(l);
+  });
+  const otherLeagues = leagues.filter(l => !menLeagues.includes(l) && !ladiesLeagues.includes(l) && !mixedLeagues.includes(l));
 
   const sortLeagues = (list: League[]) =>
     [...list].sort((a, b) => {
@@ -154,11 +158,25 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               {ladiesLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No ladies leagues</p>}
             </div>
           </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold text-muted-foreground">Mixed ({mixedLeagues.length})</h4>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAllocateGender("mixed")} disabled={mixedLeagues.length === 0}>
+                <Users className="w-3.5 h-3.5" />Allocate
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {sortLeagues(mixedLeagues).map(l => (
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
+              ))}
+              {mixedLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No mixed leagues</p>}
+            </div>
+          </div>
         </div>
 
         {otherLeagues.length > 0 && (
           <div className="mt-4">
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Mixed ({otherLeagues.length})</h4>
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(otherLeagues).map(l => (
                 <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
@@ -172,7 +190,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       {allocateGender && (
         <AllocatePlayersDialog
           gender={allocateGender}
-          leagues={sortLeagues(allocateGender === "men" ? menLeagues : ladiesLeagues)}
+          leagues={sortLeagues(allocateGender === "men" ? menLeagues : allocateGender === "ladies" ? ladiesLeagues : mixedLeagues)}
           members={members}
           clubId={clubId}
           open={!!allocateGender}
@@ -266,7 +284,7 @@ function LeagueCard({ league, associations, onDelete, members }: {
 
 // ─── Allocate Players Dialog (drag & drop across leagues) ───
 function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenChange }: {
-  gender: "men" | "ladies";
+  gender: "men" | "ladies" | "mixed";
   leagues: League[];
   members: ClubMember[];
   clubId: string;
@@ -284,7 +302,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
 
   // Filter members by gender and league status, sorted by skill level
   const genderMembers = members
-    .filter(m => m.plays_league && (gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
+    .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
     .sort((a, b) => getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level));
 
   // Load existing registrations

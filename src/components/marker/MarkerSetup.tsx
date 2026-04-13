@@ -554,20 +554,30 @@ export function MarkerSetup({ onStart }: Props) {
       {clubId && (
         <Card className="p-4 space-y-3">
           <p className="text-sm font-semibold font-heading">Match Source</p>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant={source === "manual" ? "default" : "outline"}
               size="sm"
-              className="flex-1 text-xs"
+              className="text-xs"
               onClick={() => setSource("manual")}
             >
               <Users className="w-3.5 h-3.5 mr-1" />
               Manual
             </Button>
             <Button
+              variant={source === "league" ? "default" : "outline"}
+              size="sm"
+              className="text-xs"
+              onClick={() => setSource("league")}
+              disabled={leaguesWithPlayers.length === 0}
+            >
+              <ListOrdered className="w-3.5 h-3.5 mr-1" />
+              League
+            </Button>
+            <Button
               variant={source === "tournament" ? "default" : "outline"}
               size="sm"
-              className="flex-1 text-xs"
+              className="text-xs"
               onClick={() => setSource("tournament")}
               disabled={tournamentMatches.length === 0}
             >
@@ -577,7 +587,7 @@ export function MarkerSetup({ onStart }: Props) {
             <Button
               variant={source === "booking" ? "default" : "outline"}
               size="sm"
-              className="flex-1 text-xs"
+              className="text-xs"
               onClick={() => setSource("booking")}
               disabled={todayBookings.length === 0}
             >

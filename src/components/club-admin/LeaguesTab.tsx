@@ -41,7 +41,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     if (!confirm("Delete this association?")) return;
     const { error } = await fromExt("league_associations").delete().eq("id", id);
     if (error) toast.error(error.message);
-    else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+    else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
   };
 
   const handleDeleteLeague = async (id: string) => {
@@ -753,7 +753,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
       if (!form.name.trim()) return;
       const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });
       if (error) toast.error(error.message);
-      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     }
   };
 

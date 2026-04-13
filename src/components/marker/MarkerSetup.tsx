@@ -661,6 +661,82 @@ export function MarkerSetup({ onStart }: Props) {
               )}
             </div>
           )}
+
+          {/* League selector */}
+          {source === "league" && (
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs">Select League</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={selectedLeagueId}
+                  onChange={(e) => {
+                    setSelectedLeagueId(e.target.value);
+                    setPlayerA(emptyPlayer());
+                    setPlayerB(emptyPlayer());
+                  }}
+                >
+                  <option value="">Choose a league…</option>
+                  {leaguesWithPlayers.map((l: any) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name} {l.code ? `(${l.code})` : ""} — {l.players.length} players
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedLeague && selectedLeague.players.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs mb-1 block">Player A</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                      value={playerA.clubMemberId || ""}
+                      onChange={(e) => {
+                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
+                        if (p) setPlayerA({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
+                        else setPlayerA(emptyPlayer());
+                      }}
+                    >
+                      <option value="">Select player…</option>
+                      {selectedLeague.players
+                        .filter((p: any) => p.clubMemberId !== playerB.clubMemberId)
+                        .map((p: any) => (
+                          <option key={p.clubMemberId} value={p.clubMemberId}>
+                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Player B</Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                      value={playerB.clubMemberId || ""}
+                      onChange={(e) => {
+                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
+                        if (p) setPlayerB({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
+                        else setPlayerB(emptyPlayer());
+                      }}
+                    >
+                      <option value="">Select player…</option>
+                      {selectedLeague.players
+                        .filter((p: any) => p.clubMemberId !== playerA.clubMemberId)
+                        .map((p: any) => (
+                          <option key={p.clubMemberId} value={p.clubMemberId}>
+                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {selectedLeague && selectedLeague.players.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-3">No players registered in this league</p>
+              )}
+            </div>
+          )}
         </Card>
       )}
 

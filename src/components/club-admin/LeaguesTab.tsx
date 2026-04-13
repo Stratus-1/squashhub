@@ -34,7 +34,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
-  const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | null>(null);
+  const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | "mixed" | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -85,7 +85,11 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
   const menLeagues = leagues.filter(l => l.name.toLowerCase().includes("men's") || l.name.toLowerCase().startsWith("men"));
   const ladiesLeagues = leagues.filter(l => l.name.toLowerCase().includes("ladies") || l.name.toLowerCase().includes("women"));
-  const otherLeagues = leagues.filter(l => !menLeagues.includes(l) && !ladiesLeagues.includes(l));
+  const mixedLeagues = leagues.filter(l => {
+    const n = l.name.toLowerCase();
+    return n.includes("mixed") && !menLeagues.includes(l) && !ladiesLeagues.includes(l);
+  });
+  const otherLeagues = leagues.filter(l => !menLeagues.includes(l) && !ladiesLeagues.includes(l) && !mixedLeagues.includes(l));
 
   const sortLeagues = (list: League[]) =>
     [...list].sort((a, b) => {
@@ -125,7 +129,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-semibold text-muted-foreground">Men's ({menLeagues.length})</h4>
@@ -154,11 +158,25 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               {ladiesLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No ladies leagues</p>}
             </div>
           </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold text-muted-foreground">Mixed ({mixedLeagues.length})</h4>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAllocateGender("mixed")} disabled={mixedLeagues.length === 0}>
+                <Users className="w-3.5 h-3.5" />Allocate
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {sortLeagues(mixedLeagues).map(l => (
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
+              ))}
+              {mixedLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No mixed leagues</p>}
+            </div>
+          </div>
         </div>
 
         {otherLeagues.length > 0 && (
           <div className="mt-4">
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Mixed ({otherLeagues.length})</h4>
+            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(otherLeagues).map(l => (
                 <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
@@ -172,7 +190,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       {allocateGender && (
         <AllocatePlayersDialog
           gender={allocateGender}
-          leagues={sortLeagues(allocateGender === "men" ? menLeagues : ladiesLeagues)}
+          leagues={sortLeagues(allocateGender === "men" ? menLeagues : allocateGender === "ladies" ? ladiesLeagues : mixedLeagues)}
           members={members}
           clubId={clubId}
           open={!!allocateGender}
@@ -266,7 +284,7 @@ function LeagueCard({ league, associations, onDelete, members }: {
 
 // ─── Allocate Players Dialog (drag & drop across leagues) ───
 function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenChange }: {
-  gender: "men" | "ladies";
+  gender: "men" | "ladies" | "mixed";
   leagues: League[];
   members: ClubMember[];
   clubId: string;
@@ -284,7 +302,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
 
   // Filter members by gender and league status, sorted by skill level
   const genderMembers = members
-    .filter(m => m.plays_league && (gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
+    .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
     .sort((a, b) => getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level));
 
   // Load existing registrations
@@ -716,14 +734,15 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
 function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
+  const [selectedMixed, setSelectedMixed] = useState<string[]>([]);
   const [prefix, setPrefix] = useState("");
   const [startNum, setStartNum] = useState(1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [associationId, setAssociationId] = useState("");
   const qc = useQueryClient();
 
-  const handleToggle = (league: string, gender: "men" | "ladies") => {
-    const setter = gender === "men" ? setSelectedMen : setSelectedLadies;
+  const handleToggle = (league: string, gender: "men" | "ladies" | "mixed") => {
+    const setter = gender === "men" ? setSelectedMen : gender === "ladies" ? setSelectedLadies : setSelectedMixed;
     setter(prev => prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]);
   };
 
@@ -731,6 +750,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const parseNum = (l: string) => parseInt(l);
     const sortedMen = [...selectedMen].sort((a, b) => parseNum(a) - parseNum(b));
     const sortedLadies = [...selectedLadies].sort((a, b) => parseNum(a) - parseNum(b));
+    const sortedMixed = [...selectedMixed].sort((a, b) => parseNum(a) - parseNum(b));
 
     let codeNum = startNum;
     const menEntries = sortedMen.map(label => {
@@ -747,7 +767,15 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
       return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
     });
 
-    return [...menEntries, ...ladiesEntries];
+    // Reset numbering for Mixed
+    codeNum = startNum;
+    const mixedEntries = sortedMixed.map(label => {
+      const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
+      codeNum++;
+      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
+    });
+
+    return [...menEntries, ...ladiesEntries, ...mixedEntries];
   };
 
   const entries = buildEntries();
@@ -791,17 +819,17 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
 
     toast.success(`${entries.length} league(s) added & codes renumbered`);
     onOpenChange(false);
-    setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
+    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Leagues</Button></DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add Leagues</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="mb-2 block font-semibold">Men's Leagues</Label>
               <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -819,6 +847,17 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
                 {LEAGUE_OPTIONS.map(l => (
                   <label key={`ladies-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
                     <input type="checkbox" checked={selectedLadies.includes(l)} onChange={() => handleToggle(l, "ladies")} className="rounded border-input" />
+                    {l} League
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="mb-2 block font-semibold">Mixed Leagues</Label>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {LEAGUE_OPTIONS.map(l => (
+                  <label key={`mixed-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
+                    <input type="checkbox" checked={selectedMixed.includes(l)} onChange={() => handleToggle(l, "mixed")} className="rounded border-input" />
                     {l} League
                   </label>
                 ))}

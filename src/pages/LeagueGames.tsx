@@ -196,7 +196,15 @@ export default function LeagueGames() {
                         )}
                         <div className="flex items-center gap-2 text-sm">
                           <span className="font-bold">{f.home_team_code}</span>
-                          <span className="text-muted-foreground text-xs">vs</span>
+                          {result && (result.status === "submitted" || result.status === "confirmed") ? (
+                            <>
+                              <span className="font-bold text-primary">{result.homePoints}</span>
+                              <span className="text-muted-foreground text-xs">-</span>
+                              <span className="font-bold text-primary">{result.awayPoints}</span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">vs</span>
+                          )}
                           <span className="font-bold">{f.away_team_code}</span>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -207,8 +215,8 @@ export default function LeagueGames() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
-                        {status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
+                        {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
+                        {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </div>

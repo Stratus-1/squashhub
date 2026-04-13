@@ -513,15 +513,23 @@ export default function LeagueGameDetail() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-muted/70 text-[10px] font-semibold">
-                <th className="p-1 text-left w-6">#</th>
-                <th className="p-1 text-left w-7"></th>
-                <th className="p-1 text-left">NSF</th>
-                <th className="p-1 text-left">Player</th>
-                {Array.from({ length: bestOf }, (_, i) => (
-                  <th key={i} className="p-1 text-center w-7">{i + 1}</th>
-                ))}
-                <th className="p-1 text-center w-7">G</th>
-                <th className="p-1 w-7"></th>
+                <th className="p-0" colSpan={bestOf + 5}>
+                  <div className="grid items-center"
+                    style={setupDone
+                      ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
+                      : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
+                    }>
+                    <span className="p-1 text-left">#</span>
+                    <span className="p-1 text-left"></span>
+                    <span className="p-1 text-left">NSF</span>
+                    <span className="p-1 text-left">Player</span>
+                    {setupDone && Array.from({ length: bestOf }, (_, i) => (
+                      <span key={i} className="p-1 text-center">{i + 1}</span>
+                    ))}
+                    {setupDone && <span className="p-1 text-center">G</span>}
+                    <span className="p-1"></span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>

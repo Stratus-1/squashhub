@@ -853,7 +853,7 @@ export function MarkerSetup({ onStart }: Props) {
             bestOf,
             deuceRule,
             source,
-            sourceId: selectedSourceId || undefined,
+            sourceId: selectedSourceId || selectedLeagueId || undefined,
           })
         }
       >

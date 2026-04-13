@@ -425,7 +425,51 @@ export function MarkerSetup({ onStart }: Props) {
     staleTime: 60 * 1000,
   });
 
-  // Auto-populate players when a source item is selected
+  // Fetch leagues and their registered players
+  const { data: leaguesWithPlayers = [] } = useQuery({
+    queryKey: ["marker-leagues", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+      const { data: leagues, error } = await fromExt("leagues").select("id, name, code").eq("club_id", clubId!);
+      if (error) throw error;
+      if (!leagues || leagues.length === 0) return [];
+
+      // Fetch all registrations for these leagues
+      const leagueIds = leagues.map((l: any) => l.id);
+      const { data: regs } = await fromExt("member_league_registrations")
+        .select("league_id, club_member_id, player_rank")
+        .in("league_id", leagueIds);
+
+      // Fetch member names
+      const memberIds = [...new Set((regs || []).map((r: any) => r.club_member_id))];
+      const { data: members } = memberIds.length > 0
+        ? await supabase.from("club_members").select("id, name, club_member_number").in("id", memberIds)
+        : { data: [] };
+      const memberMap = new Map((members || []).map((m) => [m.id, m]));
+
+      return leagues.map((l: any) => ({
+        ...l,
+        players: (regs || [])
+          .filter((r: any) => r.league_id === l.id)
+          .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99))
+          .map((r: any) => {
+            const m = memberMap.get(r.club_member_id);
+            return {
+              clubMemberId: r.club_member_id,
+              name: m?.name || "Unknown",
+              number: m?.club_member_number || "",
+              rank: r.player_rank,
+            };
+          }),
+      }));
+    },
+    enabled: !!clubId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [selectedLeagueId, setSelectedLeagueId] = useState("");
+  const selectedLeague = leaguesWithPlayers.find((l: any) => l.id === selectedLeagueId);
+
   useEffect(() => {
     if (source === "tournament" && selectedSourceId) {
       const match = tournamentMatches.find((m) => m.id === selectedSourceId);

@@ -725,7 +725,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
 
   // Fetch existing club associations to filter out already-linked ones
   const { data: existingAssocs = [] } = useQuery({
-    queryKey: ["league-associations", clubId],
+    queryKey: ["league-associations-linked", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("league_associations").select("platform_association_id").eq("club_id", clubId);
       if (error) throw error;

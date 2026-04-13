@@ -514,32 +514,34 @@ export default function LeagueGameDetail() {
             <thead>
               <tr className="bg-muted/70 text-[10px] font-semibold">
                 <th className="p-1 text-left w-6">#</th>
-                <th className="p-1 text-left w-8"></th>
+                <th className="p-1 text-left w-7"></th>
                 <th className="p-1 text-left">NSF</th>
                 <th className="p-1 text-left">Player</th>
                 {Array.from({ length: bestOf }, (_, i) => (
-                  <th key={i} className="p-1 text-center w-6">{i + 1}</th>
+                  <th key={i} className="p-1 text-center w-7">{i + 1}</th>
                 ))}
-                <th className="p-1 text-center w-7 border-l">P</th>
                 <th className="p-1 text-center w-7">G</th>
-                <th className="p-1 w-8"></th>
+                <th className="p-1 w-7"></th>
               </tr>
             </thead>
             <tbody>
               {positions.map((pos, idx) => {
                 const hasPlayers = pos.homeCode && pos.awayCode;
                 const pr = summary.posResults[idx];
+                // Total points = sum of all individual game scores
+                const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
+                const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
                 return (
                   <tr key={idx} className="border-t">
                     <td className="p-1 text-center font-bold text-sm align-top border-r" rowSpan={1}>
                       {idx + 1}
                     </td>
-                    <td className="p-0" colSpan={bestOf + 5}>
+                    <td className="p-0" colSpan={bestOf + 4}>
                       {/* Home row */}
                       <div className="grid items-center border-b"
                         style={setupDone
-                          ? { gridTemplateColumns: `28px 60px 1fr ${Array(bestOf).fill('24px').join(' ')} 24px 24px 32px` }
-                          : { gridTemplateColumns: '28px 80px 1fr 32px' }
+                          ? { gridTemplateColumns: `24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
+                          : { gridTemplateColumns: '24px 72px 1fr 32px' }
                         }>
                         <span className="text-[10px] font-semibold text-center bg-primary/10 py-1">H</span>
                         {!setupDone ? (
@@ -552,15 +554,14 @@ export default function LeagueGameDetail() {
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] font-mono px-1 text-muted-foreground">{pos.homeCode}</span>
+                            <span className="text-[10px] font-mono px-1 text-muted-foreground truncate">{pos.homeCode}</span>
                             <span className="text-xs truncate px-1 font-medium">{pos.homeName || "—"}</span>
                             {Array.from({ length: bestOf }, (_, gi) => (
                               <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].home > pos.scores[gi].away ? "font-bold" : "text-muted-foreground")}>
                                 {pos.scores[gi]?.home ?? ""}
                               </span>
                             ))}
-                            <span className="text-center text-xs font-semibold border-l py-0.5">{pr.homeWins > pr.awayWins ? "✓" : ""}</span>
-                            <span className="text-center text-xs font-bold py-0.5">{pr.homeWins || ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
                             <span />
                           </>
                         )}
@@ -568,8 +569,8 @@ export default function LeagueGameDetail() {
                       {/* Away row */}
                       <div className="grid items-center"
                         style={setupDone
-                          ? { gridTemplateColumns: `28px 60px 1fr ${Array(bestOf).fill('24px').join(' ')} 24px 24px 32px` }
-                          : { gridTemplateColumns: '28px 80px 1fr 32px' }
+                          ? { gridTemplateColumns: `24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
+                          : { gridTemplateColumns: '24px 72px 1fr 32px' }
                         }>
                         <span className="text-[10px] font-semibold text-center bg-secondary/30 py-1">V</span>
                         {!setupDone ? (
@@ -582,16 +583,15 @@ export default function LeagueGameDetail() {
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] font-mono px-1 text-muted-foreground">{pos.awayCode}</span>
+                            <span className="text-[10px] font-mono px-1 text-muted-foreground truncate">{pos.awayCode}</span>
                             <span className="text-xs truncate px-1 font-medium">{pos.awayName || "—"}</span>
                             {Array.from({ length: bestOf }, (_, gi) => (
                               <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].away > pos.scores[gi].home ? "font-bold" : "text-muted-foreground")}>
                                 {pos.scores[gi]?.away ?? ""}
                               </span>
                             ))}
-                            <span className="text-center text-xs font-semibold border-l py-0.5">{pr.awayWins > pr.homeWins ? "✓" : ""}</span>
-                            <span className="text-center text-xs font-bold py-0.5">{pr.awayWins || ""}</span>
-                            {/* Action buttons — more prominent */}
+                            <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.awayWins : ""}</span>
+                            {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
                               {hasPlayers && !isSubmitted && (
                                 <>
@@ -625,23 +625,20 @@ export default function LeagueGameDetail() {
                 <>
                   <tr className="border-t bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">SUB TOTALS</td>
-                    <td colSpan={bestOf + 1} />
-                    <td className="text-center p-1 border-l">{summary.homeTotalGames}</td>
-                    <td className="text-center p-1" />
+                    <td colSpan={bestOf} />
+                    <td className="text-center p-1">{summary.homeTotalGames}</td>
                     <td className="text-center p-1">{summary.awayTotalGames}</td>
                   </tr>
                   <tr className="bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
-                    <td colSpan={bestOf + 1} />
-                    <td className="text-center p-1 border-l">{summary.homeBonusPoints}</td>
-                    <td className="text-center p-1" />
+                    <td colSpan={bestOf} />
+                    <td className="text-center p-1">{summary.homeBonusPoints}</td>
                     <td className="text-center p-1">{summary.awayBonusPoints}</td>
                   </tr>
                   <tr className="bg-muted/60 font-bold text-sm">
                     <td colSpan={2} className="p-1 text-right">TOTAL</td>
-                    <td colSpan={bestOf + 1} />
-                    <td className="text-center p-1 border-l">{summary.homeTotal}</td>
-                    <td className="text-center p-1" />
+                    <td colSpan={bestOf} />
+                    <td className="text-center p-1">{summary.homeTotal}</td>
                     <td className="text-center p-1">{summary.awayTotal}</td>
                   </tr>
                 </>

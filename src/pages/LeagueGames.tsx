@@ -119,7 +119,7 @@ export default function LeagueGames() {
       if (fixtureIds.length === 0) return [];
       const { data, error } = await supabase
         .from("league_fixture_results" as any)
-        .select("fixture_id, status")
+        .select("fixture_id, status, home_total_points, away_total_points, winner")
         .in("fixture_id", fixtureIds);
       if (error) throw error;
       return data || [];
@@ -127,10 +127,15 @@ export default function LeagueGames() {
     enabled: fixtureIds.length > 0,
   });
 
-  const resultStatusMap = useMemo(() => {
-    const map = new Map<string, string>();
+  const resultMap = useMemo(() => {
+    const map = new Map<string, { status: string; homePoints: number; awayPoints: number; winner: string | null }>();
     for (const r of (existingResults || []) as any[]) {
-      map.set(r.fixture_id, r.status);
+      map.set(r.fixture_id, {
+        status: r.status,
+        homePoints: r.home_total_points ?? 0,
+        awayPoints: r.away_total_points ?? 0,
+        winner: r.winner,
+      });
     }
     return map;
   }, [existingResults]);
@@ -175,7 +180,7 @@ export default function LeagueGames() {
             <div className="space-y-2">
               {(dayFixtures || []).map((f) => {
                 const mine = isMyFixture(f);
-                const status = resultStatusMap.get(f.id);
+                const result = resultMap.get(f.id);
                 return (
                   <Card
                     key={f.id}
@@ -191,7 +196,15 @@ export default function LeagueGames() {
                         )}
                         <div className="flex items-center gap-2 text-sm">
                           <span className="font-bold">{f.home_team_code}</span>
-                          <span className="text-muted-foreground text-xs">vs</span>
+                          {result && (result.status === "submitted" || result.status === "confirmed") ? (
+                            <>
+                              <span className="font-bold text-primary">{result.homePoints}</span>
+                              <span className="text-muted-foreground text-xs">-</span>
+                              <span className="font-bold text-primary">{result.awayPoints}</span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">vs</span>
+                          )}
                           <span className="font-bold">{f.away_team_code}</span>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -202,8 +215,8 @@ export default function LeagueGames() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
-                        {status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
+                        {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
+                        {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </div>

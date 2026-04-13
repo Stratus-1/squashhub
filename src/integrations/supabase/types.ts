@@ -2747,6 +2747,59 @@ export type Database = {
           },
         ]
       }
+      platform_league_members: {
+        Row: {
+          affiliation: string
+          association_id: string
+          club_name: string
+          created_at: string
+          first_name: string
+          id: string
+          league_matches: number | null
+          qualifications: string | null
+          surname: string
+          updated_at: string
+          user_code: string
+          user_state: string
+        }
+        Insert: {
+          affiliation?: string
+          association_id: string
+          club_name?: string
+          created_at?: string
+          first_name: string
+          id?: string
+          league_matches?: number | null
+          qualifications?: string | null
+          surname: string
+          updated_at?: string
+          user_code: string
+          user_state?: string
+        }
+        Update: {
+          affiliation?: string
+          association_id?: string
+          club_name?: string
+          created_at?: string
+          first_name?: string
+          id?: string
+          league_matches?: number | null
+          qualifications?: string | null
+          surname?: string
+          updated_at?: string
+          user_code?: string
+          user_state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_league_members_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_availability: {
         Row: {
           created_at: string

@@ -180,7 +180,7 @@ export default function LeagueGames() {
             <div className="space-y-2">
               {(dayFixtures || []).map((f) => {
                 const mine = isMyFixture(f);
-                const status = resultStatusMap.get(f.id);
+                const result = resultMap.get(f.id);
                 return (
                   <Card
                     key={f.id}

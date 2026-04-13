@@ -61,6 +61,7 @@ import SuperAdminClubs from "./pages/admin/SuperAdminClubs";
 import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
+import SuperAdminLeagues from "./pages/admin/SuperAdminLeagues";
 import MyAccount from "./pages/MyAccount";
 import HonestyBar from "./pages/HonestyBar";
 import Settings from "./pages/Settings";
@@ -241,6 +242,7 @@ function AppRoutes() {
           <Route index element={<SuperAdminDashboard />} />
           <Route path="clubs" element={<SuperAdminClubs />} />
           <Route path="users" element={<SuperAdminUsers />} />
+          <Route path="leagues" element={<SuperAdminLeagues />} />
           <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
           <Route path="settings" element={<SuperAdminSettings />} />
           <Route path="support" element={<AdminSupport />} />

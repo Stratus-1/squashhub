@@ -863,10 +863,6 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
                 ))}
               </div>
             </div>
-                  </label>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">

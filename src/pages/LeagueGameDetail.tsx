@@ -3,19 +3,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Calendar, MapPin, Check, X, Loader2, Trophy, Pen, Play, Edit3, ArrowLeft } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
+import { cn } from "@/lib/utils";
 
 interface PositionEntry {
   homeCode: string;
@@ -26,8 +26,6 @@ interface PositionEntry {
   completed: boolean;
 }
 
-type Phase = "setup" | "scoring" | "submitted";
-
 function emptyPositions(): PositionEntry[] {
   return [1, 2, 3, 4].map(() => ({
     homeCode: "", homeName: "", awayCode: "", awayName: "",
@@ -35,12 +33,11 @@ function emptyPositions(): PositionEntry[] {
   }));
 }
 
-/* ---- Signature pad ---- */
+/* ---- Compact Signature ---- */
 function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawing, setDrawing] = useState(false);
   const [hasContent, setHasContent] = useState(false);
-
   const getPos = (e: React.TouchEvent | React.MouseEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
@@ -64,15 +61,14 @@ function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label
     ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
     setHasContent(false); onSave("");
   };
-
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium">{label}</Label>
-        {hasContent && <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={clear}>Clear</Button>}
+    <div className="flex-1">
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-[10px] font-semibold text-muted-foreground">{label}</span>
+        {hasContent && <button className="text-[10px] text-primary underline" onClick={clear}>Clear</button>}
       </div>
-      <canvas ref={canvasRef} width={300} height={100}
-        className="border rounded-md bg-white w-full touch-none"
+      <canvas ref={canvasRef} width={200} height={60}
+        className="border rounded bg-white w-full touch-none h-[60px]"
         onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
         onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
       />
@@ -87,9 +83,9 @@ export default function LeagueGameDetail() {
   const { user } = useAuth();
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
-  const [phase, setPhase] = useState<Phase>("setup");
-  const [activeMarker, setActiveMarker] = useState<number | null>(null); // position index being marked
-  const [manualEntry, setManualEntry] = useState<number | null>(null); // position index for manual scores
+  const [setupDone, setSetupDone] = useState(false);
+  const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  const [manualEntry, setManualEntry] = useState<number | null>(null);
   const [homeSig, setHomeSig] = useState("");
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -97,13 +93,8 @@ export default function LeagueGameDetail() {
   const { data: fixture } = useQuery({
     queryKey: ["league-fixture", fixtureId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("platform_league_fixtures")
-        .select("*")
-        .eq("id", fixtureId!)
-        .single();
-      if (error) throw error;
-      return data;
+      const { data, error } = await supabase.from("platform_league_fixtures").select("*").eq("id", fixtureId!).single();
+      if (error) throw error; return data;
     },
     enabled: !!fixtureId,
   });
@@ -111,13 +102,8 @@ export default function LeagueGameDetail() {
   const { data: existingResult } = useQuery({
     queryKey: ["league-fixture-result", fixtureId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("league_fixture_results" as any)
-        .select("*")
-        .eq("fixture_id", fixtureId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data as any;
+      const { data, error } = await supabase.from("league_fixture_results" as any).select("*").eq("fixture_id", fixtureId!).maybeSingle();
+      if (error) throw error; return data as any;
     },
     enabled: !!fixtureId,
   });
@@ -125,13 +111,8 @@ export default function LeagueGameDetail() {
   const { data: existingMatches } = useQuery({
     queryKey: ["league-match-results", fixtureId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("league_match_results" as any)
-        .select("*")
-        .eq("fixture_id", fixtureId!)
-        .order("position");
-      if (error) throw error;
-      return data as any[];
+      const { data, error } = await supabase.from("league_match_results" as any).select("*").eq("fixture_id", fixtureId!).order("position");
+      if (error) throw error; return data as any[];
     },
     enabled: !!fixtureId && !!existingResult,
   });
@@ -142,38 +123,25 @@ export default function LeagueGameDetail() {
         const m = existingMatches.find((r: any) => r.position === pos);
         if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false };
         return {
-          homeCode: m.home_player_code || "",
-          homeName: m.home_player_name || "",
-          awayCode: m.away_player_code || "",
-          awayName: m.away_player_name || "",
-          scores: (m.game_scores as any[]) || [],
-          completed: (m.game_scores as any[])?.length > 0,
+          homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
+          awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
+          scores: (m.game_scores as any[]) || [], completed: (m.game_scores as any[])?.length > 0,
         };
       });
       setPositions(loaded);
-      const isSubmitted = existingResult?.status === "submitted" || existingResult?.status === "confirmed";
-      setPhase(isSubmitted ? "submitted" : "scoring");
+      setSetupDone(true);
     }
   }, [existingMatches, existingResult]);
 
-  // NSF lookup
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {
     if (!code || code.length < 3) return "";
-    const { data } = await supabase
-      .from("platform_league_members" as any)
-      .select("first_name, surname")
-      .eq("user_code", code.toUpperCase())
-      .maybeSingle();
+    const { data } = await supabase.from("platform_league_members" as any).select("first_name, surname").eq("user_code", code.toUpperCase()).maybeSingle();
     if (data) return `${(data as any).first_name} ${(data as any).surname}`;
     return "";
   }, []);
 
   const updatePosition = (idx: number, field: keyof PositionEntry, value: any) => {
-    setPositions((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
+    setPositions((prev) => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next; });
   };
 
   const handleCodeBlur = async (idx: number, side: "home" | "away") => {
@@ -182,24 +150,12 @@ export default function LeagueGameDetail() {
     updatePosition(idx, side === "home" ? "homeName" : "awayName", name);
   };
 
-  // Setup validation: at least 1 position must have both players
-  const setupValid = positions.some((p) => p.homeCode && p.awayCode && p.homeName && p.awayName);
+  const setupValid = positions.some((p) => p.homeCode && p.awayCode);
 
-  const completeSetup = () => {
-    if (!setupValid) {
-      toast.error("Enter at least one complete position (both home & away NSF numbers)");
-      return;
-    }
-    setPhase("scoring");
-  };
-
-  // ---- Live marker integration ----
+  // ---- Marker ----
   const startMarking = (posIdx: number) => {
     const pos = positions[posIdx];
-    if (!pos.homeCode || !pos.awayCode) {
-      toast.error("Both players must be set for this position");
-      return;
-    }
+    if (!pos.homeCode || !pos.awayCode) { toast.error("Both players required"); return; }
     setActiveMarker(posIdx);
   };
 
@@ -209,84 +165,45 @@ export default function LeagueGameDetail() {
     return {
       playerA: { name: pos.homeName || pos.homeCode, number: pos.homeCode, club: fixture?.home_team_code || "" },
       playerB: { name: pos.awayName || pos.awayCode, number: pos.awayCode, club: fixture?.away_team_code || "" },
-      isDoubles: false,
-      matchType: "league",
-      scoringFormat: "par11",
-      bestOf: 5,
-      deuceRule: "win_by_2",
-      source: "league",
-      sourceId: fixtureId,
+      isDoubles: false, matchType: "league", scoringFormat: "par11", bestOf: 5, deuceRule: "win_by_2",
+      source: "league", sourceId: fixtureId,
     };
   }, [activeMarker, positions, fixture, fixtureId]);
 
   const handleMarkerComplete = useCallback((result: { games: GameScore[]; winnerId: "a" | "b"; durationSeconds: number }) => {
     if (activeMarker === null) return;
-    // Convert GameScore[] to league format
     const scores = result.games.map((g) => ({ home: g.a, away: g.b }));
-    setPositions((prev) => {
-      const next = [...prev];
-      next[activeMarker] = { ...next[activeMarker], scores, completed: true };
-      return next;
-    });
+    setPositions((prev) => { const next = [...prev]; next[activeMarker] = { ...next[activeMarker], scores, completed: true }; return next; });
     toast.success(`Position ${activeMarker + 1} complete!`);
     setActiveMarker(null);
   }, [activeMarker]);
 
-  // ---- Manual score entry ----
+  // ---- Manual ----
   const addGame = (posIdx: number) => {
-    setPositions((prev) => {
-      const next = [...prev];
-      next[posIdx] = { ...next[posIdx], scores: [...next[posIdx].scores, { home: 0, away: 0 }] };
-      return next;
-    });
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = { ...next[posIdx], scores: [...next[posIdx].scores, { home: 0, away: 0 }] }; return next; });
   };
-
   const updateScore = (posIdx: number, gameIdx: number, side: "home" | "away", val: number) => {
-    setPositions((prev) => {
-      const next = [...prev];
-      const scores = [...next[posIdx].scores];
-      scores[gameIdx] = { ...scores[gameIdx], [side]: val };
-      next[posIdx] = { ...next[posIdx], scores };
-      return next;
-    });
+    setPositions((prev) => { const next = [...prev]; const scores = [...next[posIdx].scores]; scores[gameIdx] = { ...scores[gameIdx], [side]: val }; next[posIdx] = { ...next[posIdx], scores }; return next; });
   };
-
   const removeGame = (posIdx: number, gameIdx: number) => {
-    setPositions((prev) => {
-      const next = [...prev];
-      const scores = next[posIdx].scores.filter((_, i) => i !== gameIdx);
-      next[posIdx] = { ...next[posIdx], scores };
-      return next;
-    });
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = { ...next[posIdx], scores: next[posIdx].scores.filter((_, i) => i !== gameIdx) }; return next; });
   };
 
-  const finishManualEntry = (posIdx: number) => {
-    setPositions((prev) => {
-      const next = [...prev];
-      next[posIdx] = { ...next[posIdx], completed: next[posIdx].scores.length > 0 };
-      return next;
-    });
-    setManualEntry(null);
-  };
-
-  // ---- Summary calculation ----
+  // ---- Summary ----
   const summary = useMemo(() => {
     let homeTotalGames = 0, awayTotalGames = 0, homeBonusPoints = 0, awayBonusPoints = 0;
+    const posResults: { homeWins: number; awayWins: number }[] = [];
     for (const pos of positions) {
-      let posHomeWins = 0, posAwayWins = 0;
-      for (const s of pos.scores) {
-        if (s.home > s.away) posHomeWins++;
-        else if (s.away > s.home) posAwayWins++;
-      }
-      homeTotalGames += posHomeWins;
-      awayTotalGames += posAwayWins;
-      if (posHomeWins > posAwayWins) homeBonusPoints++;
-      else if (posAwayWins > posHomeWins) awayBonusPoints++;
+      let hw = 0, aw = 0;
+      for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+      homeTotalGames += hw; awayTotalGames += aw;
+      if (hw > aw) homeBonusPoints++; else if (aw > hw) awayBonusPoints++;
+      posResults.push({ homeWins: hw, awayWins: aw });
     }
     const homeTotal = homeTotalGames + homeBonusPoints;
     const awayTotal = awayTotalGames + awayBonusPoints;
     const winner = homeTotal > awayTotal ? "home" : awayTotal > homeTotal ? "away" : "draw";
-    return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homeTotal, awayTotal, winner };
+    return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homeTotal, awayTotal, winner, posResults };
   }, [positions]);
 
   // ---- Submit ----
@@ -297,18 +214,14 @@ export default function LeagueGameDetail() {
       for (let i = 0; i < 4; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
-        let homeGamesWon = 0, awayGamesWon = 0;
-        for (const s of pos.scores) {
-          if (s.home > s.away) homeGamesWon++;
-          else if (s.away > s.home) awayGamesWon++;
-        }
-        const matchWinner = homeGamesWon > awayGamesWon ? "home" : awayGamesWon > homeGamesWon ? "away" : null;
+        let hw = 0, aw = 0;
+        for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
         const { error } = await supabase.from("league_match_results" as any).upsert({
           fixture_id: fixtureId, position: i + 1,
           home_player_code: pos.homeCode.toUpperCase(), away_player_code: pos.awayCode.toUpperCase(),
           home_player_name: pos.homeName, away_player_name: pos.awayName,
-          game_scores: pos.scores, home_games_won: homeGamesWon, away_games_won: awayGamesWon,
-          winner: matchWinner,
+          game_scores: pos.scores, home_games_won: hw, away_games_won: aw,
+          winner: hw > aw ? "home" : aw > hw ? "away" : null,
         } as any, { onConflict: "fixture_id,position" });
         if (error) throw error;
       }
@@ -334,16 +247,12 @@ export default function LeagueGameDetail() {
   };
 
   if (!fixture) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
-  const isSubmitted = phase === "submitted";
+  const isSubmitted = existingResult?.status === "submitted" || existingResult?.status === "confirmed";
 
-  // ---- Active marker view ----
+  // ---- Active marker fullscreen ----
   if (activeMarker !== null && markerConfig) {
     return (
       <div className="bottom-nav-safe">
@@ -354,302 +263,276 @@ export default function LeagueGameDetail() {
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
             <Badge variant="outline" className="text-xs">
-              Position {activeMarker + 1} · {fixture.home_team_code} vs {fixture.away_team_code}
+              Pos {activeMarker + 1} · {fixture.home_team_code} vs {fixture.away_team_code}
             </Badge>
           </div>
-          <MarkerScoreboard
-            config={markerConfig}
-            onMatchComplete={handleMarkerComplete}
-            onReset={() => setActiveMarker(null)}
-          />
+          <MarkerScoreboard config={markerConfig} onMatchComplete={handleMarkerComplete} onReset={() => setActiveMarker(null)} />
         </div>
       </div>
     );
   }
 
+  // ---- Manual entry overlay ----
+  if (manualEntry !== null) {
+    const pos = positions[manualEntry];
+    return (
+      <div className="bottom-nav-safe">
+        <SEO title="Enter Scores" description="Manual scores" path={`/league-games/${fixtureId}`} noIndex />
+        <div className="px-4 pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => {
+              updatePosition(manualEntry, "completed", pos.scores.length > 0);
+              setManualEntry(null);
+            }}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </Button>
+            <span className="text-sm font-semibold">Position {manualEntry + 1} — Manual Scores</span>
+          </div>
+          <div className="text-sm mb-2">
+            <span className="font-medium">{pos.homeName || pos.homeCode}</span>
+            <span className="text-muted-foreground mx-2">vs</span>
+            <span className="font-medium">{pos.awayName || pos.awayCode}</span>
+          </div>
+          {pos.scores.map((s, gi) => (
+            <div key={gi} className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-14">Game {gi + 1}</span>
+              <Input type="number" min={0} value={s.home} onChange={(e) => updateScore(manualEntry, gi, "home", parseInt(e.target.value) || 0)} className="w-16 text-center text-sm" />
+              <span className="text-xs text-muted-foreground">-</span>
+              <Input type="number" min={0} value={s.away} onChange={(e) => updateScore(manualEntry, gi, "away", parseInt(e.target.value) || 0)} className="w-16 text-center text-sm" />
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => removeGame(manualEntry, gi)}>×</Button>
+            </div>
+          ))}
+          {pos.scores.length < 5 && (
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => addGame(manualEntry)}>+ Add Game</Button>
+          )}
+          <Button className="w-full mt-2" onClick={() => { updatePosition(manualEntry, "completed", pos.scores.length > 0); setManualEntry(null); }}>
+            <Check className="w-4 h-4 mr-1" /> Done
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Main scorecard view (compact, matching NSA form) ----
+  const homeCode = fixture.home_team_code || "";
+  const awayCode = fixture.away_team_code || "";
+
   return (
     <div className="bottom-nav-safe">
-      <SEO title="League Game" description="Score league fixture" path={`/league-games/${fixtureId}`} noIndex />
-      <PageHeader title="League Game" subtitle={`${fixture.home_team_code} vs ${fixture.away_team_code}`} />
+      <SEO title="League Scorecard" description="League fixture scorecard" path={`/league-games/${fixtureId}`} noIndex />
+      <PageHeader title="League Scorecard" subtitle={`${homeCode} vs ${awayCode}`} />
 
-      <div className="px-4 space-y-4 pb-8">
-        {/* Fixture info */}
-        <Card className="p-4">
-          <div className="flex items-center gap-3 text-sm flex-wrap">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium">{format(parseISO(fixture.fixture_date), "EEEE, dd MMM yyyy")}</span>
-            <Badge variant="outline" className="text-xs">{fixture.division}</Badge>
-          </div>
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <MapPin className="w-3 h-3" /> {fixture.venue_name}
-          </div>
-          <div className="flex items-center justify-center gap-6 mt-4">
-            <div className="text-center">
-              <p className="text-lg font-bold">{fixture.home_team_code}</p>
-              <p className="text-xs text-muted-foreground">Home</p>
+      <div className="px-3 space-y-3 pb-8">
+        {/* Header row — like the paper form */}
+        <div className="border rounded-lg overflow-hidden text-xs">
+          {/* League / Date row */}
+          <div className="grid grid-cols-2 border-b bg-muted/50">
+            <div className="p-1.5 border-r">
+              <span className="text-muted-foreground">League:</span>{" "}
+              <span className="font-semibold">{fixture.division}</span>
             </div>
-            <span className="text-xl font-bold text-muted-foreground">vs</span>
-            <div className="text-center">
-              <p className="text-lg font-bold">{fixture.away_team_code}</p>
-              <p className="text-xs text-muted-foreground">Away</p>
+            <div className="p-1.5">
+              <span className="text-muted-foreground">Date:</span>{" "}
+              <span className="font-semibold">{format(parseISO(fixture.fixture_date), "dd MMM yyyy")}</span>
             </div>
           </div>
-        </Card>
+          {/* Teams row */}
+          <div className="grid grid-cols-2 border-b">
+            <div className="p-1.5 border-r bg-primary/5">
+              <span className="text-[10px] text-muted-foreground block">HOME TEAM</span>
+              <span className="font-bold text-sm">{homeCode}</span>
+            </div>
+            <div className="p-1.5 bg-secondary/30">
+              <span className="text-[10px] text-muted-foreground block">VISITORS TEAM</span>
+              <span className="font-bold text-sm">{awayCode}</span>
+            </div>
+          </div>
+          {/* Venue */}
+          <div className="p-1.5 text-[10px] text-muted-foreground bg-muted/30">
+            Venue: {fixture.venue_name}
+          </div>
+        </div>
 
-        {/* ---- SETUP PHASE ---- */}
-        {phase === "setup" && (
-          <>
-            <Card className="p-4">
-              <h3 className="text-sm font-semibold mb-1">Player Setup</h3>
-              <p className="text-xs text-muted-foreground mb-4">
-                Enter NSF numbers for each position. Names will auto-fill.
-              </p>
-              {positions.map((pos, idx) => (
-                <div key={idx} className="mb-4 last:mb-0">
-                  <p className="text-xs font-semibold text-muted-foreground mb-1.5">Position {idx + 1}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Home NSF #</Label>
-                      <Input
-                        value={pos.homeCode}
-                        onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
-                        onBlur={() => handleCodeBlur(idx, "home")}
-                        placeholder="NSF0000"
-                        className="font-mono text-sm"
-                      />
-                      {pos.homeName && <p className="text-xs text-green-600 mt-0.5">{pos.homeName}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Away NSF #</Label>
-                      <Input
-                        value={pos.awayCode}
-                        onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}
-                        onBlur={() => handleCodeBlur(idx, "away")}
-                        placeholder="NSF0000"
-                        className="font-mono text-sm"
-                      />
-                      {pos.awayName && <p className="text-xs text-green-600 mt-0.5">{pos.awayName}</p>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </Card>
-            <Button className="w-full" size="lg" onClick={completeSetup} disabled={!setupValid}>
-              <Check className="w-4 h-4 mr-2" /> Complete Setup
-            </Button>
-          </>
+        {/* Column headers for the scorecard table */}
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-muted/70 text-[10px] font-semibold">
+                <th className="p-1 text-left w-6">#</th>
+                <th className="p-1 text-left w-8"></th>
+                <th className="p-1 text-left">NSF</th>
+                <th className="p-1 text-left">Player</th>
+                <th className="p-1 text-center w-6">1</th>
+                <th className="p-1 text-center w-6">2</th>
+                <th className="p-1 text-center w-6">3</th>
+                <th className="p-1 text-center w-6">4</th>
+                <th className="p-1 text-center w-6">5</th>
+                <th className="p-1 text-center w-7 border-l">P</th>
+                <th className="p-1 text-center w-7">G</th>
+                <th className="p-1 w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {positions.map((pos, idx) => {
+                const hasPlayers = pos.homeCode && pos.awayCode;
+                const pr = summary.posResults[idx];
+                return (
+                  <tr key={idx} className="border-t">
+                    {/* Position number spans 2 visual rows but we use a single row with stacked content */}
+                    <td className="p-1 text-center font-bold text-sm align-top border-r" rowSpan={1}>
+                      {idx + 1}
+                    </td>
+                    <td className="p-0" colSpan={11}>
+                      {/* Home row */}
+                      <div className={cn("grid items-center border-b", setupDone ? "grid-cols-[28px_60px_1fr_repeat(5,24px)_24px_24px_32px]" : "grid-cols-[28px_80px_1fr_32px]")}>
+                        <span className="text-[10px] font-semibold text-center bg-primary/10 py-1">H</span>
+                        {!setupDone ? (
+                          <>
+                            <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
+                              onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
+                              className="h-7 text-xs font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
+                            <span className="text-xs truncate px-1 text-green-700">{pos.homeName}</span>
+                            <span />
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] font-mono px-1 text-muted-foreground">{pos.homeCode}</span>
+                            <span className="text-xs truncate px-1 font-medium">{pos.homeName || "—"}</span>
+                            {[0, 1, 2, 3, 4].map((gi) => (
+                              <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].home > pos.scores[gi].away ? "font-bold" : "text-muted-foreground")}>
+                                {pos.scores[gi]?.home ?? ""}
+                              </span>
+                            ))}
+                            <span className="text-center text-xs font-semibold border-l py-0.5">{pr.homeWins > pr.awayWins ? "✓" : ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5">{pr.homeWins || ""}</span>
+                            <span />
+                          </>
+                        )}
+                      </div>
+                      {/* Away row */}
+                      <div className={cn("grid items-center", setupDone ? "grid-cols-[28px_60px_1fr_repeat(5,24px)_24px_24px_32px]" : "grid-cols-[28px_80px_1fr_32px]")}>
+                        <span className="text-[10px] font-semibold text-center bg-secondary/30 py-1">V</span>
+                        {!setupDone ? (
+                          <>
+                            <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}
+                              onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
+                              className="h-7 text-xs font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
+                            <span className="text-xs truncate px-1 text-green-700">{pos.awayName}</span>
+                            <span />
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] font-mono px-1 text-muted-foreground">{pos.awayCode}</span>
+                            <span className="text-xs truncate px-1 font-medium">{pos.awayName || "—"}</span>
+                            {[0, 1, 2, 3, 4].map((gi) => (
+                              <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].away > pos.scores[gi].home ? "font-bold" : "text-muted-foreground")}>
+                                {pos.scores[gi]?.away ?? ""}
+                              </span>
+                            ))}
+                            <span className="text-center text-xs font-semibold border-l py-0.5">{pr.awayWins > pr.homeWins ? "✓" : ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5">{pr.awayWins || ""}</span>
+                            {/* Action buttons */}
+                            <span className="flex items-center justify-center">
+                              {hasPlayers && !pos.completed && !isSubmitted && (
+                                <button onClick={() => startMarking(idx)} className="text-primary hover:text-primary/80" title="Mark game">
+                                  <Play className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {hasPlayers && !isSubmitted && (pos.completed || !pos.completed) && (
+                                <button onClick={() => { if (pos.scores.length === 0) addGame(idx); setManualEntry(idx); }}
+                                  className="text-muted-foreground hover:text-foreground ml-0.5" title="Enter/edit scores">
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {/* Totals rows */}
+              {setupDone && (
+                <>
+                  <tr className="border-t bg-muted/40 font-semibold text-xs">
+                    <td colSpan={2} className="p-1 text-right">SUB TOTALS</td>
+                    <td colSpan={7} />
+                    <td className="text-center p-1 border-l">{summary.homeTotalGames}</td>
+                    <td className="text-center p-1" />
+                    <td className="text-center p-1">{summary.awayTotalGames}</td>
+                  </tr>
+                  <tr className="bg-muted/40 font-semibold text-xs">
+                    <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
+                    <td colSpan={7} />
+                    <td className="text-center p-1 border-l">{summary.homeBonusPoints}</td>
+                    <td className="text-center p-1" />
+                    <td className="text-center p-1">{summary.awayBonusPoints}</td>
+                  </tr>
+                  <tr className="bg-muted/60 font-bold text-sm">
+                    <td colSpan={2} className="p-1 text-right">TOTAL</td>
+                    <td colSpan={7} />
+                    <td className="text-center p-1 border-l">{summary.homeTotal}</td>
+                    <td className="text-center p-1" />
+                    <td className="text-center p-1">{summary.awayTotal}</td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Winner badge */}
+        {setupDone && summary.winner !== "draw" && positions.some(p => p.completed) && (
+          <div className="text-center">
+            <Badge className="bg-green-500/15 text-green-700 text-xs">
+              <Trophy className="w-3 h-3 mr-1" />
+              {summary.winner === "home" ? homeCode : awayCode} wins
+            </Badge>
+          </div>
         )}
 
-        {/* ---- SCORING PHASE ---- */}
-        {phase === "scoring" && (
-          <>
-            {positions.map((pos, idx) => {
-              const hasPlayers = pos.homeCode && pos.awayCode;
-              const isManual = manualEntry === idx;
-
-              return (
-                <Card key={idx}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm">Position {idx + 1}</CardTitle>
-                      {pos.completed && (
-                        <Badge className="bg-green-500/15 text-green-700 text-[10px]">
-                          <Check className="w-3 h-3 mr-0.5" /> Done
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Player names */}
-                    {hasPlayers ? (
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Home</p>
-                          <p className="font-medium truncate">{pos.homeName || pos.homeCode}</p>
-                          <p className="text-[10px] font-mono text-muted-foreground">{pos.homeCode}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Away</p>
-                          <p className="font-medium truncate">{pos.awayName || pos.awayCode}</p>
-                          <p className="text-[10px] font-mono text-muted-foreground">{pos.awayCode}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">No players assigned</p>
-                    )}
-
-                    {/* Completed scores display */}
-                    {pos.completed && pos.scores.length > 0 && !isManual && (
-                      <div className="space-y-1">
-                        {pos.scores.map((s, gi) => (
-                          <div key={gi} className="flex items-center gap-2 text-sm">
-                            <span className="text-xs text-muted-foreground w-14">Game {gi + 1}</span>
-                            <span className={s.home > s.away ? "font-bold text-green-600" : ""}>{s.home}</span>
-                            <span className="text-muted-foreground">-</span>
-                            <span className={s.away > s.home ? "font-bold text-green-600" : ""}>{s.away}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Manual score entry */}
-                    {isManual && (
-                      <div className="space-y-1.5 border-t pt-2">
-                        {pos.scores.map((s, gi) => (
-                          <div key={gi} className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground w-14 shrink-0">Game {gi + 1}</span>
-                            <Input type="number" min={0} value={s.home}
-                              onChange={(e) => updateScore(idx, gi, "home", parseInt(e.target.value) || 0)}
-                              className="w-16 text-center text-sm" />
-                            <span className="text-xs text-muted-foreground">-</span>
-                            <Input type="number" min={0} value={s.away}
-                              onChange={(e) => updateScore(idx, gi, "away", parseInt(e.target.value) || 0)}
-                              className="w-16 text-center text-sm" />
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => removeGame(idx, gi)}>
-                              <X className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        ))}
-                        <div className="flex gap-2">
-                          {pos.scores.length < 5 && (
-                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addGame(idx)}>
-                              + Add Game
-                            </Button>
-                          )}
-                          <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => finishManualEntry(idx)}>
-                            <Check className="w-3 h-3 mr-1" /> Done
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action buttons */}
-                    {hasPlayers && !pos.completed && !isManual && (
-                      <div className="flex gap-2">
-                        <Button size="sm" className="flex-1 gap-1.5" onClick={() => startMarking(idx)}>
-                          <Play className="w-3.5 h-3.5" /> Mark Game
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => { setManualEntry(idx); if (pos.scores.length === 0) addGame(idx); }}>
-                          <Edit3 className="w-3.5 h-3.5" /> Enter Scores
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Re-mark or edit completed */}
-                    {pos.completed && !isManual && (
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => {
-                          updatePosition(idx, "scores", []);
-                          updatePosition(idx, "completed", false);
-                          startMarking(idx);
-                        }}>
-                          <Play className="w-3 h-3" /> Re-mark
-                        </Button>
-                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setManualEntry(idx)}>
-                          <Edit3 className="w-3 h-3" /> Edit Scores
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-
-            {/* Back to setup */}
-            <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setPhase("setup")}>
-              <ArrowLeft className="w-3 h-3 mr-1" /> Back to Player Setup
-            </Button>
-
-            {/* Summary */}
-            {positions.some((p) => p.completed) && (
-              <Card className="p-4">
-                <h3 className="text-sm font-semibold mb-3">Match Summary</h3>
-                <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                  <p className="font-bold text-lg">{fixture.home_team_code}</p>
-                  <div />
-                  <p className="font-bold text-lg">{fixture.away_team_code}</p>
-
-                  <p className="text-2xl font-bold">{summary.homeTotalGames}</p>
-                  <p className="text-xs text-muted-foreground self-center">Games Won</p>
-                  <p className="text-2xl font-bold">{summary.awayTotalGames}</p>
-
-                  <p className="text-lg font-medium text-primary">+{summary.homeBonusPoints}</p>
-                  <p className="text-xs text-muted-foreground self-center">Bonus</p>
-                  <p className="text-lg font-medium text-primary">+{summary.awayBonusPoints}</p>
-
-                  <p className="text-2xl font-black">{summary.homeTotal}</p>
-                  <p className="text-xs font-semibold text-muted-foreground self-center">TOTAL</p>
-                  <p className="text-2xl font-black">{summary.awayTotal}</p>
-                </div>
-                {summary.winner !== "draw" && (
-                  <div className="text-center mt-3">
-                    <Badge className="bg-green-500/15 text-green-700">
-                      <Trophy className="w-3 h-3 mr-1" />
-                      {summary.winner === "home" ? fixture.home_team_code : fixture.away_team_code} wins
-                    </Badge>
-                  </div>
-                )}
-              </Card>
-            )}
-
-            {/* Signatures */}
-            <Card className="p-4 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Pen className="w-4 h-4" /> Captain Signatures
-              </h3>
-              <SignaturePad label={`Home Captain (${fixture.home_team_code})`} onSave={setHomeSig} />
-              <SignaturePad label={`Away Captain (${fixture.away_team_code})`} onSave={setAwaySig} />
-            </Card>
-
-            {/* Submit */}
-            <Button className="w-full" size="lg" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-              Submit Results
-            </Button>
-          </>
+        {/* Setup / scoring buttons */}
+        {!setupDone && !isSubmitted && (
+          <Button className="w-full" size="sm" onClick={() => { if (!setupValid) { toast.error("Enter at least one complete position"); return; } setSetupDone(true); }} disabled={!setupValid}>
+            <Check className="w-4 h-4 mr-1" /> Complete Setup
+          </Button>
         )}
 
-        {/* ---- SUBMITTED ---- */}
+        {setupDone && !isSubmitted && (
+          <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setSetupDone(false)}>
+            <ArrowLeft className="w-3 h-3 mr-1" /> Edit Players
+          </Button>
+        )}
+
+        {/* Signatures — side by side like the paper form */}
+        {setupDone && !isSubmitted && (
+          <div className="flex gap-2">
+            <SignaturePad label={`Home Captain`} onSave={setHomeSig} />
+            <SignaturePad label={`Away Captain`} onSave={setAwaySig} />
+          </div>
+        )}
+
+        {/* Submit */}
+        {setupDone && !isSubmitted && (
+          <Button className="w-full" size="sm" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+            Submit Results
+          </Button>
+        )}
+
         {isSubmitted && (
-          <>
-            {positions.map((pos, idx) => (
-              pos.homeCode || pos.awayCode ? (
-                <Card key={idx} className="p-3">
-                  <p className="text-xs font-semibold mb-1">Position {idx + 1}</p>
-                  <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-                    <p className="truncate">{pos.homeName || pos.homeCode}</p>
-                    <p className="truncate">{pos.awayName || pos.awayCode}</p>
-                  </div>
-                  {pos.scores.map((s, gi) => (
-                    <div key={gi} className="flex items-center gap-2 text-sm">
-                      <span className="text-xs text-muted-foreground w-14">Game {gi + 1}</span>
-                      <span className={s.home > s.away ? "font-bold" : ""}>{s.home}</span>
-                      <span className="text-muted-foreground">-</span>
-                      <span className={s.away > s.home ? "font-bold" : ""}>{s.away}</span>
-                    </div>
-                  ))}
-                </Card>
-              ) : null
-            ))}
-
-            <Card className="p-4">
-              <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                <p className="font-bold text-lg">{fixture.home_team_code}</p>
-                <div />
-                <p className="font-bold text-lg">{fixture.away_team_code}</p>
-                <p className="text-2xl font-black">{summary.homeTotal}</p>
-                <p className="text-xs font-semibold text-muted-foreground self-center">TOTAL</p>
-                <p className="text-2xl font-black">{summary.awayTotal}</p>
-              </div>
-            </Card>
-
-            <div className="text-center py-4">
-              <Badge className="bg-green-500/15 text-green-700 text-sm px-4 py-1">
-                <Check className="w-4 h-4 mr-1" /> Results Submitted
-              </Badge>
-            </div>
-          </>
+          <div className="text-center py-2">
+            <Badge className="bg-green-500/15 text-green-700 text-sm px-4 py-1">
+              <Check className="w-4 h-4 mr-1" /> Results Submitted
+            </Badge>
+          </div>
         )}
+
+        <p className="text-[10px] text-muted-foreground text-center">
+          One (1) bonus point for each match winner in winning team
+        </p>
       </div>
 
       <BackToDashboard />

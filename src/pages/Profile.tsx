@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useProfile } from "@/hooks/use-data";
-import { useMyClubMember, useMyClub, useFeeCategories, useLeagueAssociations, useMyLeagueRegistration, useLeagues, SKILL_LEVELS } from "@/hooks/use-club";
+import { useMyClubMember, useMyClub, useFeeCategories, SKILL_LEVELS } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { toast } from "sonner";
@@ -80,9 +80,6 @@ export default function Profile() {
     : defaultClubMember;
 
   const { data: feeCategories = [] } = useFeeCategories(clubId);
-  const { data: associations = [] } = useLeagueAssociations(clubId);
-  const { data: leagues = [] } = useLeagues(clubId);
-  const { data: leagueRegistration } = useMyLeagueRegistration(clubMember?.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<"view" | "edit">("view");
@@ -101,8 +98,6 @@ export default function Profile() {
   const [memberNumber, setMemberNumber] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
-  const [associationId, setAssociationId] = useState("");
-  const [associationNumber, setAssociationNumber] = useState("");
 
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
 
@@ -136,17 +131,9 @@ export default function Profile() {
       setPlaysLeague(clubMember.plays_league || false);
     }
 
-    if (leagueRegistration) {
-      const league = leagues.find((l: any) => l.id === leagueRegistration.league_id);
-      setAssociationId(league?.association_id || "");
-      setAssociationNumber(leagueRegistration.league_association_number || "");
-    } else {
-      setAssociationId("");
-      setAssociationNumber("");
-    }
   };
 
-  useEffect(() => { resetDraft(); }, [profile, clubMember, leagueRegistration, leagues]);
+  useEffect(() => { resetDraft(); }, [profile, clubMember]);
 
   useEffect(() => {
     if (didInitFromUrl) return;
@@ -215,30 +202,6 @@ export default function Profile() {
           .eq("id", clubMember.id);
         if (memErr) throw memErr;
 
-        if (playsLeague && associationId) {
-          const targetLeague = leagues.find((l: any) => l.association_id === associationId);
-          if (targetLeague) {
-            if (leagueRegistration?.id) {
-              const { error: regErr } = await fromExt("member_league_registrations")
-                .update({
-                  league_id: targetLeague.id,
-                  league_association_number: associationNumber.trim() || null,
-                })
-                .eq("id", leagueRegistration.id);
-              if (regErr) throw regErr;
-            } else {
-              const { error: regErr } = await fromExt("member_league_registrations")
-                .insert({
-                  club_member_id: clubMember.id,
-                  league_id: targetLeague.id,
-                  league_association_number: associationNumber.trim() || null,
-                });
-              if (regErr) throw regErr;
-            }
-          }
-        } else if (!playsLeague) {
-          await fromExt("member_league_registrations").delete().eq("club_member_id", clubMember.id);
-        }
       } else {
         const { error } = await supabase.from("profiles").update({
           name: cleanName,
@@ -270,9 +233,6 @@ export default function Profile() {
     phone: clubMember.phone || String((profile as any)?.phone || ""),
     avatar_url: clubMember.avatar_url || (!isViewingSwitchedMember ? (profile as any)?.avatar_url || null : null),
   } : profile;
-  const associationName = associationId
-    ? associations.find((association) => association.id === associationId)?.name || null
-    : null;
 
   return (
     <Dialog open onOpenChange={(open) => (!open ? close() : null)}>
@@ -293,8 +253,6 @@ export default function Profile() {
             profile={profileViewData}
             clubMember={clubMember}
             feeCategories={feeCategories}
-            associationName={associationName}
-            associationNumber={associationNumber || null}
             close={close}
             setMode={setMode}
           />
@@ -401,23 +359,6 @@ export default function Profile() {
                   <input type="checkbox" id="plays-league" checked={playsLeague} onChange={(e) => setPlaysLeague(e.target.checked)} />
                   <Label htmlFor="plays-league">Plays League</Label>
                 </div>
-                {playsLeague && (associations.length > 0 || leagues.length > 0) && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label>League Association</Label>
-                      <select className={selectClasses} value={associationId} onChange={(e) => setAssociationId(e.target.value)}>
-                        <option value="">— Select Association —</option>
-                        {associations.map((a) => (
-                          <option key={a.id} value={a.id}>{a.name}{a.abbreviation ? ` (${a.abbreviation})` : ""}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Association Number</Label>
-                      <Input value={associationNumber} onChange={(e) => setAssociationNumber(e.target.value)} placeholder="e.g. NSF12345" />
-                    </div>
-                  </>
-                )}
               </>
             )}
 
@@ -439,16 +380,12 @@ function ViewMode({
   profile,
   clubMember,
   feeCategories,
-  associationName,
-  associationNumber,
   close,
   setMode,
 }: {
   profile: any;
   clubMember: any;
   feeCategories: any[];
-  associationName: string | null;
-  associationNumber: string | null;
   close: () => void;
   setMode: (m: "edit") => void;
 }) {
@@ -484,8 +421,6 @@ function ViewMode({
             )}
             {skillLabel && <p className="text-xs text-muted-foreground">Skill: {skillLabel}</p>}
             {feeCategory && <p className="text-xs text-muted-foreground">Fee: {feeCategory.name} (R{feeCategory.annual_fee}/yr)</p>}
-            {associationName && <p className="text-xs text-muted-foreground">Association: {associationName}</p>}
-            {associationNumber && <p className="text-xs text-muted-foreground">Association #: {associationNumber}</p>}
             {clubMember.address && <p className="text-xs text-muted-foreground">Address: {clubMember.address}</p>}
             {clubMember.id_number && <p className="text-xs text-muted-foreground">ID: •••••{clubMember.id_number.slice(-4)}</p>}
             <p className="text-xs text-muted-foreground">Plays league: {clubMember.plays_league ? "Yes" : "No"}</p>

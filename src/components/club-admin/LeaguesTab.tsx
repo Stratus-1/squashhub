@@ -826,10 +826,10 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Leagues</Button></DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Add Leagues</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="mb-2 block font-semibold">Men's Leagues</Label>
               <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -848,6 +848,21 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
                   <label key={`ladies-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
                     <input type="checkbox" checked={selectedLadies.includes(l)} onChange={() => handleToggle(l, "ladies")} className="rounded border-input" />
                     {l} League
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="mb-2 block font-semibold">Mixed Leagues</Label>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {LEAGUE_OPTIONS.map(l => (
+                  <label key={`mixed-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
+                    <input type="checkbox" checked={selectedMixed.includes(l)} onChange={() => handleToggle(l, "mixed")} className="rounded border-input" />
+                    {l} League
+                  </label>
+                ))}
+              </div>
+            </div>
                   </label>
                 ))}
               </div>

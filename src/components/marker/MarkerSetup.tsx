@@ -17,7 +17,7 @@ import { format } from "date-fns";
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
 export type ScoringFormat = "par11" | "par15" | "english9";
 export type BestOf = 3 | 5;
-export type MatchSource = "manual" | "tournament" | "booking";
+export type MatchSource = "manual" | "tournament" | "booking" | "league";
 
 export interface PlayerInfo {
   name: string;

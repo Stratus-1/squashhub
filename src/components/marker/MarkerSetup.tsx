@@ -435,7 +435,7 @@ export function MarkerSetup({ onStart }: Props) {
       if (!leagues || leagues.length === 0) return [];
 
       // Fetch all registrations for these leagues
-      const leagueIds = leagues.map((l: any) => l.id);
+      const leagueIds = leagues.map((l: any) => l.id) as string[];
       const { data: regs } = await fromExt("member_league_registrations")
         .select("league_id, club_member_id, player_rank")
         .in("league_id", leagueIds);

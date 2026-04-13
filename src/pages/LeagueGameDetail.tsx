@@ -144,8 +144,29 @@ export default function LeagueGameDetail() {
     setPositions((prev) => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next; });
   };
 
+  const checkDuplicateCode = (idx: number, side: "home" | "away", code: string): boolean => {
+    if (!code || code.length < 2) return false;
+    const upperCode = code.toUpperCase();
+    for (let i = 0; i < positions.length; i++) {
+      if (i === idx) continue;
+      if (positions[i].homeCode.toUpperCase() === upperCode || positions[i].awayCode.toUpperCase() === upperCode) {
+        return true;
+      }
+    }
+    // Also check within the same row for the other side
+    const otherCode = side === "home" ? positions[idx].awayCode : positions[idx].homeCode;
+    if (otherCode && otherCode.toUpperCase() === upperCode) return true;
+    return false;
+  };
+
   const handleCodeBlur = async (idx: number, side: "home" | "away") => {
     const code = side === "home" ? positions[idx].homeCode : positions[idx].awayCode;
+    if (checkDuplicateCode(idx, side, code)) {
+      toast.error(`Player ${code.toUpperCase()} is already entered in another position`);
+      updatePosition(idx, side === "home" ? "homeCode" : "awayCode", "");
+      updatePosition(idx, side === "home" ? "homeName" : "awayName", "");
+      return;
+    }
     const name = await lookupPlayer(code);
     updatePosition(idx, side === "home" ? "homeName" : "awayName", name);
   };

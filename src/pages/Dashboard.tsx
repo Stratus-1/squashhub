@@ -55,6 +55,18 @@ export default function Dashboard() {
   const { data: myBookings } = useMyBookings(effectiveUserId, { memberId: myMemberId });
   const { data: myScheduledMatches } = useMyScheduledMatches(effectiveUserId);
 
+  // Check if club has any league associations (to show/hide League Games tile)
+  const { data: clubLeagueAssociations } = useQuery({
+    queryKey: ["league-associations", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+      const { data, error } = await fromExt("league_associations").select("id").eq("club_id", clubId!).limit(1);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubId,
+  });
+  const hasLeagues = (clubLeagueAssociations || []).length > 0;
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],

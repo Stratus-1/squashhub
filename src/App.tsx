@@ -54,6 +54,8 @@ import Analytics from "./pages/Analytics";
 import Seasons from "./pages/Seasons";
 import AdminEventEditor from "./pages/AdminEventEditor";
 import Support from "./pages/Support";
+import LeagueGames from "./pages/LeagueGames";
+import LeagueGameDetail from "./pages/LeagueGameDetail";
 import AdminSupport from "./pages/AdminSupport";
 import { SuperAdminLayout } from "./components/admin/SuperAdminLayout";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
@@ -237,6 +239,8 @@ function AppRoutes() {
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
         <Route path="/honesty-bar" element={<ProtectedRoute><HonestyBar /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><ClubChampsView /></ProtectedRoute>} />
+        <Route path="/league-games" element={<ProtectedRoute><LeagueGames /></ProtectedRoute>} />
+        <Route path="/league-games/:fixtureId" element={<ProtectedRoute><LeagueGameDetail /></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
           <Route index element={<SuperAdminDashboard />} />

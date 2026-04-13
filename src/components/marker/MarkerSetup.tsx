@@ -588,7 +588,8 @@ export function MarkerSetup({ onStart }: Props) {
               size="sm"
               className="text-xs"
               onClick={() => setSource("league")}
-              disabled={leaguesWithPlayers.length === 0}
+              disabled={!leagueAvailable}
+              title={!leagueAvailable ? "League setup must be completed by the captain first" : undefined}
             >
               <ListOrdered className="w-3.5 h-3.5 mr-1" />
               League

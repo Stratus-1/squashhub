@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { fromExt } from "@/lib/supabase-ext";
 
 import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
 import { CreateClubEvent } from "@/components/CreateClubEvent";
@@ -55,6 +56,18 @@ export default function Dashboard() {
   const { data: myBookings } = useMyBookings(effectiveUserId, { memberId: myMemberId });
   const { data: myScheduledMatches } = useMyScheduledMatches(effectiveUserId);
 
+  // Check if club has any league associations (to show/hide League Games tile)
+  const { data: clubLeagueAssociations } = useQuery({
+    queryKey: ["league-associations", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+      const { data, error } = await fromExt("league_associations").select("id").eq("club_id", clubId!).limit(1);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubId,
+  });
+  const hasLeagues = (clubLeagueAssociations || []).length > 0;
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],
@@ -360,10 +373,12 @@ export default function Dashboard() {
             <CalendarDays className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Events</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-500/20" onClick={() => navigate("/league-games")}>
-            <Trophy className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">League Games</span>
-          </Button>
+          {hasLeagues && (
+            <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-500/20" onClick={() => navigate("/league-games")}>
+              <Trophy className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight text-center">League Games</span>
+            </Button>
+          )}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Account</span>

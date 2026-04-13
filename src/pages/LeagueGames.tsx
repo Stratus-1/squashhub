@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fromExt } from "@/lib/supabase-ext";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,11 +13,34 @@ import { format, parseISO, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useMyClub } from "@/hooks/use-club";
 
 export default function LeagueGames() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
+  const { data: clubData } = useMyClub();
+  const clubId = clubData?.club?.id;
+
+  // Get club's league associations to find linked platform association IDs
+  const { data: clubAssociations } = useQuery({
+    queryKey: ["league-associations", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+      const { data, error } = await fromExt("league_associations")
+        .select("id, platform_association_id")
+        .eq("club_id", clubId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubId,
+  });
+
+  const platformAssocIds = useMemo(() => {
+    return (clubAssociations || [])
+      .map((a: any) => a.platform_association_id)
+      .filter(Boolean) as string[];
+  }, [clubAssociations]);
 
   // Get member's league registrations to find their team codes
   const { data: myLeagueRegs } = useQuery({
@@ -42,16 +66,18 @@ export default function LeagueGames() {
     return (myLeagueRegs || []).some((r: any) => r.is_captain);
   }, [myLeagueRegs]);
 
-  // Fetch upcoming fixtures for next 2 weeks
+  // Fetch upcoming fixtures for next 2 weeks, filtered by club's platform associations
   const today = format(new Date(), "yyyy-MM-dd");
   const twoWeeksOut = format(addDays(new Date(), 14), "yyyy-MM-dd");
 
   const { data: fixtures, isLoading } = useQuery({
-    queryKey: ["upcoming-league-fixtures", today, twoWeeksOut],
+    queryKey: ["upcoming-league-fixtures", today, twoWeeksOut, platformAssocIds.join(",")],
     queryFn: async () => {
+      if (platformAssocIds.length === 0) return [];
       const { data, error } = await supabase
         .from("platform_league_fixtures")
         .select("*")
+        .in("association_id", platformAssocIds)
         .gte("fixture_date", today)
         .lte("fixture_date", twoWeeksOut)
         .order("fixture_date")
@@ -59,6 +85,7 @@ export default function LeagueGames() {
       if (error) throw error;
       return data || [];
     },
+    enabled: platformAssocIds.length > 0,
   });
 
   // Fetch existing results for these fixtures

@@ -2018,6 +2018,7 @@ export type Database = {
           fee_payment_details: string | null
           id: string
           name: string
+          platform_association_id: string | null
           pro_rate: boolean
           updated_at: string
           website: string | null
@@ -2037,6 +2038,7 @@ export type Database = {
           fee_payment_details?: string | null
           id?: string
           name: string
+          platform_association_id?: string | null
           pro_rate?: boolean
           updated_at?: string
           website?: string | null
@@ -2056,6 +2058,7 @@ export type Database = {
           fee_payment_details?: string | null
           id?: string
           name?: string
+          platform_association_id?: string | null
           pro_rate?: boolean
           updated_at?: string
           website?: string | null
@@ -2066,6 +2069,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_associations_platform_association_id_fkey"
+            columns: ["platform_association_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_associations"
             referencedColumns: ["id"]
           },
         ]

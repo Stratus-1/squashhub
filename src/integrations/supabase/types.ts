@@ -2070,6 +2070,127 @@ export type Database = {
           },
         ]
       }
+      league_fixture_results: {
+        Row: {
+          away_bonus_points: number
+          away_captain_signature: string | null
+          away_total_games: number
+          away_total_points: number
+          created_at: string
+          fixture_id: string
+          home_bonus_points: number
+          home_captain_signature: string | null
+          home_total_games: number
+          home_total_points: number
+          id: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string
+          winner: string | null
+        }
+        Insert: {
+          away_bonus_points?: number
+          away_captain_signature?: string | null
+          away_total_games?: number
+          away_total_points?: number
+          created_at?: string
+          fixture_id: string
+          home_bonus_points?: number
+          home_captain_signature?: string | null
+          home_total_games?: number
+          home_total_points?: number
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+          winner?: string | null
+        }
+        Update: {
+          away_bonus_points?: number
+          away_captain_signature?: string | null
+          away_total_games?: number
+          away_total_points?: number
+          created_at?: string
+          fixture_id?: string
+          home_bonus_points?: number
+          home_captain_signature?: string | null
+          home_total_games?: number
+          home_total_points?: number
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+          winner?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_fixture_results_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: true
+            referencedRelation: "platform_league_fixtures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_match_results: {
+        Row: {
+          away_games_won: number
+          away_player_code: string | null
+          away_player_name: string | null
+          created_at: string
+          fixture_id: string
+          game_scores: Json | null
+          home_games_won: number
+          home_player_code: string | null
+          home_player_name: string | null
+          id: string
+          position: number
+          updated_at: string
+          winner: string | null
+        }
+        Insert: {
+          away_games_won?: number
+          away_player_code?: string | null
+          away_player_name?: string | null
+          created_at?: string
+          fixture_id: string
+          game_scores?: Json | null
+          home_games_won?: number
+          home_player_code?: string | null
+          home_player_name?: string | null
+          id?: string
+          position: number
+          updated_at?: string
+          winner?: string | null
+        }
+        Update: {
+          away_games_won?: number
+          away_player_code?: string | null
+          away_player_name?: string | null
+          created_at?: string
+          fixture_id?: string
+          game_scores?: Json | null
+          home_games_won?: number
+          home_player_code?: string | null
+          home_player_name?: string | null
+          id?: string
+          position?: number
+          updated_at?: string
+          winner?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_match_results_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_fixtures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leagues: {
         Row: {
           association_id: string | null

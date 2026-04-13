@@ -541,16 +541,14 @@ export default function LeagueGameDetail() {
                 const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
                 return (
                   <tr key={idx} className="border-t">
-                    <td className="p-1 text-center font-bold text-sm align-top border-r" rowSpan={1}>
-                      {idx + 1}
-                    </td>
-                    <td className="p-0" colSpan={bestOf + 4}>
+                    <td className="p-0" colSpan={bestOf + 5}>
                       {/* Home row */}
                       <div className="grid items-center border-b"
                         style={setupDone
-                          ? { gridTemplateColumns: `24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
-                          : { gridTemplateColumns: '24px 72px 1fr 32px' }
+                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
+                          : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                         }>
+                        <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
                         <span className="text-[10px] font-semibold text-center bg-primary/10 py-1">H</span>
                         {!setupDone ? (
                           <>
@@ -577,9 +575,10 @@ export default function LeagueGameDetail() {
                       {/* Away row */}
                       <div className="grid items-center"
                         style={setupDone
-                          ? { gridTemplateColumns: `24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
-                          : { gridTemplateColumns: '24px 72px 1fr 32px' }
+                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
+                          : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                         }>
+                        <span></span>
                         <span className="text-[10px] font-semibold text-center bg-secondary/30 py-1">V</span>
                         {!setupDone ? (
                           <>

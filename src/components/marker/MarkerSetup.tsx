@@ -529,6 +529,7 @@ export function MarkerSetup({ onStart }: Props) {
   // Reset when source changes
   useEffect(() => {
     setSelectedSourceId("");
+    setSelectedLeagueId("");
     setPlayerA(emptyPlayer());
     setPlayerB(emptyPlayer());
     setPartnerA(emptyPlayer());
@@ -536,10 +537,12 @@ export function MarkerSetup({ onStart }: Props) {
     setIsDoubles(false);
     if (source === "manual") {
       setMatchType("friendly");
+    } else if (source === "league") {
+      setMatchType("league");
     }
   }, [source]);
 
-  const playersFromSource = source !== "manual" && !!selectedSourceId;
+  const playersFromSource = (source === "tournament" || source === "booking") && !!selectedSourceId;
   const canStart =
     playerA.name.trim().length > 0 &&
     playerB.name.trim().length > 0 &&

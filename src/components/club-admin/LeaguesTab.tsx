@@ -706,13 +706,55 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 // ─── Association Dialog ───
 function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [form, setForm] = useState({ name: "", abbreviation: "" });
+  const [mode, setMode] = useState<"select" | "create">("select");
+  const [selectedPlatformId, setSelectedPlatformId] = useState("");
   const qc = useQueryClient();
 
+  // Fetch platform-level associations from Super Admin
+  const { data: platformAssociations = [] } = useQuery({
+    queryKey: ["platform-league-associations"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("platform_league_associations")
+        .select("id, name, short_code, region")
+        .eq("status", "active")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch existing club associations to filter out already-linked ones
+  const { data: existingAssocs = [] } = useQuery({
+    queryKey: ["league-associations", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_associations").select("platform_association_id").eq("club_id", clubId);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const linkedPlatformIds = new Set((existingAssocs as any[]).map(a => a.platform_association_id).filter(Boolean));
+  const availablePlatform = platformAssociations.filter((p: any) => !linkedPlatformIds.has(p.id));
+
   const handleSave = async () => {
-    if (!form.name.trim()) return;
-    const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });
-    if (error) toast.error(error.message);
-    else { toast.success("Association added"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+    if (mode === "select") {
+      if (!selectedPlatformId) return;
+      const selected = platformAssociations.find((p: any) => p.id === selectedPlatformId) as any;
+      if (!selected) return;
+      const { error } = await fromExt("league_associations").insert({
+        club_id: clubId,
+        name: selected.name,
+        abbreviation: selected.short_code || "",
+        platform_association_id: selected.id,
+      });
+      if (error) toast.error(error.message);
+      else { toast.success(`Joined ${selected.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+    } else {
+      if (!form.name.trim()) return;
+      const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });
+      if (error) toast.error(error.message);
+      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+    }
   };
 
   return (
@@ -721,9 +763,37 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
       <DialogContent>
         <DialogHeader><DialogTitle>Add League Association</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Northerns Squash Federation" /></div>
-          <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. NSF" /></div>
-          <Button onClick={handleSave} className="w-full">Save</Button>
+          <div className="flex gap-2">
+            <Button variant={mode === "select" ? "default" : "outline"} size="sm" onClick={() => setMode("select")} className="flex-1">Select Existing</Button>
+            <Button variant={mode === "create" ? "default" : "outline"} size="sm" onClick={() => setMode("create")} className="flex-1">Create Own</Button>
+          </div>
+
+          {mode === "select" ? (
+            <div className="space-y-2">
+              {availablePlatform.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No platform associations available to join, or all are already linked.</p>
+              ) : (
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedPlatformId}
+                  onChange={e => setSelectedPlatformId(e.target.value)}
+                >
+                  <option value="">Select an association…</option>
+                  {availablePlatform.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name} {p.short_code ? `(${p.short_code})` : ""} {p.region ? `– ${p.region}` : ""}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. My Club League" /></div>
+              <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. MCL" /></div>
+            </>
+          )}
+          <Button onClick={handleSave} className="w-full" disabled={mode === "select" ? !selectedPlatformId : !form.name.trim()}>
+            {mode === "select" ? "Join Association" : "Create Association"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

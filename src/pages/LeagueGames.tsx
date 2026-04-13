@@ -42,6 +42,24 @@ export default function LeagueGames() {
       .filter(Boolean) as string[];
   }, [clubAssociations]);
 
+  // Get club's league team codes (e.g. CSI001, CSI002, CSIL01)
+  const { data: clubLeagues } = useQuery({
+    queryKey: ["club-leagues-codes", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+      const { data, error } = await fromExt("leagues")
+        .select("id, code, name")
+        .eq("club_id", clubId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clubId,
+  });
+
+  const clubTeamCodes = useMemo(() => {
+    return (clubLeagues || []).map((l: any) => l.code).filter(Boolean) as string[];
+  }, [clubLeagues]);
+
   // Get member's league registrations to find their team codes
   const { data: myLeagueRegs } = useQuery({
     queryKey: ["my-league-registrations", activeMember?.id],
@@ -66,14 +84,15 @@ export default function LeagueGames() {
     return (myLeagueRegs || []).some((r: any) => r.is_captain);
   }, [myLeagueRegs]);
 
-  // Fetch upcoming fixtures for next 2 weeks, filtered by club's platform associations
+  // Fetch upcoming fixtures for next 2 weeks, filtered by club's team codes
   const today = format(new Date(), "yyyy-MM-dd");
   const twoWeeksOut = format(addDays(new Date(), 14), "yyyy-MM-dd");
 
   const { data: fixtures, isLoading } = useQuery({
-    queryKey: ["upcoming-league-fixtures", today, twoWeeksOut, platformAssocIds.join(",")],
+    queryKey: ["upcoming-league-fixtures", today, twoWeeksOut, platformAssocIds.join(","), clubTeamCodes.join(",")],
     queryFn: async () => {
-      if (platformAssocIds.length === 0) return [];
+      if (platformAssocIds.length === 0 || clubTeamCodes.length === 0) return [];
+      // Fetch all fixtures for the association in the date range
       const { data, error } = await supabase
         .from("platform_league_fixtures")
         .select("*")
@@ -83,9 +102,13 @@ export default function LeagueGames() {
         .order("fixture_date")
         .order("division");
       if (error) throw error;
-      return data || [];
+      // Filter to only fixtures where this club's team codes appear
+      const codes = new Set(clubTeamCodes);
+      return (data || []).filter(
+        (f) => codes.has(f.home_team_code) || codes.has(f.away_team_code)
+      );
     },
-    enabled: platformAssocIds.length > 0,
+    enabled: platformAssocIds.length > 0 && clubTeamCodes.length > 0,
   });
 
   // Fetch existing results for these fixtures

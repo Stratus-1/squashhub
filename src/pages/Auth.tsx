@@ -12,7 +12,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
-import shLogo from "@/assets/sh-logo.jpeg";
+import shLogo from "@/assets/sh-logo.png";
 
 export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth();

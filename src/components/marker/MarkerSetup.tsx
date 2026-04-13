@@ -441,9 +441,9 @@ export function MarkerSetup({ onStart }: Props) {
         .in("league_id", leagueIds);
 
       // Fetch member names
-      const memberIds = [...new Set((regs || []).map((r: any) => r.club_member_id))];
+      const memberIds = [...new Set((regs || []).map((r: any) => r.club_member_id))] as string[];
       const { data: members } = memberIds.length > 0
-        ? await supabase.from("club_members").select("id, name, club_member_number").in("id", memberIds)
+        ? await supabase.from("club_members").select("id, name, club_member_number").in("id", memberIds as string[])
         : { data: [] };
       const memberMap = new Map((members || []).map((m) => [m.id, m]));
 

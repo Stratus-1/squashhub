@@ -129,7 +129,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-semibold text-muted-foreground">Men's ({menLeagues.length})</h4>

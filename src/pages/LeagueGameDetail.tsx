@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,6 +89,7 @@ export default function LeagueGameDetail() {
   const [homeSig, setHomeSig] = useState("");
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [savingSetup, setSavingSetup] = useState(false);
 
   const { data: fixture } = useQuery({
     queryKey: ["league-fixture", fixtureId],
@@ -172,6 +173,45 @@ export default function LeagueGameDetail() {
   };
 
   const setupValid = positions.some((p) => p.homeCode && p.awayCode);
+
+  // ---- Save Setup (persist player data without submitting results) ----
+  const handleSaveSetup = async () => {
+    if (!fixtureId || !user) return;
+    setSavingSetup(true);
+    try {
+      // Save each position with player codes/names but no scores yet
+      for (let i = 0; i < 4; i++) {
+        const pos = positions[i];
+        if (!pos.homeCode && !pos.awayCode) continue;
+        const { error } = await supabase.from("league_match_results" as any).upsert({
+          fixture_id: fixtureId, position: i + 1,
+          home_player_code: pos.homeCode.toUpperCase(), away_player_code: pos.awayCode.toUpperCase(),
+          home_player_name: pos.homeName, away_player_name: pos.awayName,
+          game_scores: pos.scores.length > 0 ? pos.scores : [], home_games_won: 0, away_games_won: 0,
+          winner: null,
+        } as any, { onConflict: "fixture_id,position" });
+        if (error) throw error;
+      }
+      // Create/update fixture result as draft
+      const { error: sumErr } = await supabase.from("league_fixture_results" as any).upsert({
+        fixture_id: fixtureId,
+        home_total_games: 0, away_total_games: 0,
+        home_bonus_points: 0, away_bonus_points: 0,
+        home_total_points: 0, away_total_points: 0,
+        winner: null, status: "setup",
+        submitted_by: user.id,
+      } as any, { onConflict: "fixture_id" });
+      if (sumErr) throw sumErr;
+      queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+      queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+      toast.success("Setup saved! You can now mark games.");
+      setSetupDone(true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save setup");
+    } finally {
+      setSavingSetup(false);
+    }
+  };
 
   // ---- Marker ----
   const startMarking = (posIdx: number) => {
@@ -516,9 +556,15 @@ export default function LeagueGameDetail() {
 
         {/* Setup / scoring buttons */}
         {!setupDone && !isSubmitted && (
-          <Button className="w-full" size="sm" onClick={() => { if (!setupValid) { toast.error("Enter at least one complete position"); return; } setSetupDone(true); }} disabled={!setupValid}>
-            <Check className="w-4 h-4 mr-1" /> Complete Setup
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1" size="sm" variant="outline" onClick={handleSaveSetup} disabled={!setupValid || savingSetup}>
+              {savingSetup ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+              Save Setup
+            </Button>
+            <Button className="flex-1" size="sm" onClick={() => { if (!setupValid) { toast.error("Enter at least one complete position"); return; } setSetupDone(true); }} disabled={!setupValid}>
+              <Check className="w-4 h-4 mr-1" /> Complete Setup
+            </Button>
+          </div>
         )}
 
         {setupDone && !isSubmitted && (

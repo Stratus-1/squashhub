@@ -41,7 +41,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     if (!confirm("Delete this association?")) return;
     const { error } = await fromExt("league_associations").delete().eq("id", id);
     if (error) toast.error(error.message);
-    else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+    else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
   };
 
   const handleDeleteLeague = async (id: string) => {
@@ -725,7 +725,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
 
   // Fetch existing club associations to filter out already-linked ones
   const { data: existingAssocs = [] } = useQuery({
-    queryKey: ["league-associations", clubId],
+    queryKey: ["league-associations-linked", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("league_associations").select("platform_association_id").eq("club_id", clubId);
       if (error) throw error;
@@ -748,12 +748,12 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
         platform_association_id: selected.id,
       });
       if (error) toast.error(error.message);
-      else { toast.success(`Joined ${selected.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+      else { toast.success(`Joined ${selected.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     } else {
       if (!form.name.trim()) return;
       const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });
       if (error) toast.error(error.message);
-      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); }
+      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     }
   };
 

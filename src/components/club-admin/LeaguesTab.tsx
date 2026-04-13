@@ -734,14 +734,15 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
 function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
+  const [selectedMixed, setSelectedMixed] = useState<string[]>([]);
   const [prefix, setPrefix] = useState("");
   const [startNum, setStartNum] = useState(1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [associationId, setAssociationId] = useState("");
   const qc = useQueryClient();
 
-  const handleToggle = (league: string, gender: "men" | "ladies") => {
-    const setter = gender === "men" ? setSelectedMen : setSelectedLadies;
+  const handleToggle = (league: string, gender: "men" | "ladies" | "mixed") => {
+    const setter = gender === "men" ? setSelectedMen : gender === "ladies" ? setSelectedLadies : setSelectedMixed;
     setter(prev => prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]);
   };
 
@@ -749,6 +750,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const parseNum = (l: string) => parseInt(l);
     const sortedMen = [...selectedMen].sort((a, b) => parseNum(a) - parseNum(b));
     const sortedLadies = [...selectedLadies].sort((a, b) => parseNum(a) - parseNum(b));
+    const sortedMixed = [...selectedMixed].sort((a, b) => parseNum(a) - parseNum(b));
 
     let codeNum = startNum;
     const menEntries = sortedMen.map(label => {
@@ -765,7 +767,15 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
       return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
     });
 
-    return [...menEntries, ...ladiesEntries];
+    // Reset numbering for Mixed
+    codeNum = startNum;
+    const mixedEntries = sortedMixed.map(label => {
+      const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
+      codeNum++;
+      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId };
+    });
+
+    return [...menEntries, ...ladiesEntries, ...mixedEntries];
   };
 
   const entries = buildEntries();
@@ -809,7 +819,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
 
     toast.success(`${entries.length} league(s) added & codes renumbered`);
     onOpenChange(false);
-    setSelectedMen([]); setSelectedLadies([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
+    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 

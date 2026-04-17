@@ -898,9 +898,9 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Add Leagues</Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Manage Leagues for Club</Button></DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Add Leagues</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Manage Leagues for Club</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div>

@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
 import { BankingTab } from "@/components/club-admin/BankingTab";
@@ -90,6 +90,8 @@ export default function ClubAdmin() {
     }
   };
 
+  const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
+
   return (
     <div className="min-h-screen bg-background pb-20 text-[13px]">
       <PageHeader
@@ -97,50 +99,40 @@ export default function ClubAdmin() {
         subtitle="Club Administration"
       />
       <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
+        {/* Tile grid — responsive across all breakpoints */}
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+          {visibleTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.value;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Mobile: icon tile grid */}
-        {isMobile ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-4 gap-2">
-              {visibleTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.value;
-                return (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-1 rounded-lg border p-2.5 transition-colors text-center",
-                      isActive
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4.5 h-4.5" />
-                    <span className="text-[10px] font-medium leading-tight">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div>{renderContent()}</div>
+        {/* Active section header + content */}
+        {activeTabMeta && (
+          <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+            <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
+            <h2 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h2>
           </div>
-        ) : (
-          /* Desktop: horizontal tabs */
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
-            <TabsList className="flex w-full overflow-x-auto h-8">
-              {visibleTabs.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value} className="text-[11px] flex-1 h-7 px-2">
-                  <tab.icon className="w-3.5 h-3.5 mr-1" />{tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            {visibleTabs.map((tab) => (
-              <TabsContent key={tab.value} value={tab.value}>
-                {renderContent()}
-              </TabsContent>
-            ))}
-          </Tabs>
         )}
+
+        <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
+          {renderContent()}
+        </div>
       </div>
       <BackToDashboard />
     </div>

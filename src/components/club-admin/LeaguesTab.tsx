@@ -110,10 +110,13 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <AssociationDialog clubId={clubId} open={addAssocOpen} onOpenChange={setAddAssocOpen} />
         </div>
         <div className="space-y-2">
-          {associations.map(a => (
+          {associations.map((a: any) => (
             <Card key={a.id} className="p-3 flex items-center justify-between">
-              <div>
-                <p className="font-medium">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="font-medium truncate">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
+                {a.platform_association_id && (
+                  <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
+                )}
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAssoc(a.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </Card>

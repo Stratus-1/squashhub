@@ -73,8 +73,8 @@ export function FillTeamsTab({ clubId, platformAssocIds, clubLeagues }: Props) {
   });
 
   // Get player names
-  const memberIds = useMemo(
-    () => Array.from(new Set((registrations || []).map((r: any) => r.club_member_id))),
+  const memberIds = useMemo<string[]>(
+    () => Array.from(new Set(((registrations || []) as any[]).map((r) => r.club_member_id as string))),
     [registrations]
   );
   const { data: members } = useQuery({

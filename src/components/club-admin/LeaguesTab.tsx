@@ -129,7 +129,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Leagues</h3>
-          <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} triggerLabel="Manage Leagues for Club" />
+          <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

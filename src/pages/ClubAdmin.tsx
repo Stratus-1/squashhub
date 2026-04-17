@@ -5,7 +5,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
 import { BankingTab } from "@/components/club-admin/BankingTab";
@@ -23,7 +23,6 @@ import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug }[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club" },
@@ -47,7 +46,6 @@ export default function ClubAdmin() {
   const { user } = useAuth();
   const { data, isLoading } = useMyClub();
   const isAdmin = useIsClubAdmin();
-  const isMobile = useIsMobile();
   const myPermissions = useMyPermissions();
   const [activeTab, setActiveTab] = useState("club");
 

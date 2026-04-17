@@ -2080,6 +2080,92 @@ export type Database = {
           },
         ]
       }
+      league_fixture_lineups: {
+        Row: {
+          assigned_by: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          fixture_id: string
+          id: string
+          league_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          fixture_id: string
+          id?: string
+          league_id: string
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          fixture_id?: string
+          id?: string
+          league_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_fixture_lineups_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_lineups_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_fixture_results: {
         Row: {
           away_bonus_points: number

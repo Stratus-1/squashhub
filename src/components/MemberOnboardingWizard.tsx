@@ -695,11 +695,24 @@ export function MemberOnboardingWizard({
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label>Member Number</Label>
+                    <Label>Member Number{isExistingMember ? "" : ""}</Label>
                     <div className="flex items-center gap-2">
-                      <Input value={memberNumber} readOnly className="bg-muted font-mono" />
-                      <Badge variant="outline" className="whitespace-nowrap text-xs">Auto-assigned</Badge>
+                      <Input
+                        value={memberNumber}
+                        onChange={(e) => setMemberNumber(e.target.value.toUpperCase())}
+                        readOnly={!isExistingMember}
+                        placeholder={isExistingMember ? "Enter your existing member number" : ""}
+                        className={!isExistingMember ? "bg-muted font-mono" : "font-mono"}
+                      />
+                      <Badge variant="outline" className="whitespace-nowrap text-xs">
+                        {isExistingMember ? "Existing member" : "Auto-assigned"}
+                      </Badge>
                     </div>
+                    {isExistingMember && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Your existing membership number — edit if needed.
+                      </p>
+                    )}
                   </div>
 
                   <div>

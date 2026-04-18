@@ -138,6 +138,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     return m;
   }, [members]);
 
+  // memberId → league association/SSA number (prefers league_association_number)
+  const leagueNumberByMember = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of registrations) {
+      const num = r.league_association_number || r.ssa_number;
+      if (num && !m.has(r.club_member_id)) m.set(r.club_member_id, num);
+    }
+    return m;
+  }, [registrations]);
+
   // Per-league weekly status (for cascade tracking)
   const { data: statuses = [] } = useQuery<StatusRow[]>({
     queryKey: ["lwps", clubId, weekStart],

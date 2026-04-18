@@ -481,6 +481,24 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
         return;
       }
       if (originLeague) {
+        // Enforce "1 down" rule: target must be the immediately adjacent lower league
+        // within the same gender group (Men's leagues cascade among Men's; Ladies among Ladies)
+        const sameGroup = isMensLeague(originLeague.name) && isMensLeague(targetLeague.name)
+          ? sortedLeagues.filter(l => isMensLeague(l.name))
+          : isLadiesLeague(originLeague.name) && isLadiesLeague(targetLeague.name)
+          ? sortedLeagues.filter(l => isLadiesLeague(l.name))
+          : sortedLeagues.filter(l => !isMensLeague(l.name) && !isLadiesLeague(l.name));
+        const originIdx = sameGroup.findIndex(l => l.id === originLeague.id);
+        const targetIdx = sameGroup.findIndex(l => l.id === targetLeague.id);
+        if (originIdx === -1 || targetIdx === -1) {
+          toast.error("Players can only cascade within the same gender group");
+          return;
+        }
+        if (targetIdx !== originIdx + 1) {
+          toast.error(`Players can only be pushed to the next league down (${sameGroup[originIdx + 1]?.code || sameGroup[originIdx + 1]?.name || "—"})`);
+          return;
+        }
+
         // Clear any current lineup for the player (they're being pushed)
         clearLineupForMember.mutate(memberId);
         setStatusMut.mutate({

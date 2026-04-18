@@ -11,6 +11,7 @@ import { useMyClub } from "@/hooks/use-club";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { FillTeamsTab } from "@/components/league-games/FillTeamsTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
+import { FillUpLeaguesTab } from "@/components/league-games/FillUpLeaguesTab";
 
 export default function LeagueGames() {
   const { activeMember } = useMemberContext();

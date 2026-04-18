@@ -672,7 +672,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             <div className="w-56 flex-shrink-0 border rounded-md overflow-hidden flex flex-col">
               <div className="bg-muted/50 px-3 py-2 border-b">
                 <p className="text-xs font-semibold">Available Players ({unassignedMembers.length})</p>
-                <p className="text-[10px] text-muted-foreground">Sorted by skill level</p>
+                <p className="text-[10px] text-muted-foreground">Sorted by club ladder</p>
               </div>
               <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
                 {unassignedMembers.map(m => (

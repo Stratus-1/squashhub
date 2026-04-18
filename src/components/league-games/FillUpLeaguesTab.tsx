@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Ban } from "lucide-react";
+import { Users, Ban, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format, startOfWeek, addDays } from "date-fns";
 import {
@@ -44,6 +45,7 @@ const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
 export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   const qc = useQueryClient();
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [selectedWeekOverride, setSelectedWeekOverride] = useState<string | null>(null);
 
   // Club settings
   const { data: club } = useQuery({
@@ -117,7 +119,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     enabled: candidateWeeks.length > 0,
   });
 
-  const weekStart = useMemo(() => {
+  // Auto-pick: earliest candidate week with any incomplete lineup
+  const autoWeekStart = useMemo(() => {
     if (candidateWeeks.length === 0) return format(new Date(), "yyyy-MM-dd");
     if (sortedLeagues.length === 0) return candidateWeeks[0];
     const counts = new Map<string, Map<string, Set<string>>>();
@@ -135,9 +138,35 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     return candidateWeeks[candidateWeeks.length - 1];
   }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
 
+  // User can override via selector; otherwise show auto-picked week
+  const weekStart = useMemo(
+    () => (selectedWeekOverride && candidateWeeks.includes(selectedWeekOverride) ? selectedWeekOverride : autoWeekStart),
+    [selectedWeekOverride, autoWeekStart, candidateWeeks],
+  );
+
   const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
 
   const chosenWeekIndex = useMemo(() => Math.max(0, candidateWeeks.indexOf(weekStart)), [candidateWeeks, weekStart]);
+
+  // Per-week completeness summary (used to badge tabs in the selector)
+  const weekCompletion = useMemo(() => {
+    const result = new Map<string, { filled: number; total: number }>();
+    if (sortedLeagues.length === 0) return result;
+    const counts = new Map<string, Map<string, Set<string>>>();
+    for (const row of lookaheadLineups) {
+      if (!counts.has(row.week_start_date)) counts.set(row.week_start_date, new Map());
+      const lm = counts.get(row.week_start_date)!;
+      if (!lm.has(row.league_id)) lm.set(row.league_id, new Set());
+      lm.get(row.league_id)!.add(row.club_member_id);
+    }
+    for (const wk of candidateWeeks) {
+      const lm = counts.get(wk);
+      let filled = 0;
+      for (const lg of sortedLeagues) filled += Math.min(4, lm?.get(lg.id)?.size ?? 0);
+      result.set(wk, { filled, total: sortedLeagues.length * 4 });
+    }
+    return result;
+  }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
 
   // Registrations
   const leagueIds = sortedLeagues.map(l => l.id);
@@ -621,6 +650,49 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     >
       <div className="space-y-3">
         <Card className="p-3 space-y-2">
+          {/* Week selector — switch between the next few candidate planning weeks */}
+          {candidateWeeks.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mr-1">Plan week:</span>
+              {candidateWeeks.slice(0, 3).map((wk, i) => {
+                const completion = weekCompletion.get(wk);
+                const isComplete = completion && completion.filled >= completion.total && completion.total > 0;
+                const isActive = wk === weekStart;
+                const isAuto = wk === autoWeekStart && !selectedWeekOverride;
+                return (
+                  <Button
+                    key={wk}
+                    type="button"
+                    size="sm"
+                    variant={isActive ? "default" : "outline"}
+                    onClick={() => setSelectedWeekOverride(wk === autoWeekStart ? null : wk)}
+                    className="h-7 px-2 text-[11px] gap-1"
+                  >
+                    {i === 0 ? "Next" : i === 1 ? "+1 wk" : `+${i} wks`}
+                    <span className="opacity-80">· {format(new Date(wk), "dd MMM")}</span>
+                    {completion && (
+                      <span className={`text-[10px] ml-0.5 ${isComplete ? "text-emerald-300" : "opacity-70"}`}>
+                        ({completion.filled}/{completion.total})
+                      </span>
+                    )}
+                    {isAuto && <span className="text-[9px] ml-0.5 opacity-70">auto</span>}
+                  </Button>
+                );
+              })}
+              {selectedWeekOverride && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedWeekOverride(null)}
+                  className="h-7 px-2 text-[10px]"
+                >
+                  Reset to auto
+                </Button>
+              )}
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
             <strong>
               Planning {chosenWeekIndex === 0 ? "next week" : chosenWeekIndex === 1 ? "the week after next" : `${chosenWeekIndex + 1} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}

@@ -430,20 +430,21 @@ export default function ClubAuth() {
           <TabsContent value="existing">
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
-                Already a member of {clubName}? Enter your member number to link your account.
+                Already a member of {clubName}? Enter your <strong>Member Number</strong> or your <strong>League Number</strong> (e.g. NSF1234) to link your account.
               </p>
               <form onSubmit={handleExistingMemberSignup} className="space-y-3">
                 <div>
-                  <Label htmlFor="existing-member-number">Member Number <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="existing-member-number">Member Number or League Number <span className="text-destructive">*</span></Label>
                   <Input
                     id="existing-member-number"
                     type="text"
-                    placeholder="e.g. WSC001"
+                    placeholder="e.g. WSC001 or NSF1234"
                     value={memberNumber}
                     onChange={(e) => setMemberNumber(e.target.value)}
                     required
                     maxLength={20}
                   />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">League players use their NSF number; club members use their assigned number</p>
                 </div>
                 <div>
                   <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>
@@ -456,7 +457,7 @@ export default function ClubAuth() {
                     required
                     maxLength={255}
                   />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Must match the email on your club membership</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">We'll save this to your membership for future communication</p>
                 </div>
                 <div>
                   <Label htmlFor="existing-password">Create Password <span className="text-destructive">*</span></Label>

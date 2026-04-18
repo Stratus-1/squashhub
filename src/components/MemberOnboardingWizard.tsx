@@ -839,11 +839,20 @@ export function MemberOnboardingWizard({
                 <DialogHeader>
                   <DialogTitle className="text-lg font-heading">Fees Summary</DialogTitle>
                   <DialogDescription className="text-sm text-muted-foreground">
-                    Review your applicable fees. These will be added to your account for payment.
+                    {isExistingMember
+                      ? "You're an existing member — no fees will be charged during onboarding."
+                      : "Review your applicable fees. These will be added to your account for payment."}
                   </DialogDescription>
                 </DialogHeader>
 
-                {feeBreakdown.length > 0 ? (
+                {isExistingMember ? (
+                  <Card className="p-4 text-center text-sm text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground">No fees applied</p>
+                    <p className="text-[11px]">
+                      Existing members are not charged during registration. Any outstanding fees will be imported separately by your club admin.
+                    </p>
+                  </Card>
+                ) : feeBreakdown.length > 0 ? (
                   <Card className="p-4 space-y-3">
                     {feeBreakdown.map((fee, i) => (
                       <div key={i} className="flex items-center justify-between text-sm">
@@ -868,9 +877,11 @@ export function MemberOnboardingWizard({
                   </Card>
                 )}
 
-                <p className="text-[10px] text-muted-foreground">
-                  Fees will be added to your member account. You can pay via EFT or card from your dashboard.
-                </p>
+                {!isExistingMember && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Fees will be added to your member account. You can pay via EFT or card from your dashboard.
+                  </p>
+                )}
               </motion.div>
             )}
 

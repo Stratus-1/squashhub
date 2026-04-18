@@ -2897,7 +2897,7 @@ export type Database = {
           id: string
           is_captain: boolean
           league_association_number: string | null
-          league_id: string
+          league_id: string | null
           player_rank: number | null
           ssa_number: string | null
           updated_at: string
@@ -2908,7 +2908,7 @@ export type Database = {
           id?: string
           is_captain?: boolean
           league_association_number?: string | null
-          league_id: string
+          league_id?: string | null
           player_rank?: number | null
           ssa_number?: string | null
           updated_at?: string
@@ -2919,7 +2919,7 @@ export type Database = {
           id?: string
           is_captain?: boolean
           league_association_number?: string | null
-          league_id?: string
+          league_id?: string | null
           player_rank?: number | null
           ssa_number?: string | null
           updated_at?: string

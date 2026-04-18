@@ -67,15 +67,22 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     enabled: !!activeMemberId,
   });
 
-  // Compute current week_start_date from configured DOW (Wed→Tue if dow=3)
+  // Plan the NEXT squash week (the one starting after the upcoming team-selection deadline).
+  // The current squash week is already in progress for top leagues; lower leagues need to
+  // plan ahead so cascaded players land correctly. Fixtures shown are those scheduled in
+  // the 7-day window starting on this date.
   const weekStart = useMemo(() => {
     const dow = club?.league_week_start_dow ?? 3;
     const today = new Date();
     const monday = startOfWeek(today, { weekStartsOn: 1 });
-    const candidate = addDays(monday, ((dow + 6) % 7));
-    if (candidate > today) return format(addDays(candidate, -7), "yyyy-MM-dd");
-    return format(candidate, "yyyy-MM-dd");
+    let currentStart = addDays(monday, ((dow + 6) % 7));
+    if (currentStart > today) currentStart = addDays(currentStart, -7);
+    // Skip ahead one week to plan the next squash week
+    return format(addDays(currentStart, 7), "yyyy-MM-dd");
   }, [club?.league_week_start_dow]);
+
+  // End of the planning window (exclusive upper bound for fixture filtering)
+  const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
 
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
@@ -195,14 +202,15 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
     [sortedLeagues],
   );
-  const today = format(new Date(), "yyyy-MM-dd");
+  
   const { data: fixtures = [] } = useQuery<FixtureLite[]>({
-    queryKey: ["next-fixtures-by-code", leagueCodes.join(",")],
+    queryKey: ["next-fixtures-by-code", leagueCodes.join(","), weekStart, weekEnd],
     queryFn: async () => {
       if (leagueCodes.length === 0) return [];
       const { data, error } = await fromExt("platform_league_fixtures")
         .select("id, fixture_date, venue_name, home_team_code, away_team_code")
-        .gte("fixture_date", today)
+        .gte("fixture_date", weekStart)
+        .lt("fixture_date", weekEnd)
         .or(leagueCodes.map(c => `home_team_code.eq.${c},away_team_code.eq.${c}`).join(","))
         .order("fixture_date", { ascending: true });
       if (error) throw error;
@@ -578,7 +586,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
       <div className="space-y-3">
         <Card className="p-3 space-y-2">
           <p className="text-xs text-muted-foreground">
-            <strong>Week of {format(new Date(weekStart), "EEE dd MMM")}</strong> — Drag players from the
+            <strong>Planning next week: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}</strong> —
+            Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the
             <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.
             Drag onto the red zone below to mark <strong>unavailable for the whole week</strong>.
           </p>

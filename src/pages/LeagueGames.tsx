@@ -36,7 +36,8 @@ export default function LeagueGames() {
     const monday = startOfWeek(today, { weekStartsOn: 1 });
     let candidate = addDays(monday, (dow + 6) % 7);
     if (candidate > today) candidate = addDays(candidate, -7);
-    const end = addDays(candidate, 6);
+    // Squash week runs from configured start day through to the same day next week (8 days inclusive)
+    const end = addDays(candidate, 7);
     return { start: format(candidate, "yyyy-MM-dd"), end: format(end, "yyyy-MM-dd") };
   }, [weekDow]);
 

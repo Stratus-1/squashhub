@@ -12,23 +12,27 @@ type Props = {
   platformAssocIds: string[];
   clubTeamCodes: string[];
   myTeamCodes: Set<string>;
+  /** Start of the configured squash week (yyyy-MM-dd). Falls back to today. */
+  weekStart?: string;
+  /** End of the squash week window (yyyy-MM-dd). Falls back to weekStart + 6 days, or today + 14 days. */
+  weekEnd?: string;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd }: Props) {
   const navigate = useNavigate();
-  const today = format(new Date(), "yyyy-MM-dd");
-  const twoWeeksOut = format(addDays(new Date(), 14), "yyyy-MM-dd");
+  const rangeStart = weekStart ?? format(new Date(), "yyyy-MM-dd");
+  const rangeEnd = weekEnd ?? format(addDays(weekStart ? parseISO(weekStart) : new Date(), weekStart ? 6 : 14), "yyyy-MM-dd");
 
   const { data: fixtures, isLoading } = useQuery({
-    queryKey: ["upcoming-league-fixtures", today, twoWeeksOut, platformAssocIds.join(","), clubTeamCodes.join(",")],
+    queryKey: ["upcoming-league-fixtures", rangeStart, rangeEnd, platformAssocIds.join(","), clubTeamCodes.join(",")],
     queryFn: async () => {
       if (platformAssocIds.length === 0 || clubTeamCodes.length === 0) return [];
       const { data, error } = await supabase
         .from("platform_league_fixtures")
         .select("*")
         .in("association_id", platformAssocIds)
-        .gte("fixture_date", today)
-        .lte("fixture_date", twoWeeksOut)
+        .gte("fixture_date", rangeStart)
+        .lte("fixture_date", rangeEnd)
         .order("fixture_date")
         .order("division");
       if (error) throw error;
@@ -90,7 +94,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return (
       <Card className="p-8 text-center">
         <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <p className="text-muted-foreground">No upcoming league fixtures in the next 2 weeks.</p>
+        <p className="text-muted-foreground">
+          No league fixtures for the squash week of{" "}
+          <span className="font-medium text-foreground">{format(parseISO(rangeStart), "dd MMM")}</span> –{" "}
+          <span className="font-medium text-foreground">{format(parseISO(rangeEnd), "dd MMM")}</span>.
+        </p>
       </Card>
     );
   }

@@ -12,11 +12,34 @@ import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesT
 import { FillTeamsTab } from "@/components/league-games/FillTeamsTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { FillUpLeaguesTab } from "@/components/league-games/FillUpLeaguesTab";
+import { format, startOfWeek, addDays } from "date-fns";
 
 export default function LeagueGames() {
   const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
+
+  // Fetch club's configured squash week start day (Wed=3 by default)
+  const { data: weekDow } = useQuery({
+    queryKey: ["club-week-dow", clubId],
+    queryFn: async () => {
+      if (!clubId) return 3;
+      const { data } = await supabase.from("clubs").select("league_week_start_dow").eq("id", clubId).maybeSingle();
+      return data?.league_week_start_dow ?? 3;
+    },
+    enabled: !!clubId,
+  });
+
+  // Compute the current squash-week start date (most recent occurrence of weekDow on/before today)
+  const weekRange = useMemo(() => {
+    const dow = weekDow ?? 3;
+    const today = new Date();
+    const monday = startOfWeek(today, { weekStartsOn: 1 });
+    let candidate = addDays(monday, (dow + 6) % 7);
+    if (candidate > today) candidate = addDays(candidate, -7);
+    const end = addDays(candidate, 6);
+    return { start: format(candidate, "yyyy-MM-dd"), end: format(end, "yyyy-MM-dd") };
+  }, [weekDow]);
 
   // Get club's league associations to find linked platform association IDs
   const { data: clubAssociations } = useQuery({
@@ -101,6 +124,8 @@ export default function LeagueGames() {
               platformAssocIds={platformAssocIds}
               clubTeamCodes={clubTeamCodes}
               myTeamCodes={myTeamCodes}
+              weekStart={weekRange.start}
+              weekEnd={weekRange.end}
             />
           </TabsContent>
 

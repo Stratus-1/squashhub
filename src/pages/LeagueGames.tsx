@@ -29,16 +29,16 @@ export default function LeagueGames() {
     enabled: !!clubId,
   });
 
-  // Compute the current squash-week start date (most recent occurrence of weekDow on/before today)
+  // Squash week runs from the day AFTER the configured start day through to the next occurrence of that day (7 days)
   const weekRange = useMemo(() => {
     const dow = weekDow ?? 3;
     const today = new Date();
     const monday = startOfWeek(today, { weekStartsOn: 1 });
-    let candidate = addDays(monday, (dow + 6) % 7);
-    if (candidate > today) candidate = addDays(candidate, -7);
-    // Squash week runs from configured start day through to the same day next week (8 days inclusive)
-    const end = addDays(candidate, 7);
-    return { start: format(candidate, "yyyy-MM-dd"), end: format(end, "yyyy-MM-dd") };
+    // Most recent occurrence of the configured "week end" day on/after today
+    let endCandidate = addDays(monday, (dow + 6) % 7);
+    if (endCandidate < today) endCandidate = addDays(endCandidate, 7);
+    const startCandidate = addDays(endCandidate, -6); // day after previous occurrence
+    return { start: format(startCandidate, "yyyy-MM-dd"), end: format(endCandidate, "yyyy-MM-dd") };
   }, [weekDow]);
 
   // Get club's league associations to find linked platform association IDs

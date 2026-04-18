@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck } from "lucide-react";
 import { format, parseISO, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 type Props = {
   platformAssocIds: string[];
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd }: Props) {
+  const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const rangeStart = weekStart ?? format(new Date(), "yyyy-MM-dd");
   const rangeEnd = weekEnd ?? format(addDays(weekStart ? parseISO(weekStart) : new Date(), weekStart ? 6 : 14), "yyyy-MM-dd");
@@ -86,6 +88,26 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return map;
   }, [existingResults]);
 
+  // Find which fixtures I'm assigned to play in (lineup)
+  const { data: myLineupRows } = useQuery({
+    queryKey: ["my-fixture-lineups", activeMember?.id, fixtureIds.join(",")],
+    queryFn: async () => {
+      if (!activeMember?.id || fixtureIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("league_fixture_lineups")
+        .select("fixture_id")
+        .eq("club_member_id", activeMember.id)
+        .in("fixture_id", fixtureIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeMember?.id && fixtureIds.length > 0,
+  });
+
+  const myLineupFixtureIds = useMemo(() => {
+    return new Set((myLineupRows || []).map((r: any) => r.fixture_id as string));
+  }, [myLineupRows]);
+
   const fixturesByDate = useMemo(() => {
     const groups = new Map<string, typeof fixtures>();
     for (const f of fixtures || []) {
@@ -97,6 +119,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   }, [fixtures]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
+  const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
 
   if (isLoading) {
     return (
@@ -129,16 +152,33 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           <div className="space-y-2">
             {(dayFixtures || []).map((f) => {
               const mine = isMyFixture(f);
+              const inLineup = isInLineup(f);
               const result = resultMap.get(f.id);
               return (
-                <Card key={f.id} className={`p-3 ${mine ? "border-primary/50 bg-primary/5" : ""}`}>
+                <Card
+                  key={f.id}
+                  className={`p-3 ${
+                    inLineup
+                      ? "border-2 border-primary bg-primary/10 shadow-sm"
+                      : mine
+                      ? "border-primary/50 bg-primary/5"
+                      : ""
+                  }`}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0 space-y-1">
-                      {mine && (
-                        <Badge className="bg-primary/15 text-primary text-[10px] mb-1">
-                          <Star className="w-3 h-3 mr-1" /> Your League
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1 mb-1">
+                        {inLineup && (
+                          <Badge className="bg-primary text-primary-foreground text-[10px]">
+                            <UserCheck className="w-3 h-3 mr-1" /> You're playing
+                          </Badge>
+                        )}
+                        {!inLineup && mine && (
+                          <Badge className="bg-primary/15 text-primary text-[10px]">
+                            <Star className="w-3 h-3 mr-1" /> Your League
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm">
                         <span className="font-bold">{f.home_team_code}</span>
                         {result && (result.status === "submitted" || result.status === "confirmed") ? (
@@ -163,7 +203,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                     </div>
                     <Button
                       size="sm"
-                      variant={mine ? "default" : "outline"}
+                      variant={inLineup || mine ? "default" : "outline"}
                       className="shrink-0"
                       onClick={() => navigate(`/league-games/${f.id}`)}
                     >

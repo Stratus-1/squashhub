@@ -509,9 +509,39 @@ export default function Dashboard() {
             View all <ChevronRight className="w-3 h-3 ml-1" />
           </Button>
         </div>
-        {myBookings && myBookings.length > 0 ? (
+        {(myBookings && myBookings.length > 0) || (myLeagueFixtures && myLeagueFixtures.length > 0) ? (
           <div className="space-y-1.5">
-            {myBookings.slice(0, 3).map((booking) => (
+            {(myLeagueFixtures || []).slice(0, 3).map((f: any) => (
+              <Card
+                key={`lf-${f.id}`}
+                className={cn(
+                  "p-2.5 flex items-center justify-between cursor-pointer hover:bg-accent/50 transition-colors",
+                  f.inLineup ? "border-2 border-primary bg-primary/10" : "border-primary/40 bg-primary/5"
+                )}
+                onClick={() => navigate(`/league-games/${f.id}`)}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <p className="text-sm font-medium truncate">
+                      {f.home_team_code} vs {f.away_team_code}
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {f.fixture_date}
+                    {f.fixture_time ? ` · ${String(f.fixture_time).slice(0, 5)}` : ""}
+                    {f.venue_name ? ` · ${f.venue_name}` : ""}
+                  </p>
+                </div>
+                <Badge
+                  variant={f.inLineup ? "default" : "secondary"}
+                  className="text-[10px] shrink-0"
+                >
+                  {f.inLineup ? "You're playing" : "Your league"}
+                </Badge>
+              </Card>
+            ))}
+            {(myBookings || []).slice(0, 3).map((booking) => (
               <Card key={booking.id} className="p-2.5 flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">

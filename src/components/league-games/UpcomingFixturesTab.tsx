@@ -23,10 +23,20 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const rangeStart = weekStart ?? format(new Date(), "yyyy-MM-dd");
   const rangeEnd = weekEnd ?? format(addDays(weekStart ? parseISO(weekStart) : new Date(), weekStart ? 6 : 14), "yyyy-MM-dd");
 
+  // Derive club code prefixes (alpha part) from registered team codes, e.g. "CSI001" -> "CSI"
+  const clubPrefixes = useMemo(() => {
+    const prefixes = new Set<string>();
+    for (const code of clubTeamCodes) {
+      const m = code.match(/^([A-Za-z]+)/);
+      if (m) prefixes.add(m[1].toUpperCase());
+    }
+    return [...prefixes];
+  }, [clubTeamCodes]);
+
   const { data: fixtures, isLoading } = useQuery({
-    queryKey: ["upcoming-league-fixtures", rangeStart, rangeEnd, platformAssocIds.join(","), clubTeamCodes.join(",")],
+    queryKey: ["upcoming-league-fixtures", rangeStart, rangeEnd, platformAssocIds.join(","), clubPrefixes.join(",")],
     queryFn: async () => {
-      if (platformAssocIds.length === 0 || clubTeamCodes.length === 0) return [];
+      if (platformAssocIds.length === 0 || clubPrefixes.length === 0) return [];
       const { data, error } = await supabase
         .from("platform_league_fixtures")
         .select("*")
@@ -36,10 +46,13 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
         .order("fixture_date")
         .order("division");
       if (error) throw error;
-      const codes = new Set(clubTeamCodes);
-      return (data || []).filter((f) => codes.has(f.home_team_code) || codes.has(f.away_team_code));
+      return (data || []).filter((f) => {
+        const home = (f.home_team_code || "").toUpperCase();
+        const away = (f.away_team_code || "").toUpperCase();
+        return clubPrefixes.some((p) => home.startsWith(p) || away.startsWith(p));
+      });
     },
-    enabled: platformAssocIds.length > 0 && clubTeamCodes.length > 0,
+    enabled: platformAssocIds.length > 0 && clubPrefixes.length > 0,
   });
 
   const fixtureIds = (fixtures || []).map((f) => f.id);

@@ -58,15 +58,18 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
           </span>
         </div>
         {fixture ? (
-          <div className="flex items-center gap-3 text-xs flex-wrap">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
             <span className="flex items-center gap-1 text-foreground">
               <Calendar className="w-3.5 h-3.5 text-primary" />
               <span className="font-medium">{format(new Date(fixture.fixture_date), "EEE dd MMM")}</span>
             </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <MapPin className="w-3.5 h-3.5" />
-              {fixture.venue_name}
-            </span>
+            <Badge
+              variant={isHome ? "default" : "secondary"}
+              className="text-[10px] gap-1"
+            >
+              <MapPin className="w-3 h-3" />
+              {isHome ? "HOME" : "AWAY"} · {fixture.venue_name}
+            </Badge>
             {opponentCode && (
               <Badge variant="outline" className="text-[10px]">
                 {isHome ? "vs" : "@"} {opponentCode}

@@ -67,15 +67,22 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     enabled: !!activeMemberId,
   });
 
-  // Compute current week_start_date from configured DOW (Wed→Tue if dow=3)
+  // Plan the NEXT squash week (the one starting after the upcoming team-selection deadline).
+  // The current squash week is already in progress for top leagues; lower leagues need to
+  // plan ahead so cascaded players land correctly. Fixtures shown are those scheduled in
+  // the 7-day window starting on this date.
   const weekStart = useMemo(() => {
     const dow = club?.league_week_start_dow ?? 3;
     const today = new Date();
     const monday = startOfWeek(today, { weekStartsOn: 1 });
-    const candidate = addDays(monday, ((dow + 6) % 7));
-    if (candidate > today) return format(addDays(candidate, -7), "yyyy-MM-dd");
-    return format(candidate, "yyyy-MM-dd");
+    let currentStart = addDays(monday, ((dow + 6) % 7));
+    if (currentStart > today) currentStart = addDays(currentStart, -7);
+    // Skip ahead one week to plan the next squash week
+    return format(addDays(currentStart, 7), "yyyy-MM-dd");
   }, [club?.league_week_start_dow]);
+
+  // End of the planning window (exclusive upper bound for fixture filtering)
+  const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
 
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 

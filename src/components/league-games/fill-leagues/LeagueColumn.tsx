@@ -34,7 +34,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
     <Card
       className={cn(
         "p-3 space-y-2 transition-colors",
-        isComplete && "border-green-500/60 bg-green-500/5 dark:bg-green-500/10",
+        isComplete && "border-primary/60 bg-primary/5 ring-1 ring-primary/30",
       )}
     >
       <div className="space-y-1">
@@ -43,7 +43,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
           <span className="font-semibold text-sm">{league.name}</span>
           {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
           {isComplete ? (
-            <Badge className="text-[10px] bg-green-600 hover:bg-green-600 text-white border-transparent gap-1">
+            <Badge className="text-[10px] gap-1 bg-primary text-primary-foreground hover:bg-primary border-transparent">
               <CheckCircle2 className="w-3 h-3" /> Team set
             </Badge>
           ) : (

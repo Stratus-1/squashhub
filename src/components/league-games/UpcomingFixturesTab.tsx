@@ -94,7 +94,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return (
       <Card className="p-8 text-center">
         <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <p className="text-muted-foreground">No upcoming league fixtures in the next 2 weeks.</p>
+        <p className="text-muted-foreground">
+          No league fixtures for the squash week of{" "}
+          <span className="font-medium text-foreground">{format(parseISO(rangeStart), "dd MMM")}</span> –{" "}
+          <span className="font-medium text-foreground">{format(parseISO(rangeEnd), "dd MMM")}</span>.
+        </p>
       </Card>
     );
   }

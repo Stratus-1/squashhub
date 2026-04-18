@@ -9,7 +9,6 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
-import { FillTeamsTab } from "@/components/league-games/FillTeamsTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { FillUpLeaguesTab } from "@/components/league-games/FillUpLeaguesTab";
 import { format, startOfWeek, addDays } from "date-fns";
@@ -112,9 +111,8 @@ export default function LeagueGames() {
 
       <div className="px-4 pb-8">
         <Tabs defaultValue="fixtures" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-3 h-auto">
             <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
-            <TabsTrigger value="fill" className="text-xs sm:text-sm py-2">Fill Teams</TabsTrigger>
             <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>
             <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
           </TabsList>
@@ -127,16 +125,6 @@ export default function LeagueGames() {
               weekStart={weekRange.start}
               weekEnd={weekRange.end}
             />
-          </TabsContent>
-
-          <TabsContent value="fill" className="mt-4">
-            {clubId && (
-              <FillTeamsTab
-                clubId={clubId}
-                platformAssocIds={platformAssocIds}
-                clubLeagues={clubLeagues || []}
-              />
-            )}
           </TabsContent>
 
           <TabsContent value="leagues" className="mt-4">

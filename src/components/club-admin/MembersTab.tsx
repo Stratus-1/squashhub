@@ -912,23 +912,23 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
         .eq("club_member_id", member.id)
         .order("created_at", { ascending: true })
         .limit(1)
-        .then(({ data, error }: any) => {
+        .then(({ data }: any) => {
           const row = data && data.length > 0 ? data[0] : null;
-          if (row) {
-            const assocId = (row.leagues as any)?.association_id || "";
-            setForm(p => ({
-              ...p,
-              association_id: assocId,
-              association_number: row.league_association_number || "",
-              ladder_position: row.player_rank ?? p.ladder_position,
-            }));
-          }
+          const assocFromRow = row ? (row.leagues as any)?.association_id || "" : "";
+          // Fallback: if linked league has no association_id, default to the club's only association (if exactly one)
+          const fallbackAssoc = !assocFromRow && associations.length === 1 ? associations[0].id : "";
+          setForm(p => ({
+            ...p,
+            association_id: assocFromRow || fallbackAssoc || p.association_id,
+            association_number: row?.league_association_number || p.association_number,
+            ladder_position: row?.player_rank ?? p.ladder_position,
+          }));
           setRegLoaded(true);
         });
     } else {
       setRegLoaded(true);
     }
-  }, [member.id, member.plays_league]);
+  }, [member.id, member.plays_league, associations]);
 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 

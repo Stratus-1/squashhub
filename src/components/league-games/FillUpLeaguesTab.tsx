@@ -118,7 +118,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     enabled: candidateWeeks.length > 0,
   });
 
-  const weekStart = useMemo(() => {
+  // Auto-pick: earliest candidate week with any incomplete lineup
+  const autoWeekStart = useMemo(() => {
     if (candidateWeeks.length === 0) return format(new Date(), "yyyy-MM-dd");
     if (sortedLeagues.length === 0) return candidateWeeks[0];
     const counts = new Map<string, Map<string, Set<string>>>();
@@ -136,9 +137,35 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     return candidateWeeks[candidateWeeks.length - 1];
   }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
 
+  // User can override via selector; otherwise show auto-picked week
+  const weekStart = useMemo(
+    () => (selectedWeekOverride && candidateWeeks.includes(selectedWeekOverride) ? selectedWeekOverride : autoWeekStart),
+    [selectedWeekOverride, autoWeekStart, candidateWeeks],
+  );
+
   const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
 
   const chosenWeekIndex = useMemo(() => Math.max(0, candidateWeeks.indexOf(weekStart)), [candidateWeeks, weekStart]);
+
+  // Per-week completeness summary (used to badge tabs in the selector)
+  const weekCompletion = useMemo(() => {
+    const result = new Map<string, { filled: number; total: number }>();
+    if (sortedLeagues.length === 0) return result;
+    const counts = new Map<string, Map<string, Set<string>>>();
+    for (const row of lookaheadLineups) {
+      if (!counts.has(row.week_start_date)) counts.set(row.week_start_date, new Map());
+      const lm = counts.get(row.week_start_date)!;
+      if (!lm.has(row.league_id)) lm.set(row.league_id, new Set());
+      lm.get(row.league_id)!.add(row.club_member_id);
+    }
+    for (const wk of candidateWeeks) {
+      const lm = counts.get(wk);
+      let filled = 0;
+      for (const lg of sortedLeagues) filled += Math.min(4, lm?.get(lg.id)?.size ?? 0);
+      result.set(wk, { filled, total: sortedLeagues.length * 4 });
+    }
+    return result;
+  }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
 
   // Registrations
   const leagueIds = sortedLeagues.map(l => l.id);

@@ -284,16 +284,18 @@ export function FillUpLeaguesTab({ clubId }: Props) {
 
     return (
       <Card key={lg.id} className="p-3 space-y-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="default" className="text-xs">{lg.code || `#${idx + 1}`}</Badge>
             <span className="font-semibold text-sm">{lg.name}</span>
-            {captainMemberId && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Crown className="w-3 h-3" /> {memberMap.get(captainMemberId)?.name || "Captain"}
-              </span>
-            )}
             {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <Crown className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-muted-foreground">Captain:</span>
+            <span className="font-medium">
+              {captainMemberId ? (memberMap.get(captainMemberId)?.name || "—") : <span className="italic text-muted-foreground">Not assigned</span>}
+            </span>
           </div>
         </div>
 

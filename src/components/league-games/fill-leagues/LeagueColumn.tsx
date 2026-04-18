@@ -13,11 +13,13 @@ type Props = {
   positions: Array<{ position: number; memberId: string | null }>;
   benchMembers: Array<{ memberId: string; rank: number | null; isPulled?: boolean; isCascaded?: boolean; cascadedFromCode?: string | null }>;
   memberMap: Map<string, MemberLite>;
+  /** memberId → league registration number (e.g. WPSRA / association number) for THIS league */
+  leagueNumberByMember?: Map<string, string>;
   fixture: FixtureLite | null;
   canEdit: boolean;
 };
 
-export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, fixture, canEdit }: Props) {
+export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit }: Props) {
   const opponentCode = fixture
     ? fixture.home_team_code === league.code
       ? fixture.away_team_code

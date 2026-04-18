@@ -1,0 +1,57 @@
+import { useDraggable } from "@dnd-kit/core";
+import { GripVertical } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { dragId } from "./types";
+
+type Props = {
+  memberId: string;
+  origin: string; // leagueId | "na" | "pool"
+  name: string;
+  rank?: number | null;
+  disabled?: boolean;
+  badge?: { label: string; variant?: "outline" | "secondary" | "destructive" } | null;
+  positionLabel?: string | null; // e.g. "1." or "#3"
+  muted?: boolean;
+};
+
+export function DraggablePlayer({ memberId, origin, name, rank, disabled, badge, positionLabel, muted }: Props) {
+  const id = dragId(memberId, origin);
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id,
+    disabled,
+    data: { memberId, origin },
+  });
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        "flex items-center gap-1.5 px-1.5 py-1 rounded border border-border/60 bg-background/80",
+        "text-sm select-none",
+        disabled ? "opacity-60" : "cursor-grab active:cursor-grabbing hover:bg-accent/40",
+        isDragging && "opacity-30",
+        muted && "opacity-50",
+      )}
+    >
+      {!disabled && <GripVertical className="w-3 h-3 text-muted-foreground shrink-0" />}
+      {positionLabel && <span className="text-[10px] text-muted-foreground w-4 shrink-0">{positionLabel}</span>}
+      <span className={cn("flex-1 truncate text-xs", muted && "line-through")}>
+        {name}
+        {typeof rank === "number" && <span className="text-muted-foreground ml-1">R{rank}</span>}
+      </span>
+      {badge && (
+        <Badge variant={badge.variant ?? "outline"} className="text-[9px] px-1 py-0 shrink-0">
+          {badge.label}
+        </Badge>
+      )}
+    </div>
+  );
+}

@@ -229,9 +229,16 @@ export function MemberOnboardingWizard({
         member = byEmail;
       }
 
+      // Detect if the prefilled name is actually a league/member lookup code
+      // (e.g. "NSF6916" stored as user_metadata.name during existing-member signup)
+      const looksLikeLookupCode = (val: string) =>
+        !!val && (/^[A-Z]{2,5}\d{2,8}$/i.test(val.trim()) || !val.includes(" "));
+      const currentNameIsLookup = looksLikeLookupCode(name);
+
       if (member) {
         setIsExistingMember(true);
-        if (member.name && !name) setName(member.name);
+        // Always overwrite the name if the current value is a lookup code, OR if name is empty
+        if (member.name && (!name || currentNameIsLookup)) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);
         if (member.id_number) setIdNumber(member.id_number);
         if (member.gender) setGender(member.gender);
@@ -270,7 +277,7 @@ export function MemberOnboardingWizard({
               .maybeSingle();
             if (leaguePlayer) {
               const fullName = `${leaguePlayer.first_name || ""} ${leaguePlayer.surname || ""}`.trim();
-              if (fullName && (!member.name || member.name.trim() === leagueNum)) {
+              if (fullName && (!member.name || member.name.trim() === leagueNum || looksLikeLookupCode(member.name))) {
                 setName(fullName);
               }
             }

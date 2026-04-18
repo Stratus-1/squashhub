@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 const LAST_UPDATED = "17 March 2026";
 
 function getPrivacyContactEmail() {
-  return (import.meta.env.VITE_PRIVACY_CONTACT_EMAIL as string | undefined)?.trim() || "admin@hkftservices.co.za";
+  return (import.meta.env.VITE_PRIVACY_CONTACT_EMAIL as string | undefined)?.trim() || "support@squashhub.co.za";
 }
 
 export default function Privacy() {

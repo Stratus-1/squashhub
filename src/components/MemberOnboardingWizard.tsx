@@ -509,11 +509,24 @@ export function MemberOnboardingWizard({
       if (profileErr) throw profileErr;
 
       // 2. Update or create club_member record
-      const { data: existingMember } = await fromExt("club_members")
+      // First try by user_id; fall back to email match for pre-existing/imported rows
+      let existingMember: { id: string } | null = null;
+      const { data: byUserId } = await fromExt("club_members")
         .select("id")
         .eq("club_id", clubId)
         .eq("user_id", user.id)
         .maybeSingle();
+      existingMember = byUserId;
+
+      if (!existingMember && user.email) {
+        const { data: byEmail } = await fromExt("club_members")
+          .select("id")
+          .eq("club_id", clubId)
+          .ilike("email", user.email)
+          .is("user_id", null)
+          .maybeSingle();
+        existingMember = byEmail;
+      }
 
       const memberData = {
         name: name.trim(),
@@ -532,8 +545,9 @@ export function MemberOnboardingWizard({
       const isPreExistingMember = !!existingMember;
 
       if (existingMember) {
+        // Make sure the row is linked to this auth user
         const { error: memErr } = await fromExt("club_members")
-          .update(memberData)
+          .update({ ...memberData, user_id: user.id })
           .eq("id", existingMember.id);
         if (memErr) throw memErr;
       } else {

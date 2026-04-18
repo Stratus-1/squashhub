@@ -25,6 +25,7 @@ type RegRow = {
   club_member_id: string;
   league_id: string;
   player_rank: number | null;
+  is_captain: boolean | null;
 };
 
 type StatusRow = {
@@ -108,7 +109,7 @@ export function FillUpLeaguesTab({ clubId }: Props) {
     queryFn: async () => {
       if (leagueIds.length === 0) return [];
       const { data, error } = await fromExt("member_league_registrations")
-        .select("id, club_member_id, league_id, player_rank")
+        .select("id, club_member_id, league_id, player_rank, is_captain")
         .in("league_id", leagueIds);
       if (error) throw error;
       return (data as RegRow[]) || [];
@@ -238,7 +239,9 @@ export function FillUpLeaguesTab({ clubId }: Props) {
       </Card>
 
       {sortedLeagues.map((lg, idx) => {
-        const isCaptain = !!meMember && lg.captain_member_id === meMember.id;
+        const captainReg = registrations.find(r => r.league_id === lg.id && r.is_captain);
+        const captainMemberId = captainReg?.club_member_id || lg.captain_member_id || null;
+        const isCaptain = !!meMember && captainMemberId === meMember.id;
         const nextLeague = sortedLeagues[idx + 1] || null;
         const prevLeague = sortedLeagues[idx - 1] || null;
 
@@ -271,9 +274,9 @@ export function FillUpLeaguesTab({ clubId }: Props) {
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="default" className="text-xs">{lg.code || `#${idx + 1}`}</Badge>
                 <span className="font-semibold text-sm">{lg.name}</span>
-                {lg.captain_member_id && (
+                {captainMemberId && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Crown className="w-3 h-3" /> {memberMap.get(lg.captain_member_id)?.name || "Captain"}
+                    <Crown className="w-3 h-3" /> {memberMap.get(captainMemberId)?.name || "Captain"}
                   </span>
                 )}
                 {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}

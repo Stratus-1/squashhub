@@ -476,7 +476,14 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     return [...basePool, ...cascaded, ...pulledLadies]
       .filter(p => !unavailableSet.has(p.memberId))
       .filter(p => !positionedThisLeague.has(p.memberId))
-      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+      .sort((a, b) => {
+        // Primary: club ladder position (lower = stronger, nulls last)
+        const la = memberMap.get(a.memberId)?.ladder_position ?? Number.POSITIVE_INFINITY;
+        const lb = memberMap.get(b.memberId)?.ladder_position ?? Number.POSITIVE_INFINITY;
+        if (la !== lb) return la - lb;
+        // Secondary: existing league player_rank as tiebreaker
+        return (a.rank ?? 999) - (b.rank ?? 999);
+      });
   };
 
   const positionsForLeague = (lg: LeagueRow) => {

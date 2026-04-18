@@ -89,10 +89,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   );
 
   // Build a list of candidate planning weeks.
-  // Rule: once today is on/after the squash-week start day (e.g. Wed), that week is
-  // considered "in progress" — start planning from NEXT week. Otherwise begin with the
-  // current squash week. Then pick the earliest week that still has any incomplete
-  // lineup (any league with <4 players assigned).
+  // Always start with the CURRENT squash week (the one containing today) so an
+  // in-progress week whose fixtures haven't been played yet (e.g. a Tue fixture when
+  // the squash week starts on Wed) remains plannable. Then add the next 7 weeks.
   const candidateWeeks = useMemo(() => {
     const dow = club?.league_week_start_dow ?? 3;
     const today = new Date();
@@ -100,8 +99,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     const monday = startOfWeek(today, { weekStartsOn: 1 });
     let currentStart = addDays(monday, ((dow + 6) % 7));
     if (currentStart > today) currentStart = addDays(currentStart, -7);
-    const baseStart = today >= currentStart ? addDays(currentStart, 7) : currentStart;
-    return Array.from({ length: 8 }, (_, i) => format(addDays(baseStart, i * 7), "yyyy-MM-dd"));
+    return Array.from({ length: 8 }, (_, i) => format(addDays(currentStart, i * 7), "yyyy-MM-dd"));
   }, [club?.league_week_start_dow]);
 
   const { data: lookaheadLineups = [] } = useQuery<{ week_start_date: string; league_id: string; club_member_id: string }[]>({
@@ -669,7 +667,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
                     onClick={() => setSelectedWeekOverride(wk === autoWeekStart ? null : wk)}
                     className="h-7 px-2 text-[11px] gap-1"
                   >
-                    {i === 0 ? "Next" : i === 1 ? "+1 wk" : `+${i} wks`}
+                    {i === 0 ? "This week" : i === 1 ? "Next" : `+${i - 1} wk${i - 1 > 1 ? "s" : ""}`}
                     <span className="opacity-80">· {format(new Date(wk), "dd MMM")}</span>
                     {completion && (
                       <span className={`text-[10px] ml-0.5 ${isComplete ? "text-emerald-300" : "opacity-70"}`}>
@@ -695,7 +693,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
           )}
           <p className="text-xs text-muted-foreground">
             <strong>
-              Planning {chosenWeekIndex === 0 ? "next week" : chosenWeekIndex === 1 ? "the week after next" : `${chosenWeekIndex + 1} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
+              Planning {chosenWeekIndex === 0 ? "this week (in progress)" : chosenWeekIndex === 1 ? "next week" : `${chosenWeekIndex} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
             </strong> —
             Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the
             <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.

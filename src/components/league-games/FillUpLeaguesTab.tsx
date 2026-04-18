@@ -693,7 +693,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
           )}
           <p className="text-xs text-muted-foreground">
             <strong>
-              Planning {chosenWeekIndex === 0 ? "next week" : chosenWeekIndex === 1 ? "the week after next" : `${chosenWeekIndex + 1} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
+              Planning {chosenWeekIndex === 0 ? "this week (in progress)" : chosenWeekIndex === 1 ? "next week" : `${chosenWeekIndex} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
             </strong> —
             Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the
             <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.

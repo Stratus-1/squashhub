@@ -369,7 +369,7 @@ export function MemberOnboardingWizard({
   }, [idNumber, dateOfBirth, feeCategories, gender, categoryAutoSet]);
 
   // Auto-generate member number when reaching membership step — but ONLY for genuinely new members.
-  // Pre-existing/imported members keep whatever number they were given (or none).
+  // Pre-existing/imported members keep whatever number they were given (or none — they enter it themselves).
   useEffect(() => {
     if (step === 2 && clubId && !memberNumber && user?.id && !isExistingMember) {
       (async () => {
@@ -381,7 +381,14 @@ export function MemberOnboardingWizard({
           .maybeSingle();
 
         if (existing?.club_member_number) {
-          setMemberNumber(existing.club_member_number);
+          // Don't auto-fill if it's actually a league/NSF code placeholder
+          const { data: isLeagueCode } = await fromExt("platform_league_members")
+            .select("user_code")
+            .ilike("user_code", existing.club_member_number)
+            .maybeSingle();
+          if (!isLeagueCode) {
+            setMemberNumber(existing.club_member_number);
+          }
           setIsExistingMember(true);
           return;
         }

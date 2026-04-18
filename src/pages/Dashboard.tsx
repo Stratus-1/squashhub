@@ -87,6 +87,78 @@ export default function Dashboard() {
     enabled: !!(myMemberId || effectiveUserId),
   });
 
+  // My upcoming league fixtures (next 14 days) — where I'm in the lineup OR registered in that league
+  const { data: myLeagueFixtures } = useQuery({
+    queryKey: ["my-upcoming-league-fixtures", clubId, myMemberId],
+    queryFn: async () => {
+      if (!clubId || !myMemberId) return [] as any[];
+
+      const { data: regs } = await supabase
+        .from("member_league_registrations")
+        .select("league_id, league:leagues(id, code, name, association_id, association:league_associations(platform_association_id))")
+        .eq("club_member_id", myMemberId);
+
+      const myLeagueCodes = new Set<string>();
+      const platformAssocIds = new Set<string>();
+      const clubPrefixes = new Set<string>();
+      for (const r of (regs || []) as any[]) {
+        const code = r.league?.code as string | undefined;
+        if (code) {
+          myLeagueCodes.add(code);
+          const m = code.match(/^([A-Za-z]+)/);
+          if (m) clubPrefixes.add(m[1].toUpperCase());
+        }
+        const pa = r.league?.association?.platform_association_id as string | undefined;
+        if (pa) platformAssocIds.add(pa);
+      }
+      if (platformAssocIds.size === 0 || clubPrefixes.size === 0) return [];
+
+      const today = format(new Date(), "yyyy-MM-dd");
+      const horizon = format(new Date(Date.now() + 14 * 86400000), "yyyy-MM-dd");
+
+      const { data: fx } = await supabase
+        .from("platform_league_fixtures")
+        .select("id, fixture_date, fixture_time, venue_name, home_team_code, away_team_code, division, association_id")
+        .in("association_id", [...platformAssocIds])
+        .gte("fixture_date", today)
+        .lte("fixture_date", horizon)
+        .order("fixture_date");
+
+      const filtered = (fx || []).filter((f: any) => {
+        const home = (f.home_team_code || "").toUpperCase();
+        const away = (f.away_team_code || "").toUpperCase();
+        return [...clubPrefixes].some((p) => {
+          const re = new RegExp(`^${p}\\d+$`);
+          return re.test(home) || re.test(away);
+        });
+      });
+
+      const ids = filtered.map((f: any) => f.id);
+      let lineupSet = new Set<string>();
+      if (ids.length > 0) {
+        const { data: lineups } = await supabase
+          .from("league_fixture_lineups")
+          .select("fixture_id")
+          .eq("club_member_id", myMemberId)
+          .in("fixture_id", ids);
+        lineupSet = new Set((lineups || []).map((l: any) => l.fixture_id as string));
+      }
+
+      return filtered
+        .map((f: any) => ({
+          ...f,
+          inLineup: lineupSet.has(f.id),
+          inMyLeague: myLeagueCodes.has(f.home_team_code) || myLeagueCodes.has(f.away_team_code),
+        }))
+        .filter((f: any) => f.inLineup || f.inMyLeague)
+        .sort((a: any, b: any) => {
+          if (a.inLineup !== b.inLineup) return a.inLineup ? -1 : 1;
+          return a.fixture_date.localeCompare(b.fixture_date);
+        });
+    },
+    enabled: !!clubId && !!myMemberId,
+  });
+
   // Get all player names for recent matches
   const matchPlayerIds = useMemo(() => {
     if (!recentMatches) return [] as string[];

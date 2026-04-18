@@ -12,6 +12,8 @@ export type RegRow = {
   league_id: string;
   player_rank: number | null;
   is_captain: boolean | null;
+  league_association_number: string | null;
+  ssa_number: string | null;
 };
 
 export type StatusRow = {

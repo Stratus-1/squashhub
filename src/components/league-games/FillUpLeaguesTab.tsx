@@ -667,7 +667,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
                     onClick={() => setSelectedWeekOverride(wk === autoWeekStart ? null : wk)}
                     className="h-7 px-2 text-[11px] gap-1"
                   >
-                    {i === 0 ? "Next" : i === 1 ? "+1 wk" : `+${i} wks`}
+                    {i === 0 ? "This week" : i === 1 ? "Next" : `+${i - 1} wk${i - 1 > 1 ? "s" : ""}`}
                     <span className="opacity-80">· {format(new Date(wk), "dd MMM")}</span>
                     {completion && (
                       <span className={`text-[10px] ml-0.5 ${isComplete ? "text-emerald-300" : "opacity-70"}`}>

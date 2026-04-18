@@ -27,14 +27,28 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
       : fixture.home_team_code
     : null;
   const isHome = fixture ? fixture.home_team_code === league.code : false;
+  const filledCount = positions.filter(p => p.memberId).length;
+  const isComplete = filledCount === 4;
 
   return (
-    <Card className="p-3 space-y-2">
+    <Card
+      className={cn(
+        "p-3 space-y-2 transition-colors",
+        isComplete && "border-green-500/60 bg-green-500/5 dark:bg-green-500/10",
+      )}
+    >
       <div className="space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="default" className="text-xs">{league.code || league.name}</Badge>
           <span className="font-semibold text-sm">{league.name}</span>
           {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
+          {isComplete ? (
+            <Badge className="text-[10px] bg-green-600 hover:bg-green-600 text-white border-transparent gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Team set
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px]">{filledCount}/4 filled</Badge>
+          )}
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <Crown className="w-3.5 h-3.5 text-primary" />

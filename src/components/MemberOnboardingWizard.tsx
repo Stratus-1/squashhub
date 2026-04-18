@@ -277,7 +277,7 @@ export function MemberOnboardingWizard({
               .maybeSingle();
             if (leaguePlayer) {
               const fullName = `${leaguePlayer.first_name || ""} ${leaguePlayer.surname || ""}`.trim();
-              if (fullName && (!member.name || member.name.trim() === leagueNum)) {
+              if (fullName && (!member.name || member.name.trim() === leagueNum || looksLikeLookupCode(member.name))) {
                 setName(fullName);
               }
             }

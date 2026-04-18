@@ -67,68 +67,6 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     enabled: !!activeMemberId,
   });
 
-  // Build a list of candidate planning weeks.
-  // Rule: once today is on/after the squash-week start day (e.g. Wed), that week is
-  // considered "in progress" — start planning from NEXT week. Otherwise begin with the
-  // current squash week. Then pick the earliest week that still has any incomplete
-  // lineup (any league with <4 players assigned). Falls back to the first candidate.
-  const candidateWeeks = useMemo(() => {
-    const dow = club?.league_week_start_dow ?? 3;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const monday = startOfWeek(today, { weekStartsOn: 1 });
-    let currentStart = addDays(monday, ((dow + 6) % 7));
-    if (currentStart > today) currentStart = addDays(currentStart, -7);
-    // If today is at/after the current squash-week start day, advance to next week
-    const baseStart = today >= currentStart ? addDays(currentStart, 7) : currentStart;
-    // Look up to 8 weeks ahead
-    return Array.from({ length: 8 }, (_, i) => format(addDays(baseStart, i * 7), "yyyy-MM-dd"));
-  }, [club?.league_week_start_dow]);
-
-  // Fetch lineup counts across all candidate weeks at once
-  const { data: lookaheadLineups = [] } = useQuery<{ week_start_date: string; league_id: string; club_member_id: string }[]>({
-    queryKey: ["lwl-lookahead", clubId, candidateWeeks.join(",")],
-    queryFn: async () => {
-      if (candidateWeeks.length === 0) return [];
-      const { data, error } = await supabase
-        .from("league_week_lineups")
-        .select("week_start_date, league_id, club_member_id")
-        .eq("club_id", clubId)
-        .in("week_start_date", candidateWeeks);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: candidateWeeks.length > 0,
-  });
-
-  // Pick the earliest candidate week where ANY league has < 4 players assigned.
-  // If every league across every scanned week is full (unlikely), use the first candidate.
-  const weekStart = useMemo(() => {
-    if (candidateWeeks.length === 0) return format(new Date(), "yyyy-MM-dd");
-    if (leagues.length === 0) return candidateWeeks[0];
-    // Build counts: weekStart -> leagueId -> Set(memberId)
-    const counts = new Map<string, Map<string, Set<string>>>();
-    for (const row of lookaheadLineups) {
-      if (!counts.has(row.week_start_date)) counts.set(row.week_start_date, new Map());
-      const lm = counts.get(row.week_start_date)!;
-      if (!lm.has(row.league_id)) lm.set(row.league_id, new Set());
-      lm.get(row.league_id)!.add(row.club_member_id);
-    }
-    for (const wk of candidateWeeks) {
-      const lm = counts.get(wk);
-      // Week is "incomplete" if any league has <4 filled
-      const allComplete = leagues.every(lg => (lm?.get(lg.id)?.size ?? 0) >= 4);
-      if (!allComplete) return wk;
-    }
-    return candidateWeeks[candidateWeeks.length - 1];
-  }, [candidateWeeks, lookaheadLineups, leagues]);
-
-  // End of the planning window (exclusive upper bound for fixture filtering)
-  const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
-
-  // Index of the chosen week (for banner copy: "next week" vs "in N weeks")
-  const chosenWeekIndex = useMemo(() => candidateWeeks.indexOf(weekStart), [candidateWeeks, weekStart]);
-
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
   // Leagues

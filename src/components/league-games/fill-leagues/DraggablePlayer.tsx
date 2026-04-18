@@ -9,13 +9,14 @@ type Props = {
   origin: string; // leagueId | "na" | "pool"
   name: string;
   rank?: number | null;
+  leagueNumber?: string | null;
   disabled?: boolean;
   badge?: { label: string; variant?: "outline" | "secondary" | "destructive" } | null;
   positionLabel?: string | null; // e.g. "1." or "#3"
   muted?: boolean;
 };
 
-export function DraggablePlayer({ memberId, origin, name, rank, disabled, badge, positionLabel, muted }: Props) {
+export function DraggablePlayer({ memberId, origin, name, rank, leagueNumber, disabled, badge, positionLabel, muted }: Props) {
   const id = dragId(memberId, origin);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id,
@@ -45,6 +46,7 @@ export function DraggablePlayer({ memberId, origin, name, rank, disabled, badge,
       {positionLabel && <span className="text-[10px] text-muted-foreground w-4 shrink-0">{positionLabel}</span>}
       <span className={cn("flex-1 truncate text-xs", muted && "line-through")}>
         {name}
+        {leagueNumber && <span className="text-muted-foreground ml-1">#{leagueNumber}</span>}
         {typeof rank === "number" && <span className="text-muted-foreground ml-1">R{rank}</span>}
       </span>
       {badge && (

@@ -301,11 +301,12 @@ export function MemberOnboardingWizard({
     }
   }, [idNumber, dateOfBirth, feeCategories, gender, categoryAutoSet]);
 
-  // Auto-generate member number when reaching membership step — but keep existing number for pre-existing members
+  // Auto-generate member number when reaching membership step — but ONLY for genuinely new members.
+  // Pre-existing/imported members keep whatever number they were given (or none).
   useEffect(() => {
-    if (step === 2 && clubId && !memberNumber && user?.id) {
+    if (step === 2 && clubId && !memberNumber && user?.id && !isExistingMember) {
       (async () => {
-        // First check if member already has a number assigned (pre-existing / imported member)
+        // Double-check: in case the existing-member effect hasn't resolved yet
         const { data: existing } = await fromExt("club_members")
           .select("club_member_number")
           .eq("club_id", clubId)
@@ -314,24 +315,11 @@ export function MemberOnboardingWizard({
 
         if (existing?.club_member_number) {
           setMemberNumber(existing.club_member_number);
+          setIsExistingMember(true);
           return;
         }
 
-        // Also check by email match (member may not be linked by user_id yet)
-        if (user.email) {
-          const { data: emailMatch } = await fromExt("club_members")
-            .select("club_member_number")
-            .eq("club_id", clubId)
-            .eq("email", user.email.toLowerCase())
-            .maybeSingle();
-
-          if (emailMatch?.club_member_number) {
-            setMemberNumber(emailMatch.club_member_number);
-            return;
-          }
-        }
-
-        // No existing number — generate a new one
+        // No existing member — generate the next number
         const { data, error } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
         if (!error && data) {
           setMemberNumber(data as string);
@@ -340,7 +328,7 @@ export function MemberOnboardingWizard({
         }
       })();
     }
-  }, [step, clubId, memberNumber, user?.id, user?.email]);
+  }, [step, clubId, memberNumber, user?.id, isExistingMember]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
   const dueMonth = (club as any)?.member_fee_due_month || 1;

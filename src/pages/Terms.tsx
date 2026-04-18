@@ -157,7 +157,7 @@ export default function Terms() {
                 <strong>HKFT Services (Pty) Ltd</strong><br />
                 Reg. No. 2025/624300/07<br />
                 Republic of South Africa<br />
-                <a href="mailto:admin@hkftservices.co.za">admin@hkftservices.co.za</a>
+                <a href="mailto:support@squashhub.co.za">support@squashhub.co.za</a>
               </p>
 
               <p className="text-xs text-muted-foreground mt-6">

@@ -152,16 +152,33 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           <div className="space-y-2">
             {(dayFixtures || []).map((f) => {
               const mine = isMyFixture(f);
+              const inLineup = isInLineup(f);
               const result = resultMap.get(f.id);
               return (
-                <Card key={f.id} className={`p-3 ${mine ? "border-primary/50 bg-primary/5" : ""}`}>
+                <Card
+                  key={f.id}
+                  className={`p-3 ${
+                    inLineup
+                      ? "border-2 border-primary bg-primary/10 shadow-sm"
+                      : mine
+                      ? "border-primary/50 bg-primary/5"
+                      : ""
+                  }`}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0 space-y-1">
-                      {mine && (
-                        <Badge className="bg-primary/15 text-primary text-[10px] mb-1">
-                          <Star className="w-3 h-3 mr-1" /> Your League
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1 mb-1">
+                        {inLineup && (
+                          <Badge className="bg-primary text-primary-foreground text-[10px]">
+                            <UserCheck className="w-3 h-3 mr-1" /> You're playing
+                          </Badge>
+                        )}
+                        {!inLineup && mine && (
+                          <Badge className="bg-primary/15 text-primary text-[10px]">
+                            <Star className="w-3 h-3 mr-1" /> Your League
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm">
                         <span className="font-bold">{f.home_team_code}</span>
                         {result && (result.status === "submitted" || result.status === "confirmed") ? (
@@ -186,7 +203,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                     </div>
                     <Button
                       size="sm"
-                      variant={mine ? "default" : "outline"}
+                      variant={inLineup || mine ? "default" : "outline"}
                       className="shrink-0"
                       onClick={() => navigate(`/league-games/${f.id}`)}
                     >

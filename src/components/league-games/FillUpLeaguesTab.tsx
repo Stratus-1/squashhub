@@ -44,6 +44,7 @@ const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
 export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   const qc = useQueryClient();
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [selectedWeekOverride, setSelectedWeekOverride] = useState<string | null>(null);
 
   // Club settings
   const { data: club } = useQuery({

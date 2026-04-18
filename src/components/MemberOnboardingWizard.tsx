@@ -243,6 +243,46 @@ export function MemberOnboardingWizard({
           setCategoryAutoSet(true);
         }
         if (member.plays_league) setPlaysLeague(member.plays_league);
+
+        // Pull league registration → look up full name from platform_league_members
+        try {
+          const { data: leagueReg } = await fromExt("member_league_registrations")
+            .select("league_association_number")
+            .eq("club_member_id", member.id)
+            .maybeSingle();
+          const leagueNum = leagueReg?.league_association_number;
+          if (leagueNum) {
+            const { data: leaguePlayer } = await fromExt("platform_league_members")
+              .select("first_name, surname")
+              .ilike("user_code", leagueNum)
+              .maybeSingle();
+            if (leaguePlayer) {
+              const fullName = `${leaguePlayer.first_name || ""} ${leaguePlayer.surname || ""}`.trim();
+              if (fullName && (!member.name || member.name.trim() === leagueNum)) {
+                setName(fullName);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("[Wizard] league name lookup failed", e);
+        }
+      } else {
+        // No club_members row yet — try the signup token (may be league/member number)
+        const lookup = (user.user_metadata?.name || "").trim();
+        if (lookup) {
+          try {
+            const { data: leaguePlayer } = await fromExt("platform_league_members")
+              .select("first_name, surname")
+              .ilike("user_code", lookup)
+              .maybeSingle();
+            if (leaguePlayer) {
+              const fullName = `${leaguePlayer.first_name || ""} ${leaguePlayer.surname || ""}`.trim();
+              if (fullName) setName(fullName);
+            }
+          } catch (e) {
+            console.warn("[Wizard] league name lookup (no member) failed", e);
+          }
+        }
       }
     })();
   }, [open, clubId, user?.id, user?.email]);

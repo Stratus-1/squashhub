@@ -31,6 +31,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     "https://squashhub.co.za";
 
   useEffect(() => {
+    const forceLocalSignOut = async () => {
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // ignore
+      }
+      // Clear any stale supabase tokens from storage as a hard reset
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("sb-") && k.endsWith("-auth-token"))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {
+        // ignore
+      }
+      setSession(null);
+      setUser(null);
+      setLoading(false);
+    };
+
+    const validateSession = async (s: Session | null) => {
+      if (!s?.user) {
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      // Verify the user still exists server-side. If the auth user was deleted
+      // but the token is still in localStorage, getUser() returns user_not_found.
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data?.user) {
+        console.warn("[Auth] Stale session detected, forcing local sign-out", error?.message);
+        await forceLocalSignOut();
+        return;
+      }
+      setSession(s);
+      setUser(data.user);
+      setLoading(false);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -38,9 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      validateSession(session);
     });
 
     return () => subscription.unsubscribe();

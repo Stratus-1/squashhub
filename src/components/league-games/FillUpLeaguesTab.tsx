@@ -1,58 +1,49 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Crown, UserMinus, ArrowDown, Users, ArrowLeft, Calendar, MapPin } from "lucide-react";
+import { Users, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, addDays } from "date-fns";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import { LeagueColumn } from "./fill-leagues/LeagueColumn";
+import { DroppableZone } from "./fill-leagues/DroppableZone";
+import { DraggablePlayer } from "./fill-leagues/DraggablePlayer";
+import {
+  naDropId,
+  parseDragId,
+  parseDropId,
+  type LeagueRow,
+  type RegRow,
+  type StatusRow,
+  type LineupRow,
+  type MemberLite,
+  type FixtureLite,
+} from "./fill-leagues/types";
 
 type Props = { clubId: string; activeMemberId?: string | null };
-
-type LeagueRow = {
-  id: string;
-  name: string;
-  code: string | null;
-  captain_member_id: string | null;
-  allow_cross_gender_guests: boolean | null;
-};
-
-type RegRow = {
-  id: string;
-  club_member_id: string;
-  league_id: string;
-  player_rank: number | null;
-  is_captain: boolean | null;
-};
-
-type StatusRow = {
-  id: string;
-  league_id: string;
-  club_member_id: string;
-  status: "playing" | "unavailable" | "excess";
-  cascaded_from_league_id: string | null;
-};
 
 function leagueOrder(name: string, code: string | null): number {
   const m = (code || name).match(/(\d+)/);
   return m ? parseInt(m[1]) : 99;
 }
-
-function isLadiesLeague(name: string): boolean {
-  const n = name.toLowerCase();
-  return n.includes("ladies") || n.includes("women");
-}
-
-function isMensLeague(name: string): boolean {
-  const n = name.toLowerCase();
-  return n.includes("men") && !n.includes("women");
-}
+const isLadiesLeague = (n: string) => /ladies|women/i.test(n);
+const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
 
 export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   const qc = useQueryClient();
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Club settings
   const { data: club } = useQuery({
@@ -64,21 +55,28 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     },
   });
 
-  // Compute current week_start_date from configured DOW
+  // Detect club admin role for active member
+  const { data: amIAdmin } = useQuery({
+    queryKey: ["am-i-admin", clubId, activeMemberId],
+    queryFn: async () => {
+      if (!activeMemberId) return false;
+      const { data, error } = await supabase.from("club_members").select("role").eq("id", activeMemberId).maybeSingle();
+      if (error) return false;
+      return data?.role === "admin" || data?.role === "captain";
+    },
+    enabled: !!activeMemberId,
+  });
+
+  // Compute current week_start_date from configured DOW (Wed→Tue if dow=3)
   const weekStart = useMemo(() => {
     const dow = club?.league_week_start_dow ?? 3;
     const today = new Date();
     const monday = startOfWeek(today, { weekStartsOn: 1 });
-    // dow: 0 Sun..6 Sat → map to date-fns weekStartsOn
     const candidate = addDays(monday, ((dow + 6) % 7));
     if (candidate > today) return format(addDays(candidate, -7), "yyyy-MM-dd");
     return format(candidate, "yyyy-MM-dd");
   }, [club?.league_week_start_dow]);
 
-  const prevWeekStart = useMemo(() => format(addDays(new Date(weekStart), -7), "yyyy-MM-dd"), [weekStart]);
-
-  // Use the actively selected member profile from MemberContext / page state.
-  // This is required for family/shared accounts where one auth user can have multiple club_members.
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
   // Leagues
@@ -93,9 +91,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     },
   });
 
-  const sortedLeagues = useMemo(() => [...leagues].sort((a, b) => leagueOrder(a.name, a.code) - leagueOrder(b.name, b.code)), [leagues]);
+  const sortedLeagues = useMemo(
+    () => [...leagues].sort((a, b) => leagueOrder(a.name, a.code) - leagueOrder(b.name, b.code)),
+    [leagues],
+  );
 
-  // Registrations across all club leagues
+  // Registrations
   const leagueIds = sortedLeagues.map(l => l.id);
   const { data: registrations = [] } = useQuery<RegRow[]>({
     queryKey: ["club-regs", leagueIds.join(",")],
@@ -110,29 +111,34 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     enabled: leagueIds.length > 0,
   });
 
+  // Members
   const memberIds = useMemo(() => {
     const ids = new Set<string>();
     registrations.forEach(r => ids.add(r.club_member_id));
     leagues.forEach(l => { if (l.captain_member_id) ids.add(l.captain_member_id); });
     return Array.from(ids);
   }, [registrations, leagues]);
-  const { data: members = [] } = useQuery({
+
+  const { data: members = [] } = useQuery<MemberLite[]>({
     queryKey: ["fill-members", memberIds.join(",")],
     queryFn: async () => {
       if (memberIds.length === 0) return [];
-      const { data, error } = await supabase.from("club_members").select("id, name, gender, ladder_position").in("id", memberIds);
+      const { data, error } = await supabase
+        .from("club_members")
+        .select("id, name, gender, ladder_position")
+        .in("id", memberIds);
       if (error) throw error;
-      return data || [];
+      return (data || []) as MemberLite[];
     },
     enabled: memberIds.length > 0,
   });
   const memberMap = useMemo(() => {
-    const m = new Map<string, { id: string; name: string | null; gender: string | null; ladder_position: number | null }>();
+    const m = new Map<string, MemberLite>();
     for (const x of members) m.set(x.id, x);
     return m;
   }, [members]);
 
-  // This week's status rows
+  // Per-league weekly status (for cascade tracking)
   const { data: statuses = [] } = useQuery<StatusRow[]>({
     queryKey: ["lwps", clubId, weekStart],
     queryFn: async () => {
@@ -146,30 +152,41 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     },
   });
 
-  // Previous week lineups for ±2 rule
-  const { data: prevLineups = [] } = useQuery({
-    queryKey: ["lwl-prev", clubId, prevWeekStart],
+  // Persisted lineups (positions 1-4 per league per week)
+  const { data: lineups = [] } = useQuery<LineupRow[]>({
+    queryKey: ["lwl", clubId, weekStart],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("league_week_lineups")
-        .select("league_id, position, club_member_id")
+        .select("id, league_id, position, club_member_id")
         .eq("club_id", clubId)
-        .eq("week_start_date", prevWeekStart);
+        .eq("week_start_date", weekStart);
+      if (error) throw error;
+      return (data as LineupRow[]) || [];
+    },
+  });
+
+  // Week-wide unavailability
+  const { data: unavailable = [] } = useQuery<{ id: string; club_member_id: string }[]>({
+    queryKey: ["lwu", clubId, weekStart],
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_week_unavailability")
+        .select("id, club_member_id")
+        .eq("club_id", clubId)
+        .eq("week_start_date", weekStart);
       if (error) throw error;
       return data || [];
     },
   });
+  const unavailableSet = useMemo(() => new Set(unavailable.map(u => u.club_member_id)), [unavailable]);
 
-  const prevPosByMember = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of prevLineups) m.set(r.club_member_id, r.position as number);
-    return m;
-  }, [prevLineups]);
-
-  // Next upcoming fixture per league code (date + venue + opponent)
-  const leagueCodes = useMemo(() => sortedLeagues.map(l => l.code).filter((c): c is string => !!c), [sortedLeagues]);
+  // Next upcoming fixture per league code
+  const leagueCodes = useMemo(
+    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
+    [sortedLeagues],
+  );
   const today = format(new Date(), "yyyy-MM-dd");
-  const { data: fixtures = [] } = useQuery({
+  const { data: fixtures = [] } = useQuery<FixtureLite[]>({
     queryKey: ["next-fixtures-by-code", leagueCodes.join(",")],
     queryFn: async () => {
       if (leagueCodes.length === 0) return [];
@@ -179,13 +196,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
         .or(leagueCodes.map(c => `home_team_code.eq.${c},away_team_code.eq.${c}`).join(","))
         .order("fixture_date", { ascending: true });
       if (error) throw error;
-      return (data || []) as Array<{ id: string; fixture_date: string; venue_name: string; home_team_code: string; away_team_code: string }>;
+      return (data || []) as FixtureLite[];
     },
     enabled: leagueCodes.length > 0,
   });
-
   const nextFixtureByCode = useMemo(() => {
-    const m = new Map<string, { fixture_date: string; venue_name: string; home_team_code: string; away_team_code: string }>();
+    const m = new Map<string, FixtureLite>();
     for (const f of fixtures) {
       for (const code of [f.home_team_code, f.away_team_code]) {
         if (leagueCodes.includes(code) && !m.has(code)) m.set(code, f);
@@ -194,18 +210,58 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     return m;
   }, [fixtures, leagueCodes]);
 
-  // Lookup helpers
-  const statusKey = (leagueId: string, memberId: string) => `${leagueId}|${memberId}`;
-  const statusMap = useMemo(() => {
-    const m = new Map<string, StatusRow>();
-    for (const s of statuses) m.set(statusKey(s.league_id, s.club_member_id), s);
-    return m;
-  }, [statuses]);
+  // ---------- Mutations ----------
 
-  // Mutations
-  const setStatus = useMutation({
-    mutationFn: async (input: { league_id: string; club_member_id: string; status: "playing" | "unavailable" | "excess"; cascaded_from_league_id?: string | null }) => {
-      const existing = statusMap.get(statusKey(input.league_id, input.club_member_id));
+  const upsertLineup = useMutation({
+    mutationFn: async (input: { league_id: string; position: number; club_member_id: string }) => {
+      // Remove the player from any other lineup slots this week first (move semantics)
+      await supabase
+        .from("league_week_lineups")
+        .delete()
+        .eq("club_id", clubId)
+        .eq("week_start_date", weekStart)
+        .eq("club_member_id", input.club_member_id);
+
+      // Then upsert into the target slot (unique on league+week+position)
+      const { error } = await supabase.from("league_week_lineups").upsert(
+        {
+          club_id: clubId,
+          league_id: input.league_id,
+          week_start_date: weekStart,
+          position: input.position,
+          club_member_id: input.club_member_id,
+        },
+        { onConflict: "league_id,week_start_date,position" },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to assign position"),
+  });
+
+  const clearLineupForMember = useMutation({
+    mutationFn: async (memberId: string) => {
+      const { error } = await supabase
+        .from("league_week_lineups")
+        .delete()
+        .eq("club_id", clubId)
+        .eq("week_start_date", weekStart)
+        .eq("club_member_id", memberId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] }),
+  });
+
+  const setStatusMut = useMutation({
+    mutationFn: async (input: {
+      league_id: string;
+      club_member_id: string;
+      status: "playing" | "unavailable" | "excess";
+      cascaded_from_league_id?: string | null;
+    }) => {
+      const existing = statuses.find(s => s.league_id === input.league_id && s.club_member_id === input.club_member_id);
       if (existing) {
         const { error } = await supabase.from("league_week_player_status")
           .update({ status: input.status, cascaded_from_league_id: input.cascaded_from_league_id ?? null })
@@ -227,6 +283,212 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     onError: (e: any) => toast.error(e.message || "Failed to update"),
   });
 
+  const markUnavailable = useMutation({
+    mutationFn: async (memberId: string) => {
+      // Remove any existing lineup placement first
+      await supabase
+        .from("league_week_lineups")
+        .delete()
+        .eq("club_id", clubId)
+        .eq("week_start_date", weekStart)
+        .eq("club_member_id", memberId);
+      const { error } = await fromExt("league_week_unavailability").insert({
+        club_id: clubId,
+        club_member_id: memberId,
+        week_start_date: weekStart,
+      });
+      if (error && !String(error.message).toLowerCase().includes("duplicate")) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lwu", clubId, weekStart] });
+      qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to mark unavailable"),
+  });
+
+  const clearUnavailable = useMutation({
+    mutationFn: async (memberId: string) => {
+      const { error } = await fromExt("league_week_unavailability")
+        .delete()
+        .eq("club_id", clubId)
+        .eq("week_start_date", weekStart)
+        .eq("club_member_id", memberId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lwu", clubId, weekStart] }),
+  });
+
+  // ---------- Derived: per-league pools & lineups ----------
+
+  const lineupByLeague = useMemo(() => {
+    const m = new Map<string, Map<number, string>>(); // leagueId -> (pos -> memberId)
+    for (const l of lineups) {
+      if (!m.has(l.league_id)) m.set(l.league_id, new Map());
+      m.get(l.league_id)!.set(l.position, l.club_member_id);
+    }
+    return m;
+  }, [lineups]);
+
+  const memberCurrentLineup = useMemo(() => {
+    const m = new Map<string, { leagueId: string; position: number }>();
+    for (const l of lineups) m.set(l.club_member_id, { leagueId: l.league_id, position: l.position });
+    return m;
+  }, [lineups]);
+
+  const isCaptainOfLeague = (lg: LeagueRow): boolean => {
+    if (!meMember) return false;
+    const cap = registrations.find(r => r.league_id === lg.id && r.is_captain);
+    return (cap?.club_member_id || lg.captain_member_id) === meMember.id;
+  };
+
+  const canEditLeague = (lg: LeagueRow): boolean => isCaptainOfLeague(lg) || !!amIAdmin;
+
+  // Build bench for a league = registered players + cascaded-in - already-in-position - unavailable
+  const benchForLeague = (lg: LeagueRow, listForOrdering: LeagueRow[]) => {
+    const idx = listForOrdering.findIndex(l => l.id === lg.id);
+    const prevLeague = idx > 0 ? listForOrdering[idx - 1] : null;
+
+    const baseRegs = registrations.filter(r => r.league_id === lg.id);
+    const basePool = baseRegs.map(r => ({
+      memberId: r.club_member_id,
+      rank: r.player_rank,
+      isPulled: false,
+      isCascaded: false,
+      cascadedFromCode: null as string | null,
+    }));
+
+    const cascaded = prevLeague
+      ? statuses
+          .filter(s => s.league_id === prevLeague.id && s.status === "excess")
+          .filter(s => !baseRegs.some(r => r.club_member_id === s.club_member_id))
+          .map(s => ({
+            memberId: s.club_member_id,
+            rank: null,
+            isPulled: false,
+            isCascaded: true,
+            cascadedFromCode: prevLeague.code,
+          }))
+      : [];
+
+    const ladiesPoolMemberIds = new Set(
+      registrations
+        .filter(r => sortedLeagues.find(l => l.id === r.league_id && isLadiesLeague(l.name)))
+        .map(r => r.club_member_id),
+    );
+    const pulledLadies = isMensLeague(lg.name)
+      ? statuses
+          .filter(s => s.league_id === lg.id && ladiesPoolMemberIds.has(s.club_member_id))
+          .filter(s => !baseRegs.some(r => r.club_member_id === s.club_member_id))
+          .map(s => ({
+            memberId: s.club_member_id,
+            rank: null,
+            isPulled: true,
+            isCascaded: false,
+            cascadedFromCode: null as string | null,
+          }))
+      : [];
+
+    const positionedThisLeague = new Set<string>();
+    const lp = lineupByLeague.get(lg.id);
+    if (lp) for (const mid of lp.values()) positionedThisLeague.add(mid);
+
+    return [...basePool, ...cascaded, ...pulledLadies]
+      .filter(p => !unavailableSet.has(p.memberId))
+      .filter(p => !positionedThisLeague.has(p.memberId))
+      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+  };
+
+  const positionsForLeague = (lg: LeagueRow) => {
+    const lp = lineupByLeague.get(lg.id);
+    return [1, 2, 3, 4].map(position => ({
+      position,
+      memberId: lp?.get(position) ?? null,
+    }));
+  };
+
+  // ---------- DnD handlers ----------
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = e;
+    if (!over) return;
+    const drag = parseDragId(String(active.id));
+    const drop = parseDropId(String(over.id));
+    if (!drag || !drop) return;
+
+    const { memberId, origin } = drag;
+
+    // NA zone — week-wide unavailable
+    if (drop.kind === "na") {
+      if (!amIAdmin && !sortedLeagues.some(canEditLeague)) {
+        toast.error("Only captains/admins can mark unavailability");
+        return;
+      }
+      markUnavailable.mutate(memberId);
+      return;
+    }
+
+    // Position slot
+    if (drop.kind === "pos") {
+      const targetLeague = sortedLeagues.find(l => l.id === drop.leagueId);
+      if (!targetLeague) return;
+      if (!canEditLeague(targetLeague)) {
+        toast.error("Only that league's captain or a club admin can edit positions");
+        return;
+      }
+      // If from NA, lift the unavailability so they can play
+      if (origin === "na") clearUnavailable.mutate(memberId);
+      upsertLineup.mutate({
+        league_id: drop.leagueId,
+        position: drop.position,
+        club_member_id: memberId,
+      });
+      return;
+    }
+
+    // Bench drop — moving across leagues = cascade
+    if (drop.kind === "bench") {
+      const targetLeague = sortedLeagues.find(l => l.id === drop.leagueId);
+      if (!targetLeague) return;
+
+      // From NA back to a bench
+      if (origin === "na") {
+        clearUnavailable.mutate(memberId);
+        return;
+      }
+
+      // Same league bench drop → just remove from position (unassign)
+      if (origin === targetLeague.id) {
+        const cur = memberCurrentLineup.get(memberId);
+        if (cur && cur.leagueId === targetLeague.id) clearLineupForMember.mutate(memberId);
+        return;
+      }
+
+      // Cross-league bench drop = mark "excess" from origin → cascades into target league pool
+      const originLeague = sortedLeagues.find(l => l.id === origin);
+      if (originLeague && !canEditLeague(originLeague)) {
+        toast.error("Only the source league's captain can push players to another league");
+        return;
+      }
+      if (originLeague) {
+        // Clear any current lineup for the player (they're being pushed)
+        clearLineupForMember.mutate(memberId);
+        setStatusMut.mutate({
+          league_id: originLeague.id,
+          club_member_id: memberId,
+          status: "excess",
+        });
+        toast.success(`${memberMap.get(memberId)?.name || "Player"} pushed to ${targetLeague.code || targetLeague.name}`);
+      }
+      return;
+    }
+  };
+
+  const handleDragStart = (e: DragStartEvent) => setActiveDragId(String(e.active.id));
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // ---------- Early returns ----------
   if (!club?.fill_top_down_enabled) {
     return (
       <Card className="p-8 text-center">
@@ -237,7 +499,6 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
       </Card>
     );
   }
-
   if (sortedLeagues.length === 0) {
     return (
       <Card className="p-8 text-center">
@@ -247,267 +508,104 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     );
   }
 
-  // Split leagues by category
+  // ---------- Layout split ----------
   const mensLeagues = sortedLeagues.filter(l => isMensLeague(l.name));
   const ladiesLeagues = sortedLeagues.filter(l => isLadiesLeague(l.name));
   const otherLeagues = sortedLeagues.filter(l => !isMensLeague(l.name) && !isLadiesLeague(l.name));
-
   const hasBothGenders = mensLeagues.length > 0 && ladiesLeagues.length > 0;
 
-  // Ladies pool (all ladies registered in any ladies league)
-  const ladiesPoolMemberIds = Array.from(new Set(
-    registrations
-      .filter(r => ladiesLeagues.some(l => l.id === r.league_id))
-      .map(r => r.club_member_id)
-  ));
+  // Active drag preview
+  const activeDrag = activeDragId ? parseDragId(activeDragId) : null;
+  const activeMemberName = activeDrag ? (memberMap.get(activeDrag.memberId)?.name || "Unknown") : null;
 
-  // Members already pulled into a men's league this week (status row in any men's league)
-  const ladiesAlreadyPulled = new Set(
-    statuses
-      .filter(s => mensLeagues.some(ml => ml.id === s.league_id) && ladiesPoolMemberIds.includes(s.club_member_id))
-      .map(s => `${s.league_id}|${s.club_member_id}`)
-  );
-
-  // Determine which men's leagues current user captains (for the "pull" UI)
-  const mensCaptainOf = mensLeagues.filter(lg => {
-    const cap = registrations.find(r => r.league_id === lg.id && r.is_captain);
-    return !!meMember && (cap?.club_member_id || lg.captain_member_id) === meMember.id;
-  });
-
-  const renderLeagueCard = (lg: LeagueRow, idx: number, listForOrdering: LeagueRow[]) => {
+  const captainNameOf = (lg: LeagueRow) => {
     const captainReg = registrations.find(r => r.league_id === lg.id && r.is_captain);
-    const captainMemberId = captainReg?.club_member_id || lg.captain_member_id || null;
-    const isCaptain = !!meMember && captainMemberId === meMember.id;
-    const nextLeague = listForOrdering[idx + 1] || null;
-    const prevLeague = listForOrdering[idx - 1] || null;
-
-    const baseRegs = registrations.filter(r => r.league_id === lg.id);
-    const basePool = baseRegs
-      .map(r => ({ memberId: r.club_member_id, rank: r.player_rank, source: "registered" as const }))
-      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
-
-    const cascaded = prevLeague
-      ? statuses
-          .filter(s => s.league_id === prevLeague.id && s.status === "excess")
-          .filter(s => !statusMap.get(statusKey(lg.id, s.club_member_id)))
-          .map(s => ({ memberId: s.club_member_id, rank: null, source: "cascaded" as const, fromLeagueId: prevLeague.id }))
-      : [];
-
-    // Pulled ladies: ladies players who have a "playing" status row in this men's league but no registration here
-    const pulledLadies = isMensLeague(lg.name)
-      ? statuses
-          .filter(s => s.league_id === lg.id && ladiesPoolMemberIds.includes(s.club_member_id))
-          .filter(s => !baseRegs.some(r => r.club_member_id === s.club_member_id))
-          .map(s => ({ memberId: s.club_member_id, rank: null, source: "ladies-pulled" as const }))
-      : [];
-
-    const fullPool = [...basePool, ...cascaded, ...pulledLadies];
-
-    return (
-      <Card key={lg.id} className="p-3 space-y-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="default" className="text-xs">{lg.code || `#${idx + 1}`}</Badge>
-            <span className="font-semibold text-sm">{lg.name}</span>
-            {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <Crown className="w-3.5 h-3.5 text-primary" />
-            <span className="text-muted-foreground">Captain:</span>
-            <span className="font-medium">
-              {captainMemberId ? (memberMap.get(captainMemberId)?.name || "—") : <span className="italic text-muted-foreground">Not assigned</span>}
-            </span>
-          </div>
-          {(() => {
-            const nf = lg.code ? nextFixtureByCode.get(lg.code) : null;
-            if (!nf) {
-              return (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
-                  <Calendar className="w-3.5 h-3.5" />
-                  No upcoming fixture
-                </div>
-              );
-            }
-            const opponentCode = nf.home_team_code === lg.code ? nf.away_team_code : nf.home_team_code;
-            const isHome = nf.home_team_code === lg.code;
-            return (
-              <div className="flex items-center gap-3 text-xs flex-wrap">
-                <span className="flex items-center gap-1 text-foreground">
-                  <Calendar className="w-3.5 h-3.5 text-primary" />
-                  <span className="font-medium">{format(new Date(nf.fixture_date), "EEE dd MMM")}</span>
-                </span>
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {nf.venue_name}
-                </span>
-                <Badge variant="outline" className="text-[10px]">
-                  {isHome ? "vs" : "@"} {opponentCode}
-                </Badge>
-              </div>
-            );
-          })()}
-        </div>
-
-        {fullPool.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">No players in pool.</p>
-        ) : (
-          <div className="space-y-1">
-            {fullPool.map((p, pi) => {
-              const mem = memberMap.get(p.memberId);
-              const st = statusMap.get(statusKey(lg.id, p.memberId));
-              const status = st?.status || "playing";
-              const prevPos = prevPosByMember.get(p.memberId);
-              const moveDelta = prevPos !== undefined ? Math.abs((pi + 1) - prevPos) : null;
-              const violatesRule = moveDelta !== null && moveDelta > 2;
-
-              return (
-                <div key={`${lg.id}-${p.memberId}`} className="flex items-center gap-2 py-1 border-b border-border/40 last:border-0">
-                  <span className="text-xs text-muted-foreground w-6 text-right">{pi + 1}.</span>
-                  <Checkbox
-                    checked={status === "playing"}
-                    disabled={!isCaptain}
-                    onCheckedChange={(v) =>
-                      setStatus.mutate({
-                        league_id: lg.id,
-                        club_member_id: p.memberId,
-                        status: v ? "playing" : "unavailable",
-                        cascaded_from_league_id: p.source === "cascaded" ? (p as any).fromLeagueId : null,
-                      })
-                    }
-                  />
-                  <span className={`text-sm flex-1 truncate ${status === "unavailable" ? "line-through text-muted-foreground" : ""}`}>
-                    {mem?.name || "Unknown"}
-                  </span>
-                  {p.source === "cascaded" && <Badge variant="outline" className="text-[10px]">↓ from {prevLeague?.code}</Badge>}
-                  {p.source === "ladies-pulled" && <Badge variant="outline" className="text-[10px]">♀ guest</Badge>}
-                  {mem?.gender && p.source !== "ladies-pulled" && (mem.gender.toLowerCase().startsWith("f")) && <Badge variant="outline" className="text-[10px]">♀</Badge>}
-                  {violatesRule && (
-                    <Badge variant="destructive" className="text-[10px]">±{moveDelta} &gt; 2</Badge>
-                  )}
-                  {isCaptain && status !== "excess" && nextLeague && (
-                    <Button size="icon" variant="ghost" className="h-6 w-6"
-                      title={`Move to ${nextLeague.code || nextLeague.name}`}
-                      onClick={() =>
-                        setStatus.mutate({
-                          league_id: lg.id,
-                          club_member_id: p.memberId,
-                          status: "excess",
-                        })
-                      }
-                    >
-                      <ArrowDown className="w-3 h-3" />
-                    </Button>
-                  )}
-                  {isCaptain && status === "unavailable" && (
-                    <Button size="icon" variant="ghost" className="h-6 w-6" title="Mark playing"
-                      onClick={() =>
-                        setStatus.mutate({ league_id: lg.id, club_member_id: p.memberId, status: "playing" })
-                      }
-                    >
-                      <UserMinus className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-    );
+    const id = captainReg?.club_member_id || lg.captain_member_id || null;
+    return id ? memberMap.get(id)?.name || null : null;
   };
 
-  const headerCard = (
-    <Card className="p-3">
-      <p className="text-xs text-muted-foreground">
-        <strong>Week of {format(new Date(weekStart), "EEE dd MMM")}</strong> — Captains tick players who are <strong>playing</strong>, mark <strong>unavailable</strong>, or push to <strong>excess</strong> (cascades to next league).
-      </p>
-    </Card>
+  const renderColumn = (lg: LeagueRow, list: LeagueRow[]) => (
+    <LeagueColumn
+      key={lg.id}
+      league={lg}
+      isCaptain={isCaptainOfLeague(lg)}
+      captainName={captainNameOf(lg)}
+      positions={positionsForLeague(lg)}
+      benchMembers={benchForLeague(lg, list)}
+      memberMap={memberMap}
+      fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
+      canEdit={canEditLeague(lg)}
+    />
   );
 
-  // Single-column fallback (no clear gender split)
-  if (!hasBothGenders) {
-    return (
-      <div className="space-y-3">
-        {headerCard}
-        {sortedLeagues.map((lg, idx) => renderLeagueCard(lg, idx, sortedLeagues))}
-      </div>
-    );
-  }
-
-  // Two-column layout: men's leagues left, ladies pool + ladies leagues right
   return (
-    <div className="space-y-3">
-      {headerCard}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Left: Men's leagues (2/3 width) */}
-        <div className="lg:col-span-2 space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground px-1">Men's Leagues</h3>
-          {mensLeagues.map((lg, idx) => renderLeagueCard(lg, idx, mensLeagues))}
-          {otherLeagues.length > 0 && (
-            <>
-              <h3 className="text-sm font-semibold text-muted-foreground px-1 pt-2">Other</h3>
-              {otherLeagues.map((lg, idx) => renderLeagueCard(lg, idx, otherLeagues))}
-            </>
-          )}
-        </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveDragId(null)}
+    >
+      <div className="space-y-3">
+        <Card className="p-3 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            <strong>Week of {format(new Date(weekStart), "EEE dd MMM")}</strong> — Drag players from the
+            <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.
+            Drag onto the red zone below to mark <strong>unavailable for the whole week</strong>.
+          </p>
+          <DroppableZone id={naDropId} variant="na" isEmpty={unavailable.length === 0} emptyHint="Drop a player here to mark them unavailable for the entire week (Wed → Tue)">
+            <div className="flex flex-wrap gap-1 items-center">
+              <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />
+              <span className="text-[10px] uppercase tracking-wide text-destructive font-semibold mr-1">Unavailable this week:</span>
+              {unavailable.map(u => {
+                const mem = memberMap.get(u.club_member_id);
+                if (!mem) return null;
+                return (
+                  <DraggablePlayer
+                    key={u.club_member_id}
+                    memberId={u.club_member_id}
+                    origin="na"
+                    name={mem.name || "Unknown"}
+                    muted
+                    badge={{ label: "NA", variant: "destructive" }}
+                  />
+                );
+              })}
+            </div>
+          </DroppableZone>
+        </Card>
 
-        {/* Right: Ladies side (1/3 width) */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground px-1">Ladies' Leagues</h3>
-          {ladiesLeagues.map((lg, idx) => renderLeagueCard(lg, idx, ladiesLeagues))}
-
-          {/* Pull-a-lady panel: shown when current user captains any men's league */}
-          {mensCaptainOf.length > 0 && ladiesPoolMemberIds.length > 0 && (
-            <Card className="p-3 space-y-2 border-dashed">
-              <div className="flex items-center gap-2">
-                <ArrowLeft className="w-3 h-3 text-muted-foreground" />
-                <span className="text-xs font-semibold">Pull a lady to your men's league</span>
-              </div>
-              <div className="space-y-1">
-                {ladiesPoolMemberIds.map(mid => {
-                  const mem = memberMap.get(mid);
-                  // Find which ladies league she's in (for context label)
-                  const homeReg = registrations.find(r =>
-                    r.club_member_id === mid && ladiesLeagues.some(l => l.id === r.league_id)
-                  );
-                  const homeLeague = homeReg ? ladiesLeagues.find(l => l.id === homeReg.league_id) : null;
-
-                  return (
-                    <div key={mid} className="flex items-center gap-2 py-1 border-b border-border/40 last:border-0">
-                      <span className="text-sm flex-1 truncate">{mem?.name || "Unknown"}</span>
-                      {homeLeague && <Badge variant="outline" className="text-[10px]">{homeLeague.code || homeLeague.name}</Badge>}
-                      <select
-                        className="text-[11px] bg-background border border-border rounded px-1 py-0.5"
-                        defaultValue=""
-                        onChange={(e) => {
-                          const targetLeagueId = e.target.value;
-                          if (!targetLeagueId) return;
-                          if (ladiesAlreadyPulled.has(`${targetLeagueId}|${mid}`)) {
-                            toast.info("Already pulled into that league");
-                            e.target.value = "";
-                            return;
-                          }
-                          setStatus.mutate({
-                            league_id: targetLeagueId,
-                            club_member_id: mid,
-                            status: "playing",
-                          });
-                          e.target.value = "";
-                        }}
-                      >
-                        <option value="">Pull to…</option>
-                        {mensCaptainOf.map(ml => (
-                          <option key={ml.id} value={ml.id}>{ml.code || ml.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
-        </div>
+        {!hasBothGenders ? (
+          <div className="space-y-3">
+            {sortedLeagues.map(lg => renderColumn(lg, sortedLeagues))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="lg:col-span-2 space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground px-1">Men's Leagues</h3>
+              {mensLeagues.map(lg => renderColumn(lg, mensLeagues))}
+              {otherLeagues.length > 0 && (
+                <>
+                  <h3 className="text-sm font-semibold text-muted-foreground px-1 pt-2">Other</h3>
+                  {otherLeagues.map(lg => renderColumn(lg, otherLeagues))}
+                </>
+              )}
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground px-1">Ladies' Leagues</h3>
+              {ladiesLeagues.map(lg => renderColumn(lg, ladiesLeagues))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+
+      <DragOverlay>
+        {activeMemberName && (
+          <div className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium shadow-lg">
+            {activeMemberName}
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 }

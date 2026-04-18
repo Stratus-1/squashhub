@@ -202,6 +202,10 @@ export function MemberOnboardingWizard({
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);
+  /** True when the wizard found an existing club_members row for this user
+   *  (admin-created, CSV-imported, or matched via the trigger on signup).
+   *  Pre-existing members keep their assigned numbers and are NEVER auto-numbered. */
+  const [isExistingMember, setIsExistingMember] = useState(false);
 
   // Pre-populate fields from existing member record (for pre-existing / imported members)
   useEffect(() => {

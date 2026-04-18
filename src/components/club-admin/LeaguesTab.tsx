@@ -11,6 +11,62 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, RefreshCw } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+
+const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function FillTopDownSettings({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
+  const { data: club } = useQuery({
+    queryKey: ["club-fill-settings", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clubs").select("fill_top_down_enabled, league_week_start_dow").eq("id", clubId).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clubId,
+  });
+
+  const update = async (patch: { fill_top_down_enabled?: boolean; league_week_start_dow?: number }) => {
+    const { error } = await supabase.from("clubs").update(patch).eq("id", clubId);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["club-fill-settings", clubId] });
+    toast.success("Saved");
+  };
+
+  return (
+    <Card className="p-3 mt-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox
+            checked={!!club?.fill_top_down_enabled}
+            onCheckedChange={(v) => update({ fill_top_down_enabled: !!v })}
+          />
+          <span className="text-sm font-medium">Fill up league teams from top down</span>
+        </label>
+        {club?.fill_top_down_enabled && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Squash week starts:</span>
+            <Select
+              value={String(club?.league_week_start_dow ?? 3)}
+              onValueChange={(v) => update({ league_week_start_dow: Number(v) })}
+            >
+              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {DOW_LABELS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">
+        When enabled, captains use <strong>Fill Up Leagues</strong> to assign players top-down. Excess players cascade to the next league. The ±2 position rule is enforced against the previous week's snapshot.
+      </p>
+    </Card>
+  );
+}
 
 // ─── Types ───
 interface LeaguePlayer {

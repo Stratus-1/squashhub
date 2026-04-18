@@ -86,6 +86,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                     memberId={mem.id}
                     origin={league.id}
                     name={mem.name || "Unknown"}
+                    leagueNumber={leagueNumberByMember?.get(mem.id) || null}
                     disabled={!canEdit}
                     badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}
                   />

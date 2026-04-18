@@ -202,6 +202,10 @@ export function MemberOnboardingWizard({
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);
+  /** True when the wizard found an existing club_members row for this user
+   *  (admin-created, CSV-imported, or matched via the trigger on signup).
+   *  Pre-existing members keep their assigned numbers and are NEVER auto-numbered. */
+  const [isExistingMember, setIsExistingMember] = useState(false);
 
   // Pre-populate fields from existing member record (for pre-existing / imported members)
   useEffect(() => {
@@ -226,6 +230,7 @@ export function MemberOnboardingWizard({
       }
 
       if (member) {
+        setIsExistingMember(true);
         if (member.name && !name) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);
         if (member.id_number) setIdNumber(member.id_number);
@@ -296,11 +301,12 @@ export function MemberOnboardingWizard({
     }
   }, [idNumber, dateOfBirth, feeCategories, gender, categoryAutoSet]);
 
-  // Auto-generate member number when reaching membership step — but keep existing number for pre-existing members
+  // Auto-generate member number when reaching membership step — but ONLY for genuinely new members.
+  // Pre-existing/imported members keep whatever number they were given (or none).
   useEffect(() => {
-    if (step === 2 && clubId && !memberNumber && user?.id) {
+    if (step === 2 && clubId && !memberNumber && user?.id && !isExistingMember) {
       (async () => {
-        // First check if member already has a number assigned (pre-existing / imported member)
+        // Double-check: in case the existing-member effect hasn't resolved yet
         const { data: existing } = await fromExt("club_members")
           .select("club_member_number")
           .eq("club_id", clubId)
@@ -309,24 +315,11 @@ export function MemberOnboardingWizard({
 
         if (existing?.club_member_number) {
           setMemberNumber(existing.club_member_number);
+          setIsExistingMember(true);
           return;
         }
 
-        // Also check by email match (member may not be linked by user_id yet)
-        if (user.email) {
-          const { data: emailMatch } = await fromExt("club_members")
-            .select("club_member_number")
-            .eq("club_id", clubId)
-            .eq("email", user.email.toLowerCase())
-            .maybeSingle();
-
-          if (emailMatch?.club_member_number) {
-            setMemberNumber(emailMatch.club_member_number);
-            return;
-          }
-        }
-
-        // No existing number — generate a new one
+        // No existing member — generate the next number
         const { data, error } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
         if (!error && data) {
           setMemberNumber(data as string);
@@ -335,7 +328,7 @@ export function MemberOnboardingWizard({
         }
       })();
     }
-  }, [step, clubId, memberNumber, user?.id, user?.email]);
+  }, [step, clubId, memberNumber, user?.id, isExistingMember]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
   const dueMonth = (club as any)?.member_fee_due_month || 1;
@@ -399,25 +392,26 @@ export function MemberOnboardingWizard({
   const handleSave = async () => {
     if (!user || !clubId) return;
 
-    // ── Duplicate validations ──
+    // ── Duplicate validations ── (exclude the member's own row)
     if (memberNumber) {
-      const { data: dupNum } = await fromExt("club_members")
-        .select("id")
+      const dupQuery = fromExt("club_members")
+        .select("id, user_id")
         .eq("club_id", clubId)
-        .eq("club_member_number", memberNumber)
-        .maybeSingle();
-      if (dupNum) {
+        .eq("club_member_number", memberNumber);
+      const { data: dupNumRows } = await dupQuery;
+      const conflict = (dupNumRows || []).find((r: any) => r.user_id !== user.id);
+      if (conflict) {
         toast.error("This membership number is already in use");
         return;
       }
     }
     if (idNumber.trim()) {
-      const { data: dupId } = await fromExt("club_members")
-        .select("id")
+      const { data: dupIdRows } = await fromExt("club_members")
+        .select("id, user_id")
         .eq("club_id", clubId)
-        .eq("id_number", idNumber.trim())
-        .maybeSingle();
-      if (dupId) {
+        .eq("id_number", idNumber.trim());
+      const conflict = (dupIdRows || []).find((r: any) => r.user_id !== user.id);
+      if (conflict) {
         toast.error("This ID number is already registered in the club");
         return;
       }
@@ -702,11 +696,24 @@ export function MemberOnboardingWizard({
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label>Member Number</Label>
+                    <Label>Member Number{isExistingMember ? "" : ""}</Label>
                     <div className="flex items-center gap-2">
-                      <Input value={memberNumber} readOnly className="bg-muted font-mono" />
-                      <Badge variant="outline" className="whitespace-nowrap text-xs">Auto-assigned</Badge>
+                      <Input
+                        value={memberNumber}
+                        onChange={(e) => setMemberNumber(e.target.value.toUpperCase())}
+                        readOnly={!isExistingMember}
+                        placeholder={isExistingMember ? "Enter your existing member number" : ""}
+                        className={!isExistingMember ? "bg-muted font-mono" : "font-mono"}
+                      />
+                      <Badge variant="outline" className="whitespace-nowrap text-xs">
+                        {isExistingMember ? "Existing member" : "Auto-assigned"}
+                      </Badge>
                     </div>
+                    {isExistingMember && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Your existing membership number — edit if needed.
+                      </p>
+                    )}
                   </div>
 
                   <div>

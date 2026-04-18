@@ -291,7 +291,7 @@ export function FillUpLeaguesTab({ clubId }: Props) {
             {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
           </div>
           <div className="flex items-center gap-1.5 text-xs">
-            <Crown className="w-3.5 h-3.5 text-amber-500" />
+            <Crown className="w-3.5 h-3.5 text-primary" />
             <span className="text-muted-foreground">Captain:</span>
             <span className="font-medium">
               {captainMemberId ? (memberMap.get(captainMemberId)?.name || "—") : <span className="italic text-muted-foreground">Not assigned</span>}

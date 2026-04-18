@@ -1019,7 +1019,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
 
     // Save league registration (association number) if plays league
     if (form.plays_league && form.association_id) {
-      // Find the league linked to the selected association
+      // Find a league linked to the selected association; if none, fall back to any existing registration
       const { data: league } = await fromExt("leagues")
         .select("id")
         .eq("club_id", clubId)
@@ -1027,33 +1027,41 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
         .limit(1)
         .maybeSingle();
 
-      if (league) {
-        // Check for ANY existing registration for this member (regardless of league_id)
-        const { data: existingRows } = await fromExt("member_league_registrations")
-          .select("id, league_id")
-          .eq("club_member_id", member.id)
-          .order("created_at", { ascending: true })
-          .limit(1);
+      // Check for ANY existing registration for this member (regardless of league_id)
+      const { data: existingRows } = await fromExt("member_league_registrations")
+        .select("id, league_id")
+        .eq("club_member_id", member.id)
+        .order("created_at", { ascending: true })
+        .limit(1);
 
-        const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+      const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+      const targetLeagueId = league?.id ?? existing?.league_id ?? null;
 
-        if (existing) {
-          await fromExt("member_league_registrations")
-            .update({
-              league_id: league.id,
-              league_association_number: form.association_number.trim(),
-              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
-            })
-            .eq("id", existing.id);
-        } else {
-          await fromExt("member_league_registrations")
-            .insert({
-              club_member_id: member.id,
-              league_id: league.id,
-              league_association_number: form.association_number.trim(),
-              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
-            });
-        }
+      if (!targetLeagueId) {
+        toast.error(
+          "No league is linked to this association yet. Open the Leagues tab and link a league to the association first."
+        );
+        return;
+      }
+
+      if (existing) {
+        const { error: regErr } = await fromExt("member_league_registrations")
+          .update({
+            league_id: targetLeagueId,
+            league_association_number: form.association_number.trim(),
+            player_rank: form.ladder_position ? Number(form.ladder_position) : null,
+          })
+          .eq("id", existing.id);
+        if (regErr) { toast.error(`League info: ${regErr.message}`); return; }
+      } else {
+        const { error: regErr } = await fromExt("member_league_registrations")
+          .insert({
+            club_member_id: member.id,
+            league_id: targetLeagueId,
+            league_association_number: form.association_number.trim(),
+            player_rank: form.ladder_position ? Number(form.ladder_position) : null,
+          });
+        if (regErr) { toast.error(`League info: ${regErr.message}`); return; }
       }
     }
 

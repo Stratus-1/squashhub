@@ -13,11 +13,13 @@ type Props = {
   positions: Array<{ position: number; memberId: string | null }>;
   benchMembers: Array<{ memberId: string; rank: number | null; isPulled?: boolean; isCascaded?: boolean; cascadedFromCode?: string | null }>;
   memberMap: Map<string, MemberLite>;
+  /** memberId → league registration number (e.g. WPSRA / association number) for THIS league */
+  leagueNumberByMember?: Map<string, string>;
   fixture: FixtureLite | null;
   canEdit: boolean;
 };
 
-export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, fixture, canEdit }: Props) {
+export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit }: Props) {
   const opponentCode = fixture
     ? fixture.home_team_code === league.code
       ? fixture.away_team_code
@@ -84,6 +86,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                     memberId={mem.id}
                     origin={league.id}
                     name={mem.name || "Unknown"}
+                    leagueNumber={leagueNumberByMember?.get(mem.id) || null}
                     disabled={!canEdit}
                     badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}
                   />
@@ -119,6 +122,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   origin={league.id}
                   name={mem.name || "Unknown"}
                   rank={b.rank}
+                  leagueNumber={leagueNumberByMember?.get(b.memberId) || null}
                   disabled={!canEdit}
                   positionLabel={`${i + 1}.`}
                   badge={

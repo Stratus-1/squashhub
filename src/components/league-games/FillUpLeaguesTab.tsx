@@ -103,7 +103,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     queryFn: async () => {
       if (leagueIds.length === 0) return [];
       const { data, error } = await fromExt("member_league_registrations")
-        .select("id, club_member_id, league_id, player_rank, is_captain")
+        .select("id, club_member_id, league_id, player_rank, is_captain, league_association_number, ssa_number")
         .in("league_id", leagueIds);
       if (error) throw error;
       return (data as RegRow[]) || [];
@@ -137,6 +137,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     for (const x of members) m.set(x.id, x);
     return m;
   }, [members]);
+
+  // memberId → league association/SSA number (prefers league_association_number)
+  const leagueNumberByMember = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of registrations) {
+      const num = r.league_association_number || r.ssa_number;
+      if (num && !m.has(r.club_member_id)) m.set(r.club_member_id, num);
+    }
+    return m;
+  }, [registrations]);
 
   // Per-league weekly status (for cascade tracking)
   const { data: statuses = [] } = useQuery<StatusRow[]>({
@@ -533,6 +543,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
       positions={positionsForLeague(lg)}
       benchMembers={benchForLeague(lg, list)}
       memberMap={memberMap}
+      leagueNumberByMember={leagueNumberByMember}
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
     />

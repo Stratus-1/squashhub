@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck } from "lucide-react";
 import { format, parseISO, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { useMemberContext } from "@/contexts/MemberContext";
 
 type Props = {
   platformAssocIds: string[];
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd }: Props) {
+  const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const rangeStart = weekStart ?? format(new Date(), "yyyy-MM-dd");
   const rangeEnd = weekEnd ?? format(addDays(weekStart ? parseISO(weekStart) : new Date(), weekStart ? 6 : 14), "yyyy-MM-dd");

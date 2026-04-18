@@ -2424,6 +2424,55 @@ export type Database = {
           },
         ]
       }
+      league_week_unavailability: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          marked_by: string | null
+          week_start_date: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          week_start_date: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_week_unavailability_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_week_unavailability_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_week_unavailability_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leagues: {
         Row: {
           allow_cross_gender_guests: boolean

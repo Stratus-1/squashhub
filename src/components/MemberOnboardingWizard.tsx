@@ -392,25 +392,26 @@ export function MemberOnboardingWizard({
   const handleSave = async () => {
     if (!user || !clubId) return;
 
-    // ── Duplicate validations ──
+    // ── Duplicate validations ── (exclude the member's own row)
     if (memberNumber) {
-      const { data: dupNum } = await fromExt("club_members")
-        .select("id")
+      const dupQuery = fromExt("club_members")
+        .select("id, user_id")
         .eq("club_id", clubId)
-        .eq("club_member_number", memberNumber)
-        .maybeSingle();
-      if (dupNum) {
+        .eq("club_member_number", memberNumber);
+      const { data: dupNumRows } = await dupQuery;
+      const conflict = (dupNumRows || []).find((r: any) => r.user_id !== user.id);
+      if (conflict) {
         toast.error("This membership number is already in use");
         return;
       }
     }
     if (idNumber.trim()) {
-      const { data: dupId } = await fromExt("club_members")
-        .select("id")
+      const { data: dupIdRows } = await fromExt("club_members")
+        .select("id, user_id")
         .eq("club_id", clubId)
-        .eq("id_number", idNumber.trim())
-        .maybeSingle();
-      if (dupId) {
+        .eq("id_number", idNumber.trim());
+      const conflict = (dupIdRows || []).find((r: any) => r.user_id !== user.id);
+      if (conflict) {
         toast.error("This ID number is already registered in the club");
         return;
       }

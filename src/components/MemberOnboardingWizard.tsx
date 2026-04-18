@@ -245,6 +245,7 @@ export function MemberOnboardingWizard({
         if (member.plays_league) setPlaysLeague(member.plays_league);
 
         // Pull league registration → look up full name from platform_league_members
+        // and auto-toggle plays_league when a league registration exists.
         try {
           const { data: leagueReg } = await fromExt("member_league_registrations")
             .select("league_association_number")
@@ -252,6 +253,7 @@ export function MemberOnboardingWizard({
             .maybeSingle();
           const leagueNum = leagueReg?.league_association_number;
           if (leagueNum) {
+            setPlaysLeague(true);
             const { data: leaguePlayer } = await fromExt("platform_league_members")
               .select("first_name, surname")
               .ilike("user_code", leagueNum)
@@ -261,6 +263,20 @@ export function MemberOnboardingWizard({
               if (fullName && (!member.name || member.name.trim() === leagueNum)) {
                 setName(fullName);
               }
+            }
+          }
+
+          // Also: if member has no league reg yet but their stored member_number
+          // matches a league user_code, treat them as a league player.
+          if (!leagueNum && member.club_member_number) {
+            const { data: leagueByCode } = await fromExt("platform_league_members")
+              .select("first_name, surname")
+              .ilike("user_code", member.club_member_number)
+              .maybeSingle();
+            if (leagueByCode) {
+              setPlaysLeague(true);
+              const fullName = `${leagueByCode.first_name || ""} ${leagueByCode.surname || ""}`.trim();
+              if (fullName && !member.name) setName(fullName);
             }
           }
         } catch (e) {
@@ -276,6 +292,7 @@ export function MemberOnboardingWizard({
               .ilike("user_code", lookup)
               .maybeSingle();
             if (leaguePlayer) {
+              setPlaysLeague(true);
               const fullName = `${leaguePlayer.first_name || ""} ${leaguePlayer.surname || ""}`.trim();
               if (fullName) setName(fullName);
             }

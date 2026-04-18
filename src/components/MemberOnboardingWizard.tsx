@@ -237,7 +237,17 @@ export function MemberOnboardingWizard({
         if (member.gender) setGender(member.gender);
         if (member.address) setAddress(member.address);
         if (member.skill_level) setSkillLevel(member.skill_level);
-        if (member.club_member_number) setMemberNumber(member.club_member_number);
+        // Only pre-fill the club member number if it's a real assigned club number,
+        // NOT a league/NSF code that was stored as a placeholder during signup.
+        if (member.club_member_number) {
+          const { data: isLeagueCode } = await fromExt("platform_league_members")
+            .select("user_code")
+            .ilike("user_code", member.club_member_number)
+            .maybeSingle();
+          if (!isLeagueCode) {
+            setMemberNumber(member.club_member_number);
+          }
+        }
         if (member.fee_category_id) {
           setFeeCategoryId(member.fee_category_id);
           setCategoryAutoSet(true);

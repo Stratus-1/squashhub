@@ -89,10 +89,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   );
 
   // Build a list of candidate planning weeks.
-  // Rule: once today is on/after the squash-week start day (e.g. Wed), that week is
-  // considered "in progress" — start planning from NEXT week. Otherwise begin with the
-  // current squash week. Then pick the earliest week that still has any incomplete
-  // lineup (any league with <4 players assigned).
+  // Always start with the CURRENT squash week (the one containing today) so an
+  // in-progress week whose fixtures haven't been played yet (e.g. a Tue fixture when
+  // the squash week starts on Wed) remains plannable. Then add the next 7 weeks.
   const candidateWeeks = useMemo(() => {
     const dow = club?.league_week_start_dow ?? 3;
     const today = new Date();
@@ -100,8 +99,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     const monday = startOfWeek(today, { weekStartsOn: 1 });
     let currentStart = addDays(monday, ((dow + 6) % 7));
     if (currentStart > today) currentStart = addDays(currentStart, -7);
-    const baseStart = today >= currentStart ? addDays(currentStart, 7) : currentStart;
-    return Array.from({ length: 8 }, (_, i) => format(addDays(baseStart, i * 7), "yyyy-MM-dd"));
+    return Array.from({ length: 8 }, (_, i) => format(addDays(currentStart, i * 7), "yyyy-MM-dd"));
   }, [club?.league_week_start_dow]);
 
   const { data: lookaheadLineups = [] } = useQuery<{ week_start_date: string; league_id: string; club_member_id: string }[]>({

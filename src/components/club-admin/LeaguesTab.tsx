@@ -360,10 +360,15 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const dragOverItem = useRef<{ leagueId: string; idx: number } | null>(null);
   const [dragFromPool, setDragFromPool] = useState<string | null>(null);
 
-  // Filter members by gender and league status, sorted by skill level
+  // Filter members by gender and league status, sorted by club ladder position (strongest first)
   const genderMembers = members
     .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
-    .sort((a, b) => getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level));
+    .sort((a, b) => {
+      const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;
+      const lb = (b as any).ladder_position ?? Number.POSITIVE_INFINITY;
+      if (la !== lb) return la - lb;
+      return getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level);
+    });
 
   // Load existing registrations
   useEffect(() => {

@@ -67,23 +67,6 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     enabled: !!activeMemberId,
   });
 
-  // Plan the NEXT squash week (the one starting after the upcoming team-selection deadline).
-  // The current squash week is already in progress for top leagues; lower leagues need to
-  // plan ahead so cascaded players land correctly. Fixtures shown are those scheduled in
-  // the 7-day window starting on this date.
-  const weekStart = useMemo(() => {
-    const dow = club?.league_week_start_dow ?? 3;
-    const today = new Date();
-    const monday = startOfWeek(today, { weekStartsOn: 1 });
-    let currentStart = addDays(monday, ((dow + 6) % 7));
-    if (currentStart > today) currentStart = addDays(currentStart, -7);
-    // Skip ahead one week to plan the next squash week
-    return format(addDays(currentStart, 7), "yyyy-MM-dd");
-  }, [club?.league_week_start_dow]);
-
-  // End of the planning window (exclusive upper bound for fixture filtering)
-  const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
-
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
   // Leagues
@@ -102,6 +85,59 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     () => [...leagues].sort((a, b) => leagueOrder(a.name, a.code) - leagueOrder(b.name, b.code)),
     [leagues],
   );
+
+  // Build a list of candidate planning weeks.
+  // Rule: once today is on/after the squash-week start day (e.g. Wed), that week is
+  // considered "in progress" — start planning from NEXT week. Otherwise begin with the
+  // current squash week. Then pick the earliest week that still has any incomplete
+  // lineup (any league with <4 players assigned).
+  const candidateWeeks = useMemo(() => {
+    const dow = club?.league_week_start_dow ?? 3;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const monday = startOfWeek(today, { weekStartsOn: 1 });
+    let currentStart = addDays(monday, ((dow + 6) % 7));
+    if (currentStart > today) currentStart = addDays(currentStart, -7);
+    const baseStart = today >= currentStart ? addDays(currentStart, 7) : currentStart;
+    return Array.from({ length: 8 }, (_, i) => format(addDays(baseStart, i * 7), "yyyy-MM-dd"));
+  }, [club?.league_week_start_dow]);
+
+  const { data: lookaheadLineups = [] } = useQuery<{ week_start_date: string; league_id: string; club_member_id: string }[]>({
+    queryKey: ["lwl-lookahead", clubId, candidateWeeks.join(",")],
+    queryFn: async () => {
+      if (candidateWeeks.length === 0) return [];
+      const { data, error } = await supabase
+        .from("league_week_lineups")
+        .select("week_start_date, league_id, club_member_id")
+        .eq("club_id", clubId)
+        .in("week_start_date", candidateWeeks);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: candidateWeeks.length > 0,
+  });
+
+  const weekStart = useMemo(() => {
+    if (candidateWeeks.length === 0) return format(new Date(), "yyyy-MM-dd");
+    if (sortedLeagues.length === 0) return candidateWeeks[0];
+    const counts = new Map<string, Map<string, Set<string>>>();
+    for (const row of lookaheadLineups) {
+      if (!counts.has(row.week_start_date)) counts.set(row.week_start_date, new Map());
+      const lm = counts.get(row.week_start_date)!;
+      if (!lm.has(row.league_id)) lm.set(row.league_id, new Set());
+      lm.get(row.league_id)!.add(row.club_member_id);
+    }
+    for (const wk of candidateWeeks) {
+      const lm = counts.get(wk);
+      const allComplete = sortedLeagues.every(lg => (lm?.get(lg.id)?.size ?? 0) >= 4);
+      if (!allComplete) return wk;
+    }
+    return candidateWeeks[candidateWeeks.length - 1];
+  }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
+
+  const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
+
+  const chosenWeekIndex = useMemo(() => Math.max(0, candidateWeeks.indexOf(weekStart)), [candidateWeeks, weekStart]);
 
   // Registrations
   const leagueIds = sortedLeagues.map(l => l.id);
@@ -586,7 +622,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
       <div className="space-y-3">
         <Card className="p-3 space-y-2">
           <p className="text-xs text-muted-foreground">
-            <strong>Planning next week: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}</strong> —
+            <strong>
+              Planning {chosenWeekIndex === 0 ? "next week" : chosenWeekIndex === 1 ? "the week after next" : `${chosenWeekIndex + 1} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
+            </strong> —
             Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the
             <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.
             Drag onto the red zone below to mark <strong>unavailable for the whole week</strong>.

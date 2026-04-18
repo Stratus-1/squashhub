@@ -270,7 +270,118 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 5) Inactivity nudge (3 weeks). Only run weekly (Monday in REMINDERS_TIMEZONE) to keep load low.
+    // 5) League planning reminder — sent the day BEFORE each club's configured
+    //    league_week_start_dow, but only for clubs that opt-in via fill_top_down_enabled.
+    //    Goes to all admins/captains: club role 'captain'/'admin', chairman/secretary/club_captain
+    //    delegates, and any league captains (member_league_registrations.is_captain).
+    {
+      // Postgres dow: Sun=0..Sat=6. JS getDay() matches.
+      const tomorrowDate = addDays(now, 1);
+      const tomorrowDow = new Date(
+        new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(tomorrowDate)
+      ).getDay();
+
+      const { data: optedInClubs } = await supabaseAdmin
+        .from("clubs")
+        .select("id, name, league_week_start_dow, fill_top_down_enabled, chairman_member_id, secretary_member_id, club_captain_member_id")
+        .eq("fill_top_down_enabled", true)
+        .eq("league_week_start_dow", tomorrowDow);
+
+      for (const club of optedInClubs || []) {
+        const clubId = String((club as any).id);
+        const clubName = String((club as any).name || "your club");
+
+        // Collect all recipient member ids
+        const recipientMemberIds = new Set<string>();
+        for (const k of ["chairman_member_id", "secretary_member_id", "club_captain_member_id"] as const) {
+          const v = (club as any)[k];
+          if (v) recipientMemberIds.add(String(v));
+        }
+
+        // Captains/admins by role
+        const { data: roleMembers } = await supabaseAdmin
+          .from("club_members")
+          .select("id")
+          .eq("club_id", clubId)
+          .in("role", ["captain", "admin"] as any);
+        for (const m of roleMembers || []) recipientMemberIds.add(String((m as any).id));
+
+        // League captains in this club
+        const { data: leagueCaps } = await supabaseAdmin
+          .from("member_league_registrations")
+          .select("club_member_id, league:leagues!inner(club_id)")
+          .eq("is_captain", true)
+          .eq("league.club_id", clubId);
+        for (const lc of leagueCaps || []) {
+          if ((lc as any).club_member_id) recipientMemberIds.add(String((lc as any).club_member_id));
+        }
+
+        if (recipientMemberIds.size === 0) continue;
+
+        // Resolve user_ids for the recipients (some members may be unlinked)
+        const ids = Array.from(recipientMemberIds);
+        const { data: members } = await supabaseAdmin
+          .from("club_members")
+          .select("id, user_id")
+          .in("id", ids);
+
+        const tomorrowStr = isoDateInTz(tomorrowDate, timeZone);
+        const title = "Plan league games for next week";
+        const message = `${clubName}: the new squash week starts tomorrow (${tomorrowStr}). Fill up your league teams from the top down.`;
+        const url = "/league-games";
+
+        for (const m of members || []) {
+          const memberId = String((m as any).id);
+          const userId = (m as any).user_id ? String((m as any).user_id) : null;
+          if (!userId) {
+            // Unlinked member — write notification keyed by club_member_id only
+            const { data: existing } = await supabaseAdmin
+              .from("reminder_log")
+              .select("id")
+              .eq("user_id", "00000000-0000-0000-0000-000000000000")
+              .eq("kind", "league_planning_reminder")
+              .eq("ref_id", `${clubId}:${memberId}`)
+              .eq("scheduled_for", today)
+              .limit(1);
+            if (existing && existing.length > 0) { skipped += 1; continue; }
+            await supabaseAdmin.from("reminder_log").insert({
+              user_id: "00000000-0000-0000-0000-000000000000",
+              kind: "league_planning_reminder",
+              ref_table: "clubs",
+              ref_id: `${clubId}:${memberId}`,
+              scheduled_for: today,
+            } as any);
+            await supabaseAdmin.from("notifications").insert({
+              user_id: "00000000-0000-0000-0000-000000000000",
+              club_member_id: memberId,
+              title,
+              message,
+              type: "reminder",
+              url,
+              data: { kind: "league_planning_reminder", club_id: clubId },
+            } as any);
+            sent += 1;
+            continue;
+          }
+
+          const ok = await sendReminder({
+            user_id: userId,
+            kind: "league_planning_reminder",
+            ref_table: "clubs",
+            ref_id: `${clubId}:${memberId}`,
+            scheduled_for: today,
+            title,
+            message,
+            url,
+            data: { club_id: clubId, member_id: memberId },
+          });
+          if (ok) sent += 1;
+          else skipped += 1;
+        }
+      }
+    }
+
+    // 6) Inactivity nudge (3 weeks). Only run weekly (Monday in REMINDERS_TIMEZONE) to keep load low.
     if (!isWeeklyRun) {
       return new Response(JSON.stringify({ ok: true, sent, skipped, today, tomorrow, isWeeklyRun }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -179,6 +179,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           ))}
           {associations.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No associations added yet</p>}
         </div>
+        <FillTopDownSettings clubId={clubId} />
       </div>
 
       {/* Leagues in two columns with inline players */}

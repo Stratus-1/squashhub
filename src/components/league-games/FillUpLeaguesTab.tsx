@@ -117,7 +117,12 @@ export function FillUpLeaguesTab({ clubId }: Props) {
     enabled: leagueIds.length > 0,
   });
 
-  const memberIds = useMemo(() => Array.from(new Set(registrations.map(r => r.club_member_id))), [registrations]);
+  const memberIds = useMemo(() => {
+    const ids = new Set<string>();
+    registrations.forEach(r => ids.add(r.club_member_id));
+    leagues.forEach(l => { if (l.captain_member_id) ids.add(l.captain_member_id); });
+    return Array.from(ids);
+  }, [registrations, leagues]);
   const { data: members = [] } = useQuery({
     queryKey: ["fill-members", memberIds.join(",")],
     queryFn: async () => {
@@ -279,16 +284,18 @@ export function FillUpLeaguesTab({ clubId }: Props) {
 
     return (
       <Card key={lg.id} className="p-3 space-y-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="default" className="text-xs">{lg.code || `#${idx + 1}`}</Badge>
             <span className="font-semibold text-sm">{lg.name}</span>
-            {captainMemberId && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Crown className="w-3 h-3" /> {memberMap.get(captainMemberId)?.name || "Captain"}
-              </span>
-            )}
             {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <Crown className="w-3.5 h-3.5 text-primary" />
+            <span className="text-muted-foreground">Captain:</span>
+            <span className="font-medium">
+              {captainMemberId ? (memberMap.get(captainMemberId)?.name || "—") : <span className="italic text-muted-foreground">Not assigned</span>}
+            </span>
           </div>
         </div>
 

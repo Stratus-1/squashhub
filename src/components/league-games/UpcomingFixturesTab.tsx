@@ -88,6 +88,26 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return map;
   }, [existingResults]);
 
+  // Find which fixtures I'm assigned to play in (lineup)
+  const { data: myLineupRows } = useQuery({
+    queryKey: ["my-fixture-lineups", activeMember?.id, fixtureIds.join(",")],
+    queryFn: async () => {
+      if (!activeMember?.id || fixtureIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("league_fixture_lineups")
+        .select("fixture_id")
+        .eq("club_member_id", activeMember.id)
+        .in("fixture_id", fixtureIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeMember?.id && fixtureIds.length > 0,
+  });
+
+  const myLineupFixtureIds = useMemo(() => {
+    return new Set((myLineupRows || []).map((r: any) => r.fixture_id as string));
+  }, [myLineupRows]);
+
   const fixturesByDate = useMemo(() => {
     const groups = new Map<string, typeof fixtures>();
     for (const f of fixtures || []) {
@@ -99,6 +119,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   }, [fixtures]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
+  const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
 
   if (isLoading) {
     return (

@@ -543,6 +543,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
       positions={positionsForLeague(lg)}
       benchMembers={benchForLeague(lg, list)}
       memberMap={memberMap}
+      leagueNumberByMember={leagueNumberByMember}
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
     />

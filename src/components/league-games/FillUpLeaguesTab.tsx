@@ -117,7 +117,12 @@ export function FillUpLeaguesTab({ clubId }: Props) {
     enabled: leagueIds.length > 0,
   });
 
-  const memberIds = useMemo(() => Array.from(new Set(registrations.map(r => r.club_member_id))), [registrations]);
+  const memberIds = useMemo(() => {
+    const ids = new Set<string>();
+    registrations.forEach(r => ids.add(r.club_member_id));
+    leagues.forEach(l => { if (l.captain_member_id) ids.add(l.captain_member_id); });
+    return Array.from(ids);
+  }, [registrations, leagues]);
   const { data: members = [] } = useQuery({
     queryKey: ["fill-members", memberIds.join(",")],
     queryFn: async () => {

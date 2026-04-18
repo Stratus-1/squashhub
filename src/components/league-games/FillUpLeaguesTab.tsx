@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Ban } from "lucide-react";
+import { Users, Ban, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { format, startOfWeek, addDays } from "date-fns";
 import {

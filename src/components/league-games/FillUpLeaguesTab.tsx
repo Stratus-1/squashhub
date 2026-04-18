@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Crown, UserMinus, ArrowDown, Users, ArrowLeft } from "lucide-react";
+import { Crown, UserMinus, ArrowDown, Users, ArrowLeft, Calendar, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, addDays } from "date-fns";
 
@@ -166,6 +166,34 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     return m;
   }, [prevLineups]);
 
+  // Next upcoming fixture per league code (date + venue + opponent)
+  const leagueCodes = useMemo(() => sortedLeagues.map(l => l.code).filter((c): c is string => !!c), [sortedLeagues]);
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { data: fixtures = [] } = useQuery({
+    queryKey: ["next-fixtures-by-code", leagueCodes.join(",")],
+    queryFn: async () => {
+      if (leagueCodes.length === 0) return [];
+      const { data, error } = await fromExt("platform_league_fixtures")
+        .select("id, fixture_date, venue_name, home_team_code, away_team_code")
+        .gte("fixture_date", today)
+        .or(leagueCodes.map(c => `home_team_code.eq.${c},away_team_code.eq.${c}`).join(","))
+        .order("fixture_date", { ascending: true });
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; fixture_date: string; venue_name: string; home_team_code: string; away_team_code: string }>;
+    },
+    enabled: leagueCodes.length > 0,
+  });
+
+  const nextFixtureByCode = useMemo(() => {
+    const m = new Map<string, { fixture_date: string; venue_name: string; home_team_code: string; away_team_code: string }>();
+    for (const f of fixtures) {
+      for (const code of [f.home_team_code, f.away_team_code]) {
+        if (leagueCodes.includes(code) && !m.has(code)) m.set(code, f);
+      }
+    }
+    return m;
+  }, [fixtures, leagueCodes]);
+
   // Lookup helpers
   const statusKey = (leagueId: string, memberId: string) => `${leagueId}|${memberId}`;
   const statusMap = useMemo(() => {
@@ -290,6 +318,34 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
               {captainMemberId ? (memberMap.get(captainMemberId)?.name || "—") : <span className="italic text-muted-foreground">Not assigned</span>}
             </span>
           </div>
+          {(() => {
+            const nf = lg.code ? nextFixtureByCode.get(lg.code) : null;
+            if (!nf) {
+              return (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
+                  <Calendar className="w-3.5 h-3.5" />
+                  No upcoming fixture
+                </div>
+              );
+            }
+            const opponentCode = nf.home_team_code === lg.code ? nf.away_team_code : nf.home_team_code;
+            const isHome = nf.home_team_code === lg.code;
+            return (
+              <div className="flex items-center gap-3 text-xs flex-wrap">
+                <span className="flex items-center gap-1 text-foreground">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  <span className="font-medium">{format(new Date(nf.fixture_date), "EEE dd MMM")}</span>
+                </span>
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {nf.venue_name}
+                </span>
+                <Badge variant="outline" className="text-[10px]">
+                  {isHome ? "vs" : "@"} {opponentCode}
+                </Badge>
+              </div>
+            );
+          })()}
         </div>
 
         {fullPool.length === 0 ? (

@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Calendar, MapPin } from "lucide-react";
+import { Crown, Calendar, MapPin, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { DraggablePlayer } from "./DraggablePlayer";
 import { DroppableZone } from "./DroppableZone";
 import { posDropId, benchDropId, type LeagueRow, type FixtureLite, type MemberLite } from "./types";

@@ -230,6 +230,7 @@ export function MemberOnboardingWizard({
       }
 
       if (member) {
+        setIsExistingMember(true);
         if (member.name && !name) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);
         if (member.id_number) setIdNumber(member.id_number);

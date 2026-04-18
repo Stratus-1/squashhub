@@ -1626,8 +1626,10 @@ export type Database = {
           email: string | null
           face_enrolment_required: boolean
           fee_reminder_days_before: number | null
+          fill_top_down_enabled: boolean
           honesty_bar_enabled: boolean
           id: string
+          league_week_start_dow: number
           light_fee_per_hour: number | null
           logo_url: string | null
           member_fee_annual: number | null
@@ -1653,8 +1655,10 @@ export type Database = {
           email?: string | null
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
+          fill_top_down_enabled?: boolean
           honesty_bar_enabled?: boolean
           id?: string
+          league_week_start_dow?: number
           light_fee_per_hour?: number | null
           logo_url?: string | null
           member_fee_annual?: number | null
@@ -1680,8 +1684,10 @@ export type Database = {
           email?: string | null
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
+          fill_top_down_enabled?: boolean
           honesty_bar_enabled?: boolean
           id?: string
+          league_week_start_dow?: number
           light_fee_per_hour?: number | null
           logo_url?: string | null
           member_fee_annual?: number | null
@@ -2290,9 +2296,139 @@ export type Database = {
           },
         ]
       }
+      league_week_lineups: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          created_by: string | null
+          guest_from_league_id: string | null
+          id: string
+          is_guest: boolean
+          league_id: string
+          position: number
+          updated_at: string
+          week_start_date: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          created_by?: string | null
+          guest_from_league_id?: string | null
+          id?: string
+          is_guest?: boolean
+          league_id: string
+          position: number
+          updated_at?: string
+          week_start_date: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          created_by?: string | null
+          guest_from_league_id?: string | null
+          id?: string
+          is_guest?: boolean
+          league_id?: string
+          position?: number
+          updated_at?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_week_lineups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_week_lineups_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_week_lineups_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_week_player_status: {
+        Row: {
+          cascaded_from_league_id: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          league_id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          week_start_date: string
+        }
+        Insert: {
+          cascaded_from_league_id?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          league_id: string
+          notes?: string | null
+          status: string
+          updated_at?: string
+          updated_by?: string | null
+          week_start_date: string
+        }
+        Update: {
+          cascaded_from_league_id?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          league_id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_week_player_status_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_week_player_status_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_week_player_status_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leagues: {
         Row: {
+          allow_cross_gender_guests: boolean
           association_id: string | null
+          captain_member_id: string | null
           club_id: string
           code: string | null
           created_at: string
@@ -2301,7 +2437,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_cross_gender_guests?: boolean
           association_id?: string | null
+          captain_member_id?: string | null
           club_id: string
           code?: string | null
           created_at?: string
@@ -2310,7 +2448,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_cross_gender_guests?: boolean
           association_id?: string | null
+          captain_member_id?: string | null
           club_id?: string
           code?: string | null
           created_at?: string
@@ -3547,12 +3687,20 @@ export type Database = {
         Args: { _club_id: string; _permission: string; _user_id: string }
         Returns: boolean
       }
+      is_club_league_player: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_club_mate: {
         Args: { _other_user_id: string; _user_id: string }
         Returns: boolean
       }
       is_club_member: {
         Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_league_captain: {
+        Args: { _league_id: string; _user_id: string }
         Returns: boolean
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }

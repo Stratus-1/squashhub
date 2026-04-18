@@ -103,7 +103,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     queryFn: async () => {
       if (leagueIds.length === 0) return [];
       const { data, error } = await fromExt("member_league_registrations")
-        .select("id, club_member_id, league_id, player_rank, is_captain")
+        .select("id, club_member_id, league_id, player_rank, is_captain, league_association_number, ssa_number")
         .in("league_id", leagueIds);
       if (error) throw error;
       return (data as RegRow[]) || [];

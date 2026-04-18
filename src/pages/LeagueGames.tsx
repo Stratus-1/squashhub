@@ -124,6 +124,8 @@ export default function LeagueGames() {
               platformAssocIds={platformAssocIds}
               clubTeamCodes={clubTeamCodes}
               myTeamCodes={myTeamCodes}
+              weekStart={weekRange.start}
+              weekEnd={weekRange.end}
             />
           </TabsContent>
 

@@ -115,7 +115,7 @@ export default function LeagueGames() {
           </TabsContent>
 
           <TabsContent value="leagues" className="mt-4">
-            {clubId && <FillUpLeaguesTab clubId={clubId} />}
+            {clubId && <FillUpLeaguesTab clubId={clubId} activeMemberId={activeMember?.id} />}
           </TabsContent>
 
           <TabsContent value="standings" className="mt-4">

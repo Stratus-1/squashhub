@@ -159,10 +159,11 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   );
 }
 
-function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin }: {
+function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   delegateTitle?: string | null;
+  nsfNumber?: string | null;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
@@ -207,6 +208,7 @@ function MemberCard({ member: m, fees, delegateTitle, onEdit, onDelete, onToggle
           {isLinked ? "✓ Reg" : "✗ Unreg"}
         </Badge>
         {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">League</Badge>}
+        {nsfNumber && <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">NSF: {nsfNumber}</Badge>}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
         {m.fee_category && <Badge variant="outline" className="text-[9px] px-1 py-0">{m.fee_category.name}</Badge>}
       </div>
@@ -249,6 +251,26 @@ export function MembersTab({ clubId }: { clubId: string }) {
     },
     enabled: memberIds.length > 0,
   });
+
+  // Fetch NSF / league association numbers for all members
+  const { data: leagueRegs = [] } = useQuery({
+    queryKey: ["club-member-league-regs", clubId, memberIds.join(",")],
+    queryFn: async () => {
+      if (memberIds.length === 0) return [];
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("club_member_id, league_association_number")
+        .in("club_member_id", memberIds);
+      if (error) throw error;
+      return (data || []) as { club_member_id: string; league_association_number: string | null }[];
+    },
+    enabled: memberIds.length > 0,
+  });
+  const nsfByMember = new Map<string, string>();
+  for (const r of leagueRegs) {
+    if (r.league_association_number && !nsfByMember.has(r.club_member_id)) {
+      nsfByMember.set(r.club_member_id, r.league_association_number);
+    }
+  }
 
   const getFeesForMember = (member: ClubMember) => {
     return computeExpectedFees(member, feeCategories, associations, nationalFees, feeDueMonth, feePayments);
@@ -587,6 +609,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     member={m}
                     fees={getFeesForMember(m)}
                     delegateTitle={getDelegateTitle(m.id)}
+                    nsfNumber={nsfByMember.get(m.id)}
                     onEdit={() => setEditMember(m)}
                     onDelete={() => handleDelete(m.id)}
                     onTogglePaid={handleTogglePaid}

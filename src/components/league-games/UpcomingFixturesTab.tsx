@@ -49,7 +49,10 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
       return (data || []).filter((f) => {
         const home = (f.home_team_code || "").toUpperCase();
         const away = (f.away_team_code || "").toUpperCase();
-        return clubPrefixes.some((p) => home.startsWith(p) || away.startsWith(p));
+        return clubPrefixes.some((p) => {
+          const re = new RegExp(`^${p}\\d+$`);
+          return re.test(home) || re.test(away);
+        });
       });
     },
     enabled: platformAssocIds.length > 0 && clubPrefixes.length > 0,

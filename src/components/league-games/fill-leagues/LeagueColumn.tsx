@@ -122,6 +122,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   origin={league.id}
                   name={mem.name || "Unknown"}
                   rank={b.rank}
+                  leagueNumber={leagueNumberByMember?.get(b.memberId) || null}
                   disabled={!canEdit}
                   positionLabel={`${i + 1}.`}
                   badge={

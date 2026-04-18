@@ -202,7 +202,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
     [sortedLeagues],
   );
-  const today = format(new Date(), "yyyy-MM-dd");
+  
   const { data: fixtures = [] } = useQuery<FixtureLite[]>({
     queryKey: ["next-fixtures-by-code", leagueCodes.join(","), weekStart, weekEnd],
     queryFn: async () => {

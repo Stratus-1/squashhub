@@ -586,7 +586,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
       <div className="space-y-3">
         <Card className="p-3 space-y-2">
           <p className="text-xs text-muted-foreground">
-            <strong>Week of {format(new Date(weekStart), "EEE dd MMM")}</strong> — Drag players from the
+            <strong>Planning next week: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}</strong> —
+            Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the
             <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.
             Drag onto the red zone below to mark <strong>unavailable for the whole week</strong>.
           </p>

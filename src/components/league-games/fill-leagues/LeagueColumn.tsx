@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Calendar, MapPin } from "lucide-react";
+import { Crown, Calendar, MapPin, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { DraggablePlayer } from "./DraggablePlayer";
 import { DroppableZone } from "./DroppableZone";
 import { posDropId, benchDropId, type LeagueRow, type FixtureLite, type MemberLite } from "./types";
@@ -26,14 +27,28 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
       : fixture.home_team_code
     : null;
   const isHome = fixture ? fixture.home_team_code === league.code : false;
+  const filledCount = positions.filter(p => p.memberId).length;
+  const isComplete = filledCount === 4;
 
   return (
-    <Card className="p-3 space-y-2">
+    <Card
+      className={cn(
+        "p-3 space-y-2 transition-colors",
+        isComplete && "border-primary/60 bg-primary/5 ring-1 ring-primary/30",
+      )}
+    >
       <div className="space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="default" className="text-xs">{league.code || league.name}</Badge>
           <span className="font-semibold text-sm">{league.name}</span>
           {isCaptain && <Badge variant="secondary" className="text-[10px]">You captain this</Badge>}
+          {isComplete ? (
+            <Badge className="text-[10px] gap-1 bg-primary text-primary-foreground hover:bg-primary border-transparent">
+              <CheckCircle2 className="w-3 h-3" /> Team set
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px]">{filledCount}/4 filled</Badge>
+          )}
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <Crown className="w-3.5 h-3.5 text-primary" />

@@ -278,13 +278,13 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   );
   
   const { data: fixtures = [] } = useQuery<FixtureLite[]>({
-    queryKey: ["next-fixtures-by-code", leagueCodes.join(","), weekStart, weekEnd],
+    queryKey: ["next-fixtures-by-code", leagueCodes.join(","), fixtureRange.start, fixtureRange.end],
     queryFn: async () => {
       if (leagueCodes.length === 0) return [];
       const { data, error } = await fromExt("platform_league_fixtures")
         .select("id, fixture_date, venue_name, home_team_code, away_team_code")
-        .gte("fixture_date", weekStart)
-        .lt("fixture_date", weekEnd)
+        .gte("fixture_date", fixtureRange.start)
+        .lt("fixture_date", fixtureRange.end)
         .or(leagueCodes.map(c => `home_team_code.eq.${c},away_team_code.eq.${c}`).join(","))
         .order("fixture_date", { ascending: true });
       if (error) throw error;

@@ -10,7 +10,7 @@ import { Crown, UserMinus, ArrowDown, Users, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { format, startOfWeek, addDays } from "date-fns";
 
-type Props = { clubId: string };
+type Props = { clubId: string; activeMemberId?: string | null };
 
 type LeagueRow = {
   id: string;
@@ -51,7 +51,7 @@ function isMensLeague(name: string): boolean {
   return n.includes("men") && !n.includes("women");
 }
 
-export function FillUpLeaguesTab({ clubId }: Props) {
+export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   const qc = useQueryClient();
 
   // Club settings
@@ -77,16 +77,9 @@ export function FillUpLeaguesTab({ clubId }: Props) {
 
   const prevWeekStart = useMemo(() => format(addDays(new Date(weekStart), -7), "yyyy-MM-dd"), [weekStart]);
 
-  // Active member id
-  const { data: meMember } = useQuery({
-    queryKey: ["me-member", clubId],
-    queryFn: async () => {
-      const u = (await supabase.auth.getUser()).data.user;
-      if (!u) return null;
-      const { data } = await supabase.from("club_members").select("id").eq("club_id", clubId).eq("user_id", u.id).maybeSingle();
-      return data;
-    },
-  });
+  // Use the actively selected member profile from MemberContext / page state.
+  // This is required for family/shared accounts where one auth user can have multiple club_members.
+  const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
   // Leagues
   const { data: leagues = [] } = useQuery<LeagueRow[]>({

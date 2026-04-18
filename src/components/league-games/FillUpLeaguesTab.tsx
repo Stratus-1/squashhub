@@ -142,7 +142,18 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     [selectedWeekOverride, autoWeekStart, candidateWeeks],
   );
 
-  const weekEnd = useMemo(() => format(addDays(new Date(weekStart), 7), "yyyy-MM-dd"), [weekStart]);
+  // Fixtures play on Mon–Fri of the calendar week that follows the planning anchor (e.g. Wed deadline).
+  // Compute that Monday from weekStart, then look ahead 5 days through Friday.
+  const fixtureRange = useMemo(() => {
+    const ws = new Date(weekStart);
+    const day = ws.getDay(); // 0=Sun..6=Sat
+    // Days to add to reach the next Monday strictly AFTER weekStart
+    const daysToMon = ((1 - day + 7) % 7) || 7;
+    const playMonday = addDays(ws, daysToMon);
+    const playSaturday = addDays(playMonday, 5); // exclusive end → covers Mon–Fri
+    return { start: format(playMonday, "yyyy-MM-dd"), end: format(playSaturday, "yyyy-MM-dd") };
+  }, [weekStart]);
+  const weekEnd = fixtureRange.end;
 
   const chosenWeekIndex = useMemo(() => Math.max(0, candidateWeeks.indexOf(weekStart)), [candidateWeeks, weekStart]);
 
@@ -267,13 +278,13 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
   );
   
   const { data: fixtures = [] } = useQuery<FixtureLite[]>({
-    queryKey: ["next-fixtures-by-code", leagueCodes.join(","), weekStart, weekEnd],
+    queryKey: ["next-fixtures-by-code", leagueCodes.join(","), fixtureRange.start, fixtureRange.end],
     queryFn: async () => {
       if (leagueCodes.length === 0) return [];
       const { data, error } = await fromExt("platform_league_fixtures")
         .select("id, fixture_date, venue_name, home_team_code, away_team_code")
-        .gte("fixture_date", weekStart)
-        .lt("fixture_date", weekEnd)
+        .gte("fixture_date", fixtureRange.start)
+        .lt("fixture_date", fixtureRange.end)
         .or(leagueCodes.map(c => `home_team_code.eq.${c},away_team_code.eq.${c}`).join(","))
         .order("fixture_date", { ascending: true });
       if (error) throw error;

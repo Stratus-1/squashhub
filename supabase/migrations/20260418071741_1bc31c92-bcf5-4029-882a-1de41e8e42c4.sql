@@ -1,0 +1,1 @@
+UPDATE public.clubs SET subdomain = 'csir', updated_at = now() WHERE id = '55fe3e91-c444-45aa-86b8-c08af8e538f3' AND subdomain = 'wsc';

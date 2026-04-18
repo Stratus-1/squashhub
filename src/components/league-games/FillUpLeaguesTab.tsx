@@ -650,6 +650,49 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     >
       <div className="space-y-3">
         <Card className="p-3 space-y-2">
+          {/* Week selector — switch between the next few candidate planning weeks */}
+          {candidateWeeks.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mr-1">Plan week:</span>
+              {candidateWeeks.slice(0, 3).map((wk, i) => {
+                const completion = weekCompletion.get(wk);
+                const isComplete = completion && completion.filled >= completion.total && completion.total > 0;
+                const isActive = wk === weekStart;
+                const isAuto = wk === autoWeekStart && !selectedWeekOverride;
+                return (
+                  <Button
+                    key={wk}
+                    type="button"
+                    size="sm"
+                    variant={isActive ? "default" : "outline"}
+                    onClick={() => setSelectedWeekOverride(wk === autoWeekStart ? null : wk)}
+                    className="h-7 px-2 text-[11px] gap-1"
+                  >
+                    {i === 0 ? "Next" : i === 1 ? "+1 wk" : `+${i} wks`}
+                    <span className="opacity-80">· {format(new Date(wk), "dd MMM")}</span>
+                    {completion && (
+                      <span className={`text-[10px] ml-0.5 ${isComplete ? "text-emerald-300" : "opacity-70"}`}>
+                        ({completion.filled}/{completion.total})
+                      </span>
+                    )}
+                    {isAuto && <span className="text-[9px] ml-0.5 opacity-70">auto</span>}
+                  </Button>
+                );
+              })}
+              {selectedWeekOverride && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedWeekOverride(null)}
+                  className="h-7 px-2 text-[10px]"
+                >
+                  Reset to auto
+                </Button>
+              )}
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">
             <strong>
               Planning {chosenWeekIndex === 0 ? "next week" : chosenWeekIndex === 1 ? "the week after next" : `${chosenWeekIndex + 1} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}

@@ -1,0 +1,1 @@
+UPDATE public.club_members SET club_member_number = '35011', updated_at = now() WHERE id = '83e36bbe-8253-4a40-b9a7-88e88b32011c' AND club_member_number = '3501';

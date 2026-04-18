@@ -360,10 +360,15 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const dragOverItem = useRef<{ leagueId: string; idx: number } | null>(null);
   const [dragFromPool, setDragFromPool] = useState<string | null>(null);
 
-  // Filter members by gender and league status, sorted by skill level
+  // Filter members by gender and league status, sorted by club ladder position (strongest first)
   const genderMembers = members
     .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
-    .sort((a, b) => getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level));
+    .sort((a, b) => {
+      const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;
+      const lb = (b as any).ladder_position ?? Number.POSITIVE_INFINITY;
+      if (la !== lb) return la - lb;
+      return getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level);
+    });
 
   // Load existing registrations
   useEffect(() => {
@@ -667,7 +672,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             <div className="w-56 flex-shrink-0 border rounded-md overflow-hidden flex flex-col">
               <div className="bg-muted/50 px-3 py-2 border-b">
                 <p className="text-xs font-semibold">Available Players ({unassignedMembers.length})</p>
-                <p className="text-[10px] text-muted-foreground">Sorted by skill level</p>
+                <p className="text-[10px] text-muted-foreground">Sorted by club ladder</p>
               </div>
               <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
                 {unassignedMembers.map(m => (

@@ -96,6 +96,7 @@ export interface LeagueAssociation {
   fee_payment_details?: string;
   fee_class: "club_income" | "pass_through";
   platform_association_id?: string | null;
+  scope?: "internal" | "region";
 }
 
 export interface League {

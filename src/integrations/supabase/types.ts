@@ -2029,6 +2029,7 @@ export type Database = {
           name: string
           platform_association_id: string | null
           pro_rate: boolean
+          scope: string
           updated_at: string
           website: string | null
         }
@@ -2049,6 +2050,7 @@ export type Database = {
           name: string
           platform_association_id?: string | null
           pro_rate?: boolean
+          scope?: string
           updated_at?: string
           website?: string | null
         }
@@ -2069,6 +2071,7 @@ export type Database = {
           name?: string
           platform_association_id?: string | null
           pro_rate?: boolean
+          scope?: string
           updated_at?: string
           website?: string | null
         }

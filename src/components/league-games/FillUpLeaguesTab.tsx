@@ -79,13 +79,15 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
 
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
-  // Leagues
+  // Leagues — optionally scoped to a single association
   const { data: leagues = [] } = useQuery<LeagueRow[]>({
-    queryKey: ["leagues-with-captain", clubId],
+    queryKey: ["leagues-with-captain", clubId, associationId || "all"],
     queryFn: async () => {
-      const { data, error } = await fromExt("leagues")
-        .select("id, name, code, captain_member_id, allow_cross_gender_guests")
+      let q = fromExt("leagues")
+        .select("id, name, code, captain_member_id, allow_cross_gender_guests, association_id")
         .eq("club_id", clubId);
+      if (associationId) q = q.eq("association_id", associationId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data as LeagueRow[]) || [];
     },
@@ -101,14 +103,15 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
   // in-progress week whose fixtures haven't been played yet (e.g. a Tue fixture when
   // the squash week starts on Wed) remains plannable. Then add the next 7 weeks.
   const candidateWeeks = useMemo(() => {
-    const dow = club?.league_week_start_dow ?? 3;
+    // Per-association override > club-wide setting > Wed default
+    const dow = weekStartDow ?? club?.league_week_start_dow ?? 3;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const monday = startOfWeek(today, { weekStartsOn: 1 });
     let currentStart = addDays(monday, ((dow + 6) % 7));
     if (currentStart > today) currentStart = addDays(currentStart, -7);
     return Array.from({ length: 8 }, (_, i) => format(addDays(currentStart, i * 7), "yyyy-MM-dd"));
-  }, [club?.league_week_start_dow]);
+  }, [club?.league_week_start_dow, weekStartDow]);
 
   const { data: lookaheadLineups = [] } = useQuery<{ week_start_date: string; league_id: string; club_member_id: string }[]>({
     queryKey: ["lwl-lookahead", clubId, candidateWeeks.join(",")],

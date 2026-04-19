@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
       phone: memberPhone,
       plays_league: true,
       role: "member",
+      is_league_only_membership: true,
     };
     if (validatedHomeClubId) {
       insertPayload.home_club_id = validatedHomeClubId;
@@ -104,6 +105,16 @@ Deno.serve(async (req) => {
     if (insertErr) {
       console.error("[provision-association-member] insert failed", insertErr);
       return jsonResp(500, { error: insertErr.message });
+    }
+
+    // Also link the user's home-club member row to this association so the
+    // dashboard can show "you've joined" and the tenant switcher works.
+    if (validatedHomeClubId) {
+      await supabaseAdmin
+        .from("club_members")
+        .update({ enable_league_association_id: assoc.id, plays_league: true })
+        .eq("club_id", validatedHomeClubId)
+        .eq("user_id", user.id);
     }
 
     return jsonResp(200, {

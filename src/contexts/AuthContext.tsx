@@ -12,7 +12,7 @@ interface AuthContextType {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" }
   ) => Promise<{ error: Error | null; userId: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" }
   ) => {
     const metadata: Record<string, string> = { name };
     if (phone) metadata.phone = phone;

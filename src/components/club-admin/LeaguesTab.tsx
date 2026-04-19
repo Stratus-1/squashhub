@@ -190,8 +190,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
-              </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAssoc(a.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </Card>
           ))}
           {associations.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No associations added yet</p>}

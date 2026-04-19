@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.png";
 
@@ -228,6 +229,13 @@ export default function Auth() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
+        <div className="mb-4">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back to home
+          </Link>
+        </div>
+
         <div className="text-center mb-6">
           <img src={shLogo} alt="SquashHub logo" className="w-14 h-14 rounded-2xl object-contain mx-auto mb-3" />
           <h1 className="text-2xl font-bold font-heading">SquashHub</h1>

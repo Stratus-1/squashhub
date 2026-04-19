@@ -7,7 +7,7 @@ import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import {
   LayoutDashboard, Building2, Network, Trophy, Medal, Users, UserCheck,
   Settings, Banknote, Landmark, ShieldCheck, ChevronRight, MessageCircle,
-  BarChart3, Wallet, LifeBuoy, CalendarDays
+  BarChart3, Wallet, LifeBuoy, CalendarDays, Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -21,6 +21,7 @@ import { AffiliatedClubsTab } from "@/components/association-admin/AffiliatedClu
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
 import { BankingTab } from "@/components/club-admin/BankingTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
+import { FeesTab } from "@/components/club-admin/FeesTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
@@ -44,6 +45,7 @@ const ASSOC_TABS: TabDef[] = [
   { value: "members", label: "Members", icon: Users, permission: "members" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
+  { value: "fees", label: "Fees", icon: Receipt, permission: "fees" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, adminOnly: true },
@@ -153,6 +155,7 @@ export default function AssociationDashboard() {
       case "members": return <MembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;
       case "banking": return <BankingTab club={association as any} clubId={association.id} />;
+      case "fees": return <FeesTab clubId={association.id} />;
       case "finance": return <FinanceTab club={association as any} clubId={association.id} />;
       case "settings": return <SettingsTab club={association as any} clubId={association.id} />;
       case "permissions": return <PermissionsTab clubId={association.id} />;

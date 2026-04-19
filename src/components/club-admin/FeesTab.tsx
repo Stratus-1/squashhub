@@ -62,8 +62,11 @@ export function FeesTab({ clubId }: { clubId: string }) {
     }));
     nationalFees.forEach(f => {
       const ft = (f as any).fee_type;
-      const type: FeeType = ft === "other" ? "other" : ft === "registration" ? "registration" : "national";
-      const typeLabel = ft === "other" ? "Other" : ft === "registration" ? "Registration" : "National Body";
+      let type: FeeType = "national";
+      let typeLabel = "National Body";
+      if (ft === "other") { type = "other"; typeLabel = "Other"; }
+      else if (ft === "registration") { type = "registration"; typeLabel = "Registration"; }
+      else if (ft === "league_affiliation") { type = "league_affiliation"; typeLabel = "League Affiliation"; }
       list.push({
         id: f.id, name: f.body_name + (f.abbreviation ? ` (${f.abbreviation})` : ""), 
         type, typeLabel,

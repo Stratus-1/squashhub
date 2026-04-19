@@ -74,7 +74,7 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
       const { error } = await fromExt("association_affiliated_clubs").insert({
         association_tenant_id: clubId,
         club_id: newClubId,
-        status: "pending",
+        status: "active",
       });
       if (error) throw error;
     },
@@ -105,7 +105,7 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
       const { error: affErr } = await fromExt("association_affiliated_clubs").insert({
         association_tenant_id: clubId,
         club_id: (club as any).id,
-        status: "pending",
+        status: "active",
       });
       if (affErr) throw affErr;
     },

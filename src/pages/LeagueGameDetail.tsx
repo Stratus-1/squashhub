@@ -139,6 +139,117 @@ export default function LeagueGameDetail() {
     }
   }, [existingMatches]);
 
+  // ---- Prefill lineup from Fill-Up Leagues / registrations for known club teams ----
+  const { data: prefillLineup } = useQuery({
+    queryKey: ["league-fixture-prefill", fixtureId, fixture?.home_team_code, fixture?.away_team_code],
+    queryFn: async () => {
+      if (!fixture) return null;
+      const codes = [fixture.home_team_code, fixture.away_team_code].filter(Boolean) as string[];
+      if (codes.length === 0) return null;
+
+      // Find leagues in our system whose code matches either team code
+      const { data: leagues } = await (supabase as any)
+        .from("leagues").select("id, code").in("code", codes);
+      if (!leagues || leagues.length === 0) return null;
+
+      const leagueIds = leagues.map((l: any) => l.id);
+      const codeByLeagueId = new Map<string, string>(leagues.map((l: any) => [l.id, l.code]));
+
+      // Try lineups first (captain has filled positions)
+      const { data: lineups } = await (supabase as any)
+        .from("league_fixture_lineups")
+        .select("league_id, position, club_member_id")
+        .eq("fixture_id", fixtureId!)
+        .in("league_id", leagueIds);
+
+      // Also get registrations as fallback (player_rank ordered)
+      const { data: regs } = await (supabase as any)
+        .from("member_league_registrations")
+        .select("league_id, club_member_id, player_rank, league_association_number, ssa_number")
+        .in("league_id", leagueIds);
+
+      // Collect all member ids needed
+      const memberIds = new Set<string>();
+      (lineups || []).forEach((l: any) => memberIds.add(l.club_member_id));
+      (regs || []).forEach((r: any) => memberIds.add(r.club_member_id));
+      if (memberIds.size === 0) return null;
+
+      const { data: members } = await supabase
+        .from("club_members")
+        .select("id, name, club_member_number")
+        .in("id", [...memberIds]);
+      const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
+
+      // Build per-team-code positions [1..4]
+      const result: Record<string, Array<{ code: string; name: string }>> = {};
+      for (const code of codes) {
+        const slots: Array<{ code: string; name: string }> = [
+          { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" },
+        ];
+        const matchingLeagues = leagues.filter((l: any) => l.code === code).map((l: any) => l.id);
+
+        // Build a lookup of registration NSF/SSA per member for this team's leagues
+        const regByMember = new Map<string, any>();
+        (regs || [])
+          .filter((r: any) => matchingLeagues.includes(r.league_id))
+          .forEach((r: any) => regByMember.set(r.club_member_id, r));
+
+        const lineupRows = (lineups || []).filter((l: any) => matchingLeagues.includes(l.league_id));
+        if (lineupRows.length > 0) {
+          for (const l of lineupRows) {
+            const pos = l.position;
+            if (pos < 1 || pos > 4) continue;
+            const m = memberMap.get(l.club_member_id) as any;
+            const reg = regByMember.get(l.club_member_id);
+            slots[pos - 1] = {
+              code: (reg?.league_association_number || reg?.ssa_number || m?.club_member_number || "").toString().toUpperCase(),
+              name: m?.name || "",
+            };
+          }
+        } else {
+          // Fallback: top-ranked registered players for this league
+          const teamRegs = (regs || [])
+            .filter((r: any) => matchingLeagues.includes(r.league_id))
+            .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99))
+            .slice(0, 4);
+          teamRegs.forEach((r: any, i: number) => {
+            const m = memberMap.get(r.club_member_id) as any;
+            slots[i] = {
+              code: (r.league_association_number || r.ssa_number || m?.club_member_number || "").toString().toUpperCase(),
+              name: m?.name || "",
+            };
+          });
+        }
+        result[code] = slots;
+      }
+      return result;
+    },
+    enabled: !!fixture && !!fixtureId,
+    staleTime: 60 * 1000,
+  });
+
+  // Apply prefill ONLY when there are no existing match rows yet (fresh setup)
+  useEffect(() => {
+    if (!prefillLineup || !fixture) return;
+    if (existingMatches && existingMatches.length > 0) return; // don't overwrite saved setup
+    const homeSlots = prefillLineup[fixture.home_team_code] || [];
+    const awaySlots = prefillLineup[fixture.away_team_code] || [];
+    const hasAny = [...homeSlots, ...awaySlots].some((s) => s.code || s.name);
+    if (!hasAny) return;
+    setPositions((prev) => prev.map((p, i) => {
+      // Don't overwrite values the user has already typed
+      const home = homeSlots[i] || { code: "", name: "" };
+      const away = awaySlots[i] || { code: "", name: "" };
+      return {
+        ...p,
+        homeCode: p.homeCode || home.code,
+        homeName: p.homeName || home.name,
+        awayCode: p.awayCode || away.code,
+        awayName: p.awayName || away.name,
+      };
+    }));
+  }, [prefillLineup, existingMatches, fixture]);
+
   // Load saved match format from existing result
   useEffect(() => {
     if (existingResult?.match_format) {

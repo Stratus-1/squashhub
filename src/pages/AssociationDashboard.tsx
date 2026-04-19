@@ -141,7 +141,7 @@ export default function AssociationDashboard() {
       icon: LifeBuoy,
       color: "text-orange-500 bg-orange-500/10",
     },
-  ].filter(t => t.show !== false);
+  ];
 
   const renderAdminTab = () => {
     if (!association) return null;

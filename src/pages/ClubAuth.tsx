@@ -70,19 +70,21 @@ export default function ClubAuth() {
   const clubName = club?.name || "Club";
   const isAssociation = (club as any)?.tenant_type === "association";
 
-  // Fetch all clubs (excluding associations) for the home-club picker
+  // Fetch only clubs affiliated with this association for the home-club picker
   const { data: pickerClubs } = useQuery({
-    queryKey: ["association-picker-clubs"],
-    enabled: isAssociation,
+    queryKey: ["association-picker-clubs", club?.id],
+    enabled: isAssociation && !!club?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clubs")
-        .select("id, name, subdomain")
-        .neq("tenant_type", "association")
-        .not("subdomain", "is", null)
-        .order("name");
+      const { data, error } = await fromExt("association_affiliated_clubs")
+        .select("status, clubs:club_id(id, name, subdomain, tenant_type)")
+        .eq("association_tenant_id", club!.id)
+        .eq("status", "active");
       if (error) throw error;
-      return data || [];
+      const list = (data || [])
+        .map((r: any) => r.clubs)
+        .filter((c: any) => c && c.tenant_type !== "association")
+        .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+      return list as Array<{ id: string; name: string; subdomain: string | null }>;
     },
     staleTime: 60_000,
   });

@@ -173,6 +173,36 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ─── Associations Callout ─── */}
+      <section className="max-w-4xl mx-auto px-4 pt-12">
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+          <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Landmark className="w-6 h-6 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-foreground mb-1">
+                Running a league or association?
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Smaller league associations and regional bodies can also register on
+                SquashHub to access administration, fixtures, member oversight and
+                finance tools — purpose-built for governing committees.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/auth")}
+              className="gap-1.5 flex-shrink-0"
+            >
+              Register Association
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
       {/* ─── Features ─── */}
       <section className="max-w-5xl mx-auto px-4 py-16">
         <h2 className="text-2xl font-bold font-heading text-center mb-10">

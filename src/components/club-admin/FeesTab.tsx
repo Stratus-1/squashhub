@@ -34,7 +34,8 @@ interface UnifiedFee {
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
 
-export function FeesTab({ clubId }: { clubId: string }) {
+export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenantType?: string }) {
+  const isAssociation = tenantType === "association";
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
@@ -189,10 +190,10 @@ export function FeesTab({ clubId }: { clubId: string }) {
       </div>
 
       {editFee && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} />
       )}
       {addOpen && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} />
       )}
 
       <Card className="p-4 bg-muted/50 space-y-3">
@@ -215,11 +216,13 @@ interface FeeDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   existing?: UnifiedFee;
+  tenantType?: string;
 }
 
-function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
+function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }: FeeDialogProps) {
+  const isAssociation = tenantType === "association";
   const isEdit = !!existing;
-  const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? "membership");
+  const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));
   const qc = useQueryClient();
 
   const [name, setName] = useState(() => {
@@ -342,10 +345,10 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
             <Select value={feeType} onValueChange={v => handleTypeChange(v as FeeType)} disabled={isEdit}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="membership">Membership</SelectItem>
-                <SelectItem value="league">League Association</SelectItem>
+                {!isAssociation && <SelectItem value="membership">Membership</SelectItem>}
+                {!isAssociation && <SelectItem value="league">League Association</SelectItem>}
                 <SelectItem value="league_affiliation">League Affiliation Fee</SelectItem>
-                <SelectItem value="national">National Body (e.g. SSA)</SelectItem>
+                {!isAssociation && <SelectItem value="national">National Body (e.g. SSA)</SelectItem>}
                 <SelectItem value="registration">Registration (once-off, new members only)</SelectItem>
                 <SelectItem value="other">Other (e.g. Parking, Locker)</SelectItem>
               </SelectContent>

@@ -166,7 +166,7 @@ export default function AssociationDashboard() {
       case "champs": return <ClubChampsTab clubId={association.id} />;
       case "members": return <MembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;
-      case "fees": return <FeesTab clubId={association.id} />;
+      case "fees": return <FeesTab clubId={association.id} tenantType="association" />;
       case "banking": return <BankingTab club={association as any} clubId={association.id} />;
       case "finance": return <FinanceTab club={association as any} clubId={association.id} />;
       case "settings": return <SettingsTab club={association as any} clubId={association.id} />;

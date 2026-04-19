@@ -58,7 +58,13 @@ export function TenantSwitcher() {
     if (sub === currentSubdomain) return;
     const isPreview =
       typeof window !== "undefined" &&
-      (window.location.hostname.includes("lovable.app") || window.location.hostname === "localhost");
+      (
+        window.location.hostname.includes("lovable.app") ||
+        window.location.hostname.includes("lovableproject.com") ||
+        window.location.hostname.includes("id-preview--") ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+      );
     if (isPreview) {
       window.location.href = `/c/${sub}/`;
     } else {

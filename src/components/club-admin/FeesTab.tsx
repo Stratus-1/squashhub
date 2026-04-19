@@ -261,8 +261,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const handleTypeChange = (t: FeeType) => {
     setFeeType(t);
     if (!isEdit) {
-      setFeeClass(t === "membership" || t === "other" || t === "registration" ? "club_income" : "pass_through");
-      setProRate(t === "membership");
+      setFeeClass(t === "membership" || t === "other" || t === "registration" || t === "league_affiliation" ? "club_income" : "pass_through");
+      setProRate(t === "membership" || t === "league_affiliation");
     }
   };
 

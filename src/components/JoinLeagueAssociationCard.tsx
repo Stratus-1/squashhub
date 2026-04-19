@@ -83,6 +83,7 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
       queryClient.invalidateQueries({ queryKey: ["my-association-memberships"] });
       queryClient.invalidateQueries({ queryKey: ["affiliated-associations-for-join"] });
       queryClient.invalidateQueries({ queryKey: ["account-club-member"] });
+      queryClient.invalidateQueries({ queryKey: ["my-tenants"] });
       // Mark on the club-side member row that this user has opted into the association
       if (activeMember?.id) {
         fromExt("club_members")

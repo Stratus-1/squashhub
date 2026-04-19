@@ -910,6 +910,11 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; clubId: string; onClose: () => void }) {
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const [regLoaded, setRegLoaded] = useState(false);
+
+  // Per-association participation state. Drives the toggles + number inputs.
+  type Participation = { association_id: string; opted_in: boolean; association_number: string };
+  const [participations, setParticipations] = useState<Participation[]>([]);
+
   const [form, setForm] = useState({
     name: member.name || member.profiles?.name || "",
     email: member.email || member.profiles?.email || "",
@@ -923,34 +928,50 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     address: member.address || "",
     fee_category_id: member.fee_category_id || "",
     skill_level: member.skill_level || "",
-    association_id: "",
-    association_number: "",
   });
 
-  // Load existing league registration data
+  // Initialise / sync participation rows when associations load
   useEffect(() => {
-    if (member.plays_league) {
-      fromExt("member_league_registrations")
-        .select("id, league_id, league_association_number, player_rank, leagues:league_id(association_id)")
-        .eq("club_member_id", member.id)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .then(({ data }: any) => {
-          const row = data && data.length > 0 ? data[0] : null;
-          const assocFromRow = row ? (row.leagues as any)?.association_id || "" : "";
-          // Fallback: if linked league has no association_id, default to the club's only association (if exactly one)
-          const fallbackAssoc = !assocFromRow && associations.length === 1 ? associations[0].id : "";
-          setForm(p => ({
-            ...p,
-            association_id: assocFromRow || fallbackAssoc || p.association_id,
-            association_number: row?.league_association_number || p.association_number,
-            ladder_position: row?.player_rank ?? p.ladder_position,
-          }));
-          setRegLoaded(true);
-        });
-    } else {
+    if (associations.length === 0) return;
+    setParticipations((prev) => {
+      const byAssoc = new Map(prev.map((p) => [p.association_id, p]));
+      return associations.map((a) => byAssoc.get(a.id) || { association_id: a.id, opted_in: false, association_number: "" });
+    });
+  }, [associations]);
+
+  // Load existing league registrations across ALL associations
+  useEffect(() => {
+    if (!member.plays_league || associations.length === 0) {
       setRegLoaded(true);
+      return;
     }
+    fromExt("member_league_registrations")
+      .select("id, league_id, league_association_number, leagues:league_id(association_id)")
+      .eq("club_member_id", member.id)
+      .then(({ data }: any) => {
+        const rows = (data || []) as Array<{ league_id: string; league_association_number: string | null; leagues?: { association_id?: string | null } | null }>;
+        // Group by association_id; first non-empty number wins per association
+        const byAssoc = new Map<string, string>();
+        for (const r of rows) {
+          const aid = r.leagues?.association_id || "";
+          if (!aid) continue;
+          if (!byAssoc.has(aid) || (r.league_association_number && !byAssoc.get(aid))) {
+            byAssoc.set(aid, r.league_association_number || "");
+          }
+        }
+        setParticipations((prev) =>
+          (associations.length ? associations : []).map((a) => {
+            const existing = prev.find((p) => p.association_id === a.id);
+            const wasRegistered = byAssoc.has(a.id);
+            return {
+              association_id: a.id,
+              opted_in: wasRegistered,
+              association_number: byAssoc.get(a.id) ?? existing?.association_number ?? "",
+            };
+          })
+        );
+        setRegLoaded(true);
+      });
   }, [member.id, member.plays_league, associations]);
 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;

@@ -108,6 +108,7 @@ export function JoinedAssociationsCard({ clubId, className }: JoinedAssociations
       <div className="space-y-2.5">
         {rows.map((row) => {
           const hasNumber = !!row.member_number;
+          const isActive = hasNumber && row.league_fee_paid;
           return (
             <div
               key={row.id}
@@ -116,38 +117,38 @@ export function JoinedAssociationsCard({ clubId, className }: JoinedAssociations
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold truncate">{row.name}</p>
                 <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                  {hasNumber ? (
-                    <Badge variant="default" className="text-[10px] gap-1">
+                  {isActive ? (
+                    <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">
                       <CheckCircle2 className="w-3 h-3" />
-                      League # {row.member_number}
+                      Active · League # {row.member_number}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400">
                       <Clock className="w-3 h-3" />
-                      Awaiting league number
+                      Inactive
+                      {hasNumber ? ` · League # ${row.member_number}` : " · awaiting league #"}
                     </Badge>
                   )}
-                  {row.league_fee_paid ? (
-                    <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Fees paid
-                    </Badge>
-                  ) : row.league_fee_amount > 0 ? (
-                    <Badge variant="outline" className="text-[10px] gap-1 border-destructive/40 text-destructive">
-                      <Wallet className="w-3 h-3" />
-                      R{row.league_fee_amount.toFixed(2)} due
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] gap-1">
-                      <Clock className="w-3 h-3" />
-                      Fees pending allocation
-                    </Badge>
+                  {!isActive && (
+                    row.league_fee_amount > 0 ? (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-destructive/40 text-destructive">
+                        <Wallet className="w-3 h-3" />
+                        R{row.league_fee_amount.toFixed(2)} fees due
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] gap-1">
+                        <Clock className="w-3 h-3" />
+                        Fees pending allocation
+                      </Badge>
+                    )
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
-                  {hasNumber
-                    ? "Your association will assign you to a team and publish league fixtures."
-                    : "The association admin will allocate your league number and fees shortly."}
+                  {isActive
+                    ? "You're active at this association. Fixtures and results will appear here."
+                    : hasNumber
+                      ? "Your league number is allocated. Pay the league fee to become active."
+                      : "The association admin will allocate your league number. You'll become active once fees are paid."}
                 </p>
               </div>
             </div>

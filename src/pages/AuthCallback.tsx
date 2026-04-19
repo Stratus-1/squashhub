@@ -77,9 +77,41 @@ export default function AuthCallback() {
 
           // For club members, preserve club context via query param
           if (clubSubdomain && !isTenantOwner) {
+            // Provision the member at the association tenant if applicable
+            if (registrationType === "association_member") {
+              const homeClubId = (meta.home_club_id as string) || null;
+              const homeClubName = (meta.home_club_name as string) || null;
+              try {
+                const { error: provErr } = await supabase.functions.invoke(
+                  "provision-association-member",
+                  {
+                    body: {
+                      associationSubdomain: clubSubdomain,
+                      homeClubId,
+                      homeClubName,
+                    },
+                  }
+                );
+                if (provErr) {
+                  console.warn("[AuthCallback] provision failed:", provErr.message);
+                } else {
+                  toast.success("Email verified! Welcome to the league.");
+                }
+              } catch (err) {
+                console.warn("[AuthCallback] provision error:", err);
+              }
+            }
+
             // Clear metadata so it doesn't re-trigger
             await supabase.auth.updateUser({
-              data: { club_name: null, club_subdomain: null, club_registration_type: null },
+              data: {
+                club_name: null,
+                club_subdomain: null,
+                club_registration_type: null,
+                home_club_id: null,
+                home_club_name: null,
+                home_club_subdomain: null,
+              },
             });
             navigate(`/?club=${encodeURIComponent(clubSubdomain)}`, { replace: true });
           } else {

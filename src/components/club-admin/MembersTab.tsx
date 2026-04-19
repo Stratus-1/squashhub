@@ -166,7 +166,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   );
 }
 
-function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin }: {
+function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
   delegateTitle?: string | null;
@@ -176,6 +176,8 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelet
   onTogglePaid: (feeId: string, paid: boolean) => void;
   onCreateFee: (fee: ExpectedFee, clubMemberId: string) => void;
   onToggleAdmin: () => void;
+  onAssignNumber?: (member: ClubMember) => void;
+  numberLabel?: string;
 }) {
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";

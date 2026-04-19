@@ -168,7 +168,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                   <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell>
                     <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
-                      {fee.feeClass === "pass_through" ? "Pass-through" : "Club Income"}
+                      {fee.feeClass === "pass_through" ? "Pass-through" : (fee.type === "league_affiliation" ? "Association Income" : "Club Income")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>

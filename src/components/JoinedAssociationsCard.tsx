@@ -61,19 +61,29 @@ export function JoinedAssociationsCard({ clubId, className }: JoinedAssociations
         const assoc = affiliated.find((a: any) => a.id === m.club_id);
         if (!assoc) continue;
 
-        // Look up unpaid league fee at the association
+        // Look up association / league-affiliation fees at the association tenant.
+        // The association admin sets these up — typically fee_type = 'association'
+        // or 'league_affiliation'. We treat ALL fees on the association tenant as
+        // affiliation fees (since the tenant only bills affiliation-related dues).
         const { data: fees } = await fromExt("club_member_fee_payments")
-          .select("amount, paid")
+          .select("amount, paid, fee_type, fee_label")
           .eq("club_member_id", m.id);
 
-        const leagueFees = (fees || []).filter((f: any) =>
-          String(f.fee_label || "").toLowerCase().includes("league") ||
-          String(f.fee_type || "").toLowerCase().includes("league")
-        );
-        const totalDue = leagueFees
+        const affiliationFees = (fees || []).filter((f: any) => {
+          const t = String(f.fee_type || "").toLowerCase();
+          const l = String(f.fee_label || "").toLowerCase();
+          return (
+            t === "association" ||
+            t === "league_affiliation" ||
+            t === "league" ||
+            l.includes("league") ||
+            l.includes("affiliation")
+          );
+        });
+        const totalDue = affiliationFees
           .filter((f: any) => !f.paid)
           .reduce((sum: number, f: any) => sum + Number(f.amount || 0), 0);
-        const allPaid = leagueFees.length > 0 && leagueFees.every((f: any) => f.paid);
+        const allPaid = affiliationFees.length > 0 && affiliationFees.every((f: any) => f.paid);
 
         list.push({
           id: assoc.id,

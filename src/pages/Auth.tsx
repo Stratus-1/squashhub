@@ -133,7 +133,7 @@ export default function Auth() {
     const { error, userId } = await signUp(email, signupPassword, name, phone || undefined, {
       termsAcceptedAt: nowIso,
       privacyAcceptedAt: nowIso,
-    }, { clubName: club, subdomain: sub, registrationType: "club_owner" });
+    }, { clubName: club, subdomain: sub, registrationType: tenantType === "association" ? "association_owner" : "club_owner" });
     if (error) {
       toast.error(error.message);
       setLoading(false);
@@ -156,6 +156,7 @@ export default function Auth() {
               subdomain: sub,
               userName: name,
               userEmail: email,
+              tenantType,
             }),
           }
         );

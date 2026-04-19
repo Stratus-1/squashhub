@@ -36,10 +36,10 @@ Deno.serve(async (req) => {
       return jsonResp(400, { error: "associationSubdomain is required" });
     }
 
-    // Look up the association tenant
+    // Look up the association tenant (incl. number-config for auto allocation)
     const { data: assoc, error: assocErr } = await supabaseAdmin
       .from("clubs")
-      .select("id, name, tenant_type")
+      .select("id, name, tenant_type, member_number_prefix, member_number_length, member_number_start")
       .eq("subdomain", associationSubdomain)
       .maybeSingle();
 

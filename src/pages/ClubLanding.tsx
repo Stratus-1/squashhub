@@ -41,7 +41,7 @@ interface ClubLandingProps {
 
 export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const needsQuery = !hostClub && !!subdomain;
 
@@ -112,7 +112,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
     return query ? `/auth?${query}` : "/auth";
   })();
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

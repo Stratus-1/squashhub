@@ -330,35 +330,113 @@ export default function Ladder() {
   const getInitials = (name: string) =>
     name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
-  const renderColumn = (title: string, list: LadderPlayer[]) => (
-    <div>
-      <h2 className="text-sm font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
-        {title}
-        <span className="text-muted-foreground font-normal ml-1.5">({list.length})</span>
-      </h2>
-      <div className="space-y-1.5">
-        {list.map((player, index) => (
-          <LadderPlayerCard
-            key={player.id}
-            player={player}
-            index={index}
-            isMe={isMe(player)}
-            isAdmin={false}
-            onNavigate={(playerId, isMePlayer) => {
-              if (isMePlayer) navigate("/profile");
-              else navigate(`/players/${playerId}`);
-            }}
-            onChallenge={() => handleChallengeClick(player)}
-            challengeBlocked={!isChallengeable(player)}
-            highlightChallengeable={isChallengeable(player)}
-          />
-        ))}
-        {list.length === 0 && (
-          <p className="text-xs text-muted-foreground py-4 text-center">No players yet</p>
-        )}
+  // Apply league filter when active
+  const applyFilter = (list: LadderPlayer[]) => {
+    if (!activeLeagueFilter) return list;
+    return list.filter((p) =>
+      (memberLeagueMap.get(p.club_member_id) || []).some((c) => c.id === activeLeagueFilter)
+    );
+  };
+
+  const renderColumn = (title: string, list: LadderPlayer[]) => {
+    const filtered = applyFilter(list);
+    return (
+      <div>
+        <h2 className="text-sm font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
+          {title}
+          <span className="text-muted-foreground font-normal ml-1.5">({filtered.length})</span>
+        </h2>
+        <div className="space-y-1.5">
+          {filtered.map((player, index) => (
+            <LadderPlayerCard
+              key={player.id}
+              player={player}
+              index={index}
+              isMe={isMe(player)}
+              isAdmin={false}
+              onNavigate={(playerId, isMePlayer) => {
+                if (isMePlayer) navigate("/profile");
+                else navigate(`/players/${playerId}`);
+              }}
+              onChallenge={() => handleChallengeClick(player)}
+              challengeBlocked={!isChallengeable(player)}
+              highlightChallengeable={isChallengeable(player)}
+              leagues={getPlayerLeagues(player)}
+              onLeagueClick={handleLeagueClick}
+              activeLeagueFilter={activeLeagueFilter}
+            />
+          ))}
+          {filtered.length === 0 && (
+            <p className="text-xs text-muted-foreground py-4 text-center">No players</p>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // ---- Grouped-by-league rendering ----
+  const renderGrouped = (genderTitle: string, list: LadderPlayer[]) => {
+    const filteredList = applyFilter(list);
+    // Build sections: one per league, then a 'Social' section for un-registered
+    const sections: Array<{ key: string; label: string; players: LadderPlayer[] }> = [];
+    leaguesList.forEach((lg) => {
+      const players = filteredList.filter((p) =>
+        (memberLeagueMap.get(p.club_member_id) || []).some((c) => c.id === lg.id)
+      );
+      if (players.length > 0) sections.push({ key: lg.id, label: `${lg.name} (${lg.shortLabel})`, players });
+    });
+    if (!activeLeagueFilter) {
+      const social = filteredList.filter(
+        (p) => (memberLeagueMap.get(p.club_member_id) || []).length === 0
+      );
+      if (social.length > 0) sections.push({ key: "__social", label: "Social Players", players: social });
+    }
+
+    return (
+      <div>
+        <h2 className="text-sm font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
+          {genderTitle}
+          <span className="text-muted-foreground font-normal ml-1.5">({filteredList.length})</span>
+        </h2>
+        <div className="space-y-4">
+          {sections.length === 0 && (
+            <p className="text-xs text-muted-foreground py-4 text-center">No players</p>
+          )}
+          {sections.map((sec) => (
+            <div key={sec.key}>
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-primary mb-1.5 flex items-center gap-1.5">
+                <span className="h-px flex-1 bg-primary/20" />
+                <span>{sec.label}</span>
+                <span className="text-muted-foreground font-normal">({sec.players.length})</span>
+                <span className="h-px flex-1 bg-primary/20" />
+              </h3>
+              <div className="space-y-1.5">
+                {sec.players.map((player, index) => (
+                  <LadderPlayerCard
+                    key={player.id}
+                    player={player}
+                    index={index}
+                    isMe={isMe(player)}
+                    isAdmin={false}
+                    onNavigate={(playerId, isMePlayer) => {
+                      if (isMePlayer) navigate("/profile");
+                      else navigate(`/players/${playerId}`);
+                    }}
+                    onChallenge={() => handleChallengeClick(player)}
+                    challengeBlocked={!isChallengeable(player)}
+                    highlightChallengeable={isChallengeable(player)}
+                    leagues={getPlayerLeagues(player)}
+                    onLeagueClick={handleLeagueClick}
+                    activeLeagueFilter={activeLeagueFilter}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="bottom-nav-safe">
@@ -368,14 +446,35 @@ export default function Ladder() {
         subtitle={`${(players || []).length} players ranked`}
       />
 
+      {/* Controls: filter chip + group toggle */}
+      {leaguesList.length > 0 && !isLoading && (
+        <div className="px-4 mt-3 flex flex-wrap items-center gap-3">
+          {activeLeagueChip && (
+            <button
+              type="button"
+              onClick={() => setActiveLeagueFilter(null)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <span>{activeLeagueChip.name}</span>
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          <label className="ml-auto inline-flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Group by league</span>
+            <Switch checked={groupByLeague} onCheckedChange={setGroupByLeague} />
+          </label>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : (
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderColumn("Men's Ladder", menPlayers)}
-          {renderColumn("Ladies' Ladder", ladiesPlayers)}
+          {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+          {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
         </div>
       )}
 

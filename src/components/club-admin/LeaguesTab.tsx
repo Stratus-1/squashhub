@@ -974,6 +974,46 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
                   : "Regional: external/regional league involving other clubs."}
             </p>
           </div>
+
+          {/* Members pay association directly toggle */}
+          <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="members-pay-direct" className="text-sm font-medium cursor-pointer">
+                    Members pay {abbreviation || "association"} directly
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="text-muted-foreground hover:text-foreground">
+                          <Info className="w-3.5 h-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-xs">
+                          <strong>ON:</strong> Members pay the league association directly via EFT or card. The fee is <em>not</em> added to your club's Fees table and the club does not collect it.
+                          <br /><br />
+                          <strong>OFF:</strong> The association fee is added to your club's Fees table. Your club collects it from members and remits it to the association.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {membersPayDirectly
+                    ? "Fee will NOT appear in the club's Fees table. Members settle directly with the association."
+                    : "Fee will appear in the club's Fees table and be charged via the club."}
+                </p>
+              </div>
+              <Switch
+                id="members-pay-direct"
+                checked={membersPayDirectly}
+                onCheckedChange={setMembersPayDirectly}
+              />
+            </div>
+          </div>
+
           <Button onClick={handleSave} className="w-full" disabled={!name.trim()}>Save Changes</Button>
         </div>
       </DialogContent>

@@ -152,7 +152,14 @@ export function useMyClub() {
 
       const { data, error } = await query.limit(1).maybeSingle();
       if (error) throw error;
-      if (!data) return null;
+      if (!data) {
+        // If a tenant context is active but the user has no membership there,
+        // surface the tenant club so the UI still renders in the correct context.
+        if (contextClub) {
+          return { membership: null as any, club: contextClub as unknown as Club };
+        }
+        return null;
+      }
       return { membership: { club_id: data.club_id, role: data.role }, club: data.clubs as Club };
     },
     enabled: !!user && (!subdomain || !!activeClubId),

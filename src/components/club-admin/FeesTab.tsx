@@ -226,9 +226,10 @@ interface FeeDialogProps {
   onOpenChange: (o: boolean) => void;
   existing?: UnifiedFee;
   tenantType?: string;
+  tenantName?: string;
 }
 
-function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }: FeeDialogProps) {
+function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "" }: FeeDialogProps) {
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));

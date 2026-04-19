@@ -13,6 +13,9 @@ import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, Re
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -911,12 +914,13 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
   const [name, setName] = useState(association.name);
   const [abbreviation, setAbbreviation] = useState(association.abbreviation || "");
   const [scope, setScope] = useState<"internal" | "region">((association.scope as any) || "region");
+  const [membersPayDirectly, setMembersPayDirectly] = useState<boolean>(!!(association as any).members_pay_directly);
 
   const isPlatformLinked = !!association.platform_association_id;
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    const payload: any = { name, abbreviation, scope };
+    const payload: any = { name, abbreviation, scope, members_pay_directly: membersPayDirectly };
     const { error } = await fromExt("league_associations").update(payload).eq("id", association.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Association updated");

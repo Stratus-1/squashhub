@@ -273,3 +273,52 @@ export default function Home() {
     </div>
   );
 }
+
+interface TenantCardProps {
+  tenant: TenantPublic;
+  navigate: (path: string) => void;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+function TenantCard({ tenant, navigate, icon: Icon }: TenantCardProps) {
+  const handleClick = () => {
+    if (!tenant.subdomain) return;
+    const isPreview = window.location.hostname.includes("lovable");
+    if (isPreview) {
+      navigate(`/c/${tenant.subdomain}`);
+    } else {
+      window.location.href = `https://${tenant.subdomain}.squashhub.co.za`;
+    }
+  };
+
+  return (
+    <Card
+      className="hover:border-primary/40 transition-colors cursor-pointer group"
+      onClick={handleClick}
+    >
+      <CardContent className="p-5 flex items-center gap-4">
+        {tenant.logo_url ? (
+          <img
+            src={tenant.logo_url}
+            alt={`${tenant.name} logo`}
+            className="w-12 h-12 rounded-md object-contain flex-shrink-0"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Icon className="w-6 h-6 text-primary" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-foreground truncate">{tenant.name}</h3>
+          {tenant.subdomain && (
+            <p className="text-xs font-mono text-primary">{tenant.subdomain}.squashhub.co.za</p>
+          )}
+          {tenant.address && (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{tenant.address}</p>
+          )}
+        </div>
+        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+      </CardContent>
+    </Card>
+  );
+}

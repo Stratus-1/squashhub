@@ -424,6 +424,72 @@ export function MembersTab({ clubId }: { clubId: string }) {
     else { toast.success("Member removed"); qc.invalidateQueries({ queryKey: ["club-members"] }); }
   };
 
+  /**
+   * Allocate the next sequential club/league number for a member based on the
+   * club's number prefix, length, and starting number. For an association tenant,
+   * also seeds unpaid league-fee payment rows from the configured league_associations.
+   */
+  const handleAssignNumber = async (member: ClubMember) => {
+    const prefix = (club as any)?.member_number_prefix || "";
+    const length = (club as any)?.member_number_length || 4;
+    const start = (club as any)?.member_number_start || 1;
+    const tenantType = (club as any)?.tenant_type || "club";
+    const numberLabel = tenantType === "association" ? "league" : "membership";
+
+    const { data: existing } = await fromExt("club_members")
+      .select("club_member_number")
+      .eq("club_id", clubId)
+      .not("club_member_number", "is", null);
+
+    let maxNum = start - 1;
+    const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)$`);
+    for (const row of (existing || []) as any[]) {
+      const v = row.club_member_number || "";
+      const match = v.match(re);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    }
+    const nextNum = maxNum + 1;
+    const padded = String(nextNum).padStart(length, "0");
+    const newNumber = `${prefix}${padded}`;
+
+    if (!confirm(`Allocate ${numberLabel} number "${newNumber}" to ${member.profiles?.name || member.name}?`)) return;
+
+    const { error } = await fromExt("club_members")
+      .update({ club_member_number: newNumber, plays_league: tenantType === "association" ? true : member.plays_league })
+      .eq("id", member.id);
+
+    if (error) { toast.error(error.message); return; }
+
+    if (tenantType === "association") {
+      const activeFees = (associations || []).filter((a: any) => (a.active !== false) && ((a.fee_annual ?? 0) > 0));
+      if (activeFees.length > 0) {
+        const { data: existingPays } = await fromExt("club_member_fee_payments")
+          .select("fee_label, season_year")
+          .eq("club_member_id", member.id)
+          .eq("fee_type", "league");
+        const existingKeys = new Set((existingPays || []).map((p: any) => `${p.fee_label}|${p.season_year}`));
+        const feeRecords = activeFees.map((a: any) => ({
+          club_member_id: member.id,
+          fee_type: "league",
+          fee_label: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""),
+          amount: a.fee_annual ?? 0,
+          paid: false,
+          season_year: new Date().getFullYear(),
+        })).filter(f => !existingKeys.has(`${f.fee_label}|${f.season_year}`));
+        if (feeRecords.length > 0) {
+          await fromExt("club_member_fee_payments").insert(feeRecords);
+        }
+      }
+    }
+
+    toast.success(`Allocated ${newNumber}`);
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    refetchPayments();
+  };
+
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

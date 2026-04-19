@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
 import { AssociationWelcomeBanner } from "@/components/AssociationWelcomeBanner";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import {
   LayoutDashboard, Building2, Network, Trophy, Medal, Users, UserCheck,
   Settings, Banknote, Landmark, ShieldCheck, ChevronRight, MessageCircle,
-  BarChart3, Wallet, LifeBuoy, CalendarDays, Receipt
+  BarChart3, Wallet, LifeBuoy, CalendarDays, Receipt, ShieldAlert, ArrowLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -36,23 +37,23 @@ interface TabDef {
   adminOnly?: boolean;
 }
 
-const ASSOC_TABS: TabDef[] = [
-  { value: "overview", label: "Overview", icon: LayoutDashboard },
+const ADMIN_TABS: TabDef[] = [
   { value: "association", label: "Association", icon: Building2, permission: "club" },
   { value: "affiliated", label: "Affiliated Clubs", icon: Network, permission: "club" },
   { value: "leagues", label: "Regional Leagues", icon: Trophy, permission: "leagues" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs" },
   { value: "members", label: "Members", icon: Users, permission: "members" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users" },
-  { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
   { value: "fees", label: "Fees", icon: Receipt, permission: "fees" },
+  { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, adminOnly: true },
 ];
 
 interface OverviewTile {
-  to: string;
+  to?: string;
+  onClick?: () => void;
   label: string;
   description: string;
   icon: any;
@@ -73,20 +74,31 @@ export default function AssociationDashboard() {
   const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Member";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 
-  const visibleTabs = ASSOC_TABS.filter(tab => {
-    if (tab.value === "overview") return true;
+  const visibleAdminTabs = ADMIN_TABS.filter(tab => {
     if (tab.adminOnly) return isClubAdmin;
     if (!tab.permission) return isClubAdmin;
     return isClubAdmin || myPermissions.has(tab.permission);
   });
 
-  const [activeTab, setActiveTab] = useState("overview");
+  const hasAdminAccess = visibleAdminTabs.length > 0;
 
-  if (visibleTabs.length > 0 && !visibleTabs.find(t => t.value === activeTab)) {
-    setActiveTab(visibleTabs[0].value);
+  // "overview" or admin tab value
+  const [view, setView] = useState<string>("overview");
+  const [adminTab, setAdminTab] = useState<string>(visibleAdminTabs[0]?.value || "");
+
+  // Sync default admin tab once permissions resolve
+  if (hasAdminAccess && !visibleAdminTabs.find(t => t.value === adminTab)) {
+    setAdminTab(visibleAdminTabs[0].value);
   }
 
   const overviewTiles: OverviewTile[] = [
+    ...(hasAdminAccess ? [{
+      onClick: () => setView("admin"),
+      label: "Admin",
+      description: "Association management & settings",
+      icon: ShieldAlert,
+      color: "text-primary bg-primary/10",
+    }] : []),
     {
       to: "/challenges",
       label: "Challenges",
@@ -147,15 +159,15 @@ export default function AssociationDashboard() {
 
   const renderAdminTab = () => {
     if (!association) return null;
-    switch (activeTab) {
+    switch (adminTab) {
       case "association": return <AssociationInfoTab club={association as any} clubId={association.id} />;
       case "affiliated": return <AffiliatedClubsTab clubId={association.id} />;
       case "leagues": return <LeaguesTab clubId={association.id} />;
       case "champs": return <ClubChampsTab clubId={association.id} />;
       case "members": return <MembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;
-      case "banking": return <BankingTab club={association as any} clubId={association.id} />;
       case "fees": return <FeesTab clubId={association.id} />;
+      case "banking": return <BankingTab club={association as any} clubId={association.id} />;
       case "finance": return <FinanceTab club={association as any} clubId={association.id} />;
       case "settings": return <SettingsTab club={association as any} clubId={association.id} />;
       case "permissions": return <PermissionsTab clubId={association.id} />;
@@ -163,7 +175,8 @@ export default function AssociationDashboard() {
     }
   };
 
-  const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
+  const activeTabMeta = visibleAdminTabs.find(t => t.value === adminTab);
+  const isAdminView = view === "admin";
 
   return (
     <div className="bottom-nav-safe relative text-[13px]">
@@ -178,38 +191,7 @@ export default function AssociationDashboard() {
       />
 
       <div className="max-w-7xl mx-auto px-3 md:px-5 mt-3 space-y-4">
-        {/* Tab grid */}
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-11 gap-2 md:gap-2.5">
-          {visibleTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.value;
-            return (
-              <button
-                key={tab.value}
-                onClick={() => setActiveTab(tab.value)}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                  isActive
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {activeTabMeta && activeTab !== "overview" && (
-          <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-            <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
-            <h2 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h2>
-          </div>
-        )}
-
-        {/* Tab content */}
-        {activeTab === "overview" ? (
+        {!isAdminView ? (
           <div className="space-y-4">
             <AssociationWelcomeBanner />
 
@@ -221,35 +203,87 @@ export default function AssociationDashboard() {
             />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {overviewTiles.map((tile) => (
-                <Card
-                  key={tile.to}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate(tile.to)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      navigate(tile.to);
-                    }
-                  }}
-                  className="p-3 cursor-pointer hover:border-primary/40 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-2", tile.color)}>
-                    <tile.icon className="w-5 h-5" />
-                  </div>
-                  <div className="flex items-center justify-between gap-1">
-                    <h3 className="text-sm font-semibold leading-tight truncate">{tile.label}</h3>
-                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">{tile.description}</p>
-                </Card>
-              ))}
+              {overviewTiles.map((tile) => {
+                const handle = () => {
+                  if (tile.onClick) tile.onClick();
+                  else if (tile.to) navigate(tile.to);
+                };
+                return (
+                  <Card
+                    key={tile.label}
+                    role="button"
+                    tabIndex={0}
+                    onClick={handle}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handle();
+                      }
+                    }}
+                    className="p-3 cursor-pointer hover:border-primary/40 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-2", tile.color)}>
+                      <tile.icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex items-center justify-between gap-1">
+                      <h3 className="text-sm font-semibold leading-tight truncate">{tile.label}</h3>
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">{tile.description}</p>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         ) : (
-          <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
-            {renderAdminTab()}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setView("overview")}
+                className="h-8 px-2"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" /> Back
+              </Button>
+              <h2 className="text-sm font-semibold flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-primary" /> Admin
+              </h2>
+              <span className="w-[60px]" />
+            </div>
+
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-11 gap-2 md:gap-2.5">
+              {visibleAdminTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = adminTab === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    onClick={() => setAdminTab(tab.value)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeTabMeta && (
+              <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+                <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
+                <h3 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h3>
+              </div>
+            )}
+
+            <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
+              {renderAdminTab()}
+            </div>
           </div>
         )}
       </div>

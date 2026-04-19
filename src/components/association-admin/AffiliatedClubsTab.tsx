@@ -32,6 +32,10 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newClubName, setNewClubName] = useState("");
+  const [newClubContact, setNewClubContact] = useState("");
+  const [newClubEmail, setNewClubEmail] = useState("");
 
   // Affiliated clubs for this association
   const { data: affiliations = [], isLoading } = useQuery({

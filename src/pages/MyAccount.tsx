@@ -21,6 +21,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
+import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
@@ -499,8 +500,9 @@ export default function MyAccount() {
 
       {/* Join an affiliated league association */}
       {clubId && (club as any)?.tenant_type !== "association" && (
-        <div className="px-4 mt-3">
+        <div className="px-4 mt-3 space-y-3">
           <JoinLeagueAssociationCard clubId={clubId} variant="card" />
+          <JoinedAssociationsCard clubId={clubId} />
         </div>
       )}
 

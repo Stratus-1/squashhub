@@ -1202,20 +1202,56 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
-          {form.plays_league && (
-            <>
-              <div className="space-y-1">
-                <Label>League Association *</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.association_id} onChange={e => setForm(p => ({ ...p, association_id: e.target.value }))}>
-                  <option value="">— Select Association —</option>
-                  {associations.map(a => <option key={a.id} value={a.id}>{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</option>)}
-                </select>
+          {form.plays_league && associations.length > 0 && (
+            <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+              <Label className="text-sm">League participation</Label>
+              <p className="text-[11px] text-muted-foreground">
+                {associations.length === 1
+                  ? "Confirm participation and enter the league number if it's a regional league."
+                  : "Tick each league this member plays in. Regional leagues require a league number; internal leagues just need the tick."}
+              </p>
+              <div className="space-y-2">
+                {associations.map((a) => {
+                  const p = participations.find((x) => x.association_id === a.id) || { association_id: a.id, opted_in: false, association_number: "" };
+                  const isInternal = (a.scope ?? "region") === "internal";
+                  const setP = (patch: Partial<typeof p>) =>
+                    setParticipations((prev) => {
+                      const next = prev.some((x) => x.association_id === a.id)
+                        ? prev.map((x) => (x.association_id === a.id ? { ...x, ...patch } : x))
+                        : [...prev, { ...p, ...patch }];
+                      return next;
+                    });
+                  return (
+                    <div key={a.id} className="rounded border bg-background p-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={p.opted_in}
+                          onChange={(e) => setP({ opted_in: e.target.checked })}
+                        />
+                        <span className="text-sm font-medium flex-1">
+                          {a.name} {a.abbreviation ? <span className="text-muted-foreground">({a.abbreviation})</span> : null}
+                        </span>
+                        <Badge variant={isInternal ? "secondary" : "outline"} className="text-[9px]">
+                          {isInternal ? "Internal" : "Regional"}
+                        </Badge>
+                      </label>
+                      {p.opted_in && !isInternal && (
+                        <div className="mt-2 ml-6 space-y-1">
+                          <Label className="text-xs">{a.name} league number *</Label>
+                          <Input
+                            value={p.association_number}
+                            onChange={(e) => setP({ association_number: e.target.value })}
+                            placeholder="e.g. 12345"
+                            className="h-8"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <div className="space-y-1">
-                <Label>Association Number *</Label>
-                <Input value={form.association_number} onChange={e => setForm(p => ({ ...p, association_number: e.target.value }))} placeholder="e.g. NSF12345" />
-              </div>
-            </>
+            </div>
           )}
           <div className="space-y-1">
             <Label>ID Number</Label>

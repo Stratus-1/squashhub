@@ -24,7 +24,7 @@ import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

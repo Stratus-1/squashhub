@@ -294,160 +294,170 @@ export default function Auth() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="signup">
-            {signupDone ? (
-              <Card className="p-6 text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h2 className="text-lg font-bold font-heading">Verify Your Email</h2>
-                <p className="text-sm text-muted-foreground">
-                  We've sent a verification link to <span className="font-medium text-foreground">{signupEmail}</span>. Click the link to verify your email, create your club, and be redirected to your club's login page.
-                </p>
-                {subdomain && (
-                  <p className="text-xs text-muted-foreground">
-                    Your club URL will be: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
-                  </p>
-                )}
-                <Button variant="outline" className="w-full" onClick={() => setSignupDone(false)}>
-                  Back to Sign Up
-                </Button>
-              </Card>
-            ) : (
-            <Card className="p-6">
-              <form onSubmit={handleSignup} className="space-y-3">
-                <div>
-                  <Label htmlFor="signup-name">Full Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="John Smith"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                    required
-                    maxLength={100}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signup-club">Club Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="signup-club"
-                    type="text"
-                    placeholder="e.g. CSIR Squash Club"
-                    value={clubName}
-                    onChange={(e) => handleClubNameChange(e.target.value)}
-                    required
-                    maxLength={100}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signup-subdomain">Abbreviation <span className="text-destructive">*</span> <span className="text-[10px] font-normal text-muted-foreground">(you can edit)</span></Label>
-                  <div className="flex items-center gap-0">
-                    <Input
-                      id="signup-subdomain"
-                      type="text"
-                      placeholder="csir"
-                      value={subdomain}
-                      onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5))}
-                      required
-                      maxLength={5}
-                      className="rounded-r-none border-r-0 w-24"
-                    />
-                    <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-input bg-muted text-muted-foreground text-xs whitespace-nowrap">
-                      .squashhub.co.za
-                    </span>
-                  </div>
-                  {subdomain && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Your club URL: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
+          {(["signup", "association"] as const).map((tabValue) => {
+            const isAssoc = tabValue === "association";
+            const entityLabel = isAssoc ? "Association" : "Club";
+            const entityPlaceholder = isAssoc ? "e.g. Lowveld League Association" : "e.g. CSIR Squash Club";
+            const subPlaceholder = isAssoc ? "lowve" : "csir";
+            const ctaLabel = isAssoc ? "Create Association" : "Create Club";
+            const ctaLoading = isAssoc ? "Creating association..." : "Creating club...";
+            return (
+              <TabsContent key={tabValue} value={tabValue}>
+                {signupDone ? (
+                  <Card className="p-6 text-center space-y-4">
+                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                      <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h2 className="text-lg font-bold font-heading">Verify Your Email</h2>
+                    <p className="text-sm text-muted-foreground">
+                      We've sent a verification link to <span className="font-medium text-foreground">{signupEmail}</span>. Click the link to verify your email, create your {entityLabel.toLowerCase()}, and be redirected to your {entityLabel.toLowerCase()}'s login page.
                     </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="signup-email">Email <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
-                    required
-                    maxLength={255}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signup-phone">Phone Number</Label>
-                  <Input
-                    id="signup-phone"
-                    type="tel"
-                    placeholder="+27 82 123 4567"
-                    value={signupPhone}
-                    onChange={(e) => setSignupPhone(e.target.value)}
-                    maxLength={20}
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Optional — used for match reminders</p>
-                </div>
-                <div>
-                  <Label htmlFor="signup-password">Password <span className="text-destructive">*</span></Label>
-                  <div className="relative">
-                    <Input
-                      id="signup-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Min 6 characters"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="signup-confirm">Confirm Password <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="signup-confirm"
-                    type="password"
-                    placeholder="Re-enter password"
-                    value={signupConfirm}
-                    onChange={(e) => setSignupConfirm(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <HCaptcha ref={captchaRef} />
-                <div className="flex items-start gap-2 pt-1">
-                  <Checkbox
-                    checked={acceptTerms}
-                    onCheckedChange={(v) => setAcceptTerms(v === true)}
-                    aria-label="Accept Terms and Privacy Policy"
-                  />
-                  <p className="text-[10px] text-muted-foreground leading-snug">
-                    I agree to the{" "}
-                    <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
-                      Terms of Use
-                    </Link>{" "}
-                    and{" "}
-                    <Link to="/privacy" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
-                      Privacy Policy
-                    </Link>
-                    .
-                  </p>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating club..." : "Create Club"}
-                </Button>
-              </form>
-            </Card>
-            )}
-          </TabsContent>
+                    {subdomain && (
+                      <p className="text-xs text-muted-foreground">
+                        Your {entityLabel.toLowerCase()} URL will be: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
+                      </p>
+                    )}
+                    <Button variant="outline" className="w-full" onClick={() => setSignupDone(false)}>
+                      Back to Sign Up
+                    </Button>
+                  </Card>
+                ) : (
+                <Card className="p-6">
+                  <form onSubmit={handleSignup} className="space-y-3">
+                    <div>
+                      <Label htmlFor={`signup-name-${tabValue}`}>Full Name <span className="text-destructive">*</span></Label>
+                      <Input
+                        id={`signup-name-${tabValue}`}
+                        type="text"
+                        placeholder="John Smith"
+                        value={signupName}
+                        onChange={(e) => setSignupName(e.target.value)}
+                        required
+                        maxLength={100}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`signup-club-${tabValue}`}>{entityLabel} Name <span className="text-destructive">*</span></Label>
+                      <Input
+                        id={`signup-club-${tabValue}`}
+                        type="text"
+                        placeholder={entityPlaceholder}
+                        value={clubName}
+                        onChange={(e) => handleClubNameChange(e.target.value)}
+                        required
+                        maxLength={100}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`signup-subdomain-${tabValue}`}>Abbreviation <span className="text-destructive">*</span> <span className="text-[10px] font-normal text-muted-foreground">(you can edit)</span></Label>
+                      <div className="flex items-center gap-0">
+                        <Input
+                          id={`signup-subdomain-${tabValue}`}
+                          type="text"
+                          placeholder={subPlaceholder}
+                          value={subdomain}
+                          onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5))}
+                          required
+                          maxLength={5}
+                          className="rounded-r-none border-r-0 w-24"
+                        />
+                        <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-input bg-muted text-muted-foreground text-xs whitespace-nowrap">
+                          .squashhub.co.za
+                        </span>
+                      </div>
+                      {subdomain && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Your {entityLabel.toLowerCase()} URL: <span className="font-medium text-foreground">{subdomain}.squashhub.co.za</span>
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor={`signup-email-${tabValue}`}>Email <span className="text-destructive">*</span></Label>
+                      <Input
+                        id={`signup-email-${tabValue}`}
+                        type="email"
+                        placeholder="john@example.com"
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                        required
+                        maxLength={255}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`signup-phone-${tabValue}`}>Phone Number</Label>
+                      <Input
+                        id={`signup-phone-${tabValue}`}
+                        type="tel"
+                        placeholder="+27 82 123 4567"
+                        value={signupPhone}
+                        onChange={(e) => setSignupPhone(e.target.value)}
+                        maxLength={20}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Optional — used for match reminders</p>
+                    </div>
+                    <div>
+                      <Label htmlFor={`signup-password-${tabValue}`}>Password <span className="text-destructive">*</span></Label>
+                      <div className="relative">
+                        <Input
+                          id={`signup-password-${tabValue}`}
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Min 6 characters"
+                          value={signupPassword}
+                          onChange={(e) => setSignupPassword(e.target.value)}
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor={`signup-confirm-${tabValue}`}>Confirm Password <span className="text-destructive">*</span></Label>
+                      <Input
+                        id={`signup-confirm-${tabValue}`}
+                        type="password"
+                        placeholder="Re-enter password"
+                        value={signupConfirm}
+                        onChange={(e) => setSignupConfirm(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <HCaptcha ref={captchaRef} />
+                    <div className="flex items-start gap-2 pt-1">
+                      <Checkbox
+                        checked={acceptTerms}
+                        onCheckedChange={(v) => setAcceptTerms(v === true)}
+                        aria-label="Accept Terms and Privacy Policy"
+                      />
+                      <p className="text-[10px] text-muted-foreground leading-snug">
+                        I agree to the{" "}
+                        <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                          Terms of Use
+                        </Link>{" "}
+                        and{" "}
+                        <Link to="/privacy" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                          Privacy Policy
+                        </Link>
+                        .
+                      </p>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? ctaLoading : ctaLabel}
+                    </Button>
+                  </form>
+                </Card>
+                )}
+              </TabsContent>
+            );
+          })}
         </Tabs>
       </motion.div>
     </div>

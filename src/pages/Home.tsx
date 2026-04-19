@@ -237,28 +237,6 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {/* Associations */}
-            <div>
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold font-heading mb-2">Associations</h2>
-                <p className="text-sm text-muted-foreground">
-                  Regional & national squash bodies on SquashHub.
-                </p>
-              </div>
-              {associations.length === 0 ? (
-                <Card className="max-w-md mx-auto text-center p-6">
-                  <Landmark className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No associations registered yet.</p>
-                </Card>
-              ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {associations.map((t) => (
-                    <TenantCard key={t.id} tenant={t} navigate={navigate} icon={Landmark} />
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Clubs */}
             <div>
               <div className="text-center mb-8">
@@ -279,6 +257,28 @@ export default function Home() {
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {clubs.map((t) => (
                     <TenantCard key={t.id} tenant={t} navigate={navigate} icon={Building2} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Associations / Leagues */}
+            <div>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold font-heading mb-2">Leagues & Associations</h2>
+                <p className="text-sm text-muted-foreground">
+                  Regional & national squash bodies on SquashHub.
+                </p>
+              </div>
+              {associations.length === 0 ? (
+                <Card className="max-w-md mx-auto text-center p-6">
+                  <Landmark className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No associations registered yet.</p>
+                </Card>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {associations.map((t) => (
+                    <TenantCard key={t.id} tenant={t} navigate={navigate} icon={Landmark} />
                   ))}
                 </div>
               )}

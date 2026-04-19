@@ -266,6 +266,13 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     }
   };
 
+  const mapFeeTypeForDb = (t: FeeType): string => {
+    if (t === "other") return "other";
+    if (t === "registration") return "registration";
+    if (t === "league_affiliation") return "league_affiliation";
+    return "national";
+  };
+
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Fee name is required"); return; }
 

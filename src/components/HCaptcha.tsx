@@ -124,13 +124,21 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     execute: () =>
       new Promise<string>((resolve, reject) => {
-        if (!readyRef.current || !window.hcaptcha || widgetIdRef.current === null) {
-          reject(new Error("hCaptcha not ready"));
-          return;
-        }
-        resolveRef.current = resolve;
-        window.hcaptcha.reset(widgetIdRef.current);
-        window.hcaptcha.execute(widgetIdRef.current);
+        const tryExecute = (attemptsLeft: number) => {
+          if (readyRef.current && window.hcaptcha && widgetIdRef.current !== null) {
+            resolveRef.current = resolve;
+            window.hcaptcha.reset(widgetIdRef.current);
+            window.hcaptcha.execute(widgetIdRef.current);
+            return;
+          }
+          if (attemptsLeft <= 0) {
+            reject(new Error("hCaptcha not ready"));
+            return;
+          }
+          setTimeout(() => tryExecute(attemptsLeft - 1), 200);
+        };
+        // Wait up to ~3s for the widget to finish initialising.
+        tryExecute(15);
       }),
   }));
 

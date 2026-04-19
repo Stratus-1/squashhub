@@ -199,71 +199,61 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Clubs Directory ─── */}
-      <section id="clubs" className="max-w-5xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-bold font-heading text-center mb-2">
-          Clubs on SquashHub
-        </h2>
-        <p className="text-sm text-muted-foreground text-center mb-8">
-          Find your club and sign in through their portal.
-        </p>
-
-        {clubsLoading ? (
+      {/* ─── Directory ─── */}
+      <section id="clubs" className="max-w-5xl mx-auto px-4 py-16 space-y-14">
+        {tenantsLoading ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           </div>
-        ) : !clubs || clubs.length === 0 ? (
-          <Card className="max-w-md mx-auto text-center p-8">
-            <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No clubs registered yet. Be the first!</p>
-            <Button className="mt-4" onClick={() => navigate("/auth")}>
-              Register Your Club
-            </Button>
-          </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {clubs.map((club) => (
-              <Card
-                key={club.id}
-                className="hover:border-primary/40 transition-colors cursor-pointer group"
-                onClick={() => {
-                  if (club.subdomain) {
-                    // In production, redirect to subdomain. In preview, use path routing.
-                    const isPreview = window.location.hostname.includes("lovable");
-                    if (isPreview) {
-                      navigate(`/c/${club.subdomain}`);
-                    } else {
-                      window.location.href = `https://${club.subdomain}.squashhub.co.za`;
-                    }
-                  }
-                }}
-              >
-                <CardContent className="p-5 flex items-center gap-4">
-                  {club.logo_url ? (
-                    <img
-                      src={club.logo_url}
-                      alt={`${club.name} logo`}
-                      className="w-12 h-12 rounded-md object-contain flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-6 h-6 text-primary" />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground truncate">{club.name}</h3>
-                    {club.subdomain && (
-                      <p className="text-xs font-mono text-primary">{club.subdomain}.squashhub.co.za</p>
-                    )}
-                    {club.address && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{club.address}</p>
-                    )}
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <>
+            {/* Associations */}
+            <div>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold font-heading mb-2">Associations</h2>
+                <p className="text-sm text-muted-foreground">
+                  Regional & national squash bodies on SquashHub.
+                </p>
+              </div>
+              {associations.length === 0 ? (
+                <Card className="max-w-md mx-auto text-center p-6">
+                  <Landmark className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No associations registered yet.</p>
+                </Card>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {associations.map((t) => (
+                    <TenantCard key={t.id} tenant={t} navigate={navigate} icon={Landmark} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Clubs */}
+            <div>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold font-heading mb-2">Clubs</h2>
+                <p className="text-sm text-muted-foreground">
+                  Find your club and sign in through their portal.
+                </p>
+              </div>
+              {clubs.length === 0 ? (
+                <Card className="max-w-md mx-auto text-center p-8">
+                  <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No clubs registered yet. Be the first!</p>
+                  <Button className="mt-4" onClick={() => navigate("/auth")}>
+                    Register Your Club
+                  </Button>
+                </Card>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {clubs.map((t) => (
+                    <TenantCard key={t.id} tenant={t} navigate={navigate} icon={Building2} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </section>
 

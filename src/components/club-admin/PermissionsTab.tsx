@@ -175,6 +175,18 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     },
   });
 
+  const { data: club } = useQuery({
+    queryKey: ["club-delegates-for-perms", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("clubs")
+        .select("chairman_member_id, secretary_member_id, club_captain_member_id")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { chairman_member_id: string | null; secretary_member_id: string | null; club_captain_member_id: string | null } | null;
+    },
+  });
+
   const { data: memberPerms = [] } = useQuery({
     queryKey: ["all-member-permissions", clubId],
     queryFn: async () => {
@@ -195,8 +207,23 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
 
   const permMap = new Map(memberPerms.map((p: any) => [p.club_member_id, p]));
 
-  // Only show non-admin members (admins/captains have full access)
-  const assignableMembers = members.filter(m => m.role === "member");
+  // Members with automatic admin access (role-based or delegate)
+  const delegateLabel = (memberId: string): string | null => {
+    if (!club) return null;
+    if (club.chairman_member_id === memberId) return "Chairman";
+    if (club.secretary_member_id === memberId) return "Secretary";
+    if (club.club_captain_member_id === memberId) return "Club Captain";
+    return null;
+  };
+
+  const adminMembers = members.filter(
+    (m) => m.role === "admin" || m.role === "captain" || !!delegateLabel(m.id)
+  );
+
+  // Only show non-admin / non-delegate members in the editable table
+  const assignableMembers = members.filter(
+    (m) => m.role === "member" && !delegateLabel(m.id)
+  );
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {
     try {
@@ -218,6 +245,45 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
         <h3 className="font-semibold flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Member Permissions</h3>
         <p className="text-xs text-muted-foreground">Assign roles or custom permissions to individual members. Captain, Admin, and delegates have full access automatically.</p>
       </div>
+
+      {adminMembers.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Full Admin Access (automatic)</h4>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Club Role</TableHead>
+                <TableHead>Delegate Position</TableHead>
+                <TableHead>Permissions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {adminMembers.map((m) => {
+                const delegate = delegateLabel(m.id);
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name || "Unnamed"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] capitalize">{m.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {delegate ? (
+                        <Badge variant="secondary" className="text-[10px]">{delegate}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <Table>
         <TableHeader>

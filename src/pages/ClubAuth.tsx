@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -16,6 +17,8 @@ import heroBg from "@/assets/hero-bg.jpg";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCaptcha";
 import { fromExt } from "@/lib/supabase-ext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();

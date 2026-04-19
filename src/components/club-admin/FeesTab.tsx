@@ -286,8 +286,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
     return "national";
   };
 
+  const hideNameForAffiliation = isAssociation && feeType === "league_affiliation";
+
   const handleSave = async () => {
-    if (!name.trim()) { toast.error("Fee name is required"); return; }
+    const finalName = hideNameForAffiliation ? (name.trim() || tenantName || "League Affiliation") : name;
+    if (!finalName.trim()) { toast.error("Fee name is required"); return; }
+    const finalAbbreviation = hideNameForAffiliation ? "" : abbreviation;
 
     // "other" and "registration" fees are stored in national_body_fees with fee_type column
     const table = feeType === "membership" ? "member_fee_categories"
@@ -299,7 +303,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
       : "national-body-fees";
 
     if (table === "member_fee_categories") {
-      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
+      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -308,7 +312,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -317,7 +321,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType) };
+      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType) };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }

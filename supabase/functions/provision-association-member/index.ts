@@ -36,10 +36,10 @@ Deno.serve(async (req) => {
       return jsonResp(400, { error: "associationSubdomain is required" });
     }
 
-    // Look up the association tenant
+    // Look up the association tenant (incl. number-config for auto allocation)
     const { data: assoc, error: assocErr } = await supabaseAdmin
       .from("clubs")
-      .select("id, name, tenant_type")
+      .select("id, name, tenant_type, member_number_prefix, member_number_length, member_number_start")
       .eq("subdomain", associationSubdomain)
       .maybeSingle();
 
@@ -81,6 +81,32 @@ Deno.serve(async (req) => {
     const memberName = (meta.name as string) || (user.email?.split("@")[0] ?? "Member");
     const memberPhone = (meta.phone as string) || null;
 
+    // Auto-allocate the next sequential league number using the association's
+    // number-config (prefix / length / start). Inactive until fees are paid.
+    const prefix = (assoc as any).member_number_prefix || "";
+    const numLength = Number((assoc as any).member_number_length || 4);
+    const numStart = Number((assoc as any).member_number_start || 1);
+
+    const { data: existingNumbers } = await supabaseAdmin
+      .from("club_members")
+      .select("club_member_number")
+      .eq("club_id", assoc.id)
+      .not("club_member_number", "is", null);
+
+    let maxNum = numStart - 1;
+    const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`^${escapedPrefix}(\\d+)$`);
+    for (const row of (existingNumbers || []) as any[]) {
+      const v = String(row.club_member_number || "");
+      const m = v.match(re);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    }
+    const nextNum = maxNum + 1;
+    const allocatedNumber = `${prefix}${String(nextNum).padStart(numLength, "0")}`;
+
     const insertPayload: Record<string, unknown> = {
       club_id: assoc.id,
       user_id: user.id,
@@ -90,11 +116,11 @@ Deno.serve(async (req) => {
       plays_league: true,
       role: "member",
       is_league_only_membership: true,
+      club_member_number: allocatedNumber,
     };
     if (validatedHomeClubId) {
       insertPayload.home_club_id = validatedHomeClubId;
     }
-    // No club_member_number assigned yet — admin allocates it (and triggers fee creation)
 
     const { data: newMember, error: insertErr } = await supabaseAdmin
       .from("club_members")
@@ -105,6 +131,38 @@ Deno.serve(async (req) => {
     if (insertErr) {
       console.error("[provision-association-member] insert failed", insertErr);
       return jsonResp(500, { error: insertErr.message });
+    }
+
+    // Seed unpaid league-affiliation fees from the association's configured
+    // league_associations rows. Member stays Inactive until these are paid.
+    try {
+      const { data: feeConfigs } = await supabaseAdmin
+        .from("league_associations")
+        .select("name, abbreviation, fee_annual, active")
+        .eq("club_id", assoc.id);
+
+      const activeFees = ((feeConfigs || []) as any[]).filter(
+        (a) => a.active !== false && Number(a.fee_annual ?? 0) > 0
+      );
+      if (activeFees.length > 0) {
+        const seasonYear = new Date().getFullYear();
+        const feeRecords = activeFees.map((a) => ({
+          club_member_id: newMember.id,
+          fee_type: "league",
+          fee_label: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""),
+          amount: Number(a.fee_annual ?? 0),
+          paid: false,
+          season_year: seasonYear,
+        }));
+        const { error: feeErr } = await supabaseAdmin
+          .from("club_member_fee_payments")
+          .insert(feeRecords);
+        if (feeErr) {
+          console.warn("[provision-association-member] fee seed failed", feeErr);
+        }
+      }
+    } catch (feeEx) {
+      console.warn("[provision-association-member] fee seed exception", feeEx);
     }
 
     // Also link the user's home-club member row to this association so the
@@ -122,6 +180,7 @@ Deno.serve(async (req) => {
       memberId: newMember.id,
       associationName: assoc.name,
       homeClubName,
+      allocatedNumber,
     });
   } catch (e) {
     console.error("[provision-association-member] error", e);

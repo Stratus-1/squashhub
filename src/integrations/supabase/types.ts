@@ -1694,6 +1694,8 @@ export type Database = {
           fill_top_down_enabled: boolean
           honesty_bar_enabled: boolean
           id: string
+          league_fee_due_month: number
+          league_member_annual_fee: number
           league_week_start_dow: number
           light_fee_per_hour: number | null
           logo_url: string | null
@@ -1725,6 +1727,8 @@ export type Database = {
           fill_top_down_enabled?: boolean
           honesty_bar_enabled?: boolean
           id?: string
+          league_fee_due_month?: number
+          league_member_annual_fee?: number
           league_week_start_dow?: number
           light_fee_per_hour?: number | null
           logo_url?: string | null
@@ -1756,6 +1760,8 @@ export type Database = {
           fill_top_down_enabled?: boolean
           honesty_bar_enabled?: boolean
           id?: string
+          league_fee_due_month?: number
+          league_member_annual_fee?: number
           league_week_start_dow?: number
           light_fee_per_hour?: number | null
           logo_url?: string | null

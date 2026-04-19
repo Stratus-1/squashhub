@@ -244,10 +244,17 @@ export default function Auth() {
           <p className="text-sm text-muted-foreground mt-1">Manage your club, leagues & players</p>
         </div>
 
-        <Tabs defaultValue="login">
+        <Tabs
+          defaultValue="login"
+          onValueChange={(v) => {
+            if (v === "signup") setTenantType("club");
+            if (v === "association") setTenantType("association");
+          }}
+        >
           <TabsList className="w-full mb-4">
-            <TabsTrigger value="login" className="flex-1">Sign In</TabsTrigger>
-            <TabsTrigger value="signup" className="flex-1">Register Club</TabsTrigger>
+            <TabsTrigger value="login" className="flex-1 text-xs sm:text-sm">Sign In</TabsTrigger>
+            <TabsTrigger value="signup" className="flex-1 text-xs sm:text-sm">Register Club</TabsTrigger>
+            <TabsTrigger value="association" className="flex-1 text-xs sm:text-sm">Register Association</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">

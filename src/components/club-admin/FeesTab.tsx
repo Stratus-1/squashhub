@@ -199,10 +199,10 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       </div>
 
       {editFee && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} />
       )}
       {addOpen && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} />
       )}
 
       <Card className="p-4 bg-muted/50 space-y-3">

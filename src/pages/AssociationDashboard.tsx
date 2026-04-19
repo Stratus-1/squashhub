@@ -45,6 +45,7 @@ const ASSOC_TABS: TabDef[] = [
   { value: "members", label: "Members", icon: Users, permission: "members" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
+  { value: "fees", label: "Fees", icon: Receipt, permission: "fees" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, adminOnly: true },

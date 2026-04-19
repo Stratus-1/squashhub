@@ -428,17 +428,81 @@ export default function ClubAuth() {
 
         {(() => {
           const isAssociation = (club as any)?.tenant_type === "association";
+
+          // Direct registration on an association tenant is no longer supported.
+          // Members join via their home club (one identity, multi-tenant).
+          if (isAssociation) {
+            return (
+              <Tabs defaultValue="login">
+                <TabsList className="w-full mb-4">
+                  <TabsTrigger value="login" className="flex-1">Sign In</TabsTrigger>
+                  <TabsTrigger value="info" className="flex-1">How to join</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="login">
+                  <Card className="p-6">
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div>
+                        <Label htmlFor="login-email-assoc">Email</Label>
+                        <Input id="login-email-assoc" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
+                      </div>
+                      <div>
+                        <Label htmlFor="login-password-assoc">Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="login-password-assoc"
+                            type={showPassword ? "text" : "password"}
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <HCaptcha ref={captchaRef} />
+                      <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? "Signing in..." : "Sign In"}
+                      </Button>
+                      <Button type="button" variant="link" className="w-full text-sm" onClick={() => setShowReset(true)}>
+                        Forgot password?
+                      </Button>
+                    </form>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="info">
+                  <Card className="p-6 space-y-3">
+                    <h3 className="text-sm font-semibold">Joining {clubName}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      To play in {clubName} fixtures you must register through your <strong>home club</strong> first. Once registered there, you can opt in to {clubName} from your dashboard.
+                    </p>
+                    <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal pl-5">
+                      <li>Sign in or register at your home club's SquashHub site.</li>
+                      <li>On your dashboard, click <strong>"Join {clubName}"</strong>.</li>
+                      <li>The {clubName} admin will allocate your league number and annual fee.</li>
+                    </ol>
+                    <p className="text-xs text-muted-foreground pt-2 border-t">
+                      Don't see a "Join {clubName}" button? Ask your club admin to affiliate the club with {clubName} first.
+                    </p>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            );
+          }
+
           return (
         <Tabs defaultValue="login">
           <TabsList className={`w-full mb-4 h-auto flex-wrap gap-1`}>
             <TabsTrigger value="login" className="flex-1">Log In</TabsTrigger>
-            {!isAssociation && (
-              <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
-            )}
-            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">{isAssociation ? "Register" : (<><span>New</span><br/><span>Member</span></>)}</TabsTrigger>
-            {!isAssociation && (
-              <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
-            )}
+            <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
+            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center"><span>New</span><br/><span>Member</span></TabsTrigger>
+            <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
           </TabsList>
 
           {/* ─── LOG IN ─── */}

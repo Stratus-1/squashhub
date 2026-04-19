@@ -13,6 +13,7 @@ import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
@@ -398,6 +399,9 @@ export default function Dashboard() {
       <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={`Welcome back, ${firstName}`} showNotifications showProfile />
 
       <WelcomeBanner />
+
+      {/* Prompt members to join an affiliated league association */}
+      <JoinLeagueAssociationCard clubId={clubId} variant="banner" />
 
       {/* Family Member Switcher */}
       {showFamilySwitcher && (

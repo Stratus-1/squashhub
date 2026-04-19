@@ -45,6 +45,15 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [tenantName, setTenantName] = useState<string>("");
+
+  // Fetch tenant (association) name to auto-fill league_affiliation fees
+  useMemo(() => {
+    if (!isAssociation) return;
+    fromExt("clubs").select("name").eq("id", clubId).maybeSingle().then(({ data }: any) => {
+      if (data?.name) setTenantName(data.name);
+    });
+  }, [clubId, isAssociation]);
 
   // Build unified fee list
   const fees = useMemo<UnifiedFee[]>(() => {
@@ -190,10 +199,10 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       </div>
 
       {editFee && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} />
       )}
       {addOpen && (
-        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} />
+        <FeeDialog clubId={clubId} open onOpenChange={() => setAddOpen(false)} tenantType={tenantType} tenantName={tenantName} />
       )}
 
       <Card className="p-4 bg-muted/50 space-y-3">
@@ -217,9 +226,10 @@ interface FeeDialogProps {
   onOpenChange: (o: boolean) => void;
   existing?: UnifiedFee;
   tenantType?: string;
+  tenantName?: string;
 }
 
-function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }: FeeDialogProps) {
+function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "" }: FeeDialogProps) {
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));
@@ -276,8 +286,12 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }
     return "national";
   };
 
+  const hideNameForAffiliation = isAssociation && feeType === "league_affiliation";
+
   const handleSave = async () => {
-    if (!name.trim()) { toast.error("Fee name is required"); return; }
+    const finalName = hideNameForAffiliation ? (name.trim() || tenantName || "League Affiliation") : name;
+    if (!finalName.trim()) { toast.error("Fee name is required"); return; }
+    const finalAbbreviation = hideNameForAffiliation ? "" : abbreviation;
 
     // "other" and "registration" fees are stored in national_body_fees with fee_type column
     const table = feeType === "membership" ? "member_fee_categories"
@@ -289,7 +303,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }
       : "national-body-fees";
 
     if (table === "member_fee_categories") {
-      const payload = { name, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
+      const payload = { name: finalName, description, annual_fee: amount, sort_order: sortOrder, fee_class: feeClass, pro_rate: proRate, due_month: feeDueMonth, due_day: feeDueDay };
       if (isEdit) {
         const { error } = await fromExt("member_fee_categories").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -298,7 +312,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }
         if (error) { toast.error(error.message); return; }
       }
     } else if (table === "league_associations") {
-      const payload = { name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
+      const payload = { name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate };
       if (isEdit) {
         const { error } = await fromExt("league_associations").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -307,7 +321,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType) };
+      const payload = { body_name: finalName, abbreviation: finalAbbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType) };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -355,14 +369,16 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }
             </Select>
           </div>
 
-          {/* Name */}
-          <div className="space-y-1">
-            <Label>{nameLabel}</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} />
-          </div>
+          {/* Name (hidden for association league_affiliation — auto-filled from association setup) */}
+          {!hideNameForAffiliation && (
+            <div className="space-y-1">
+              <Label>{nameLabel}</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} />
+            </div>
+          )}
 
-          {/* Abbreviation (league/national/league_affiliation only) */}
-          {(feeType === "league" || feeType === "national" || feeType === "league_affiliation") && (
+          {/* Abbreviation (league/national only — hidden for association league_affiliation) */}
+          {(feeType === "league" || feeType === "national" || (feeType === "league_affiliation" && !hideNameForAffiliation)) && (
             <div className="space-y-1">
               <Label>Abbreviation</Label>
               <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} placeholder="e.g. WCS, SSA" />

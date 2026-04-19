@@ -13,6 +13,7 @@ import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
+import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine } from "lucide-react";
@@ -372,6 +373,11 @@ export default function Dashboard() {
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // Delegate to dedicated dashboard for association tenants
+  if ((effectiveClub as any)?.tenant_type === "association") {
+    return <AssociationDashboard />;
   }
 
   return (

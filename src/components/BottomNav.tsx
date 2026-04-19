@@ -1,4 +1,4 @@
-import { Home, Calendar, BarChart3, MessageCircle, Settings as SettingsIcon, Wine } from "lucide-react";
+import { Home, Calendar, BarChart3, MessageCircle, Settings as SettingsIcon, Wine, Trophy, CalendarDays } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -14,16 +14,29 @@ const baseNavItems = [
 export function BottomNav() {
   const { club } = useClubContext();
   const honestyBarEnabled = !!club?.honesty_bar_enabled;
+  const isAssociation = (club as any)?.tenant_type === "association";
 
-  const navItems = honestyBarEnabled
-    ? [
-        baseNavItems[0],
-        baseNavItems[1],
-        { to: "/honesty-bar", icon: Wine, label: "Bar" },
-        baseNavItems[3],
-        baseNavItems[4],
-      ]
-    : baseNavItems;
+  let navItems = baseNavItems;
+
+  if (isAssociation) {
+    // Associations don't book courts or run an honesty bar — surface
+    // events and tournaments instead.
+    navItems = [
+      baseNavItems[0],
+      { to: "/events", icon: CalendarDays, label: "Events" },
+      { to: "/league-games", icon: Trophy, label: "Leagues" },
+      baseNavItems[3],
+      baseNavItems[4],
+    ];
+  } else if (honestyBarEnabled) {
+    navItems = [
+      baseNavItems[0],
+      baseNavItems[1],
+      { to: "/honesty-bar", icon: Wine, label: "Bar" },
+      baseNavItems[3],
+      baseNavItems[4],
+    ];
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-md safe-area-inset" style={{ paddingTop: 0 }}>

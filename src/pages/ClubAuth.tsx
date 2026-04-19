@@ -605,6 +605,13 @@ export default function ClubAuth() {
                     maxLength={20}
                   />
                 </div>
+                {isAssociation && (
+                  <HomeClubField
+                    value={homeClubId}
+                    onChange={setHomeClubId}
+                    clubs={pickerClubs || []}
+                  />
+                )}
                 <div>
                   <Label htmlFor="new-password">Create Password <span className="text-destructive">*</span></Label>
                   <div className="relative">

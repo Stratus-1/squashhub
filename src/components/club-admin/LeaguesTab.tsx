@@ -272,6 +272,15 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           onOpenChange={(o) => !o && setAllocateGender(null)}
         />
       )}
+
+      {/* Edit Association Dialog */}
+      {editAssoc && (
+        <EditAssociationDialog
+          association={editAssoc}
+          open={!!editAssoc}
+          onOpenChange={(o) => !o && setEditAssoc(null)}
+        />
+      )}
     </div>
   );
 }
@@ -787,6 +796,7 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [form, setForm] = useState({ name: "", abbreviation: "" });
   const [mode, setMode] = useState<"select" | "create">("select");
+  const [scope, setScope] = useState<"internal" | "region">("region");
   const [selectedPlatformId, setSelectedPlatformId] = useState("");
   const qc = useQueryClient();
 
@@ -821,19 +831,21 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
       if (!selectedPlatformId) return;
       const selected = platformAssociations.find((p: any) => p.id === selectedPlatformId) as any;
       if (!selected) return;
+      // Selecting a platform association is always regional
       const { error } = await fromExt("league_associations").insert({
         club_id: clubId,
         name: selected.name,
         abbreviation: selected.short_code || "",
         platform_association_id: selected.id,
+        scope: "region",
       });
       if (error) toast.error(error.message);
       else { toast.success(`Joined ${selected.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     } else {
       if (!form.name.trim()) return;
-      const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId });
+      const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId, scope });
       if (error) toast.error(error.message);
-      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
+      else { toast.success("Association created"); onOpenChange(false); setForm({ name: "", abbreviation: "" }); setScope("region"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     }
   };
 
@@ -864,16 +876,101 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
                   ))}
                 </select>
               )}
+              <p className="text-xs text-muted-foreground">Platform associations are regional — they connect your club to other participating clubs.</p>
             </div>
           ) : (
             <>
               <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. My Club League" /></div>
               <div className="space-y-1"><Label>Abbreviation</Label><Input value={form.abbreviation} onChange={e => setForm(p => ({ ...p, abbreviation: e.target.value }))} placeholder="e.g. MCL" /></div>
+              <div className="space-y-1">
+                <Label>Scope</Label>
+                <div className="flex gap-2">
+                  <Button type="button" variant={scope === "internal" ? "default" : "outline"} size="sm" onClick={() => setScope("internal")} className="flex-1">Internal</Button>
+                  <Button type="button" variant={scope === "region" ? "default" : "outline"} size="sm" onClick={() => setScope("region")} className="flex-1">Regional</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {scope === "internal"
+                    ? "Internal: only your club's members participate. No external integration."
+                    : "Regional: external/regional league involving other clubs."}
+                </p>
+              </div>
             </>
           )}
           <Button onClick={handleSave} className="w-full" disabled={mode === "select" ? !selectedPlatformId : !form.name.trim()}>
             {mode === "select" ? "Join Association" : "Create Association"}
           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Edit Association Dialog ───
+function EditAssociationDialog({ association, open, onOpenChange }: { association: LeagueAssociation; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(association.name);
+  const [abbreviation, setAbbreviation] = useState(association.abbreviation || "");
+  const [scope, setScope] = useState<"internal" | "region">((association.scope as any) || "region");
+
+  const isPlatformLinked = !!association.platform_association_id;
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    const payload: any = { name, abbreviation, scope };
+    const { error } = await fromExt("league_associations").update(payload).eq("id", association.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Association updated");
+    qc.invalidateQueries({ queryKey: ["league-associations"] });
+    qc.invalidateQueries({ queryKey: ["league-associations-linked"] });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit Association</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Name</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} disabled={isPlatformLinked} />
+            {isPlatformLinked && <p className="text-xs text-muted-foreground">Name is managed by the platform.</p>}
+          </div>
+          <div className="space-y-1">
+            <Label>Abbreviation</Label>
+            <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} disabled={isPlatformLinked} />
+          </div>
+          <div className="space-y-1">
+            <Label>Scope</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={scope === "internal" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setScope("internal")}
+                className="flex-1"
+                disabled={isPlatformLinked}
+              >
+                Internal
+              </Button>
+              <Button
+                type="button"
+                variant={scope === "region" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setScope("region")}
+                className="flex-1"
+              >
+                Regional
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isPlatformLinked
+                ? "Platform-linked associations are always regional."
+                : scope === "internal"
+                  ? "Internal: only your club's members participate. No external integration."
+                  : "Regional: external/regional league involving other clubs."}
+            </p>
+          </div>
+          <Button onClick={handleSave} className="w-full" disabled={!name.trim()}>Save Changes</Button>
         </div>
       </DialogContent>
     </Dialog>

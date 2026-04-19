@@ -244,6 +244,25 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStat
         </Badge>
         {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">League</Badge>}
         {nsfNumber && <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">NSF: {nsfNumber}</Badge>}
+        {associationStatus && (() => {
+          const { associationName, leagueNumber, feesPaid, hasFeeRecord } = associationStatus;
+          const isActive = !!leagueNumber && feesPaid && hasFeeRecord;
+          const label = associationName ? `${associationName}: ` : "";
+          if (isActive) {
+            return (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">
+                {label}Active{leagueNumber ? ` #${leagueNumber}` : ""}
+              </Badge>
+            );
+          }
+          // Inactive — show why
+          const reason = !leagueNumber ? "no league #" : !hasFeeRecord ? "fees pending" : "fees due";
+          return (
+            <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-700 border-amber-500">
+              {label}Inactive{leagueNumber ? ` #${leagueNumber}` : ""} · {reason}
+            </Badge>
+          );
+        })()}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
         {m.fee_category && <Badge variant="outline" className="text-[9px] px-1 py-0">{m.fee_category.name}</Badge>}
       </div>

@@ -248,6 +248,37 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
           </div>
         )}
       </Card>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Affiliated Club</DialogTitle>
+            <DialogDescription>
+              Create a placeholder club that will register on SquashHub later. The club starts as <span className="font-medium">pending</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="new-club-name">Club Name *</Label>
+              <Input id="new-club-name" value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="e.g. Riverside Squash Club" />
+            </div>
+            <div>
+              <Label htmlFor="new-club-email">Contact Email</Label>
+              <Input id="new-club-email" type="email" value={newClubEmail} onChange={(e) => setNewClubEmail(e.target.value)} placeholder="optional" />
+            </div>
+            <div>
+              <Label htmlFor="new-club-phone">Contact Phone</Label>
+              <Input id="new-club-phone" value={newClubContact} onChange={(e) => setNewClubContact(e.target.value)} placeholder="optional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={() => createPendingClub.mutate()} disabled={createPendingClub.isPending || !newClubName.trim()}>
+              {createPendingClub.isPending ? "Creating..." : "Create & Affiliate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
@@ -481,6 +482,13 @@ export default function MyAccount() {
         title={isViewingAs ? `${accountName}'s Account` : "My Account"}
         subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : (club as any)?.tenant_type === "association" ? " · league number pending" : ""}`}
       />
+
+      {/* Join an affiliated league association */}
+      {clubId && (club as any)?.tenant_type !== "association" && (
+        <div className="px-4 mt-3">
+          <JoinLeagueAssociationCard clubId={clubId} variant="card" />
+        </div>
+      )}
 
       {/* Credit Balance Card */}
       <motion.div

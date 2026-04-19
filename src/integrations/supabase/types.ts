@@ -1351,11 +1351,13 @@ export type Database = {
           club_id: string
           club_member_number: string | null
           email: string | null
+          enable_league_association_id: string | null
           fee_category_id: string | null
           gender: string | null
           home_club_id: string | null
           id: string
           id_number: string | null
+          is_league_only_membership: boolean
           joined_at: string
           ladder_position: number | null
           name: string | null
@@ -1372,11 +1374,13 @@ export type Database = {
           club_id: string
           club_member_number?: string | null
           email?: string | null
+          enable_league_association_id?: string | null
           fee_category_id?: string | null
           gender?: string | null
           home_club_id?: string | null
           id?: string
           id_number?: string | null
+          is_league_only_membership?: boolean
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
@@ -1393,11 +1397,13 @@ export type Database = {
           club_id?: string
           club_member_number?: string | null
           email?: string | null
+          enable_league_association_id?: string | null
           fee_category_id?: string | null
           gender?: string | null
           home_club_id?: string | null
           id?: string
           id_number?: string | null
+          is_league_only_membership?: boolean
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
@@ -1412,6 +1418,13 @@ export type Database = {
           {
             foreignKeyName: "club_members_club_id_fkey"
             columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_enable_league_association_id_fkey"
+            columns: ["enable_league_association_id"]
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]

@@ -211,7 +211,21 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelet
       {/* Row 2: Email, member #, status — compact inline */}
       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-wrap">
         {displayEmail && <span className="truncate max-w-[140px]">{displayEmail}</span>}
-        {m.club_member_number && <span>#{m.club_member_number}</span>}
+        {m.club_member_number ? (
+          <span>#{m.club_member_number}</span>
+        ) : (
+          onAssignNumber && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-5 px-1.5 text-[9px] gap-1 text-primary border-primary/40 hover:bg-primary/10"
+              onClick={(e) => { e.stopPropagation(); onAssignNumber(m); }}
+              title={`Allocate ${numberLabel || "membership"} number`}
+            >
+              + Allocate {numberLabel || "#"}
+            </Button>
+          )
+        )}
         {m.id_number && <span>Age: {getAgeFromSaId(m.id_number) ?? "?"}</span>}
         <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
           {isLinked ? "✓ Reg" : "✗ Unreg"}

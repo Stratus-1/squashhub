@@ -687,6 +687,8 @@ export default function ClubAuth() {
             </Card>
           </TabsContent>
         </Tabs>
+          );
+        })()}
         <PoweredBySquashHub />
       </motion.div>
     </div>

@@ -12,7 +12,7 @@ interface AuthContextType {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" | "association_member"; homeClubId?: string; homeClubName?: string; homeClubSubdomain?: string }
   ) => Promise<{ error: Error | null; userId: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     phone?: string,
     consents?: { termsAcceptedAt?: string; privacyAcceptedAt?: string },
-    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" }
+    club?: { clubName: string; subdomain: string; registrationType?: "club_owner" | "club_member" | "association_owner" | "association_member"; homeClubId?: string; homeClubName?: string; homeClubSubdomain?: string }
   ) => {
     const metadata: Record<string, string> = { name };
     if (phone) metadata.phone = phone;
@@ -98,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (club?.clubName) metadata.club_name = club.clubName;
     if (club?.subdomain) metadata.club_subdomain = club.subdomain;
     if (club?.registrationType) metadata.club_registration_type = club.registrationType;
+    if (club?.homeClubId) metadata.home_club_id = club.homeClubId;
+    if (club?.homeClubName) metadata.home_club_name = club.homeClubName;
+    if (club?.homeClubSubdomain) metadata.home_club_subdomain = club.homeClubSubdomain;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,

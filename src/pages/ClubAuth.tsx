@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -16,6 +17,8 @@ import heroBg from "@/assets/hero-bg.jpg";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCaptcha";
 import { fromExt } from "@/lib/supabase-ext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -58,10 +61,31 @@ export default function ClubAuth() {
   // Reset
   const [resetEmail, setResetEmail] = useState("");
 
+  // Home club selection (for association registrations)
+  const [homeClubId, setHomeClubId] = useState<string>("");
+
   // Redirect if already logged in
   if (user) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
+  const isAssociation = (club as any)?.tenant_type === "association";
+
+  // Fetch all clubs (excluding associations) for the home-club picker
+  const { data: pickerClubs } = useQuery({
+    queryKey: ["association-picker-clubs"],
+    enabled: isAssociation,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("id, name, subdomain")
+        .neq("tenant_type", "association")
+        .not("subdomain", "is", null)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,15 +131,25 @@ export default function ClubAuth() {
         if (!valid) { toast.error("Captcha verification failed"); return; }
       }
     } catch { toast.error("Captcha verification failed"); return; }
+    if (isAssociation && !homeClubId) {
+      toast.error("Please select your home club");
+      return;
+    }
     setLoading(true);
     const nowIso = new Date().toISOString();
+    const homeClub = pickerClubs?.find((c) => c.id === homeClubId);
     const { error } = await signUp(
       email,
       existingPassword,
       memberNum,
       undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
-      club ? { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member" } : undefined
+      club ? {
+        clubName: club.name,
+        subdomain: subdomain || "",
+        registrationType: isAssociation ? "association_member" : "club_member",
+        ...(isAssociation && homeClub ? { homeClubId: homeClub.id, homeClubName: homeClub.name, homeClubSubdomain: homeClub.subdomain } : {}),
+      } : undefined
     );
     if (error) {
       toast.error(error.message);
@@ -159,15 +193,25 @@ export default function ClubAuth() {
         if (!valid) { toast.error("Captcha verification failed"); return; }
       }
     } catch { toast.error("Captcha verification failed"); return; }
+    if (isAssociation && !homeClubId) {
+      toast.error("Please select your home club");
+      return;
+    }
     setLoading(true);
     const nowIso = new Date().toISOString();
+    const homeClub = pickerClubs?.find((c) => c.id === homeClubId);
     const { error } = await signUp(
       email,
       newPassword,
       name,
       phone || undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
-      club ? { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member" } : undefined
+      club ? {
+        clubName: club.name,
+        subdomain: subdomain || "",
+        registrationType: isAssociation ? "association_member" : "club_member",
+        ...(isAssociation && homeClub ? { homeClubId: homeClub.id, homeClubName: homeClub.name, homeClubSubdomain: homeClub.subdomain } : {}),
+      } : undefined
     );
     if (error) {
       toast.error(error.message);
@@ -437,7 +481,9 @@ export default function ClubAuth() {
           <TabsContent value="existing">
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
-                Already a member of {clubName}? Enter your <strong>Member Number</strong> or your <strong>League Number</strong> (e.g. NSF1234) to link your account.
+                {isAssociation
+                  ? <>Already registered with {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and select your home club to link your account.</>
+                  : <>Already a member of {clubName}? Enter your <strong>Member Number</strong> or your <strong>League Number</strong> (e.g. NSF1234) to link your account.</>}
               </p>
               <form onSubmit={handleExistingMemberSignup} className="space-y-3">
                 <div>
@@ -453,6 +499,13 @@ export default function ClubAuth() {
                   />
                   <p className="text-[10px] text-muted-foreground mt-0.5">League players use their NSF number; club members use their assigned number</p>
                 </div>
+                {isAssociation && (
+                  <HomeClubField
+                    value={homeClubId}
+                    onChange={setHomeClubId}
+                    clubs={pickerClubs || []}
+                  />
+                )}
                 <div>
                   <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>
                   <Input
@@ -512,7 +565,9 @@ export default function ClubAuth() {
           <TabsContent value="new">
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
-                New to {clubName}? Create an account and complete your profile.
+                {isAssociation
+                  ? <>New to {clubName}? Create an account and select your home club below.</>
+                  : <>New to {clubName}? Create an account and complete your profile.</>}
               </p>
               <form onSubmit={handleNewMemberSignup} className="space-y-3">
                 <div>
@@ -550,6 +605,13 @@ export default function ClubAuth() {
                     maxLength={20}
                   />
                 </div>
+                {isAssociation && (
+                  <HomeClubField
+                    value={homeClubId}
+                    onChange={setHomeClubId}
+                    clubs={pickerClubs || []}
+                  />
+                )}
                 <div>
                   <Label htmlFor="new-password">Create Password <span className="text-destructive">*</span></Label>
                   <div className="relative">
@@ -586,7 +648,7 @@ export default function ClubAuth() {
                 <TermsCheckbox checked={newAcceptTerms} onCheckedChange={setNewAcceptTerms} />
                 <HCaptcha ref={captchaRef} />
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Join Club"}
+                  {loading ? "Creating account..." : "Register"}
                 </Button>
               </form>
             </Card>
@@ -691,6 +753,39 @@ export default function ClubAuth() {
         })()}
         <PoweredBySquashHub />
       </motion.div>
+    </div>
+  );
+}
+
+interface HomeClubFieldProps {
+  value: string;
+  onChange: (v: string) => void;
+  clubs: Array<{ id: string; name: string; subdomain: string | null }>;
+}
+
+function HomeClubField({ value, onChange, clubs }: HomeClubFieldProps) {
+  return (
+    <div>
+      <Label htmlFor="home-club">Home Club <span className="text-destructive">*</span></Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id="home-club">
+          <SelectValue placeholder="Select your home club" />
+        </SelectTrigger>
+        <SelectContent>
+          {clubs.length === 0 ? (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">No clubs available</div>
+          ) : (
+            clubs.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </Select>
+      <p className="text-[10px] text-muted-foreground mt-0.5">
+        Select the club you primarily play for. The association admin will use this to link you correctly.
+      </p>
     </div>
   );
 }

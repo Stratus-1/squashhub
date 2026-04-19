@@ -17,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-type FeeType = "membership" | "league" | "national" | "registration" | "other";
+type FeeType = "membership" | "league" | "league_affiliation" | "national" | "registration" | "other";
 
 interface UnifiedFee {
   id: string;

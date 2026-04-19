@@ -166,11 +166,23 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   );
 }
 
-function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+interface AssociationStatusInfo {
+  /** Association name (e.g. "HSA"). Omit when not applicable. */
+  associationName?: string;
+  /** League # at the association (null = not yet allocated). */
+  leagueNumber?: string | null;
+  /** Whether the member is fully paid up at the association (drives Active/Inactive). */
+  feesPaid: boolean;
+  /** True when there's at least one league fee record (paid or unpaid). */
+  hasFeeRecord: boolean;
+}
+
+function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStatus, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
   delegateTitle?: string | null;
   nsfNumber?: string | null;
+  associationStatus?: AssociationStatusInfo | null;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
@@ -232,6 +244,25 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelet
         </Badge>
         {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">League</Badge>}
         {nsfNumber && <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">NSF: {nsfNumber}</Badge>}
+        {associationStatus && (() => {
+          const { associationName, leagueNumber, feesPaid, hasFeeRecord } = associationStatus;
+          const isActive = !!leagueNumber && feesPaid && hasFeeRecord;
+          const label = associationName ? `${associationName}: ` : "";
+          if (isActive) {
+            return (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">
+                {label}Active{leagueNumber ? ` #${leagueNumber}` : ""}
+              </Badge>
+            );
+          }
+          // Inactive — show why
+          const reason = !leagueNumber ? "no league #" : !hasFeeRecord ? "fees pending" : "fees due";
+          return (
+            <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-700 border-amber-500">
+              {label}Inactive{leagueNumber ? ` #${leagueNumber}` : ""} · {reason}
+            </Badge>
+          );
+        })()}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
         {m.fee_category && <Badge variant="outline" className="text-[9px] px-1 py-0">{m.fee_category.name}</Badge>}
       </div>
@@ -292,6 +323,101 @@ export function MembersTab({ clubId }: { clubId: string }) {
   for (const r of leagueRegs) {
     if (r.league_association_number && !nsfByMember.has(r.club_member_id)) {
       nsfByMember.set(r.club_member_id, r.league_association_number);
+    }
+  }
+
+  // Determine current tenant type & resolve cross-tenant association status
+  const tenantTypeForStatus = (clubData?.club as any)?.tenant_type || "club";
+  const isAssociationTenant = tenantTypeForStatus === "association";
+
+  // For CLUB tenant (e.g. GB): for each member who opted into an association,
+  // fetch their member row at that association + their league fee status there.
+  const userIdsForAssocLookup = isAssociationTenant
+    ? []
+    : Array.from(new Set(members.filter(m => m.user_id).map(m => m.user_id as string)));
+
+  const { data: assocMembershipsRaw = [] } = useQuery({
+    queryKey: ["members-cross-association-status", clubId, userIdsForAssocLookup.sort().join(",")],
+    enabled: !isAssociationTenant && userIdsForAssocLookup.length > 0,
+    queryFn: async () => {
+      // Find all association tenants this club is affiliated to
+      const { data: affs, error: e1 } = await fromExt("association_affiliated_clubs")
+        .select("association:association_tenant_id(id, name, tenant_type)")
+        .eq("club_id", clubId)
+        .eq("status", "active");
+      if (e1) throw e1;
+      const assocs = ((affs || []) as any[])
+        .map(r => r.association)
+        .filter(a => a && a.tenant_type === "association");
+      const assocIds = assocs.map((a: any) => a.id);
+      if (assocIds.length === 0) return [];
+
+      // Fetch the user's member rows at those associations
+      const { data: assocMembers, error: e2 } = await fromExt("club_members")
+        .select("id, user_id, club_id, club_member_number")
+        .in("user_id", userIdsForAssocLookup)
+        .in("club_id", assocIds);
+      if (e2) throw e2;
+      const assocMemberIds = (assocMembers || []).map((m: any) => m.id);
+      if (assocMemberIds.length === 0) return [];
+
+      // Fetch league fee payments at the association
+      const { data: assocFees } = await fromExt("club_member_fee_payments")
+        .select("club_member_id, fee_label, fee_type, amount, paid")
+        .in("club_member_id", assocMemberIds);
+
+      return (assocMembers || []).map((am: any) => {
+        const assoc = assocs.find((a: any) => a.id === am.club_id);
+        const fees = (assocFees || []).filter((f: any) =>
+          f.club_member_id === am.id &&
+          (String(f.fee_label || "").toLowerCase().includes("league") ||
+           String(f.fee_type || "").toLowerCase().includes("league"))
+        );
+        const hasFeeRecord = fees.length > 0;
+        const feesPaid = hasFeeRecord && fees.every((f: any) => f.paid);
+        return {
+          user_id: am.user_id as string,
+          associationName: assoc?.name as string,
+          leagueNumber: am.club_member_number as string | null,
+          feesPaid,
+          hasFeeRecord,
+        };
+      });
+    },
+  });
+
+  // Map member.id -> AssociationStatusInfo
+  const associationStatusByMember = new Map<string, AssociationStatusInfo>();
+  if (isAssociationTenant) {
+    // HSA viewing its own roster — derive from this tenant's own fee payments
+    for (const m of members) {
+      const fees = feePayments.filter(f =>
+        f.club_member_id === m.id &&
+        (String(f.fee_label || "").toLowerCase().includes("league") ||
+         String(f.fee_type || "").toLowerCase().includes("league"))
+      );
+      const hasFeeRecord = fees.length > 0;
+      const feesPaid = hasFeeRecord && fees.every(f => f.paid);
+      associationStatusByMember.set(m.id, {
+        leagueNumber: m.club_member_number || null,
+        feesPaid,
+        hasFeeRecord,
+      });
+    }
+  } else {
+    // GB viewing its members — show status at the affiliated association
+    for (const row of assocMembershipsRaw as any[]) {
+      const member = members.find(m => m.user_id === row.user_id);
+      if (!member) continue;
+      // First wins (single association is the common case)
+      if (!associationStatusByMember.has(member.id)) {
+        associationStatusByMember.set(member.id, {
+          associationName: row.associationName,
+          leagueNumber: row.leagueNumber,
+          feesPaid: row.feesPaid,
+          hasFeeRecord: row.hasFeeRecord,
+        });
+      }
     }
   }
 
@@ -699,6 +825,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     fees={getFeesForMember(m)}
                     delegateTitle={getDelegateTitle(m.id)}
                     nsfNumber={nsfByMember.get(m.id)}
+                    associationStatus={associationStatusByMember.get(m.id) || null}
                     onEdit={() => setEditMember(m)}
                     onDelete={() => handleDelete(m.id)}
                     onTogglePaid={handleTogglePaid}

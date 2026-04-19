@@ -2100,6 +2100,7 @@ export type Database = {
           fee_payable_to: string | null
           fee_payment_details: string | null
           id: string
+          members_pay_directly: boolean
           name: string
           platform_association_id: string | null
           pro_rate: boolean
@@ -2122,6 +2123,7 @@ export type Database = {
           fee_payable_to?: string | null
           fee_payment_details?: string | null
           id?: string
+          members_pay_directly?: boolean
           name: string
           platform_association_id?: string | null
           pro_rate?: boolean
@@ -2144,6 +2146,7 @@ export type Database = {
           fee_payable_to?: string | null
           fee_payment_details?: string | null
           id?: string
+          members_pay_directly?: boolean
           name?: string
           platform_association_id?: string | null
           pro_rate?: boolean

@@ -19,14 +19,13 @@ export function BottomNav() {
   let navItems = baseNavItems;
 
   if (isAssociation) {
-    // Associations don't book courts or run an honesty bar — surface
-    // events and tournaments instead.
+    // Associations run everything from the unified dashboard at "/".
+    // Keep the bar minimal: Home + Events + Leagues + Feed.
     navItems = [
       baseNavItems[0],
       { to: "/events", icon: CalendarDays, label: "Events" },
       { to: "/league-games", icon: Trophy, label: "Leagues" },
       baseNavItems[3],
-      baseNavItems[4],
     ];
   } else if (honestyBarEnabled) {
     navItems = [

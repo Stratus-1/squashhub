@@ -23,6 +23,7 @@ import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
+import { AssociationAdmin } from "@/pages/AssociationAdmin";
 
 const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug }[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club" },
@@ -55,6 +56,11 @@ export default function ClubAdmin() {
   if (!isAdmin && myPermissions.size === 0) return <Navigate to="/dashboard" replace />;
 
   const club = data.club;
+
+  // Delegate to dedicated association admin layout for association tenants
+  if ((club as any).tenant_type === "association") {
+    return <AssociationAdmin club={club} isAdmin={isAdmin} />;
+  }
 
   // Filter tabs by permission — tabs without a permission slug (like "permissions") are only for full-access users
   const visibleTabs = ADMIN_TABS.filter(tab => {

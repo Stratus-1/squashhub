@@ -14,6 +14,7 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   closestCenter,
@@ -603,7 +604,10 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
 
   const handleDragStart = (e: DragStartEvent) => setActiveDragId(String(e.active.id));
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
 
   // ---------- Early returns ----------
   if (!club?.fill_top_down_enabled) {
@@ -665,6 +669,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
       onDragCancel={() => setActiveDragId(null)}
     >
       <div className="space-y-3">
+        <p className="md:hidden text-[11px] text-muted-foreground italic px-1">
+          Tip: press &amp; hold a player for a moment, then drag.
+        </p>
         <Card className="p-3 space-y-2">
           {/* Week selector — switch between the next few candidate planning weeks */}
           {candidateWeeks.length > 1 && (

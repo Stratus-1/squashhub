@@ -131,15 +131,25 @@ export default function ClubAuth() {
         if (!valid) { toast.error("Captcha verification failed"); return; }
       }
     } catch { toast.error("Captcha verification failed"); return; }
+    if (isAssociation && !homeClubId) {
+      toast.error("Please select your home club");
+      return;
+    }
     setLoading(true);
     const nowIso = new Date().toISOString();
+    const homeClub = pickerClubs?.find((c) => c.id === homeClubId);
     const { error } = await signUp(
       email,
       existingPassword,
       memberNum,
       undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
-      club ? { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member" } : undefined
+      club ? {
+        clubName: club.name,
+        subdomain: subdomain || "",
+        registrationType: isAssociation ? "association_member" : "club_member",
+        ...(isAssociation && homeClub ? { homeClubId: homeClub.id, homeClubName: homeClub.name, homeClubSubdomain: homeClub.subdomain } : {}),
+      } : undefined
     );
     if (error) {
       toast.error(error.message);
@@ -183,15 +193,25 @@ export default function ClubAuth() {
         if (!valid) { toast.error("Captcha verification failed"); return; }
       }
     } catch { toast.error("Captcha verification failed"); return; }
+    if (isAssociation && !homeClubId) {
+      toast.error("Please select your home club");
+      return;
+    }
     setLoading(true);
     const nowIso = new Date().toISOString();
+    const homeClub = pickerClubs?.find((c) => c.id === homeClubId);
     const { error } = await signUp(
       email,
       newPassword,
       name,
       phone || undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
-      club ? { clubName: club.name, subdomain: subdomain || "", registrationType: "club_member" } : undefined
+      club ? {
+        clubName: club.name,
+        subdomain: subdomain || "",
+        registrationType: isAssociation ? "association_member" : "club_member",
+        ...(isAssociation && homeClub ? { homeClubId: homeClub.id, homeClubName: homeClub.name, homeClubSubdomain: homeClub.subdomain } : {}),
+      } : undefined
     );
     if (error) {
       toast.error(error.message);

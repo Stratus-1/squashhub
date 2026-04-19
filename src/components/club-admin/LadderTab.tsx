@@ -3,11 +3,13 @@ import { useClubMembers } from "@/hooks/use-club";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Loader2, Save, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { GripVertical, Loader2, Save, X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { rpcExt } from "@/lib/supabase-ext";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DndContext,
   closestCenter,

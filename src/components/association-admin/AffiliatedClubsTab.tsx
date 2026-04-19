@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, ChevronsUpDown, Building2 } from "lucide-react";
+import { Plus, Trash2, Building2, PlusCircle } from "lucide-react";
 
 interface Affiliation {
   id: string;
@@ -30,6 +32,10 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newClubName, setNewClubName] = useState("");
+  const [newClubContact, setNewClubContact] = useState("");
+  const [newClubEmail, setNewClubEmail] = useState("");
 
   // Affiliated clubs for this association
   const { data: affiliations = [], isLoading } = useQuery({
@@ -80,6 +86,40 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
     onError: (e: any) => toast.error(e.message || "Failed to add"),
   });
 
+  const createPendingClub = useMutation({
+    mutationFn: async () => {
+      const name = newClubName.trim();
+      if (!name) throw new Error("Club name is required");
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: club, error: clubErr } = await fromExt("clubs")
+        .insert({
+          name,
+          tenant_type: "club",
+          email: newClubEmail.trim() || null,
+          phone: newClubContact.trim() || null,
+          created_by: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (clubErr) throw clubErr;
+      const { error: affErr } = await fromExt("association_affiliated_clubs").insert({
+        association_tenant_id: clubId,
+        club_id: (club as any).id,
+        status: "pending",
+      });
+      if (affErr) throw affErr;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["association-affiliations", clubId] });
+      toast.success("Pending club created and affiliated");
+      setCreateOpen(false);
+      setNewClubName("");
+      setNewClubContact("");
+      setNewClubEmail("");
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to create club"),
+  });
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await fromExt("association_affiliated_clubs").update({ status }).eq("id", id);
@@ -118,36 +158,41 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
             <h3 className="font-semibold">Affiliated Clubs</h3>
             <p className="text-xs text-muted-foreground">Clubs that belong to this association</p>
           </div>
-          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-            <PopoverTrigger asChild>
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-1" /> Add Club
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-0" align="end">
-              <Command>
-                <CommandInput placeholder="Search clubs..." value={search} onValueChange={setSearch} />
-                <CommandList>
-                  <CommandEmpty>No clubs available.</CommandEmpty>
-                  <CommandGroup>
-                    {availableClubs.map(c => (
-                      <CommandItem
-                        key={c.id}
-                        value={c.name}
-                        onSelect={() => addAffiliation.mutate(c.id)}
-                      >
-                        <Building2 className="w-4 h-4 mr-2 opacity-60" />
-                        <div className="flex flex-col">
-                          <span>{c.name}</span>
-                          {c.subdomain && <span className="text-xs text-muted-foreground">{c.subdomain}</span>}
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-2">
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Plus className="w-4 h-4 mr-1" /> Add Existing
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="end">
+                <Command>
+                  <CommandInput placeholder="Search clubs..." value={search} onValueChange={setSearch} />
+                  <CommandList>
+                    <CommandEmpty>No clubs available.</CommandEmpty>
+                    <CommandGroup>
+                      {availableClubs.map(c => (
+                        <CommandItem
+                          key={c.id}
+                          value={c.name}
+                          onSelect={() => addAffiliation.mutate(c.id)}
+                        >
+                          <Building2 className="w-4 h-4 mr-2 opacity-60" />
+                          <div className="flex flex-col">
+                            <span>{c.name}</span>
+                            {c.subdomain && <span className="text-xs text-muted-foreground">{c.subdomain}</span>}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <PlusCircle className="w-4 h-4 mr-1" /> New Club
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -203,6 +248,37 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
           </div>
         )}
       </Card>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Affiliated Club</DialogTitle>
+            <DialogDescription>
+              Create a placeholder club that will register on SquashHub later. The club starts as <span className="font-medium">pending</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="new-club-name">Club Name *</Label>
+              <Input id="new-club-name" value={newClubName} onChange={(e) => setNewClubName(e.target.value)} placeholder="e.g. Riverside Squash Club" />
+            </div>
+            <div>
+              <Label htmlFor="new-club-email">Contact Email</Label>
+              <Input id="new-club-email" type="email" value={newClubEmail} onChange={(e) => setNewClubEmail(e.target.value)} placeholder="optional" />
+            </div>
+            <div>
+              <Label htmlFor="new-club-phone">Contact Phone</Label>
+              <Input id="new-club-phone" value={newClubContact} onChange={(e) => setNewClubContact(e.target.value)} placeholder="optional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={() => createPendingClub.mutate()} disabled={createPendingClub.isPending || !newClubName.trim()}>
+              {createPendingClub.isPending ? "Creating..." : "Create & Affiliate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

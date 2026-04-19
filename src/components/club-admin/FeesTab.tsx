@@ -344,6 +344,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
               <SelectContent>
                 <SelectItem value="membership">Membership</SelectItem>
                 <SelectItem value="league">League Association</SelectItem>
+                <SelectItem value="league_affiliation">League Affiliation Fee</SelectItem>
                 <SelectItem value="national">National Body (e.g. SSA)</SelectItem>
                 <SelectItem value="registration">Registration (once-off, new members only)</SelectItem>
                 <SelectItem value="other">Other (e.g. Parking, Locker)</SelectItem>
@@ -357,8 +358,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
             <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} />
           </div>
 
-          {/* Abbreviation (league/national only) */}
-          {(feeType === "league" || feeType === "national") && (
+          {/* Abbreviation (league/national/league_affiliation only) */}
+          {(feeType === "league" || feeType === "national" || feeType === "league_affiliation") && (
             <div className="space-y-1">
               <Label>Abbreviation</Label>
               <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} placeholder="e.g. WCS, SSA" />

@@ -389,7 +389,7 @@ export default function ClubAuth() {
             {!isAssociation && (
               <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
             )}
-            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">{isAssociation ? "Register" : <>New<br/>Member</>}</TabsTrigger>
+            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">{isAssociation ? "Register" : (<><span>New</span><br/><span>Member</span></>)}</TabsTrigger>
             {!isAssociation && (
               <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
             )}

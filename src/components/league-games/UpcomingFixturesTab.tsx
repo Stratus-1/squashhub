@@ -17,9 +17,11 @@ type Props = {
   weekStart?: string;
   /** End of the squash week window (yyyy-MM-dd). Falls back to weekStart + 6 days, or today + 14 days. */
   weekEnd?: string;
+  /** 'internal' associations have no platform fixture feed — show a tailored empty state. */
+  associationScope?: "internal" | "region";
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region" }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const rangeStart = weekStart ?? format(new Date(), "yyyy-MM-dd");

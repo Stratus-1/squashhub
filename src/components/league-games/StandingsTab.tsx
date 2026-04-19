@@ -9,6 +9,7 @@ import { BarChart3 } from "lucide-react";
 type Props = {
   platformAssocIds: string[];
   clubTeamCodes: string[];
+  associationScope?: "internal" | "region";
 };
 
 type Standing = {

@@ -214,6 +214,8 @@ export default function Ladder() {
   }, [positionMap, myMemberId, user?.id]);
 
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
+  const mixedLadderEnabled = !!(clubData?.club as any)?.mixed_ladder_enabled;
+  const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
 
   const isMe = (player: LadderPlayer): boolean => {
     if (myMemberId && player.club_member_id === myMemberId) return true;

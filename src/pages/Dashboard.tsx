@@ -87,7 +87,9 @@ export default function Dashboard() {
     enabled: !!(myMemberId || effectiveUserId),
   });
 
-  // My upcoming league fixtures (next 14 days) — where I'm in the lineup OR registered in that league
+  // My upcoming league fixtures (next 30 days)
+  // Priority 1: fixtures where I'm in the lineup (filled-up team)
+  // Priority 2 (fallback): fixtures for any league I'm registered in
   const { data: myLeagueFixtures } = useQuery({
     queryKey: ["my-upcoming-league-fixtures", clubId, myMemberId],
     queryFn: async () => {
@@ -104,57 +106,69 @@ export default function Dashboard() {
       for (const r of (regs || []) as any[]) {
         const code = r.league?.code as string | undefined;
         if (code) {
-          myLeagueCodes.add(code);
+          myLeagueCodes.add(code.toUpperCase());
           const m = code.match(/^([A-Za-z]+)/);
           if (m) clubPrefixes.add(m[1].toUpperCase());
         }
         const pa = r.league?.association?.platform_association_id as string | undefined;
         if (pa) platformAssocIds.add(pa);
       }
-      if (platformAssocIds.size === 0 || clubPrefixes.size === 0) return [];
 
       const today = format(new Date(), "yyyy-MM-dd");
-      const horizon = format(new Date(Date.now() + 14 * 86400000), "yyyy-MM-dd");
+      const horizon = format(new Date(Date.now() + 30 * 86400000), "yyyy-MM-dd");
 
-      const { data: fx } = await supabase
-        .from("platform_league_fixtures")
-        .select("id, fixture_date, fixture_time, venue_name, home_team_code, away_team_code, division, association_id")
-        .in("association_id", [...platformAssocIds])
-        .gte("fixture_date", today)
-        .lte("fixture_date", horizon)
-        .order("fixture_date");
+      // 1) Fetch all my lineup fixtures (highest priority — I'm filled in)
+      const { data: myLineups } = await supabase
+        .from("league_fixture_lineups")
+        .select("fixture_id")
+        .eq("club_member_id", myMemberId);
+      const lineupFixtureIds = [...new Set(((myLineups || []) as any[]).map((l) => l.fixture_id as string))];
 
-      const filtered = (fx || []).filter((f: any) => {
-        const home = (f.home_team_code || "").toUpperCase();
-        const away = (f.away_team_code || "").toUpperCase();
-        return [...clubPrefixes].some((p) => {
-          const re = new RegExp(`^${p}\\d+$`);
-          return re.test(home) || re.test(away);
-        });
-      });
-
-      const ids = filtered.map((f: any) => f.id);
-      let lineupSet = new Set<string>();
-      if (ids.length > 0) {
-        const { data: lineups } = await supabase
-          .from("league_fixture_lineups")
-          .select("fixture_id")
-          .eq("club_member_id", myMemberId)
-          .in("fixture_id", ids);
-        lineupSet = new Set((lineups || []).map((l: any) => l.fixture_id as string));
+      let lineupFixtures: any[] = [];
+      if (lineupFixtureIds.length > 0) {
+        const { data: lfx } = await supabase
+          .from("platform_league_fixtures")
+          .select("id, fixture_date, venue_name, home_team_code, away_team_code, division, association_id")
+          .in("id", lineupFixtureIds)
+          .gte("fixture_date", today)
+          .lte("fixture_date", horizon);
+        lineupFixtures = (lfx || []).map((f: any) => ({ ...f, inLineup: true, inMyLeague: true }));
       }
 
-      return filtered
-        .map((f: any) => ({
-          ...f,
-          inLineup: lineupSet.has(f.id),
-          inMyLeague: myLeagueCodes.has(f.home_team_code) || myLeagueCodes.has(f.away_team_code),
-        }))
-        .filter((f: any) => f.inLineup || f.inMyLeague)
-        .sort((a: any, b: any) => {
-          if (a.inLineup !== b.inLineup) return a.inLineup ? -1 : 1;
-          return a.fixture_date.localeCompare(b.fixture_date);
-        });
+      // 2) Fallback: registered-league fixtures (if user has registrations)
+      let regFixtures: any[] = [];
+      if (platformAssocIds.size > 0 && clubPrefixes.size > 0) {
+        const { data: fx } = await supabase
+          .from("platform_league_fixtures")
+          .select("id, fixture_date, venue_name, home_team_code, away_team_code, division, association_id")
+          .in("association_id", [...platformAssocIds])
+          .gte("fixture_date", today)
+          .lte("fixture_date", horizon)
+          .order("fixture_date");
+
+        regFixtures = (fx || [])
+          .filter((f: any) => {
+            const home = (f.home_team_code || "").toUpperCase();
+            const away = (f.away_team_code || "").toUpperCase();
+            // Only include fixtures for the exact league(s) I'm registered in
+            return myLeagueCodes.has(home) || myLeagueCodes.has(away);
+          })
+          .map((f: any) => ({ ...f, inLineup: false, inMyLeague: true }));
+      }
+
+      // Merge — lineup fixtures take precedence (de-dupe by id)
+      const seen = new Set<string>();
+      const merged: any[] = [];
+      for (const f of [...lineupFixtures, ...regFixtures]) {
+        if (seen.has(f.id)) continue;
+        seen.add(f.id);
+        merged.push(f);
+      }
+
+      return merged.sort((a: any, b: any) => {
+        if (a.inLineup !== b.inLineup) return a.inLineup ? -1 : 1;
+        return a.fixture_date.localeCompare(b.fixture_date);
+      });
     },
     enabled: !!clubId && !!myMemberId,
   });

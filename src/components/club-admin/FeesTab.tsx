@@ -34,7 +34,8 @@ interface UnifiedFee {
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
 
-export function FeesTab({ clubId }: { clubId: string }) {
+export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenantType?: string }) {
+  const isAssociation = tenantType === "association";
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);

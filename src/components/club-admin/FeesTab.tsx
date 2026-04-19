@@ -64,12 +64,16 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
       source: "member_fee_categories", raw: c,
     }));
-    associations.forEach(a => list.push({
-      id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
-      amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
-      active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
-      source: "league_associations", raw: a,
-    }));
+    associations.forEach(a => {
+      // Skip associations where members pay the league directly — these don't belong in the club's fee schedule.
+      if ((a as any).members_pay_directly) return;
+      list.push({
+        id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
+        amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
+        active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
+        source: "league_associations", raw: a,
+      });
+    });
     nationalFees.forEach(f => {
       const ft = (f as any).fee_type;
       let type: FeeType = "national";

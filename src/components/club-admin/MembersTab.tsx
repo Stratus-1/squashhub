@@ -166,11 +166,23 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   );
 }
 
-function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+interface AssociationStatusInfo {
+  /** Association name (e.g. "HSA"). Omit when not applicable. */
+  associationName?: string;
+  /** League # at the association (null = not yet allocated). */
+  leagueNumber?: string | null;
+  /** Whether the member is fully paid up at the association (drives Active/Inactive). */
+  feesPaid: boolean;
+  /** True when there's at least one league fee record (paid or unpaid). */
+  hasFeeRecord: boolean;
+}
+
+function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStatus, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
   delegateTitle?: string | null;
   nsfNumber?: string | null;
+  associationStatus?: AssociationStatusInfo | null;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;

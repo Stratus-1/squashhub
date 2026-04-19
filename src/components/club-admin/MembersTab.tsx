@@ -368,11 +368,18 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
       return (assocMembers || []).map((am: any) => {
         const assoc = assocs.find((a: any) => a.id === am.club_id);
-        const fees = (assocFees || []).filter((f: any) =>
-          f.club_member_id === am.id &&
-          (String(f.fee_label || "").toLowerCase().includes("league") ||
-           String(f.fee_type || "").toLowerCase().includes("league"))
-        );
+        const fees = (assocFees || []).filter((f: any) => {
+          if (f.club_member_id !== am.id) return false;
+          const t = String(f.fee_type || "").toLowerCase();
+          const l = String(f.fee_label || "").toLowerCase();
+          return (
+            t === "association" ||
+            t === "league_affiliation" ||
+            t === "league" ||
+            l.includes("league") ||
+            l.includes("affiliation")
+          );
+        });
         const hasFeeRecord = fees.length > 0;
         const feesPaid = hasFeeRecord && fees.every((f: any) => f.paid);
         return {
@@ -391,11 +398,18 @@ export function MembersTab({ clubId }: { clubId: string }) {
   if (isAssociationTenant) {
     // HSA viewing its own roster — derive from this tenant's own fee payments
     for (const m of members) {
-      const fees = feePayments.filter(f =>
-        f.club_member_id === m.id &&
-        (String(f.fee_label || "").toLowerCase().includes("league") ||
-         String(f.fee_type || "").toLowerCase().includes("league"))
-      );
+      const fees = feePayments.filter(f => {
+        if (f.club_member_id !== m.id) return false;
+        const t = String(f.fee_type || "").toLowerCase();
+        const l = String(f.fee_label || "").toLowerCase();
+        return (
+          t === "association" ||
+          t === "league_affiliation" ||
+          t === "league" ||
+          l.includes("league") ||
+          l.includes("affiliation")
+        );
+      });
       const hasFeeRecord = fees.length > 0;
       const feesPaid = hasFeeRecord && fees.every(f => f.paid);
       associationStatusByMember.set(m.id, {

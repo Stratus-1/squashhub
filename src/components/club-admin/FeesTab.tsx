@@ -45,6 +45,15 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [tenantName, setTenantName] = useState<string>("");
+
+  // Fetch tenant (association) name to auto-fill league_affiliation fees
+  useMemo(() => {
+    if (!isAssociation) return;
+    fromExt("clubs").select("name").eq("id", clubId).maybeSingle().then(({ data }: any) => {
+      if (data?.name) setTenantName(data.name);
+    });
+  }, [clubId, isAssociation]);
 
   // Build unified fee list
   const fees = useMemo<UnifiedFee[]>(() => {

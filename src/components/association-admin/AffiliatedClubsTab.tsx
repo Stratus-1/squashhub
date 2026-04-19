@@ -86,6 +86,40 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
     onError: (e: any) => toast.error(e.message || "Failed to add"),
   });
 
+  const createPendingClub = useMutation({
+    mutationFn: async () => {
+      const name = newClubName.trim();
+      if (!name) throw new Error("Club name is required");
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: club, error: clubErr } = await fromExt("clubs")
+        .insert({
+          name,
+          tenant_type: "club",
+          email: newClubEmail.trim() || null,
+          phone: newClubContact.trim() || null,
+          created_by: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (clubErr) throw clubErr;
+      const { error: affErr } = await fromExt("association_affiliated_clubs").insert({
+        association_tenant_id: clubId,
+        club_id: (club as any).id,
+        status: "pending",
+      });
+      if (affErr) throw affErr;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["association-affiliations", clubId] });
+      toast.success("Pending club created and affiliated");
+      setCreateOpen(false);
+      setNewClubName("");
+      setNewClubContact("");
+      setNewClubEmail("");
+    },
+    onError: (e: any) => toast.error(e.message || "Failed to create club"),
+  });
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await fromExt("association_affiliated_clubs").update({ status }).eq("id", id);

@@ -32,17 +32,25 @@ export function DraggablePlayer({ memberId, origin, name, rank, leagueNumber, di
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
       className={cn(
         "flex items-center gap-1.5 px-1.5 py-1 rounded border border-border/60 bg-background/80",
         "text-sm select-none",
-        disabled ? "opacity-60" : "cursor-grab active:cursor-grabbing hover:bg-accent/40",
+        disabled ? "opacity-60" : "hover:bg-accent/40",
         isDragging && "opacity-30",
         muted && "opacity-50",
       )}
     >
-      {!disabled && <GripVertical className="w-3 h-3 text-muted-foreground shrink-0" />}
+      {!disabled && (
+        <button
+          type="button"
+          className="shrink-0 cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
+          aria-label={`Drag ${name}`}
+          {...listeners}
+          {...attributes}
+        >
+          <GripVertical className="w-3 h-3" />
+        </button>
+      )}
       {positionLabel && <span className="text-[10px] text-muted-foreground w-4 shrink-0">{positionLabel}</span>}
       <span className={cn("flex-1 truncate text-xs", muted && "line-through")}>
         {name}

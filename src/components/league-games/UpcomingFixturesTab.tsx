@@ -132,6 +132,19 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   }
 
   if (fixturesByDate.size === 0) {
+    if (associationScope === "internal") {
+      return (
+        <Card className="p-8 text-center">
+          <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground text-sm">
+            Internal league — fixtures aren't auto-imported from a regional feed.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Use <span className="font-medium text-foreground">Fill Up Leagues</span> to assign players each week, then capture results from the scoring screen.
+          </p>
+        </Card>
+      );
+    }
     return (
       <Card className="p-8 text-center">
         <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />

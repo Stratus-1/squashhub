@@ -369,14 +369,16 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </Select>
           </div>
 
-          {/* Name */}
-          <div className="space-y-1">
-            <Label>{nameLabel}</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} />
-          </div>
+          {/* Name (hidden for association league_affiliation — auto-filled from association setup) */}
+          {!hideNameForAffiliation && (
+            <div className="space-y-1">
+              <Label>{nameLabel}</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} />
+            </div>
+          )}
 
-          {/* Abbreviation (league/national/league_affiliation only) */}
-          {(feeType === "league" || feeType === "national" || feeType === "league_affiliation") && (
+          {/* Abbreviation (league/national only — hidden for association league_affiliation) */}
+          {(feeType === "league" || feeType === "national" || (feeType === "league_affiliation" && !hideNameForAffiliation)) && (
             <div className="space-y-1">
               <Label>Abbreviation</Label>
               <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} placeholder="e.g. WCS, SSA" />

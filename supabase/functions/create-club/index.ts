@@ -78,6 +78,7 @@ Deno.serve(async (req) => {
         name: normalizedClubName,
         subdomain: normalizedSubdomain,
         created_by: userId,
+        tenant_type: normalizedTenantType,
       })
       .select()
       .single();

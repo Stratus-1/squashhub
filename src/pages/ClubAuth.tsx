@@ -61,10 +61,31 @@ export default function ClubAuth() {
   // Reset
   const [resetEmail, setResetEmail] = useState("");
 
+  // Home club selection (for association registrations)
+  const [homeClubId, setHomeClubId] = useState<string>("");
+
   // Redirect if already logged in
   if (user) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
+  const isAssociation = (club as any)?.tenant_type === "association";
+
+  // Fetch all clubs (excluding associations) for the home-club picker
+  const { data: pickerClubs } = useQuery({
+    queryKey: ["association-picker-clubs"],
+    enabled: isAssociation,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("id, name, subdomain")
+        .neq("tenant_type", "association")
+        .not("subdomain", "is", null)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

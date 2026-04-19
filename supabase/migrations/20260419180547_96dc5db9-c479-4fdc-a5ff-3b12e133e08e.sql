@@ -1,0 +1,1 @@
+UPDATE public.clubs SET logo_url='https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/5c37fd43-b750-4184-b0d9-e544827fe810/logo.png', updated_at=now() WHERE id='5c37fd43-b750-4184-b0d9-e544827fe810';

@@ -166,7 +166,7 @@ function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   );
 }
 
-function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin }: {
+function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
   delegateTitle?: string | null;
@@ -176,6 +176,8 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelet
   onTogglePaid: (feeId: string, paid: boolean) => void;
   onCreateFee: (fee: ExpectedFee, clubMemberId: string) => void;
   onToggleAdmin: () => void;
+  onAssignNumber?: (member: ClubMember) => void;
+  numberLabel?: string;
 }) {
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
@@ -209,7 +211,21 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, onEdit, onDelet
       {/* Row 2: Email, member #, status — compact inline */}
       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-wrap">
         {displayEmail && <span className="truncate max-w-[140px]">{displayEmail}</span>}
-        {m.club_member_number && <span>#{m.club_member_number}</span>}
+        {m.club_member_number ? (
+          <span>#{m.club_member_number}</span>
+        ) : (
+          onAssignNumber && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-5 px-1.5 text-[9px] gap-1 text-primary border-primary/40 hover:bg-primary/10"
+              onClick={(e) => { e.stopPropagation(); onAssignNumber(m); }}
+              title={`Allocate ${numberLabel || "membership"} number`}
+            >
+              + Allocate {numberLabel || "#"}
+            </Button>
+          )
+        )}
         {m.id_number && <span>Age: {getAgeFromSaId(m.id_number) ?? "?"}</span>}
         <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
           {isLinked ? "✓ Reg" : "✗ Unreg"}
@@ -406,6 +422,72 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const { error } = await fromExt("club_members").delete().eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success("Member removed"); qc.invalidateQueries({ queryKey: ["club-members"] }); }
+  };
+
+  /**
+   * Allocate the next sequential club/league number for a member based on the
+   * club's number prefix, length, and starting number. For an association tenant,
+   * also seeds unpaid league-fee payment rows from the configured league_associations.
+   */
+  const handleAssignNumber = async (member: ClubMember) => {
+    const prefix = (club as any)?.member_number_prefix || "";
+    const length = (club as any)?.member_number_length || 4;
+    const start = (club as any)?.member_number_start || 1;
+    const tenantType = (club as any)?.tenant_type || "club";
+    const numberLabel = tenantType === "association" ? "league" : "membership";
+
+    const { data: existing } = await fromExt("club_members")
+      .select("club_member_number")
+      .eq("club_id", clubId)
+      .not("club_member_number", "is", null);
+
+    let maxNum = start - 1;
+    const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)$`);
+    for (const row of (existing || []) as any[]) {
+      const v = row.club_member_number || "";
+      const match = v.match(re);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    }
+    const nextNum = maxNum + 1;
+    const padded = String(nextNum).padStart(length, "0");
+    const newNumber = `${prefix}${padded}`;
+
+    if (!confirm(`Allocate ${numberLabel} number "${newNumber}" to ${member.profiles?.name || member.name}?`)) return;
+
+    const { error } = await fromExt("club_members")
+      .update({ club_member_number: newNumber, plays_league: tenantType === "association" ? true : member.plays_league })
+      .eq("id", member.id);
+
+    if (error) { toast.error(error.message); return; }
+
+    if (tenantType === "association") {
+      const activeFees = (associations || []).filter((a: any) => (a.active !== false) && ((a.fee_annual ?? 0) > 0));
+      if (activeFees.length > 0) {
+        const { data: existingPays } = await fromExt("club_member_fee_payments")
+          .select("fee_label, season_year")
+          .eq("club_member_id", member.id)
+          .eq("fee_type", "league");
+        const existingKeys = new Set((existingPays || []).map((p: any) => `${p.fee_label}|${p.season_year}`));
+        const feeRecords = activeFees.map((a: any) => ({
+          club_member_id: member.id,
+          fee_type: "league",
+          fee_label: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""),
+          amount: a.fee_annual ?? 0,
+          paid: false,
+          season_year: new Date().getFullYear(),
+        })).filter(f => !existingKeys.has(`${f.fee_label}|${f.season_year}`));
+        if (feeRecords.length > 0) {
+          await fromExt("club_member_fee_payments").insert(feeRecords);
+        }
+      }
+    }
+
+    toast.success(`Allocated ${newNumber}`);
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    refetchPayments();
   };
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -622,6 +704,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onTogglePaid={handleTogglePaid}
                     onCreateFee={handleCreateFee}
                     onToggleAdmin={() => handleToggleAdmin(m)}
+                    onAssignNumber={handleAssignNumber}
+                    numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
                   />
                 ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}

@@ -1353,6 +1353,7 @@ export type Database = {
           email: string | null
           fee_category_id: string | null
           gender: string | null
+          home_club_id: string | null
           id: string
           id_number: string | null
           joined_at: string
@@ -1373,6 +1374,7 @@ export type Database = {
           email?: string | null
           fee_category_id?: string | null
           gender?: string | null
+          home_club_id?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string
@@ -1393,6 +1395,7 @@ export type Database = {
           email?: string | null
           fee_category_id?: string | null
           gender?: string | null
+          home_club_id?: string | null
           id?: string
           id_number?: string | null
           joined_at?: string
@@ -1418,6 +1421,13 @@ export type Database = {
             columns: ["fee_category_id"]
             isOneToOne: false
             referencedRelation: "member_fee_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_members_home_club_id_fkey"
+            columns: ["home_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
           {

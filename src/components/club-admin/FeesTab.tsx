@@ -216,11 +216,13 @@ interface FeeDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   existing?: UnifiedFee;
+  tenantType?: string;
 }
 
-function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
+function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }: FeeDialogProps) {
+  const isAssociation = tenantType === "association";
   const isEdit = !!existing;
-  const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? "membership");
+  const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));
   const qc = useQueryClient();
 
   const [name, setName] = useState(() => {

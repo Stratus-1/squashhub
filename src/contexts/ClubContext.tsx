@@ -1,5 +1,6 @@
 import { createContext, useContext, ReactNode, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { getClubSubdomain } from "@/lib/subdomain";
 
@@ -32,7 +33,11 @@ const ClubContext = createContext<ClubContextType>({
 });
 
 export function ClubProvider({ children }: { children: ReactNode }) {
-  const subdomain = useMemo(() => getClubSubdomain(), []);
+  const location = useLocation();
+  const subdomain = useMemo(
+    () => getClubSubdomain(),
+    [location.pathname, location.search, location.hash]
+  );
 
   const { data: club = null, isLoading } = useQuery({
     queryKey: ["club-by-subdomain", subdomain],

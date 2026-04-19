@@ -16,11 +16,12 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { userId, clubName, subdomain, userName, userEmail } = await req.json();
+    const { userId, clubName, subdomain, userName, userEmail, tenantType } = await req.json();
     const normalizedSubdomain = String(subdomain || "").trim().toLowerCase();
     const normalizedClubName = String(clubName || "").trim();
     const normalizedUserName = String(userName || "").trim();
     const normalizedUserEmail = String(userEmail || "").trim().toLowerCase();
+    const normalizedTenantType = tenantType === "association" ? "association" : "club";
 
     if (!userId || !normalizedClubName || !normalizedSubdomain) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {

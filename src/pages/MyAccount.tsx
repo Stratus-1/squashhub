@@ -127,11 +127,25 @@ export default function MyAccount() {
   const statementLines: StatementLine[] = (() => {
     const lines: Omit<StatementLine, "balance">[] = [];
 
+    // Build a set of "fee charges" already represented by a credit transaction,
+    // so we don't double-count them as "Opening balance" lines below.
+    const txChargeKeys = new Set<string>();
+    for (const tx of (transactions || [])) {
+      if ((tx as any).type !== "credit") continue;
+      const desc = String((tx as any).description || "").trim().toLowerCase();
+      const amt = Math.abs(Number((tx as any).amount));
+      if (!desc || !(amt > 0)) continue;
+      txChargeKeys.add(`${desc}|${amt.toFixed(2)}`);
+    }
+
     // Inject unpaid fee records as opening balance entries (legacy/outstanding fees)
+    // — but skip when a matching credit transaction already represents the charge.
     for (const fee of (fees || [])) {
       if (!(fee as any).paid) {
         const amt = Math.abs(Number((fee as any).amount));
         if (amt <= 0) continue;
+        const label = String((fee as any).fee_label || "Outstanding fee").trim().toLowerCase();
+        if (txChargeKeys.has(`${label}|${amt.toFixed(2)}`)) continue;
         lines.push({
           id: `fee-${(fee as any).id}`,
           date: (fee as any).created_at,

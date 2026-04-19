@@ -1,0 +1,1 @@
+UPDATE public.club_members SET role = 'captain', updated_at = now() WHERE id = '9740ab5b-eb8c-41ab-adc9-05e362cb496e';

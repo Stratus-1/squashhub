@@ -834,7 +834,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
   const { data: existingAssocs = [] } = useQuery({
     queryKey: ["league-associations-linked", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("league_associations").select("platform_association_id").eq("club_id", clubId);
+      const { data, error } = await fromExt("league_associations").select("platform_association_id, name").eq("club_id", clubId);
       if (error) throw error;
       return data || [];
     },
@@ -885,7 +885,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
           {mode === "select" ? (
             <div className="space-y-2">
               {availablePlatform.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No platform associations available to join, or all are already linked.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No affiliated associations available to join, or all are already linked.</p>
               ) : (
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

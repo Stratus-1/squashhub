@@ -246,6 +246,45 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
         <p className="text-xs text-muted-foreground">Assign roles or custom permissions to individual members. Captain, Admin, and delegates have full access automatically.</p>
       </div>
 
+      {adminMembers.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Full Admin Access (automatic)</h4>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Club Role</TableHead>
+                <TableHead>Delegate Position</TableHead>
+                <TableHead>Permissions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {adminMembers.map((m) => {
+                const delegate = delegateLabel(m.id);
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name || "Unnamed"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] capitalize">{m.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {delegate ? (
+                        <Badge variant="secondary" className="text-[10px]">{delegate}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
       <Table>
         <TableHeader>
           <TableRow>

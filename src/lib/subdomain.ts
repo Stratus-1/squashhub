@@ -13,6 +13,7 @@ const ROOT_DOMAINS = [
 ];
 
 const RESERVED_SUBDOMAIN_LABELS = new Set(["www"]);
+const PREVIEW_SUBDOMAIN_STORAGE_KEY = "active_preview_tenant_subdomain";
 
 function isValidClubSubdomain(value: string | null | undefined): value is string {
   if (!value) return false;
@@ -23,9 +24,20 @@ export function getClubSubdomain(): string | null {
   const url = new URL(window.location.href);
   const hostname = url.hostname.toLowerCase();
 
+  const rememberPreviewSubdomain = (value: string | null) => {
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".lovable.app") || hostname.endsWith(".lovableproject.com")) {
+      if (value) {
+        window.sessionStorage.setItem(PREVIEW_SUBDOMAIN_STORAGE_KEY, value);
+      } else {
+        window.sessionStorage.removeItem(PREVIEW_SUBDOMAIN_STORAGE_KEY);
+      }
+    }
+  };
+
   // 1) Query param override: /auth?club=wsc
   const fromQuery = url.searchParams.get("club")?.toLowerCase().trim();
   if (isValidClubSubdomain(fromQuery) && !RESERVED_SUBDOMAIN_LABELS.has(fromQuery)) {
+    rememberPreviewSubdomain(fromQuery);
     return fromQuery;
   }
 
@@ -33,6 +45,7 @@ export function getClubSubdomain(): string | null {
   const pathMatch = url.pathname.toLowerCase().match(/^\/c\/([a-z0-9][a-z0-9-]{1,31})(?:\/|$)/);
   const fromPath = pathMatch?.[1] ?? null;
   if (isValidClubSubdomain(fromPath) && !RESERVED_SUBDOMAIN_LABELS.has(fromPath)) {
+    rememberPreviewSubdomain(fromPath);
     return fromPath;
   }
 
@@ -53,6 +66,10 @@ export function getClubSubdomain(): string | null {
 
   // Ignore Lovable preview hosts (not club hosts)
   if (hostname.endsWith(".lovable.app") || hostname.endsWith(".lovableproject.com")) {
+    const remembered = window.sessionStorage.getItem(PREVIEW_SUBDOMAIN_STORAGE_KEY)?.toLowerCase().trim() || null;
+    if (isValidClubSubdomain(remembered) && !RESERVED_SUBDOMAIN_LABELS.has(remembered)) {
+      return remembered;
+    }
     return null;
   }
 

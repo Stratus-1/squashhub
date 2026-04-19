@@ -168,7 +168,7 @@ export function FeesTab({ clubId }: { clubId: string }) {
                   <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell>
                     <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
-                      {fee.feeClass === "pass_through" ? "Pass-through" : "Club Income"}
+                      {fee.feeClass === "pass_through" ? "Pass-through" : (fee.type === "league_affiliation" ? "Association Income" : "Club Income")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
@@ -235,8 +235,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     return "";
   });
   const [amount, setAmount] = useState(existing?.amount ?? 0);
-  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" || feeType === "registration" ? "club_income" : "pass_through"));
-  const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership"));
+  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" || feeType === "registration" || feeType === "league_affiliation" ? "club_income" : "pass_through"));
+  const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership" || feeType === "league_affiliation"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
   const [feeDueDay, setFeeDueDay] = useState(existing?.dueDay ?? 1);
   const [description, setDescription] = useState(() => {
@@ -261,8 +261,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
   const handleTypeChange = (t: FeeType) => {
     setFeeType(t);
     if (!isEdit) {
-      setFeeClass(t === "membership" || t === "other" || t === "registration" ? "club_income" : "pass_through");
-      setProRate(t === "membership");
+      setFeeClass(t === "membership" || t === "other" || t === "registration" || t === "league_affiliation" ? "club_income" : "pass_through");
+      setProRate(t === "membership" || t === "league_affiliation");
     }
   };
 
@@ -410,8 +410,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
             </div>
           )}
 
-          {/* Payable to / Payment details (league/national/other — not registration, since it's always club income) */}
-          {feeType !== "membership" && feeType !== "registration" && (
+          {/* Payable to / Payment details (league/national/other — not registration or league_affiliation, since affiliation is treated like membership/association income) */}
+          {feeType !== "membership" && feeType !== "registration" && feeType !== "league_affiliation" && (
             <>
               <div className="space-y-1">
                 <Label>Payable To</Label>
@@ -431,7 +431,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
               <Select value={feeClass} onValueChange={v => setFeeClass(v as "club_income" | "pass_through")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="club_income">Club Income</SelectItem>
+                  <SelectItem value="club_income">{feeType === "league_affiliation" ? "Association Income" : "Club Income"}</SelectItem>
                   <SelectItem value="pass_through">Pass-through</SelectItem>
                 </SelectContent>
               </Select>
@@ -445,7 +445,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
           </div>
 
           <p className="text-[10px] text-muted-foreground">
-            {feeClass === "pass_through" ? "Pass-through: Club collects on behalf of external body → Credits Creditors GL" : "Club Income: Revenue for the club → Credits Fee Income GL"}
+            {feeClass === "pass_through" ? "Pass-through: Club collects on behalf of external body → Credits Creditors GL" : (feeType === "league_affiliation" ? "Association Income: Revenue for the association → Credits Fee Income GL" : "Club Income: Revenue for the club → Credits Fee Income GL")}
           </p>
 
           <Button onClick={handleSave} className="w-full">{isEdit ? "Update" : "Save"}</Button>

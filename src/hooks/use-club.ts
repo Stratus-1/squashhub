@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClubContext } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 
@@ -131,22 +132,30 @@ export interface MemberLeagueRegistration {
   player_rank?: number;
 }
 
-/** Get the club the current user belongs to (first one found) */
+/** Get the current user's membership for the active tenant when one is selected */
 export function useMyClub() {
   const { user } = useAuth();
+  const { club: contextClub, subdomain } = useClubContext();
+  const activeClubId = contextClub?.id;
+
   return useQuery({
-    queryKey: ["my-club", user?.id],
+    queryKey: ["my-club", user?.id, activeClubId ?? subdomain ?? null],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_members")
+      let query = fromExt("club_members")
         .select("club_id, role, clubs:club_id(*)")
         .eq("user_id", user!.id)
-        .limit(1)
-        .maybeSingle();
+        .order("joined_at", { ascending: true });
+
+      if (activeClubId) {
+        query = query.eq("club_id", activeClubId);
+      }
+
+      const { data, error } = await query.limit(1).maybeSingle();
       if (error) throw error;
       if (!data) return null;
       return { membership: { club_id: data.club_id, role: data.role }, club: data.clubs as Club };
     },
-    enabled: !!user,
+    enabled: !!user && (!subdomain || !!activeClubId),
   });
 }
 

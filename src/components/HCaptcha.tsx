@@ -54,8 +54,23 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
 
   const renderWidget = useCallback((siteKey: string) => {
     const el = containerRef.current;
-    if (!el || !window.hcaptcha) return;
-    if (renderedWidgets.has(el)) return;
+    if (!el) return;
+    // If the hCaptcha API isn't ready yet, poll until it is.
+    if (!window.hcaptcha || typeof window.hcaptcha.render !== "function") {
+      const poll = setInterval(() => {
+        if (window.hcaptcha && typeof window.hcaptcha.render === "function") {
+          clearInterval(poll);
+          renderWidget(siteKey);
+        }
+      }, 100);
+      return;
+    }
+    if (renderedWidgets.has(el)) {
+      // Already rendered for this element (e.g. from a prior mount in the same tree).
+      // Mark ready so execute() works.
+      readyRef.current = true;
+      return;
+    }
 
     renderedWidgets.add(el);
     const id = window.hcaptcha.render(el, {
@@ -109,13 +124,21 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     execute: () =>
       new Promise<string>((resolve, reject) => {
-        if (!readyRef.current || !window.hcaptcha || widgetIdRef.current === null) {
-          reject(new Error("hCaptcha not ready"));
-          return;
-        }
-        resolveRef.current = resolve;
-        window.hcaptcha.reset(widgetIdRef.current);
-        window.hcaptcha.execute(widgetIdRef.current);
+        const tryExecute = (attemptsLeft: number) => {
+          if (readyRef.current && window.hcaptcha && widgetIdRef.current !== null) {
+            resolveRef.current = resolve;
+            window.hcaptcha.reset(widgetIdRef.current);
+            window.hcaptcha.execute(widgetIdRef.current);
+            return;
+          }
+          if (attemptsLeft <= 0) {
+            reject(new Error("hCaptcha not ready"));
+            return;
+          }
+          setTimeout(() => tryExecute(attemptsLeft - 1), 200);
+        };
+        // Wait up to ~3s for the widget to finish initialising.
+        tryExecute(15);
       }),
   }));
 

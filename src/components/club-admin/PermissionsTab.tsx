@@ -175,6 +175,18 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     },
   });
 
+  const { data: club } = useQuery({
+    queryKey: ["club-delegates-for-perms", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("clubs")
+        .select("chairman_member_id, secretary_member_id, club_captain_member_id")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { chairman_member_id: string | null; secretary_member_id: string | null; club_captain_member_id: string | null } | null;
+    },
+  });
+
   const { data: memberPerms = [] } = useQuery({
     queryKey: ["all-member-permissions", clubId],
     queryFn: async () => {

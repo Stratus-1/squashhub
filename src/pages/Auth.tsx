@@ -35,6 +35,7 @@ export default function Auth() {
   const [signupConfirm, setSignupConfirm] = useState("");
   const [clubName, setClubName] = useState("");
   const [subdomain, setSubdomain] = useState("");
+  const [tenantType, setTenantType] = useState<"club" | "association">("club");
 
   const STOP_WORDS = new Set(["the", "of", "and", "for", "a", "an", "in", "at", "club", "squash", "sports", "centre", "center"]);
 

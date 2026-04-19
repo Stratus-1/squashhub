@@ -64,6 +64,9 @@ function FillTopDownSettings({ clubId }: { clubId: string }) {
       <p className="text-xs text-muted-foreground mt-2">
         When enabled, captains use <strong>Fill Up Leagues</strong> to assign players top-down. Excess players cascade to the next league. The ±2 position rule is enforced against the previous week's snapshot.
       </p>
+      <p className="md:hidden text-xs text-muted-foreground mt-2 rounded-md border border-border bg-muted/40 px-2.5 py-2">
+        On mobile: weekly team planning happens in <strong>League Games → Fill Up Leagues</strong>. Press and hold a player for a moment, then drag. The admin <strong>Allocate</strong> dialog is still desktop-first.
+      </p>
     </Card>
   );
 }

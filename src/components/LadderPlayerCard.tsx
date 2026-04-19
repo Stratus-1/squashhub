@@ -21,6 +21,13 @@ export interface LadderPlayer {
   gender: string | null;
 }
 
+export interface LeagueChip {
+  id: string;
+  name: string;
+  code: string | null;
+  shortLabel: string; // e.g. "L1"
+}
+
 interface Props {
   player: LadderPlayer;
   index: number;
@@ -30,9 +37,23 @@ interface Props {
   onChallenge: (playerId: string, rank: number | null) => void;
   challengeBlocked: boolean;
   highlightChallengeable?: boolean;
+  leagues?: LeagueChip[];
+  onLeagueClick?: (leagueId: string) => void;
+  activeLeagueFilter?: string | null;
 }
 
-export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge, challengeBlocked, highlightChallengeable }: Props) {
+export function LadderPlayerCard({
+  player,
+  index,
+  isMe,
+  onNavigate,
+  onChallenge,
+  challengeBlocked,
+  highlightChallengeable,
+  leagues = [],
+  onLeagueClick,
+  activeLeagueFilter,
+}: Props) {
   const winRate = player.matches_played > 0
     ? Math.round((player.wins / player.matches_played) * 100)
     : 0;
@@ -70,10 +91,38 @@ export function LadderPlayerCard({ player, index, isMe, onNavigate, onChallenge,
         <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={player.avatar_url} />
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
             <p className="text-xs font-semibold truncate">{player.name}</p>
             {isMe && (
               <Badge variant="secondary" className="text-[9px] shrink-0 px-1 py-0">You</Badge>
+            )}
+            {leagues.length > 0 ? (
+              leagues.map((lg) => {
+                const isActive = activeLeagueFilter === lg.id;
+                return (
+                  <button
+                    key={lg.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onLeagueClick?.(lg.id);
+                    }}
+                    title={`Filter by ${lg.name}`}
+                    className={cn(
+                      "text-[9px] font-bold px-1.5 py-0 rounded-full border shrink-0 transition-colors leading-tight",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
+                    )}
+                  >
+                    {lg.shortLabel}
+                  </button>
+                );
+              })
+            ) : (
+              <Badge variant="outline" className="text-[9px] shrink-0 px-1 py-0 text-muted-foreground border-muted">
+                Social
+              </Badge>
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">

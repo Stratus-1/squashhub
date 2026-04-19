@@ -17,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-type FeeType = "membership" | "league" | "national" | "registration" | "other";
+type FeeType = "membership" | "league" | "league_affiliation" | "national" | "registration" | "other";
 
 interface UnifiedFee {
   id: string;
@@ -62,8 +62,11 @@ export function FeesTab({ clubId }: { clubId: string }) {
     }));
     nationalFees.forEach(f => {
       const ft = (f as any).fee_type;
-      const type: FeeType = ft === "other" ? "other" : ft === "registration" ? "registration" : "national";
-      const typeLabel = ft === "other" ? "Other" : ft === "registration" ? "Registration" : "National Body";
+      let type: FeeType = "national";
+      let typeLabel = "National Body";
+      if (ft === "other") { type = "other"; typeLabel = "Other"; }
+      else if (ft === "registration") { type = "registration"; typeLabel = "Registration"; }
+      else if (ft === "league_affiliation") { type = "league_affiliation"; typeLabel = "League Affiliation"; }
       list.push({
         id: f.id, name: f.body_name + (f.abbreviation ? ` (${f.abbreviation})` : ""), 
         type, typeLabel,
@@ -263,6 +266,13 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     }
   };
 
+  const mapFeeTypeForDb = (t: FeeType): string => {
+    if (t === "other") return "other";
+    if (t === "registration") return "registration";
+    if (t === "league_affiliation") return "league_affiliation";
+    return "national";
+  };
+
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Fee name is required"); return; }
 
@@ -294,7 +304,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
         if (error) { toast.error(error.message); return; }
       }
     } else {
-      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: feeType === "other" ? "other" : feeType === "registration" ? "registration" : "national" };
+      const payload = { body_name: name, abbreviation, fee_annual: amount, fee_due_month: feeDueMonth, due_day: feeDueDay, fee_payable_to: payableTo, fee_payment_details: paymentDetails, fee_class: feeClass, pro_rate: proRate, fee_type: mapFeeTypeForDb(feeType) };
       if (isEdit) {
         const { error } = await fromExt("national_body_fees").update(payload).eq("id", existing!.id);
         if (error) { toast.error(error.message); return; }
@@ -309,9 +319,14 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     onOpenChange(false);
   };
 
-  const nameLabel = feeType === "membership" ? "Category Name" : feeType === "registration" ? "Fee Name" : feeType === "other" ? "Fee Name" : "Organisation Name";
+  const nameLabel = feeType === "membership" ? "Category Name"
+    : feeType === "registration" ? "Fee Name"
+    : feeType === "other" ? "Fee Name"
+    : feeType === "league_affiliation" ? "Affiliation Name"
+    : "Organisation Name";
   const namePlaceholder = feeType === "membership" ? "e.g. Student, Pensioner, Normal"
     : feeType === "league" ? "e.g. Western Cape Squash"
+    : feeType === "league_affiliation" ? "e.g. Provincial League Affiliation"
     : feeType === "registration" ? "e.g. Registration Fee, Joining Fee"
     : feeType === "other" ? "e.g. Parking, Locker Rental"
     : "e.g. Squash South Africa";
@@ -329,6 +344,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
               <SelectContent>
                 <SelectItem value="membership">Membership</SelectItem>
                 <SelectItem value="league">League Association</SelectItem>
+                <SelectItem value="league_affiliation">League Affiliation Fee</SelectItem>
                 <SelectItem value="national">National Body (e.g. SSA)</SelectItem>
                 <SelectItem value="registration">Registration (once-off, new members only)</SelectItem>
                 <SelectItem value="other">Other (e.g. Parking, Locker)</SelectItem>
@@ -342,8 +358,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
             <Input value={name} onChange={e => setName(e.target.value)} placeholder={namePlaceholder} />
           </div>
 
-          {/* Abbreviation (league/national only) */}
-          {(feeType === "league" || feeType === "national") && (
+          {/* Abbreviation (league/national/league_affiliation only) */}
+          {(feeType === "league" || feeType === "national" || feeType === "league_affiliation") && (
             <div className="space-y-1">
               <Label>Abbreviation</Label>
               <Input value={abbreviation} onChange={e => setAbbreviation(e.target.value)} placeholder="e.g. WCS, SSA" />

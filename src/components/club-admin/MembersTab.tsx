@@ -96,11 +96,18 @@ function computeExpectedFees(
     }
   }
 
-  // 3. National body fees — only if allocated
+  // 3. National body & League affiliation fees — only if allocated
   if (member.plays_league) {
     for (const nat of nationalFees) {
       if (nat.active === false) continue;
       if (nat.fee_type === "registration") continue;
+      if (nat.fee_type === "league_affiliation") {
+        const existing = memberPayments.find(p => p.fee_type === "league_affiliation");
+        if (existing) {
+          fees.push({ fee_type: "league_affiliation", fee_label: nat.abbreviation || nat.body_name, amount: existing.amount, existing });
+        }
+        continue;
+      }
       const existing = memberPayments.find(p => p.fee_type === "national" || p.fee_type === "national_body");
       if (existing) {
         fees.push({ fee_type: "national", fee_label: nat.abbreviation || nat.body_name, amount: existing.amount, existing });

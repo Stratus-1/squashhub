@@ -670,7 +670,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
     >
       <div className="space-y-3">
         <p className="md:hidden text-[11px] text-muted-foreground italic px-1">
-          Tip: press &amp; hold a player for a moment, then drag.
+          Tip: press &amp; hold the grip handle, then drag.
         </p>
         <Card className="p-3 space-y-2">
           {/* Week selector — switch between the next few candidate planning weeks */}

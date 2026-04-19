@@ -24,7 +24,7 @@ import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -497,40 +497,40 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* My Upcoming Bookings */}
-      <motion.div
-        className="px-4 mt-4"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold font-heading">My Upcoming</h2>
-          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/bookings")}>
-            View all <ChevronRight className="w-3 h-3 ml-1" />
-          </Button>
-        </div>
-        {(myBookings && myBookings.length > 0) || (myLeagueFixtures && myLeagueFixtures.length > 0) ? (
+      {/* My Upcoming League Games — dedicated section */}
+      {hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (
+        <motion.div
+          className="px-4 mt-4"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-primary" /> My Upcoming League Games
+            </h2>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/league-games")}>
+              View all <ChevronRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
           <div className="space-y-1.5">
-            {(myLeagueFixtures || []).slice(0, 3).map((f: any) => (
+            {myLeagueFixtures.slice(0, 5).map((f: any) => (
               <Card
                 key={`lf-${f.id}`}
                 className={cn(
-                  "p-2.5 flex items-center justify-between cursor-pointer hover:bg-accent/50 transition-colors",
+                  "p-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-accent/50 transition-colors",
                   f.inLineup ? "border-2 border-primary bg-primary/10" : "border-primary/40 bg-primary/5"
                 )}
                 onClick={() => navigate(`/league-games/${f.id}`)}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <Trophy className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <p className="text-sm font-medium truncate">
-                      {f.home_team_code} vs {f.away_team_code}
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium truncate">
+                    {f.home_team_code} <span className="text-muted-foreground text-xs">vs</span> {f.away_team_code}
+                  </p>
                   <p className="text-[11px] text-muted-foreground truncate">
-                    {f.fixture_date}
+                    {format(parseISO(f.fixture_date), "EEE dd MMM")}
                     {f.fixture_time ? ` · ${String(f.fixture_time).slice(0, 5)}` : ""}
                     {f.venue_name ? ` · ${f.venue_name}` : ""}
+                    {f.division ? ` · ${f.division}` : ""}
                   </p>
                 </div>
                 <Badge
@@ -541,6 +541,24 @@ export default function Dashboard() {
                 </Badge>
               </Card>
             ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* My Upcoming Bookings */}
+      <motion.div
+        className="px-4 mt-4"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold font-heading">My Upcoming Bookings</h2>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/bookings")}>
+            View all <ChevronRight className="w-3 h-3 ml-1" />
+          </Button>
+        </div>
+        {myBookings && myBookings.length > 0 ? (
+          <div className="space-y-1.5">
             {(myBookings || []).slice(0, 3).map((booking) => (
               <Card key={booking.id} className="p-2.5 flex items-center justify-between">
                 <div className="min-w-0">

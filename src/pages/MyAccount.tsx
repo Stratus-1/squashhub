@@ -479,7 +479,7 @@ export default function MyAccount() {
       <SEO title="My Account" description="Manage your credit balance and fee payments." path="/my-account" noIndex />
       <PageHeader
         title={isViewingAs ? `${accountName}'s Account` : "My Account"}
-        subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : ""}`}
+        subtitle={`Active account: ${accountName}${memberNo !== "N/A" ? ` · #${memberNo}` : (club as any)?.tenant_type === "association" ? " · league number pending" : ""}`}
       />
 
       {/* Credit Balance Card */}

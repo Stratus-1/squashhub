@@ -5,7 +5,7 @@ import { SEO } from "@/components/SEO";
 import { absoluteUrl } from "@/lib/site";
 import {
   Building2, ChevronRight, Trophy, Users, Calendar, Swords,
-  ArrowRight, Shield, Zap, BarChart3, Landmark
+  ArrowRight, Shield, Zap, BarChart3, Landmark, Check, Sparkles
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -285,6 +285,99 @@ export default function Home() {
             </div>
           </>
         )}
+      </section>
+
+      {/* ─── Pricing ─── */}
+      <section id="pricing" className="max-w-5xl mx-auto px-4 py-16">
+        <div className="text-center mb-10">
+          <Badge variant="secondary" className="mb-3">
+            <Sparkles className="w-3.5 h-3.5 mr-1" />
+            Free until September 2026
+          </Badge>
+          <h2 className="text-2xl font-bold font-heading mb-2">Simple, fair pricing</h2>
+          <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+            Clubs and associations can register and use the full platform for free
+            during our launch period. Fees only kick in from September 2026 — and
+            they stay tiny, scaling per active member.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          {/* Clubs */}
+          <Card className="border-primary/30">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="font-semibold text-foreground">Clubs</h3>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold font-heading text-foreground">R5</span>
+                  <span className="text-sm text-muted-foreground">/ member / month</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Estimated maximum. From September 2026.
+                </p>
+              </div>
+              <ul className="space-y-2 text-sm text-muted-foreground pt-2 border-t border-border/40">
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>Free until September 2026</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>All features included</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>Billed only on active members</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Associations */}
+          <Card className="border-primary/30">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Landmark className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="font-semibold text-foreground">Associations</h3>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold font-heading text-foreground">R2</span>
+                  <span className="text-sm text-muted-foreground">/ member / month</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Estimated maximum. From September 2026.
+                </p>
+              </div>
+              <ul className="space-y-2 text-sm text-muted-foreground pt-2 border-t border-border/40">
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>Free until September 2026</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>Admin, fixtures & finance tools</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <span>Oversight across affiliated clubs</span>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
+        <p className="text-xs text-muted-foreground text-center mt-6 max-w-xl mx-auto">
+          No credit card required to register. Final pricing will be confirmed
+          before billing begins, and we'll always notify you well in advance.
+        </p>
       </section>
 
       {/* ─── CTA ─── */}

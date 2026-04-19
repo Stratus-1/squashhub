@@ -195,10 +195,14 @@ export default function Ladder() {
       });
     };
 
-    menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
-    ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+    if ((clubData?.club as any)?.mixed_ladder_enabled) {
+      (players || []).forEach((player, index) => setPositionKeys(player as LadderPlayer, index + 1));
+    } else {
+      menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+      ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+    }
     return map;
-  }, [menPlayers, ladiesPlayers]);
+  }, [menPlayers, ladiesPlayers, players, clubData?.club]);
 
   const myPosition = useMemo(() => {
     if (!myMemberId) return null;

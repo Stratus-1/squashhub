@@ -17,9 +17,11 @@ type Props = {
   weekStart?: string;
   /** End of the squash week window (yyyy-MM-dd). Falls back to weekStart + 6 days, or today + 14 days. */
   weekEnd?: string;
+  /** 'internal' associations have no platform fixture feed — show a tailored empty state. */
+  associationScope?: "internal" | "region";
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region" }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const rangeStart = weekStart ?? format(new Date(), "yyyy-MM-dd");
@@ -130,6 +132,19 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   }
 
   if (fixturesByDate.size === 0) {
+    if (associationScope === "internal") {
+      return (
+        <Card className="p-8 text-center">
+          <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground text-sm">
+            Internal league — fixtures aren't auto-imported from a regional feed.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Use <span className="font-medium text-foreground">Fill Up Leagues</span> to assign players each week, then capture results from the scoring screen.
+          </p>
+        </Card>
+      );
+    }
     return (
       <Card className="p-8 text-center">
         <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />

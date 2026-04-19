@@ -9,6 +9,7 @@ import { BarChart3 } from "lucide-react";
 type Props = {
   platformAssocIds: string[];
   clubTeamCodes: string[];
+  associationScope?: "internal" | "region";
 };
 
 type Standing = {
@@ -21,7 +22,7 @@ type Standing = {
   points: number;
 };
 
-export function StandingsTab({ platformAssocIds, clubTeamCodes }: Props) {
+export function StandingsTab({ platformAssocIds, clubTeamCodes, associationScope = "region" }: Props) {
   // Pull all confirmed/submitted fixture results to compute standings
   const { data: fixtures, isLoading } = useQuery({
     queryKey: ["all-assoc-fixtures", platformAssocIds.join(",")],
@@ -116,6 +117,16 @@ export function StandingsTab({ platformAssocIds, clubTeamCodes }: Props) {
   }
 
   if (standingsByDivision.size === 0) {
+    if (associationScope === "internal") {
+      return (
+        <Card className="p-8 text-center">
+          <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground text-sm">
+            Internal league standings will appear here once weekly results are captured.
+          </p>
+        </Card>
+      );
+    }
     return (
       <Card className="p-8 text-center">
         <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />

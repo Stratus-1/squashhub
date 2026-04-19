@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -11,15 +11,26 @@ import { useMyClub } from "@/hooks/use-club";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { FillUpLeaguesTab } from "@/components/league-games/FillUpLeaguesTab";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { format, startOfWeek, addDays } from "date-fns";
+
+type AssocRow = {
+  id: string;
+  name: string;
+  abbreviation?: string | null;
+  scope?: "internal" | "region" | null;
+  platform_association_id?: string | null;
+  week_start_dow?: number | null;
+};
 
 export default function LeagueGames() {
   const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
   const clubId = clubData?.club?.id;
 
-  // Fetch club's configured squash week start day (Wed=3 by default)
-  const { data: weekDow } = useQuery({
+  // Fetch club's configured squash week start day (Wed=3 by default) — used as fallback
+  const { data: clubWeekDow } = useQuery({
     queryKey: ["club-week-dow", clubId],
     queryFn: async () => {
       if (!clubId) return 3;
@@ -29,66 +40,42 @@ export default function LeagueGames() {
     enabled: !!clubId,
   });
 
-  // Squash week runs from the day AFTER the configured start day through to the next occurrence of that day (7 days)
-  const weekRange = useMemo(() => {
-    const dow = weekDow ?? 3;
-    const today = new Date();
-    const monday = startOfWeek(today, { weekStartsOn: 1 });
-    // Most recent occurrence of the configured "week end" day on/after today
-    let endCandidate = addDays(monday, (dow + 6) % 7);
-    if (endCandidate < today) endCandidate = addDays(endCandidate, 7);
-    const startCandidate = addDays(endCandidate, -6); // day after previous occurrence
-    return { start: format(startCandidate, "yyyy-MM-dd"), end: format(endCandidate, "yyyy-MM-dd") };
-  }, [weekDow]);
-
-  // Get club's league associations to find linked platform association IDs
+  // Get club's league associations (with scope + per-league week start)
   const { data: clubAssociations } = useQuery({
-    queryKey: ["league-associations", clubId],
+    queryKey: ["league-associations-with-week", clubId],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("league_associations")
-        .select("id, platform_association_id")
+        .select("id, name, abbreviation, scope, platform_association_id, week_start_dow")
         .eq("club_id", clubId!);
       if (error) throw error;
-      return data || [];
+      return (data || []) as AssocRow[];
     },
     enabled: !!clubId,
   });
 
-  const platformAssocIds = useMemo<string[]>(() => {
-    return ((clubAssociations || []) as any[])
-      .map((a) => a.platform_association_id)
-      .filter((v): v is string => typeof v === "string" && v.length > 0);
-  }, [clubAssociations]);
-
-  // Get club's leagues (with code + id)
+  // Get club's leagues (with code + id + association_id)
   const { data: clubLeagues } = useQuery({
-    queryKey: ["club-leagues-codes", clubId],
+    queryKey: ["club-leagues-codes-assoc", clubId],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("leagues")
-        .select("id, code, name")
+        .select("id, code, name, association_id")
         .eq("club_id", clubId!);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; code: string | null; name: string }>;
+      return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null }>;
     },
     enabled: !!clubId,
   });
 
-  const clubTeamCodes = useMemo<string[]>(() => {
-    return ((clubLeagues || []) as Array<{ code: string | null }>)
-      .map((l) => l.code)
-      .filter((c): c is string => typeof c === "string" && c.length > 0);
-  }, [clubLeagues]);
-
-  // Get current member's league registrations to flag "Your League"
+  // Get current member's league registrations (to flag "Your League" + default switcher)
   const { data: myLeagueRegs } = useQuery({
     queryKey: ["my-league-registrations", activeMember?.id],
     queryFn: async () => {
       if (!activeMember?.id) return [];
       const { data, error } = await supabase
         .from("member_league_registrations")
-        .select("*, league:leagues(id, name, code)")
+        .select("*, league:leagues(id, name, code, association_id)")
         .eq("club_member_id", activeMember.id);
       if (error) throw error;
       return data || [];
@@ -96,14 +83,76 @@ export default function LeagueGames() {
     enabled: !!activeMember?.id,
   });
 
+  const associations = clubAssociations || [];
+
+  // Selected association (segmented pills). Persisted per-user in localStorage.
+  const storageKey = `league-games:selected-assoc:${clubId || "none"}`;
+  const [selectedAssocId, setSelectedAssocId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!associations.length) return;
+    // 1. Restore last used if still valid
+    const stored = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+    if (stored && associations.some((a) => a.id === stored)) {
+      setSelectedAssocId(stored);
+      return;
+    }
+    // 2. Default to the association the member plays in
+    const myAssocIds = new Set(
+      ((myLeagueRegs || []) as any[]).map((r) => r.league?.association_id).filter(Boolean)
+    );
+    const myAssoc = associations.find((a) => myAssocIds.has(a.id));
+    setSelectedAssocId((myAssoc || associations[0]).id);
+  }, [associations, myLeagueRegs, storageKey]);
+
+  const handleSelect = (id: string) => {
+    setSelectedAssocId(id);
+    if (typeof window !== "undefined") localStorage.setItem(storageKey, id);
+  };
+
+  const selectedAssoc = useMemo(
+    () => associations.find((a) => a.id === selectedAssocId) || null,
+    [associations, selectedAssocId]
+  );
+
+  // Per-league squash week — fall back to club setting
+  const weekRange = useMemo(() => {
+    const dow = selectedAssoc?.week_start_dow ?? clubWeekDow ?? 3;
+    const today = new Date();
+    const monday = startOfWeek(today, { weekStartsOn: 1 });
+    let endCandidate = addDays(monday, (dow + 6) % 7);
+    if (endCandidate < today) endCandidate = addDays(endCandidate, 7);
+    const startCandidate = addDays(endCandidate, -6);
+    return { start: format(startCandidate, "yyyy-MM-dd"), end: format(endCandidate, "yyyy-MM-dd") };
+  }, [selectedAssoc, clubWeekDow]);
+
+  // Filter platform-linked assoc IDs to the selected one (for fixture queries)
+  const platformAssocIds = useMemo<string[]>(() => {
+    if (!selectedAssoc?.platform_association_id) return [];
+    return [selectedAssoc.platform_association_id];
+  }, [selectedAssoc]);
+
+  // Filter leagues to the selected association
+  const leaguesInScope = useMemo(
+    () => (clubLeagues || []).filter((l) => l.association_id === selectedAssocId),
+    [clubLeagues, selectedAssocId]
+  );
+
+  const clubTeamCodes = useMemo<string[]>(() => {
+    return leaguesInScope.map((l) => l.code).filter((c): c is string => typeof c === "string" && c.length > 0);
+  }, [leaguesInScope]);
+
   const myTeamCodes = useMemo(() => {
     if (!myLeagueRegs) return new Set<string>();
     return new Set(
       (myLeagueRegs as any[])
+        .filter((r) => !selectedAssocId || r.league?.association_id === selectedAssocId)
         .map((r) => r.league?.code)
         .filter((c): c is string => typeof c === "string" && c.length > 0)
     );
-  }, [myLeagueRegs]);
+  }, [myLeagueRegs, selectedAssocId]);
+
+  const showSwitcher = associations.length > 1;
 
   return (
     <div className="bottom-nav-safe">
@@ -111,34 +160,73 @@ export default function LeagueGames() {
       <PageHeader title="League Games" subtitle="Fixtures, lineups & standings" />
 
       <div className="px-4 pb-8">
-        <Tabs defaultValue="fixtures" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto">
-            <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
-            <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>
-            <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
-          </TabsList>
+        {showSwitcher && (
+          <div className="mb-4 flex flex-wrap gap-2 p-1 rounded-lg bg-muted/50">
+            {associations.map((a) => {
+              const active = a.id === selectedAssocId;
+              return (
+                <Button
+                  key={a.id}
+                  size="sm"
+                  variant={active ? "default" : "ghost"}
+                  onClick={() => handleSelect(a.id)}
+                  className="h-8"
+                >
+                  <span className="font-medium">{a.abbreviation || a.name}</span>
+                  {a.scope === "internal" && (
+                    <Badge variant={active ? "secondary" : "outline"} className="ml-2 text-[9px] px-1 py-0">
+                      Internal
+                    </Badge>
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+        )}
 
-          <TabsContent value="fixtures" className="mt-4">
-            <UpcomingFixturesTab
-              platformAssocIds={platformAssocIds}
-              clubTeamCodes={clubTeamCodes}
-              myTeamCodes={myTeamCodes}
-              weekStart={weekRange.start}
-              weekEnd={weekRange.end}
-            />
-          </TabsContent>
+        {associations.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+            No league associations set up yet. An admin can add one in Club Admin → Leagues.
+          </div>
+        ) : (
+          <Tabs defaultValue="fixtures" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 h-auto">
+              <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
+              <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>
+              <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="leagues" className="mt-4">
-            {clubId && <FillUpLeaguesTab clubId={clubId} activeMemberId={activeMember?.id} />}
-          </TabsContent>
+            <TabsContent value="fixtures" className="mt-4">
+              <UpcomingFixturesTab
+                platformAssocIds={platformAssocIds}
+                clubTeamCodes={clubTeamCodes}
+                myTeamCodes={myTeamCodes}
+                weekStart={weekRange.start}
+                weekEnd={weekRange.end}
+                associationScope={selectedAssoc?.scope ?? "region"}
+              />
+            </TabsContent>
 
-          <TabsContent value="standings" className="mt-4">
-            <StandingsTab
-              platformAssocIds={platformAssocIds}
-              clubTeamCodes={clubTeamCodes}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="leagues" className="mt-4">
+              {clubId && selectedAssocId && (
+                <FillUpLeaguesTab
+                  clubId={clubId}
+                  activeMemberId={activeMember?.id}
+                  associationId={selectedAssocId}
+                  weekStartDow={selectedAssoc?.week_start_dow ?? clubWeekDow ?? 3}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="standings" className="mt-4">
+              <StandingsTab
+                platformAssocIds={platformAssocIds}
+                clubTeamCodes={clubTeamCodes}
+                associationScope={selectedAssoc?.scope ?? "region"}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       <BackToDashboard />

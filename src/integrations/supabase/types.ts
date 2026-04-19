@@ -2032,6 +2032,7 @@ export type Database = {
           scope: string
           updated_at: string
           website: string | null
+          week_start_dow: number | null
         }
         Insert: {
           abbreviation?: string | null
@@ -2053,6 +2054,7 @@ export type Database = {
           scope?: string
           updated_at?: string
           website?: string | null
+          week_start_dow?: number | null
         }
         Update: {
           abbreviation?: string | null
@@ -2074,6 +2076,7 @@ export type Database = {
           scope?: string
           updated_at?: string
           website?: string | null
+          week_start_dow?: number | null
         }
         Relationships: [
           {

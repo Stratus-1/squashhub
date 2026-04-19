@@ -158,36 +158,41 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
             <h3 className="font-semibold">Affiliated Clubs</h3>
             <p className="text-xs text-muted-foreground">Clubs that belong to this association</p>
           </div>
-          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-            <PopoverTrigger asChild>
-              <Button size="sm">
-                <Plus className="w-4 h-4 mr-1" /> Add Club
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-0" align="end">
-              <Command>
-                <CommandInput placeholder="Search clubs..." value={search} onValueChange={setSearch} />
-                <CommandList>
-                  <CommandEmpty>No clubs available.</CommandEmpty>
-                  <CommandGroup>
-                    {availableClubs.map(c => (
-                      <CommandItem
-                        key={c.id}
-                        value={c.name}
-                        onSelect={() => addAffiliation.mutate(c.id)}
-                      >
-                        <Building2 className="w-4 h-4 mr-2 opacity-60" />
-                        <div className="flex flex-col">
-                          <span>{c.name}</span>
-                          {c.subdomain && <span className="text-xs text-muted-foreground">{c.subdomain}</span>}
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-2">
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Plus className="w-4 h-4 mr-1" /> Add Existing
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="end">
+                <Command>
+                  <CommandInput placeholder="Search clubs..." value={search} onValueChange={setSearch} />
+                  <CommandList>
+                    <CommandEmpty>No clubs available.</CommandEmpty>
+                    <CommandGroup>
+                      {availableClubs.map(c => (
+                        <CommandItem
+                          key={c.id}
+                          value={c.name}
+                          onSelect={() => addAffiliation.mutate(c.id)}
+                        >
+                          <Building2 className="w-4 h-4 mr-2 opacity-60" />
+                          <div className="flex flex-col">
+                            <span>{c.name}</span>
+                            {c.subdomain && <span className="text-xs text-muted-foreground">{c.subdomain}</span>}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <PlusCircle className="w-4 h-4 mr-1" /> New Club
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

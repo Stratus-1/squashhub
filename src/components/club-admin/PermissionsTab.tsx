@@ -207,8 +207,23 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
 
   const permMap = new Map(memberPerms.map((p: any) => [p.club_member_id, p]));
 
-  // Only show non-admin members (admins/captains have full access)
-  const assignableMembers = members.filter(m => m.role === "member");
+  // Members with automatic admin access (role-based or delegate)
+  const delegateLabel = (memberId: string): string | null => {
+    if (!club) return null;
+    if (club.chairman_member_id === memberId) return "Chairman";
+    if (club.secretary_member_id === memberId) return "Secretary";
+    if (club.club_captain_member_id === memberId) return "Club Captain";
+    return null;
+  };
+
+  const adminMembers = members.filter(
+    (m) => m.role === "admin" || m.role === "captain" || !!delegateLabel(m.id)
+  );
+
+  // Only show non-admin / non-delegate members in the editable table
+  const assignableMembers = members.filter(
+    (m) => m.role === "member" && !delegateLabel(m.id)
+  );
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {
     try {

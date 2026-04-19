@@ -345,10 +345,10 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club" }
             <Select value={feeType} onValueChange={v => handleTypeChange(v as FeeType)} disabled={isEdit}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="membership">Membership</SelectItem>
-                <SelectItem value="league">League Association</SelectItem>
+                {!isAssociation && <SelectItem value="membership">Membership</SelectItem>}
+                {!isAssociation && <SelectItem value="league">League Association</SelectItem>}
                 <SelectItem value="league_affiliation">League Affiliation Fee</SelectItem>
-                <SelectItem value="national">National Body (e.g. SSA)</SelectItem>
+                {!isAssociation && <SelectItem value="national">National Body (e.g. SSA)</SelectItem>}
                 <SelectItem value="registration">Registration (once-off, new members only)</SelectItem>
                 <SelectItem value="other">Other (e.g. Parking, Locker)</SelectItem>
               </SelectContent>

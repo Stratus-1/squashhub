@@ -7,7 +7,7 @@ import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import {
   LayoutDashboard, Building2, Network, Trophy, Medal, Users, UserCheck,
   Settings, Banknote, Landmark, ShieldCheck, ChevronRight, MessageCircle,
-  BarChart3, Wallet, LifeBuoy, CalendarDays
+  BarChart3, Wallet, LifeBuoy, CalendarDays, Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";

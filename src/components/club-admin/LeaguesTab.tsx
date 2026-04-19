@@ -92,6 +92,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const { data: leagues = [] } = useLeagues(clubId);
   const { data: members = [] } = useClubMembers(clubId);
   const [addAssocOpen, setAddAssocOpen] = useState(false);
+  const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
   const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | "mixed" | null>(null);
   const qc = useQueryClient();
@@ -170,12 +171,25 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
         <div className="space-y-2">
           {associations.map((a: any) => (
-            <Card key={a.id} className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
+            <Card key={a.id} className="p-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
                 <p className="font-medium truncate">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
                 {a.platform_association_id && (
                   <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
                 )}
+                <Badge
+                  variant={a.scope === "internal" ? "outline" : "default"}
+                  className="text-[10px] h-5 flex-shrink-0"
+                >
+                  {a.scope === "internal" ? "Internal" : "Regional"}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAssoc(a.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
             </Card>

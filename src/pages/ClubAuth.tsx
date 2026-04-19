@@ -380,12 +380,19 @@ export default function ClubAuth() {
           <p className="text-xs text-primary font-mono mt-0.5">{subdomain}.squashhub.co.za</p>
         </div>
 
+        {(() => {
+          const isAssociation = (club as any)?.tenant_type === "association";
+          return (
         <Tabs defaultValue="login">
-          <TabsList className="w-full mb-4 h-auto flex-wrap gap-1">
+          <TabsList className={`w-full mb-4 h-auto flex-wrap gap-1`}>
             <TabsTrigger value="login" className="flex-1">Log In</TabsTrigger>
-            <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
-            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">New<br/>Member</TabsTrigger>
-            <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
+            {!isAssociation && (
+              <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
+            )}
+            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">{isAssociation ? "Register" : <>New<br/>Member</>}</TabsTrigger>
+            {!isAssociation && (
+              <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
+            )}
           </TabsList>
 
           {/* ─── LOG IN ─── */}

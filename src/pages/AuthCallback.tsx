@@ -28,15 +28,16 @@ export default function AuthCallback() {
           const clubSubdomain = meta.club_subdomain as string | undefined;
           const registrationType = meta.club_registration_type as string | undefined;
 
-          // If this user signed up with club registration metadata, redirect to their club
-          // Only do the sign-out + redirect flow for club OWNERS (not members)
-          if (clubSubdomain && registrationType === "club_owner") {
+          // If this user signed up with club/association registration metadata, redirect to their tenant
+          // Only do the sign-out + redirect flow for tenant OWNERS (not members)
+          const isTenantOwner = registrationType === "club_owner" || registrationType === "association_owner";
+          if (clubSubdomain && isTenantOwner) {
             // Clear club metadata so it doesn't re-trigger
             await supabase.auth.updateUser({
               data: { club_name: null, club_subdomain: null, club_registration_type: null },
             });
 
-            // Send club registration confirmation email (fire-and-forget)
+            // Send registration confirmation email (fire-and-forget)
             const clubName = meta.club_name as string | undefined;
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
             const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -53,12 +54,16 @@ export default function AuthCallback() {
                     clubAdminUrl: `${window.location.origin}/c/${clubSubdomain}/club-admin`,
                   }),
                 }
-              ).catch((err) => console.warn("Club registration email failed:", err));
+              ).catch((err) => console.warn("Registration email failed:", err));
             }
 
-            toast.success("Email verified! Your club is ready.");
+            toast.success(
+              registrationType === "association_owner"
+                ? "Email verified! Your association is ready."
+                : "Email verified! Your club is ready."
+            );
 
-            // Redirect to the club subdomain login
+            // Redirect to the tenant subdomain login
             const isPreview = window.location.hostname.includes("lovable.app") || window.location.hostname === "localhost";
             if (isPreview) {
               await supabase.auth.signOut({ scope: "local" });
@@ -71,7 +76,7 @@ export default function AuthCallback() {
           }
 
           // For club members, preserve club context via query param
-          if (clubSubdomain && registrationType !== "club_owner") {
+          if (clubSubdomain && !isTenantOwner) {
             // Clear metadata so it doesn't re-trigger
             await supabase.auth.updateUser({
               data: { club_name: null, club_subdomain: null, club_registration_type: null },

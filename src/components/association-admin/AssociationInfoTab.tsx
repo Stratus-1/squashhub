@@ -26,6 +26,8 @@ export function AssociationInfoTab({ club, clubId }: { club: Club; clubId: strin
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
     logo_url: club.logo_url || "",
+    league_member_annual_fee: club.league_member_annual_fee ?? 0,
+    league_fee_due_month: club.league_fee_due_month ?? 1,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -61,8 +63,10 @@ export function AssociationInfoTab({ club, clubId }: { club: Club; clubId: strin
       if (!payload.secretary_member_id) payload.secretary_member_id = null;
       if (!payload.club_captain_member_id) payload.club_captain_member_id = null;
       if (!payload.logo_url) payload.logo_url = null;
+      payload.league_member_annual_fee = Number(payload.league_member_annual_fee) || 0;
+      payload.league_fee_due_month = Math.min(12, Math.max(1, Number(payload.league_fee_due_month) || 1));
       await updateClub.mutateAsync({ id: club.id, ...payload });
-      toast.success("Association info saved");
+      toast.success("Association info saved — fee propagated to all affiliated clubs");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -154,6 +158,39 @@ export function AssociationInfoTab({ club, clubId }: { club: Club; clubId: strin
           <div className="space-y-1"><Label>Address</Label><Input value={form.address} onChange={set("address")} /></div>
           <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={set("email")} /></div>
           <div className="space-y-1"><Label>Phone</Label><Input type="tel" value={form.phone} onChange={set("phone")} /></div>
+        </div>
+      </Card>
+
+      {/* Annual League Fee */}
+      <Card className="p-6 space-y-4">
+        <div>
+          <h3 className="font-semibold">Annual League Fee</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            This fee will automatically appear in every affiliated club's fee list and be billed to members who opt into this league.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label>Annual Fee per Member (R)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.league_member_annual_fee}
+              onChange={(e) => setForm(p => ({ ...p, league_member_annual_fee: Number(e.target.value) }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Fee Due Month (1=Jan, 12=Dec)</Label>
+            <Input
+              type="number"
+              min="1"
+              max="12"
+              step="1"
+              value={form.league_fee_due_month}
+              onChange={(e) => setForm(p => ({ ...p, league_fee_due_month: Number(e.target.value) }))}
+            />
+          </div>
         </div>
       </Card>
 

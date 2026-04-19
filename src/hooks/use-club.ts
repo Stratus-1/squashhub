@@ -26,6 +26,9 @@ export interface Club {
   light_fee_per_hour?: number;
   honesty_bar_enabled?: boolean;
   face_enrolment_required?: boolean;
+  tenant_type?: string;
+  league_member_annual_fee?: number;
+  league_fee_due_month?: number;
   created_by?: string;
   created_at: string;
   updated_at: string;

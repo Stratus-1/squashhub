@@ -32,6 +32,48 @@ export type Database = {
         }
         Relationships: []
       }
+      association_affiliated_clubs: {
+        Row: {
+          association_tenant_id: string
+          club_id: string
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          association_tenant_id: string
+          club_id: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          association_tenant_id?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_affiliated_clubs_association_tenant_id_fkey"
+            columns: ["association_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "association_affiliated_clubs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badge_definitions: {
         Row: {
           category: string
@@ -1644,6 +1686,7 @@ export type Database = {
           phone: string | null
           secretary_member_id: string | null
           subdomain: string | null
+          tenant_type: string
           updated_at: string
         }
         Insert: {
@@ -1674,6 +1717,7 @@ export type Database = {
           phone?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null
+          tenant_type?: string
           updated_at?: string
         }
         Update: {
@@ -1704,6 +1748,7 @@ export type Database = {
           phone?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null
+          tenant_type?: string
           updated_at?: string
         }
         Relationships: [

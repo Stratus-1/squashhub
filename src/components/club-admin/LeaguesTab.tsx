@@ -803,7 +803,21 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
   const [selectedPlatformId, setSelectedPlatformId] = useState("");
   const qc = useQueryClient();
 
-  // Fetch platform-level associations from Super Admin
+  // Prefer actual affiliated association tenants for this club; only fall back to platform associations when none exist.
+  const { data: affiliatedAssociations = [] } = useQuery({
+    queryKey: ["affiliated-association-options", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("association_affiliated_clubs")
+        .select("association:association_tenant_id(id, name, subdomain, tenant_type)")
+        .eq("club_id", clubId)
+        .eq("status", "active");
+      if (error) throw error;
+      return ((data || []) as any[])
+        .map((row) => row.association)
+        .filter((association) => association && association.tenant_type === "association");
+    },
+  });
+
   const { data: platformAssociations = [] } = useQuery({
     queryKey: ["platform-league-associations"],
     queryFn: async () => {
@@ -827,23 +841,28 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
   });
 
   const linkedPlatformIds = new Set((existingAssocs as any[]).map(a => a.platform_association_id).filter(Boolean));
-  const availablePlatform = platformAssociations.filter((p: any) => !linkedPlatformIds.has(p.id));
+  const existingAssociationNames = new Set((existingAssocs as any[]).map((a) => String(a.name || "").trim().toLowerCase()).filter(Boolean));
+  const availableAffiliated = affiliatedAssociations.filter((a: any) => !existingAssociationNames.has(String(a.name || "").trim().toLowerCase()));
+  const availablePlatform = availableAffiliated.length > 0
+    ? availableAffiliated.map((a: any) => ({ id: a.id, name: a.name, short_code: String(a.subdomain || "").toUpperCase(), region: "Affiliated association" }))
+    : platformAssociations.filter((p: any) => !linkedPlatformIds.has(p.id));
 
   const handleSave = async () => {
     if (mode === "select") {
       if (!selectedPlatformId) return;
       const selected = platformAssociations.find((p: any) => p.id === selectedPlatformId) as any;
-      if (!selected) return;
-      // Selecting a platform association is always regional
+      const selectedAffiliated = affiliatedAssociations.find((a: any) => a.id === selectedPlatformId) as any;
+      const selectedOption = selectedAffiliated || selected;
+      if (!selectedOption) return;
       const { error } = await fromExt("league_associations").insert({
         club_id: clubId,
-        name: selected.name,
-        abbreviation: selected.short_code || "",
-        platform_association_id: selected.id,
+        name: selectedOption.name,
+        abbreviation: selectedOption.short_code || String(selectedOption.subdomain || "").toUpperCase() || "",
+        platform_association_id: selected ? selected.id : null,
         scope: "region",
       });
       if (error) toast.error(error.message);
-      else { toast.success(`Joined ${selected.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
+      else { toast.success(`Joined ${selectedOption.name}`); onOpenChange(false); setSelectedPlatformId(""); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
     } else {
       if (!form.name.trim()) return;
       const { error } = await fromExt("league_associations").insert({ ...form, club_id: clubId, scope });
@@ -879,7 +898,7 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
                   ))}
                 </select>
               )}
-              <p className="text-xs text-muted-foreground">Platform associations are regional — they connect your club to other participating clubs.</p>
+              <p className="text-xs text-muted-foreground">{availableAffiliated.length > 0 ? "Only your active affiliated association(s) are listed here." : "Platform associations are regional — they connect your club to other participating clubs."}</p>
             </div>
           ) : (
             <>

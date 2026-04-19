@@ -756,3 +756,36 @@ export default function ClubAuth() {
     </div>
   );
 }
+
+interface HomeClubFieldProps {
+  value: string;
+  onChange: (v: string) => void;
+  clubs: Array<{ id: string; name: string; subdomain: string | null }>;
+}
+
+function HomeClubField({ value, onChange, clubs }: HomeClubFieldProps) {
+  return (
+    <div>
+      <Label htmlFor="home-club">Home Club <span className="text-destructive">*</span></Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id="home-club">
+          <SelectValue placeholder="Select your home club" />
+        </SelectTrigger>
+        <SelectContent>
+          {clubs.length === 0 ? (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">No clubs available</div>
+          ) : (
+            clubs.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </Select>
+      <p className="text-[10px] text-muted-foreground mt-0.5">
+        Select the club you primarily play for. The association admin will use this to link you correctly.
+      </p>
+    </div>
+  );
+}

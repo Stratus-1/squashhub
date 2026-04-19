@@ -111,6 +111,72 @@ export default function Ladder() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
+  // ---- Fetch club leagues + member registrations for badges ----
+  const { data: leagueData } = useQuery({
+    queryKey: ["ladder-league-badges", clubId],
+    queryFn: async () => {
+      if (!clubId) return { leagues: [] as LeagueChip[], memberLeagueMap: new Map<string, LeagueChip[]>() };
+      const { data: leagues, error } = await fromExt("leagues")
+        .select("id, name, code")
+        .eq("club_id", clubId!);
+      if (error) throw error;
+      const leagueRows = (leagues || []) as Array<{ id: string; name: string; code: string | null }>;
+      if (leagueRows.length === 0) return { leagues: [] as LeagueChip[], memberLeagueMap: new Map<string, LeagueChip[]>() };
+
+      // Sort leagues by numeric suffix in name (e.g. "League 1", "League 2")
+      const sorted = [...leagueRows].sort((a, b) => {
+        const na = parseInt(a.name.match(/\d+/)?.[0] || "999", 10);
+        const nb = parseInt(b.name.match(/\d+/)?.[0] || "999", 10);
+        if (na !== nb) return na - nb;
+        return a.name.localeCompare(b.name);
+      });
+
+      const chipById = new Map<string, LeagueChip>();
+      sorted.forEach((l, idx) => {
+        const num = parseInt(l.name.match(/\d+/)?.[0] || "", 10);
+        const shortLabel = Number.isFinite(num) ? `L${num}` : `L${idx + 1}`;
+        chipById.set(l.id, { id: l.id, name: l.name, code: l.code, shortLabel });
+      });
+
+      const leagueIds = sorted.map((l) => l.id);
+      const { data: regs } = await fromExt("member_league_registrations")
+        .select("club_member_id, league_id")
+        .in("league_id", leagueIds);
+
+      const memberLeagueMap = new Map<string, LeagueChip[]>();
+      ((regs || []) as Array<{ club_member_id: string; league_id: string }>).forEach((r) => {
+        const chip = chipById.get(r.league_id);
+        if (!chip) return;
+        const existing = memberLeagueMap.get(r.club_member_id) || [];
+        if (!existing.find((c) => c.id === chip.id)) existing.push(chip);
+        memberLeagueMap.set(r.club_member_id, existing);
+      });
+      memberLeagueMap.forEach((chips) => {
+        chips.sort((a, b) => a.shortLabel.localeCompare(b.shortLabel, undefined, { numeric: true }));
+      });
+      return { leagues: Array.from(chipById.values()), memberLeagueMap };
+    },
+    enabled: !!clubId,
+    staleTime: 60 * 1000,
+  });
+
+  const leaguesList: LeagueChip[] = leagueData?.leagues || [];
+  const memberLeagueMap: Map<string, LeagueChip[]> = leagueData?.memberLeagueMap || new Map();
+
+  const getPlayerLeagues = (player: LadderPlayer): LeagueChip[] =>
+    memberLeagueMap.get(player.club_member_id) || [];
+
+  const [activeLeagueFilter, setActiveLeagueFilter] = useState<string | null>(null);
+  const [groupByLeague, setGroupByLeague] = useState(false);
+
+  const handleLeagueClick = (leagueId: string) => {
+    setActiveLeagueFilter((prev) => (prev === leagueId ? null : leagueId));
+  };
+
+  const activeLeagueChip = activeLeagueFilter
+    ? leaguesList.find((l) => l.id === activeLeagueFilter) || null
+    : null;
+
   const menPlayers = useMemo(() =>
     (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],
     [players]

@@ -5,7 +5,7 @@ import { SEO } from "@/components/SEO";
 import { absoluteUrl } from "@/lib/site";
 import {
   Building2, ChevronRight, Trophy, Users, Calendar, Swords,
-  ArrowRight, Shield, Zap, BarChart3
+  ArrowRight, Shield, Zap, BarChart3, Landmark
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,32 +20,36 @@ const fadeUp = {
   animate: { opacity: 1, y: 0 },
 };
 
-interface ClubPublic {
+interface TenantPublic {
   id: string;
   name: string;
   subdomain: string | null;
   logo_url: string | null;
   address: string | null;
+  tenant_type: string;
 }
 
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Public query — anon can read clubs now
-  const { data: clubs, isLoading: clubsLoading } = useQuery({
-    queryKey: ["public-clubs"],
+  // Public query — anon can read tenants
+  const { data: tenants, isLoading: tenantsLoading } = useQuery({
+    queryKey: ["public-tenants"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, logo_url, address")
+        .select("id, name, subdomain, logo_url, address, tenant_type")
         .not("subdomain", "is", null)
         .order("name");
       if (error) throw error;
-      return (data || []) as ClubPublic[];
+      return (data || []) as TenantPublic[];
     },
     staleTime: 60_000,
   });
+
+  const clubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
+  const associations = tenants?.filter((t) => t.tenant_type === "association") ?? [];
 
   // If logged in, redirect to home (Dashboard)
   if (user) {

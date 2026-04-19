@@ -319,9 +319,14 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     onOpenChange(false);
   };
 
-  const nameLabel = feeType === "membership" ? "Category Name" : feeType === "registration" ? "Fee Name" : feeType === "other" ? "Fee Name" : "Organisation Name";
+  const nameLabel = feeType === "membership" ? "Category Name"
+    : feeType === "registration" ? "Fee Name"
+    : feeType === "other" ? "Fee Name"
+    : feeType === "league_affiliation" ? "Affiliation Name"
+    : "Organisation Name";
   const namePlaceholder = feeType === "membership" ? "e.g. Student, Pensioner, Normal"
     : feeType === "league" ? "e.g. Western Cape Squash"
+    : feeType === "league_affiliation" ? "e.g. Provincial League Affiliation"
     : feeType === "registration" ? "e.g. Registration Fee, Joining Fee"
     : feeType === "other" ? "e.g. Parking, Locker Rental"
     : "e.g. Squash South Africa";

@@ -134,32 +134,63 @@ Deno.serve(async (req) => {
     }
 
     // Seed unpaid league-affiliation fees from the association's configured
-    // league_associations rows. Member stays Inactive until these are paid.
+    // fees. Affiliation fees may live in either `league_associations` OR
+    // `national_body_fees` (with fee_type = 'league_affiliation' / 'association').
+    // Member stays Inactive until these are paid.
     try {
-      const { data: feeConfigs } = await supabaseAdmin
+      const seasonYear = new Date().getFullYear();
+      const feeRecords: any[] = [];
+
+      // Source 1: league_associations table
+      const { data: laConfigs } = await supabaseAdmin
         .from("league_associations")
         .select("name, abbreviation, fee_annual, active")
         .eq("club_id", assoc.id);
-
-      const activeFees = ((feeConfigs || []) as any[]).filter(
-        (a) => a.active !== false && Number(a.fee_annual ?? 0) > 0
-      );
-      if (activeFees.length > 0) {
-        const seasonYear = new Date().getFullYear();
-        const feeRecords = activeFees.map((a) => ({
+      for (const a of ((laConfigs || []) as any[])) {
+        if (a.active === false) continue;
+        const amt = Number(a.fee_annual ?? 0);
+        if (amt <= 0) continue;
+        feeRecords.push({
           club_member_id: newMember.id,
           fee_type: "league",
           fee_label: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""),
-          amount: Number(a.fee_annual ?? 0),
+          amount: amt,
           paid: false,
           season_year: seasonYear,
-        }));
+        });
+      }
+
+      // Source 2: national_body_fees with affiliation-style fee_type
+      const { data: nbfConfigs } = await supabaseAdmin
+        .from("national_body_fees")
+        .select("body_name, abbreviation, fee_annual, active, fee_type")
+        .eq("club_id", assoc.id);
+      for (const n of ((nbfConfigs || []) as any[])) {
+        if (n.active === false) continue;
+        const amt = Number(n.fee_annual ?? 0);
+        if (amt <= 0) continue;
+        const t = String(n.fee_type || "").toLowerCase();
+        // Only seed affiliation/league-style fees, not registration/other
+        if (!(t === "league_affiliation" || t === "association" || t === "league" || t === "affiliation")) continue;
+        feeRecords.push({
+          club_member_id: newMember.id,
+          fee_type: "league_affiliation",
+          fee_label: n.body_name + (n.abbreviation ? ` (${n.abbreviation})` : ""),
+          amount: amt,
+          paid: false,
+          season_year: seasonYear,
+        });
+      }
+
+      if (feeRecords.length > 0) {
         const { error: feeErr } = await supabaseAdmin
           .from("club_member_fee_payments")
           .insert(feeRecords);
         if (feeErr) {
           console.warn("[provision-association-member] fee seed failed", feeErr);
         }
+      } else {
+        console.log("[provision-association-member] no active affiliation fees to seed for", assoc.id);
       }
     } catch (feeEx) {
       console.warn("[provision-association-member] fee seed exception", feeEx);

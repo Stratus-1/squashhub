@@ -3,11 +3,13 @@ import { useClubMembers } from "@/hooks/use-club";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Loader2, Save, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { GripVertical, Loader2, Save, X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { rpcExt } from "@/lib/supabase-ext";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DndContext,
   closestCenter,
@@ -154,7 +156,42 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);
+  const [mixedOrder, setMixedOrder] = useState<LadderMember[] | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Load mixed_ladder_enabled flag
+  const { data: clubFlags } = useQuery({
+    queryKey: ["club-ladder-flags", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("mixed_ladder_enabled")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { mixed_ladder_enabled: boolean } | null;
+    },
+    enabled: !!clubId,
+  });
+  const mixedEnabled = !!clubFlags?.mixed_ladder_enabled;
+
+  const toggleMixed = async (next: boolean) => {
+    const { error: err } = await supabase
+      .from("clubs")
+      .update({ mixed_ladder_enabled: next } as any)
+      .eq("id", clubId);
+    if (err) {
+      toast.error(err.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["club-ladder-flags", clubId] });
+    queryClient.invalidateQueries({ queryKey: ["club-by-subdomain"] });
+    queryClient.invalidateQueries({ queryKey: ["my-club"] });
+    setMenOrder(null);
+    setLadiesOrder(null);
+    setMixedOrder(null);
+    toast.success(next ? "Mixed ladder enabled" : "Separate ladders enabled");
+  };
 
   const allMembers = useMemo(
     () =>
@@ -185,9 +222,15 @@ export function LadderTab({ clubId }: { clubId: string }) {
     [allMembers]
   );
 
+  const mixedMembersList = useMemo(
+    () => [...allMembers].sort(sortByLadder),
+    [allMembers]
+  );
+
   useEffect(() => {
     setMenOrder(null);
     setLadiesOrder(null);
+    setMixedOrder(null);
   }, [members]);
 
   const handleSave = useCallback(
@@ -202,7 +245,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
         if (err) throw err;
         toast.success("Ladder order saved");
         if (genderFilter === "male") setMenOrder(null);
-        else setLadiesOrder(null);
+        else if (genderFilter === "female") setLadiesOrder(null);
+        else setMixedOrder(null);
         queryClient.invalidateQueries({ queryKey: ["ladder"] });
         queryClient.invalidateQueries({ queryKey: ["club-members"] });
       } catch (e: any) {
@@ -228,33 +272,58 @@ export function LadderTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6">
+      <Card className="p-3 flex items-center gap-3">
+        <Users className="w-4 h-4 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">Mixed ladder</p>
+          <p className="text-xs text-muted-foreground">
+            Combine all members into a single ladder instead of separate Men's and Ladies' ladders.
+          </p>
+        </div>
+        <Switch checked={mixedEnabled} onCheckedChange={toggleMixed} />
+      </Card>
+
       <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-        Drag members into the desired order per gender, then save.
+        Drag members into the desired order, then save.
       </p>
       <p className="md:hidden text-xs text-muted-foreground italic -mt-4">
         On mobile: press &amp; hold the grip handle, then drag.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <GenderLadder
-          title="Men's Ladder"
-          players={menMembers}
-          order={menOrder}
-          setOrder={setMenOrder}
-          genderFilter="male"
-          saving={saving}
-          onSave={handleSave}
-        />
-        <GenderLadder
-          title="Ladies' Ladder"
-          players={ladiesMembers}
-          order={ladiesOrder}
-          setOrder={setLadiesOrder}
-          genderFilter="female"
-          saving={saving}
-          onSave={handleSave}
-        />
-      </div>
+      {mixedEnabled ? (
+        <div className="grid grid-cols-1 gap-6">
+          <GenderLadder
+            title="Club Ladder"
+            players={mixedMembersList}
+            order={mixedOrder}
+            setOrder={setMixedOrder}
+            genderFilter="mixed"
+            saving={saving}
+            onSave={handleSave}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <GenderLadder
+            title="Men's Ladder"
+            players={menMembers}
+            order={menOrder}
+            setOrder={setMenOrder}
+            genderFilter="male"
+            saving={saving}
+            onSave={handleSave}
+          />
+          <GenderLadder
+            title="Ladies' Ladder"
+            players={ladiesMembers}
+            order={ladiesOrder}
+            setOrder={setLadiesOrder}
+            genderFilter="female"
+            saving={saving}
+            onSave={handleSave}
+          />
+        </div>
+      )}
     </div>
   );
 }

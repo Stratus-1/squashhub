@@ -1637,6 +1637,7 @@ export type Database = {
           member_number_length: number | null
           member_number_prefix: string | null
           member_number_start: number | null
+          mixed_ladder_enabled: boolean
           name: string
           payment_gateway: string | null
           payment_gateway_public_key: string | null
@@ -1666,6 +1667,7 @@ export type Database = {
           member_number_length?: number | null
           member_number_prefix?: string | null
           member_number_start?: number | null
+          mixed_ladder_enabled?: boolean
           name: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
@@ -1695,6 +1697,7 @@ export type Database = {
           member_number_length?: number | null
           member_number_prefix?: string | null
           member_number_start?: number | null
+          mixed_ladder_enabled?: boolean
           name?: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null

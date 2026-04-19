@@ -195,10 +195,14 @@ export default function Ladder() {
       });
     };
 
-    menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
-    ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+    if ((clubData?.club as any)?.mixed_ladder_enabled) {
+      (players || []).forEach((player, index) => setPositionKeys(player as LadderPlayer, index + 1));
+    } else {
+      menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+      ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+    }
     return map;
-  }, [menPlayers, ladiesPlayers]);
+  }, [menPlayers, ladiesPlayers, players, clubData?.club]);
 
   const myPosition = useMemo(() => {
     if (!myMemberId) return null;
@@ -214,6 +218,8 @@ export default function Ladder() {
   }, [positionMap, myMemberId, user?.id]);
 
   const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
+  const mixedLadderEnabled = !!(clubData?.club as any)?.mixed_ladder_enabled;
+  const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
 
   const isMe = (player: LadderPlayer): boolean => {
     if (myMemberId && player.club_member_id === myMemberId) return true;
@@ -470,6 +476,10 @@ export default function Ladder() {
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : mixedLadderEnabled ? (
+        <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
+          {groupByLeague ? renderGrouped("Club Ladder", allPlayers) : renderColumn("Club Ladder", allPlayers)}
         </div>
       ) : (
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">

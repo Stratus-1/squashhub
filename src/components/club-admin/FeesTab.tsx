@@ -235,8 +235,8 @@ function FeeDialog({ clubId, open, onOpenChange, existing }: FeeDialogProps) {
     return "";
   });
   const [amount, setAmount] = useState(existing?.amount ?? 0);
-  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" || feeType === "registration" ? "club_income" : "pass_through"));
-  const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership"));
+  const [feeClass, setFeeClass] = useState<"club_income" | "pass_through">(existing?.feeClass ?? (feeType === "membership" || feeType === "other" || feeType === "registration" || feeType === "league_affiliation" ? "club_income" : "pass_through"));
+  const [proRate, setProRate] = useState(existing?.proRate ?? (feeType === "membership" || feeType === "league_affiliation"));
   const [feeDueMonth, setFeeDueMonth] = useState(existing?.dueMonth ?? 1);
   const [feeDueDay, setFeeDueDay] = useState(existing?.dueDay ?? 1);
   const [description, setDescription] = useState(() => {

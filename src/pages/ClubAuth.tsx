@@ -481,7 +481,9 @@ export default function ClubAuth() {
           <TabsContent value="existing">
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
-                Already a member of {clubName}? Enter your <strong>Member Number</strong> or your <strong>League Number</strong> (e.g. NSF1234) to link your account.
+                {isAssociation
+                  ? <>Already registered with {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and select your home club to link your account.</>
+                  : <>Already a member of {clubName}? Enter your <strong>Member Number</strong> or your <strong>League Number</strong> (e.g. NSF1234) to link your account.</>}
               </p>
               <form onSubmit={handleExistingMemberSignup} className="space-y-3">
                 <div>
@@ -497,6 +499,13 @@ export default function ClubAuth() {
                   />
                   <p className="text-[10px] text-muted-foreground mt-0.5">League players use their NSF number; club members use their assigned number</p>
                 </div>
+                {isAssociation && (
+                  <HomeClubField
+                    value={homeClubId}
+                    onChange={setHomeClubId}
+                    clubs={pickerClubs || []}
+                  />
+                )}
                 <div>
                   <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>
                   <Input
@@ -556,7 +565,9 @@ export default function ClubAuth() {
           <TabsContent value="new">
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
-                New to {clubName}? Create an account and complete your profile.
+                {isAssociation
+                  ? <>New to {clubName}? Create an account and select your home club below.</>
+                  : <>New to {clubName}? Create an account and complete your profile.</>}
               </p>
               <form onSubmit={handleNewMemberSignup} className="space-y-3">
                 <div>
@@ -630,7 +641,7 @@ export default function ClubAuth() {
                 <TermsCheckbox checked={newAcceptTerms} onCheckedChange={setNewAcceptTerms} />
                 <HCaptcha ref={captchaRef} />
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Join Club"}
+                  {loading ? "Creating account..." : "Register"}
                 </Button>
               </form>
             </Card>

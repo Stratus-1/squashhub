@@ -21,6 +21,7 @@ import { AffiliatedClubsTab } from "@/components/association-admin/AffiliatedClu
 import { SettingsTab } from "@/components/club-admin/SettingsTab";
 import { BankingTab } from "@/components/club-admin/BankingTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
+import { FeesTab } from "@/components/club-admin/FeesTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";

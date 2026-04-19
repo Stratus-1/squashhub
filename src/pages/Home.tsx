@@ -5,7 +5,7 @@ import { SEO } from "@/components/SEO";
 import { absoluteUrl } from "@/lib/site";
 import {
   Building2, ChevronRight, Trophy, Users, Calendar, Swords,
-  ArrowRight, Shield, Zap, BarChart3, Landmark
+  ArrowRight, Shield, Zap, BarChart3, Landmark, Check, Sparkles
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";

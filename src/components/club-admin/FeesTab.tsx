@@ -64,12 +64,16 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
       source: "member_fee_categories", raw: c,
     }));
-    associations.forEach(a => list.push({
-      id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
-      amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
-      active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
-      source: "league_associations", raw: a,
-    }));
+    associations.forEach(a => {
+      // Skip associations where members pay the league directly — these don't belong in the club's fee schedule.
+      if ((a as any).members_pay_directly) return;
+      list.push({
+        id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
+        amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
+        active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
+        source: "league_associations", raw: a,
+      });
+    });
     nationalFees.forEach(f => {
       const ft = (f as any).fee_type;
       let type: FeeType = "national";
@@ -145,6 +149,15 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
           </div>
           <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
         </div>
+
+        {/* Info: league association fees paid directly to the association */}
+        <Card className="p-3 mb-3 border-primary/30 bg-primary/5">
+          <p className="text-xs text-foreground leading-relaxed">
+            <strong>League association fees:</strong> If members pay a league association (e.g. HSA, WPSA) <em>directly</em> via EFT or card, do <strong>NOT</strong> add the fee here. Instead, open the <strong>Leagues</strong> tab → edit the association → enable <em>"Members pay [association] directly"</em>. The fee will be excluded from this schedule and members settle with the association themselves.
+            <br />
+            Only add a league fee here when your club <strong>collects</strong> it from members on behalf of the association.
+          </p>
+        </Card>
 
         <Card className="overflow-hidden">
           <Table>

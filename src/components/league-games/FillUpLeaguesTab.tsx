@@ -34,7 +34,14 @@ import {
   type FixtureLite,
 } from "./fill-leagues/types";
 
-type Props = { clubId: string; activeMemberId?: string | null };
+type Props = {
+  clubId: string;
+  activeMemberId?: string | null;
+  /** When set, only show leagues belonging to this association. */
+  associationId?: string;
+  /** Optional per-association week start day; falls back to club-level setting if not provided. */
+  weekStartDow?: number;
+};
 
 function leagueOrder(name: string, code: string | null): number {
   const m = (code || name).match(/(\d+)/);
@@ -43,7 +50,7 @@ function leagueOrder(name: string, code: string | null): number {
 const isLadiesLeague = (n: string) => /ladies|women/i.test(n);
 const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
 
-export function FillUpLeaguesTab({ clubId, activeMemberId }: Props) {
+export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekStartDow }: Props) {
   const qc = useQueryClient();
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [selectedWeekOverride, setSelectedWeekOverride] = useState<string | null>(null);

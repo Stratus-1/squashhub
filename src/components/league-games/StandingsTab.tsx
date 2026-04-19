@@ -22,7 +22,7 @@ type Standing = {
   points: number;
 };
 
-export function StandingsTab({ platformAssocIds, clubTeamCodes }: Props) {
+export function StandingsTab({ platformAssocIds, clubTeamCodes, associationScope = "region" }: Props) {
   // Pull all confirmed/submitted fixture results to compute standings
   const { data: fixtures, isLoading } = useQuery({
     queryKey: ["all-assoc-fixtures", platformAssocIds.join(",")],

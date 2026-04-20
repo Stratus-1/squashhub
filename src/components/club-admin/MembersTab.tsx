@@ -244,7 +244,6 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStat
           {isLinked ? "✓ Reg" : "✗ Unreg"}
         </Badge>
         {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">{leagueLabel || "League"}</Badge>}
-        {nsfNumber && <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">NSF: {nsfNumber}</Badge>}
         {associationStatus && (() => {
           const { associationName, leagueNumber, feesPaid, hasFeeRecord } = associationStatus;
           const isActive = !!leagueNumber && feesPaid && hasFeeRecord;

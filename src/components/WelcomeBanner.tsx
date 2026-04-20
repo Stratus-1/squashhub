@@ -55,17 +55,21 @@ export function WelcomeBanner() {
       return isLadies === myGroupIsLadies;
     });
 
+    // Only suggest a genuinely nearby opponent (within 3 positions). Avoid misleading
+    // "fallback to top of group" suggestions when no close opponent exists.
+    const MAX_GAP = 3;
+
     const above = sameGroupPlayers
-      .filter((p: any) => p.ladder_position < me.ladder_position && me.ladder_position - p.ladder_position <= 2)
+      .filter((p: any) => p.ladder_position < me.ladder_position && me.ladder_position - p.ladder_position <= MAX_GAP)
       .sort((a: any, b: any) => b.ladder_position - a.ladder_position);
     if (above.length > 0) return above[0];
 
     const below = sameGroupPlayers
-      .filter((p: any) => p.ladder_position > me.ladder_position && p.ladder_position - me.ladder_position <= 2)
+      .filter((p: any) => p.ladder_position > me.ladder_position && p.ladder_position - me.ladder_position <= MAX_GAP)
       .sort((a: any, b: any) => a.ladder_position - b.ladder_position);
     if (below.length > 0) return below[0];
 
-    return sameGroupPlayers.sort((a: any, b: any) => a.ladder_position - b.ladder_position)[0] || null;
+    return null;
   }, [dismissed, ladder, activeMemberId]);
 
   const handleDismiss = () => {

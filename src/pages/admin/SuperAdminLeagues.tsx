@@ -24,9 +24,58 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 
 export default function SuperAdminLeagues() {
+  const queryClient = useQueryClient();
   const [selectedAssociation, setSelectedAssociation] = useState<string | null>(null);
   const [fixtureSearch, setFixtureSearch] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
+  const [editing, setEditing] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: "", short_code: "", region: "", season_year: new Date().getFullYear(), status: "active" });
+
+  const openEdit = (a: any) => {
+    setForm({
+      name: a.name ?? "",
+      short_code: a.short_code ?? "",
+      region: a.region ?? "",
+      season_year: a.season_year ?? new Date().getFullYear(),
+      status: a.status ?? "active",
+    });
+    setEditing(a);
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("platform_league_associations")
+      .update({
+        name: form.name.trim(),
+        short_code: form.short_code.trim().toUpperCase(),
+        region: form.region.trim(),
+        season_year: Number(form.season_year),
+        status: form.status,
+      })
+      .eq("id", editing.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("League updated");
+    setEditing(null);
+    queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
+  };
+
+  const handleDelete = async () => {
+    if (!deleting) return;
+    const { error } = await supabase
+      .from("platform_league_associations")
+      .delete()
+      .eq("id", deleting.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Deleted ${deleting.name}`);
+    if (selectedAssociation === deleting.id) setSelectedAssociation(null);
+    setDeleting(null);
+    queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
+  };
 
   const { data: associations } = useQuery({
     queryKey: ["admin-associations"],

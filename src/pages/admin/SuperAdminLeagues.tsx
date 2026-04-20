@@ -152,18 +152,40 @@ export default function SuperAdminLeagues() {
       {associations && associations.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {associations.map((a) => (
-            <button
+            <div
               key={a.id}
-              onClick={() => setSelectedAssociation(a.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+              className={`flex items-stretch rounded-lg overflow-hidden border ${
                 activeAssociation === a.id
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:bg-muted"
+                  ? "border-primary"
+                  : "border-border"
               }`}
             >
-              <Trophy className="inline-block h-4 w-4 mr-1.5 -mt-0.5" />
-              {a.name}
-            </button>
+              <button
+                onClick={() => setSelectedAssociation(a.id)}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeAssociation === a.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground hover:bg-muted"
+                }`}
+              >
+                <Trophy className="inline-block h-4 w-4 mr-1.5 -mt-0.5" />
+                {a.name}
+              </button>
+              <button
+                onClick={() => openEdit(a)}
+                title="Edit league"
+                className="px-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-l border-border transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setDeleting(a)}
+                title="Delete league"
+                className="px-2 bg-card hover:bg-destructive/10 text-muted-foreground hover:text-destructive border-l border-border transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ))}
         </div>
       )}

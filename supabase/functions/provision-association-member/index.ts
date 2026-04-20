@@ -197,13 +197,85 @@ Deno.serve(async (req) => {
     }
 
     // Also link the user's home-club member row to this association so the
-    // dashboard can show "you've joined" and the tenant switcher works.
+    // dashboard can show "you've joined" and the tenant switcher works,
+    // AND record the allocated association number against a default
+    // home-club league for that association so the Members card badge
+    // displays e.g. "League LS #LWL002".
     if (validatedHomeClubId) {
+      // Find the matching league_associations row at the home club that
+      // points to this association tenant (via platform_association_id, name
+      // or abbreviation). This is the "NSC-side" representation of LS/NIL.
+      const { data: homeAssocRows } = await supabaseAdmin
+        .from("league_associations")
+        .select("id, name, abbreviation")
+        .eq("club_id", validatedHomeClubId);
+      const assocAbbr = (assoc as any).member_number_prefix || null;
+      const homeAssoc = (homeAssocRows || []).find((r: any) =>
+        (r.name || "").toLowerCase() === (assoc.name || "").toLowerCase() ||
+        (assocAbbr && (r.abbreviation || "").toLowerCase() === String(assocAbbr).toLowerCase())
+      ) || (homeAssocRows || [])[0] || null;
+
       await supabaseAdmin
         .from("club_members")
-        .update({ enable_league_association_id: assoc.id, plays_league: true })
+        .update({ enable_league_association_id: homeAssoc?.id ?? null, plays_league: true })
         .eq("club_id", validatedHomeClubId)
         .eq("user_id", user.id);
+
+      // Resolve the home-club member row id (needed for the registration)
+      const { data: homeMember } = await supabaseAdmin
+        .from("club_members")
+        .select("id")
+        .eq("club_id", validatedHomeClubId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (homeMember?.id && homeAssoc?.id) {
+        // Find or create a default home-club league for this association so
+        // we can attach the allocated number via member_league_registrations.
+        let { data: leagueRow } = await supabaseAdmin
+          .from("leagues")
+          .select("id")
+          .eq("club_id", validatedHomeClubId)
+          .eq("association_id", homeAssoc.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (!leagueRow?.id) {
+          const defaultName = `${homeAssoc.abbreviation || homeAssoc.name} Affiliation`;
+          const { data: created, error: leagueErr } = await supabaseAdmin
+            .from("leagues")
+            .insert({
+              club_id: validatedHomeClubId,
+              association_id: homeAssoc.id,
+              name: defaultName,
+              code: homeAssoc.abbreviation || null,
+            })
+            .select("id")
+            .single();
+          if (leagueErr) {
+            console.warn("[provision-association-member] default league create failed", leagueErr);
+          } else {
+            leagueRow = created;
+          }
+        }
+
+        if (leagueRow?.id) {
+          // Upsert the registration so re-joins don't duplicate.
+          const { error: regErr } = await supabaseAdmin
+            .from("member_league_registrations")
+            .upsert(
+              {
+                club_member_id: homeMember.id,
+                league_id: leagueRow.id,
+                league_association_number: allocatedNumber,
+              },
+              { onConflict: "club_member_id,league_id" }
+            );
+          if (regErr) {
+            console.warn("[provision-association-member] reg upsert failed", regErr);
+          }
+        }
+      }
     }
 
     return jsonResp(200, {

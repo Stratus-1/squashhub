@@ -78,8 +78,7 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
     try {
       const id = window.grecaptcha.render(el, {
         sitekey: siteKey,
-        size: "invisible",
-        badge: "bottomright",
+        size: "normal",
         callback: (token: string) => {
           resolveRef.current?.(token);
           resolveRef.current = null;
@@ -146,25 +145,29 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     execute: () =>
       new Promise<string>((resolve, reject) => {
-        const tryExecute = (attemptsLeft: number) => {
+        const tryGet = (attemptsLeft: number) => {
           if (readyRef.current && window.grecaptcha && widgetIdRef.current !== null) {
-            resolveRef.current = resolve;
-            rejectRef.current = reject;
             try {
-              window.grecaptcha.reset(widgetIdRef.current);
-              window.grecaptcha.execute(widgetIdRef.current);
-            } catch (err) {
-              reject(err instanceof Error ? err : new Error("reCAPTCHA execute failed"));
+              const existing = window.grecaptcha.getResponse(widgetIdRef.current);
+              if (existing && existing.length > 0) {
+                resolve(existing);
+                return;
+              }
+            } catch {
+              // fall through and wait for callback
             }
+            // Checkbox not yet completed — wait for the user to tick it
+            resolveRef.current = resolve;
+            rejectRef.current = (err) => reject(err);
             return;
           }
           if (attemptsLeft <= 0) {
-            reject(new Error("reCAPTCHA not ready"));
+            reject(new Error("Please complete the reCAPTCHA checkbox"));
             return;
           }
-          setTimeout(() => tryExecute(attemptsLeft - 1), 200);
+          setTimeout(() => tryGet(attemptsLeft - 1), 200);
         };
-        tryExecute(15);
+        tryGet(15);
       }),
   }));
 

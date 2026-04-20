@@ -1426,7 +1426,7 @@ export type Database = {
             foreignKeyName: "club_members_enable_league_association_id_fkey"
             columns: ["enable_league_association_id"]
             isOneToOne: false
-            referencedRelation: "clubs"
+            referencedRelation: "league_associations"
             referencedColumns: ["id"]
           },
           {

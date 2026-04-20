@@ -59,20 +59,34 @@ export interface ClubMember {
 }
 
 export const SKILL_LEVELS = [
-  { value: "elite", label: "Elite", order: 1 },
-  { value: "league_player", label: "League Player", order: 2 },
-  { value: "club_player", label: "Club Player", order: 3 },
-  { value: "social_player", label: "Social Player", order: 4 },
-  { value: "beginner", label: "Beginner", order: 5 },
+  { value: "advanced", label: "Advanced", order: 1 },
+  { value: "intermediate", label: "Intermediate", order: 2 },
+  { value: "beginner", label: "Beginner", order: 3 },
 ] as const;
 
+// Legacy skill values are mapped to the current 3-tier scale so existing
+// member records still resolve to a valid label / order.
+const LEGACY_SKILL_MAP: Record<string, string> = {
+  elite: "advanced",
+  league_player: "advanced",
+  club_player: "intermediate",
+  social_player: "beginner",
+};
+
+function normalizeSkillValue(level?: string | null): string | null {
+  if (!level) return null;
+  return LEGACY_SKILL_MAP[level] ?? level;
+}
+
 export function getSkillOrder(level?: string | null): number {
-  const found = SKILL_LEVELS.find(s => s.value === level);
+  const v = normalizeSkillValue(level);
+  const found = SKILL_LEVELS.find(s => s.value === v);
   return found ? found.order : 99;
 }
 
 export function getSkillLabel(level?: string | null): string {
-  const found = SKILL_LEVELS.find(s => s.value === level);
+  const v = normalizeSkillValue(level);
+  const found = SKILL_LEVELS.find(s => s.value === v);
   return found ? found.label : "";
 }
 

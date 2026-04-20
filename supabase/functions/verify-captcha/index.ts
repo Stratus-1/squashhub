@@ -16,7 +16,7 @@ serve(async (req) => {
     const action = typeof body?.action === "string" ? body.action : "verify";
 
     if (action === "config") {
-      const siteKey = (Deno.env.get("HCAPTCHA_SITE_KEY") ?? "").trim();
+      const siteKey = (Deno.env.get("RECAPTCHA_SITE_KEY") ?? "").trim();
       return new Response(
         JSON.stringify({ enabled: siteKey.length > 0, siteKey }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -39,15 +39,16 @@ serve(async (req) => {
       );
     }
 
-    const secret = Deno.env.get("HCAPTCHA_SECRET_KEY");
+    const secret = Deno.env.get("RECAPTCHA_SECRET_KEY");
     if (!secret) {
+      // No secret configured — treat as disabled (allow through).
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const verifyRes = await fetch("https://api.hcaptcha.com/siteverify", {
+    const verifyRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `response=${encodeURIComponent(token)}&secret=${encodeURIComponent(secret)}`,
@@ -56,7 +57,10 @@ serve(async (req) => {
     const result = await verifyRes.json();
 
     return new Response(
-      JSON.stringify({ success: result.success === true }),
+      JSON.stringify({
+        success: result.success === true,
+        errors: result["error-codes"] ?? undefined,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch {

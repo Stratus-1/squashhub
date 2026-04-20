@@ -252,9 +252,10 @@ export default function SuperAdminSettings() {
         <Separator />
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Enable hCaptcha</p>
+            <p className="text-sm font-medium">Enable reCAPTCHA</p>
             <p className="text-xs text-muted-foreground">
-              When enabled, users must complete a captcha challenge on auth pages
+              When enabled, users must complete a Google reCAPTCHA v2 challenge on auth pages.
+              Configured via the RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY backend secrets.
             </p>
           </div>
           <Switch
@@ -268,26 +269,26 @@ export default function SuperAdminSettings() {
           />
         </div>
         <div>
-          <Label htmlFor="hcaptcha-site-key">Site Key (Public)</Label>
+          <Label htmlFor="hcaptcha-site-key">Site Key (Public, reference only)</Label>
           <Input
             id="hcaptcha-site-key"
-            placeholder="Enter your hCaptcha site key"
+            placeholder="Enter your reCAPTCHA v2 site key"
             value={settings.hcaptcha_site_key}
             onChange={(e) =>
               setSettings((s) => ({ ...s, hcaptcha_site_key: e.target.value }))
             }
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Get your site key from{" "}
+            Manage your keys in the{" "}
             <a
-              href="https://dashboard.hcaptcha.com"
+              href="https://www.google.com/recaptcha/admin"
               target="_blank"
               rel="noopener noreferrer"
               className="underline"
             >
-              hCaptcha Dashboard
+              Google reCAPTCHA Admin Console
             </a>
-            . The secret key is stored securely as a backend secret.
+            . Both keys are read from the backend secrets RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY.
           </p>
         </div>
       </Card>

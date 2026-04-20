@@ -20,7 +20,7 @@ type Club = {
   email: string | null;
   phone: string | null;
   logo_url: string | null;
-  
+  tenant_type: string;
   created_at: string;
   member_count?: number;
 };
@@ -37,7 +37,7 @@ export default function SuperAdminClubs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, created_at")
+        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -118,18 +118,20 @@ export default function SuperAdminClubs() {
 
   return (
     <div className="space-y-6">
-      <SEO title="Manage Clubs — Super Admin" noIndex />
+      <SEO title="Manage Clubs & Associations — Super Admin" noIndex />
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Clubs</h2>
-          <p className="text-sm text-muted-foreground mt-1">{clubs.length} registered clubs</p>
+          <h2 className="text-2xl font-bold text-foreground">Clubs & Associations</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {clubs.length} registered • {clubs.filter((c) => c.tenant_type !== "association").length} clubs, {clubs.filter((c) => c.tenant_type === "association").length} associations
+          </p>
         </div>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search clubs..."
+          placeholder="Search clubs & associations..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -140,10 +142,10 @@ export default function SuperAdminClubs() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Club</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Subdomain</TableHead>
               <TableHead className="text-center">Members</TableHead>
-              
               <TableHead>Contact</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -158,11 +160,13 @@ export default function SuperAdminClubs() {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No clubs found
+                  No clubs or associations found
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((club) => (
+              filtered.map((club) => {
+                const isAssociation = club.tenant_type === "association";
+                return (
                 <TableRow key={club.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -175,6 +179,14 @@ export default function SuperAdminClubs() {
                       )}
                       <span className="font-medium text-foreground">{club.name}</span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={isAssociation ? "default" : "secondary"}
+                      className={isAssociation ? "bg-primary/15 text-primary hover:bg-primary/20 border-primary/20" : ""}
+                    >
+                      {isAssociation ? "Association" : "Club"}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {club.subdomain ? (
@@ -206,7 +218,8 @@ export default function SuperAdminClubs() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

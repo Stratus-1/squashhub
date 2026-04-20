@@ -218,7 +218,8 @@ export default function SuperAdminClubs() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

@@ -714,14 +714,14 @@ export default function LeagueGameDetail() {
                           <>
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
                               onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
-                              className="h-6 text-[10px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
-                            <span className="text-[10px] truncate px-1 text-green-700">{pos.homeName}</span>
+                              className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
+                            <span className="text-xs truncate px-1 text-green-700">{pos.homeName}</span>
                             <span />
                           </>
                         ) : (
                           <>
                             <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.homeCode}</span>
-                            <span className="text-[10px] truncate px-1 font-medium">{pos.homeName || "—"}</span>
+                            <span className="text-xs truncate px-1 font-medium">{pos.homeName || "—"}</span>
                             {Array.from({ length: bestOf }, (_, gi) => (
                               <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].home > pos.scores[gi].away ? "font-bold" : "text-muted-foreground")}>
                                 {pos.scores[gi]?.home ?? ""}
@@ -744,14 +744,14 @@ export default function LeagueGameDetail() {
                           <>
                             <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}
                               onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
-                              className="h-6 text-[10px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
-                            <span className="text-[10px] truncate px-1 text-green-700">{pos.awayName}</span>
+                              className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
+                            <span className="text-xs truncate px-1 text-green-700">{pos.awayName}</span>
                             <span />
                           </>
                         ) : (
                           <>
                             <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.awayCode}</span>
-                            <span className="text-[10px] truncate px-1 font-medium">{pos.awayName || "—"}</span>
+                            <span className="text-xs truncate px-1 font-medium">{pos.awayName || "—"}</span>
                             {Array.from({ length: bestOf }, (_, gi) => (
                               <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].away > pos.scores[gi].home ? "font-bold" : "text-muted-foreground")}>
                                 {pos.scores[gi]?.away ?? ""}

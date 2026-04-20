@@ -78,8 +78,7 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
     try {
       const id = window.grecaptcha.render(el, {
         sitekey: siteKey,
-        size: "invisible",
-        badge: "bottomright",
+        size: "normal",
         callback: (token: string) => {
           resolveRef.current?.(token);
           resolveRef.current = null;

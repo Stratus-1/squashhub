@@ -142,10 +142,10 @@ export default function SuperAdminClubs() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Club</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Subdomain</TableHead>
               <TableHead className="text-center">Members</TableHead>
-              
               <TableHead>Contact</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -160,11 +160,13 @@ export default function SuperAdminClubs() {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No clubs found
+                  No clubs or associations found
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((club) => (
+              filtered.map((club) => {
+                const isAssociation = club.tenant_type === "association";
+                return (
                 <TableRow key={club.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -177,6 +179,14 @@ export default function SuperAdminClubs() {
                       )}
                       <span className="font-medium text-foreground">{club.name}</span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={isAssociation ? "default" : "secondary"}
+                      className={isAssociation ? "bg-primary/15 text-primary hover:bg-primary/20 border-primary/20" : ""}
+                    >
+                      {isAssociation ? "Association" : "Club"}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {club.subdomain ? (

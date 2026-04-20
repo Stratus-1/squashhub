@@ -1,14 +1,17 @@
 import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+// NOTE: Filename kept as HCaptcha.tsx for backward import compatibility,
+// but this component now wraps Google reCAPTCHA v2 (invisible).
+
 declare global {
   interface Window {
-    hcaptcha?: {
-      render: (container: HTMLElement, params: Record<string, unknown>) => string;
-      reset: (widgetId: string) => void;
-      execute: (widgetId: string) => void;
-      getResponse: (widgetId: string) => string;
-      remove: (widgetId: string) => void;
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      render: (container: HTMLElement | string, params: Record<string, unknown>) => number;
+      reset: (widgetId?: number) => void;
+      execute: (widgetId?: number) => void;
+      getResponse: (widgetId?: number) => string;
     };
   }
 }
@@ -44,48 +47,60 @@ function getSiteKey(): Promise<string | null> {
   return siteKeyPromise;
 }
 
-const renderedWidgets = new WeakSet<HTMLElement>();
+const renderedWidgets = new WeakMap<HTMLElement, number>();
 
 export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const widgetIdRef = useRef<string | null>(null);
+  const widgetIdRef = useRef<number | null>(null);
   const resolveRef = useRef<((token: string) => void) | null>(null);
+  const rejectRef = useRef<((err: Error) => void) | null>(null);
   const readyRef = useRef(false);
 
   const renderWidget = useCallback((siteKey: string) => {
     const el = containerRef.current;
     if (!el) return;
-    // If the hCaptcha API isn't ready yet, poll until it is.
-    if (!window.hcaptcha || typeof window.hcaptcha.render !== "function") {
+    if (!window.grecaptcha || typeof window.grecaptcha.render !== "function") {
       const poll = setInterval(() => {
-        if (window.hcaptcha && typeof window.hcaptcha.render === "function") {
+        if (window.grecaptcha && typeof window.grecaptcha.render === "function") {
           clearInterval(poll);
           renderWidget(siteKey);
         }
       }, 100);
       return;
     }
-    if (renderedWidgets.has(el)) {
-      // Already rendered for this element (e.g. from a prior mount in the same tree).
-      // Mark ready so execute() works.
+    const existing = renderedWidgets.get(el);
+    if (existing !== undefined) {
+      widgetIdRef.current = existing;
       readyRef.current = true;
       return;
     }
 
-    renderedWidgets.add(el);
-    const id = window.hcaptcha.render(el, {
-      sitekey: siteKey,
-      size: "invisible",
-      callback: (token: string) => {
-        resolveRef.current?.(token);
-        resolveRef.current = null;
-      },
-      "error-callback": () => {
-        resolveRef.current = null;
-      },
-    });
-    widgetIdRef.current = id;
-    readyRef.current = true;
+    try {
+      const id = window.grecaptcha.render(el, {
+        sitekey: siteKey,
+        size: "invisible",
+        badge: "bottomright",
+        callback: (token: string) => {
+          resolveRef.current?.(token);
+          resolveRef.current = null;
+          rejectRef.current = null;
+        },
+        "expired-callback": () => {
+          resolveRef.current = null;
+          rejectRef.current = null;
+        },
+        "error-callback": () => {
+          rejectRef.current?.(new Error("reCAPTCHA error"));
+          resolveRef.current = null;
+          rejectRef.current = null;
+        },
+      });
+      renderedWidgets.set(el, id);
+      widgetIdRef.current = id;
+      readyRef.current = true;
+    } catch (err) {
+      console.warn("[reCAPTCHA] render failed:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -94,30 +109,37 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
     getSiteKey().then((key) => {
       if (cancelled || !key) return;
 
-      const tryRender = () => renderWidget(key);
+      const tryRender = () => {
+        if (window.grecaptcha && typeof window.grecaptcha.render === "function") {
+          renderWidget(key);
+        } else if (window.grecaptcha?.ready) {
+          window.grecaptcha.ready(() => renderWidget(key));
+        } else {
+          const interval = setInterval(() => {
+            if (window.grecaptcha && typeof window.grecaptcha.render === "function") {
+              clearInterval(interval);
+              renderWidget(key);
+            }
+          }, 100);
+        }
+      };
 
-      if (!document.getElementById("hcaptcha-script")) {
+      if (!document.getElementById("recaptcha-script")) {
         const script = document.createElement("script");
-        script.id = "hcaptcha-script";
-        script.src = "https://js.hcaptcha.com/1/api.js?render=explicit";
+        script.id = "recaptcha-script";
+        script.src = "https://www.google.com/recaptcha/api.js?render=explicit";
         script.async = true;
         script.defer = true;
         script.onload = () => tryRender();
         document.head.appendChild(script);
-      } else if (window.hcaptcha) {
-        tryRender();
       } else {
-        const interval = setInterval(() => {
-          if (window.hcaptcha) {
-            clearInterval(interval);
-            tryRender();
-          }
-        }, 100);
-        return () => clearInterval(interval);
+        tryRender();
       }
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -125,19 +147,23 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
     execute: () =>
       new Promise<string>((resolve, reject) => {
         const tryExecute = (attemptsLeft: number) => {
-          if (readyRef.current && window.hcaptcha && widgetIdRef.current !== null) {
+          if (readyRef.current && window.grecaptcha && widgetIdRef.current !== null) {
             resolveRef.current = resolve;
-            window.hcaptcha.reset(widgetIdRef.current);
-            window.hcaptcha.execute(widgetIdRef.current);
+            rejectRef.current = reject;
+            try {
+              window.grecaptcha.reset(widgetIdRef.current);
+              window.grecaptcha.execute(widgetIdRef.current);
+            } catch (err) {
+              reject(err instanceof Error ? err : new Error("reCAPTCHA execute failed"));
+            }
             return;
           }
           if (attemptsLeft <= 0) {
-            reject(new Error("hCaptcha not ready"));
+            reject(new Error("reCAPTCHA not ready"));
             return;
           }
           setTimeout(() => tryExecute(attemptsLeft - 1), 200);
         };
-        // Wait up to ~3s for the widget to finish initialising.
         tryExecute(15);
       }),
   }));

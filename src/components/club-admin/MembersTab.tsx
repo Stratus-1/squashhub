@@ -306,24 +306,46 @@ export function MembersTab({ clubId }: { clubId: string }) {
     enabled: memberIds.length > 0,
   });
 
-  // Fetch NSF / league association numbers for all members
+  // Fetch NSF / league association numbers for all members (joined to league + association
+  // so we can show "League NIL #6765" on each member card)
   const { data: leagueRegs = [] } = useQuery({
     queryKey: ["club-member-league-regs", clubId, memberIds.join(",")],
     queryFn: async () => {
       if (memberIds.length === 0) return [];
       const { data, error } = await fromExt("member_league_registrations")
-        .select("club_member_id, league_association_number")
+        .select("club_member_id, league_association_number, league:leagues(association_id, association:league_associations(id, name, abbreviation))")
         .in("club_member_id", memberIds);
       if (error) throw error;
-      return (data || []) as { club_member_id: string; league_association_number: string | null }[];
+      return (data || []) as Array<{
+        club_member_id: string;
+        league_association_number: string | null;
+        league?: { association_id: string | null; association?: { id: string; name: string; abbreviation: string | null } | null } | null;
+      }>;
     },
     enabled: memberIds.length > 0,
   });
   const nsfByMember = new Map<string, string>();
+  // Map: club_member_id -> { label, number } where label = abbreviation/name of the
+  // association the member is registered to play league for (preferring the one that
+  // matches their `enable_league_association_id`).
+  const leagueInfoByMember = new Map<string, { label: string; number: string | null }>();
   for (const r of leagueRegs) {
     if (r.league_association_number && !nsfByMember.has(r.club_member_id)) {
       nsfByMember.set(r.club_member_id, r.league_association_number);
     }
+    const assoc = r.league?.association;
+    if (assoc && !leagueInfoByMember.has(r.club_member_id)) {
+      leagueInfoByMember.set(r.club_member_id, {
+        label: assoc.abbreviation || assoc.name,
+        number: r.league_association_number,
+      });
+    }
+  }
+  // Fallback: if a member has plays_league + enable_league_association_id but no
+  // registration row, look up the association name directly from the loaded list.
+  const assocById = new Map<string, { name: string; abbreviation: string | null }>();
+  for (const a of associations as any[]) {
+    assocById.set(a.id, { name: a.name, abbreviation: a.abbreviation });
   }
 
   // Determine current tenant type & resolve cross-tenant association status

@@ -1,18 +1,81 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Calendar, MapPin, Users, Trophy, List } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Calendar, MapPin, Users, Trophy, List, Pencil, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { toast } from "sonner";
 
 export default function SuperAdminLeagues() {
+  const queryClient = useQueryClient();
   const [selectedAssociation, setSelectedAssociation] = useState<string | null>(null);
   const [fixtureSearch, setFixtureSearch] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
+  const [editing, setEditing] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: "", short_code: "", region: "", season_year: new Date().getFullYear(), status: "active" });
+
+  const openEdit = (a: any) => {
+    setForm({
+      name: a.name ?? "",
+      short_code: a.short_code ?? "",
+      region: a.region ?? "",
+      season_year: a.season_year ?? new Date().getFullYear(),
+      status: a.status ?? "active",
+    });
+    setEditing(a);
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("platform_league_associations")
+      .update({
+        name: form.name.trim(),
+        short_code: form.short_code.trim().toUpperCase(),
+        region: form.region.trim(),
+        season_year: Number(form.season_year),
+        status: form.status,
+      })
+      .eq("id", editing.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("League updated");
+    setEditing(null);
+    queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
+  };
+
+  const handleDelete = async () => {
+    if (!deleting) return;
+    const { error } = await supabase
+      .from("platform_league_associations")
+      .delete()
+      .eq("id", deleting.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Deleted ${deleting.name}`);
+    if (selectedAssociation === deleting.id) setSelectedAssociation(null);
+    setDeleting(null);
+    queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
+  };
 
   const { data: associations } = useQuery({
     queryKey: ["admin-associations"],
@@ -89,18 +152,40 @@ export default function SuperAdminLeagues() {
       {associations && associations.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {associations.map((a) => (
-            <button
+            <div
               key={a.id}
-              onClick={() => setSelectedAssociation(a.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+              className={`flex items-stretch rounded-lg overflow-hidden border ${
                 activeAssociation === a.id
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border hover:bg-muted"
+                  ? "border-primary"
+                  : "border-border"
               }`}
             >
-              <Trophy className="inline-block h-4 w-4 mr-1.5 -mt-0.5" />
-              {a.name}
-            </button>
+              <button
+                onClick={() => setSelectedAssociation(a.id)}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  activeAssociation === a.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground hover:bg-muted"
+                }`}
+              >
+                <Trophy className="inline-block h-4 w-4 mr-1.5 -mt-0.5" />
+                {a.name}
+              </button>
+              <button
+                onClick={() => openEdit(a)}
+                title="Edit league"
+                className="px-2 bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-l border-border transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setDeleting(a)}
+                title="Delete league"
+                className="px-2 bg-card hover:bg-destructive/10 text-muted-foreground hover:text-destructive border-l border-border transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -248,6 +333,73 @@ export default function SuperAdminLeagues() {
           <p className="text-muted-foreground">No leagues registered yet.</p>
         </Card>
       )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit League Association</DialogTitle>
+            <DialogDescription>Update the platform-wide league details.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="la-name">Name</Label>
+              <Input id="la-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="la-code">Short Code</Label>
+                <Input id="la-code" value={form.short_code} onChange={(e) => setForm((f) => ({ ...f, short_code: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="la-year">Season Year</Label>
+                <Input id="la-year" type="number" value={form.season_year} onChange={(e) => setForm((f) => ({ ...f, season_year: Number(e.target.value) }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="la-region">Region</Label>
+              <Input id="la-region" value={form.region} onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="la-status">Status</Label>
+              <select
+                id="la-status"
+                value={form.status}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="active">Active</option>
+                <option value="archived">Archived</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving || !form.name.trim() || !form.short_code.trim()}>
+              {saving ? "Saving..." : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the league association along with all of its imported fixtures and members. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

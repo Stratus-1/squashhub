@@ -235,10 +235,11 @@ export default function LeagueGameDetail() {
           if (slots[pos - 1].code || slots[pos - 1].name) return; // don't overwrite higher-priority entry
           const m = memberMap.get(memberId) as any;
           const reg = regByMember.get(memberId);
-          slots[pos - 1] = {
-            code: (reg?.league_association_number || reg?.ssa_number || m?.club_member_number || "").toString().toUpperCase(),
-            name: m?.name || "",
-          };
+          const code =
+            (reg?.league_association_number || reg?.ssa_number || nsfByMember.get(memberId) || m?.club_member_number || "")
+              .toString()
+              .toUpperCase();
+          slots[pos - 1] = { code, name: m?.name || "" };
         };
 
         // Priority 1: Fill-Up Leagues week lineup

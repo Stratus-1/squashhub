@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useLadder } from "@/hooks/use-data";
-import { useMyClubMember } from "@/hooks/use-club";
+import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,8 +15,11 @@ const WELCOME_DISMISSED_KEY = "gb-squash-welcome-dismissed";
 export function WelcomeBanner() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: clubData } = useMyClub();
   const { data: myClubMember } = useMyClubMember();
-  const { data: ladder } = useLadder();
+  const clubId = clubData?.club?.id;
+  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
+  const { data: ladder } = useLadder(clubId);
   const { activeMember, effectiveUserId } = useMemberContext();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(true);
@@ -57,7 +60,7 @@ export function WelcomeBanner() {
 
     // Only suggest a genuinely nearby opponent (within 3 positions). Avoid misleading
     // "fallback to top of group" suggestions when no close opponent exists.
-    const MAX_GAP = 3;
+    const MAX_GAP = challengeLevelsUp;
 
     const above = sameGroupPlayers
       .filter((p: any) => p.ladder_position < me.ladder_position && me.ladder_position - p.ladder_position <= MAX_GAP)
@@ -70,7 +73,7 @@ export function WelcomeBanner() {
     if (below.length > 0) return below[0];
 
     return null;
-  }, [dismissed, ladder, activeMemberId]);
+  }, [dismissed, ladder, activeMemberId, challengeLevelsUp]);
 
   const handleDismiss = () => {
     setDismissed(true);

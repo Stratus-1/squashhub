@@ -118,18 +118,20 @@ export default function SuperAdminClubs() {
 
   return (
     <div className="space-y-6">
-      <SEO title="Manage Clubs — Super Admin" noIndex />
+      <SEO title="Manage Clubs & Associations — Super Admin" noIndex />
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Clubs</h2>
-          <p className="text-sm text-muted-foreground mt-1">{clubs.length} registered clubs</p>
+          <h2 className="text-2xl font-bold text-foreground">Clubs & Associations</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {clubs.length} registered • {clubs.filter((c) => c.tenant_type !== "association").length} clubs, {clubs.filter((c) => c.tenant_type === "association").length} associations
+          </p>
         </div>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search clubs..."
+          placeholder="Search clubs & associations..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"

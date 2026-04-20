@@ -126,6 +126,48 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Auto-provision a trial subscription on the default plan so the new tenant
+    // (club OR association) appears in Super Admin → Subscriptions for billing.
+    try {
+      const { data: defaultPlan } = await supabaseAdmin
+        .from("subscription_plans")
+        .select("id, price_per_member, minimum_charge, trial_days")
+        .eq("is_default", true)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (defaultPlan) {
+        const trialDays = Number(defaultPlan.trial_days ?? 30);
+        const now = new Date();
+        const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+        const memberCount = 1; // founder
+        const amountDue = Math.max(
+          memberCount * Number(defaultPlan.price_per_member ?? 0),
+          Number(defaultPlan.minimum_charge ?? 0)
+        );
+
+        const { error: subErr } = await supabaseAdmin
+          .from("club_subscriptions")
+          .upsert({
+            club_id: newClub.id,
+            plan_id: defaultPlan.id,
+            status: "trial",
+            trial_ends_at: trialEnd.toISOString(),
+            current_period_start: now.toISOString(),
+            current_period_end: trialEnd.toISOString(),
+            member_count: memberCount,
+            amount_due: amountDue,
+          }, { onConflict: "club_id" });
+
+        if (subErr) console.error("Failed to create trial subscription:", subErr);
+      } else {
+        console.warn("No default subscription plan found — skipping auto-subscription for", newClub.id);
+      }
+    } catch (subSetupErr) {
+      console.error("Subscription auto-provision error:", subSetupErr);
+      // Non-fatal — tenant creation already succeeded.
+    }
+
     return new Response(JSON.stringify({ club: { ...newClub, club_captain_member_id: captainMember.id } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

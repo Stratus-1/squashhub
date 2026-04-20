@@ -187,7 +187,7 @@ export default function LeagueGameDetail() {
         .eq("fixture_id", fixtureId!)
         .in("league_id", leagueIds);
 
-      // 3) Registrations as final fallback (player_rank ordered)
+      // 3) Registrations as final fallback (player_rank ordered, scoped to these team leagues)
       const { data: regs } = await (supabase as any)
         .from("member_league_registrations")
         .select("league_id, club_member_id, player_rank, league_association_number, ssa_number")
@@ -199,6 +199,17 @@ export default function LeagueGameDetail() {
       (fixtureLineups || []).forEach((l: any) => memberIds.add(l.club_member_id));
       (regs || []).forEach((r: any) => memberIds.add(r.club_member_id));
       if (memberIds.size === 0) return null;
+
+      // Cross-league NSF lookup: a player guested from another league still has an NSF in their own registration
+      const { data: anyRegs } = await (supabase as any)
+        .from("member_league_registrations")
+        .select("club_member_id, league_association_number, ssa_number")
+        .in("club_member_id", [...memberIds]);
+      const nsfByMember = new Map<string, string>();
+      for (const r of (anyRegs || []) as any[]) {
+        const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
+        if (code && !nsfByMember.has(r.club_member_id)) nsfByMember.set(r.club_member_id, code);
+      }
 
       const { data: members } = await supabase
         .from("club_members")
@@ -224,10 +235,11 @@ export default function LeagueGameDetail() {
           if (slots[pos - 1].code || slots[pos - 1].name) return; // don't overwrite higher-priority entry
           const m = memberMap.get(memberId) as any;
           const reg = regByMember.get(memberId);
-          slots[pos - 1] = {
-            code: (reg?.league_association_number || reg?.ssa_number || m?.club_member_number || "").toString().toUpperCase(),
-            name: m?.name || "",
-          };
+          const code =
+            (reg?.league_association_number || reg?.ssa_number || nsfByMember.get(memberId) || m?.club_member_number || "")
+              .toString()
+              .toUpperCase();
+          slots[pos - 1] = { code, name: m?.name || "" };
         };
 
         // Priority 1: Fill-Up Leagues week lineup
@@ -702,14 +714,14 @@ export default function LeagueGameDetail() {
                           <>
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
                               onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
-                              className="h-7 text-xs font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
-                            <span className="text-xs truncate px-1 text-green-700">{pos.homeName}</span>
+                              className="h-6 text-[10px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
+                            <span className="text-[10px] truncate px-1 text-green-700">{pos.homeName}</span>
                             <span />
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] font-mono px-1 text-muted-foreground truncate">{pos.homeCode}</span>
-                            <span className="text-xs truncate px-1 font-medium">{pos.homeName || "—"}</span>
+                            <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.homeCode}</span>
+                            <span className="text-[10px] truncate px-1 font-medium">{pos.homeName || "—"}</span>
                             {Array.from({ length: bestOf }, (_, gi) => (
                               <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].home > pos.scores[gi].away ? "font-bold" : "text-muted-foreground")}>
                                 {pos.scores[gi]?.home ?? ""}
@@ -732,14 +744,14 @@ export default function LeagueGameDetail() {
                           <>
                             <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}
                               onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
-                              className="h-7 text-xs font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
-                            <span className="text-xs truncate px-1 text-green-700">{pos.awayName}</span>
+                              className="h-6 text-[10px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
+                            <span className="text-[10px] truncate px-1 text-green-700">{pos.awayName}</span>
                             <span />
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] font-mono px-1 text-muted-foreground truncate">{pos.awayCode}</span>
-                            <span className="text-xs truncate px-1 font-medium">{pos.awayName || "—"}</span>
+                            <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.awayCode}</span>
+                            <span className="text-[10px] truncate px-1 font-medium">{pos.awayName || "—"}</span>
                             {Array.from({ length: bestOf }, (_, gi) => (
                               <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].away > pos.scores[gi].home ? "font-bold" : "text-muted-foreground")}>
                                 {pos.scores[gi]?.away ?? ""}

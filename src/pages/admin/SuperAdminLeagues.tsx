@@ -333,6 +333,73 @@ export default function SuperAdminLeagues() {
           <p className="text-muted-foreground">No leagues registered yet.</p>
         </Card>
       )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit League Association</DialogTitle>
+            <DialogDescription>Update the platform-wide league details.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="la-name">Name</Label>
+              <Input id="la-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="la-code">Short Code</Label>
+                <Input id="la-code" value={form.short_code} onChange={(e) => setForm((f) => ({ ...f, short_code: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="la-year">Season Year</Label>
+                <Input id="la-year" type="number" value={form.season_year} onChange={(e) => setForm((f) => ({ ...f, season_year: Number(e.target.value) }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="la-region">Region</Label>
+              <Input id="la-region" value={form.region} onChange={(e) => setForm((f) => ({ ...f, region: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="la-status">Status</Label>
+              <select
+                id="la-status"
+                value={form.status}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="active">Active</option>
+                <option value="archived">Archived</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving || !form.name.trim() || !form.short_code.trim()}>
+              {saving ? "Saving..." : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the league association along with all of its imported fixtures and members. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default function SuperAdminClubs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, created_at")
+        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
 

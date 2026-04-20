@@ -37,7 +37,8 @@ export default function SuperAdminLeagues() {
         .from("platform_league_fixtures")
         .select("*")
         .eq("association_id", activeAssociation!)
-        .order("fixture_date", { ascending: true });
+        .order("fixture_date", { ascending: true })
+        .limit(3000);
       if (error) throw error;
       return data;
     },
@@ -51,7 +52,8 @@ export default function SuperAdminLeagues() {
         .from("platform_league_members" as any)
         .select("*")
         .eq("association_id", activeAssociation!)
-        .order("surname");
+        .order("surname")
+        .limit(3000);
       if (error) throw error;
       return data as any[];
     },

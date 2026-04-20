@@ -141,7 +141,7 @@ export default function LeagueGameDetail() {
 
   // ---- Prefill lineup from Fill-Up Leagues / registrations for known club teams ----
   const { data: prefillLineup } = useQuery({
-    queryKey: ["league-fixture-prefill", fixtureId, fixture?.home_team_code, fixture?.away_team_code],
+    queryKey: ["league-fixture-prefill", fixtureId, fixture?.home_team_code, fixture?.away_team_code, fixture?.fixture_date],
     queryFn: async () => {
       if (!fixture) return null;
       const codes = [fixture.home_team_code, fixture.away_team_code].filter(Boolean) as string[];
@@ -149,20 +149,45 @@ export default function LeagueGameDetail() {
 
       // Find leagues in our system whose code matches either team code
       const { data: leagues } = await (supabase as any)
-        .from("leagues").select("id, code").in("code", codes);
+        .from("leagues").select("id, code, club_id").in("code", codes);
       if (!leagues || leagues.length === 0) return null;
 
       const leagueIds = leagues.map((l: any) => l.id);
-      const codeByLeagueId = new Map<string, string>(leagues.map((l: any) => [l.id, l.code]));
+      const clubIds = [...new Set(leagues.map((l: any) => l.club_id).filter(Boolean))];
 
-      // Try lineups first (captain has filled positions)
-      const { data: lineups } = await (supabase as any)
+      // Compute squash week_start_date from fixture_date using the club's league_week_start_dow
+      let weekStartDate: string | null = null;
+      if (fixture.fixture_date && clubIds.length > 0) {
+        const { data: clubRow } = await (supabase as any)
+          .from("clubs").select("league_week_start_dow").eq("id", clubIds[0]).maybeSingle();
+        const startDow = clubRow?.league_week_start_dow ?? 3; // default Wed
+        const fxDate = parseISO(fixture.fixture_date);
+        const fxDow = fxDate.getDay();
+        const diff = (fxDow - startDow + 7) % 7;
+        const ws = new Date(fxDate);
+        ws.setDate(ws.getDate() - diff);
+        weekStartDate = format(ws, "yyyy-MM-dd");
+      }
+
+      // 1) Captain's Fill-Up Leagues lineup for that squash week
+      let weekLineups: any[] = [];
+      if (weekStartDate) {
+        const { data } = await (supabase as any)
+          .from("league_week_lineups")
+          .select("league_id, position, club_member_id")
+          .eq("week_start_date", weekStartDate)
+          .in("league_id", leagueIds);
+        weekLineups = data || [];
+      }
+
+      // 2) Per-fixture lineups (legacy / explicit per-fixture override)
+      const { data: fixtureLineups } = await (supabase as any)
         .from("league_fixture_lineups")
         .select("league_id, position, club_member_id")
         .eq("fixture_id", fixtureId!)
         .in("league_id", leagueIds);
 
-      // Also get registrations as fallback (player_rank ordered)
+      // 3) Registrations as final fallback (player_rank ordered)
       const { data: regs } = await (supabase as any)
         .from("member_league_registrations")
         .select("league_id, club_member_id, player_rank, league_association_number, ssa_number")
@@ -170,7 +195,8 @@ export default function LeagueGameDetail() {
 
       // Collect all member ids needed
       const memberIds = new Set<string>();
-      (lineups || []).forEach((l: any) => memberIds.add(l.club_member_id));
+      weekLineups.forEach((l: any) => memberIds.add(l.club_member_id));
+      (fixtureLineups || []).forEach((l: any) => memberIds.add(l.club_member_id));
       (regs || []).forEach((r: any) => memberIds.add(r.club_member_id));
       if (memberIds.size === 0) return null;
 
@@ -188,37 +214,48 @@ export default function LeagueGameDetail() {
         ];
         const matchingLeagues = leagues.filter((l: any) => l.code === code).map((l: any) => l.id);
 
-        // Build a lookup of registration NSF/SSA per member for this team's leagues
         const regByMember = new Map<string, any>();
         (regs || [])
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .forEach((r: any) => regByMember.set(r.club_member_id, r));
 
-        const lineupRows = (lineups || []).filter((l: any) => matchingLeagues.includes(l.league_id));
-        if (lineupRows.length > 0) {
-          for (const l of lineupRows) {
-            const pos = l.position;
-            if (pos < 1 || pos > 4) continue;
-            const m = memberMap.get(l.club_member_id) as any;
-            const reg = regByMember.get(l.club_member_id);
-            slots[pos - 1] = {
-              code: (reg?.league_association_number || reg?.ssa_number || m?.club_member_number || "").toString().toUpperCase(),
-              name: m?.name || "",
-            };
-          }
-        } else {
-          // Fallback: top-ranked registered players for this league
-          const teamRegs = (regs || [])
-            .filter((r: any) => matchingLeagues.includes(r.league_id))
-            .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99))
-            .slice(0, 4);
-          teamRegs.forEach((r: any, i: number) => {
+        const fillSlot = (pos: number, memberId: string) => {
+          if (pos < 1 || pos > 4) return;
+          if (slots[pos - 1].code || slots[pos - 1].name) return; // don't overwrite higher-priority entry
+          const m = memberMap.get(memberId) as any;
+          const reg = regByMember.get(memberId);
+          slots[pos - 1] = {
+            code: (reg?.league_association_number || reg?.ssa_number || m?.club_member_number || "").toString().toUpperCase(),
+            name: m?.name || "",
+          };
+        };
+
+        // Priority 1: Fill-Up Leagues week lineup
+        weekLineups
+          .filter((l: any) => matchingLeagues.includes(l.league_id))
+          .forEach((l: any) => fillSlot(l.position, l.club_member_id));
+
+        // Priority 2: explicit per-fixture lineup
+        (fixtureLineups || [])
+          .filter((l: any) => matchingLeagues.includes(l.league_id))
+          .forEach((l: any) => fillSlot(l.position, l.club_member_id));
+
+        // Priority 3: registrations by player_rank for any unfilled positions
+        const teamRegs = (regs || [])
+          .filter((r: any) => matchingLeagues.includes(r.league_id))
+          .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
+        let regIdx = 0;
+        for (let i = 0; i < 4; i++) {
+          if (slots[i].code || slots[i].name) continue;
+          while (regIdx < teamRegs.length) {
+            const r = teamRegs[regIdx++];
             const m = memberMap.get(r.club_member_id) as any;
-            slots[i] = {
-              code: (r.league_association_number || r.ssa_number || m?.club_member_number || "").toString().toUpperCase(),
-              name: m?.name || "",
-            };
-          });
+            const code = (r.league_association_number || r.ssa_number || m?.club_member_number || "").toString().toUpperCase();
+            const name = m?.name || "";
+            if (!code && !name) continue;
+            slots[i] = { code, name };
+            break;
+          }
         }
         result[code] = slots;
       }

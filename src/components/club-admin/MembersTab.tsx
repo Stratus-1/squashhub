@@ -177,12 +177,13 @@ interface AssociationStatusInfo {
   hasFeeRecord: boolean;
 }
 
-function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStatus, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStatus, leagueLabel, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
   delegateTitle?: string | null;
   nsfNumber?: string | null;
   associationStatus?: AssociationStatusInfo | null;
+  leagueLabel?: string | null;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
@@ -242,7 +243,7 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStat
         <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
           {isLinked ? "✓ Reg" : "✗ Unreg"}
         </Badge>
-        {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">League</Badge>}
+        {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">{leagueLabel || "League"}</Badge>}
         {nsfNumber && <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">NSF: {nsfNumber}</Badge>}
         {associationStatus && (() => {
           const { associationName, leagueNumber, feesPaid, hasFeeRecord } = associationStatus;

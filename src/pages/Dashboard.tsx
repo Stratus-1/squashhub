@@ -434,6 +434,7 @@ export default function Dashboard() {
           profile={profile}
           onAction={(action) => {
             if (action === "edit") openProfile("/profile?edit=1");
+            if (action === "edit-then-account") openProfile("/profile?edit=1&next=account");
             if (action === "account") navigate("/my-account");
             if (action === "face") setShowFaceEnrolment(true);
           }}

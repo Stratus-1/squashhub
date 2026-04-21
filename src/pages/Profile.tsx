@@ -82,6 +82,59 @@ export default function Profile() {
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // League registrations across all tenants for this user
+  // (read by user_id so we capture both home-club and league-tenant rows).
+  const { data: leagueRegs = [] } = useQuery({
+    queryKey: ["my-league-registrations-profile", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      // Get every club_member row owned by this user (home club + association tenants)
+      const { data: memberRows } = await fromExt("club_members")
+        .select("id, club_id, club_member_number, clubs:club_id(name, tenant_type)")
+        .eq("user_id", user!.id);
+      const memberIds = (memberRows || []).map((m: any) => m.id);
+      if (memberIds.length === 0) return [];
+
+      const { data: regs } = await fromExt("member_league_registrations")
+        .select(
+          "id, club_member_id, league_association_number, ssa_number, league:leagues(id, name, association_id, association:league_associations(id, name, abbreviation))",
+        )
+        .in("club_member_id", memberIds);
+
+      const byMember: Record<string, any> = {};
+      for (const m of (memberRows || []) as any[]) byMember[m.id] = m;
+
+      // Deduplicate per association (prefer the row with a number set)
+      const byAssoc: Record<string, any> = {};
+      for (const r of (regs || []) as any[]) {
+        const assoc = r.league?.association;
+        if (!assoc?.id) continue;
+        const m = byMember[r.club_member_id];
+        const tenantClubName: string | null = m?.clubs?.tenant_type === "association" ? m?.clubs?.name : null;
+        const candidate = {
+          regId: r.id as string,
+          associationId: assoc.id as string,
+          associationName: assoc.name as string,
+          abbreviation: assoc.abbreviation as string | null,
+          number: (r.league_association_number || m?.club_member_number || "") as string,
+          tenantClubName,
+        };
+        const existing = byAssoc[assoc.id];
+        if (!existing || (!existing.number && candidate.number)) {
+          byAssoc[assoc.id] = candidate;
+        }
+      }
+      return Object.values(byAssoc) as Array<{
+        regId: string;
+        associationId: string;
+        associationName: string;
+        abbreviation: string | null;
+        number: string;
+        tenantClubName: string | null;
+      }>;
+    },
+  });
+
   const [mode, setMode] = useState<"view" | "edit">("view");
   // Profile fields
   const [name, setName] = useState("");

@@ -1215,10 +1215,3 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     </Dialog>
   );
 }
-            Add {entries.length} League(s)
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}

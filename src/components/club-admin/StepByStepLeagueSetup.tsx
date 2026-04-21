@@ -543,6 +543,32 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
             </Button>
           )}
         </div>
+          </>
+        )}
+
+        {/* After-save: choose to set up another league or finish */}
+        {savedLastRound && (
+          <div className="space-y-4">
+            <Card className="p-4 bg-primary/5 border-primary/40 text-center space-y-2">
+              <div className="mx-auto w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                <Check className="w-5 h-5" />
+              </div>
+              <p className="font-semibold">League saved successfully</p>
+              <p className="text-xs text-muted-foreground">
+                {allocatedIds.size} member{allocatedIds.size !== 1 ? "s" : ""} allocated so far this session.
+                Remaining eligible pool will exclude them automatically.
+              </p>
+            </Card>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button className="flex-1" onClick={handleSetupAnother}>
+                <ArrowRight className="w-4 h-4 mr-1" />Set up another league
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                <Check className="w-4 h-4 mr-1" />Finish
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

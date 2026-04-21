@@ -38,7 +38,13 @@ export default function ClubAuth() {
   const [existingPassword, setExistingPassword] = useState("");
   const [existingConfirm, setExistingConfirm] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
+  const [existingPhone, setExistingPhone] = useState("");
   const [existingAcceptTerms, setExistingAcceptTerms] = useState(false);
+  // Multi-match chooser state
+  const [memberChoices, setMemberChoices] = useState<
+    Array<{ id: string; masked_name: string; has_number: boolean; has_phone: boolean }>
+  >([]);
+  const [chosenMemberId, setChosenMemberId] = useState<string>("");
 
   // New member signup
   const [newName, setNewName] = useState("");

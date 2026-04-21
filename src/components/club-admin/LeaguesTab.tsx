@@ -280,11 +280,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 }
 
 // ─── League Card with inline players ───
-function LeagueCard({ league, associations, onDelete, members }: {
+function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   league: League;
   associations: LeagueAssociation[];
   onDelete: (id: string) => void;
   members: ClubMember[];
+  onAllocate?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { data: regs = [] } = useQuery({

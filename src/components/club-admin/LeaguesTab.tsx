@@ -276,6 +276,62 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   );
 }
 
+// ─── Gender Column: groups leagues by association, one Allocate button per association group ───
+function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onAllocate }: {
+  title: string;
+  gender: "men" | "ladies" | "mixed";
+  leagues: League[];
+  associations: LeagueAssociation[];
+  members: ClubMember[];
+  sortLeagues: (list: League[]) => League[];
+  onDelete: (id: string) => void;
+  onAllocate: (associationId: string | null, leagues: League[]) => void;
+}) {
+  // Group leagues by association_id
+  const groups = useMemo(() => {
+    const map = new Map<string | null, League[]>();
+    for (const l of leagues) {
+      const key = (l as any).association_id ?? null;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(l);
+    }
+    return Array.from(map.entries()).map(([assocId, list]) => ({
+      assocId,
+      assoc: associations.find(a => a.id === assocId) || null,
+      leagues: sortLeagues(list),
+    }));
+  }, [leagues, associations, sortLeagues]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-semibold text-muted-foreground">{title} ({leagues.length})</h4>
+      </div>
+      <div className="space-y-3">
+        {groups.map(g => (
+          <div key={g.assocId ?? "none"} className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold text-foreground/80 truncate">
+                {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "No association"}
+                <span className="text-muted-foreground font-normal"> • {g.leagues.length}</span>
+              </p>
+              <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
+                <Users className="w-3 h-3" />Allocate
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {g.leagues.map(l => (
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={onDelete} members={members} />
+              ))}
+            </div>
+          </div>
+        ))}
+        {leagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No {title.toLowerCase()} leagues</p>}
+      </div>
+    </div>
+  );
+}
+
 // ─── League Card with inline players ───
 function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   league: League;

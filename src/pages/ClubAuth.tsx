@@ -75,6 +75,9 @@ export default function ClubAuth() {
 
   const clubName = club?.name || "Club";
   const isAssociation = (club as any)?.tenant_type === "association";
+  // NSC-specific: hide the member/league number field on existing-member signup
+  // so members only need email + cell phone (numbers are issued by the club).
+  const hideMemberNumberField = (subdomain || "").toLowerCase() === "nsc";
 
   // Fetch only clubs affiliated with this association for the home-club picker
   const { data: pickerClubs } = useQuery({

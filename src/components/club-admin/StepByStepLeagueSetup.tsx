@@ -255,6 +255,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
         });
       });
       if (reservesLeagueId) {
+        // Reserves "team" gets the same number of position slots as a regular team (perTeam),
+        // so admin can later drag a reserve into position 1..perTeam at their discretion.
+        // Initial player_rank assignment goes 1..N by ladder strength up to perTeam slots;
+        // any extra reserves get sequential ranks beyond perTeam (still draggable).
         allocation.reserves.forEach((p, posIdx) => {
           inserts.push({
             club_member_id: p.id,
@@ -269,15 +273,40 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
         if (error) throw error;
       }
 
+      // Track who got allocated this session
+      const newlyAllocated = new Set(allocatedIds);
+      allocation.teams.forEach(t => t.picks.forEach(p => newlyAllocated.add(p.id)));
+      allocation.reserves.forEach(p => newlyAllocated.add(p.id));
+      setAllocatedIds(newlyAllocated);
+
+      const genderLabelShort = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed";
+      setSessionSummary(prev => [
+        ...prev,
+        { label: `${genderLabelShort} ${leagueNumber} — ${allocation.teams.length} team${allocation.teams.length !== 1 ? "s" : ""}${allocation.reserves.length ? ` + ${allocation.reserves.length} reserves` : ""}`, count: inserts.length },
+      ]);
+
       toast.success(`Set up ${allocation.teams.length} team${allocation.teams.length !== 1 ? "s" : ""} with ${inserts.length} placements`);
       qc.invalidateQueries({ queryKey: ["leagues"] });
       qc.invalidateQueries({ queryKey: ["league-registrations"] });
-      onOpenChange(false);
+      setSavedLastRound(true);
     } catch (e: any) {
       toast.error(e?.message || "Failed to save setup");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Start another round of setup, keeping the association and the running allocated-ID list
+  const handleSetupAnother = () => {
+    setSavedLastRound(false);
+    setStep(2);
+    setGender("men");
+    setLeagueNumber("1st");
+    setNumMembers(0);
+    setNumTeams(1);
+    setPerTeam(4);
+    setReserves(0);
+    setDistribution("snake");
   };
 
   return (

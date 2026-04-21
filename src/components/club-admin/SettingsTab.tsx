@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     member_number_prefix: club.member_number_prefix || "",
     member_number_length: club.member_number_length ?? 4,
     member_number_start: club.member_number_start ?? 1,
+    auto_number_existing_onboarding: (club as any).auto_number_existing_onboarding ?? false,
     challenge_levels_up: club.challenge_levels_up ?? 2,
     sender_email: "",
     sender_name: "",
@@ -60,8 +62,9 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         member_number_prefix: form.member_number_prefix,
         member_number_length: form.member_number_length,
         member_number_start: form.member_number_start,
+        auto_number_existing_onboarding: form.auto_number_existing_onboarding,
         challenge_levels_up: form.challenge_levels_up,
-      });
+      } as any);
 
       // Save sensitive SMTP settings to club_secrets table
       await updateSecrets.mutateAsync({
@@ -156,6 +159,22 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
             Preview: <span className="font-mono font-semibold text-foreground">{form.member_number_prefix}-{String(form.member_number_start).padStart(form.member_number_length, "0")}</span>
           </p>
         )}
+        <div className="flex items-start justify-between gap-4 pt-3 border-t">
+          <div className="space-y-0.5">
+            <Label htmlFor="auto-num-existing" className="text-sm font-medium">
+              Allocate to existing members onboarding who don't have a number yet
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              When enabled, pre-existing members (admin-created or imported) without a club number
+              will be auto-allocated one when they complete the onboarding wizard.
+            </p>
+          </div>
+          <Switch
+            id="auto-num-existing"
+            checked={form.auto_number_existing_onboarding}
+            onCheckedChange={(v) => setForm(p => ({ ...p, auto_number_existing_onboarding: v }))}
+          />
+        </div>
       </Card>
 
       {/* Email Sender Settings */}

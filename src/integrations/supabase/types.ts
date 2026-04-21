@@ -1696,6 +1696,7 @@ export type Database = {
       clubs: {
         Row: {
           address: string | null
+          auto_number_existing_onboarding: boolean
           chairman_member_id: string | null
           challenge_levels_up: number | null
           club_captain_member_id: string | null
@@ -1729,6 +1730,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auto_number_existing_onboarding?: boolean
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null
@@ -1762,6 +1764,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auto_number_existing_onboarding?: boolean
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null

@@ -440,23 +440,24 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   // The association these leagues belong to (all leagues passed in share the same association in practice).
   const associationId = leagues.find(l => l.association_id)?.association_id || null;
 
-  // Filter members by gender, league status, AND registration in this association.
-  // A member only appears if they already have a `league_association_number`
-  // registered against this association (i.e. they're a confirmed league member
-  // of that association). Simply opting in via `enable_league_association_id`
-  // is NOT enough — they must have an assigned league number.
+  // Filter members by gender, league status, AND opt-in to this association.
+  // Source of truth = the member's profile:
+  //   - `plays_league = true`  (member opted in to league play)
+  //   - `enable_league_association_id = <this association>`  (the league they ticked)
+  // A registration number is NOT required — internal leagues (e.g. NIL) don't issue numbers.
+  // Members who already have a `member_league_registrations` row for this association
+  // are also included (covers historical data where the flag wasn't set).
   const { data: registeredMemberIds = [] } = useQuery({
     queryKey: ["affiliated-members", clubId, associationId],
     queryFn: async () => {
       if (!associationId) return [];
       const { data, error } = await fromExt("member_league_registrations")
-        .select("club_member_id, league_association_number, leagues:league_id(association_id)")
-        .not("league_association_number", "is", null);
+        .select("club_member_id, leagues:league_id(association_id)");
       if (error) throw error;
       return Array.from(
         new Set(
           (data || [])
-            .filter((r: any) => r.leagues?.association_id === associationId && r.league_association_number)
+            .filter((r: any) => r.leagues?.association_id === associationId)
             .map((r: any) => r.club_member_id),
         ),
       );
@@ -469,11 +470,15 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     [registeredMemberIds],
   );
 
-  // Filter members by gender, league status, AND affiliation to this association,
+  // Filter members by gender, league status, AND opt-in to this association,
   // sorted by club ladder position (strongest first).
   const genderMembers = members
     .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
-    .filter(m => !associationId || affiliatedSet.has(m.id))
+    .filter(m =>
+      !associationId ||
+      (m as any).enable_league_association_id === associationId ||
+      affiliatedSet.has(m.id),
+    )
     .sort((a, b) => {
       const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;
       const lb = (b as any).ladder_position ?? Number.POSITIVE_INFINITY;

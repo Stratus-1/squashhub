@@ -1135,10 +1135,18 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Manage Leagues for Club</Button></DialogTrigger>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Set Up for Club Leagues</Button></DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Manage Leagues for Club</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Quick Set Up for Club Leagues</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          <div className="space-y-1">
+            <Label>Association</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
+              <option value="">None</option>
+              {associations.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <p className="text-xs text-muted-foreground">Members allocated to these leagues will be filtered by their affiliation to the selected association.</p>
+          </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label className="mb-2 block font-semibold">Men's Leagues</Label>

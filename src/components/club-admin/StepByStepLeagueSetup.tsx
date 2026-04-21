@@ -210,7 +210,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       // Ensure one league row exists per team
       const createdLeagueIds: string[] = [];
       for (let i = 0; i < allocation.teams.length; i++) {
-        const teamName = `${genderLabel} ${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`;
+        const customName = (teamNames[i] || "").trim();
+        const teamName = customName
+          ? `${genderLabel} ${leagueNumber} ${customName}`
+          : `${genderLabel} ${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`;
         const existing = leagues.find(l => l.association_id === associationId && l.name === teamName);
         if (existing) {
           createdLeagueIds.push(existing.id);
@@ -228,13 +231,16 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       // For reserves, create a "Reserves" league row tied to this number
       let reservesLeagueId: string | null = null;
       if (allocation.reserves.length > 0) {
-        const reservesName = `${genderLabel} ${leagueNumber} Reserves`;
-        const existing = leagues.find(l => l.association_id === associationId && l.name === reservesName);
+        const customRes = (reservesName || "").trim();
+        const reservesNameFinal = customRes
+          ? `${genderLabel} ${leagueNumber} ${customRes}`
+          : `${genderLabel} ${leagueNumber} Reserves`;
+        const existing = leagues.find(l => l.association_id === associationId && l.name === reservesNameFinal);
         if (existing) reservesLeagueId = existing.id;
         else {
           const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
           const { data, error } = await fromExt("leagues")
-            .insert({ club_id: clubId, association_id: associationId, name: reservesName, code })
+            .insert({ club_id: clubId, association_id: associationId, name: reservesNameFinal, code })
             .select("id")
             .single();
           if (error) throw error;

@@ -199,6 +199,7 @@ export default function AssociationDashboard() {
               profile={profile}
               onAction={(action) => {
                 if (action === "edit") openProfile("/profile?edit=1");
+                if (action === "edit-then-account") openProfile("/profile?edit=1&next=account");
               }}
             />
 

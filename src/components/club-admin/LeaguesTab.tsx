@@ -271,6 +271,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
 
+      <StepByStepLeagueSetup clubId={clubId} open={stepByStepOpen} onOpenChange={setStepByStepOpen} />
+
       {/* Edit Association Dialog */}
       {editAssoc && (
         <EditAssociationDialog

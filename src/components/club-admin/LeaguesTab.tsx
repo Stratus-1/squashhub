@@ -97,7 +97,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
-  const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | "mixed" | null>(null);
+  const [allocateLeague, setAllocateLeague] = useState<{ league: League; gender: "men" | "ladies" | "mixed" } | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {

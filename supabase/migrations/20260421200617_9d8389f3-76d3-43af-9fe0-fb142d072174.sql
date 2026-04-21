@@ -1,0 +1,1 @@
+UPDATE public.club_members SET phone = '0834603007', updated_at = now() WHERE id = '0ad3e3d1-e342-4c54-8289-95488402d2ca';

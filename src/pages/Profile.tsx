@@ -92,18 +92,22 @@ export default function Profile() {
     queryKey: ["profile-league-associations", homeClubId, homeClubMemberId],
     enabled: !!homeClubId && !!homeClubMemberId,
     queryFn: async () => {
-      const [assocRes, regsRes] = await Promise.all([
+      const [assocRes, regsRes, tenantsRes] = await Promise.all([
         fromExt("league_associations")
-          .select("id, name, abbreviation")
+          .select("id, name, abbreviation, scope, platform_association_id")
           .eq("club_id", homeClubId!)
           .eq("active", true)
           .order("name", { ascending: true }),
         fromExt("member_league_registrations")
           .select("id, league_association_number, league:leagues(id, association_id)")
           .eq("club_member_id", homeClubMemberId!),
+        fromExt("clubs")
+          .select("id, name, subdomain, tenant_type")
+          .eq("tenant_type", "association"),
       ]);
       if (assocRes.error) throw assocRes.error;
       const regs = (regsRes.data || []) as any[];
+      const tenants = (tenantsRes.data || []) as any[];
 
       // Group regs by association_id, prefer rows with a number set.
       const numberByAssoc: Record<string, string> = {};
@@ -117,17 +121,49 @@ export default function Profile() {
         if (num && !numberByAssoc[aid]) numberByAssoc[aid] = num;
       }
 
-      return ((assocRes.data || []) as any[]).map((a) => ({
-        associationId: a.id as string,
-        associationName: a.name as string,
-        abbreviation: (a.abbreviation || null) as string | null,
-        number: numberByAssoc[a.id] || "",
-        registrationIds: regIdsByAssoc[a.id] || [],
-        // "Registered" means: this assoc is the member's enable_league_association_id,
-        // OR they have at least one league-team registration tied to it.
-        isRegistered:
-          homeClubEnabledAssocId === a.id || (regIdsByAssoc[a.id]?.length || 0) > 0,
-      }));
+      return ((assocRes.data || []) as any[]).map((a) => {
+        // Classify like LeagueParticipationPicker so we know whether ticking
+        // this association should call provision-association-member.
+        let kind: "internal" | "tenant" | "external_regional";
+        let tenantSubdomain: string | null = null;
+        if (a.scope === "internal") {
+          kind = "internal";
+        } else {
+          let tenant: any | undefined;
+          if (a.platform_association_id) {
+            tenant = tenants.find((t) => t.id === a.platform_association_id);
+          }
+          if (!tenant) {
+            const abbrLower = (a.abbreviation || "").toLowerCase();
+            const nameLower = (a.name || "").toLowerCase();
+            tenant = tenants.find(
+              (t) =>
+                (abbrLower && (t.subdomain || "").toLowerCase() === abbrLower) ||
+                (nameLower && (t.name || "").toLowerCase() === nameLower),
+            );
+          }
+          if (tenant) {
+            kind = "tenant";
+            tenantSubdomain = tenant.subdomain || null;
+          } else {
+            kind = "external_regional";
+          }
+        }
+
+        return {
+          associationId: a.id as string,
+          associationName: a.name as string,
+          abbreviation: (a.abbreviation || null) as string | null,
+          number: numberByAssoc[a.id] || "",
+          registrationIds: regIdsByAssoc[a.id] || [],
+          kind,
+          tenantSubdomain,
+          // "Registered" means: this assoc is the member's enable_league_association_id,
+          // OR they have at least one league-team registration tied to it.
+          isRegistered:
+            homeClubEnabledAssocId === a.id || (regIdsByAssoc[a.id]?.length || 0) > 0,
+        };
+      });
     },
   });
 

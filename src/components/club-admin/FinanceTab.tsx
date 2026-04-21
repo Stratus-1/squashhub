@@ -319,9 +319,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">{(pendingTransactions || []).length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="remittances" className="text-xs gap-1">
+            <Send className="w-3 h-3" /> Remittances
+          </TabsTrigger>
           <TabsTrigger value="trial" className="text-xs">Trial Balance</TabsTrigger>
           <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="remittances">
+          <RemittancesPanel clubId={clubId} />
+        </TabsContent>
 
         {/* Journal Tab */}
         <TabsContent value="journal">

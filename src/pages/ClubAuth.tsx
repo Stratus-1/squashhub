@@ -610,30 +610,10 @@ export default function ClubAuth() {
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
                 {isAssociation
-                  ? <>Already registered with {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and select your home club to link your account.</>
-                  : <>Already a member of {clubName}? Enter your <strong>Member Number</strong> or your <strong>League Number</strong> (e.g. NSF1234) to link your account.</>}
+                  ? <>Already registered with {clubName}? Enter your <strong>email</strong> plus your <strong>League Number</strong> (e.g. NSF1234) <em>or</em> the <strong>cell phone number</strong> on file, then select your home club.</>
+                  : <>Already a member of {clubName}? Enter your <strong>email</strong> plus your <strong>Member/League Number</strong> <em>or</em> the <strong>cell phone number</strong> the club has on file.</>}
               </p>
               <form onSubmit={handleExistingMemberSignup} className="space-y-3">
-                <div>
-                  <Label htmlFor="existing-member-number">Member Number or League Number <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="existing-member-number"
-                    type="text"
-                    placeholder="e.g. WSC001 or NSF1234"
-                    value={memberNumber}
-                    onChange={(e) => setMemberNumber(e.target.value)}
-                    required
-                    maxLength={20}
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">League players use their NSF number; club members use their assigned number</p>
-                </div>
-                {isAssociation && (
-                  <HomeClubField
-                    value={homeClubId}
-                    onChange={setHomeClubId}
-                    clubs={pickerClubs || []}
-                  />
-                )}
                 <div>
                   <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>
                   <Input
@@ -641,12 +621,75 @@ export default function ClubAuth() {
                     type="email"
                     placeholder="your@email.com"
                     value={existingEmail}
-                    onChange={(e) => setExistingEmail(e.target.value)}
+                    onChange={(e) => { setExistingEmail(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
                     required
                     maxLength={255}
                   />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">We'll save this to your membership for future communication</p>
                 </div>
+                <div className="rounded-md border border-dashed border-input p-3 space-y-3 bg-muted/30">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Provide at least one of the following so we can find you:
+                  </p>
+                  <div>
+                    <Label htmlFor="existing-member-number">Member Number or League Number</Label>
+                    <Input
+                      id="existing-member-number"
+                      type="text"
+                      placeholder="e.g. WSC001 or NSF1234"
+                      value={memberNumber}
+                      onChange={(e) => { setMemberNumber(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                      maxLength={20}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="existing-phone">Cell Phone Number</Label>
+                    <Input
+                      id="existing-phone"
+                      type="tel"
+                      placeholder="+27 82 123 4567"
+                      value={existingPhone}
+                      onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                      maxLength={20}
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Use this if your club hasn't given you a number yet.
+                    </p>
+                  </div>
+                </div>
+
+                {memberChoices.length > 1 && (
+                  <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                    <p className="text-xs font-medium">We found multiple matches — pick which one is you:</p>
+                    <div className="space-y-1">
+                      {memberChoices.map((m) => (
+                        <label
+                          key={m.id}
+                          className="flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1 hover:bg-background"
+                        >
+                          <input
+                            type="radio"
+                            name="member-choice"
+                            value={m.id}
+                            checked={chosenMemberId === m.id}
+                            onChange={() => setChosenMemberId(m.id)}
+                          />
+                          <span>{m.masked_name}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {m.has_number ? "· number ✓" : ""} {m.has_phone ? "· phone ✓" : ""}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isAssociation && (
+                  <HomeClubField
+                    value={homeClubId}
+                    onChange={setHomeClubId}
+                    clubs={pickerClubs || []}
+                  />
+                )}
                 <div>
                   <Label htmlFor="existing-password">Create Password <span className="text-destructive">*</span></Label>
                   <div className="relative">
@@ -682,8 +725,16 @@ export default function ClubAuth() {
                 </div>
                 <TermsCheckbox checked={existingAcceptTerms} onCheckedChange={setExistingAcceptTerms} />
                 <HCaptcha ref={captchaRef} />
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Registering..." : "Register"}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || (memberChoices.length > 1 && !chosenMemberId)}
+                >
+                  {loading
+                    ? "Registering..."
+                    : memberChoices.length > 1 && !chosenMemberId
+                      ? "Pick which member is you"
+                      : "Register"}
                 </Button>
               </form>
             </Card>

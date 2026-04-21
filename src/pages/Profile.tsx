@@ -82,6 +82,59 @@ export default function Profile() {
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // League registrations across all tenants for this user
+  // (read by user_id so we capture both home-club and league-tenant rows).
+  const { data: leagueRegs = [] } = useQuery({
+    queryKey: ["my-league-registrations-profile", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      // Get every club_member row owned by this user (home club + association tenants)
+      const { data: memberRows } = await fromExt("club_members")
+        .select("id, club_id, club_member_number, clubs:club_id(name, tenant_type)")
+        .eq("user_id", user!.id);
+      const memberIds = (memberRows || []).map((m: any) => m.id);
+      if (memberIds.length === 0) return [];
+
+      const { data: regs } = await fromExt("member_league_registrations")
+        .select(
+          "id, club_member_id, league_association_number, ssa_number, league:leagues(id, name, association_id, association:league_associations(id, name, abbreviation))",
+        )
+        .in("club_member_id", memberIds);
+
+      const byMember: Record<string, any> = {};
+      for (const m of (memberRows || []) as any[]) byMember[m.id] = m;
+
+      // Deduplicate per association (prefer the row with a number set)
+      const byAssoc: Record<string, any> = {};
+      for (const r of (regs || []) as any[]) {
+        const assoc = r.league?.association;
+        if (!assoc?.id) continue;
+        const m = byMember[r.club_member_id];
+        const tenantClubName: string | null = m?.clubs?.tenant_type === "association" ? m?.clubs?.name : null;
+        const candidate = {
+          regId: r.id as string,
+          associationId: assoc.id as string,
+          associationName: assoc.name as string,
+          abbreviation: assoc.abbreviation as string | null,
+          number: (r.league_association_number || m?.club_member_number || "") as string,
+          tenantClubName,
+        };
+        const existing = byAssoc[assoc.id];
+        if (!existing || (!existing.number && candidate.number)) {
+          byAssoc[assoc.id] = candidate;
+        }
+      }
+      return Object.values(byAssoc) as Array<{
+        regId: string;
+        associationId: string;
+        associationName: string;
+        abbreviation: string | null;
+        number: string;
+        tenantClubName: string | null;
+      }>;
+    },
+  });
+
   const [mode, setMode] = useState<"view" | "edit">("view");
   // Profile fields
   const [name, setName] = useState("");
@@ -98,8 +151,10 @@ export default function Profile() {
   const [memberNumber, setMemberNumber] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
+  const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
 
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
+  const nextAfterSave = searchParams.get("next"); // "account" → go to /my-account on save
 
   const close = () => {
     const backgroundLocation = (location.state as any)?.backgroundLocation;
@@ -134,6 +189,18 @@ export default function Profile() {
   };
 
   useEffect(() => { resetDraft(); }, [profile, clubMember]);
+
+  // Seed league number drafts whenever the registrations load.
+  useEffect(() => {
+    if (!leagueRegs.length) return;
+    setLeagueNumberDrafts((prev) => {
+      const next = { ...prev };
+      for (const r of leagueRegs) {
+        if (next[r.associationId] === undefined) next[r.associationId] = r.number || "";
+      }
+      return next;
+    });
+  }, [leagueRegs]);
 
   useEffect(() => {
     if (didInitFromUrl) return;
@@ -210,6 +277,18 @@ export default function Profile() {
         }).eq("id", user.id);
         if (error) throw error;
       }
+
+      // Persist editable league numbers — only where the registration's
+      // current number is blank (per "editable only if blank" rule).
+      for (const reg of leagueRegs) {
+        const draft = (leagueNumberDrafts[reg.associationId] ?? "").trim();
+        if (!draft) continue;
+        if (reg.number) continue; // locked once saved
+        const { error: regErr } = await fromExt("member_league_registrations")
+          .update({ league_association_number: draft })
+          .eq("id", reg.regId);
+        if (regErr) throw regErr;
+      }
     },
     onSuccess: async () => {
       await Promise.all([
@@ -217,11 +296,16 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: ["my-club-member"] }),
         queryClient.invalidateQueries({ queryKey: ["club-members"] }),
         queryClient.invalidateQueries({ queryKey: ["my-league-registration"] }),
+        queryClient.invalidateQueries({ queryKey: ["my-league-registrations-profile"] }),
         queryClient.invalidateQueries({ queryKey: ["club-member-by-id", activeMemberId] }),
       ]);
       toast.success("Profile updated");
-      setMode("view");
       setPreviewFile(null);
+      if (nextAfterSave === "account") {
+        navigate("/my-account");
+      } else {
+        setMode("view");
+      }
     },
     onError: (e: any) => toast.error(e?.message || "Failed to update profile"),
   });
@@ -359,6 +443,40 @@ export default function Profile() {
                   <input type="checkbox" id="plays-league" checked={playsLeague} onChange={(e) => setPlaysLeague(e.target.checked)} />
                   <Label htmlFor="plays-league">Plays League</Label>
                 </div>
+
+                {leagueRegs.length > 0 && (
+                  <div className="border-t border-border pt-3 mt-3 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">League Participation</p>
+                    {leagueRegs.map((reg) => {
+                      const locked = !!reg.number;
+                      const draft = leagueNumberDrafts[reg.associationId] ?? "";
+                      return (
+                        <div key={reg.associationId} className="space-y-1">
+                          <Label className="text-xs">
+                            {reg.associationName}
+                            {reg.abbreviation ? ` (${reg.abbreviation})` : ""}
+                          </Label>
+                          <Input
+                            value={draft}
+                            disabled={locked}
+                            onChange={(e) =>
+                              setLeagueNumberDrafts((prev) => ({
+                                ...prev,
+                                [reg.associationId]: e.target.value,
+                              }))
+                            }
+                            placeholder="League number (admin can fill later)"
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            {locked
+                              ? "Number on file — contact a club admin to change."
+                              : "You can enter your number once. After saving it's locked."}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             )}
 

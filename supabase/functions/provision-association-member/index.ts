@@ -137,6 +137,15 @@ Deno.serve(async (req) => {
     // fees. Affiliation fees may live in either `league_associations` OR
     // `national_body_fees` (with fee_type = 'league_affiliation' / 'association').
     // Member stays Inactive until these are paid.
+    //
+    // We collect both:
+    //  - feeRecords: rows on the ASSOCIATION tenant (the league's view of who owes them).
+    //  - homeClubFeeSeeds: matching rows on the HOME CLUB tenant, marked
+    //    is_pass_through=true and linked to the association-tenant fee row.
+    //    The member pays the home club; a trigger then auto-settles the
+    //    association-tenant row and journals "club owes league" on the club books.
+    const insertedAssocFeeIds: string[] = [];
+    const homeClubFeeSeeds: Array<{ label: string; amount: number; assocFeeIndex: number }> = [];
     try {
       const seasonYear = new Date().getFullYear();
       const feeRecords: any[] = [];

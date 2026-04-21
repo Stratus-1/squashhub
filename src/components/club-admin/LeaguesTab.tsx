@@ -321,6 +321,11 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {onAllocate && (
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAllocate}>
+              <Users className="w-3.5 h-3.5" />Allocate
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </Button>

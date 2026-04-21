@@ -335,12 +335,20 @@ export default function Dashboard() {
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
 
-    // Club admins (captains/admins) skip the member onboarding wizard entirely
-    // — they created the club and should go straight to admin.
+    // Club admins (captains/admins) skip the member onboarding wizard,
+    // but still see the membership intro modal once.
     const isMemberAdmin =
       myClubMember?.role === "captain" || myClubMember?.role === "admin" ||
       clubData?.membership?.role === "captain" || clubData?.membership?.role === "admin";
-    if (isMemberAdmin) return;
+
+    if (isMemberAdmin) {
+      const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
+      const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
+      if (!seen && effectiveClub) {
+        setShowIntro(true);
+      }
+      return;
+    }
 
     const legacyNeedsOnboarding =
       !profile.name || profile.name === "" || profile.name === "New Player";

@@ -179,7 +179,7 @@ export default function Profile() {
       setSkillLevel(clubMember.skill_level || "");
       setMemberNumber(clubMember.club_member_number || "");
       setFeeCategoryId(clubMember.fee_category_id || "");
-      setPlaysLeague(clubMember.plays_league || false);
+      // plays_league + per-association ticks are seeded from the leagueAssocs query.
     }
 
   };
@@ -253,6 +253,23 @@ export default function Profile() {
       const phoneErr = validatePhone(phone);
       if (phoneErr) throw new Error(phoneErr);
 
+      // Derive plays_league + enable_league_association_id from the ticked associations.
+      const tickedIds = leagueAssocs
+        .map((a) => a.associationId)
+        .filter((id) => tickedAssociations[id]);
+      const derivedPlaysLeague = tickedIds.length > 0;
+      // If exactly one association is ticked, set it as the home-club enable flag.
+      // If multiple, keep the existing one if it's still ticked, else pick the first ticked.
+      let derivedEnableAssocId: string | null = null;
+      if (tickedIds.length === 1) {
+        derivedEnableAssocId = tickedIds[0];
+      } else if (tickedIds.length > 1) {
+        derivedEnableAssocId =
+          (homeClubEnabledAssocId && tickedIds.includes(homeClubEnabledAssocId)
+            ? homeClubEnabledAssocId
+            : tickedIds[0]) || null;
+      }
+
       if (clubMember?.id) {
         const memberPatch: any = {
           name: cleanName,
@@ -264,7 +281,8 @@ export default function Profile() {
           skill_level: skillLevel || null,
           club_member_number: memberNumber.trim() || null,
           fee_category_id: feeCategoryId || null,
-          plays_league: playsLeague,
+          plays_league: derivedPlaysLeague,
+          enable_league_association_id: derivedEnableAssocId,
         };
 
         const { error: memErr } = await fromExt("club_members")
@@ -281,15 +299,18 @@ export default function Profile() {
         if (error) throw error;
       }
 
-      // Persist editable league numbers — only where the registration's
-      // current number is blank (per "editable only if blank" rule).
-      for (const reg of leagueRegs) {
-        const draft = (leagueNumberDrafts[reg.associationId] ?? "").trim();
+      // Persist editable league association numbers — only fill rows where the
+      // current number is blank (locked once saved). Applies to ticked associations
+      // that already have member_league_registrations rows.
+      for (const a of leagueAssocs) {
+        if (!tickedAssociations[a.associationId]) continue;
+        if (a.number) continue; // already locked
+        const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
         if (!draft) continue;
-        if (reg.number) continue; // locked once saved
+        if (a.registrationIds.length === 0) continue; // nothing to attach the number to yet
         const { error: regErr } = await fromExt("member_league_registrations")
           .update({ league_association_number: draft })
-          .eq("id", reg.regId);
+          .in("id", a.registrationIds);
         if (regErr) throw regErr;
       }
     },
@@ -442,39 +463,62 @@ export default function Profile() {
                     )}
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id="plays-league" checked={playsLeague} onChange={(e) => setPlaysLeague(e.target.checked)} />
-                  <Label htmlFor="plays-league">Plays League</Label>
-                </div>
-
-                {leagueRegs.length > 0 && (
-                  <div className="border-t border-border pt-3 mt-3 space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">League Participation</p>
-                    {leagueRegs.map((reg) => {
-                      const locked = !!reg.number;
-                      const draft = leagueNumberDrafts[reg.associationId] ?? "";
+                {leagueAssocs.length > 0 && (
+                  <div className="border-t border-border pt-3 mt-3 space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>
+                    <p className="text-[10px] text-muted-foreground -mt-2">Tick the leagues you play. Enter your league number once — it locks after saving.</p>
+                    {leagueAssocs.map((a) => {
+                      const ticked = !!tickedAssociations[a.associationId];
+                      const locked = !!a.number;
+                      const draft = leagueNumberDrafts[a.associationId] ?? "";
+                      const cannotUntick = ticked && a.registrationIds.length > 0;
                       return (
-                        <div key={reg.associationId} className="space-y-1">
-                          <Label className="text-xs">
-                            {reg.associationName}
-                            {reg.abbreviation ? ` (${reg.abbreviation})` : ""}
-                          </Label>
-                          <Input
-                            value={draft}
-                            disabled={locked}
-                            onChange={(e) =>
-                              setLeagueNumberDrafts((prev) => ({
-                                ...prev,
-                                [reg.associationId]: e.target.value,
-                              }))
-                            }
-                            placeholder="League number (admin can fill later)"
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            {locked
-                              ? "Number on file — contact a club admin to change."
-                              : "You can enter your number once. After saving it's locked."}
-                          </p>
+                        <div key={a.associationId} className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`assoc-${a.associationId}`}
+                              checked={ticked}
+                              disabled={cannotUntick && ticked}
+                              onChange={(e) =>
+                                setTickedAssociations((prev) => ({
+                                  ...prev,
+                                  [a.associationId]: e.target.checked,
+                                }))
+                              }
+                            />
+                            <Label htmlFor={`assoc-${a.associationId}`} className="text-sm font-medium">
+                              {a.associationName}
+                              {a.abbreviation ? ` (${a.abbreviation})` : ""}
+                            </Label>
+                          </div>
+                          {ticked && (
+                            <div className="pl-6 space-y-1">
+                              <Input
+                                value={draft}
+                                disabled={locked}
+                                onChange={(e) =>
+                                  setLeagueNumberDrafts((prev) => ({
+                                    ...prev,
+                                    [a.associationId]: e.target.value,
+                                  }))
+                                }
+                                placeholder={`${a.abbreviation || a.associationName} number (e.g. NSF7570)`}
+                              />
+                              <p className="text-[10px] text-muted-foreground">
+                                {locked
+                                  ? "Number on file — contact a club admin to change."
+                                  : a.registrationIds.length === 0
+                                    ? "Number will be saved once an admin assigns you to a league team."
+                                    : "You can enter your number once. After saving it's locked."}
+                              </p>
+                            </div>
+                          )}
+                          {cannotUntick && (
+                            <p className="pl-6 text-[10px] text-muted-foreground">
+                              You're in a league team — ask a club admin to remove you to untick this.
+                            </p>
+                          )}
                         </div>
                       );
                     })}

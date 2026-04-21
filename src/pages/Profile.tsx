@@ -146,7 +146,7 @@ export default function Profile() {
   const [skillLevel, setSkillLevel] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
-  const [playsLeague, setPlaysLeague] = useState(false);
+  const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
   const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
 
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
@@ -186,17 +186,24 @@ export default function Profile() {
 
   useEffect(() => { resetDraft(); }, [profile, clubMember]);
 
-  // Seed league number drafts whenever the registrations load.
+  // Seed league number drafts + ticked state whenever the associations load.
   useEffect(() => {
-    if (!leagueRegs.length) return;
+    if (!leagueAssocs.length) return;
     setLeagueNumberDrafts((prev) => {
       const next = { ...prev };
-      for (const r of leagueRegs) {
-        if (next[r.associationId] === undefined) next[r.associationId] = r.number || "";
+      for (const a of leagueAssocs) {
+        if (next[a.associationId] === undefined) next[a.associationId] = a.number || "";
       }
       return next;
     });
-  }, [leagueRegs]);
+    setTickedAssociations((prev) => {
+      const next = { ...prev };
+      for (const a of leagueAssocs) {
+        if (next[a.associationId] === undefined) next[a.associationId] = a.isRegistered;
+      }
+      return next;
+    });
+  }, [leagueAssocs]);
 
   useEffect(() => {
     if (didInitFromUrl) return;

@@ -139,23 +139,40 @@ export default function MyAccount() {
       txChargeKeys.add(`${desc}|${amt.toFixed(2)}`);
     }
 
-    // Inject unpaid fee records as opening balance entries (legacy/outstanding fees)
-    // — but skip when a matching credit transaction already represents the charge.
+    // Inject fee records as opening balance entries (the original charge that was raised).
+    // We include BOTH paid and unpaid fees so the statement always shows the charge —
+    // when paid, the matching debit transaction will balance it back to zero.
+    // Skip when a matching credit transaction already represents the charge (avoid double-counting).
     for (const fee of (fees || [])) {
-      if (!(fee as any).paid) {
-        const amt = Math.abs(Number((fee as any).amount));
-        if (amt <= 0) continue;
-        const label = String((fee as any).fee_label || "Outstanding fee").trim().toLowerCase();
-        if (txChargeKeys.has(`${label}|${amt.toFixed(2)}`)) continue;
-        lines.push({
-          id: `fee-${(fee as any).id}`,
-          date: (fee as any).created_at,
-          description: `Opening balance: ${(fee as any).fee_label || "Outstanding fee"}`,
-          debit: 0,
-          credit: amt,
-          status: "confirmed",
+      // For paid fees, the original amount may have been zeroed out by partial payments.
+      // We need the ORIGINAL charge amount — fall back to the payment amount if available.
+      const feeAmt = Number((fee as any).amount) || 0;
+      const isPaid = !!(fee as any).paid;
+      // If fee was fully paid, amount is still the unpaid remainder (0 for full pay).
+      // We still want to show the original charge — use amount if > 0, otherwise look for
+      // a matching debit tx to infer the original amount.
+      let chargeAmt = Math.abs(feeAmt);
+      if (isPaid && chargeAmt === 0) {
+        // Find matching payment tx by label to recover the original charge amount
+        const label = String((fee as any).fee_label || "").trim().toLowerCase();
+        const matchTx = (transactions || []).find((tx: any) => {
+          if (tx.type !== "debit") return false;
+          const d = String(tx.description || "").toLowerCase();
+          return d.includes(label) && label.length > 0;
         });
+        if (matchTx) chargeAmt = Math.abs(Number((matchTx as any).amount));
       }
+      if (chargeAmt <= 0) continue;
+      const label = String((fee as any).fee_label || "Outstanding fee").trim().toLowerCase();
+      if (txChargeKeys.has(`${label}|${chargeAmt.toFixed(2)}`)) continue;
+      lines.push({
+        id: `fee-${(fee as any).id}`,
+        date: (fee as any).created_at,
+        description: `Fee charge: ${(fee as any).fee_label || "Outstanding fee"}`,
+        debit: 0,
+        credit: chargeAmt,
+        status: "confirmed",
+      });
     }
 
     for (const tx of (transactions || [])) {

@@ -440,10 +440,12 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   // The association these leagues belong to (all leagues passed in share the same association in practice).
   const associationId = leagues.find(l => l.association_id)?.association_id || null;
 
-  // Fetch members affiliated to this association — i.e. those who have a league number registered
-  // against ANY league belonging to this association. Without this, the allocation pool would
-  // include members from other association leagues who don't actually play in this competition.
-  const { data: affiliatedMemberIds = [] } = useQuery({
+  // Filter members by gender, league status, AND affiliation to this association.
+  // A member is considered affiliated if either:
+  //   (a) their `enable_league_association_id` matches this association (i.e. they opted in), OR
+  //   (b) they already have a league_association_number registered against this association.
+  // This ensures newly-affiliated members appear even before any registration row exists.
+  const { data: registeredMemberIds = [] } = useQuery({
     queryKey: ["affiliated-members", clubId, associationId],
     queryFn: async () => {
       if (!associationId) return [];
@@ -462,7 +464,14 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     enabled: open && !!associationId,
   });
 
-  const affiliatedSet = useMemo(() => new Set(affiliatedMemberIds), [affiliatedMemberIds]);
+  const affiliatedSet = useMemo(() => {
+    const s = new Set<string>(registeredMemberIds as string[]);
+    // Add members whose `enable_league_association_id` points at this association
+    for (const m of members) {
+      if ((m as any).enable_league_association_id === associationId) s.add(m.id);
+    }
+    return s;
+  }, [registeredMemberIds, members, associationId]);
 
   // Filter members by gender, league status, AND affiliation to this association,
   // sorted by club ladder position (strongest first).

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS } from "@/hooks/use-club";
+import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -198,6 +199,7 @@ export function MemberOnboardingWizard({
   // Membership
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
+  const [leagueSelections, setLeagueSelections] = useState<Record<string, LeagueSelection>>({});
   const [memberNumber, setMemberNumber] = useState("");
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
@@ -439,12 +441,19 @@ export function MemberOnboardingWizard({
     }
 
     if (playsLeague) {
-      // League association fees
+      const selectedAssocIds = new Set(Object.keys(leagueSelections));
+      // League association fees — only for ticked leagues, and only when the
+      // league is NOT a tenant (tenant pass-through fees are seeded by the
+      // provision-association-member edge function on both sides).
       for (const assoc of leagueAssocs) {
-        if (assoc.fee_annual && assoc.fee_annual > 0) {
+        if (!selectedAssocIds.has(assoc.id)) continue;
+        const sel = leagueSelections[assoc.id];
+        if (!sel) continue;
+        if (sel.kind === "tenant") continue; // seeded by edge fn
+        if (sel.feeAmount > 0) {
           items.push({
             label: `${assoc.name}${assoc.abbreviation ? ` (${assoc.abbreviation})` : ""} Registration`,
-            amount: assoc.fee_annual,
+            amount: sel.feeAmount,
             type: "association",
           });
         }
@@ -464,7 +473,7 @@ export function MemberOnboardingWizard({
     }
     
     return items;
-  }, [selectedCategory, playsLeague, leagueAssocs, nationalFees, dueMonth]);
+  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth]);
 
   const totalFees = feeBreakdown.reduce((sum, f) => sum + f.amount, 0);
 
@@ -588,48 +597,72 @@ export function MemberOnboardingWizard({
         }
       }
 
-      // 3. Create fee payment records — only for genuinely new members, not pre-existing ones
-      //    Pre-existing = admin-created, CSV-imported, or the club founder/captain
-      if (feeBreakdown.length > 0 && !isPreExistingMember) {
-        // Get the club_member_id
+      // 2c. Apply league participation selections (tenant provisioning,
+      //     internal flag, external regional fee + optional number).
+      let cmId: string | null = null;
+      {
         const { data: cmData } = await fromExt("club_members")
           .select("id")
           .eq("club_id", clubId)
           .eq("user_id", user.id)
           .single();
+        cmId = cmData?.id ?? null;
+      }
 
-        if (cmData) {
-          const currentYear = new Date().getFullYear();
-          const feeRecords = feeBreakdown.map(fee => ({
-            club_member_id: cmData.id,
-            fee_label: fee.label,
-            fee_type: fee.type,
-            amount: fee.amount,
-            season_year: currentYear,
-            paid: false,
-          }));
+      if (playsLeague && cmId && Object.keys(leagueSelections).length > 0) {
+        try {
+          await applyLeagueSelections({
+            clubId,
+            clubMemberId: cmId,
+            selections: Object.values(leagueSelections),
+            invokeProvision: async (subdomain) => {
+              const { error } = await supabase.functions.invoke("provision-association-member", {
+                body: { associationSubdomain: subdomain, homeClubId: clubId },
+              });
+              if (error) throw error;
+            },
+          });
+        } catch (e) {
+          console.warn("[MemberOnboardingWizard] applyLeagueSelections error", e);
+        }
+      }
 
-          const { error: feeErr } = await fromExt("club_member_fee_payments")
-            .insert(feeRecords);
-          if (feeErr) throw feeErr;
+      // 3. Create fee payment records — only for genuinely new members, not pre-existing ones
+      //    Pre-existing = admin-created, CSV-imported, or the club founder/captain
+      //    NOTE: tenant pass-through fees are seeded by provision-association-member
+      //    on BOTH the league tenant AND the home club, so they're excluded from
+      //    feeBreakdown above.
+      if (feeBreakdown.length > 0 && !isPreExistingMember && cmId) {
+        const currentYear = new Date().getFullYear();
+        const feeRecords = feeBreakdown.map(fee => ({
+          club_member_id: cmId!,
+          fee_label: fee.label,
+          fee_type: fee.type,
+          amount: fee.amount,
+          season_year: currentYear,
+          paid: false,
+        }));
 
-          // 4. Create member_credit_transactions (credit = fee charged to member) so fees appear on My Statement
-          const txRecords = feeBreakdown.map(fee => ({
-            club_id: clubId,
-            club_member_id: cmData.id,
-            amount: -Math.abs(fee.amount),
-            type: "credit" as const,
-            description: fee.label,
-            status: "confirmed",
-            method: "system",
-            confirmed_at: new Date().toISOString(),
-          }));
+        const { error: feeErr } = await fromExt("club_member_fee_payments")
+          .insert(feeRecords);
+        if (feeErr) throw feeErr;
 
-          const { error: txErr } = await fromExt("member_credit_transactions")
-            .insert(txRecords);
-          if (txErr) {
-            console.warn("[MemberOnboardingWizard] Failed to create statement entries:", txErr);
-          }
+        // 4. Create member_credit_transactions (credit = fee charged to member) so fees appear on My Statement
+        const txRecords = feeBreakdown.map(fee => ({
+          club_id: clubId,
+          club_member_id: cmId!,
+          amount: -Math.abs(fee.amount),
+          type: "credit" as const,
+          description: fee.label,
+          status: "confirmed",
+          method: "system",
+          confirmed_at: new Date().toISOString(),
+        }));
+
+        const { error: txErr } = await fromExt("member_credit_transactions")
+          .insert(txRecords);
+        if (txErr) {
+          console.warn("[MemberOnboardingWizard] Failed to create statement entries:", txErr);
         }
       }
 
@@ -844,16 +877,26 @@ export function MemberOnboardingWizard({
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-sm">League Player</Label>
-                      <p className="text-[10px] text-muted-foreground">Register for competitive league play</p>
+                      <p className="text-[10px] text-muted-foreground">Are you playing league?</p>
                     </div>
-                    <Switch checked={playsLeague} onCheckedChange={setPlaysLeague} />
+                    <Switch checked={playsLeague} onCheckedChange={(v) => {
+                      setPlaysLeague(v);
+                      if (!v) setLeagueSelections({});
+                    }} />
                   </div>
 
                   {playsLeague && (
-                    <p className="text-[10px] text-muted-foreground bg-muted/50 rounded-md p-2">
-                      <Trophy className="w-3 h-3 inline mr-1" />
-                      Association registration numbers will be assigned by your club admin after registration. League and national body fees will be added to your account.
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-[10px] text-muted-foreground">
+                        Tick the leagues you want to join. Your club is affiliated to:
+                      </p>
+                      <LeagueParticipationPicker
+                        clubId={clubId}
+                        value={leagueSelections}
+                        onChange={setLeagueSelections}
+                        compact
+                      />
+                    </div>
                   )}
                 </div>
               </motion.div>

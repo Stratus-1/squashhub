@@ -2870,6 +2870,64 @@ export type Database = {
           },
         ]
       }
+      member_association_affiliations: {
+        Row: {
+          active: boolean
+          association_id: string
+          club_member_id: string
+          created_at: string
+          deactivated_at: string | null
+          id: string
+          joined_at: string
+          league_association_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          association_id: string
+          club_member_id: string
+          created_at?: string
+          deactivated_at?: string | null
+          id?: string
+          joined_at?: string
+          league_association_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          association_id?: string
+          club_member_id?: string
+          created_at?: string
+          deactivated_at?: string | null
+          id?: string
+          joined_at?: string
+          league_association_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_association_affiliations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_association_affiliations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_association_affiliations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_credit_transactions: {
         Row: {
           amount: number

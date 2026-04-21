@@ -299,7 +299,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 }
 
 // ─── Gender Column: groups leagues by association, one Allocate button per association group ───
-function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onAllocate }: {
+function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate }: {
   title: string;
   gender: "men" | "ladies" | "mixed";
   leagues: League[];
@@ -307,6 +307,7 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
   members: ClubMember[];
   sortLeagues: (list: League[]) => League[];
   onDelete: (id: string) => void;
+  onDeleteGroup: (groupLeagues: League[], label: string) => void;
   onAllocate: (associationId: string | null, leagues: League[]) => void;
 }) {
   // Group leagues by association_id
@@ -337,9 +338,20 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                 {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "No association"}
                 <span className="text-muted-foreground font-normal"> • {g.leagues.length}</span>
               </p>
-              <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
-                <Users className="w-3 h-3" />Allocate
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
+                  <Users className="w-3 h-3" />Allocate
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] gap-1 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => onDeleteGroup(g.leagues, `${title} • ${g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "No association"}`)}
+                  title="Delete all teams in this group"
+                >
+                  <Trash2 className="w-3 h-3" />Delete all
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               {g.leagues.map(l => (

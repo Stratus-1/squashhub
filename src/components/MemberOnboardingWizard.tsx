@@ -439,14 +439,19 @@ export function MemberOnboardingWizard({
       });
     }
 
-    // Registration fees (once-off for new members) — always included
-    for (const nbf of nationalFees) {
-      if ((nbf as any).fee_type === "registration" && (nbf as any).active !== false && nbf.fee_annual && (nbf.fee_annual as number) > 0) {
-        items.push({
-          label: nbf.body_name + (nbf.abbreviation ? ` (${nbf.abbreviation})` : ""),
-          amount: nbf.fee_annual as number,
-          type: "registration",
-        });
+    // Registration fees (once-off for NEW members only).
+    // Pre-existing members (admin-created, CSV-imported, founders) are NOT
+    // charged the registration fee even when they receive a new club number,
+    // since they are migrating into the system rather than registering fresh.
+    if (!isExistingMember) {
+      for (const nbf of nationalFees) {
+        if ((nbf as any).fee_type === "registration" && (nbf as any).active !== false && nbf.fee_annual && (nbf.fee_annual as number) > 0) {
+          items.push({
+            label: nbf.body_name + (nbf.abbreviation ? ` (${nbf.abbreviation})` : ""),
+            amount: nbf.fee_annual as number,
+            type: "registration",
+          });
+        }
       }
     }
 
@@ -483,7 +488,7 @@ export function MemberOnboardingWizard({
     }
     
     return items;
-  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth]);
+  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth, isExistingMember]);
 
   const totalFees = feeBreakdown.reduce((sum, f) => sum + f.amount, 0);
 

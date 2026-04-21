@@ -853,16 +853,26 @@ export function MemberOnboardingWizard({
                   <div className="flex items-center justify-between">
                     <div>
                       <Label className="text-sm">League Player</Label>
-                      <p className="text-[10px] text-muted-foreground">Register for competitive league play</p>
+                      <p className="text-[10px] text-muted-foreground">Are you playing league?</p>
                     </div>
-                    <Switch checked={playsLeague} onCheckedChange={setPlaysLeague} />
+                    <Switch checked={playsLeague} onCheckedChange={(v) => {
+                      setPlaysLeague(v);
+                      if (!v) setLeagueSelections({});
+                    }} />
                   </div>
 
                   {playsLeague && (
-                    <p className="text-[10px] text-muted-foreground bg-muted/50 rounded-md p-2">
-                      <Trophy className="w-3 h-3 inline mr-1" />
-                      Association registration numbers will be assigned by your club admin after registration. League and national body fees will be added to your account.
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-[10px] text-muted-foreground">
+                        Tick the leagues you want to join. Your club is affiliated to:
+                      </p>
+                      <LeagueParticipationPicker
+                        clubId={clubId}
+                        value={leagueSelections}
+                        onChange={setLeagueSelections}
+                        compact
+                      />
+                    </div>
                   )}
                 </div>
               </motion.div>

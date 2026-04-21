@@ -332,6 +332,23 @@ Deno.serve(async (req) => {
             console.warn("[provision-association-member] reg upsert failed", regErr);
           }
         }
+
+        // Permanent affiliation record — survives team/league rebuilds.
+        // The number is reserved to this member forever.
+        const { error: affErr } = await supabaseAdmin
+          .from("member_association_affiliations")
+          .upsert(
+            {
+              club_member_id: homeMember.id,
+              association_id: homeAssoc.id,
+              league_association_number: allocatedNumber,
+              active: true,
+            },
+            { onConflict: "club_member_id,association_id" }
+          );
+        if (affErr) {
+          console.warn("[provision-association-member] affiliation upsert failed", affErr);
+        }
       }
     }
 

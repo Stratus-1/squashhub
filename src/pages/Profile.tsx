@@ -92,12 +92,19 @@ export default function Profile() {
     queryKey: ["profile-league-associations", homeClubId, homeClubMemberId],
     enabled: !!homeClubId && !!homeClubMemberId,
     queryFn: async () => {
-      const [assocRes, regsRes, tenantsRes] = await Promise.all([
+      const [assocRes, affRes, regsRes, tenantsRes] = await Promise.all([
         fromExt("league_associations")
           .select("id, name, abbreviation, scope, platform_association_id")
           .eq("club_id", homeClubId!)
           .eq("active", true)
           .order("name", { ascending: true }),
+        // Permanent affiliations — survive team/league rebuilds. Source of
+        // truth for league_association_number + active state.
+        fromExt("member_association_affiliations")
+          .select("id, association_id, league_association_number, active, joined_at, deactivated_at")
+          .eq("club_member_id", homeClubMemberId!),
+        // Team-level registrations are still useful to know whether the
+        // member is currently in a season roster (affects untick UX).
         fromExt("member_league_registrations")
           .select("id, league_association_number, league:leagues(id, association_id)")
           .eq("club_member_id", homeClubMemberId!),
@@ -106,10 +113,17 @@ export default function Profile() {
           .eq("tenant_type", "association"),
       ]);
       if (assocRes.error) throw assocRes.error;
+      const affs = (affRes.data || []) as any[];
       const regs = (regsRes.data || []) as any[];
       const tenants = (tenantsRes.data || []) as any[];
 
-      // Group regs by association_id, prefer rows with a number set.
+      // Index permanent affiliations by association id.
+      const affByAssoc: Record<string, any> = {};
+      for (const af of affs) {
+        affByAssoc[af.association_id] = af;
+      }
+
+      // Team-registration metadata (number fallback + roster presence).
       const numberByAssoc: Record<string, string> = {};
       const regIdsByAssoc: Record<string, string[]> = {};
       for (const r of regs) {
@@ -150,18 +164,35 @@ export default function Profile() {
           }
         }
 
+        const aff = affByAssoc[a.id];
+        // Number priority: permanent affiliation row → fallback to any team reg.
+        const permanentNumber = (aff?.league_association_number || "").trim();
+        const number = permanentNumber || numberByAssoc[a.id] || "";
+        const hasAffiliation = !!aff;
+        const isActive = hasAffiliation ? aff.active === true : false;
+
         return {
           associationId: a.id as string,
           associationName: a.name as string,
           abbreviation: (a.abbreviation || null) as string | null,
-          number: numberByAssoc[a.id] || "",
+          number,
           registrationIds: regIdsByAssoc[a.id] || [],
           kind,
           tenantSubdomain,
-          // "Registered" means: this assoc is the member's enable_league_association_id,
-          // OR they have at least one league-team registration tied to it.
+          // Permanent affiliation record id (if any)
+          affiliationId: (aff?.id as string | undefined) || null,
+          hasAffiliation,
+          // True = currently active. Number is preserved either way.
+          isActive,
+          // Joined/deactivated timestamps for the history view.
+          joinedAt: (aff?.joined_at as string | undefined) || null,
+          deactivatedAt: (aff?.deactivated_at as string | undefined) || null,
+          // Initial tick state seeds from active affiliation OR legacy
+          // home-club enable flag OR team-roster presence (back-compat).
           isRegistered:
-            homeClubEnabledAssocId === a.id || (regIdsByAssoc[a.id]?.length || 0) > 0,
+            isActive ||
+            homeClubEnabledAssocId === a.id ||
+            (regIdsByAssoc[a.id]?.length || 0) > 0,
         };
       });
     },
@@ -313,7 +344,7 @@ export default function Profile() {
       const newlyTickedTenants = leagueAssocs.filter(
         (a) =>
           tickedAssociations[a.associationId] &&
-          !a.isRegistered &&
+          !a.isActive &&
           a.kind === "tenant" &&
           a.tenantSubdomain,
       );
@@ -366,20 +397,52 @@ export default function Profile() {
         if (error) throw error;
       }
 
-      // Persist editable league association numbers — only fill rows where the
-      // current number is blank (locked once saved). Applies to ticked associations
-      // that already have member_league_registrations rows. (Tenant leagues
-      // auto-allocate the number via provision-association-member above.)
-      for (const a of leagueAssocs) {
-        if (!tickedAssociations[a.associationId]) continue;
-        if (a.number) continue; // already locked
-        const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
-        if (!draft) continue;
-        if (a.registrationIds.length === 0) continue; // nothing to attach the number to yet
-        const { error: regErr } = await fromExt("member_league_registrations")
-          .update({ league_association_number: draft })
-          .in("id", a.registrationIds);
-        if (regErr) throw regErr;
+      // Persist permanent affiliations: upsert one row per association whose
+      // tick state changed. Numbers are NEVER deleted — we only flip active.
+      // If the user enters a number for an association that doesn't yet
+      // have a permanent row, create one (manual external-regional case).
+      if (clubMember?.id) {
+        for (const a of leagueAssocs) {
+          const ticked = !!tickedAssociations[a.associationId];
+          const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
+
+          if (a.hasAffiliation && a.affiliationId) {
+            // Toggle active flag if it changed; also persist a manual number
+            // if one was entered into a previously-blank field.
+            const patch: any = {};
+            if (ticked !== a.isActive) patch.active = ticked;
+            if (!a.number && draft) patch.league_association_number = draft;
+            if (Object.keys(patch).length > 0) {
+              const { error: affErr } = await fromExt("member_association_affiliations")
+                .update(patch)
+                .eq("id", a.affiliationId);
+              if (affErr) throw affErr;
+            }
+          } else if (ticked) {
+            // No affiliation row yet (e.g. external regional like NSA).
+            // Tenant associations were just provisioned above and the edge
+            // function creates the affiliation row; skip here to avoid race.
+            if (a.kind === "tenant") continue;
+            const { error: insErr } = await fromExt("member_association_affiliations")
+              .insert({
+                club_member_id: clubMember.id,
+                association_id: a.associationId,
+                league_association_number: draft || null,
+                active: true,
+              });
+            if (insErr) throw insErr;
+          }
+
+          // Back-compat: also write the number onto any season-team
+          // registration rows that are still blank (so existing UI bits
+          // that read from member_league_registrations keep working).
+          if (ticked && draft && !a.number && a.registrationIds.length > 0) {
+            const { error: regErr } = await fromExt("member_league_registrations")
+              .update({ league_association_number: draft })
+              .in("id", a.registrationIds);
+            if (regErr) throw regErr;
+          }
+        }
       }
     },
     onSuccess: async () => {
@@ -534,12 +597,13 @@ export default function Profile() {
                 {leagueAssocs.length > 0 && (
                   <div className="border-t border-border pt-3 mt-3 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>
-                    <p className="text-[10px] text-muted-foreground -mt-2">Tick the leagues you play. Enter your league number once — it locks after saving.</p>
+                    <p className="text-[10px] text-muted-foreground -mt-2">
+                      Tick a league to play and pay its fees. Untick to pause — your number is kept on file and reactivates instantly when you re-tick.
+                    </p>
                     {leagueAssocs.map((a) => {
                       const ticked = !!tickedAssociations[a.associationId];
                       const locked = !!a.number;
                       const draft = leagueNumberDrafts[a.associationId] ?? "";
-                      const cannotUntick = ticked && a.registrationIds.length > 0;
                       return (
                         <div key={a.associationId} className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -547,7 +611,6 @@ export default function Profile() {
                               type="checkbox"
                               id={`assoc-${a.associationId}`}
                               checked={ticked}
-                              disabled={cannotUntick && ticked}
                               onChange={(e) =>
                                 setTickedAssociations((prev) => ({
                                   ...prev,
@@ -559,6 +622,11 @@ export default function Profile() {
                               {a.associationName}
                               {a.abbreviation ? ` (${a.abbreviation})` : ""}
                             </Label>
+                            {a.hasAffiliation && !a.isActive && (
+                              <span className="text-[10px] text-muted-foreground italic">
+                                (paused — number {a.number || "—"})
+                              </span>
+                            )}
                           </div>
                           {ticked && (
                             <div className="pl-6 space-y-1">
@@ -575,17 +643,12 @@ export default function Profile() {
                               />
                               <p className="text-[10px] text-muted-foreground">
                                 {locked
-                                  ? "Number on file — contact a club admin to change."
-                                  : a.registrationIds.length === 0
-                                    ? "Number will be saved once an admin assigns you to a league team."
-                                    : "You can enter your number once. After saving it's locked."}
+                                  ? "Number on file — kept permanently. Contact a club admin to change."
+                                  : a.kind === "tenant"
+                                    ? "A number will be auto-allocated when you save."
+                                    : "Enter your number once. After saving it's locked to you."}
                               </p>
                             </div>
-                          )}
-                          {cannotUntick && (
-                            <p className="pl-6 text-[10px] text-muted-foreground">
-                              You're in a league team — ask a club admin to remove you to untick this.
-                            </p>
                           )}
                         </div>
                       );
@@ -622,12 +685,30 @@ function ViewMode({
   close: () => void;
   setMode: (m: "edit") => void;
 }) {
+  const [showInactive, setShowInactive] = useState(false);
   const email = profile.email as string | null;
   const rank = typeof clubMember?.ladder_position === "number" ? clubMember.ladder_position : null;
   const skillLabel = clubMember?.skill_level
     ? SKILL_LEVELS.find((s) => s.value === clubMember.skill_level)?.label || clubMember.skill_level
     : null;
   const feeCategory = feeCategories.find((c: any) => c.id === clubMember?.fee_category_id);
+
+  const { data: affiliations = [] } = useQuery({
+    queryKey: ["profile-affiliations-view", clubMember?.id],
+    enabled: !!clubMember?.id,
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_association_affiliations")
+        .select("id, league_association_number, active, joined_at, deactivated_at, association:league_associations(id, name, abbreviation)")
+        .eq("club_member_id", clubMember.id)
+        .order("active", { ascending: false })
+        .order("joined_at", { ascending: true });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const activeAffs = affiliations.filter((a) => a.active);
+  const inactiveAffs = affiliations.filter((a) => !a.active);
 
   return (
     <div className="space-y-4">
@@ -657,6 +738,46 @@ function ViewMode({
             {clubMember.address && <p className="text-xs text-muted-foreground">Address: {clubMember.address}</p>}
             {clubMember.id_number && <p className="text-xs text-muted-foreground">ID: •••••{clubMember.id_number.slice(-4)}</p>}
             <p className="text-xs text-muted-foreground">Plays league: {clubMember.plays_league ? "Yes" : "No"}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {clubMember && affiliations.length > 0 && (
+        <Card className="border-border/60">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Affiliations</p>
+              {inactiveAffs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowInactive((v) => !v)}
+                  className="text-[10px] text-primary hover:underline"
+                >
+                  {showInactive ? "Hide inactive" : `Show inactive (${inactiveAffs.length})`}
+                </button>
+              )}
+            </div>
+            {activeAffs.length === 0 && (
+              <p className="text-xs text-muted-foreground">No active league affiliations.</p>
+            )}
+            {activeAffs.map((a) => (
+              <div key={a.id} className="flex items-center justify-between text-xs">
+                <span className="truncate">
+                  <span className="font-medium">{a.association?.abbreviation || a.association?.name}</span>
+                  {a.association?.abbreviation && a.association?.name ? ` — ${a.association.name}` : ""}
+                </span>
+                <span className="text-muted-foreground font-mono">{a.league_association_number || "—"}</span>
+              </div>
+            ))}
+            {showInactive && inactiveAffs.map((a) => (
+              <div key={a.id} className="flex items-center justify-between text-xs opacity-60">
+                <span className="truncate">
+                  <span className="font-medium line-through">{a.association?.abbreviation || a.association?.name}</span>
+                  <span className="ml-1 italic">(paused)</span>
+                </span>
+                <span className="text-muted-foreground font-mono">{a.league_association_number || "—"}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

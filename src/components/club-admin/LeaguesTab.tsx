@@ -148,7 +148,15 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 
-  const menLeagues = leagues.filter(l => l.name.toLowerCase().includes("men's") || l.name.toLowerCase().startsWith("men"));
+  const handleDeleteGroup = async (groupLeagues: League[], label: string) => {
+    if (groupLeagues.length === 0) return;
+    if (!confirm(`Delete ALL ${groupLeagues.length} ${label} league teams? This cannot be undone.`)) return;
+    const ids = groupLeagues.map(l => l.id);
+    const { error } = await fromExt("leagues").delete().in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Deleted ${groupLeagues.length} league teams`);
+    qc.invalidateQueries({ queryKey: ["leagues"] });
+  };
   const ladiesLeagues = leagues.filter(l => l.name.toLowerCase().includes("ladies") || l.name.toLowerCase().includes("women"));
   const mixedLeagues = leagues.filter(l => {
     const n = l.name.toLowerCase();

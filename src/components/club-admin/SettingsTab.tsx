@@ -159,6 +159,22 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
             Preview: <span className="font-mono font-semibold text-foreground">{form.member_number_prefix}-{String(form.member_number_start).padStart(form.member_number_length, "0")}</span>
           </p>
         )}
+        <div className="flex items-start justify-between gap-4 pt-3 border-t">
+          <div className="space-y-0.5">
+            <Label htmlFor="auto-num-existing" className="text-sm font-medium">
+              Allocate to existing members onboarding who don't have a number yet
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              When enabled, pre-existing members (admin-created or imported) without a club number
+              will be auto-allocated one when they complete the onboarding wizard.
+            </p>
+          </div>
+          <Switch
+            id="auto-num-existing"
+            checked={form.auto_number_existing_onboarding}
+            onCheckedChange={(v) => setForm(p => ({ ...p, auto_number_existing_onboarding: v }))}
+          />
+        </div>
       </Card>
 
       {/* Email Sender Settings */}

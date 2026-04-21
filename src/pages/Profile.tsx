@@ -98,8 +98,10 @@ export default function Profile() {
   const [memberNumber, setMemberNumber] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
+  const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
 
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
+  const nextAfterSave = searchParams.get("next"); // "account" → go to /my-account on save
 
   const close = () => {
     const backgroundLocation = (location.state as any)?.backgroundLocation;

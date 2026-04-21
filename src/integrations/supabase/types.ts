@@ -1249,6 +1249,8 @@ export type Database = {
           fee_label: string
           fee_type: string
           id: string
+          is_pass_through: boolean
+          linked_fee_payment_id: string | null
           paid: boolean
           paid_at: string | null
           season_year: number
@@ -1261,6 +1263,8 @@ export type Database = {
           fee_label: string
           fee_type: string
           id?: string
+          is_pass_through?: boolean
+          linked_fee_payment_id?: string | null
           paid?: boolean
           paid_at?: string | null
           season_year?: number
@@ -1273,6 +1277,8 @@ export type Database = {
           fee_label?: string
           fee_type?: string
           id?: string
+          is_pass_through?: boolean
+          linked_fee_payment_id?: string | null
           paid?: boolean
           paid_at?: string | null
           season_year?: number
@@ -1291,6 +1297,13 @@ export type Database = {
             columns: ["club_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_member_fee_payments_linked_fee_payment_id_fkey"
+            columns: ["linked_fee_payment_id"]
+            isOneToOne: false
+            referencedRelation: "club_member_fee_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -3871,6 +3884,7 @@ export type Database = {
         | "bank_charges"
         | "gateway_fees"
         | "general_expense"
+        | "association_payable"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -4025,6 +4039,7 @@ export const Constants = {
         "bank_charges",
         "gateway_fees",
         "general_expense",
+        "association_payable",
       ],
       integration_provider: [
         "strava",

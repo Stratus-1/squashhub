@@ -318,6 +318,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
     setPerTeam(4);
     setReserves(0);
     setDistribution("snake");
+    setTeamNames({});
+    setReservesName("");
   };
 
   return (

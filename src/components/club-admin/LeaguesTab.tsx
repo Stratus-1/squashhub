@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { StepByStepLeagueSetup } from "./StepByStepLeagueSetup";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -97,6 +98,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
+  const [stepByStepOpen, setStepByStepOpen] = useState(false);
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
 
@@ -206,7 +208,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <h3 className="font-semibold">Leagues</h3>
           <div className="flex gap-2 flex-wrap">
             <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
-            <Button size="sm" variant="outline" onClick={() => toast.info("Step by Step League Setup coming soon")}>
+            <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
               <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
             </Button>
           </div>
@@ -268,6 +270,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           onOpenChange={(o) => !o && setAllocateGroup(null)}
         />
       )}
+
+      <StepByStepLeagueSetup clubId={clubId} open={stepByStepOpen} onOpenChange={setStepByStepOpen} />
 
       {/* Edit Association Dialog */}
       {editAssoc && (

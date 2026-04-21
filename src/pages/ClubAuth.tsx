@@ -114,9 +114,14 @@ export default function ClubAuth() {
     e.preventDefault();
     const email = existingEmail.trim();
     const memberNum = memberNumber.trim();
+    const phone = existingPhone.trim();
 
-    if (!memberNum || memberNum.length < 1) {
-      toast.error("Please enter your member number");
+    if (!email) {
+      toast.error("Please enter your email");
+      return;
+    }
+    if (!memberNum && !phone) {
+      toast.error("Please enter your member/league number OR your cell phone number");
       return;
     }
     if (existingPassword.length < 6) {
@@ -131,26 +136,77 @@ export default function ClubAuth() {
       toast.error("Please accept the Terms of Use and Privacy Policy");
       return;
     }
-
-    try {
-      if (captchaRef.current) {
-        const token = await captchaRef.current.execute();
-        const valid = await verifyCaptchaToken(token);
-        if (!valid) { toast.error("Captcha verification failed"); return; }
-      }
-    } catch { toast.error("Captcha verification failed"); return; }
+    if (!club?.id) {
+      toast.error("Club context not loaded yet — please refresh");
+      return;
+    }
     if (isAssociation && !homeClubId) {
       toast.error("Please select your home club");
       return;
     }
+
     setLoading(true);
+
+    // 1) Look up unclaimed shell rows that match (email) AND (number OR phone)
+    let matchedMemberId = chosenMemberId || "";
+    let matchedNumber = memberNum;
+    if (!matchedMemberId) {
+      const { data: matches, error: lookupErr } = await (supabase as any).rpc(
+        "lookup_existing_member_for_signup",
+        {
+          _club_id: club.id,
+          _email: email,
+          _number: memberNum || null,
+          _phone: phone || null,
+        }
+      );
+      if (lookupErr) {
+        toast.error(lookupErr.message || "Member lookup failed");
+        setLoading(false);
+        return;
+      }
+      const rows = (matches || []) as Array<{
+        id: string;
+        masked_name: string;
+        has_number: boolean;
+        has_phone: boolean;
+      }>;
+      if (rows.length === 0) {
+        toast.error(
+          "We couldn't find a member matching that email and number/phone. Please contact your club admin."
+        );
+        setLoading(false);
+        return;
+      }
+      if (rows.length > 1) {
+        // Show chooser inline; user picks then re-submits
+        setMemberChoices(rows);
+        toast.message("Multiple members match — please pick which one is you", { duration: 4000 });
+        setLoading(false);
+        return;
+      }
+      matchedMemberId = rows[0].id;
+    }
+
+    // Captcha after we know we have a real match
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+    } catch { toast.error("Captcha verification failed"); setLoading(false); return; }
+
     const nowIso = new Date().toISOString();
     const homeClub = pickerClubs?.find((c) => c.id === homeClubId);
+    // Use whatever identifier the user supplied as the "name slug" passed to signUp
+    // (the member-claim flow at AuthCallback links by email + this hint).
+    const identifierHint = matchedNumber || phone || "existing-member";
     const { error } = await signUp(
       email,
       existingPassword,
-      memberNum,
-      undefined,
+      identifierHint,
+      phone || undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
       club ? {
         clubName: club.name,

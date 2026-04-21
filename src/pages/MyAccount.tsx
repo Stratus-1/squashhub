@@ -312,7 +312,7 @@ export default function MyAccount() {
           status: "confirmed",
         }).select("id").single();
         if (txErr) throw txErr;
-        await postPaymentGL(txData.id, payAmount, feeDescription);
+        
 
         if (isPartial) {
           let remaining = payAmount;

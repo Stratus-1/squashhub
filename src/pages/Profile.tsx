@@ -685,12 +685,30 @@ function ViewMode({
   close: () => void;
   setMode: (m: "edit") => void;
 }) {
+  const [showInactive, setShowInactive] = useState(false);
   const email = profile.email as string | null;
   const rank = typeof clubMember?.ladder_position === "number" ? clubMember.ladder_position : null;
   const skillLabel = clubMember?.skill_level
     ? SKILL_LEVELS.find((s) => s.value === clubMember.skill_level)?.label || clubMember.skill_level
     : null;
   const feeCategory = feeCategories.find((c: any) => c.id === clubMember?.fee_category_id);
+
+  const { data: affiliations = [] } = useQuery({
+    queryKey: ["profile-affiliations-view", clubMember?.id],
+    enabled: !!clubMember?.id,
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_association_affiliations")
+        .select("id, league_association_number, active, joined_at, deactivated_at, association:league_associations(id, name, abbreviation)")
+        .eq("club_member_id", clubMember.id)
+        .order("active", { ascending: false })
+        .order("joined_at", { ascending: true });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const activeAffs = affiliations.filter((a) => a.active);
+  const inactiveAffs = affiliations.filter((a) => !a.active);
 
   return (
     <div className="space-y-4">
@@ -720,6 +738,46 @@ function ViewMode({
             {clubMember.address && <p className="text-xs text-muted-foreground">Address: {clubMember.address}</p>}
             {clubMember.id_number && <p className="text-xs text-muted-foreground">ID: •••••{clubMember.id_number.slice(-4)}</p>}
             <p className="text-xs text-muted-foreground">Plays league: {clubMember.plays_league ? "Yes" : "No"}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {clubMember && affiliations.length > 0 && (
+        <Card className="border-border/60">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Affiliations</p>
+              {inactiveAffs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowInactive((v) => !v)}
+                  className="text-[10px] text-primary hover:underline"
+                >
+                  {showInactive ? "Hide inactive" : `Show inactive (${inactiveAffs.length})`}
+                </button>
+              )}
+            </div>
+            {activeAffs.length === 0 && (
+              <p className="text-xs text-muted-foreground">No active league affiliations.</p>
+            )}
+            {activeAffs.map((a) => (
+              <div key={a.id} className="flex items-center justify-between text-xs">
+                <span className="truncate">
+                  <span className="font-medium">{a.association?.abbreviation || a.association?.name}</span>
+                  {a.association?.abbreviation && a.association?.name ? ` — ${a.association.name}` : ""}
+                </span>
+                <span className="text-muted-foreground font-mono">{a.league_association_number || "—"}</span>
+              </div>
+            ))}
+            {showInactive && inactiveAffs.map((a) => (
+              <div key={a.id} className="flex items-center justify-between text-xs opacity-60">
+                <span className="truncate">
+                  <span className="font-medium line-through">{a.association?.abbreviation || a.association?.name}</span>
+                  <span className="ml-1 italic">(paused)</span>
+                </span>
+                <span className="text-muted-foreground font-mono">{a.league_association_number || "—"}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

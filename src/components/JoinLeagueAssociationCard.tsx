@@ -84,6 +84,19 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
     },
   });
 
+  // Read the active member's plays_league flag
+  const { data: myMemberFlag } = useQuery({
+    queryKey: ["my-member-plays-league", activeMember?.id],
+    enabled: !!activeMember?.id,
+    queryFn: async () => {
+      const { data } = await fromExt("club_members")
+        .select("plays_league")
+        .eq("id", activeMember!.id)
+        .maybeSingle();
+      return !!(data as any)?.plays_league;
+    },
+  });
+
   // Hide league_associations whose linked tenant the user already joined
   const excludeIds = useMemo(() => {
     const out: string[] = [];
@@ -94,7 +107,7 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
   }, [tenantsByLeagueAssoc, existingTenantAssocIds]);
 
   const remainingCount = leagueAssocs.length - excludeIds.length;
-  const hideEntirely = !activeMember || activeMember.plays_league || remainingCount <= 0;
+  const hideEntirely = !activeMember || myMemberFlag || remainingCount <= 0;
 
   const join = useMutation({
     mutationFn: async () => {

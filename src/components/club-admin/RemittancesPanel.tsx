@@ -195,8 +195,8 @@ export function RemittancesPanel({ clubId }: { clubId: string }) {
             {/* Ready to remit */}
             {group.collected.length > 0 && (
               <div className="border rounded-lg overflow-hidden">
-                <div className="bg-amber-50 dark:bg-amber-950/20 px-3 py-2 border-b flex items-center justify-between">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                <div className="bg-accent/40 px-3 py-2 border-b flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
                     Ready to Remit ({group.collected.length})
                   </p>
                   <Button

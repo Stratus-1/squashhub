@@ -188,7 +188,14 @@ export function MemberOnboardingWizard({
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
 
   // Personal details
-  const [name, setName] = useState(user?.user_metadata?.name || "");
+  // Note: user_metadata.name may contain a lookup hint (phone or member number)
+  // from the existing-member signup flow. Strip it if it looks like a code
+  // so the user enters their real name instead of seeing their phone prefilled.
+  const initialMetaName = (user?.user_metadata?.name || "").trim();
+  const initialNameLooksLikeCode =
+    !!initialMetaName &&
+    (/^[A-Z]{2,5}\d{2,8}$/i.test(initialMetaName) || /^\+?\d[\d\s-]{6,}$/.test(initialMetaName));
+  const [name, setName] = useState(initialNameLooksLikeCode ? "" : initialMetaName);
   const [phone, setPhone] = useState(user?.user_metadata?.phone || "");
   const [idNumber, setIdNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");

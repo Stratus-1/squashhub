@@ -258,32 +258,9 @@ export default function MyAccount() {
       if (payAmount > totalOwed) throw new Error("Payment amount exceeds outstanding balance");
       const isPartial = payAmount < totalOwed;
 
-      // Helper to post GL journal entries for a payment
-      const postPaymentGL = async (txId: string, amount: number, feeLabel: string) => {
-        const journalRef = crypto.randomUUID();
-        await fromExt("club_journal_entries").insert([
-          {
-            club_id: clubId,
-            journal_ref: journalRef,
-            account: "bank" as any,
-            debit: amount,
-            credit: 0,
-            description: `Payment received: ${feeLabel}`,
-            club_member_id: clubMemberId,
-            transaction_id: txId,
-          },
-          {
-            club_id: clubId,
-            journal_ref: journalRef,
-            account: "debtors" as any,
-            debit: 0,
-            credit: amount,
-            description: `Payment received: ${feeLabel}`,
-            club_member_id: clubMemberId,
-            transaction_id: txId,
-          },
-        ]);
-      };
+      // GL journal entries are posted automatically by database triggers
+      // (journal_fee_assessment on insert, journal_fee_payment_received on paid=true).
+      // We just record the member_credit_transactions row and flip the fee to paid.
 
       const feeDescription = selectedFees.map((f: any) => f.fee_label).join(", ");
       const txDescription = isPartial
@@ -304,7 +281,6 @@ export default function MyAccount() {
           status: "confirmed",
         }).select("id").single();
         if (txErr) throw txErr;
-        await postPaymentGL(txData.id, payAmount, feeDescription);
 
         if (isPartial) {
           // Reduce the fee amount by the partial payment (distribute across selected fees)
@@ -336,7 +312,7 @@ export default function MyAccount() {
           status: "confirmed",
         }).select("id").single();
         if (txErr) throw txErr;
-        await postPaymentGL(txData.id, payAmount, feeDescription);
+        
 
         if (isPartial) {
           let remaining = payAmount;

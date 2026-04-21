@@ -92,12 +92,19 @@ export default function Profile() {
     queryKey: ["profile-league-associations", homeClubId, homeClubMemberId],
     enabled: !!homeClubId && !!homeClubMemberId,
     queryFn: async () => {
-      const [assocRes, regsRes, tenantsRes] = await Promise.all([
+      const [assocRes, affRes, regsRes, tenantsRes] = await Promise.all([
         fromExt("league_associations")
           .select("id, name, abbreviation, scope, platform_association_id")
           .eq("club_id", homeClubId!)
           .eq("active", true)
           .order("name", { ascending: true }),
+        // Permanent affiliations — survive team/league rebuilds. Source of
+        // truth for league_association_number + active state.
+        fromExt("member_association_affiliations")
+          .select("id, association_id, league_association_number, active, joined_at, deactivated_at")
+          .eq("club_member_id", homeClubMemberId!),
+        // Team-level registrations are still useful to know whether the
+        // member is currently in a season roster (affects untick UX).
         fromExt("member_league_registrations")
           .select("id, league_association_number, league:leagues(id, association_id)")
           .eq("club_member_id", homeClubMemberId!),
@@ -106,10 +113,17 @@ export default function Profile() {
           .eq("tenant_type", "association"),
       ]);
       if (assocRes.error) throw assocRes.error;
+      const affs = (affRes.data || []) as any[];
       const regs = (regsRes.data || []) as any[];
       const tenants = (tenantsRes.data || []) as any[];
 
-      // Group regs by association_id, prefer rows with a number set.
+      // Index permanent affiliations by association id.
+      const affByAssoc: Record<string, any> = {};
+      for (const af of affs) {
+        affByAssoc[af.association_id] = af;
+      }
+
+      // Team-registration metadata (number fallback + roster presence).
       const numberByAssoc: Record<string, string> = {};
       const regIdsByAssoc: Record<string, string[]> = {};
       for (const r of regs) {
@@ -150,18 +164,35 @@ export default function Profile() {
           }
         }
 
+        const aff = affByAssoc[a.id];
+        // Number priority: permanent affiliation row → fallback to any team reg.
+        const permanentNumber = (aff?.league_association_number || "").trim();
+        const number = permanentNumber || numberByAssoc[a.id] || "";
+        const hasAffiliation = !!aff;
+        const isActive = hasAffiliation ? aff.active === true : false;
+
         return {
           associationId: a.id as string,
           associationName: a.name as string,
           abbreviation: (a.abbreviation || null) as string | null,
-          number: numberByAssoc[a.id] || "",
+          number,
           registrationIds: regIdsByAssoc[a.id] || [],
           kind,
           tenantSubdomain,
-          // "Registered" means: this assoc is the member's enable_league_association_id,
-          // OR they have at least one league-team registration tied to it.
+          // Permanent affiliation record id (if any)
+          affiliationId: (aff?.id as string | undefined) || null,
+          hasAffiliation,
+          // True = currently active. Number is preserved either way.
+          isActive,
+          // Joined/deactivated timestamps for the history view.
+          joinedAt: (aff?.joined_at as string | undefined) || null,
+          deactivatedAt: (aff?.deactivated_at as string | undefined) || null,
+          // Initial tick state seeds from active affiliation OR legacy
+          // home-club enable flag OR team-roster presence (back-compat).
           isRegistered:
-            homeClubEnabledAssocId === a.id || (regIdsByAssoc[a.id]?.length || 0) > 0,
+            isActive ||
+            homeClubEnabledAssocId === a.id ||
+            (regIdsByAssoc[a.id]?.length || 0) > 0,
         };
       });
     },

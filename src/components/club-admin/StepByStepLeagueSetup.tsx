@@ -90,6 +90,12 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   const [reserves, setReserves] = useState<number>(0);
   const [distribution, setDistribution] = useState<Distribution>("snake");
   const [submitting, setSubmitting] = useState(false);
+  // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
+  const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());
+  // Summary of leagues set up so far this session
+  const [sessionSummary, setSessionSummary] = useState<Array<{ label: string; count: number }>>([]);
+  // After-save view: show success + "set up another league" / "finish" choices
+  const [savedLastRound, setSavedLastRound] = useState(false);
 
   // Reset state when dialog re-opens
   useEffect(() => {
@@ -103,15 +109,22 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       setPerTeam(4);
       setReserves(0);
       setDistribution("snake");
+      setAllocatedIds(new Set());
+      setSessionSummary([]);
+      setSavedLastRound(false);
     }
   }, [open]);
 
-  // Eligible pool = plays_league + matches association + gender
+  // Eligible pool = plays_league + matches association + gender, MINUS anyone already allocated this session
   const eligiblePool = useMemo(() => {
     if (!associationId) return [];
-    const opted = members.filter((m: any) => m.plays_league && m.enable_league_association_id === associationId);
+    const opted = members.filter((m: any) =>
+      m.plays_league
+      && m.enable_league_association_id === associationId
+      && !allocatedIds.has(m.id)
+    );
     return filterByGender(opted, gender);
-  }, [members, associationId, gender]);
+  }, [members, associationId, gender, allocatedIds]);
 
   // Load ladder positions for the eligible pool
   const eligibleIds = eligiblePool.map(m => m.id);

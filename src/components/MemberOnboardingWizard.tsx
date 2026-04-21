@@ -441,12 +441,19 @@ export function MemberOnboardingWizard({
     }
 
     if (playsLeague) {
-      // League association fees
+      const selectedAssocIds = new Set(Object.keys(leagueSelections));
+      // League association fees — only for ticked leagues, and only when the
+      // league is NOT a tenant (tenant pass-through fees are seeded by the
+      // provision-association-member edge function on both sides).
       for (const assoc of leagueAssocs) {
-        if (assoc.fee_annual && assoc.fee_annual > 0) {
+        if (!selectedAssocIds.has(assoc.id)) continue;
+        const sel = leagueSelections[assoc.id];
+        if (!sel) continue;
+        if (sel.kind === "tenant") continue; // seeded by edge fn
+        if (sel.feeAmount > 0) {
           items.push({
             label: `${assoc.name}${assoc.abbreviation ? ` (${assoc.abbreviation})` : ""} Registration`,
-            amount: assoc.fee_annual,
+            amount: sel.feeAmount,
             type: "association",
           });
         }
@@ -466,7 +473,7 @@ export function MemberOnboardingWizard({
     }
     
     return items;
-  }, [selectedCategory, playsLeague, leagueAssocs, nationalFees, dueMonth]);
+  }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth]);
 
   const totalFees = feeBreakdown.reduce((sum, f) => sum + f.amount, 0);
 

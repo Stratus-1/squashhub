@@ -440,26 +440,28 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   // The association these leagues belong to (all leagues passed in share the same association in practice).
   const associationId = leagues.find(l => l.association_id)?.association_id || null;
 
-  // Determine the association's scope (internal vs regional/external).
-  // - Regional/external (e.g. Lowveld Squash): requires an actual registration with a league number.
+  // Determine the association's scope (internal vs regional/external) and its tenant club_id.
+  // - Regional/external (e.g. Lowveld Squash): the member must also exist as a member at the
+  //   association's tenant (club_id of the association tenant) — i.e. they were issued an
+  //   association membership number (their LS league number).
   // - Internal (e.g. NIL): profile opt-in (`plays_league` + `enable_league_association_id`) is enough.
-  const { data: associationScope } = useQuery({
-    queryKey: ["association-scope", associationId],
+  const { data: associationInfo } = useQuery({
+    queryKey: ["association-info", associationId],
     queryFn: async () => {
       if (!associationId) return null;
       const { data, error } = await fromExt("league_associations")
-        .select("scope")
+        .select("scope, club_id")
         .eq("id", associationId)
         .maybeSingle();
       if (error) throw error;
-      return (data as any)?.scope ?? null;
+      return (data as any) || null;
     },
     enabled: open && !!associationId,
   });
-  const isInternal = associationScope === "internal";
+  const isInternal = associationInfo?.scope === "internal";
+  const associationTenantClubId: string | null = associationInfo?.club_id ?? null;
 
-  // Members with a registration row for this association.
-  // For regional leagues we additionally require a non-empty league_association_number.
+  // Members with a registration row for this association (covers historical/manually added).
   const { data: registeredMemberIds = [] } = useQuery({
     queryKey: ["affiliated-members", clubId, associationId, isInternal],
     queryFn: async () => {
@@ -483,14 +485,41 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     enabled: open && !!associationId,
   });
 
+  // For REGIONAL associations: members at this club whose user_id also has a member row
+  // at the association's tenant club (i.e. they hold an LS membership / league number).
+  const userIdsForAssoc = useMemo(
+    () => Array.from(new Set(members.filter(m => m.user_id).map(m => m.user_id as string))),
+    [members],
+  );
+  const { data: associationMemberUserIds = [] } = useQuery({
+    queryKey: ["association-member-user-ids", associationTenantClubId, userIdsForAssoc.sort().join(",")],
+    queryFn: async () => {
+      if (!associationTenantClubId || userIdsForAssoc.length === 0) return [];
+      const { data, error } = await fromExt("club_members")
+        .select("user_id, club_member_number")
+        .eq("club_id", associationTenantClubId)
+        .in("user_id", userIdsForAssoc);
+      if (error) throw error;
+      return (data || [])
+        .filter((r: any) => !!r.user_id && !!r.club_member_number?.trim())
+        .map((r: any) => r.user_id as string);
+    },
+    enabled: open && !isInternal && !!associationTenantClubId && userIdsForAssoc.length > 0,
+  });
+
   const affiliatedSet = useMemo(
     () => new Set<string>(registeredMemberIds as string[]),
     [registeredMemberIds],
   );
+  const associationUserIdSet = useMemo(
+    () => new Set<string>(associationMemberUserIds as string[]),
+    [associationMemberUserIds],
+  );
 
   // Filter members by gender, league status, AND association eligibility.
   // - Internal association: profile opt-in (enable_league_association_id) OR a registration row qualifies.
-  // - Regional association: ONLY a registration row with a league number qualifies.
+  // - Regional association: must hold a membership at the association tenant (i.e. has a league number)
+  //   OR have an explicit registration row with a league number.
   const genderMembers = members
     .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
     .filter(m => {
@@ -498,7 +527,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       if (isInternal) {
         return (m as any).enable_league_association_id === associationId || affiliatedSet.has(m.id);
       }
-      return affiliatedSet.has(m.id);
+      return affiliatedSet.has(m.id) || (m.user_id ? associationUserIdSet.has(m.user_id) : false);
     })
     .sort((a, b) => {
       const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;

@@ -1207,14 +1207,14 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
             </div>
           )}
 
-          <div className="space-y-1">
-            <Label>Association</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
-              <option value="">None</option>
-              {associations.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </div>
           <Button onClick={handleSave} className="w-full" disabled={entries.length === 0}>
+            Add {entries.length} League(s)
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
             Add {entries.length} League(s)
           </Button>
         </div>

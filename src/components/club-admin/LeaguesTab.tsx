@@ -97,7 +97,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
-  const [allocateLeague, setAllocateLeague] = useState<{ league: League; gender: "men" | "ladies" | "mixed" } | null>(null);
+  const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -208,39 +208,36 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">Men's ({menLeagues.length})</h4>
-            </div>
-            <div className="space-y-2">
-              {sortLeagues(menLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "men" })} />
-              ))}
-              {menLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No men's leagues</p>}
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">Ladies ({ladiesLeagues.length})</h4>
-            </div>
-            <div className="space-y-2">
-              {sortLeagues(ladiesLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "ladies" })} />
-              ))}
-              {ladiesLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No ladies leagues</p>}
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-semibold text-muted-foreground">Mixed ({mixedLeagues.length})</h4>
-            </div>
-            <div className="space-y-2">
-              {sortLeagues(mixedLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "mixed" })} />
-              ))}
-              {mixedLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No mixed leagues</p>}
-            </div>
-          </div>
+          <GenderColumn
+            title="Men's"
+            gender="men"
+            leagues={menLeagues}
+            associations={associations}
+            members={members}
+            sortLeagues={sortLeagues}
+            onDelete={handleDeleteLeague}
+            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
+          />
+          <GenderColumn
+            title="Ladies"
+            gender="ladies"
+            leagues={ladiesLeagues}
+            associations={associations}
+            members={members}
+            sortLeagues={sortLeagues}
+            onDelete={handleDeleteLeague}
+            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
+          />
+          <GenderColumn
+            title="Mixed"
+            gender="mixed"
+            leagues={mixedLeagues}
+            associations={associations}
+            members={members}
+            sortLeagues={sortLeagues}
+            onDelete={handleDeleteLeague}
+            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+          />
         </div>
 
         {otherLeagues.length > 0 && (
@@ -248,22 +245,22 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(otherLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "mixed" })} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
               ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Allocate Players Dialog (per-league) */}
-      {allocateLeague && (
+      {/* Allocate Players Dialog (per association+gender group) */}
+      {allocateGroup && (
         <AllocatePlayersDialog
-          gender={allocateLeague.gender}
-          leagues={[allocateLeague.league]}
+          gender={allocateGroup.gender}
+          leagues={allocateGroup.leagues}
           members={members}
           clubId={clubId}
-          open={!!allocateLeague}
-          onOpenChange={(o) => !o && setAllocateLeague(null)}
+          open={!!allocateGroup}
+          onOpenChange={(o) => !o && setAllocateGroup(null)}
         />
       )}
 
@@ -275,6 +272,62 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           onOpenChange={(o) => !o && setEditAssoc(null)}
         />
       )}
+    </div>
+  );
+}
+
+// ─── Gender Column: groups leagues by association, one Allocate button per association group ───
+function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onAllocate }: {
+  title: string;
+  gender: "men" | "ladies" | "mixed";
+  leagues: League[];
+  associations: LeagueAssociation[];
+  members: ClubMember[];
+  sortLeagues: (list: League[]) => League[];
+  onDelete: (id: string) => void;
+  onAllocate: (associationId: string | null, leagues: League[]) => void;
+}) {
+  // Group leagues by association_id
+  const groups = useMemo(() => {
+    const map = new Map<string | null, League[]>();
+    for (const l of leagues) {
+      const key = (l as any).association_id ?? null;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(l);
+    }
+    return Array.from(map.entries()).map(([assocId, list]) => ({
+      assocId,
+      assoc: associations.find(a => a.id === assocId) || null,
+      leagues: sortLeagues(list),
+    }));
+  }, [leagues, associations, sortLeagues]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-semibold text-muted-foreground">{title} ({leagues.length})</h4>
+      </div>
+      <div className="space-y-3">
+        {groups.map(g => (
+          <div key={g.assocId ?? "none"} className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold text-foreground/80 truncate">
+                {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "No association"}
+                <span className="text-muted-foreground font-normal"> • {g.leagues.length}</span>
+              </p>
+              <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
+                <Users className="w-3 h-3" />Allocate
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {g.leagues.map(l => (
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={onDelete} members={members} />
+              ))}
+            </div>
+          </div>
+        ))}
+        {leagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No {title.toLowerCase()} leagues</p>}
+      </div>
     </div>
   );
 }

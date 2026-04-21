@@ -488,12 +488,31 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
 
             {allocation.reserves.length > 0 && (
               <Card className="p-2.5 border-dashed">
-                <p className="text-xs font-semibold mb-1.5">Reserves ({allocation.reserves.length})</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {allocation.reserves.map(p => (
-                    <Badge key={p.id} variant="secondary" className="text-[10px]">{p.name} <span className="ml-1 text-muted-foreground">#{p.ladder_position ?? "—"}</span></Badge>
-                  ))}
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-semibold flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />Reserves
+                  </p>
+                  <Badge variant="outline" className="text-[10px]">
+                    {allocation.reserves.length} filled / {perTeam} slots
+                  </Badge>
                 </div>
+                <ol className="space-y-0.5 text-[11px]">
+                  {Array.from({ length: Math.max(perTeam, allocation.reserves.length) }).map((_, idx) => {
+                    const p = allocation.reserves[idx];
+                    return (
+                      <li key={idx} className="flex justify-between gap-2 border-b border-dashed border-border/50 last:border-0 py-0.5">
+                        <span className="truncate">
+                          <span className="text-muted-foreground">{idx + 1}.</span>{" "}
+                          {p ? (p.name || "Unnamed") : <span className="italic text-muted-foreground">(empty slot)</span>}
+                        </span>
+                        {p && <span className="text-muted-foreground tabular-nums">#{p.ladder_position ?? "—"}</span>}
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+                  Reserves get {perTeam} draggable position slots so admin can promote any reserve into positions 1–{perTeam}.
+                </p>
               </Card>
             )}
 

@@ -1,14 +1,20 @@
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useLeagueAssociations } from "@/hooks/use-club";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Trophy, Loader2, CheckCircle2 } from "lucide-react";
+import { Trophy, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  LeagueParticipationPicker,
+  LeagueSelection,
+  applyLeagueSelections,
+} from "@/components/LeagueParticipationPicker";
 
 interface JoinLeagueAssociationCardProps {
   clubId: string | null | undefined;
@@ -16,90 +22,140 @@ interface JoinLeagueAssociationCardProps {
   className?: string;
 }
 
-interface AffiliatedAssociation {
-  id: string;
-  name: string;
-  subdomain: string | null;
-}
-
 /**
- * Shows affiliated associations the current member can opt-into for league play.
- * Only renders when the member's club is affiliated to at least one association
- * AND the member has not yet been provisioned at any of them.
+ * Dashboard prompt for already-onboarded members who haven't yet opted into
+ * league play. Lets them tick any of the club's configured league associations
+ * (LS / NIL / NSA-style) and provisions each correctly.
+ *
+ * Hidden when:
+ *  - Member already has plays_league = true, OR
+ *  - The club has no league associations configured, OR
+ *  - The member has already been provisioned at every tenant association
+ *    AND there are no remaining internal/external rows.
  */
 export function JoinLeagueAssociationCard({ clubId, variant = "card", className }: JoinLeagueAssociationCardProps) {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [selections, setSelections] = useState<Record<string, LeagueSelection>>({});
 
-  const { data: associations = [], isLoading } = useQuery({
-    queryKey: ["affiliated-associations-for-join", clubId],
-    enabled: !!clubId,
-    queryFn: async (): Promise<AffiliatedAssociation[]> => {
-      const { data, error } = await fromExt("association_affiliated_clubs")
-        .select("association:association_tenant_id(id, name, subdomain, tenant_type)")
-        .eq("club_id", clubId!)
-        .eq("status", "active");
-      if (error) throw error;
-      return ((data || []) as any[])
-        .map((r) => r.association)
-        .filter((a) => a && a.tenant_type === "association")
-        .map((a: any) => ({ id: a.id, name: a.name, subdomain: a.subdomain }));
-    },
-    staleTime: 60_000,
-  });
+  const { data: leagueAssocs = [] } = useLeagueAssociations(clubId);
 
-  // Check which of these associations the user already has a member row at
-  const associationIds = associations.map((a) => a.id);
-  const { data: existingMemberships = [] } = useQuery({
-    queryKey: ["my-association-memberships", user?.id, associationIds.sort().join(",")],
-    enabled: !!user?.id && associationIds.length > 0,
+  // Already-provisioned tenant association ids (so we don't re-prompt for those)
+  const { data: existingTenantAssocIds = [] } = useQuery({
+    queryKey: ["my-association-memberships-min", user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await fromExt("club_members")
-        .select("club_id")
-        .eq("user_id", user!.id)
-        .in("club_id", associationIds);
-      if (error) throw error;
-      return (data || []).map((r: any) => r.club_id as string);
+      const { data } = await fromExt("club_members")
+        .select("club_id, clubs:club_id(tenant_type)")
+        .eq("user_id", user!.id);
+      return ((data || []) as any[])
+        .filter((r) => r?.clubs?.tenant_type === "association")
+        .map((r) => r.club_id as string);
     },
   });
 
-  const joinable = associations.filter((a) => !existingMemberships.includes(a.id));
+  // Cross-reference: tenant association ids that match our league_associations rows
+  const { data: tenantsByLeagueAssoc = {} } = useQuery({
+    queryKey: ["tenant-by-league-assoc", clubId, leagueAssocs.length],
+    enabled: !!clubId && leagueAssocs.length > 0,
+    queryFn: async () => {
+      const { data } = await fromExt("clubs")
+        .select("id, name, subdomain, tenant_type")
+        .eq("tenant_type", "association");
+      const tenants = (data || []) as any[];
+      const map: Record<string, string> = {};
+      for (const a of leagueAssocs) {
+        if (a.platform_association_id) {
+          map[a.id] = a.platform_association_id as string;
+          continue;
+        }
+        const abbr = (a.abbreviation || "").toLowerCase();
+        const name = (a.name || "").toLowerCase();
+        const t = tenants.find(
+          (t) =>
+            (abbr && (t.subdomain || "").toLowerCase() === abbr) ||
+            (name && (t.name || "").toLowerCase() === name),
+        );
+        if (t) map[a.id] = t.id as string;
+      }
+      return map;
+    },
+  });
 
-  const joinMutation = useMutation({
-    mutationFn: async (assoc: AffiliatedAssociation) => {
-      if (!assoc.subdomain) throw new Error("Association has no subdomain configured");
-      const { data, error } = await supabase.functions.invoke("provision-association-member", {
-        body: {
-          associationSubdomain: assoc.subdomain,
-          homeClubId: clubId,
+  // Hide league_associations whose linked tenant the user already joined
+  const excludeIds = useMemo(() => {
+    const out: string[] = [];
+    for (const [assocId, tenantId] of Object.entries(tenantsByLeagueAssoc)) {
+      if (existingTenantAssocIds.includes(tenantId)) out.push(assocId);
+    }
+    return out;
+  }, [tenantsByLeagueAssoc, existingTenantAssocIds]);
+
+  const remainingCount = leagueAssocs.length - excludeIds.length;
+  const hideEntirely = !activeMember || activeMember.plays_league || remainingCount <= 0;
+
+  const join = useMutation({
+    mutationFn: async () => {
+      if (!clubId || !activeMember?.id) throw new Error("Not ready");
+      const sels = Object.values(selections);
+      if (sels.length === 0) throw new Error("Pick at least one league");
+      await applyLeagueSelections({
+        clubId,
+        clubMemberId: activeMember.id,
+        selections: sels,
+        invokeProvision: async (subdomain) => {
+          const { error } = await supabase.functions.invoke("provision-association-member", {
+            body: { associationSubdomain: subdomain, homeClubId: clubId },
+          });
+          if (error) throw error;
         },
       });
-      if (error) throw error;
-      return { assoc, data };
     },
-    onSuccess: ({ assoc }) => {
-      toast.success(`You've joined ${assoc.name}. The admin will allocate your league number and fees.`);
-      queryClient.invalidateQueries({ queryKey: ["my-association-memberships"] });
-      queryClient.invalidateQueries({ queryKey: ["affiliated-associations-for-join"] });
+    onSuccess: () => {
+      toast.success("Joined! Your league fees and number(s) are being set up.");
+      setOpen(false);
+      setSelections({});
+      queryClient.invalidateQueries({ queryKey: ["my-association-memberships-min"] });
       queryClient.invalidateQueries({ queryKey: ["account-club-member"] });
       queryClient.invalidateQueries({ queryKey: ["my-tenants"] });
-      // Mark on the club-side member row that this user has opted into the association
-      if (activeMember?.id) {
-        fromExt("club_members")
-          .update({ enable_league_association_id: assoc.id, plays_league: true })
-          .eq("id", activeMember.id)
-          .then(() => {
-            queryClient.invalidateQueries({ queryKey: ["account-club-member"] });
-          });
-      }
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
     },
     onError: (err: any) => {
-      toast.error(err?.message || "Failed to join the association");
+      toast.error(err?.message || "Failed to join leagues");
     },
   });
 
-  if (isLoading || joinable.length === 0) return null;
+  if (hideEntirely) return null;
+
+  const Body = (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Are you playing league? Tick the leagues you want to join.
+      </p>
+      <LeagueParticipationPicker
+        clubId={clubId}
+        value={selections}
+        onChange={setSelections}
+        excludeAssociationIds={excludeIds}
+        compact
+      />
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          Not now
+        </Button>
+        <Button
+          size="sm"
+          disabled={join.isPending || Object.keys(selections).length === 0}
+          onClick={() => join.mutate()}
+        >
+          {join.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+          Join selected
+        </Button>
+      </div>
+    </div>
+  );
 
   if (variant === "banner") {
     return (
@@ -110,28 +166,23 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
               <Trophy className="w-4 h-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-tight">
-                Join {joinable.length === 1 ? joinable[0].name : "a league association"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Your club is affiliated. Opt in to play in league fixtures.
-              </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {joinable.map((a) => (
-                  <Button
-                    key={a.id}
-                    size="sm"
-                    className="h-7 text-xs"
-                    disabled={joinMutation.isPending}
-                    onClick={() => joinMutation.mutate(a)}
-                  >
-                    {joinMutation.isPending && joinMutation.variables?.id === a.id ? (
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    ) : null}
-                    Join {a.name}
-                  </Button>
-                ))}
-              </div>
+              {!open ? (
+                <>
+                  <p className="text-sm font-semibold leading-tight">
+                    Are you playing league?
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Your club is affiliated to {remainingCount} {remainingCount === 1 ? "league" : "leagues"}. Opt in to play league fixtures.
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <Button size="sm" className="h-7 text-xs" onClick={() => setOpen(true)}>
+                      Choose leagues
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                Body
+              )}
             </div>
           </div>
         </Card>
@@ -145,31 +196,18 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
         <Trophy className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold">League membership</h3>
       </div>
-      <p className="text-xs text-muted-foreground mb-3">
-        Your club is affiliated to {joinable.length === 1 ? "this association" : "these associations"}. Join to participate in league fixtures — the league admin will allocate your number and fees.
-      </p>
-      <div className="space-y-2">
-        {joinable.map((a) => (
-          <div key={a.id} className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{a.name}</p>
-              <Badge variant="outline" className="text-[10px] mt-0.5">Annual league fee applies</Badge>
-            </div>
-            <Button
-              size="sm"
-              disabled={joinMutation.isPending}
-              onClick={() => joinMutation.mutate(a)}
-            >
-              {joinMutation.isPending && joinMutation.variables?.id === a.id ? (
-                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-              )}
-              Join
-            </Button>
-          </div>
-        ))}
-      </div>
+      {!open ? (
+        <>
+          <p className="text-xs text-muted-foreground mb-3">
+            Are you playing league? Your club is affiliated to {remainingCount} {remainingCount === 1 ? "league" : "leagues"}.
+          </p>
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Choose leagues
+          </Button>
+        </>
+      ) : (
+        Body
+      )}
     </Card>
   );
 }

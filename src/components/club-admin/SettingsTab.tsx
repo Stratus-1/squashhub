@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   const { user } = useAuth();

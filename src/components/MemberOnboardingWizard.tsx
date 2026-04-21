@@ -250,8 +250,8 @@ export function MemberOnboardingWizard({
 
       if (member) {
         setIsExistingMember(true);
-        // Always overwrite the name if the current value is a lookup code, OR if name is empty
-        if (member.name && (!name || currentNameIsLookup)) setName(member.name);
+        // Always use the member's real name when one exists and the current value is empty or a lookup code
+        if (member.name && !looksLikeLookupCode(member.name) && (!name || currentNameIsLookup)) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);
         if (member.id_number) setIdNumber(member.id_number);
         if (member.gender) setGender(member.gender);

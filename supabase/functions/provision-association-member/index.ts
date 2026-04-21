@@ -159,14 +159,16 @@ Deno.serve(async (req) => {
         if (a.active === false) continue;
         const amt = Number(a.fee_annual ?? 0);
         if (amt <= 0) continue;
+        const label = a.name + (a.abbreviation ? ` (${a.abbreviation})` : "");
         feeRecords.push({
           club_member_id: newMember.id,
           fee_type: "league",
-          fee_label: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""),
+          fee_label: label,
           amount: amt,
           paid: false,
           season_year: seasonYear,
         });
+        homeClubFeeSeeds.push({ label, amount: amt, assocFeeIndex: feeRecords.length - 1 });
       }
 
       // Source 2: national_body_fees with affiliation-style fee_type
@@ -181,28 +183,74 @@ Deno.serve(async (req) => {
         const t = String(n.fee_type || "").toLowerCase();
         // Only seed affiliation/league-style fees, not registration/other
         if (!(t === "league_affiliation" || t === "association" || t === "league" || t === "affiliation")) continue;
+        const label = n.body_name + (n.abbreviation ? ` (${n.abbreviation})` : "");
         feeRecords.push({
           club_member_id: newMember.id,
           fee_type: "league_affiliation",
-          fee_label: n.body_name + (n.abbreviation ? ` (${n.abbreviation})` : ""),
+          fee_label: label,
           amount: amt,
           paid: false,
           season_year: seasonYear,
         });
+        homeClubFeeSeeds.push({ label, amount: amt, assocFeeIndex: feeRecords.length - 1 });
       }
 
       if (feeRecords.length > 0) {
-        const { error: feeErr } = await supabaseAdmin
+        const { data: insertedFees, error: feeErr } = await supabaseAdmin
           .from("club_member_fee_payments")
-          .insert(feeRecords);
+          .insert(feeRecords)
+          .select("id");
         if (feeErr) {
           console.warn("[provision-association-member] fee seed failed", feeErr);
+        } else {
+          for (const f of (insertedFees || []) as any[]) {
+            insertedAssocFeeIds.push(f.id);
+          }
         }
       } else {
         console.log("[provision-association-member] no active affiliation fees to seed for", assoc.id);
       }
     } catch (feeEx) {
       console.warn("[provision-association-member] fee seed exception", feeEx);
+    }
+
+    // Mirror affiliation fees onto the HOME CLUB tenant as pass-through fees.
+    // Member pays the home club; trigger auto-settles the association-tenant
+    // row and journals "club owes league" on the home-club books.
+    if (validatedHomeClubId && homeClubFeeSeeds.length > 0 && insertedAssocFeeIds.length > 0) {
+      try {
+        const { data: homeMemberRow } = await supabaseAdmin
+          .from("club_members")
+          .select("id")
+          .eq("club_id", validatedHomeClubId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (homeMemberRow?.id) {
+          const seasonYear = new Date().getFullYear();
+          const ptRecords = homeClubFeeSeeds
+            .map((s) => ({
+              club_member_id: homeMemberRow.id,
+              fee_type: "league_affiliation",
+              fee_label: s.label,
+              amount: s.amount,
+              paid: false,
+              season_year: seasonYear,
+              is_pass_through: true,
+              linked_fee_payment_id: insertedAssocFeeIds[s.assocFeeIndex] ?? null,
+            }))
+            .filter((r) => !!r.linked_fee_payment_id);
+          if (ptRecords.length > 0) {
+            const { error: ptErr } = await supabaseAdmin
+              .from("club_member_fee_payments")
+              .insert(ptRecords);
+            if (ptErr) {
+              console.warn("[provision-association-member] home-club pass-through seed failed", ptErr);
+            }
+          }
+        }
+      } catch (ptEx) {
+        console.warn("[provision-association-member] pass-through seed exception", ptEx);
+      }
     }
 
     // Also link the user's home-club member row to this association so the

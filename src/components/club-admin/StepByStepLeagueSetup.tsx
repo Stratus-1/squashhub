@@ -96,6 +96,9 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   const [sessionSummary, setSessionSummary] = useState<Array<{ label: string; count: number }>>([]);
   // After-save view: show success + "set up another league" / "finish" choices
   const [savedLastRound, setSavedLastRound] = useState(false);
+  // Custom team names keyed by team index (0..numTeams-1). Empty string = use default.
+  const [teamNames, setTeamNames] = useState<Record<number, string>>({});
+  const [reservesName, setReservesName] = useState<string>("");
 
   // Reset state when dialog re-opens
   useEffect(() => {

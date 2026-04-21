@@ -316,8 +316,22 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
           <DialogTitle>Step by Step League Setup</DialogTitle>
           <DialogDescription>
             Build one league number at a time — pick the association, gender, league number, then split players into teams.
+            Members allocated in this session are removed from the pool for later rounds.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Running session summary */}
+        {sessionSummary.length > 0 && (
+          <Card className="p-2.5 bg-primary/5 border-primary/30 text-xs space-y-1">
+            <p className="font-semibold text-foreground flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-primary" />
+              Saved this session ({allocatedIds.size} member{allocatedIds.size !== 1 ? "s" : ""} allocated)
+            </p>
+            {sessionSummary.map((s, i) => (
+              <p key={i} className="text-muted-foreground pl-5">• {s.label}</p>
+            ))}
+          </Card>
+        )}
 
         {/* Progress dots */}
         <div className="flex items-center gap-2 text-xs">

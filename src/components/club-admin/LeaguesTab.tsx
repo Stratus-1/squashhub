@@ -157,6 +157,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     toast.success(`Deleted ${groupLeagues.length} league teams`);
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
+
+  const menLeagues = leagues.filter(l => l.name.toLowerCase().includes("men's") || l.name.toLowerCase().startsWith("men"));
   const ladiesLeagues = leagues.filter(l => l.name.toLowerCase().includes("ladies") || l.name.toLowerCase().includes("women"));
   const mixedLeagues = leagues.filter(l => {
     const n = l.name.toLowerCase();

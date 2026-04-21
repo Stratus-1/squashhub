@@ -333,6 +333,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
           </Card>
         )}
 
+        {!savedLastRound && (
+          <>
         {/* Progress dots */}
         <div className="flex items-center gap-2 text-xs">
           {[1, 2, 3, 4, 5].map(s => (

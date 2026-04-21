@@ -618,7 +618,9 @@ export default function ClubAuth() {
               <p className="text-xs text-muted-foreground mb-4">
                 {isAssociation
                   ? <>Already registered with {clubName}? Enter your <strong>email</strong> plus your <strong>League Number</strong> (e.g. NSF1234) <em>or</em> the <strong>cell phone number</strong> on file, then select your home club.</>
-                  : <>Already a member of {clubName}? Enter your <strong>email</strong> plus your <strong>Member/League Number</strong> <em>or</em> the <strong>cell phone number</strong> the club has on file.</>}
+                  : hideMemberNumberField
+                    ? <>Already a member of {clubName}? Enter your <strong>email</strong> and the <strong>cell phone number</strong> the club has on file. Your member number will be issued by the club.</>
+                    : <>Already a member of {clubName}? Enter your <strong>email</strong> plus your <strong>Member/League Number</strong> <em>or</em> the <strong>cell phone number</strong> the club has on file.</>}
               </p>
               <form onSubmit={handleExistingMemberSignup} className="space-y-3">
                 <div>
@@ -633,36 +635,54 @@ export default function ClubAuth() {
                     maxLength={255}
                   />
                 </div>
-                <div className="rounded-md border border-dashed border-input p-3 space-y-3 bg-muted/30">
-                  <p className="text-[11px] font-medium text-muted-foreground">
-                    Provide at least one of the following so we can find you:
-                  </p>
+                {hideMemberNumberField ? (
                   <div>
-                    <Label htmlFor="existing-member-number">Member Number or League Number</Label>
-                    <Input
-                      id="existing-member-number"
-                      type="text"
-                      placeholder="e.g. WSC001 or NSF1234"
-                      value={memberNumber}
-                      onChange={(e) => { setMemberNumber(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
-                      maxLength={20}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="existing-phone">Cell Phone Number</Label>
+                    <Label htmlFor="existing-phone">Cell Phone Number <span className="text-destructive">*</span></Label>
                     <Input
                       id="existing-phone"
                       type="tel"
-                      placeholder="+27 82 123 4567"
+                      placeholder="e.g. 082 123 4567"
                       value={existingPhone}
                       onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
                       maxLength={20}
+                      required
                     />
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Use this if your club hasn't given you a number yet.
+                      Use the same cell phone number the club has on file for you.
                     </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-md border border-dashed border-input p-3 space-y-3 bg-muted/30">
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      Provide at least one of the following so we can find you:
+                    </p>
+                    <div>
+                      <Label htmlFor="existing-member-number">Member Number or League Number</Label>
+                      <Input
+                        id="existing-member-number"
+                        type="text"
+                        placeholder="e.g. WSC001 or NSF1234"
+                        value={memberNumber}
+                        onChange={(e) => { setMemberNumber(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                        maxLength={20}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="existing-phone">Cell Phone Number</Label>
+                      <Input
+                        id="existing-phone"
+                        type="tel"
+                        placeholder="+27 82 123 4567"
+                        value={existingPhone}
+                        onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                        maxLength={20}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Use this if your club hasn't given you a number yet.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {memberChoices.length > 1 && (
                   <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">

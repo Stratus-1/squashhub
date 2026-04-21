@@ -90,6 +90,12 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   const [reserves, setReserves] = useState<number>(0);
   const [distribution, setDistribution] = useState<Distribution>("snake");
   const [submitting, setSubmitting] = useState(false);
+  // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
+  const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());
+  // Summary of leagues set up so far this session
+  const [sessionSummary, setSessionSummary] = useState<Array<{ label: string; count: number }>>([]);
+  // After-save view: show success + "set up another league" / "finish" choices
+  const [savedLastRound, setSavedLastRound] = useState(false);
 
   // Reset state when dialog re-opens
   useEffect(() => {
@@ -103,15 +109,22 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       setPerTeam(4);
       setReserves(0);
       setDistribution("snake");
+      setAllocatedIds(new Set());
+      setSessionSummary([]);
+      setSavedLastRound(false);
     }
   }, [open]);
 
-  // Eligible pool = plays_league + matches association + gender
+  // Eligible pool = plays_league + matches association + gender, MINUS anyone already allocated this session
   const eligiblePool = useMemo(() => {
     if (!associationId) return [];
-    const opted = members.filter((m: any) => m.plays_league && m.enable_league_association_id === associationId);
+    const opted = members.filter((m: any) =>
+      m.plays_league
+      && m.enable_league_association_id === associationId
+      && !allocatedIds.has(m.id)
+    );
     return filterByGender(opted, gender);
-  }, [members, associationId, gender]);
+  }, [members, associationId, gender, allocatedIds]);
 
   // Load ladder positions for the eligible pool
   const eligibleIds = eligiblePool.map(m => m.id);
@@ -242,6 +255,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
         });
       });
       if (reservesLeagueId) {
+        // Reserves "team" gets the same number of position slots as a regular team (perTeam),
+        // so admin can later drag a reserve into position 1..perTeam at their discretion.
+        // Initial player_rank assignment goes 1..N by ladder strength up to perTeam slots;
+        // any extra reserves get sequential ranks beyond perTeam (still draggable).
         allocation.reserves.forEach((p, posIdx) => {
           inserts.push({
             club_member_id: p.id,
@@ -256,15 +273,40 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
         if (error) throw error;
       }
 
+      // Track who got allocated this session
+      const newlyAllocated = new Set(allocatedIds);
+      allocation.teams.forEach(t => t.picks.forEach(p => newlyAllocated.add(p.id)));
+      allocation.reserves.forEach(p => newlyAllocated.add(p.id));
+      setAllocatedIds(newlyAllocated);
+
+      const genderLabelShort = gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed";
+      setSessionSummary(prev => [
+        ...prev,
+        { label: `${genderLabelShort} ${leagueNumber} — ${allocation.teams.length} team${allocation.teams.length !== 1 ? "s" : ""}${allocation.reserves.length ? ` + ${allocation.reserves.length} reserves` : ""}`, count: inserts.length },
+      ]);
+
       toast.success(`Set up ${allocation.teams.length} team${allocation.teams.length !== 1 ? "s" : ""} with ${inserts.length} placements`);
       qc.invalidateQueries({ queryKey: ["leagues"] });
       qc.invalidateQueries({ queryKey: ["league-registrations"] });
-      onOpenChange(false);
+      setSavedLastRound(true);
     } catch (e: any) {
       toast.error(e?.message || "Failed to save setup");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Start another round of setup, keeping the association and the running allocated-ID list
+  const handleSetupAnother = () => {
+    setSavedLastRound(false);
+    setStep(2);
+    setGender("men");
+    setLeagueNumber("1st");
+    setNumMembers(0);
+    setNumTeams(1);
+    setPerTeam(4);
+    setReserves(0);
+    setDistribution("snake");
   };
 
   return (
@@ -274,9 +316,25 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
           <DialogTitle>Step by Step League Setup</DialogTitle>
           <DialogDescription>
             Build one league number at a time — pick the association, gender, league number, then split players into teams.
+            Members allocated in this session are removed from the pool for later rounds.
           </DialogDescription>
         </DialogHeader>
 
+        {/* Running session summary */}
+        {sessionSummary.length > 0 && (
+          <Card className="p-2.5 bg-primary/5 border-primary/30 text-xs space-y-1">
+            <p className="font-semibold text-foreground flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-primary" />
+              Saved this session ({allocatedIds.size} member{allocatedIds.size !== 1 ? "s" : ""} allocated)
+            </p>
+            {sessionSummary.map((s, i) => (
+              <p key={i} className="text-muted-foreground pl-5">• {s.label}</p>
+            ))}
+          </Card>
+        )}
+
+        {!savedLastRound && (
+          <>
         {/* Progress dots */}
         <div className="flex items-center gap-2 text-xs">
           {[1, 2, 3, 4, 5].map(s => (
@@ -432,12 +490,31 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
 
             {allocation.reserves.length > 0 && (
               <Card className="p-2.5 border-dashed">
-                <p className="text-xs font-semibold mb-1.5">Reserves ({allocation.reserves.length})</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {allocation.reserves.map(p => (
-                    <Badge key={p.id} variant="secondary" className="text-[10px]">{p.name} <span className="ml-1 text-muted-foreground">#{p.ladder_position ?? "—"}</span></Badge>
-                  ))}
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-semibold flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />Reserves
+                  </p>
+                  <Badge variant="outline" className="text-[10px]">
+                    {allocation.reserves.length} filled / {perTeam} slots
+                  </Badge>
                 </div>
+                <ol className="space-y-0.5 text-[11px]">
+                  {Array.from({ length: Math.max(perTeam, allocation.reserves.length) }).map((_, idx) => {
+                    const p = allocation.reserves[idx];
+                    return (
+                      <li key={idx} className="flex justify-between gap-2 border-b border-dashed border-border/50 last:border-0 py-0.5">
+                        <span className="truncate">
+                          <span className="text-muted-foreground">{idx + 1}.</span>{" "}
+                          {p ? (p.name || "Unnamed") : <span className="italic text-muted-foreground">(empty slot)</span>}
+                        </span>
+                        {p && <span className="text-muted-foreground tabular-nums">#{p.ladder_position ?? "—"}</span>}
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+                  Reserves get {perTeam} draggable position slots so admin can promote any reserve into positions 1–{perTeam}.
+                </p>
               </Card>
             )}
 
@@ -466,6 +543,32 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
             </Button>
           )}
         </div>
+          </>
+        )}
+
+        {/* After-save: choose to set up another league or finish */}
+        {savedLastRound && (
+          <div className="space-y-4">
+            <Card className="p-4 bg-primary/5 border-primary/40 text-center space-y-2">
+              <div className="mx-auto w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                <Check className="w-5 h-5" />
+              </div>
+              <p className="font-semibold">League saved successfully</p>
+              <p className="text-xs text-muted-foreground">
+                {allocatedIds.size} member{allocatedIds.size !== 1 ? "s" : ""} allocated so far this session.
+                Remaining eligible pool will exclude them automatically.
+              </p>
+            </Card>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button className="flex-1" onClick={handleSetupAnother}>
+                <ArrowRight className="w-4 h-4 mr-1" />Set up another league
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                <Check className="w-4 h-4 mr-1" />Finish
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

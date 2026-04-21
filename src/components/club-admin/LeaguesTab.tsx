@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, RefreshCw } from "lucide-react";
+import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, RefreshCw, Pencil, Check } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -350,6 +350,10 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   onAllocate?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState(league.name);
+  const [savingName, setSavingName] = useState(false);
+  const qcRow = useQueryClient();
   const { data: regs = [] } = useQuery({
     queryKey: ["league-registrations", league.id],
     queryFn: async () => {
@@ -367,22 +371,62 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     return m?.name || m?.profiles?.name || "Unknown";
   };
 
+  const saveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === league.name) { setEditing(false); setNameDraft(league.name); return; }
+    setSavingName(true);
+    const { error } = await fromExt("leagues").update({ name: trimmed }).eq("id", league.id);
+    setSavingName(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Team renamed");
+    setEditing(false);
+    qcRow.invalidateQueries({ queryKey: ["leagues"] });
+  };
+
   return (
     <Card className="p-3">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-          <p className="font-medium text-sm truncate">{league.name} {league.code ? `(${league.code})` : ""}</p>
-          <p className="text-xs text-muted-foreground">
-            {associations.find(a => a.id === league.association_id)?.name || "No association"}
-            {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
-            {(() => {
-              const captain = regs.find((r: any) => r.is_captain);
-              if (captain) return ` • Capt: ${getMemberName(captain)}`;
-              return "";
-            })()}
-          </p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveName();
+                  if (e.key === "Escape") { setEditing(false); setNameDraft(league.name); }
+                }}
+                className="h-7 text-sm"
+              />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveName} disabled={savingName}>
+                <Check className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditing(false); setNameDraft(league.name); }}>
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <div className="cursor-pointer" onClick={() => setExpanded(!expanded)}>
+              <p className="font-medium text-sm truncate">{league.name} {league.code ? `(${league.code})` : ""}</p>
+              <p className="text-xs text-muted-foreground">
+                {associations.find(a => a.id === league.association_id)?.name || "No association"}
+                {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
+                {(() => {
+                  const captain = regs.find((r: any) => r.is_captain);
+                  if (captain) return ` • Capt: ${getMemberName(captain)}`;
+                  return "";
+                })()}
+              </p>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1">
+          {!editing && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Rename team" onClick={() => { setNameDraft(league.name); setEditing(true); }}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+          )}
           {onAllocate && (
             <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAllocate}>
               <Users className="w-3.5 h-3.5" />Allocate

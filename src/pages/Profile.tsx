@@ -82,56 +82,52 @@ export default function Profile() {
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // League registrations across all tenants for this user
-  // (read by user_id so we capture both home-club and league-tenant rows).
-  const { data: leagueRegs = [] } = useQuery({
-    queryKey: ["my-league-registrations-profile", user?.id],
-    enabled: !!user?.id,
+  // League associations available at this member's home club, with the
+  // member's current registration status + assigned number per association.
+  const homeClubId = clubMember?.club_id as string | undefined;
+  const homeClubMemberId = clubMember?.id as string | undefined;
+  const homeClubEnabledAssocId = (clubMember as any)?.enable_league_association_id as string | null | undefined;
+
+  const { data: leagueAssocs = [] } = useQuery({
+    queryKey: ["profile-league-associations", homeClubId, homeClubMemberId],
+    enabled: !!homeClubId && !!homeClubMemberId,
     queryFn: async () => {
-      // Get every club_member row owned by this user (home club + association tenants)
-      const { data: memberRows } = await fromExt("club_members")
-        .select("id, club_id, club_member_number, clubs:club_id(name, tenant_type)")
-        .eq("user_id", user!.id);
-      const memberIds = (memberRows || []).map((m: any) => m.id);
-      if (memberIds.length === 0) return [];
+      const [assocRes, regsRes] = await Promise.all([
+        fromExt("league_associations")
+          .select("id, name, abbreviation")
+          .eq("club_id", homeClubId!)
+          .eq("active", true)
+          .order("name", { ascending: true }),
+        fromExt("member_league_registrations")
+          .select("id, league_association_number, league:leagues(id, association_id)")
+          .eq("club_member_id", homeClubMemberId!),
+      ]);
+      if (assocRes.error) throw assocRes.error;
+      const regs = (regsRes.data || []) as any[];
 
-      const { data: regs } = await fromExt("member_league_registrations")
-        .select(
-          "id, club_member_id, league_association_number, ssa_number, league:leagues(id, name, association_id, association:league_associations(id, name, abbreviation))",
-        )
-        .in("club_member_id", memberIds);
-
-      const byMember: Record<string, any> = {};
-      for (const m of (memberRows || []) as any[]) byMember[m.id] = m;
-
-      // Deduplicate per association (prefer the row with a number set)
-      const byAssoc: Record<string, any> = {};
-      for (const r of (regs || []) as any[]) {
-        const assoc = r.league?.association;
-        if (!assoc?.id) continue;
-        const m = byMember[r.club_member_id];
-        const tenantClubName: string | null = m?.clubs?.tenant_type === "association" ? m?.clubs?.name : null;
-        const candidate = {
-          regId: r.id as string,
-          associationId: assoc.id as string,
-          associationName: assoc.name as string,
-          abbreviation: assoc.abbreviation as string | null,
-          number: (r.league_association_number || m?.club_member_number || "") as string,
-          tenantClubName,
-        };
-        const existing = byAssoc[assoc.id];
-        if (!existing || (!existing.number && candidate.number)) {
-          byAssoc[assoc.id] = candidate;
-        }
+      // Group regs by association_id, prefer rows with a number set.
+      const numberByAssoc: Record<string, string> = {};
+      const regIdsByAssoc: Record<string, string[]> = {};
+      for (const r of regs) {
+        const aid = r.league?.association_id as string | undefined;
+        if (!aid) continue;
+        regIdsByAssoc[aid] ||= [];
+        regIdsByAssoc[aid].push(r.id);
+        const num = (r.league_association_number || "").trim();
+        if (num && !numberByAssoc[aid]) numberByAssoc[aid] = num;
       }
-      return Object.values(byAssoc) as Array<{
-        regId: string;
-        associationId: string;
-        associationName: string;
-        abbreviation: string | null;
-        number: string;
-        tenantClubName: string | null;
-      }>;
+
+      return ((assocRes.data || []) as any[]).map((a) => ({
+        associationId: a.id as string,
+        associationName: a.name as string,
+        abbreviation: (a.abbreviation || null) as string | null,
+        number: numberByAssoc[a.id] || "",
+        registrationIds: regIdsByAssoc[a.id] || [],
+        // "Registered" means: this assoc is the member's enable_league_association_id,
+        // OR they have at least one league-team registration tied to it.
+        isRegistered:
+          homeClubEnabledAssocId === a.id || (regIdsByAssoc[a.id]?.length || 0) > 0,
+      }));
     },
   });
 
@@ -150,7 +146,7 @@ export default function Profile() {
   const [skillLevel, setSkillLevel] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
   const [feeCategoryId, setFeeCategoryId] = useState("");
-  const [playsLeague, setPlaysLeague] = useState(false);
+  const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
   const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
 
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
@@ -183,24 +179,31 @@ export default function Profile() {
       setSkillLevel(clubMember.skill_level || "");
       setMemberNumber(clubMember.club_member_number || "");
       setFeeCategoryId(clubMember.fee_category_id || "");
-      setPlaysLeague(clubMember.plays_league || false);
+      // plays_league + per-association ticks are seeded from the leagueAssocs query.
     }
 
   };
 
   useEffect(() => { resetDraft(); }, [profile, clubMember]);
 
-  // Seed league number drafts whenever the registrations load.
+  // Seed league number drafts + ticked state whenever the associations load.
   useEffect(() => {
-    if (!leagueRegs.length) return;
+    if (!leagueAssocs.length) return;
     setLeagueNumberDrafts((prev) => {
       const next = { ...prev };
-      for (const r of leagueRegs) {
-        if (next[r.associationId] === undefined) next[r.associationId] = r.number || "";
+      for (const a of leagueAssocs) {
+        if (next[a.associationId] === undefined) next[a.associationId] = a.number || "";
       }
       return next;
     });
-  }, [leagueRegs]);
+    setTickedAssociations((prev) => {
+      const next = { ...prev };
+      for (const a of leagueAssocs) {
+        if (next[a.associationId] === undefined) next[a.associationId] = a.isRegistered;
+      }
+      return next;
+    });
+  }, [leagueAssocs]);
 
   useEffect(() => {
     if (didInitFromUrl) return;
@@ -250,6 +253,23 @@ export default function Profile() {
       const phoneErr = validatePhone(phone);
       if (phoneErr) throw new Error(phoneErr);
 
+      // Derive plays_league + enable_league_association_id from the ticked associations.
+      const tickedIds = leagueAssocs
+        .map((a) => a.associationId)
+        .filter((id) => tickedAssociations[id]);
+      const derivedPlaysLeague = tickedIds.length > 0;
+      // If exactly one association is ticked, set it as the home-club enable flag.
+      // If multiple, keep the existing one if it's still ticked, else pick the first ticked.
+      let derivedEnableAssocId: string | null = null;
+      if (tickedIds.length === 1) {
+        derivedEnableAssocId = tickedIds[0];
+      } else if (tickedIds.length > 1) {
+        derivedEnableAssocId =
+          (homeClubEnabledAssocId && tickedIds.includes(homeClubEnabledAssocId)
+            ? homeClubEnabledAssocId
+            : tickedIds[0]) || null;
+      }
+
       if (clubMember?.id) {
         const memberPatch: any = {
           name: cleanName,
@@ -261,7 +281,8 @@ export default function Profile() {
           skill_level: skillLevel || null,
           club_member_number: memberNumber.trim() || null,
           fee_category_id: feeCategoryId || null,
-          plays_league: playsLeague,
+          plays_league: derivedPlaysLeague,
+          enable_league_association_id: derivedEnableAssocId,
         };
 
         const { error: memErr } = await fromExt("club_members")
@@ -278,15 +299,18 @@ export default function Profile() {
         if (error) throw error;
       }
 
-      // Persist editable league numbers — only where the registration's
-      // current number is blank (per "editable only if blank" rule).
-      for (const reg of leagueRegs) {
-        const draft = (leagueNumberDrafts[reg.associationId] ?? "").trim();
+      // Persist editable league association numbers — only fill rows where the
+      // current number is blank (locked once saved). Applies to ticked associations
+      // that already have member_league_registrations rows.
+      for (const a of leagueAssocs) {
+        if (!tickedAssociations[a.associationId]) continue;
+        if (a.number) continue; // already locked
+        const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
         if (!draft) continue;
-        if (reg.number) continue; // locked once saved
+        if (a.registrationIds.length === 0) continue; // nothing to attach the number to yet
         const { error: regErr } = await fromExt("member_league_registrations")
           .update({ league_association_number: draft })
-          .eq("id", reg.regId);
+          .in("id", a.registrationIds);
         if (regErr) throw regErr;
       }
     },
@@ -296,7 +320,7 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: ["my-club-member"] }),
         queryClient.invalidateQueries({ queryKey: ["club-members"] }),
         queryClient.invalidateQueries({ queryKey: ["my-league-registration"] }),
-        queryClient.invalidateQueries({ queryKey: ["my-league-registrations-profile"] }),
+        queryClient.invalidateQueries({ queryKey: ["profile-league-associations"] }),
         queryClient.invalidateQueries({ queryKey: ["club-member-by-id", activeMemberId] }),
       ]);
       toast.success("Profile updated");
@@ -439,39 +463,62 @@ export default function Profile() {
                     )}
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" id="plays-league" checked={playsLeague} onChange={(e) => setPlaysLeague(e.target.checked)} />
-                  <Label htmlFor="plays-league">Plays League</Label>
-                </div>
-
-                {leagueRegs.length > 0 && (
-                  <div className="border-t border-border pt-3 mt-3 space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">League Participation</p>
-                    {leagueRegs.map((reg) => {
-                      const locked = !!reg.number;
-                      const draft = leagueNumberDrafts[reg.associationId] ?? "";
+                {leagueAssocs.length > 0 && (
+                  <div className="border-t border-border pt-3 mt-3 space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>
+                    <p className="text-[10px] text-muted-foreground -mt-2">Tick the leagues you play. Enter your league number once — it locks after saving.</p>
+                    {leagueAssocs.map((a) => {
+                      const ticked = !!tickedAssociations[a.associationId];
+                      const locked = !!a.number;
+                      const draft = leagueNumberDrafts[a.associationId] ?? "";
+                      const cannotUntick = ticked && a.registrationIds.length > 0;
                       return (
-                        <div key={reg.associationId} className="space-y-1">
-                          <Label className="text-xs">
-                            {reg.associationName}
-                            {reg.abbreviation ? ` (${reg.abbreviation})` : ""}
-                          </Label>
-                          <Input
-                            value={draft}
-                            disabled={locked}
-                            onChange={(e) =>
-                              setLeagueNumberDrafts((prev) => ({
-                                ...prev,
-                                [reg.associationId]: e.target.value,
-                              }))
-                            }
-                            placeholder="League number (admin can fill later)"
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            {locked
-                              ? "Number on file — contact a club admin to change."
-                              : "You can enter your number once. After saving it's locked."}
-                          </p>
+                        <div key={a.associationId} className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`assoc-${a.associationId}`}
+                              checked={ticked}
+                              disabled={cannotUntick && ticked}
+                              onChange={(e) =>
+                                setTickedAssociations((prev) => ({
+                                  ...prev,
+                                  [a.associationId]: e.target.checked,
+                                }))
+                              }
+                            />
+                            <Label htmlFor={`assoc-${a.associationId}`} className="text-sm font-medium">
+                              {a.associationName}
+                              {a.abbreviation ? ` (${a.abbreviation})` : ""}
+                            </Label>
+                          </div>
+                          {ticked && (
+                            <div className="pl-6 space-y-1">
+                              <Input
+                                value={draft}
+                                disabled={locked}
+                                onChange={(e) =>
+                                  setLeagueNumberDrafts((prev) => ({
+                                    ...prev,
+                                    [a.associationId]: e.target.value,
+                                  }))
+                                }
+                                placeholder={`${a.abbreviation || a.associationName} number (e.g. NSF7570)`}
+                              />
+                              <p className="text-[10px] text-muted-foreground">
+                                {locked
+                                  ? "Number on file — contact a club admin to change."
+                                  : a.registrationIds.length === 0
+                                    ? "Number will be saved once an admin assigns you to a league team."
+                                    : "You can enter your number once. After saving it's locked."}
+                              </p>
+                            </div>
+                          )}
+                          {cannotUntick && (
+                            <p className="pl-6 text-[10px] text-muted-foreground">
+                              You're in a league team — ask a club admin to remove you to untick this.
+                            </p>
+                          )}
                         </div>
                       );
                     })}

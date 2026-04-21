@@ -320,7 +320,7 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: ["my-club-member"] }),
         queryClient.invalidateQueries({ queryKey: ["club-members"] }),
         queryClient.invalidateQueries({ queryKey: ["my-league-registration"] }),
-        queryClient.invalidateQueries({ queryKey: ["my-league-registrations-profile"] }),
+        queryClient.invalidateQueries({ queryKey: ["profile-league-associations"] }),
         queryClient.invalidateQueries({ queryKey: ["club-member-by-id", activeMemberId] }),
       ]);
       toast.success("Profile updated");

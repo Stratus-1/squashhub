@@ -115,6 +115,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       setAllocatedIds(new Set());
       setSessionSummary([]);
       setSavedLastRound(false);
+      setTeamNames({});
+      setReservesName("");
     }
   }, [open]);
 

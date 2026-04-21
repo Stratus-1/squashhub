@@ -186,7 +186,7 @@ export function RemittancesPanel({ clubId }: { clubId: string }) {
               </div>
               <div className="text-right">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Owed to {group.assocName}</p>
-                <p className={cn("text-xl font-bold tabular-nums", collectedTotal > 0 ? "text-amber-600" : "text-muted-foreground")}>
+                <p className={cn("text-xl font-bold tabular-nums", collectedTotal > 0 ? "text-primary" : "text-muted-foreground")}>
                   R{collectedTotal.toFixed(2)}
                 </p>
               </div>

@@ -8,13 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RemittancesPanel } from "./RemittancesPanel";
 
 /* ─── Chart of Accounts definition ─── */
 

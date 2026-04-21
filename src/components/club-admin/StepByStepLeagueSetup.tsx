@@ -96,6 +96,9 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   const [sessionSummary, setSessionSummary] = useState<Array<{ label: string; count: number }>>([]);
   // After-save view: show success + "set up another league" / "finish" choices
   const [savedLastRound, setSavedLastRound] = useState(false);
+  // Custom team names keyed by team index (0..numTeams-1). Empty string = use default.
+  const [teamNames, setTeamNames] = useState<Record<number, string>>({});
+  const [reservesName, setReservesName] = useState<string>("");
 
   // Reset state when dialog re-opens
   useEffect(() => {
@@ -112,6 +115,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       setAllocatedIds(new Set());
       setSessionSummary([]);
       setSavedLastRound(false);
+      setTeamNames({});
+      setReservesName("");
     }
   }, [open]);
 
@@ -205,7 +210,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       // Ensure one league row exists per team
       const createdLeagueIds: string[] = [];
       for (let i = 0; i < allocation.teams.length; i++) {
-        const teamName = `${genderLabel} ${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`;
+        const customName = (teamNames[i] || "").trim();
+        const teamName = customName
+          ? `${genderLabel} ${leagueNumber} ${customName}`
+          : `${genderLabel} ${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`;
         const existing = leagues.find(l => l.association_id === associationId && l.name === teamName);
         if (existing) {
           createdLeagueIds.push(existing.id);
@@ -223,13 +231,16 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       // For reserves, create a "Reserves" league row tied to this number
       let reservesLeagueId: string | null = null;
       if (allocation.reserves.length > 0) {
-        const reservesName = `${genderLabel} ${leagueNumber} Reserves`;
-        const existing = leagues.find(l => l.association_id === associationId && l.name === reservesName);
+        const customRes = (reservesName || "").trim();
+        const reservesNameFinal = customRes
+          ? `${genderLabel} ${leagueNumber} ${customRes}`
+          : `${genderLabel} ${leagueNumber} Reserves`;
+        const existing = leagues.find(l => l.association_id === associationId && l.name === reservesNameFinal);
         if (existing) reservesLeagueId = existing.id;
         else {
           const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
           const { data, error } = await fromExt("leagues")
-            .insert({ club_id: clubId, association_id: associationId, name: reservesName, code })
+            .insert({ club_id: clubId, association_id: associationId, name: reservesNameFinal, code })
             .select("id")
             .single();
           if (error) throw error;
@@ -307,6 +318,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
     setPerTeam(4);
     setReserves(0);
     setDistribution("snake");
+    setTeamNames({});
+    setReservesName("");
   };
 
   return (
@@ -469,35 +482,57 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
               <Badge variant="outline" className="text-[10px]">{distribution === "snake" ? "Snake" : distribution === "rotation" ? "Rotation" : "Reverse snake"}</Badge>
             </div>
 
+            <p className="text-[11px] text-muted-foreground -mb-1">
+              Optional: name each team (e.g. <em>Warriors</em>, <em>Bulldogs</em>). Leave blank to use {leagueNumber} A, B, C…
+            </p>
             <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(allocation.teams.length, 3)}, minmax(0, 1fr))` }}>
-              {allocation.teams.map((team, i) => (
-                <Card key={i} className="p-2.5">
-                  <p className="text-xs font-semibold mb-1.5 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" />{team.name}
-                  </p>
-                  <ol className="space-y-0.5 text-[11px]">
-                    {team.picks.map((p, idx) => (
-                      <li key={p.id} className="flex justify-between gap-2">
-                        <span className="truncate"><span className="text-muted-foreground">{idx + 1}.</span> {p.name || "Unnamed"}</span>
-                        <span className="text-muted-foreground tabular-nums">#{p.ladder_position ?? "—"}</span>
-                      </li>
-                    ))}
-                    {team.picks.length === 0 && <li className="text-muted-foreground italic">empty</li>}
-                  </ol>
-                </Card>
-              ))}
+              {allocation.teams.map((team, i) => {
+                const customName = (teamNames[i] || "").trim();
+                const displayName = customName
+                  ? `${leagueNumber} ${customName}`
+                  : team.name;
+                return (
+                  <Card key={i} className="p-2.5 space-y-1.5">
+                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" />{displayName}
+                    </p>
+                    <Input
+                      className="h-7 text-xs"
+                      placeholder={`Team name (e.g. ${["Warriors","Bulldogs","Lions","Hawks","Panthers","Eagles","Tigers","Sharks"][i] || "Team"})`}
+                      value={teamNames[i] ?? ""}
+                      onChange={(e) => setTeamNames(prev => ({ ...prev, [i]: e.target.value }))}
+                    />
+                    <ol className="space-y-0.5 text-[11px]">
+                      {team.picks.map((p, idx) => (
+                        <li key={p.id} className="flex justify-between gap-2">
+                          <span className="truncate"><span className="text-muted-foreground">{idx + 1}.</span> {p.name || "Unnamed"}</span>
+                          <span className="text-muted-foreground tabular-nums">#{p.ladder_position ?? "—"}</span>
+                        </li>
+                      ))}
+                      {team.picks.length === 0 && <li className="text-muted-foreground italic">empty</li>}
+                    </ol>
+                  </Card>
+                );
+              })}
             </div>
 
             {allocation.reserves.length > 0 && (
-              <Card className="p-2.5 border-dashed">
-                <div className="flex items-center justify-between mb-1.5">
+              <Card className="p-2.5 border-dashed space-y-1.5">
+                <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" />Reserves
+                    <Users className="w-3.5 h-3.5" />
+                    {(reservesName || "").trim() ? `${leagueNumber} ${reservesName.trim()}` : "Reserves"}
                   </p>
                   <Badge variant="outline" className="text-[10px]">
                     {allocation.reserves.length} filled / {perTeam} slots
                   </Badge>
                 </div>
+                <Input
+                  className="h-7 text-xs"
+                  placeholder="Reserves name (default: Reserves)"
+                  value={reservesName}
+                  onChange={(e) => setReservesName(e.target.value)}
+                />
                 <ol className="space-y-0.5 text-[11px]">
                   {Array.from({ length: Math.max(perTeam, allocation.reserves.length) }).map((_, idx) => {
                     const p = allocation.reserves[idx];
@@ -512,11 +547,12 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
                     );
                   })}
                 </ol>
-                <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+                <p className="text-[10px] text-muted-foreground italic">
                   Reserves get {perTeam} draggable position slots so admin can promote any reserve into positions 1–{perTeam}.
                 </p>
               </Card>
             )}
+
 
             <p className="text-[11px] text-muted-foreground">
               Saving will create league rows (one per team + one for reserves) and assign player ranks. Admin can still drag players around afterwards in the Allocate dialog or Fill Up Leagues.

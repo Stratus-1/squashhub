@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace } from "lucide-react";
+import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace, LogOut } from "lucide-react";
 
 interface StepDef {
   id: string;
@@ -726,7 +726,26 @@ export function MemberOnboardingWizard({
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        <div className="px-6 pt-6 pb-2">
+        <div className="px-6 pt-4 pb-2">
+          <div className="flex items-center justify-end mb-2 -mr-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+              onClick={async () => {
+                try {
+                  await supabase.auth.signOut();
+                } catch (e) {
+                  console.warn("[MemberOnboardingWizard] signOut error", e);
+                }
+                window.location.href = "/auth";
+              }}
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1" />
+              Log out
+            </Button>
+          </div>
           <Progress value={progress} className="h-1.5" />
           <div className="flex items-center justify-between mt-1.5">
             <p className="text-[11px] text-muted-foreground">

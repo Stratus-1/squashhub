@@ -1274,9 +1274,9 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Set Up for Club Leagues</Button></DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Quick Set Up for Club Leagues</DialogTitle></DialogHeader>
+      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" />Quick Top Down League Setup</Button></DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Quick Top Down League Setup</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
             <Label>Association</Label>

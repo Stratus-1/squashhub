@@ -597,48 +597,72 @@ export function MemberOnboardingWizard({
         }
       }
 
-      // 3. Create fee payment records — only for genuinely new members, not pre-existing ones
-      //    Pre-existing = admin-created, CSV-imported, or the club founder/captain
-      if (feeBreakdown.length > 0 && !isPreExistingMember) {
-        // Get the club_member_id
+      // 2c. Apply league participation selections (tenant provisioning,
+      //     internal flag, external regional fee + optional number).
+      let cmId: string | null = null;
+      {
         const { data: cmData } = await fromExt("club_members")
           .select("id")
           .eq("club_id", clubId)
           .eq("user_id", user.id)
           .single();
+        cmId = cmData?.id ?? null;
+      }
 
-        if (cmData) {
-          const currentYear = new Date().getFullYear();
-          const feeRecords = feeBreakdown.map(fee => ({
-            club_member_id: cmData.id,
-            fee_label: fee.label,
-            fee_type: fee.type,
-            amount: fee.amount,
-            season_year: currentYear,
-            paid: false,
-          }));
+      if (playsLeague && cmId && Object.keys(leagueSelections).length > 0) {
+        try {
+          await applyLeagueSelections({
+            clubId,
+            clubMemberId: cmId,
+            selections: Object.values(leagueSelections),
+            invokeProvision: async (subdomain) => {
+              const { error } = await supabase.functions.invoke("provision-association-member", {
+                body: { associationSubdomain: subdomain, homeClubId: clubId },
+              });
+              if (error) throw error;
+            },
+          });
+        } catch (e) {
+          console.warn("[MemberOnboardingWizard] applyLeagueSelections error", e);
+        }
+      }
 
-          const { error: feeErr } = await fromExt("club_member_fee_payments")
-            .insert(feeRecords);
-          if (feeErr) throw feeErr;
+      // 3. Create fee payment records — only for genuinely new members, not pre-existing ones
+      //    Pre-existing = admin-created, CSV-imported, or the club founder/captain
+      //    NOTE: tenant pass-through fees are seeded by provision-association-member
+      //    on BOTH the league tenant AND the home club, so they're excluded from
+      //    feeBreakdown above.
+      if (feeBreakdown.length > 0 && !isPreExistingMember && cmId) {
+        const currentYear = new Date().getFullYear();
+        const feeRecords = feeBreakdown.map(fee => ({
+          club_member_id: cmId!,
+          fee_label: fee.label,
+          fee_type: fee.type,
+          amount: fee.amount,
+          season_year: currentYear,
+          paid: false,
+        }));
 
-          // 4. Create member_credit_transactions (credit = fee charged to member) so fees appear on My Statement
-          const txRecords = feeBreakdown.map(fee => ({
-            club_id: clubId,
-            club_member_id: cmData.id,
-            amount: -Math.abs(fee.amount),
-            type: "credit" as const,
-            description: fee.label,
-            status: "confirmed",
-            method: "system",
-            confirmed_at: new Date().toISOString(),
-          }));
+        const { error: feeErr } = await fromExt("club_member_fee_payments")
+          .insert(feeRecords);
+        if (feeErr) throw feeErr;
 
-          const { error: txErr } = await fromExt("member_credit_transactions")
-            .insert(txRecords);
-          if (txErr) {
-            console.warn("[MemberOnboardingWizard] Failed to create statement entries:", txErr);
-          }
+        // 4. Create member_credit_transactions (credit = fee charged to member) so fees appear on My Statement
+        const txRecords = feeBreakdown.map(fee => ({
+          club_id: clubId,
+          club_member_id: cmId!,
+          amount: -Math.abs(fee.amount),
+          type: "credit" as const,
+          description: fee.label,
+          status: "confirmed",
+          method: "system",
+          confirmed_at: new Date().toISOString(),
+        }));
+
+        const { error: txErr } = await fromExt("member_credit_transactions")
+          .insert(txRecords);
+        if (txErr) {
+          console.warn("[MemberOnboardingWizard] Failed to create statement entries:", txErr);
         }
       }
 

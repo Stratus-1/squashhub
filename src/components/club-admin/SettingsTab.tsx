@@ -62,8 +62,9 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         member_number_prefix: form.member_number_prefix,
         member_number_length: form.member_number_length,
         member_number_start: form.member_number_start,
+        auto_number_existing_onboarding: form.auto_number_existing_onboarding,
         challenge_levels_up: form.challenge_levels_up,
-      });
+      } as any);
 
       // Save sensitive SMTP settings to club_secrets table
       await updateSecrets.mutateAsync({

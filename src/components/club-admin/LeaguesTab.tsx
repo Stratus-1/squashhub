@@ -223,6 +223,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             members={members}
             sortLeagues={sortLeagues}
             onDelete={handleDeleteLeague}
+            onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
           />
           <GenderColumn
@@ -233,6 +234,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             members={members}
             sortLeagues={sortLeagues}
             onDelete={handleDeleteLeague}
+            onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
           />
           <GenderColumn
@@ -243,6 +245,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             members={members}
             sortLeagues={sortLeagues}
             onDelete={handleDeleteLeague}
+            onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
           />
         </div>

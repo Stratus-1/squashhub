@@ -229,25 +229,29 @@ export function MemberOnboardingWizard({
         .maybeSingle();
       member = byUserId;
 
+      // Detect if the prefilled name is actually a league/member lookup code
+      // (e.g. "NSF6916" or "0834603007" stored as user_metadata.name during existing-member signup)
+      const looksLikeLookupCode = (val: string) =>
+        !!val && (/^[A-Z]{2,5}\d{2,8}$/i.test(val.trim()) || /^\+?\d[\d\s-]{6,}$/.test(val.trim()) || !val.includes(" "));
+      const currentNameIsLookup = looksLikeLookupCode(name);
+
       if (!member && user.email) {
-        const { data: byEmail } = await fromExt("club_members")
+        // Fetch ALL rows matching this email (there can be duplicates from prior signups)
+        // and prefer the one with a real (non-code) name so we don't pre-fill the form with a phone number.
+        const { data: byEmailRows } = await fromExt("club_members")
           .select("*")
           .eq("club_id", clubId)
-          .eq("email", user.email.toLowerCase())
-          .maybeSingle();
-        member = byEmail;
+          .eq("email", user.email.toLowerCase());
+        if (byEmailRows && byEmailRows.length > 0) {
+          const withRealName = byEmailRows.find((r: any) => r.name && !looksLikeLookupCode(r.name));
+          member = withRealName || byEmailRows[0];
+        }
       }
-
-      // Detect if the prefilled name is actually a league/member lookup code
-      // (e.g. "NSF6916" stored as user_metadata.name during existing-member signup)
-      const looksLikeLookupCode = (val: string) =>
-        !!val && (/^[A-Z]{2,5}\d{2,8}$/i.test(val.trim()) || !val.includes(" "));
-      const currentNameIsLookup = looksLikeLookupCode(name);
 
       if (member) {
         setIsExistingMember(true);
-        // Always overwrite the name if the current value is a lookup code, OR if name is empty
-        if (member.name && (!name || currentNameIsLookup)) setName(member.name);
+        // Always use the member's real name when one exists and the current value is empty or a lookup code
+        if (member.name && !looksLikeLookupCode(member.name) && (!name || currentNameIsLookup)) setName(member.name);
         if (member.phone && !phone) setPhone(member.phone);
         if (member.id_number) setIdNumber(member.id_number);
         if (member.gender) setGender(member.gender);

@@ -344,7 +344,7 @@ export default function Profile() {
       const newlyTickedTenants = leagueAssocs.filter(
         (a) =>
           tickedAssociations[a.associationId] &&
-          !a.isRegistered &&
+          !a.isActive &&
           a.kind === "tenant" &&
           a.tenantSubdomain,
       );
@@ -397,20 +397,52 @@ export default function Profile() {
         if (error) throw error;
       }
 
-      // Persist editable league association numbers — only fill rows where the
-      // current number is blank (locked once saved). Applies to ticked associations
-      // that already have member_league_registrations rows. (Tenant leagues
-      // auto-allocate the number via provision-association-member above.)
-      for (const a of leagueAssocs) {
-        if (!tickedAssociations[a.associationId]) continue;
-        if (a.number) continue; // already locked
-        const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
-        if (!draft) continue;
-        if (a.registrationIds.length === 0) continue; // nothing to attach the number to yet
-        const { error: regErr } = await fromExt("member_league_registrations")
-          .update({ league_association_number: draft })
-          .in("id", a.registrationIds);
-        if (regErr) throw regErr;
+      // Persist permanent affiliations: upsert one row per association whose
+      // tick state changed. Numbers are NEVER deleted — we only flip active.
+      // If the user enters a number for an association that doesn't yet
+      // have a permanent row, create one (manual external-regional case).
+      if (clubMember?.id) {
+        for (const a of leagueAssocs) {
+          const ticked = !!tickedAssociations[a.associationId];
+          const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
+
+          if (a.hasAffiliation && a.affiliationId) {
+            // Toggle active flag if it changed; also persist a manual number
+            // if one was entered into a previously-blank field.
+            const patch: any = {};
+            if (ticked !== a.isActive) patch.active = ticked;
+            if (!a.number && draft) patch.league_association_number = draft;
+            if (Object.keys(patch).length > 0) {
+              const { error: affErr } = await fromExt("member_association_affiliations")
+                .update(patch)
+                .eq("id", a.affiliationId);
+              if (affErr) throw affErr;
+            }
+          } else if (ticked) {
+            // No affiliation row yet (e.g. external regional like NSA).
+            // Tenant associations were just provisioned above and the edge
+            // function creates the affiliation row; skip here to avoid race.
+            if (a.kind === "tenant") continue;
+            const { error: insErr } = await fromExt("member_association_affiliations")
+              .insert({
+                club_member_id: clubMember.id,
+                association_id: a.associationId,
+                league_association_number: draft || null,
+                active: true,
+              });
+            if (insErr) throw insErr;
+          }
+
+          // Back-compat: also write the number onto any season-team
+          // registration rows that are still blank (so existing UI bits
+          // that read from member_league_registrations keep working).
+          if (ticked && draft && !a.number && a.registrationIds.length > 0) {
+            const { error: regErr } = await fromExt("member_league_registrations")
+              .update({ league_association_number: draft })
+              .in("id", a.registrationIds);
+            if (regErr) throw regErr;
+          }
+        }
       }
     },
     onSuccess: async () => {

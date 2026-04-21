@@ -211,34 +211,72 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
     return Array.from(ids);
   }, [registrations, leagues]);
 
-  const { data: members = [] } = useQuery<MemberLite[]>({
+  const { data: members = [] } = useQuery<(MemberLite & { club_member_number?: string | null })[]>({
     queryKey: ["fill-members", memberIds.join(",")],
     queryFn: async () => {
       if (memberIds.length === 0) return [];
       const { data, error } = await supabase
         .from("club_members")
-        .select("id, name, gender, ladder_position")
+        .select("id, name, gender, ladder_position, club_member_number")
         .in("id", memberIds);
       if (error) throw error;
-      return (data || []) as MemberLite[];
+      return (data || []) as any;
     },
     enabled: memberIds.length > 0,
   });
   const memberMap = useMemo(() => {
-    const m = new Map<string, MemberLite>();
+    const m = new Map<string, MemberLite & { club_member_number?: string | null }>();
     for (const x of members) m.set(x.id, x);
     return m;
   }, [members]);
 
-  // memberId → league association/SSA number (prefers league_association_number)
+  // Determine if these leagues belong to an internal association (no external number issued).
+  // For internal leagues we fall back to the member's club_member_number as the league number.
+  const associationIds = useMemo(
+    () => Array.from(new Set(leagues.map(l => (l as any).association_id).filter(Boolean))),
+    [leagues],
+  );
+  const { data: associationScopes = {} } = useQuery<Record<string, string>>({
+    queryKey: ["league-assoc-scopes", associationIds.join(",")],
+    queryFn: async () => {
+      if (associationIds.length === 0) return {};
+      const { data, error } = await fromExt("league_associations")
+        .select("id, scope")
+        .in("id", associationIds);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const a of (data || []) as any[]) map[a.id] = a.scope;
+      return map;
+    },
+    enabled: associationIds.length > 0,
+  });
+  const isInternalLeague = useMemo(() => {
+    const m = new Map<string, boolean>();
+    for (const l of leagues) {
+      const aid = (l as any).association_id;
+      m.set(l.id, !aid || associationScopes[aid] === "internal");
+    }
+    return m;
+  }, [leagues, associationScopes]);
+
+  // memberId → league number.
+  // Prefers league_association_number / ssa_number; for internal leagues
+  // (e.g. NIL) falls back to the member's club_member_number.
   const leagueNumberByMember = useMemo(() => {
     const m = new Map<string, string>();
     for (const r of registrations) {
       const num = r.league_association_number || r.ssa_number;
       if (num && !m.has(r.club_member_id)) m.set(r.club_member_id, num);
     }
+    for (const r of registrations) {
+      if (m.has(r.club_member_id)) continue;
+      if (!isInternalLeague.get(r.league_id)) continue;
+      const mem = memberMap.get(r.club_member_id);
+      const cmn = mem?.club_member_number;
+      if (cmn) m.set(r.club_member_id, cmn);
+    }
     return m;
-  }, [registrations]);
+  }, [registrations, isInternalLeague, memberMap]);
 
   // Per-league weekly status (for cascade tracking)
   const { data: statuses = [] } = useQuery<StatusRow[]>({

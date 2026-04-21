@@ -394,6 +394,17 @@ export default function Dashboard() {
     <div className="bottom-nav-safe relative">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
+      <MembershipIntroModal
+        open={showIntro}
+        clubName={effectiveClub?.name}
+        onClose={() => {
+          const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile?.id}`;
+          try { localStorage.setItem(introKey, "1"); } catch {}
+          setShowIntro(false);
+          setShowOnboarding(true);
+        }}
+      />
+
       <MemberOnboardingWizard
         open={showOnboarding}
         onComplete={() => {

@@ -159,16 +159,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         .eq("id", txId);
       if (error) throw error;
 
-      // Cash-basis: Payment received → Debit Bank, Credit Membership Income
-      const journalRef = crypto.randomUUID();
-      const memberName = getMemberName(tx.club_member_id);
-      const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
-
-      await fromExt("club_journal_entries").insert([
-        { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: Math.abs(Number(tx.amount)), credit: 0, description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
-        { club_id: clubId, journal_ref: journalRef, account: "membership_income", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
-      ]);
-
+      // Mark linked unpaid fees as paid — the journal_fee_payment_received trigger
+      // will automatically post Dr Bank / Cr Debtors for each fee.
+      let postedFromFees = false;
       if (tx.type === "debit" && tx.club_member_id) {
         const { data: unpaidFees } = await fromExt("club_member_fee_payments")
           .select("id, fee_label")
@@ -180,8 +173,21 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           await fromExt("club_member_fee_payments")
             .update({ paid: true, paid_at: new Date().toISOString() })
             .eq("id", fee.id);
+          postedFromFees = true;
         }
         queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      }
+
+      // Fallback: if no fee rows could be matched (e.g. ad-hoc top-ups, light fees),
+      // still record the cash receipt directly so the bank balance reflects it.
+      if (!postedFromFees) {
+        const journalRef = crypto.randomUUID();
+        const memberName = getMemberName(tx.club_member_id);
+        const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
+        await fromExt("club_journal_entries").insert([
+          { club_id: clubId, journal_ref: journalRef, account: "bank_current", debit: Math.abs(Number(tx.amount)), credit: 0, description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
+          { club_id: clubId, journal_ref: journalRef, account: "membership_income", debit: 0, credit: Math.abs(Number(tx.amount)), description: desc, club_member_id: tx.club_member_id, transaction_id: txId },
+        ]);
       }
 
       toast.success("Payment confirmed & recorded as income");

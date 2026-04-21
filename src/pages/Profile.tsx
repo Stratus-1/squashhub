@@ -597,12 +597,13 @@ export default function Profile() {
                 {leagueAssocs.length > 0 && (
                   <div className="border-t border-border pt-3 mt-3 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>
-                    <p className="text-[10px] text-muted-foreground -mt-2">Tick the leagues you play. Enter your league number once — it locks after saving.</p>
+                    <p className="text-[10px] text-muted-foreground -mt-2">
+                      Tick a league to play and pay its fees. Untick to pause — your number is kept on file and reactivates instantly when you re-tick.
+                    </p>
                     {leagueAssocs.map((a) => {
                       const ticked = !!tickedAssociations[a.associationId];
                       const locked = !!a.number;
                       const draft = leagueNumberDrafts[a.associationId] ?? "";
-                      const cannotUntick = ticked && a.registrationIds.length > 0;
                       return (
                         <div key={a.associationId} className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -610,7 +611,6 @@ export default function Profile() {
                               type="checkbox"
                               id={`assoc-${a.associationId}`}
                               checked={ticked}
-                              disabled={cannotUntick && ticked}
                               onChange={(e) =>
                                 setTickedAssociations((prev) => ({
                                   ...prev,
@@ -622,6 +622,11 @@ export default function Profile() {
                               {a.associationName}
                               {a.abbreviation ? ` (${a.abbreviation})` : ""}
                             </Label>
+                            {a.hasAffiliation && !a.isActive && (
+                              <span className="text-[10px] text-muted-foreground italic">
+                                (paused — number {a.number || "—"})
+                              </span>
+                            )}
                           </div>
                           {ticked && (
                             <div className="pl-6 space-y-1">
@@ -638,17 +643,12 @@ export default function Profile() {
                               />
                               <p className="text-[10px] text-muted-foreground">
                                 {locked
-                                  ? "Number on file — contact a club admin to change."
-                                  : a.registrationIds.length === 0
-                                    ? "Number will be saved once an admin assigns you to a league team."
-                                    : "You can enter your number once. After saving it's locked."}
+                                  ? "Number on file — kept permanently. Contact a club admin to change."
+                                  : a.kind === "tenant"
+                                    ? "A number will be auto-allocated when you save."
+                                    : "Enter your number once. After saving it's locked to you."}
                               </p>
                             </div>
-                          )}
-                          {cannotUntick && (
-                            <p className="pl-6 text-[10px] text-muted-foreground">
-                              You're in a league team — ask a club admin to remove you to untick this.
-                            </p>
                           )}
                         </div>
                       );

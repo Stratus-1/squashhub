@@ -336,10 +336,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
               </SelectContent>
             </Select>
             {existingLeagueNames.length > 0 && (
-              <Card className="p-2.5 bg-amber-50 border-amber-200 text-xs space-y-1">
-                <p className="font-medium text-amber-900">Existing league rows for this number:</p>
-                {existingLeagueNames.map(n => <p key={n} className="text-amber-800">• {n}</p>)}
-                <p className="text-amber-700 mt-1">Saving will overwrite registrations on these rows.</p>
+              <Card className="p-2.5 border-warning/40 bg-warning/10 text-xs space-y-1">
+                <p className="font-medium text-foreground">Existing league rows for this number:</p>
+                {existingLeagueNames.map(n => <p key={n} className="text-muted-foreground">• {n}</p>)}
+                <p className="text-muted-foreground mt-1">Saving will overwrite registrations on these rows.</p>
               </Card>
             )}
           </div>

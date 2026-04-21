@@ -1052,11 +1052,14 @@ export function MemberOnboardingWizard({
                 </div>
                 <DialogHeader className="items-center">
                   <DialogTitle className="text-xl font-heading">Registration Complete!</DialogTitle>
-                  <DialogDescription className="text-sm text-muted-foreground max-w-[320px]">
-                    {memberNumber && <span className="block font-mono text-primary mb-1">Member #{memberNumber}</span>}
-                    Your membership is set up. You can manage your fees and profile from the dashboard.
+                  <DialogDescription className="text-sm text-muted-foreground max-w-[340px]">
+                    {memberNumber && <span className="block font-mono text-primary mb-2">Member #{memberNumber}</span>}
+                    Your membership is set up. Next, head to <strong className="text-foreground">My Account</strong> to settle any outstanding fees (membership and league, if applicable) and finish completing your profile.
                   </DialogDescription>
                 </DialogHeader>
+                <div className="rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-xs text-foreground max-w-[340px]">
+                  We'll take you straight to <strong>My Account</strong> when you click <strong>Complete Registration</strong>.
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

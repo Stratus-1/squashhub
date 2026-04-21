@@ -410,8 +410,9 @@ export default function Dashboard() {
         onComplete={() => {
           setShowOnboarding(false);
           setOnboardingDone(true);
-          // Force full reload so all queries (fees, member data, etc.) refresh cleanly
-          setTimeout(() => window.location.reload(), 300);
+          // Send the new member straight to My Account so they can settle fees
+          // and finish their profile. Hard reload ensures all queries refresh.
+          setTimeout(() => { window.location.href = "/my-account"; }, 300);
         }}
       />
       

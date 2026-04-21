@@ -306,6 +306,37 @@ export default function Profile() {
             : tickedIds[0]) || null;
       }
 
+      // For any newly-ticked TENANT association (e.g. LS), call provision so the
+      // member is registered on the league tenant — that allocates their league
+      // number AND seeds the pass-through fee on both sides. Skip if they were
+      // already ticked (provision is idempotent but we avoid noisy calls).
+      const newlyTickedTenants = leagueAssocs.filter(
+        (a) =>
+          tickedAssociations[a.associationId] &&
+          !a.isRegistered &&
+          a.kind === "tenant" &&
+          a.tenantSubdomain,
+      );
+      for (const a of newlyTickedTenants) {
+        try {
+          const { error: provErr } = await supabase.functions.invoke(
+            "provision-association-member",
+            {
+              body: {
+                associationSubdomain: a.tenantSubdomain,
+                homeClubId: homeClubId,
+              },
+            },
+          );
+          if (provErr) {
+            console.warn("[profile] provision failed for", a.associationName, provErr);
+            toast.error(`Couldn't register with ${a.abbreviation || a.associationName}: ${provErr.message || "provisioning failed"}`);
+          }
+        } catch (err: any) {
+          console.warn("[profile] provision threw for", a.associationName, err);
+        }
+      }
+
       if (clubMember?.id) {
         const memberPatch: any = {
           name: cleanName,
@@ -337,7 +368,8 @@ export default function Profile() {
 
       // Persist editable league association numbers — only fill rows where the
       // current number is blank (locked once saved). Applies to ticked associations
-      // that already have member_league_registrations rows.
+      // that already have member_league_registrations rows. (Tenant leagues
+      // auto-allocate the number via provision-association-member above.)
       for (const a of leagueAssocs) {
         if (!tickedAssociations[a.associationId]) continue;
         if (a.number) continue; // already locked

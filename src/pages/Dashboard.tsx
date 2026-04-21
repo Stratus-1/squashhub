@@ -10,6 +10,7 @@ import { SEO } from "@/components/SEO";
 import { Users } from "lucide-react";
 
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
+import { MembershipIntroModal } from "@/components/MembershipIntroModal";
 import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
@@ -329,6 +330,7 @@ export default function Dashboard() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
@@ -355,7 +357,14 @@ export default function Dashboard() {
     const noMemberRecord = hasClub && !myClubMember && !isClubMemberLoading;
 
     if ((legacyNeedsOnboarding || missingMemberData || noMemberRecord) && !onboardingDone) {
-      setShowOnboarding(true);
+      // Show the intro modal first (once per club per user); wizard opens after dismissal
+      const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
+      const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
+      if (!seen) {
+        setShowIntro(true);
+      } else {
+        setShowOnboarding(true);
+      }
     }
   }, [
     isLoading,
@@ -384,6 +393,17 @@ export default function Dashboard() {
   return (
     <div className="bottom-nav-safe relative">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
+
+      <MembershipIntroModal
+        open={showIntro}
+        clubName={effectiveClub?.name}
+        onClose={() => {
+          const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile?.id}`;
+          try { localStorage.setItem(introKey, "1"); } catch {}
+          setShowIntro(false);
+          setShowOnboarding(true);
+        }}
+      />
 
       <MemberOnboardingWizard
         open={showOnboarding}

@@ -97,7 +97,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [addAssocOpen, setAddAssocOpen] = useState(false);
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
-  const [allocateGender, setAllocateGender] = useState<"men" | "ladies" | "mixed" | null>(null);
+  const [allocateLeague, setAllocateLeague] = useState<{ league: League; gender: "men" | "ladies" | "mixed" } | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -211,13 +211,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-semibold text-muted-foreground">Men's ({menLeagues.length})</h4>
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAllocateGender("men")} disabled={menLeagues.length === 0}>
-                <Users className="w-3.5 h-3.5" />Allocate
-              </Button>
             </div>
             <div className="space-y-2">
               {sortLeagues(menLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "men" })} />
               ))}
               {menLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No men's leagues</p>}
             </div>
@@ -225,13 +222,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-semibold text-muted-foreground">Ladies ({ladiesLeagues.length})</h4>
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAllocateGender("ladies")} disabled={ladiesLeagues.length === 0}>
-                <Users className="w-3.5 h-3.5" />Allocate
-              </Button>
             </div>
             <div className="space-y-2">
               {sortLeagues(ladiesLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "ladies" })} />
               ))}
               {ladiesLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No ladies leagues</p>}
             </div>
@@ -239,13 +233,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-semibold text-muted-foreground">Mixed ({mixedLeagues.length})</h4>
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAllocateGender("mixed")} disabled={mixedLeagues.length === 0}>
-                <Users className="w-3.5 h-3.5" />Allocate
-              </Button>
             </div>
             <div className="space-y-2">
               {sortLeagues(mixedLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "mixed" })} />
               ))}
               {mixedLeagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No mixed leagues</p>}
             </div>
@@ -257,22 +248,22 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
             <div className="space-y-2">
               {sortLeagues(otherLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
+                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} onAllocate={() => setAllocateLeague({ league: l, gender: "mixed" })} />
               ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Allocate Players Dialog */}
-      {allocateGender && (
+      {/* Allocate Players Dialog (per-league) */}
+      {allocateLeague && (
         <AllocatePlayersDialog
-          gender={allocateGender}
-          leagues={sortLeagues(allocateGender === "men" ? menLeagues : allocateGender === "ladies" ? ladiesLeagues : mixedLeagues)}
+          gender={allocateLeague.gender}
+          leagues={[allocateLeague.league]}
           members={members}
           clubId={clubId}
-          open={!!allocateGender}
-          onOpenChange={(o) => !o && setAllocateGender(null)}
+          open={!!allocateLeague}
+          onOpenChange={(o) => !o && setAllocateLeague(null)}
         />
       )}
 
@@ -289,11 +280,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 }
 
 // ─── League Card with inline players ───
-function LeagueCard({ league, associations, onDelete, members }: {
+function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   league: League;
   associations: LeagueAssociation[];
   onDelete: (id: string) => void;
   members: ClubMember[];
+  onAllocate?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { data: regs = [] } = useQuery({
@@ -329,6 +321,11 @@ function LeagueCard({ league, associations, onDelete, members }: {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {onAllocate && (
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAllocate}>
+              <Users className="w-3.5 h-3.5" />Allocate
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </Button>

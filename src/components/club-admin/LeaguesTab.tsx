@@ -440,24 +440,42 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   // The association these leagues belong to (all leagues passed in share the same association in practice).
   const associationId = leagues.find(l => l.association_id)?.association_id || null;
 
-  // Filter members by gender, league status, AND opt-in to this association.
-  // Source of truth = the member's profile:
-  //   - `plays_league = true`  (member opted in to league play)
-  //   - `enable_league_association_id = <this association>`  (the league they ticked)
-  // A registration number is NOT required — internal leagues (e.g. NIL) don't issue numbers.
-  // Members who already have a `member_league_registrations` row for this association
-  // are also included (covers historical data where the flag wasn't set).
+  // Determine the association's scope (internal vs regional/external).
+  // - Regional/external (e.g. Lowveld Squash): requires an actual registration with a league number.
+  // - Internal (e.g. NIL): profile opt-in (`plays_league` + `enable_league_association_id`) is enough.
+  const { data: associationScope } = useQuery({
+    queryKey: ["association-scope", associationId],
+    queryFn: async () => {
+      if (!associationId) return null;
+      const { data, error } = await fromExt("league_associations")
+        .select("scope")
+        .eq("id", associationId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as any)?.scope ?? null;
+    },
+    enabled: open && !!associationId,
+  });
+  const isInternal = associationScope === "internal";
+
+  // Members with a registration row for this association.
+  // For regional leagues we additionally require a non-empty league_association_number.
   const { data: registeredMemberIds = [] } = useQuery({
-    queryKey: ["affiliated-members", clubId, associationId],
+    queryKey: ["affiliated-members", clubId, associationId, isInternal],
     queryFn: async () => {
       if (!associationId) return [];
       const { data, error } = await fromExt("member_league_registrations")
-        .select("club_member_id, leagues:league_id(association_id)");
+        .select("club_member_id, league_association_number, ssa_number, leagues:league_id(association_id)");
       if (error) throw error;
       return Array.from(
         new Set(
           (data || [])
             .filter((r: any) => r.leagues?.association_id === associationId)
+            .filter((r: any) =>
+              isInternal
+                ? true
+                : !!(r.league_association_number?.trim() || r.ssa_number?.trim()),
+            )
             .map((r: any) => r.club_member_id),
         ),
       );
@@ -470,15 +488,18 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     [registeredMemberIds],
   );
 
-  // Filter members by gender, league status, AND opt-in to this association,
-  // sorted by club ladder position (strongest first).
+  // Filter members by gender, league status, AND association eligibility.
+  // - Internal association: profile opt-in (enable_league_association_id) OR a registration row qualifies.
+  // - Regional association: ONLY a registration row with a league number qualifies.
   const genderMembers = members
     .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
-    .filter(m =>
-      !associationId ||
-      (m as any).enable_league_association_id === associationId ||
-      affiliatedSet.has(m.id),
-    )
+    .filter(m => {
+      if (!associationId) return true;
+      if (isInternal) {
+        return (m as any).enable_league_association_id === associationId || affiliatedSet.has(m.id);
+      }
+      return affiliatedSet.has(m.id);
+    })
     .sort((a, b) => {
       const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;
       const lb = (b as any).ladder_position ?? Number.POSITIVE_INFINITY;

@@ -190,6 +190,18 @@ export default function Profile() {
 
   useEffect(() => { resetDraft(); }, [profile, clubMember]);
 
+  // Seed league number drafts whenever the registrations load.
+  useEffect(() => {
+    if (!leagueRegs.length) return;
+    setLeagueNumberDrafts((prev) => {
+      const next = { ...prev };
+      for (const r of leagueRegs) {
+        if (next[r.associationId] === undefined) next[r.associationId] = r.number || "";
+      }
+      return next;
+    });
+  }, [leagueRegs]);
+
   useEffect(() => {
     if (didInitFromUrl) return;
     const edit = searchParams.get("edit") === "1" || searchParams.get("mode") === "edit";
@@ -265,6 +277,18 @@ export default function Profile() {
         }).eq("id", user.id);
         if (error) throw error;
       }
+
+      // Persist editable league numbers — only where the registration's
+      // current number is blank (per "editable only if blank" rule).
+      for (const reg of leagueRegs) {
+        const draft = (leagueNumberDrafts[reg.associationId] ?? "").trim();
+        if (!draft) continue;
+        if (reg.number) continue; // locked once saved
+        const { error: regErr } = await fromExt("member_league_registrations")
+          .update({ league_association_number: draft })
+          .eq("id", reg.regId);
+        if (regErr) throw regErr;
+      }
     },
     onSuccess: async () => {
       await Promise.all([
@@ -272,11 +296,16 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: ["my-club-member"] }),
         queryClient.invalidateQueries({ queryKey: ["club-members"] }),
         queryClient.invalidateQueries({ queryKey: ["my-league-registration"] }),
+        queryClient.invalidateQueries({ queryKey: ["my-league-registrations-profile"] }),
         queryClient.invalidateQueries({ queryKey: ["club-member-by-id", activeMemberId] }),
       ]);
       toast.success("Profile updated");
-      setMode("view");
       setPreviewFile(null);
+      if (nextAfterSave === "account") {
+        navigate("/my-account");
+      } else {
+        setMode("view");
+      }
     },
     onError: (e: any) => toast.error(e?.message || "Failed to update profile"),
   });
@@ -414,6 +443,40 @@ export default function Profile() {
                   <input type="checkbox" id="plays-league" checked={playsLeague} onChange={(e) => setPlaysLeague(e.target.checked)} />
                   <Label htmlFor="plays-league">Plays League</Label>
                 </div>
+
+                {leagueRegs.length > 0 && (
+                  <div className="border-t border-border pt-3 mt-3 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">League Participation</p>
+                    {leagueRegs.map((reg) => {
+                      const locked = !!reg.number;
+                      const draft = leagueNumberDrafts[reg.associationId] ?? "";
+                      return (
+                        <div key={reg.associationId} className="space-y-1">
+                          <Label className="text-xs">
+                            {reg.associationName}
+                            {reg.abbreviation ? ` (${reg.abbreviation})` : ""}
+                          </Label>
+                          <Input
+                            value={draft}
+                            disabled={locked}
+                            onChange={(e) =>
+                              setLeagueNumberDrafts((prev) => ({
+                                ...prev,
+                                [reg.associationId]: e.target.value,
+                              }))
+                            }
+                            placeholder="League number (admin can fill later)"
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            {locked
+                              ? "Number on file — contact a club admin to change."
+                              : "You can enter your number once. After saving it's locked."}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             )}
 

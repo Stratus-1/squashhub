@@ -3855,6 +3855,20 @@ export type Database = {
         Returns: boolean
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
+      lookup_existing_member_for_signup: {
+        Args: {
+          _club_id: string
+          _email: string
+          _number?: string
+          _phone?: string
+        }
+        Returns: {
+          has_number: boolean
+          has_phone: boolean
+          id: string
+          masked_name: string
+        }[]
+      }
       member_has_permission: {
         Args: { _member_id: string; _permission: string }
         Returns: boolean

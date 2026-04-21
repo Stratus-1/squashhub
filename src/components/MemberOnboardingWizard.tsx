@@ -377,10 +377,12 @@ export function MemberOnboardingWizard({
     }
   }, [idNumber, dateOfBirth, feeCategories, gender, categoryAutoSet]);
 
-  // Auto-generate member number when reaching membership step — but ONLY for genuinely new members.
-  // Pre-existing/imported members keep whatever number they were given (or none — they enter it themselves).
+  // Auto-generate member number when reaching membership step.
+  // - Genuinely new members always get one.
+  // - Pre-existing/imported members keep their existing number, OR get one auto-allocated
+  //   if the club has enabled `auto_number_existing_onboarding`.
   useEffect(() => {
-    if (step === 2 && clubId && !memberNumber && user?.id && !isExistingMember) {
+    if (step === 2 && clubId && !memberNumber && user?.id) {
       (async () => {
         // Double-check: in case the existing-member effect hasn't resolved yet
         const { data: existing } = await fromExt("club_members")
@@ -402,7 +404,15 @@ export function MemberOnboardingWizard({
           return;
         }
 
-        // No existing member — generate the next number
+        // No number yet. Allocate if member is new, OR if club allows auto-numbering existing onboarding members.
+        const { data: clubRow } = await fromExt("clubs")
+          .select("auto_number_existing_onboarding")
+          .eq("id", clubId)
+          .maybeSingle();
+        const allowExistingAutoNumber = !!(clubRow as any)?.auto_number_existing_onboarding;
+
+        if (isExistingMember && !allowExistingAutoNumber) return;
+
         const { data, error } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
         if (!error && data) {
           setMemberNumber(data as string);

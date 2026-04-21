@@ -202,9 +202,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
       {/* Leagues in two columns with inline players */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h3 className="font-semibold">Leagues</h3>
-          <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
+          <div className="flex gap-2 flex-wrap">
+            <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
+            <Button size="sm" variant="outline" onClick={() => toast.info("Step by Step League Setup coming soon")}>
+              <Plus className="w-4 h-4 mr-1" />Step by Step League Setup
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -124,7 +124,11 @@ export default function ClubAuth() {
       return;
     }
     if (!memberNum && !phone) {
-      toast.error("Please enter your member/league number OR your cell phone number");
+      toast.error(
+        hideMemberNumberField
+          ? "Please enter your cell phone number"
+          : "Please enter your member/league number OR your cell phone number"
+      );
       return;
     }
     if (existingPassword.length < 6) {

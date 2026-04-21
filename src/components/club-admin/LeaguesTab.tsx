@@ -387,9 +387,38 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const dragOverItem = useRef<{ leagueId: string; idx: number } | null>(null);
   const [dragFromPool, setDragFromPool] = useState<string | null>(null);
 
-  // Filter members by gender and league status, sorted by club ladder position (strongest first)
+  // The association these leagues belong to (all leagues passed in share the same association in practice).
+  const associationId = leagues.find(l => l.association_id)?.association_id || null;
+
+  // Fetch members affiliated to this association — i.e. those who have a league number registered
+  // against ANY league belonging to this association. Without this, the allocation pool would
+  // include members from other association leagues who don't actually play in this competition.
+  const { data: affiliatedMemberIds = [] } = useQuery({
+    queryKey: ["affiliated-members", clubId, associationId],
+    queryFn: async () => {
+      if (!associationId) return [];
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("club_member_id, league_association_number, leagues:league_id(association_id)")
+        .not("league_association_number", "is", null);
+      if (error) throw error;
+      return Array.from(
+        new Set(
+          (data || [])
+            .filter((r: any) => r.leagues?.association_id === associationId && r.league_association_number)
+            .map((r: any) => r.club_member_id),
+        ),
+      );
+    },
+    enabled: open && !!associationId,
+  });
+
+  const affiliatedSet = useMemo(() => new Set(affiliatedMemberIds), [affiliatedMemberIds]);
+
+  // Filter members by gender, league status, AND affiliation to this association,
+  // sorted by club ladder position (strongest first).
   const genderMembers = members
     .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
+    .filter(m => !associationId || affiliatedSet.has(m.id))
     .sort((a, b) => {
       const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;
       const lb = (b as any).ladder_position ?? Number.POSITIVE_INFINITY;

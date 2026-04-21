@@ -38,7 +38,13 @@ export default function ClubAuth() {
   const [existingPassword, setExistingPassword] = useState("");
   const [existingConfirm, setExistingConfirm] = useState("");
   const [memberNumber, setMemberNumber] = useState("");
+  const [existingPhone, setExistingPhone] = useState("");
   const [existingAcceptTerms, setExistingAcceptTerms] = useState(false);
+  // Multi-match chooser state
+  const [memberChoices, setMemberChoices] = useState<
+    Array<{ id: string; masked_name: string; has_number: boolean; has_phone: boolean }>
+  >([]);
+  const [chosenMemberId, setChosenMemberId] = useState<string>("");
 
   // New member signup
   const [newName, setNewName] = useState("");
@@ -108,9 +114,14 @@ export default function ClubAuth() {
     e.preventDefault();
     const email = existingEmail.trim();
     const memberNum = memberNumber.trim();
+    const phone = existingPhone.trim();
 
-    if (!memberNum || memberNum.length < 1) {
-      toast.error("Please enter your member number");
+    if (!email) {
+      toast.error("Please enter your email");
+      return;
+    }
+    if (!memberNum && !phone) {
+      toast.error("Please enter your member/league number OR your cell phone number");
       return;
     }
     if (existingPassword.length < 6) {
@@ -125,26 +136,77 @@ export default function ClubAuth() {
       toast.error("Please accept the Terms of Use and Privacy Policy");
       return;
     }
-
-    try {
-      if (captchaRef.current) {
-        const token = await captchaRef.current.execute();
-        const valid = await verifyCaptchaToken(token);
-        if (!valid) { toast.error("Captcha verification failed"); return; }
-      }
-    } catch { toast.error("Captcha verification failed"); return; }
+    if (!club?.id) {
+      toast.error("Club context not loaded yet — please refresh");
+      return;
+    }
     if (isAssociation && !homeClubId) {
       toast.error("Please select your home club");
       return;
     }
+
     setLoading(true);
+
+    // 1) Look up unclaimed shell rows that match (email) AND (number OR phone)
+    let matchedMemberId = chosenMemberId || "";
+    let matchedNumber = memberNum;
+    if (!matchedMemberId) {
+      const { data: matches, error: lookupErr } = await (supabase as any).rpc(
+        "lookup_existing_member_for_signup",
+        {
+          _club_id: club.id,
+          _email: email,
+          _number: memberNum || null,
+          _phone: phone || null,
+        }
+      );
+      if (lookupErr) {
+        toast.error(lookupErr.message || "Member lookup failed");
+        setLoading(false);
+        return;
+      }
+      const rows = (matches || []) as Array<{
+        id: string;
+        masked_name: string;
+        has_number: boolean;
+        has_phone: boolean;
+      }>;
+      if (rows.length === 0) {
+        toast.error(
+          "We couldn't find a member matching that email and number/phone. Please contact your club admin."
+        );
+        setLoading(false);
+        return;
+      }
+      if (rows.length > 1) {
+        // Show chooser inline; user picks then re-submits
+        setMemberChoices(rows);
+        toast.message("Multiple members match — please pick which one is you", { duration: 4000 });
+        setLoading(false);
+        return;
+      }
+      matchedMemberId = rows[0].id;
+    }
+
+    // Captcha after we know we have a real match
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+    } catch { toast.error("Captcha verification failed"); setLoading(false); return; }
+
     const nowIso = new Date().toISOString();
     const homeClub = pickerClubs?.find((c) => c.id === homeClubId);
+    // Use whatever identifier the user supplied as the "name slug" passed to signUp
+    // (the member-claim flow at AuthCallback links by email + this hint).
+    const identifierHint = matchedNumber || phone || "existing-member";
     const { error } = await signUp(
       email,
       existingPassword,
-      memberNum,
-      undefined,
+      identifierHint,
+      phone || undefined,
       { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
       club ? {
         clubName: club.name,
@@ -548,30 +610,10 @@ export default function ClubAuth() {
             <Card className="p-6">
               <p className="text-xs text-muted-foreground mb-4">
                 {isAssociation
-                  ? <>Already registered with {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and select your home club to link your account.</>
-                  : <>Already a member of {clubName}? Enter your <strong>Member Number</strong> or your <strong>League Number</strong> (e.g. NSF1234) to link your account.</>}
+                  ? <>Already registered with {clubName}? Enter your <strong>email</strong> plus your <strong>League Number</strong> (e.g. NSF1234) <em>or</em> the <strong>cell phone number</strong> on file, then select your home club.</>
+                  : <>Already a member of {clubName}? Enter your <strong>email</strong> plus your <strong>Member/League Number</strong> <em>or</em> the <strong>cell phone number</strong> the club has on file.</>}
               </p>
               <form onSubmit={handleExistingMemberSignup} className="space-y-3">
-                <div>
-                  <Label htmlFor="existing-member-number">Member Number or League Number <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="existing-member-number"
-                    type="text"
-                    placeholder="e.g. WSC001 or NSF1234"
-                    value={memberNumber}
-                    onChange={(e) => setMemberNumber(e.target.value)}
-                    required
-                    maxLength={20}
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">League players use their NSF number; club members use their assigned number</p>
-                </div>
-                {isAssociation && (
-                  <HomeClubField
-                    value={homeClubId}
-                    onChange={setHomeClubId}
-                    clubs={pickerClubs || []}
-                  />
-                )}
                 <div>
                   <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>
                   <Input
@@ -579,12 +621,75 @@ export default function ClubAuth() {
                     type="email"
                     placeholder="your@email.com"
                     value={existingEmail}
-                    onChange={(e) => setExistingEmail(e.target.value)}
+                    onChange={(e) => { setExistingEmail(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
                     required
                     maxLength={255}
                   />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">We'll save this to your membership for future communication</p>
                 </div>
+                <div className="rounded-md border border-dashed border-input p-3 space-y-3 bg-muted/30">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Provide at least one of the following so we can find you:
+                  </p>
+                  <div>
+                    <Label htmlFor="existing-member-number">Member Number or League Number</Label>
+                    <Input
+                      id="existing-member-number"
+                      type="text"
+                      placeholder="e.g. WSC001 or NSF1234"
+                      value={memberNumber}
+                      onChange={(e) => { setMemberNumber(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                      maxLength={20}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="existing-phone">Cell Phone Number</Label>
+                    <Input
+                      id="existing-phone"
+                      type="tel"
+                      placeholder="+27 82 123 4567"
+                      value={existingPhone}
+                      onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                      maxLength={20}
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Use this if your club hasn't given you a number yet.
+                    </p>
+                  </div>
+                </div>
+
+                {memberChoices.length > 1 && (
+                  <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                    <p className="text-xs font-medium">We found multiple matches — pick which one is you:</p>
+                    <div className="space-y-1">
+                      {memberChoices.map((m) => (
+                        <label
+                          key={m.id}
+                          className="flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1 hover:bg-background"
+                        >
+                          <input
+                            type="radio"
+                            name="member-choice"
+                            value={m.id}
+                            checked={chosenMemberId === m.id}
+                            onChange={() => setChosenMemberId(m.id)}
+                          />
+                          <span>{m.masked_name}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {m.has_number ? "· number ✓" : ""} {m.has_phone ? "· phone ✓" : ""}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isAssociation && (
+                  <HomeClubField
+                    value={homeClubId}
+                    onChange={setHomeClubId}
+                    clubs={pickerClubs || []}
+                  />
+                )}
                 <div>
                   <Label htmlFor="existing-password">Create Password <span className="text-destructive">*</span></Label>
                   <div className="relative">
@@ -620,8 +725,16 @@ export default function ClubAuth() {
                 </div>
                 <TermsCheckbox checked={existingAcceptTerms} onCheckedChange={setExistingAcceptTerms} />
                 <HCaptcha ref={captchaRef} />
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Registering..." : "Register"}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading || (memberChoices.length > 1 && !chosenMemberId)}
+                >
+                  {loading
+                    ? "Registering..."
+                    : memberChoices.length > 1 && !chosenMemberId
+                      ? "Pick which member is you"
+                      : "Register"}
                 </Button>
               </form>
             </Card>

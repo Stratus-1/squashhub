@@ -335,17 +335,22 @@ export default function Dashboard() {
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
 
-    // Club admins (captains/admins) skip the member onboarding wizard,
-    // but still see the membership intro modal once.
+    // Club admins (captains/admins) skip the member onboarding wizard.
+    // Only show the membership intro modal to admins who are themselves
+    // not yet fully registered (no member number yet) — existing admins
+    // who already have a member number have nothing to onboard to.
     const isMemberAdmin =
       myClubMember?.role === "captain" || myClubMember?.role === "admin" ||
       clubData?.membership?.role === "captain" || clubData?.membership?.role === "admin";
 
     if (isMemberAdmin) {
-      const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
-      const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
-      if (!seen && effectiveClub) {
-        setShowIntro(true);
+      const adminNeedsIntro = !!effectiveClub && !!myClubMember && !myClubMember.club_member_number;
+      if (adminNeedsIntro) {
+        const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile.id}`;
+        const seen = typeof window !== "undefined" && localStorage.getItem(introKey) === "1";
+        if (!seen) {
+          setShowIntro(true);
+        }
       }
       return;
     }

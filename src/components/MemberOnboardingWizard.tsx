@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS } from "@/hooks/use-club";
+import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -198,6 +199,7 @@ export function MemberOnboardingWizard({
   // Membership
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
+  const [leagueSelections, setLeagueSelections] = useState<Record<string, LeagueSelection>>({});
   const [memberNumber, setMemberNumber] = useState("");
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);

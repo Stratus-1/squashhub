@@ -82,56 +82,52 @@ export default function Profile() {
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // League registrations across all tenants for this user
-  // (read by user_id so we capture both home-club and league-tenant rows).
-  const { data: leagueRegs = [] } = useQuery({
-    queryKey: ["my-league-registrations-profile", user?.id],
-    enabled: !!user?.id,
+  // League associations available at this member's home club, with the
+  // member's current registration status + assigned number per association.
+  const homeClubId = clubMember?.club_id as string | undefined;
+  const homeClubMemberId = clubMember?.id as string | undefined;
+  const homeClubEnabledAssocId = (clubMember as any)?.enable_league_association_id as string | null | undefined;
+
+  const { data: leagueAssocs = [] } = useQuery({
+    queryKey: ["profile-league-associations", homeClubId, homeClubMemberId],
+    enabled: !!homeClubId && !!homeClubMemberId,
     queryFn: async () => {
-      // Get every club_member row owned by this user (home club + association tenants)
-      const { data: memberRows } = await fromExt("club_members")
-        .select("id, club_id, club_member_number, clubs:club_id(name, tenant_type)")
-        .eq("user_id", user!.id);
-      const memberIds = (memberRows || []).map((m: any) => m.id);
-      if (memberIds.length === 0) return [];
+      const [assocRes, regsRes] = await Promise.all([
+        fromExt("league_associations")
+          .select("id, name, abbreviation")
+          .eq("club_id", homeClubId!)
+          .eq("active", true)
+          .order("name", { ascending: true }),
+        fromExt("member_league_registrations")
+          .select("id, league_association_number, league:leagues(id, association_id)")
+          .eq("club_member_id", homeClubMemberId!),
+      ]);
+      if (assocRes.error) throw assocRes.error;
+      const regs = (regsRes.data || []) as any[];
 
-      const { data: regs } = await fromExt("member_league_registrations")
-        .select(
-          "id, club_member_id, league_association_number, ssa_number, league:leagues(id, name, association_id, association:league_associations(id, name, abbreviation))",
-        )
-        .in("club_member_id", memberIds);
-
-      const byMember: Record<string, any> = {};
-      for (const m of (memberRows || []) as any[]) byMember[m.id] = m;
-
-      // Deduplicate per association (prefer the row with a number set)
-      const byAssoc: Record<string, any> = {};
-      for (const r of (regs || []) as any[]) {
-        const assoc = r.league?.association;
-        if (!assoc?.id) continue;
-        const m = byMember[r.club_member_id];
-        const tenantClubName: string | null = m?.clubs?.tenant_type === "association" ? m?.clubs?.name : null;
-        const candidate = {
-          regId: r.id as string,
-          associationId: assoc.id as string,
-          associationName: assoc.name as string,
-          abbreviation: assoc.abbreviation as string | null,
-          number: (r.league_association_number || m?.club_member_number || "") as string,
-          tenantClubName,
-        };
-        const existing = byAssoc[assoc.id];
-        if (!existing || (!existing.number && candidate.number)) {
-          byAssoc[assoc.id] = candidate;
-        }
+      // Group regs by association_id, prefer rows with a number set.
+      const numberByAssoc: Record<string, string> = {};
+      const regIdsByAssoc: Record<string, string[]> = {};
+      for (const r of regs) {
+        const aid = r.league?.association_id as string | undefined;
+        if (!aid) continue;
+        regIdsByAssoc[aid] ||= [];
+        regIdsByAssoc[aid].push(r.id);
+        const num = (r.league_association_number || "").trim();
+        if (num && !numberByAssoc[aid]) numberByAssoc[aid] = num;
       }
-      return Object.values(byAssoc) as Array<{
-        regId: string;
-        associationId: string;
-        associationName: string;
-        abbreviation: string | null;
-        number: string;
-        tenantClubName: string | null;
-      }>;
+
+      return ((assocRes.data || []) as any[]).map((a) => ({
+        associationId: a.id as string,
+        associationName: a.name as string,
+        abbreviation: (a.abbreviation || null) as string | null,
+        number: numberByAssoc[a.id] || "",
+        registrationIds: regIdsByAssoc[a.id] || [],
+        // "Registered" means: this assoc is the member's enable_league_association_id,
+        // OR they have at least one league-team registration tied to it.
+        isRegistered:
+          homeClubEnabledAssocId === a.id || (regIdsByAssoc[a.id]?.length || 0) > 0,
+      }));
     },
   });
 

@@ -251,26 +251,30 @@ function MemberCard({ member: m, fees, delegateTitle, affiliations, onEdit, onDe
         <Badge variant="outline" className={`text-[9px] px-1 py-0 ${isLinked ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
           {isLinked ? "✓ Reg" : "✗ Unreg"}
         </Badge>
-        {m.plays_league && <Badge variant="outline" className="text-[9px] px-1 py-0 text-primary">{leagueLabel || "League"}</Badge>}
-        {associationStatus && (() => {
-          const { associationName, leagueNumber, feesPaid, hasFeeRecord } = associationStatus;
-          const isActive = !!leagueNumber && feesPaid && hasFeeRecord;
-          const label = associationName ? `${associationName}: ` : "";
-          if (isActive) {
+        {affiliations.map((aff) => {
+          if (aff.active) {
             return (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500">
-                {label}Active{leagueNumber ? ` #${leagueNumber}` : ""}
+              <Badge
+                key={aff.label}
+                variant="outline"
+                className="text-[9px] px-1 py-0 text-emerald-700 border-emerald-500"
+                title={aff.internal ? "Internal league — uses club member number" : "League affiliation — active"}
+              >
+                {aff.label}{aff.leagueNumber ? ` #${aff.leagueNumber}` : ""}
               </Badge>
             );
           }
-          // Inactive — show why
-          const reason = !leagueNumber ? "no league #" : !hasFeeRecord ? "fees pending" : "fees due";
           return (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-700 border-amber-500">
-              {label}Inactive{leagueNumber ? ` #${leagueNumber}` : ""} · {reason}
+            <Badge
+              key={aff.label}
+              variant="outline"
+              className="text-[9px] px-1 py-0 text-muted-foreground border-muted-foreground/40"
+              title="Paused — number kept on file, fees not charged"
+            >
+              {aff.label}{aff.leagueNumber ? ` #${aff.leagueNumber}` : ""} · paused
             </Badge>
           );
-        })()}
+        })}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
         {m.fee_category && <Badge variant="outline" className="text-[9px] px-1 py-0">{m.fee_category.name}</Badge>}
       </div>

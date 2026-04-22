@@ -120,16 +120,30 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
     }
   }, [open]);
 
-  // Eligible pool = plays_league + matches association + gender, MINUS anyone already allocated this session
+  // Source of truth for who's "in" an association = active rows in
+  // `member_association_affiliations` (mirrors what Edit Profile / Edit Member writes).
+  const { data: activeAffiliatedIds = [] } = useQuery({
+    queryKey: ["sbs-active-affiliated", clubId, associationId],
+    enabled: open && !!associationId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_association_affiliations")
+        .select("club_member_id")
+        .eq("association_id", associationId)
+        .eq("active", true);
+      if (error) throw error;
+      return (data || []).map((r: any) => r.club_member_id as string);
+    },
+  });
+  const activeAffiliatedSet = useMemo(() => new Set<string>(activeAffiliatedIds), [activeAffiliatedIds]);
+
+  // Eligible pool = active affiliation + gender, MINUS anyone already allocated this session
   const eligiblePool = useMemo(() => {
     if (!associationId) return [];
     const opted = members.filter((m: any) =>
-      m.plays_league
-      && m.enable_league_association_id === associationId
-      && !allocatedIds.has(m.id)
+      activeAffiliatedSet.has(m.id) && !allocatedIds.has(m.id)
     );
     return filterByGender(opted, gender);
-  }, [members, associationId, gender, allocatedIds]);
+  }, [members, associationId, gender, allocatedIds, activeAffiliatedSet]);
 
   // Load ladder positions for the eligible pool
   const eligibleIds = eligiblePool.map(m => m.id);

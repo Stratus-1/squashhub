@@ -960,10 +960,13 @@ export function MemberOnboardingWizard({
                 </DialogHeader>
 
                 {isExistingMember ? (
-                  <Card className="p-4 text-center text-sm text-muted-foreground space-y-1">
-                    <p className="font-medium text-foreground">No fees applied</p>
+                  <Card className="p-4 text-center text-sm text-muted-foreground space-y-2">
+                    <p className="font-medium text-foreground">No fees applied during registration</p>
                     <p className="text-[11px]">
-                      Existing members are not charged during registration. Any outstanding fees will be imported separately by your club admin.
+                      Existing members are not charged during onboarding. Any outstanding club fees will be imported separately by your club admin.
+                    </p>
+                    <p className="text-[11px]">
+                      If you play in a league (e.g. NIL, LS), the applicable league fees may still be payable for the current season — your club admin will confirm and invoice these as part of your normal membership.
                     </p>
                   </Card>
                 ) : feeBreakdown.length > 0 ? (

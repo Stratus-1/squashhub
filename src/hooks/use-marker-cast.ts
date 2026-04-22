@@ -21,6 +21,7 @@ export interface MarkerCastState {
   elapsed: number;
   clubName?: string;
   clubLogoUrl?: string;
+  courtNumber?: string;
 }
 
 function generateCode(): string {
@@ -37,30 +38,34 @@ export function useMarkerCast(clubId?: string) {
   const [pairCode, setPairCode] = useState<string | null>(null);
   const [casting, setCasting] = useState(false);
   const [paired, setPaired] = useState(false);
+  const [courtNumber, setCourtNumberState] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastStateRef = useRef<MarkerCastState | null>(null);
   const pendingRef = useRef<NodeJS.Timeout | null>(null);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (initialCourt?: string | null) => {
     if (!user) return null;
     const code = generateCode();
+    const court = (initialCourt ?? "").trim() || null;
     const { data, error } = await supabase
       .from("live_marker_sessions" as any)
       .insert({
         pair_code: code,
         marker_user_id: user.id,
         club_id: clubId ?? null,
+        court_number: court,
         state: {},
       })
-      .select("id, pair_code")
+      .select("id, pair_code, court_number")
       .single();
     if (error || !data) {
       console.error("Failed to start cast session:", error);
       return null;
     }
-    const row = data as unknown as { id: string; pair_code: string };
+    const row = data as unknown as { id: string; pair_code: string; court_number: string | null };
     setSessionId(row.id);
     setPairCode(row.pair_code);
+    setCourtNumberState(row.court_number);
     setCasting(true);
 
     // Subscribe to row updates so we know when TV pairs (paired_at set)
@@ -80,10 +85,21 @@ export function useMarkerCast(clubId?: string) {
     return row.pair_code;
   }, [user, clubId]);
 
+  const setCourtNumber = useCallback(async (court: string | null) => {
+    const cleaned = (court ?? "").trim() || null;
+    setCourtNumberState(cleaned);
+    if (sessionId) {
+      await supabase
+        .from("live_marker_sessions" as any)
+        .update({ court_number: cleaned })
+        .eq("id", sessionId);
+    }
+  }, [sessionId]);
+
   const pushState = useCallback(
     (state: MarkerCastState) => {
       if (!sessionId || !casting) return;
-      lastStateRef.current = state;
+      lastStateRef.current = { ...state, courtNumber: courtNumber ?? undefined };
       // Throttle to ~250ms
       if (pendingRef.current) return;
       pendingRef.current = setTimeout(async () => {
@@ -96,7 +112,7 @@ export function useMarkerCast(clubId?: string) {
           .eq("id", sessionId);
       }, 250);
     },
-    [sessionId, casting]
+    [sessionId, casting, courtNumber]
   );
 
   const stop = useCallback(async () => {
@@ -109,6 +125,7 @@ export function useMarkerCast(clubId?: string) {
     }
     setSessionId(null);
     setPairCode(null);
+    setCourtNumberState(null);
     setCasting(false);
     setPaired(false);
   }, [sessionId]);
@@ -120,5 +137,5 @@ export function useMarkerCast(clubId?: string) {
     };
   }, []);
 
-  return { start, stop, pushState, casting, paired, pairCode, sessionId };
+  return { start, stop, pushState, setCourtNumber, casting, paired, pairCode, sessionId, courtNumber };
 }

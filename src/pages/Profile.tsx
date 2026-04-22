@@ -254,12 +254,19 @@ export default function Profile() {
   useEffect(() => { resetDraft(); }, [profile, clubMember]);
 
   // Seed league number drafts + ticked state whenever the associations load.
+  // Internal leagues (e.g. NIL) inherit the member's club number — never a
+  // separate ID, since the league lives entirely inside the home club.
   useEffect(() => {
     if (!leagueAssocs.length) return;
     setLeagueNumberDrafts((prev) => {
       const next = { ...prev };
       for (const a of leagueAssocs) {
-        if (next[a.associationId] === undefined) next[a.associationId] = a.number || "";
+        if (next[a.associationId] !== undefined) continue;
+        if (a.kind === "internal") {
+          next[a.associationId] = a.number || (clubMember?.club_member_number ?? "");
+        } else {
+          next[a.associationId] = a.number || "";
+        }
       }
       return next;
     });

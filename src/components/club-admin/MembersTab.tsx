@@ -793,7 +793,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
         })}
       </div>
 
-      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); refetchPayments(); }} />}
+
+      {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); qc.invalidateQueries({ queryKey: ["club-member-affiliations"] }); qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] }); refetchPayments(); }} />}
     </div>
   );
 }

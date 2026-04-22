@@ -609,8 +609,12 @@ export default function Profile() {
                     </p>
                     {leagueAssocs.map((a) => {
                       const ticked = !!tickedAssociations[a.associationId];
-                      const locked = !!a.number;
-                      const draft = leagueNumberDrafts[a.associationId] ?? "";
+                      const isInternal = a.kind === "internal";
+                      // Internal leagues always lock to the home club number.
+                      const draft = isInternal
+                        ? (clubMember?.club_member_number || leagueNumberDrafts[a.associationId] || "")
+                        : (leagueNumberDrafts[a.associationId] ?? "");
+                      const locked = isInternal || !!a.number;
                       return (
                         <div key={a.associationId} className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -629,6 +633,9 @@ export default function Profile() {
                               {a.associationName}
                               {a.abbreviation ? ` (${a.abbreviation})` : ""}
                             </Label>
+                            {isInternal && (
+                              <span className="text-[10px] text-muted-foreground italic">(internal)</span>
+                            )}
                             {a.hasAffiliation && !a.isActive && (
                               <span className="text-[10px] text-muted-foreground italic">
                                 (paused — number {a.number || "—"})
@@ -646,14 +653,20 @@ export default function Profile() {
                                     [a.associationId]: e.target.value,
                                   }))
                                 }
-                                placeholder={`${a.abbreviation || a.associationName} number (e.g. NSF7570)`}
+                                placeholder={
+                                  isInternal
+                                    ? "Uses your club number"
+                                    : `${a.abbreviation || a.associationName} number (e.g. NSF7570)`
+                                }
                               />
                               <p className="text-[10px] text-muted-foreground">
-                                {locked
-                                  ? "Number on file — kept permanently. Contact a club admin to change."
-                                  : a.kind === "tenant"
-                                    ? "A number will be auto-allocated when you save."
-                                    : "Enter your number once. After saving it's locked to you."}
+                                {isInternal
+                                  ? "Internal league — uses your club member number automatically."
+                                  : locked
+                                    ? "Number on file — kept permanently. Contact a club admin to change."
+                                    : a.kind === "tenant"
+                                      ? "A number will be auto-allocated when you save."
+                                      : "Enter your number once. After saving it's locked to you."}
                               </p>
                             </div>
                           )}

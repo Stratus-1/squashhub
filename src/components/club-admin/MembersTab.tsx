@@ -1537,66 +1537,78 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               Current ladder position: {typeof member.ladder_position === "number" ? `#${member.ladder_position}` : "unranked"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={form.plays_league} onChange={e => setForm(p => ({ ...p, plays_league: e.target.checked }))} />
-            <Label>Plays League</Label>
-          </div>
-          <div className="space-y-1">
-            <Label>Skill Level</Label>
-            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.skill_level} onChange={e => setForm(p => ({ ...p, skill_level: e.target.value }))}>
-              <option value="">— Select —</option>
-              {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-          {form.plays_league && associations.length > 0 && (
-            <div className="space-y-2 rounded-md border p-3 bg-muted/30">
-              <Label className="text-sm">League participation</Label>
-              <p className="text-[11px] text-muted-foreground">
-                {associations.length === 1
-                  ? "Confirm participation and enter the league number if it's a regional league."
-                  : "Tick each league this member plays in. Regional leagues require a league number; internal leagues just need the tick."}
+          {leagueAssocs.length > 0 && (
+            <div className="border-t border-border pt-3 mt-3 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>
+              <p className="text-[10px] text-muted-foreground -mt-2">
+                Tick a league to play and pay its fees. Untick to pause — the number is kept on file and reactivates instantly when you re-tick.
               </p>
-              <div className="space-y-2">
-                {associations.map((a) => {
-                  const p = participations.find((x) => x.association_id === a.id) || { association_id: a.id, opted_in: false, association_number: "" };
-                  const isInternal = (a.scope ?? "region") === "internal";
-                  const setP = (patch: Partial<typeof p>) =>
-                    setParticipations((prev) => {
-                      const next = prev.some((x) => x.association_id === a.id)
-                        ? prev.map((x) => (x.association_id === a.id ? { ...x, ...patch } : x))
-                        : [...prev, { ...p, ...patch }];
-                      return next;
-                    });
-                  return (
-                    <div key={a.id} className="rounded border bg-background p-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={p.opted_in}
-                          onChange={(e) => setP({ opted_in: e.target.checked })}
-                        />
-                        <span className="text-sm font-medium flex-1">
-                          {a.name} {a.abbreviation ? <span className="text-muted-foreground">({a.abbreviation})</span> : null}
+              {leagueAssocs.map((a) => {
+                const ticked = !!tickedAssociations[a.associationId];
+                const isInternal = a.kind === "internal";
+                // Internal leagues always lock to the home club number.
+                const draft = isInternal
+                  ? (form.club_member_number || leagueNumberDrafts[a.associationId] || "")
+                  : (leagueNumberDrafts[a.associationId] ?? "");
+                const locked = isInternal || !!a.number;
+                return (
+                  <div key={a.associationId} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`admin-assoc-${a.associationId}`}
+                        checked={ticked}
+                        onChange={(e) =>
+                          setTickedAssociations((prev) => ({
+                            ...prev,
+                            [a.associationId]: e.target.checked,
+                          }))
+                        }
+                      />
+                      <Label htmlFor={`admin-assoc-${a.associationId}`} className="text-sm font-medium">
+                        {a.associationName}
+                        {a.abbreviation ? ` (${a.abbreviation})` : ""}
+                      </Label>
+                      {isInternal && (
+                        <span className="text-[10px] text-muted-foreground italic">(internal)</span>
+                      )}
+                      {a.hasAffiliation && !a.isActive && (
+                        <span className="text-[10px] text-muted-foreground italic">
+                          (paused — number {a.number || "—"})
                         </span>
-                        <Badge variant={isInternal ? "secondary" : "outline"} className="text-[9px]">
-                          {isInternal ? "Internal" : "Regional"}
-                        </Badge>
-                      </label>
-                      {p.opted_in && !isInternal && (
-                        <div className="mt-2 ml-6 space-y-1">
-                          <Label className="text-xs">{a.name} league number *</Label>
-                          <Input
-                            value={p.association_number}
-                            onChange={(e) => setP({ association_number: e.target.value })}
-                            placeholder="e.g. 12345"
-                            className="h-8"
-                          />
-                        </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                    {ticked && (
+                      <div className="pl-6 space-y-1">
+                        <Input
+                          value={draft}
+                          disabled={locked}
+                          onChange={(e) =>
+                            setLeagueNumberDrafts((prev) => ({
+                              ...prev,
+                              [a.associationId]: e.target.value,
+                            }))
+                          }
+                          placeholder={
+                            isInternal
+                              ? "Uses club member number"
+                              : `${a.abbreviation || a.associationName} number (e.g. NSF7570)`
+                          }
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          {isInternal
+                            ? "Internal league — uses the member's club number automatically."
+                            : locked
+                              ? "Number on file — kept permanently."
+                              : a.kind === "tenant"
+                                ? "A number will be auto-allocated when you save."
+                                : "Enter the number once. After saving it's locked to this member."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
           <div className="space-y-1">

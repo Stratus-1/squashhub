@@ -3,8 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Undo2, RotateCcw, Flag, Clock, Pause, Play } from "lucide-react";
+import { Undo2, RotateCcw, Flag, Clock, Pause, Play, Cast } from "lucide-react";
 import type { MarkerConfig, ScoringFormat, DeuceRule } from "./MarkerSetup";
+import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
+import { CastDialog } from "./CastDialog";
+import { useClubContext } from "@/contexts/ClubContext";
+import { toast } from "sonner";
 
 type ServeSide = "R" | "L";
 
@@ -70,6 +74,9 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const pointsToWin = getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";
+  const { club } = useClubContext();
+  const cast = useMarkerCast(club?.id);
+  const [castDialogOpen, setCastDialogOpen] = useState(false);
 
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);
@@ -267,19 +274,76 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const playerAName = config.isDoubles && partnerAFirst ? `${playerAFirst} & ${partnerAFirst}` : playerAFirst;
   const playerBName = config.isDoubles && partnerBFirst ? `${playerBFirst} & ${partnerBFirst}` : playerBFirst;
 
+  // Push state to TV whenever something changes
+  useEffect(() => {
+    if (!cast.casting) return;
+    const state: MarkerCastState = {
+      playerAName,
+      playerBName,
+      playerANumber: config.playerA.number,
+      playerBNumber: config.playerB.number,
+      scoreA, scoreB, gamesA, gamesB,
+      server, serveSide,
+      completedGames,
+      matchOver, matchWinner,
+      scoringFormat: config.scoringFormat,
+      bestOf: config.bestOf,
+      elapsed,
+      clubName: club?.name,
+      clubLogoUrl: club?.logo_url ?? undefined,
+    };
+    cast.pushState(state);
+  }, [cast, playerAName, playerBName, config.playerA.number, config.playerB.number, scoreA, scoreB, gamesA, gamesB, server, serveSide, completedGames, matchOver, matchWinner, config.scoringFormat, config.bestOf, elapsed, club]);
+
+  const handleStartCast = useCallback(async () => {
+    setCastDialogOpen(true);
+    if (!cast.casting) {
+      const code = await cast.start();
+      if (!code) {
+        toast.error("Couldn't start cast session");
+        setCastDialogOpen(false);
+      }
+    }
+  }, [cast]);
+
+  const handleStopCast = useCallback(async () => {
+    await cast.stop();
+    setCastDialogOpen(false);
+    toast.success("Stopped casting to TV");
+  }, [cast]);
+
   return (
     <div className="space-y-3">
       {/* Timer & match info */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-heading font-bold tabular-nums">{formatDuration(elapsed)}</span>
         </div>
-        <Badge variant="outline" className="text-[10px]">
-          {config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
-          {" · "}Best of {config.bestOf}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={cast.casting ? "default" : "outline"}
+            className="h-7 gap-1.5 text-xs"
+            onClick={handleStartCast}
+          >
+            <Cast className="w-3.5 h-3.5" />
+            {cast.casting ? (cast.paired ? "Live on TV" : "Pairing…") : "Cast"}
+          </Button>
+          <Badge variant="outline" className="text-[10px]">
+            {config.scoringFormat === "par11" ? "PAR 11" : config.scoringFormat === "par15" ? "PAR 15" : "English 9"}
+            {" · "}Best of {config.bestOf}
+          </Badge>
+        </div>
       </div>
+
+      <CastDialog
+        open={castDialogOpen}
+        onClose={() => setCastDialogOpen(false)}
+        pairCode={cast.pairCode}
+        paired={cast.paired}
+        onStop={handleStopCast}
+      />
 
       {/* Rest timer overlay */}
       {resting && (

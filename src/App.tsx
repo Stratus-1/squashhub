@@ -39,6 +39,7 @@ import ResetPassword from "./pages/ResetPassword";
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
 import MatchMarker from "./pages/MatchMarker";
+import MarkerTv from "./pages/MarkerTv";
 import AddMatchResult from "./pages/AddMatchResult";
 import PlayerProfile from "./pages/PlayerProfile";
 import RegisterClub from "./pages/RegisterClub";
@@ -190,10 +191,13 @@ function AppRoutes() {
 
   const isAdminRoute = (routeLocation.pathname || "/").startsWith("/admin");
 
+  const isTvRoute = (routeLocation.pathname || "/").startsWith("/tv");
+
   const showFooter = (() => {
     const p = routeLocation.pathname || "/";
     if (p === "/booking-response") return false;
     if (p.startsWith("/match-tracker/")) return false;
+    if (isTvRoute) return false;
     if (isAdminRoute) return false;
     return true;
   })();
@@ -224,6 +228,8 @@ function AppRoutes() {
         <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
+        <Route path="/tv" element={<MarkerTv />} />
+        <Route path="/tv/:code" element={<MarkerTv />} />
         <Route path="/add-result" element={<ProtectedRoute><AddMatchResult /></ProtectedRoute>} />
         <Route path="/players/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />
         <Route path="/integrations/strava/callback" element={<ProtectedRoute><StravaCallback /></ProtectedRoute>} />
@@ -264,9 +270,9 @@ function AppRoutes() {
         </Routes>
       )}
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
-      {user && !isAdminRoute && <BottomNav />}
-      {user && <OfflineBanner />}
-      {user && <LiveSessionBanner />}
+      {user && !isAdminRoute && !isTvRoute && <BottomNav />}
+      {user && !isTvRoute && <OfflineBanner />}
+      {user && !isTvRoute && <LiveSessionBanner />}
       <InstallAppPrompt />
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}

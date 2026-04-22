@@ -1,0 +1,2 @@
+ALTER TABLE public.live_marker_sessions ADD COLUMN IF NOT EXISTS court_number text;
+CREATE INDEX IF NOT EXISTS idx_live_marker_sessions_club_court ON public.live_marker_sessions (club_id, court_number);

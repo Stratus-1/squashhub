@@ -277,7 +277,7 @@ export default function Profile() {
       }
       return next;
     });
-  }, [leagueAssocs]);
+  }, [leagueAssocs, clubMember?.club_member_number]);
 
   useEffect(() => {
     if (didInitFromUrl) return;

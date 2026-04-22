@@ -539,6 +539,22 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const isInternal = associationInfo?.scope === "internal";
   const associationTenantClubId: string | null = associationInfo?.club_id ?? null;
 
+  // PERMANENT source of truth: active rows in `member_association_affiliations`
+  // (mirrors what Edit Profile / Edit Member writes — covers both internal and regional).
+  const { data: permanentAffiliatedIds = [] } = useQuery({
+    queryKey: ["permanent-affiliated-members", clubId, associationId],
+    queryFn: async () => {
+      if (!associationId) return [];
+      const { data, error } = await fromExt("member_association_affiliations")
+        .select("club_member_id")
+        .eq("association_id", associationId)
+        .eq("active", true);
+      if (error) throw error;
+      return (data || []).map((r: any) => r.club_member_id as string);
+    },
+    enabled: open && !!associationId,
+  });
+
   // Members with a registration row for this association (covers historical/manually added).
   const { data: registeredMemberIds = [] } = useQuery({
     queryKey: ["affiliated-members", clubId, associationId, isInternal],
@@ -585,6 +601,10 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     enabled: open && !isInternal && !!associationTenantClubId && userIdsForAssoc.length > 0,
   });
 
+  const permanentAffiliatedSet = useMemo(
+    () => new Set<string>(permanentAffiliatedIds as string[]),
+    [permanentAffiliatedIds],
+  );
   const affiliatedSet = useMemo(
     () => new Set<string>(registeredMemberIds as string[]),
     [registeredMemberIds],
@@ -594,14 +614,15 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     [associationMemberUserIds],
   );
 
-  // Filter members by gender, league status, AND association eligibility.
-  // - Internal association: profile opt-in (enable_league_association_id) OR a registration row qualifies.
-  // - Regional association: must hold a membership at the association tenant (i.e. has a league number)
-  //   OR have an explicit registration row with a league number.
+  // Filter members by gender AND association eligibility.
+  // PRIMARY check = active row in `member_association_affiliations` (the new permanent
+  // model). Legacy fallbacks (registration rows, regional tenant membership, profile
+  // opt-in) are kept for historical members not yet migrated.
   const genderMembers = members
-    .filter(m => m.plays_league && (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
+    .filter(m => (gender === "mixed" ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
     .filter(m => {
       if (!associationId) return true;
+      if (permanentAffiliatedSet.has(m.id)) return true;
       if (isInternal) {
         return (m as any).enable_league_association_id === associationId || affiliatedSet.has(m.id);
       }

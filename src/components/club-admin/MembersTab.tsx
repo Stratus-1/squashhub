@@ -768,42 +768,22 @@ export function MembersTab({ clubId }: { clubId: string }) {
                 <span className="text-xs font-normal text-muted-foreground">({group.length})</span>
               </h3>
               <div className="space-y-2">
-                {all.map(m => {
-                  // Build "League NIL #6765" style label.
-                  // Prefer registration-derived label, fall back to enable_league_association_id.
-                  let leagueLabel: string | null = null;
-                  if (m.plays_league) {
-                    const reg = leagueInfoByMember.get(m.id);
-                    if (reg) {
-                      leagueLabel = `League ${reg.label}${reg.number ? ` #${reg.number}` : ""}`;
-                    } else if ((m as any).enable_league_association_id) {
-                      const a = assocById.get((m as any).enable_league_association_id);
-                      if (a) {
-                        const num = nsfByMember.get(m.id);
-                        leagueLabel = `League ${a.abbreviation || a.name}${num ? ` #${num}` : ""}`;
-                      }
-                    }
-                    if (!leagueLabel) leagueLabel = "League";
-                  }
-                  return (
-                    <MemberCard
-                      key={m.id}
-                      member={m}
-                      fees={getFeesForMember(m)}
-                      delegateTitle={getDelegateTitle(m.id)}
-                      nsfNumber={nsfByMember.get(m.id)}
-                      associationStatus={associationStatusByMember.get(m.id) || null}
-                      leagueLabel={leagueLabel}
-                      onEdit={() => setEditMember(m)}
-                      onDelete={() => handleDelete(m.id)}
-                      onTogglePaid={handleTogglePaid}
-                      onCreateFee={handleCreateFee}
-                      onToggleAdmin={() => handleToggleAdmin(m)}
-                      onAssignNumber={handleAssignNumber}
-                      numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
-                    />
-                  );
-                })}
+                {all.map(m => (
+                  <MemberCard
+                    key={m.id}
+                    member={m}
+                    fees={getFeesForMember(m)}
+                    delegateTitle={getDelegateTitle(m.id)}
+                    affiliations={affiliationsByMember.get(m.id) || []}
+                    onEdit={() => setEditMember(m)}
+                    onDelete={() => handleDelete(m.id)}
+                    onTogglePaid={handleTogglePaid}
+                    onCreateFee={handleCreateFee}
+                    onToggleAdmin={() => handleToggleAdmin(m)}
+                    onAssignNumber={handleAssignNumber}
+                    numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
+                  />
+                ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
               </div>
               {gender === "Men" && unassigned.length > 0 && (

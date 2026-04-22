@@ -1182,11 +1182,26 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
 function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; clubId: string; onClose: () => void }) {
   const { data: associations = [] } = useLeagueAssociations(clubId);
-  const [regLoaded, setRegLoaded] = useState(false);
 
-  // Per-association participation state. Drives the toggles + number inputs.
-  type Participation = { association_id: string; opted_in: boolean; association_number: string };
-  const [participations, setParticipations] = useState<Participation[]>([]);
+  // Classified associations (kind, tenant subdomain, permanent affiliation row).
+  // Mirrors the logic in src/pages/Profile.tsx so admin Edit Member matches the
+  // member-facing Edit Profile experience exactly.
+  type ClassifiedAssoc = {
+    associationId: string;
+    associationName: string;
+    abbreviation: string | null;
+    kind: "internal" | "tenant" | "external_regional";
+    tenantSubdomain: string | null;
+    number: string;
+    affiliationId: string | null;
+    hasAffiliation: boolean;
+    isActive: boolean;
+    registrationIds: string[];
+    isRegistered: boolean;
+  };
+  const [leagueAssocs, setLeagueAssocs] = useState<ClassifiedAssoc[]>([]);
+  const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
+  const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
     name: member.name || member.profiles?.name || "",
@@ -1203,49 +1218,119 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     skill_level: member.skill_level || "",
   });
 
-  // Initialise / sync participation rows when associations load
+  // Build the classified league-association list (permanent affiliations are
+  // the source of truth for the league number + active state).
   useEffect(() => {
-    if (associations.length === 0) return;
-    setParticipations((prev) => {
-      const byAssoc = new Map(prev.map((p) => [p.association_id, p]));
-      return associations.map((a) => byAssoc.get(a.id) || { association_id: a.id, opted_in: false, association_number: "" });
-    });
-  }, [associations]);
+    if (!clubId || !member.id) return;
+    let cancelled = false;
+    (async () => {
+      const [affRes, regsRes, tenantsRes] = await Promise.all([
+        fromExt("member_association_affiliations")
+          .select("id, association_id, league_association_number, active")
+          .eq("club_member_id", member.id),
+        fromExt("member_league_registrations")
+          .select("id, league_association_number, league:leagues(id, association_id)")
+          .eq("club_member_id", member.id),
+        fromExt("clubs")
+          .select("id, name, subdomain, tenant_type")
+          .eq("tenant_type", "association"),
+      ]);
+      if (cancelled) return;
 
-  // Load existing league registrations across ALL associations
-  useEffect(() => {
-    if (!member.plays_league || associations.length === 0) {
-      setRegLoaded(true);
-      return;
-    }
-    fromExt("member_league_registrations")
-      .select("id, league_id, league_association_number, leagues:league_id(association_id)")
-      .eq("club_member_id", member.id)
-      .then(({ data }: any) => {
-        const rows = (data || []) as Array<{ league_id: string; league_association_number: string | null; leagues?: { association_id?: string | null } | null }>;
-        // Group by association_id; first non-empty number wins per association
-        const byAssoc = new Map<string, string>();
-        for (const r of rows) {
-          const aid = r.leagues?.association_id || "";
-          if (!aid) continue;
-          if (!byAssoc.has(aid) || (r.league_association_number && !byAssoc.get(aid))) {
-            byAssoc.set(aid, r.league_association_number || "");
+      const affs = (affRes.data || []) as any[];
+      const regs = (regsRes.data || []) as any[];
+      const tenants = (tenantsRes.data || []) as any[];
+
+      const affByAssoc: Record<string, any> = {};
+      for (const af of affs) affByAssoc[af.association_id] = af;
+
+      const numberByAssoc: Record<string, string> = {};
+      const regIdsByAssoc: Record<string, string[]> = {};
+      for (const r of regs) {
+        const aid = r.league?.association_id as string | undefined;
+        if (!aid) continue;
+        regIdsByAssoc[aid] ||= [];
+        regIdsByAssoc[aid].push(r.id);
+        const num = (r.league_association_number || "").trim();
+        if (num && !numberByAssoc[aid]) numberByAssoc[aid] = num;
+      }
+
+      const homeClubEnabledAssocId = (member as any).enable_league_association_id as string | null | undefined;
+
+      const classified: ClassifiedAssoc[] = associations.map((a: any) => {
+        let kind: "internal" | "tenant" | "external_regional";
+        let tenantSubdomain: string | null = null;
+        if (a.scope === "internal") {
+          kind = "internal";
+        } else {
+          let tenant: any | undefined;
+          if (a.platform_association_id) {
+            tenant = tenants.find((t) => t.id === a.platform_association_id);
+          }
+          if (!tenant) {
+            const abbrLower = (a.abbreviation || "").toLowerCase();
+            const nameLower = (a.name || "").toLowerCase();
+            tenant = tenants.find(
+              (t) =>
+                (abbrLower && (t.subdomain || "").toLowerCase() === abbrLower) ||
+                (nameLower && (t.name || "").toLowerCase() === nameLower),
+            );
+          }
+          if (tenant) {
+            kind = "tenant";
+            tenantSubdomain = tenant.subdomain || null;
+          } else {
+            kind = "external_regional";
           }
         }
-        setParticipations((prev) =>
-          (associations.length ? associations : []).map((a) => {
-            const existing = prev.find((p) => p.association_id === a.id);
-            const wasRegistered = byAssoc.has(a.id);
-            return {
-              association_id: a.id,
-              opted_in: wasRegistered,
-              association_number: byAssoc.get(a.id) ?? existing?.association_number ?? "",
-            };
-          })
-        );
-        setRegLoaded(true);
+
+        const aff = affByAssoc[a.id];
+        const permanentNumber = (aff?.league_association_number || "").trim();
+        const number = permanentNumber || numberByAssoc[a.id] || "";
+        const hasAffiliation = !!aff;
+        const isActive = hasAffiliation ? aff.active === true : false;
+
+        return {
+          associationId: a.id,
+          associationName: a.name,
+          abbreviation: a.abbreviation || null,
+          kind,
+          tenantSubdomain,
+          number,
+          affiliationId: (aff?.id as string | undefined) || null,
+          hasAffiliation,
+          isActive,
+          registrationIds: regIdsByAssoc[a.id] || [],
+          isRegistered:
+            isActive ||
+            homeClubEnabledAssocId === a.id ||
+            (regIdsByAssoc[a.id]?.length || 0) > 0,
+        };
       });
-  }, [member.id, member.plays_league, associations]);
+
+      setLeagueAssocs(classified);
+      setTickedAssociations((prev) => {
+        const next = { ...prev };
+        for (const a of classified) {
+          if (next[a.associationId] === undefined) next[a.associationId] = a.isRegistered;
+        }
+        return next;
+      });
+      setLeagueNumberDrafts((prev) => {
+        const next = { ...prev };
+        for (const a of classified) {
+          if (next[a.associationId] !== undefined) continue;
+          if (a.kind === "internal") {
+            next[a.associationId] = a.number || (form.club_member_number || "");
+          } else {
+            next[a.associationId] = a.number || "";
+          }
+        }
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [clubId, member.id, associations, form.club_member_number]);
 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 

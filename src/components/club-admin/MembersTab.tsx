@@ -1258,9 +1258,17 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     const tickedIds = leagueAssocs.map((a) => a.associationId).filter((id) => tickedAssociations[id]);
     const derivedPlaysLeague = tickedIds.length > 0;
     if (derivedPlaysLeague) {
-      // External-regional associations require a number; tenant ones are auto-allocated; internal locks to club number.
+      // External-regional associations require a number; tenant ones are auto-allocated;
+      // internal locks to club number — so the member number itself must exist first.
       for (const a of leagueAssocs) {
         if (!tickedAssociations[a.associationId]) continue;
+        if (a.kind === "internal") {
+          if (!form.club_member_number.trim()) {
+            toast.error(`${a.associationName} uses the club member number — please set a member number first`);
+            return;
+          }
+          continue;
+        }
         if (a.kind !== "external_regional") continue;
         const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
         if (!draft) {
@@ -1363,12 +1371,23 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     // associations are created here; tenant ones are created by the edge function above.
     for (const a of leagueAssocs) {
       const ticked = !!tickedAssociations[a.associationId];
-      const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
+      // Internal leagues ALWAYS mirror the club member number — overrides any draft.
+      const effectiveNumber = a.kind === "internal"
+        ? form.club_member_number.trim()
+        : (leagueNumberDrafts[a.associationId] ?? "").trim();
 
       if (a.hasAffiliation && a.affiliationId) {
         const patch: any = {};
         if (ticked !== a.isActive) patch.active = ticked;
-        if (!a.number && draft) patch.league_association_number = draft;
+        // Internal: keep number in sync with club_member_number even if it changed.
+        // External/tenant: only fill in when previously blank (numbers are permanent once set).
+        if (a.kind === "internal") {
+          if (effectiveNumber && effectiveNumber !== a.number) {
+            patch.league_association_number = effectiveNumber;
+          }
+        } else if (!a.number && effectiveNumber) {
+          patch.league_association_number = effectiveNumber;
+        }
         if (Object.keys(patch).length > 0) {
           const { error: affErr } = await fromExt("member_association_affiliations")
             .update(patch)
@@ -1381,7 +1400,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           .insert({
             club_member_id: member.id,
             association_id: a.associationId,
-            league_association_number: draft || null,
+            league_association_number: effectiveNumber || null,
             active: true,
           });
         if (insErr) { toast.error(`League info: ${insErr.message}`); return; }
@@ -1389,9 +1408,9 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
 
       // Back-compat: also write the number onto any season-team registration rows
       // that are still blank (so existing UI bits that read from member_league_registrations keep working).
-      if (ticked && draft && !a.number && a.registrationIds.length > 0) {
+      if (ticked && effectiveNumber && !a.number && a.registrationIds.length > 0) {
         await fromExt("member_league_registrations")
-          .update({ league_association_number: draft })
+          .update({ league_association_number: effectiveNumber })
           .in("id", a.registrationIds);
       }
     }

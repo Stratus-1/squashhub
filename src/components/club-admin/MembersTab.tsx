@@ -1360,18 +1360,17 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       toast.error("Fee category is required");
       return;
     }
-    if (form.plays_league) {
-      const optedIn = participations.filter((p) => p.opted_in);
-      if (optedIn.length === 0) {
-        toast.error("Select at least one league this member plays in");
-        return;
-      }
-      // Regional associations require a number; internal don't
-      for (const p of optedIn) {
-        const assoc = associations.find((a) => a.id === p.association_id);
-        if (!assoc) continue;
-        if ((assoc.scope ?? "region") === "region" && !p.association_number.trim()) {
-          toast.error(`Enter the league number for ${assoc.name}`);
+    // Derive plays_league from ticked associations (matches Edit Profile UX).
+    const tickedIds = leagueAssocs.map((a) => a.associationId).filter((id) => tickedAssociations[id]);
+    const derivedPlaysLeague = tickedIds.length > 0;
+    if (derivedPlaysLeague) {
+      // External-regional associations require a number; tenant ones are auto-allocated; internal locks to club number.
+      for (const a of leagueAssocs) {
+        if (!tickedAssociations[a.associationId]) continue;
+        if (a.kind !== "external_regional") continue;
+        const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
+        if (!draft) {
+          toast.error(`Enter the league number for ${a.associationName}`);
           return;
         }
       }

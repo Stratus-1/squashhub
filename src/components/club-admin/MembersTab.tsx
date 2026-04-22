@@ -194,6 +194,7 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStat
 }) {
   const displayName = m.name || m.profiles?.name || "—";
   const displayEmail = m.email || m.profiles?.email || "";
+  const displayPhone = m.phone || m.profiles?.phone || "";
   const isLinked = !!m.user_id;
   const isAdmin = m.role === "admin" || m.role === "captain";
   const isDelegate = !!delegateTitle;
@@ -221,9 +222,18 @@ function MemberCard({ member: m, fees, delegateTitle, nsfNumber, associationStat
         </div>
       </div>
 
-      {/* Row 2: Email, member #, status — compact inline */}
+      {/* Row 2: Email, phone, member #, status — compact inline */}
       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-wrap">
-        {displayEmail && <span className="truncate max-w-[140px]">{displayEmail}</span>}
+        {displayEmail && (
+          <a href={`mailto:${displayEmail}`} className="truncate max-w-[160px] hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+            {displayEmail}
+          </a>
+        )}
+        {displayPhone && (
+          <a href={`tel:${displayPhone.replace(/\s/g, "")}`} className="truncate hover:text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+            {displayPhone}
+          </a>
+        )}
         {m.club_member_number ? (
           <span>#{m.club_member_number}</span>
         ) : (

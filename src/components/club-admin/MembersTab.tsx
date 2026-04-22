@@ -1182,11 +1182,26 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
 function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: ClubMember; feeCategories: MemberFeeCategory[]; clubId: string; onClose: () => void }) {
   const { data: associations = [] } = useLeagueAssociations(clubId);
-  const [regLoaded, setRegLoaded] = useState(false);
 
-  // Per-association participation state. Drives the toggles + number inputs.
-  type Participation = { association_id: string; opted_in: boolean; association_number: string };
-  const [participations, setParticipations] = useState<Participation[]>([]);
+  // Classified associations (kind, tenant subdomain, permanent affiliation row).
+  // Mirrors the logic in src/pages/Profile.tsx so admin Edit Member matches the
+  // member-facing Edit Profile experience exactly.
+  type ClassifiedAssoc = {
+    associationId: string;
+    associationName: string;
+    abbreviation: string | null;
+    kind: "internal" | "tenant" | "external_regional";
+    tenantSubdomain: string | null;
+    number: string;
+    affiliationId: string | null;
+    hasAffiliation: boolean;
+    isActive: boolean;
+    registrationIds: string[];
+    isRegistered: boolean;
+  };
+  const [leagueAssocs, setLeagueAssocs] = useState<ClassifiedAssoc[]>([]);
+  const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
+  const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
     name: member.name || member.profiles?.name || "",
@@ -1203,49 +1218,119 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     skill_level: member.skill_level || "",
   });
 
-  // Initialise / sync participation rows when associations load
+  // Build the classified league-association list (permanent affiliations are
+  // the source of truth for the league number + active state).
   useEffect(() => {
-    if (associations.length === 0) return;
-    setParticipations((prev) => {
-      const byAssoc = new Map(prev.map((p) => [p.association_id, p]));
-      return associations.map((a) => byAssoc.get(a.id) || { association_id: a.id, opted_in: false, association_number: "" });
-    });
-  }, [associations]);
+    if (!clubId || !member.id) return;
+    let cancelled = false;
+    (async () => {
+      const [affRes, regsRes, tenantsRes] = await Promise.all([
+        fromExt("member_association_affiliations")
+          .select("id, association_id, league_association_number, active")
+          .eq("club_member_id", member.id),
+        fromExt("member_league_registrations")
+          .select("id, league_association_number, league:leagues(id, association_id)")
+          .eq("club_member_id", member.id),
+        fromExt("clubs")
+          .select("id, name, subdomain, tenant_type")
+          .eq("tenant_type", "association"),
+      ]);
+      if (cancelled) return;
 
-  // Load existing league registrations across ALL associations
-  useEffect(() => {
-    if (!member.plays_league || associations.length === 0) {
-      setRegLoaded(true);
-      return;
-    }
-    fromExt("member_league_registrations")
-      .select("id, league_id, league_association_number, leagues:league_id(association_id)")
-      .eq("club_member_id", member.id)
-      .then(({ data }: any) => {
-        const rows = (data || []) as Array<{ league_id: string; league_association_number: string | null; leagues?: { association_id?: string | null } | null }>;
-        // Group by association_id; first non-empty number wins per association
-        const byAssoc = new Map<string, string>();
-        for (const r of rows) {
-          const aid = r.leagues?.association_id || "";
-          if (!aid) continue;
-          if (!byAssoc.has(aid) || (r.league_association_number && !byAssoc.get(aid))) {
-            byAssoc.set(aid, r.league_association_number || "");
+      const affs = (affRes.data || []) as any[];
+      const regs = (regsRes.data || []) as any[];
+      const tenants = (tenantsRes.data || []) as any[];
+
+      const affByAssoc: Record<string, any> = {};
+      for (const af of affs) affByAssoc[af.association_id] = af;
+
+      const numberByAssoc: Record<string, string> = {};
+      const regIdsByAssoc: Record<string, string[]> = {};
+      for (const r of regs) {
+        const aid = r.league?.association_id as string | undefined;
+        if (!aid) continue;
+        regIdsByAssoc[aid] ||= [];
+        regIdsByAssoc[aid].push(r.id);
+        const num = (r.league_association_number || "").trim();
+        if (num && !numberByAssoc[aid]) numberByAssoc[aid] = num;
+      }
+
+      const homeClubEnabledAssocId = (member as any).enable_league_association_id as string | null | undefined;
+
+      const classified: ClassifiedAssoc[] = associations.map((a: any) => {
+        let kind: "internal" | "tenant" | "external_regional";
+        let tenantSubdomain: string | null = null;
+        if (a.scope === "internal") {
+          kind = "internal";
+        } else {
+          let tenant: any | undefined;
+          if (a.platform_association_id) {
+            tenant = tenants.find((t) => t.id === a.platform_association_id);
+          }
+          if (!tenant) {
+            const abbrLower = (a.abbreviation || "").toLowerCase();
+            const nameLower = (a.name || "").toLowerCase();
+            tenant = tenants.find(
+              (t) =>
+                (abbrLower && (t.subdomain || "").toLowerCase() === abbrLower) ||
+                (nameLower && (t.name || "").toLowerCase() === nameLower),
+            );
+          }
+          if (tenant) {
+            kind = "tenant";
+            tenantSubdomain = tenant.subdomain || null;
+          } else {
+            kind = "external_regional";
           }
         }
-        setParticipations((prev) =>
-          (associations.length ? associations : []).map((a) => {
-            const existing = prev.find((p) => p.association_id === a.id);
-            const wasRegistered = byAssoc.has(a.id);
-            return {
-              association_id: a.id,
-              opted_in: wasRegistered,
-              association_number: byAssoc.get(a.id) ?? existing?.association_number ?? "",
-            };
-          })
-        );
-        setRegLoaded(true);
+
+        const aff = affByAssoc[a.id];
+        const permanentNumber = (aff?.league_association_number || "").trim();
+        const number = permanentNumber || numberByAssoc[a.id] || "";
+        const hasAffiliation = !!aff;
+        const isActive = hasAffiliation ? aff.active === true : false;
+
+        return {
+          associationId: a.id,
+          associationName: a.name,
+          abbreviation: a.abbreviation || null,
+          kind,
+          tenantSubdomain,
+          number,
+          affiliationId: (aff?.id as string | undefined) || null,
+          hasAffiliation,
+          isActive,
+          registrationIds: regIdsByAssoc[a.id] || [],
+          isRegistered:
+            isActive ||
+            homeClubEnabledAssocId === a.id ||
+            (regIdsByAssoc[a.id]?.length || 0) > 0,
+        };
       });
-  }, [member.id, member.plays_league, associations]);
+
+      setLeagueAssocs(classified);
+      setTickedAssociations((prev) => {
+        const next = { ...prev };
+        for (const a of classified) {
+          if (next[a.associationId] === undefined) next[a.associationId] = a.isRegistered;
+        }
+        return next;
+      });
+      setLeagueNumberDrafts((prev) => {
+        const next = { ...prev };
+        for (const a of classified) {
+          if (next[a.associationId] !== undefined) continue;
+          if (a.kind === "internal") {
+            next[a.associationId] = a.number || (form.club_member_number || "");
+          } else {
+            next[a.associationId] = a.number || "";
+          }
+        }
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [clubId, member.id, associations, form.club_member_number]);
 
   const age = form.id_number ? getAgeFromSaId(form.id_number) : null;
 
@@ -1275,18 +1360,17 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       toast.error("Fee category is required");
       return;
     }
-    if (form.plays_league) {
-      const optedIn = participations.filter((p) => p.opted_in);
-      if (optedIn.length === 0) {
-        toast.error("Select at least one league this member plays in");
-        return;
-      }
-      // Regional associations require a number; internal don't
-      for (const p of optedIn) {
-        const assoc = associations.find((a) => a.id === p.association_id);
-        if (!assoc) continue;
-        if ((assoc.scope ?? "region") === "region" && !p.association_number.trim()) {
-          toast.error(`Enter the league number for ${assoc.name}`);
+    // Derive plays_league from ticked associations (matches Edit Profile UX).
+    const tickedIds = leagueAssocs.map((a) => a.associationId).filter((id) => tickedAssociations[id]);
+    const derivedPlaysLeague = tickedIds.length > 0;
+    if (derivedPlaysLeague) {
+      // External-regional associations require a number; tenant ones are auto-allocated; internal locks to club number.
+      for (const a of leagueAssocs) {
+        if (!tickedAssociations[a.associationId]) continue;
+        if (a.kind !== "external_regional") continue;
+        const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
+        if (!draft) {
+          toast.error(`Enter the league number for ${a.associationName}`);
           return;
         }
       }
@@ -1330,12 +1414,46 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       }
     }
 
+    // Derive enable_league_association_id from ticked associations.
+    let derivedEnableAssocId: string | null = null;
+    if (tickedIds.length === 1) {
+      derivedEnableAssocId = tickedIds[0];
+    } else if (tickedIds.length > 1) {
+      const existing = (member as any).enable_league_association_id as string | null | undefined;
+      derivedEnableAssocId = (existing && tickedIds.includes(existing)) ? existing : tickedIds[0];
+    }
+
+    // Provision newly-ticked TENANT associations so league numbers are auto-allocated and
+    // pass-through fees are seeded on both sides.
+    const newlyTickedTenants = leagueAssocs.filter(
+      (a) =>
+        tickedAssociations[a.associationId] &&
+        !a.isActive &&
+        a.kind === "tenant" &&
+        a.tenantSubdomain,
+    );
+    for (const a of newlyTickedTenants) {
+      try {
+        const { error: provErr } = await supabase.functions.invoke(
+          "provision-association-member",
+          { body: { associationSubdomain: a.tenantSubdomain, homeClubId: clubId, clubMemberId: member.id } },
+        );
+        if (provErr) {
+          console.warn("[admin edit member] provision failed for", a.associationName, provErr);
+          toast.error(`Couldn't register with ${a.abbreviation || a.associationName}: ${provErr.message || "provisioning failed"}`);
+        }
+      } catch (err: any) {
+        console.warn("[admin edit member] provision threw for", a.associationName, err);
+      }
+    }
+
     const { error } = await fromExt("club_members").update({
       name: form.name || null,
       email: form.email || null,
       club_member_number: form.club_member_number || null,
       role: form.role,
-      plays_league: form.plays_league,
+      plays_league: derivedPlaysLeague,
+      enable_league_association_id: derivedEnableAssocId,
       ladder_position: form.ladder_position ? Number(form.ladder_position) : null,
       id_number: form.id_number || null,
       gender: form.gender || null,
@@ -1346,87 +1464,42 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     }).eq("id", member.id);
     if (error) { toast.error(error.message); return; }
 
-    // ── Save league registrations: one per opted-in association ──
-    if (form.plays_league) {
-      // Load existing rows once and group by association via the linked league
-      const { data: existingRows } = await fromExt("member_league_registrations")
-        .select("id, league_id, leagues:league_id(association_id)")
-        .eq("club_member_id", member.id);
+    // Persist permanent affiliations: one row per association whose tick state changed.
+    // Numbers are NEVER deleted — we only flip `active`. New rows for external-regional
+    // associations are created here; tenant ones are created by the edge function above.
+    for (const a of leagueAssocs) {
+      const ticked = !!tickedAssociations[a.associationId];
+      const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
 
-      const existing = (existingRows || []) as Array<{ id: string; league_id: string; leagues?: { association_id?: string | null } | null }>;
-      const existingByAssoc = new Map<string, { id: string; league_id: string }>();
-      const orphanRows: Array<{ id: string; league_id: string }> = [];
-      for (const r of existing) {
-        const aid = r.leagues?.association_id || "";
-        if (aid) existingByAssoc.set(aid, { id: r.id, league_id: r.league_id });
-        else orphanRows.push({ id: r.id, league_id: r.league_id });
-      }
-
-      const optedIn = participations.filter((p) => p.opted_in);
-      const optedInIds = new Set(optedIn.map((p) => p.association_id));
-
-      // 1. Delete rows for associations the member is no longer in
-      const toDelete: string[] = [];
-      for (const [aid, row] of existingByAssoc.entries()) {
-        if (!optedInIds.has(aid)) toDelete.push(row.id);
-      }
-      // Orphan rows (no association on linked league): if there's exactly one opted-in association we'll reuse one below; otherwise drop them
-      if (toDelete.length > 0) {
-        const { error: delErr } = await fromExt("member_league_registrations").delete().in("id", toDelete);
-        if (delErr) { toast.error(`League info: ${delErr.message}`); return; }
-      }
-
-      // 2. Upsert one row per opted-in association
-      for (const p of optedIn) {
-        const assoc = associations.find((a) => a.id === p.association_id);
-        const isInternal = (assoc?.scope ?? "region") === "internal";
-        const numberToStore = isInternal ? null : p.association_number.trim();
-
-        // Find a league linked to this association (any league will do as the anchor)
-        const { data: league } = await fromExt("leagues")
-          .select("id")
-          .eq("club_id", clubId)
-          .eq("association_id", p.association_id)
-          .limit(1)
-          .maybeSingle();
-
-        const existingRow = existingByAssoc.get(p.association_id) ?? orphanRows.shift();
-        const targetLeagueId = league?.id ?? existingRow?.league_id ?? null;
-
-        if (!targetLeagueId) {
-          toast.error(`No league is linked to ${assoc?.name || "this association"} yet. Link one in the Leagues tab first.`);
-          return;
+      if (a.hasAffiliation && a.affiliationId) {
+        const patch: any = {};
+        if (ticked !== a.isActive) patch.active = ticked;
+        if (!a.number && draft) patch.league_association_number = draft;
+        if (Object.keys(patch).length > 0) {
+          const { error: affErr } = await fromExt("member_association_affiliations")
+            .update(patch)
+            .eq("id", a.affiliationId);
+          if (affErr) { toast.error(`League info: ${affErr.message}`); return; }
         }
-
-        if (existingRow) {
-          const { error: regErr } = await fromExt("member_league_registrations")
-            .update({
-              league_id: targetLeagueId,
-              league_association_number: numberToStore,
-              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
-            })
-            .eq("id", existingRow.id);
-          if (regErr) { toast.error(`League info: ${regErr.message}`); return; }
-        } else {
-          const { error: regErr } = await fromExt("member_league_registrations")
-            .insert({
-              club_member_id: member.id,
-              league_id: targetLeagueId,
-              league_association_number: numberToStore,
-              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
-            });
-          if (regErr) { toast.error(`League info: ${regErr.message}`); return; }
-        }
+      } else if (ticked) {
+        if (a.kind === "tenant") continue; // edge function creates the row
+        const { error: insErr } = await fromExt("member_association_affiliations")
+          .insert({
+            club_member_id: member.id,
+            association_id: a.associationId,
+            league_association_number: draft || null,
+            active: true,
+          });
+        if (insErr) { toast.error(`League info: ${insErr.message}`); return; }
       }
 
-      // 3. Clean up any leftover orphan rows we didn't reuse
-      if (orphanRows.length > 0) {
-        const ids = orphanRows.map((r) => r.id);
-        await fromExt("member_league_registrations").delete().in("id", ids);
+      // Back-compat: also write the number onto any season-team registration rows
+      // that are still blank (so existing UI bits that read from member_league_registrations keep working).
+      if (ticked && draft && !a.number && a.registrationIds.length > 0) {
+        await fromExt("member_league_registrations")
+          .update({ league_association_number: draft })
+          .in("id", a.registrationIds);
       }
-    } else {
-      // Member no longer plays league → remove all their registrations
-      await fromExt("member_league_registrations").delete().eq("club_member_id", member.id);
     }
 
     toast.success("Member updated");
@@ -1464,10 +1537,6 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               Current ladder position: {typeof member.ladder_position === "number" ? `#${member.ladder_position}` : "unranked"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={form.plays_league} onChange={e => setForm(p => ({ ...p, plays_league: e.target.checked }))} />
-            <Label>Plays League</Label>
-          </div>
           <div className="space-y-1">
             <Label>Skill Level</Label>
             <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.skill_level} onChange={e => setForm(p => ({ ...p, skill_level: e.target.value }))}>
@@ -1475,55 +1544,78 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               {SKILL_LEVELS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
-          {form.plays_league && associations.length > 0 && (
-            <div className="space-y-2 rounded-md border p-3 bg-muted/30">
-              <Label className="text-sm">League participation</Label>
-              <p className="text-[11px] text-muted-foreground">
-                {associations.length === 1
-                  ? "Confirm participation and enter the league number if it's a regional league."
-                  : "Tick each league this member plays in. Regional leagues require a league number; internal leagues just need the tick."}
+          {leagueAssocs.length > 0 && (
+            <div className="border-t border-border pt-3 mt-3 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>
+              <p className="text-[10px] text-muted-foreground -mt-2">
+                Tick a league to play and pay its fees. Untick to pause — the number is kept on file and reactivates instantly when you re-tick.
               </p>
-              <div className="space-y-2">
-                {associations.map((a) => {
-                  const p = participations.find((x) => x.association_id === a.id) || { association_id: a.id, opted_in: false, association_number: "" };
-                  const isInternal = (a.scope ?? "region") === "internal";
-                  const setP = (patch: Partial<typeof p>) =>
-                    setParticipations((prev) => {
-                      const next = prev.some((x) => x.association_id === a.id)
-                        ? prev.map((x) => (x.association_id === a.id ? { ...x, ...patch } : x))
-                        : [...prev, { ...p, ...patch }];
-                      return next;
-                    });
-                  return (
-                    <div key={a.id} className="rounded border bg-background p-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={p.opted_in}
-                          onChange={(e) => setP({ opted_in: e.target.checked })}
-                        />
-                        <span className="text-sm font-medium flex-1">
-                          {a.name} {a.abbreviation ? <span className="text-muted-foreground">({a.abbreviation})</span> : null}
+              {leagueAssocs.map((a) => {
+                const ticked = !!tickedAssociations[a.associationId];
+                const isInternal = a.kind === "internal";
+                // Internal leagues always lock to the home club number.
+                const draft = isInternal
+                  ? (form.club_member_number || leagueNumberDrafts[a.associationId] || "")
+                  : (leagueNumberDrafts[a.associationId] ?? "");
+                const locked = isInternal || !!a.number;
+                return (
+                  <div key={a.associationId} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`admin-assoc-${a.associationId}`}
+                        checked={ticked}
+                        onChange={(e) =>
+                          setTickedAssociations((prev) => ({
+                            ...prev,
+                            [a.associationId]: e.target.checked,
+                          }))
+                        }
+                      />
+                      <Label htmlFor={`admin-assoc-${a.associationId}`} className="text-sm font-medium">
+                        {a.associationName}
+                        {a.abbreviation ? ` (${a.abbreviation})` : ""}
+                      </Label>
+                      {isInternal && (
+                        <span className="text-[10px] text-muted-foreground italic">(internal)</span>
+                      )}
+                      {a.hasAffiliation && !a.isActive && (
+                        <span className="text-[10px] text-muted-foreground italic">
+                          (paused — number {a.number || "—"})
                         </span>
-                        <Badge variant={isInternal ? "secondary" : "outline"} className="text-[9px]">
-                          {isInternal ? "Internal" : "Regional"}
-                        </Badge>
-                      </label>
-                      {p.opted_in && !isInternal && (
-                        <div className="mt-2 ml-6 space-y-1">
-                          <Label className="text-xs">{a.name} league number *</Label>
-                          <Input
-                            value={p.association_number}
-                            onChange={(e) => setP({ association_number: e.target.value })}
-                            placeholder="e.g. 12345"
-                            className="h-8"
-                          />
-                        </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                    {ticked && (
+                      <div className="pl-6 space-y-1">
+                        <Input
+                          value={draft}
+                          disabled={locked}
+                          onChange={(e) =>
+                            setLeagueNumberDrafts((prev) => ({
+                              ...prev,
+                              [a.associationId]: e.target.value,
+                            }))
+                          }
+                          placeholder={
+                            isInternal
+                              ? "Uses club member number"
+                              : `${a.abbreviation || a.associationName} number (e.g. NSF7570)`
+                          }
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          {isInternal
+                            ? "Internal league — uses the member's club number automatically."
+                            : locked
+                              ? "Number on file — kept permanently."
+                              : a.kind === "tenant"
+                                ? "A number will be auto-allocated when you save."
+                                : "Enter the number once. After saving it's locked to this member."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
           <div className="space-y-1">

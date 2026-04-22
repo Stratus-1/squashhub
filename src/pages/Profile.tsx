@@ -411,14 +411,28 @@ export default function Profile() {
       if (clubMember?.id) {
         for (const a of leagueAssocs) {
           const ticked = !!tickedAssociations[a.associationId];
-          const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
+          // Internal leagues ALWAYS mirror club_member_number — overrides drafts.
+          const effectiveNumber = a.kind === "internal"
+            ? memberNumber.trim()
+            : (leagueNumberDrafts[a.associationId] ?? "").trim();
+
+          if (a.kind === "internal" && ticked && !effectiveNumber) {
+            throw new Error(`${a.associationName} uses your club member number — please set a member number first`);
+          }
 
           if (a.hasAffiliation && a.affiliationId) {
-            // Toggle active flag if it changed; also persist a manual number
-            // if one was entered into a previously-blank field.
+            // Toggle active flag if it changed; for internal, also keep the number
+            // in sync with club_member_number (even if it changed). External/tenant
+            // numbers are permanent once set.
             const patch: any = {};
             if (ticked !== a.isActive) patch.active = ticked;
-            if (!a.number && draft) patch.league_association_number = draft;
+            if (a.kind === "internal") {
+              if (effectiveNumber && effectiveNumber !== a.number) {
+                patch.league_association_number = effectiveNumber;
+              }
+            } else if (!a.number && effectiveNumber) {
+              patch.league_association_number = effectiveNumber;
+            }
             if (Object.keys(patch).length > 0) {
               const { error: affErr } = await fromExt("member_association_affiliations")
                 .update(patch)
@@ -426,15 +440,15 @@ export default function Profile() {
               if (affErr) throw affErr;
             }
           } else if (ticked) {
-            // No affiliation row yet (e.g. external regional like NSA).
-            // Tenant associations were just provisioned above and the edge
-            // function creates the affiliation row; skip here to avoid race.
+            // No affiliation row yet (e.g. external regional like NSA, or first-time internal).
+            // Tenant associations were just provisioned above and the edge function
+            // creates the affiliation row; skip here to avoid race.
             if (a.kind === "tenant") continue;
             const { error: insErr } = await fromExt("member_association_affiliations")
               .insert({
                 club_member_id: clubMember.id,
                 association_id: a.associationId,
-                league_association_number: draft || null,
+                league_association_number: effectiveNumber || null,
                 active: true,
               });
             if (insErr) throw insErr;
@@ -443,9 +457,9 @@ export default function Profile() {
           // Back-compat: also write the number onto any season-team
           // registration rows that are still blank (so existing UI bits
           // that read from member_league_registrations keep working).
-          if (ticked && draft && !a.number && a.registrationIds.length > 0) {
+          if (ticked && effectiveNumber && !a.number && a.registrationIds.length > 0) {
             const { error: regErr } = await fromExt("member_league_registrations")
-              .update({ league_association_number: draft })
+              .update({ league_association_number: effectiveNumber })
               .in("id", a.registrationIds);
             if (regErr) throw regErr;
           }

@@ -1414,12 +1414,46 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       }
     }
 
+    // Derive enable_league_association_id from ticked associations.
+    let derivedEnableAssocId: string | null = null;
+    if (tickedIds.length === 1) {
+      derivedEnableAssocId = tickedIds[0];
+    } else if (tickedIds.length > 1) {
+      const existing = (member as any).enable_league_association_id as string | null | undefined;
+      derivedEnableAssocId = (existing && tickedIds.includes(existing)) ? existing : tickedIds[0];
+    }
+
+    // Provision newly-ticked TENANT associations so league numbers are auto-allocated and
+    // pass-through fees are seeded on both sides.
+    const newlyTickedTenants = leagueAssocs.filter(
+      (a) =>
+        tickedAssociations[a.associationId] &&
+        !a.isActive &&
+        a.kind === "tenant" &&
+        a.tenantSubdomain,
+    );
+    for (const a of newlyTickedTenants) {
+      try {
+        const { error: provErr } = await supabase.functions.invoke(
+          "provision-association-member",
+          { body: { associationSubdomain: a.tenantSubdomain, homeClubId: clubId, clubMemberId: member.id } },
+        );
+        if (provErr) {
+          console.warn("[admin edit member] provision failed for", a.associationName, provErr);
+          toast.error(`Couldn't register with ${a.abbreviation || a.associationName}: ${provErr.message || "provisioning failed"}`);
+        }
+      } catch (err: any) {
+        console.warn("[admin edit member] provision threw for", a.associationName, err);
+      }
+    }
+
     const { error } = await fromExt("club_members").update({
       name: form.name || null,
       email: form.email || null,
       club_member_number: form.club_member_number || null,
       role: form.role,
-      plays_league: form.plays_league,
+      plays_league: derivedPlaysLeague,
+      enable_league_association_id: derivedEnableAssocId,
       ladder_position: form.ladder_position ? Number(form.ladder_position) : null,
       id_number: form.id_number || null,
       gender: form.gender || null,
@@ -1430,87 +1464,42 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     }).eq("id", member.id);
     if (error) { toast.error(error.message); return; }
 
-    // ── Save league registrations: one per opted-in association ──
-    if (form.plays_league) {
-      // Load existing rows once and group by association via the linked league
-      const { data: existingRows } = await fromExt("member_league_registrations")
-        .select("id, league_id, leagues:league_id(association_id)")
-        .eq("club_member_id", member.id);
+    // Persist permanent affiliations: one row per association whose tick state changed.
+    // Numbers are NEVER deleted — we only flip `active`. New rows for external-regional
+    // associations are created here; tenant ones are created by the edge function above.
+    for (const a of leagueAssocs) {
+      const ticked = !!tickedAssociations[a.associationId];
+      const draft = (leagueNumberDrafts[a.associationId] ?? "").trim();
 
-      const existing = (existingRows || []) as Array<{ id: string; league_id: string; leagues?: { association_id?: string | null } | null }>;
-      const existingByAssoc = new Map<string, { id: string; league_id: string }>();
-      const orphanRows: Array<{ id: string; league_id: string }> = [];
-      for (const r of existing) {
-        const aid = r.leagues?.association_id || "";
-        if (aid) existingByAssoc.set(aid, { id: r.id, league_id: r.league_id });
-        else orphanRows.push({ id: r.id, league_id: r.league_id });
-      }
-
-      const optedIn = participations.filter((p) => p.opted_in);
-      const optedInIds = new Set(optedIn.map((p) => p.association_id));
-
-      // 1. Delete rows for associations the member is no longer in
-      const toDelete: string[] = [];
-      for (const [aid, row] of existingByAssoc.entries()) {
-        if (!optedInIds.has(aid)) toDelete.push(row.id);
-      }
-      // Orphan rows (no association on linked league): if there's exactly one opted-in association we'll reuse one below; otherwise drop them
-      if (toDelete.length > 0) {
-        const { error: delErr } = await fromExt("member_league_registrations").delete().in("id", toDelete);
-        if (delErr) { toast.error(`League info: ${delErr.message}`); return; }
-      }
-
-      // 2. Upsert one row per opted-in association
-      for (const p of optedIn) {
-        const assoc = associations.find((a) => a.id === p.association_id);
-        const isInternal = (assoc?.scope ?? "region") === "internal";
-        const numberToStore = isInternal ? null : p.association_number.trim();
-
-        // Find a league linked to this association (any league will do as the anchor)
-        const { data: league } = await fromExt("leagues")
-          .select("id")
-          .eq("club_id", clubId)
-          .eq("association_id", p.association_id)
-          .limit(1)
-          .maybeSingle();
-
-        const existingRow = existingByAssoc.get(p.association_id) ?? orphanRows.shift();
-        const targetLeagueId = league?.id ?? existingRow?.league_id ?? null;
-
-        if (!targetLeagueId) {
-          toast.error(`No league is linked to ${assoc?.name || "this association"} yet. Link one in the Leagues tab first.`);
-          return;
+      if (a.hasAffiliation && a.affiliationId) {
+        const patch: any = {};
+        if (ticked !== a.isActive) patch.active = ticked;
+        if (!a.number && draft) patch.league_association_number = draft;
+        if (Object.keys(patch).length > 0) {
+          const { error: affErr } = await fromExt("member_association_affiliations")
+            .update(patch)
+            .eq("id", a.affiliationId);
+          if (affErr) { toast.error(`League info: ${affErr.message}`); return; }
         }
-
-        if (existingRow) {
-          const { error: regErr } = await fromExt("member_league_registrations")
-            .update({
-              league_id: targetLeagueId,
-              league_association_number: numberToStore,
-              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
-            })
-            .eq("id", existingRow.id);
-          if (regErr) { toast.error(`League info: ${regErr.message}`); return; }
-        } else {
-          const { error: regErr } = await fromExt("member_league_registrations")
-            .insert({
-              club_member_id: member.id,
-              league_id: targetLeagueId,
-              league_association_number: numberToStore,
-              player_rank: form.ladder_position ? Number(form.ladder_position) : null,
-            });
-          if (regErr) { toast.error(`League info: ${regErr.message}`); return; }
-        }
+      } else if (ticked) {
+        if (a.kind === "tenant") continue; // edge function creates the row
+        const { error: insErr } = await fromExt("member_association_affiliations")
+          .insert({
+            club_member_id: member.id,
+            association_id: a.associationId,
+            league_association_number: draft || null,
+            active: true,
+          });
+        if (insErr) { toast.error(`League info: ${insErr.message}`); return; }
       }
 
-      // 3. Clean up any leftover orphan rows we didn't reuse
-      if (orphanRows.length > 0) {
-        const ids = orphanRows.map((r) => r.id);
-        await fromExt("member_league_registrations").delete().in("id", ids);
+      // Back-compat: also write the number onto any season-team registration rows
+      // that are still blank (so existing UI bits that read from member_league_registrations keep working).
+      if (ticked && draft && !a.number && a.registrationIds.length > 0) {
+        await fromExt("member_league_registrations")
+          .update({ league_association_number: draft })
+          .in("id", a.registrationIds);
       }
-    } else {
-      // Member no longer plays league → remove all their registrations
-      await fromExt("member_league_registrations").delete().eq("club_member_id", member.id);
     }
 
     toast.success("Member updated");

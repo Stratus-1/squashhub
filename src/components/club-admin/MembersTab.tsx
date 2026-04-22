@@ -1408,9 +1408,9 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
 
       // Back-compat: also write the number onto any season-team registration rows
       // that are still blank (so existing UI bits that read from member_league_registrations keep working).
-      if (ticked && draft && !a.number && a.registrationIds.length > 0) {
+      if (ticked && effectiveNumber && !a.number && a.registrationIds.length > 0) {
         await fromExt("member_league_registrations")
-          .update({ league_association_number: draft })
+          .update({ league_association_number: effectiveNumber })
           .in("id", a.registrationIds);
       }
     }

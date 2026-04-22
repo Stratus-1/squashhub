@@ -2686,6 +2686,42 @@ export type Database = {
           },
         ]
       }
+      live_marker_sessions: {
+        Row: {
+          club_id: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          marker_user_id: string | null
+          pair_code: string
+          paired_at: string | null
+          state: Json
+          updated_at: string
+        }
+        Insert: {
+          club_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          marker_user_id?: string | null
+          pair_code: string
+          paired_at?: string | null
+          state?: Json
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          marker_user_id?: string | null
+          pair_code?: string
+          paired_at?: string | null
+          state?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       match_disputes: {
         Row: {
           created_at: string

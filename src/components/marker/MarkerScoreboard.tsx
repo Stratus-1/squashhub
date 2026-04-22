@@ -74,6 +74,9 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const pointsToWin = getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";
+  const { club } = useClubContext();
+  const cast = useMarkerCast(club?.id);
+  const [castDialogOpen, setCastDialogOpen] = useState(false);
 
   const [scoreA, setScoreA] = useState(0);
   const [scoreB, setScoreB] = useState(0);

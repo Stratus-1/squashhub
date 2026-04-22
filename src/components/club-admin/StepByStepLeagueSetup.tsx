@@ -405,7 +405,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
               ))}
             </RadioGroup>
             <p className="text-xs text-muted-foreground">
-              Eligible pool: <strong>{filterByGender(members.filter((m: any) => m.plays_league && m.enable_league_association_id === associationId), gender).length}</strong> members opted into {association?.abbreviation || association?.name || "this association"}.
+              Eligible pool: <strong>{filterByGender(members.filter((m: any) => activeAffiliatedSet.has(m.id)), gender).length}</strong> members opted into {association?.abbreviation || association?.name || "this association"}.
             </p>
           </div>
         )}

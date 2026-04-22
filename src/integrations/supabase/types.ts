@@ -2689,6 +2689,7 @@ export type Database = {
       live_marker_sessions: {
         Row: {
           club_id: string | null
+          court_number: string | null
           created_at: string
           expires_at: string
           id: string
@@ -2700,6 +2701,7 @@ export type Database = {
         }
         Insert: {
           club_id?: string | null
+          court_number?: string | null
           created_at?: string
           expires_at?: string
           id?: string
@@ -2711,6 +2713,7 @@ export type Database = {
         }
         Update: {
           club_id?: string | null
+          court_number?: string | null
           created_at?: string
           expires_at?: string
           id?: string

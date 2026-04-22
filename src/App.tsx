@@ -229,6 +229,8 @@ function AppRoutes() {
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
         <Route path="/tv" element={<MarkerTv />} />
+        <Route path="/tv/club/:subdomain" element={<MarkerTv />} />
+        <Route path="/tv/club/:subdomain/court/:court" element={<MarkerTv />} />
         <Route path="/tv/:code" element={<MarkerTv />} />
         <Route path="/add-result" element={<ProtectedRoute><AddMatchResult /></ProtectedRoute>} />
         <Route path="/players/:id" element={<ProtectedRoute><PlayerProfile /></ProtectedRoute>} />

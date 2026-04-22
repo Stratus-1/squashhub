@@ -343,6 +343,8 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         pairCode={cast.pairCode}
         paired={cast.paired}
         onStop={handleStopCast}
+        courtNumber={cast.courtNumber}
+        onCourtChange={cast.setCourtNumber}
       />
 
       {/* Rest timer overlay */}

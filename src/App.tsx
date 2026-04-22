@@ -191,10 +191,13 @@ function AppRoutes() {
 
   const isAdminRoute = (routeLocation.pathname || "/").startsWith("/admin");
 
+  const isTvRoute = (routeLocation.pathname || "/").startsWith("/tv");
+
   const showFooter = (() => {
     const p = routeLocation.pathname || "/";
     if (p === "/booking-response") return false;
     if (p.startsWith("/match-tracker/")) return false;
+    if (isTvRoute) return false;
     if (isAdminRoute) return false;
     return true;
   })();

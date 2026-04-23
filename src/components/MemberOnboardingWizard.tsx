@@ -196,7 +196,12 @@ export function MemberOnboardingWizard({
     !!initialMetaName &&
     (/^[A-Z]{2,5}\d{2,8}$/i.test(initialMetaName) || /^\+?\d[\d\s-]{6,}$/.test(initialMetaName));
   const [name, setName] = useState(initialNameLooksLikeCode ? "" : initialMetaName);
-  const [phone, setPhone] = useState(user?.user_metadata?.phone || "");
+  // Guard against bad signup data: only pre-fill phone when it looks phone-shaped
+  // (digits, spaces, +, -, parens). Reject email-like or alphabetic values.
+  const initialMetaPhone = (user?.user_metadata?.phone || "").trim();
+  const initialPhoneLooksValid =
+    !!initialMetaPhone && !initialMetaPhone.includes("@") && !/[a-zA-Z]/.test(initialMetaPhone);
+  const [phone, setPhone] = useState(initialPhoneLooksValid ? initialMetaPhone : "");
   const [idNumber, setIdNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");

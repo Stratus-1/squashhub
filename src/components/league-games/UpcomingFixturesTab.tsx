@@ -156,10 +156,65 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
 
+  const filterBar = (
+    <div className="flex flex-wrap items-center gap-2 mb-4">
+      <Select value={rangeMode} onValueChange={(v) => setRangeMode(v as RangeMode)}>
+        <SelectTrigger className="w-[180px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="this-week">This week</SelectItem>
+          <SelectItem value="next-week">Next week</SelectItem>
+          <SelectItem value="next-two-weeks">Next two weeks</SelectItem>
+          <SelectItem value="custom">Custom date range</SelectItem>
+        </SelectContent>
+      </Select>
+      {rangeMode === "custom" && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn("justify-start text-left font-normal min-w-[240px]", !customRange?.from && "text-muted-foreground")}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {customRange?.from ? (
+                customRange.to ? (
+                  <>
+                    {format(customRange.from, "dd MMM")} – {format(customRange.to, "dd MMM yyyy")}
+                  </>
+                ) : (
+                  format(customRange.from, "dd MMM yyyy")
+                )
+              ) : (
+                <span>Pick a date range</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              selected={customRange}
+              onSelect={setCustomRange}
+              numberOfMonths={2}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
+      <span className="text-xs text-muted-foreground ml-auto">
+        Showing {format(parseISO(rangeStart), "dd MMM")} – {format(parseISO(rangeEnd), "dd MMM yyyy")}
+      </span>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <div>
+        {filterBar}
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
       </div>
     );
   }
@@ -167,31 +222,38 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   if (fixturesByDate.size === 0) {
     if (associationScope === "internal") {
       return (
-        <Card className="p-8 text-center">
-          <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-muted-foreground text-sm">
-            Internal league — fixtures aren't auto-imported from a regional feed.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Use <span className="font-medium text-foreground">Fill Up Leagues</span> to assign players each week, then capture results from the scoring screen.
-          </p>
-        </Card>
+        <div>
+          {filterBar}
+          <Card className="p-8 text-center">
+            <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-muted-foreground text-sm">
+              Internal league — fixtures aren't auto-imported from a regional feed.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Use <span className="font-medium text-foreground">Fill Up Leagues</span> to assign players each week, then capture results from the scoring screen.
+            </p>
+          </Card>
+        </div>
       );
     }
     return (
-      <Card className="p-8 text-center">
-        <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <p className="text-muted-foreground">
-          No league fixtures for the squash week of{" "}
-          <span className="font-medium text-foreground">{format(parseISO(rangeStart), "dd MMM")}</span> –{" "}
-          <span className="font-medium text-foreground">{format(parseISO(rangeEnd), "dd MMM")}</span>.
-        </p>
-      </Card>
+      <div>
+        {filterBar}
+        <Card className="p-8 text-center">
+          <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">
+            No league fixtures between{" "}
+            <span className="font-medium text-foreground">{format(parseISO(rangeStart), "dd MMM")}</span> –{" "}
+            <span className="font-medium text-foreground">{format(parseISO(rangeEnd), "dd MMM")}</span>.
+          </p>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {filterBar}
       {[...fixturesByDate.entries()].map(([date, dayFixtures]) => (
         <div key={date}>
           <h2 className="text-sm font-semibold text-muted-foreground mb-2">

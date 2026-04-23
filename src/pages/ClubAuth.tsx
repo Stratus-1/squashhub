@@ -276,18 +276,19 @@ export default function ClubAuth() {
         setLoading(false);
         return;
       }
-      const rows = (matches || []) as Array<{ id: string; masked_name: string; association_name: string }>;
+      const rows = (matches || []) as Array<{ id: string | null; masked_name: string; association_name: string }>;
       if (rows.length === 0) {
         toast.error("No member found with that league number. Please contact your club admin.");
         setLoading(false);
         return;
       }
       if (rows.length > 1) {
-        setLeagueChoices(rows);
+        setLeagueChoices(rows as any);
         toast.message("Multiple members match — please pick which one is you", { duration: 4000 });
         setLoading(false);
         return;
       }
+      // id may be null when matched from the imported league roster (no club_member yet)
       matchedMemberId = rows[0].id;
     }
 
@@ -329,10 +330,16 @@ export default function ClubAuth() {
       return;
     }
 
-    // 5) Claim the imported member row by league number
+    // 5) Claim the imported member row by league number (auto-creates if only in platform roster)
     const { error: claimErr } = await (supabase as any).rpc(
       "claim_member_by_league_number",
-      { _club_member_id: matchedMemberId, _league_number: number, _email: email, _phone: phone }
+      {
+        _club_member_id: matchedMemberId ?? null,
+        _league_number: number,
+        _email: email,
+        _phone: phone,
+        _club_id: club.id,
+      }
     );
     if (claimErr) {
       console.warn("[CSIR signup] claim failed:", claimErr);

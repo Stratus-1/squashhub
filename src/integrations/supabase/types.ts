@@ -3878,15 +3878,6 @@ export type Database = {
       claim_member_by_league_number:
         | {
             Args: {
-              _club_member_id: string
-              _email: string
-              _league_number: string
-              _phone?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
               _club_id?: string
               _club_member_id: string
               _email: string

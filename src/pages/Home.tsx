@@ -611,10 +611,9 @@ function PricingCard({
           <Button
             onClick={onGetStarted}
             variant="outline"
-            className="w-full bg-transparent border-white text-white hover:bg-white/10 hover:text-white gap-2"
+            className="w-full bg-transparent border-white text-white hover:bg-white/10 hover:text-white"
           >
             Get Started
-            <ArrowRight className="w-4 h-4" />
           </Button>
         )}
       </CardContent>

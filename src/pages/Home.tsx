@@ -201,7 +201,7 @@ export default function Home() {
       <section className="bg-card/40 border-y border-border/40">
         <div className="max-w-6xl mx-auto px-4 py-16">
           <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground max-w-4xl mx-auto">
-            Manually running a squash club is more complicated than it should be
+            RUNNING A SQUASH CLUB SHOULDN’T {"\n"} BE THIS COMPLICATED
           </h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 max-w-5xl mx-auto">

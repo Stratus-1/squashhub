@@ -298,7 +298,7 @@ export default function Home() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${playersMatchImg})` }}
         />
-        <div className="absolute inset-0 bg-background/88 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-background/88 backdrop-blur-sm bg-neutral-950" />
         <div className="relative max-w-6xl mx-auto px-4 py-16">
           <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
             Why use SquashHub

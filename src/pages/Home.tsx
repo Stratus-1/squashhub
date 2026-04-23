@@ -190,7 +190,7 @@ export default function Home() {
                   Register Your Club
                 </Button>
                 <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
-                  Find your club
+                  Find/CreatmyAssocaition
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -282,7 +282,7 @@ export default function Home() {
                     Register Your Club
                   </Button>
                   <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
-                    Find your club
+                    Find/CreatmyAssocaition
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">

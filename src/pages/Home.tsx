@@ -129,9 +129,14 @@ export default function Home() {
             <Button variant="ghost" size="sm" onClick={() => scrollTo("features")}>Features</Button>
             <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")}>Pricing</Button>
           </nav>
-          <Button size="sm" onClick={() => navigate("/auth")}>
-            Start Free Trial
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => navigate("/auth")}>
+              Register Your Club
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => scrollTo("clubs")}>
+              Find/Create My Association
+            </Button>
+          </div>
         </div>
       </header>
 

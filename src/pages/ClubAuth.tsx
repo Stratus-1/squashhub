@@ -78,6 +78,9 @@ export default function ClubAuth() {
   // NSC-specific: hide the member/league number field on existing-member signup
   // so members only need email + cell phone (numbers are issued by the club).
   const hideMemberNumberField = (subdomain || "").toLowerCase() === "nsc";
+  // CSIR-specific: members were imported with their NSA league number only.
+  // They register using League Number + Email + Phone + Password — no email verification.
+  const useLeagueNumberSignup = (subdomain || "").toLowerCase() === "csir";
 
   // Fetch only clubs affiliated with this association for the home-club picker
   const { data: pickerClubs } = useQuery({

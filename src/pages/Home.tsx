@@ -282,10 +282,10 @@ export default function Home() {
 
               <div className="space-y-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button size="lg" onClick={() => scrollTo("clubs")} className="bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+                  <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                     Find/Create My Association
                   </Button>
-                  <Button size="lg" onClick={() => navigate("/auth")}>
+                  <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                     Register Your Club
                   </Button>
                 </div>

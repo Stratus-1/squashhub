@@ -20,7 +20,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import heroBg from "@/assets/hero-bg.jpg";
+import heroBg from "@/assets/hero-court.jpg";
+import featureImg from "@/assets/feature-woman-phone.png";
 import shLogoFull from "@/assets/shub-logo-full.png";
 
 const fadeUp = {
@@ -277,12 +278,12 @@ export default function Home() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="hidden lg:flex justify-center"
             >
-              <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden border border-border/40 shadow-2xl">
-                <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${heroBg})` }}
+              <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-card to-background border border-border/40 shadow-2xl flex items-end justify-center">
+                <img
+                  src={featureImg}
+                  alt="Squash club member using SquashHub on phone"
+                  className="w-full h-full object-contain object-bottom"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-primary/40 via-transparent to-transparent" />
               </div>
             </motion.div>
           </div>

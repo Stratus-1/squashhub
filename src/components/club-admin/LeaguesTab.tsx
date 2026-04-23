@@ -949,7 +949,13 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               league_id: league.id,
               player_rank: i + 1,
               is_captain: p.is_captain,
-              league_association_number: p.league_association_number || null,
+              // Always derive from the permanent affiliation so this stays
+              // in sync with the NSF/LS number on the player's profile.
+              // Falls back to whatever was already on the row (legacy).
+              league_association_number:
+                affiliationNumberByMember[p.club_member_id] ||
+                p.league_association_number ||
+                null,
             }))
           );
           if (error) throw error;

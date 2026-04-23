@@ -23,6 +23,7 @@ import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-court.jpg";
 import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";
+import playersMatchImg from "@/assets/players-match.jpg";
 import shLogoFull from "@/assets/shub-logo-full.png";
 
 const fadeUp = {
@@ -292,8 +293,13 @@ export default function Home() {
       </section>
 
       {/* ─── Why use SquashHub (benefits grid) ─── */}
-      <section className="bg-card/40 border-y border-border/40">
-        <div className="max-w-6xl mx-auto px-4 py-16">
+      <section className="relative overflow-hidden border-y border-border/40">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${playersMatchImg})` }}
+        />
+        <div className="absolute inset-0 bg-background/88 backdrop-blur-sm" />
+        <div className="relative max-w-6xl mx-auto px-4 py-16">
           <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
             Why use SquashHub
           </h2>

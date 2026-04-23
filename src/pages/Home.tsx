@@ -25,6 +25,7 @@ import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";
 import playersMatchImg from "@/assets/players-match.jpg";
 import shLogoFull from "@/assets/shub-logo-full.png";
+import featuresCourtBg from "@/assets/features-court-bg.jpg";
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -229,7 +230,17 @@ export default function Home() {
 
       {/* ─── Features / Manage Everything ─── */}
       <section id="features" className="relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 py-20">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${featuresCourtBg})` }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }}
+          aria-hidden="true"
+        />
+        <div className="relative max-w-6xl mx-auto px-4 py-20">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <motion.h2

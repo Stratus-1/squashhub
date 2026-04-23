@@ -609,6 +609,28 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     () => new Set<string>(permanentAffiliatedIds as string[]),
     [permanentAffiliatedIds],
   );
+
+  // memberId → NSF (or equivalent) league association number for THIS association.
+  // Single source of truth at save time so Upcoming League Games can always
+  // match a player back to the right league via their permanent affiliation.
+  const { data: affiliationNumberByMember = {} } = useQuery<Record<string, string>>({
+    queryKey: ["affil-numbers-by-member", associationId],
+    queryFn: async () => {
+      if (!associationId) return {};
+      const { data, error } = await fromExt("member_association_affiliations")
+        .select("club_member_id, league_association_number")
+        .eq("association_id", associationId)
+        .eq("active", true);
+      if (error) throw error;
+      const out: Record<string, string> = {};
+      for (const r of (data || []) as any[]) {
+        const num = (r.league_association_number || "").trim();
+        if (num) out[r.club_member_id] = num;
+      }
+      return out;
+    },
+    enabled: open && !!associationId,
+  });
   const affiliatedSet = useMemo(
     () => new Set<string>(registeredMemberIds as string[]),
     [registeredMemberIds],
@@ -927,7 +949,13 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               league_id: league.id,
               player_rank: i + 1,
               is_captain: p.is_captain,
-              league_association_number: p.league_association_number || null,
+              // Always derive from the permanent affiliation so this stays
+              // in sync with the NSF/LS number on the player's profile.
+              // Falls back to whatever was already on the row (legacy).
+              league_association_number:
+                affiliationNumberByMember[p.club_member_id] ||
+                p.league_association_number ||
+                null,
             }))
           );
           if (error) throw error;

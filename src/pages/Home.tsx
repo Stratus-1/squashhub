@@ -135,7 +135,7 @@ export default function Home() {
         <header className="relative z-50 pt-4 px-4">
           <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg">
             <div className="flex items-center gap-2">
-              <img src={shLogoFull} alt="SquashHub" className="h-7 w-auto object-contain" />
+              <img src={shLogoFull} alt="SquashHub" className="h-12 w-auto object-contain" />
             </div>
             <nav className="hidden sm:flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={() => scrollTo("top")} className="text-white hover:bg-white/10 hover:text-white">Home</Button>

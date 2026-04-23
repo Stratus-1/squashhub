@@ -738,155 +738,275 @@ export default function ClubAuth() {
           {/* ─── EXISTING MEMBER ─── */}
           <TabsContent value="existing">
             <Card className="p-6">
-              <p className="text-xs text-muted-foreground mb-4">
-                {isAssociation
-                  ? <>Already registered with {clubName}? Enter your <strong>email</strong> plus your <strong>League Number</strong> (e.g. NSF1234) <em>or</em> the <strong>cell phone number</strong> on file, then select your home club.</>
-                  : hideMemberNumberField
-                    ? <>Already a member of {clubName}? Enter your <strong>email</strong> and the <strong>cell phone number</strong> the club has on file. Your member number will be issued by the club.</>
-                    : <>Already a member of {clubName}? Enter your <strong>email</strong> plus your <strong>Member/League Number</strong> <em>or</em> the <strong>cell phone number</strong> the club has on file.</>}
-              </p>
-              <form onSubmit={handleExistingMemberSignup} className="space-y-3">
-                <div>
-                  <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="existing-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={existingEmail}
-                    onChange={(e) => { setExistingEmail(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
-                    required
-                    maxLength={255}
-                  />
-                </div>
-                {hideMemberNumberField ? (
-                  <div>
-                    <Label htmlFor="existing-phone">Cell Phone Number <span className="text-destructive">*</span></Label>
-                    <Input
-                      id="existing-phone"
-                      type="tel"
-                      placeholder="e.g. 082 123 4567"
-                      value={existingPhone}
-                      onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
-                      maxLength={20}
-                      required
-                    />
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Use the same cell phone number the club has on file for you.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-dashed border-input p-3 space-y-3 bg-muted/30">
-                    <p className="text-[11px] font-medium text-muted-foreground">
-                      Provide at least one of the following so we can find you:
-                    </p>
+              {useLeagueNumberSignup ? (
+                <>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Already a member of {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and we'll set up your account. Your email and cell phone number will be saved to your profile.
+                  </p>
+                  <form onSubmit={handleLeagueNumberSignup} className="space-y-3">
                     <div>
-                      <Label htmlFor="existing-member-number">Member Number or League Number</Label>
+                      <Label htmlFor="league-number">League Number <span className="text-destructive">*</span></Label>
                       <Input
-                        id="existing-member-number"
+                        id="league-number"
                         type="text"
-                        placeholder="e.g. WSC001 or NSF1234"
-                        value={memberNumber}
-                        onChange={(e) => { setMemberNumber(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                        placeholder="e.g. NSF1234"
+                        value={leagueNumber}
+                        onChange={(e) => { setLeagueNumber(e.target.value); setLeagueChoices([]); setChosenLeagueMemberId(""); }}
+                        required
+                        maxLength={20}
+                        autoCapitalize="characters"
+                      />
+                    </div>
+
+                    {leagueChoices.length > 1 && (
+                      <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                        <p className="text-xs font-medium">We found multiple matches — pick which one is you:</p>
+                        <div className="space-y-1">
+                          {leagueChoices.map((m, i) => (
+                            <label
+                              key={m.id ?? `idx-${i}`}
+                              className="flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1 hover:bg-background"
+                            >
+                              <input
+                                type="radio"
+                                name="league-choice"
+                                value={m.id ?? ""}
+                                checked={chosenLeagueMemberId === (m.id ?? "")}
+                                onChange={() => setChosenLeagueMemberId(m.id ?? "")}
+                              />
+                              <span>{m.masked_name}</span>
+                              <span className="text-[10px] text-muted-foreground">· {m.association_name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label htmlFor="league-email">Email <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="league-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={leagueEmail}
+                        onChange={(e) => setLeagueEmail(e.target.value)}
+                        required
+                        maxLength={255}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="league-phone">Cell Phone Number <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="league-phone"
+                        type="tel"
+                        placeholder="e.g. 082 123 4567"
+                        value={leaguePhone}
+                        onChange={(e) => setLeaguePhone(e.target.value)}
+                        required
                         maxLength={20}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="existing-phone">Cell Phone Number</Label>
-                      <Input
-                        id="existing-phone"
-                        type="tel"
-                        placeholder="+27 82 123 4567"
-                        value={existingPhone}
-                        onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
-                        maxLength={20}
-                      />
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Use this if your club hasn't given you a number yet.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {memberChoices.length > 1 && (
-                  <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
-                    <p className="text-xs font-medium">We found multiple matches — pick which one is you:</p>
-                    <div className="space-y-1">
-                      {memberChoices.map((m) => (
-                        <label
-                          key={m.id}
-                          className="flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1 hover:bg-background"
+                      <Label htmlFor="league-password">Create Password <span className="text-destructive">*</span></Label>
+                      <div className="relative">
+                        <Input
+                          id="league-password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Min 6 characters"
+                          value={leaguePassword}
+                          onChange={(e) => setLeaguePassword(e.target.value)}
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         >
-                          <input
-                            type="radio"
-                            name="member-choice"
-                            value={m.id}
-                            checked={chosenMemberId === m.id}
-                            onChange={() => setChosenMemberId(m.id)}
-                          />
-                          <span>{m.masked_name}</span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {m.has_number ? "· number ✓" : ""} {m.has_phone ? "· phone ✓" : ""}
-                          </span>
-                        </label>
-                      ))}
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {isAssociation && (
-                  <HomeClubField
-                    value={homeClubId}
-                    onChange={setHomeClubId}
-                    clubs={pickerClubs || []}
-                  />
-                )}
-                <div>
-                  <Label htmlFor="existing-password">Create Password <span className="text-destructive">*</span></Label>
-                  <div className="relative">
-                    <Input
-                      id="existing-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Min 6 characters"
-                      value={existingPassword}
-                      onChange={(e) => setExistingPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    <div>
+                      <Label htmlFor="league-confirm">Confirm Password <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="league-confirm"
+                        type="password"
+                        placeholder="Re-enter password"
+                        value={leagueConfirm}
+                        onChange={(e) => setLeagueConfirm(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <TermsCheckbox checked={leagueAcceptTerms} onCheckedChange={setLeagueAcceptTerms} />
+                    <HCaptcha ref={captchaRef} />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={loading || (leagueChoices.length > 1 && !chosenLeagueMemberId)}
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="existing-confirm">Confirm Password <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="existing-confirm"
-                    type="password"
-                    placeholder="Re-enter password"
-                    value={existingConfirm}
-                    onChange={(e) => setExistingConfirm(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <TermsCheckbox checked={existingAcceptTerms} onCheckedChange={setExistingAcceptTerms} />
-                <HCaptcha ref={captchaRef} />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loading || (memberChoices.length > 1 && !chosenMemberId)}
-                >
-                  {loading
-                    ? "Registering..."
-                    : memberChoices.length > 1 && !chosenMemberId
-                      ? "Pick which member is you"
-                      : "Register"}
-                </Button>
-              </form>
+                      {loading
+                        ? "Registering..."
+                        : leagueChoices.length > 1 && !chosenLeagueMemberId
+                          ? "Pick which member is you"
+                          : "Register"}
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    {isAssociation
+                      ? <>Already registered with {clubName}? Enter your <strong>email</strong> plus your <strong>League Number</strong> (e.g. NSF1234) <em>or</em> the <strong>cell phone number</strong> on file, then select your home club.</>
+                      : hideMemberNumberField
+                        ? <>Already a member of {clubName}? Enter your <strong>email</strong> and the <strong>cell phone number</strong> the club has on file. Your member number will be issued by the club.</>
+                        : <>Already a member of {clubName}? Enter your <strong>email</strong> plus your <strong>Member/League Number</strong> <em>or</em> the <strong>cell phone number</strong> the club has on file.</>}
+                  </p>
+                  <form onSubmit={handleExistingMemberSignup} className="space-y-3">
+                    <div>
+                      <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="existing-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={existingEmail}
+                        onChange={(e) => { setExistingEmail(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                        required
+                        maxLength={255}
+                      />
+                    </div>
+                    {hideMemberNumberField ? (
+                      <div>
+                        <Label htmlFor="existing-phone">Cell Phone Number <span className="text-destructive">*</span></Label>
+                        <Input
+                          id="existing-phone"
+                          type="tel"
+                          placeholder="e.g. 082 123 4567"
+                          value={existingPhone}
+                          onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                          maxLength={20}
+                          required
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Use the same cell phone number the club has on file for you.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed border-input p-3 space-y-3 bg-muted/30">
+                        <p className="text-[11px] font-medium text-muted-foreground">
+                          Provide at least one of the following so we can find you:
+                        </p>
+                        <div>
+                          <Label htmlFor="existing-member-number">Member Number or League Number</Label>
+                          <Input
+                            id="existing-member-number"
+                            type="text"
+                            placeholder="e.g. WSC001 or NSF1234"
+                            value={memberNumber}
+                            onChange={(e) => { setMemberNumber(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                            maxLength={20}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="existing-phone">Cell Phone Number</Label>
+                          <Input
+                            id="existing-phone"
+                            type="tel"
+                            placeholder="+27 82 123 4567"
+                            value={existingPhone}
+                            onChange={(e) => { setExistingPhone(e.target.value); setMemberChoices([]); setChosenMemberId(""); }}
+                            maxLength={20}
+                          />
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Use this if your club hasn't given you a number yet.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {memberChoices.length > 1 && (
+                      <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                        <p className="text-xs font-medium">We found multiple matches — pick which one is you:</p>
+                        <div className="space-y-1">
+                          {memberChoices.map((m) => (
+                            <label
+                              key={m.id}
+                              className="flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1 hover:bg-background"
+                            >
+                              <input
+                                type="radio"
+                                name="member-choice"
+                                value={m.id}
+                                checked={chosenMemberId === m.id}
+                                onChange={() => setChosenMemberId(m.id)}
+                              />
+                              <span>{m.masked_name}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {m.has_number ? "· number ✓" : ""} {m.has_phone ? "· phone ✓" : ""}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {isAssociation && (
+                      <HomeClubField
+                        value={homeClubId}
+                        onChange={setHomeClubId}
+                        clubs={pickerClubs || []}
+                      />
+                    )}
+                    <div>
+                      <Label htmlFor="existing-password">Create Password <span className="text-destructive">*</span></Label>
+                      <div className="relative">
+                        <Input
+                          id="existing-password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Min 6 characters"
+                          value={existingPassword}
+                          onChange={(e) => setExistingPassword(e.target.value)}
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="existing-confirm">Confirm Password <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="existing-confirm"
+                        type="password"
+                        placeholder="Re-enter password"
+                        value={existingConfirm}
+                        onChange={(e) => setExistingConfirm(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <TermsCheckbox checked={existingAcceptTerms} onCheckedChange={setExistingAcceptTerms} />
+                    <HCaptcha ref={captchaRef} />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={loading || (memberChoices.length > 1 && !chosenMemberId)}
+                    >
+                      {loading
+                        ? "Registering..."
+                        : memberChoices.length > 1 && !chosenMemberId
+                          ? "Pick which member is you"
+                          : "Register"}
+                    </Button>
+                  </form>
+                </>
+              )}
             </Card>
           </TabsContent>
 

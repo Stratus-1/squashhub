@@ -424,15 +424,18 @@ export default function Home() {
         )}
       </section>
 
-      {/* ─── Pricing (kept) ─── */}
+      {/* ─── Pricing ─── */}
       <section id="pricing" className="bg-card/40 border-y border-border/40">
         <div className="max-w-5xl mx-auto px-4 py-20">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-foreground mb-3">
-              Simple, fair pricing
+          <div className="text-center mb-10 space-y-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-foreground">
+              Pricing
             </h2>
+            <p className="text-base sm:text-lg text-primary font-semibold">
+              Free until September 2026
+            </p>
             <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-              Free for all clubs and associations until September 2026. After that, tiny per-member fees only.
+              Only pay for active members. No hidden costs. No credit card required.
             </p>
           </div>
 
@@ -440,14 +443,14 @@ export default function Home() {
             <PricingCard
               icon={Building2}
               title="Clubs"
-              price="R5"
-              perks={["Free until September 2026", "All features included", "Billed only on active members"]}
+              priceLabel="From R5"
+              perks={["All features included", "Billed only on active members", "Free until September 2026"]}
             />
             <PricingCard
               icon={Landmark}
               title="Associations"
-              price="R2"
-              perks={["Free until September 2026", "Admin, fixtures & finance tools", "Oversight across affiliated clubs"]}
+              priceLabel="From R2"
+              perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
             />
           </div>
         </div>
@@ -456,7 +459,7 @@ export default function Home() {
       {/* ─── FAQs ─── */}
       <section id="faqs" className="max-w-3xl mx-auto px-4 py-20">
         <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
-          FAQs
+          FAQ
         </h2>
         <Accordion type="single" collapsible className="space-y-3">
           {FAQS.map((f, i) => (
@@ -476,12 +479,38 @@ export default function Home() {
         </Accordion>
       </section>
 
+      {/* ─── Get Started CTA ─── */}
+      <section id="get-started" className="bg-gradient-to-br from-primary/10 via-background to-background border-y border-border/40">
+        <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-foreground">
+            Get Started
+          </h2>
+          <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto">
+            Run your club with less admin and more control.
+          </p>
+          <div className="space-y-2 pt-2 flex flex-col items-center">
+            <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+              Register Your Club
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Free until September 2026 · No credit card required
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Contact form ─── */}
       <section id="contact" className="bg-card/40 border-y border-border/40">
         <div className="max-w-2xl mx-auto px-4 py-20">
-          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
-            Contact us
-          </h2>
+          <div className="text-center mb-10 space-y-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-foreground">
+              Contact Us
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Need help? We'll get back to you shortly and help you get set up.
+            </p>
+          </div>
           <ContactForm />
         </div>
       </section>

@@ -710,7 +710,7 @@ function ContactForm() {
         />
       </div>
       <div className="flex justify-end">
-        <Button type="submit" size="lg" className="gap-2">
+        <Button type="submit" size="lg" className="gap-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
           <Mail className="w-4 h-4" />
           Submit Message
         </Button>

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { SEO } from "@/components/SEO";
 import {
-  Building2, ChevronRight, ArrowRight, Landmark, Check,
+  Building2, ChevronRight, Landmark, Check,
   AlertCircle, Calendar, Trophy, Users, BarChart3, Mail,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -129,9 +129,8 @@ export default function Home() {
             <Button variant="ghost" size="sm" onClick={() => scrollTo("features")}>Features</Button>
             <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")}>Pricing</Button>
           </nav>
-          <Button size="sm" onClick={() => navigate("/auth")} className="gap-1.5">
+          <Button size="sm" onClick={() => navigate("/auth")}>
             Start Free Trial
-            <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>
       </header>
@@ -187,9 +186,8 @@ export default function Home() {
               className="space-y-2 pt-2"
             >
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+                <Button size="lg" onClick={() => navigate("/auth")}>
                   Register Your Club
-                  <ArrowRight className="w-4 h-4" />
                 </Button>
                 <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
                   Find your club
@@ -280,9 +278,8 @@ export default function Home() {
 
               <div className="space-y-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+                  <Button size="lg" onClick={() => navigate("/auth")}>
                     Register Your Club
-                    <ArrowRight className="w-4 h-4" />
                   </Button>
                   <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
                     Find your club
@@ -510,9 +507,8 @@ export default function Home() {
             Run your club with less admin and more control.
           </p>
           <div className="space-y-2 pt-2 flex flex-col items-center">
-            <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+            <Button size="lg" onClick={() => navigate("/auth")}>
               Register Your Club
-              <ArrowRight className="w-4 h-4" />
             </Button>
             <p className="text-xs text-muted-foreground">
               Free until September 2026 · No credit card required

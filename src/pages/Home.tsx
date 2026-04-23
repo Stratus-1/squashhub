@@ -261,8 +261,8 @@ export default function Home() {
                     transition={{ duration: 0.4, delay: i * 0.05 }}
                     className="flex items-start gap-3"
                   >
-                    <div className="w-5 h-5 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-3 h-3 text-primary" />
+                    <div className="w-5 h-5 rounded-full bg-[#071434]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Check className="w-3 h-3 text-[#071434]" />
                     </div>
                     <p className="text-sm sm:text-base text-foreground">
                       <span className="font-semibold">{f.title}:</span>{" "}

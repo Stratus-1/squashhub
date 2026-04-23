@@ -161,7 +161,7 @@ export default function Home() {
               className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-foreground leading-[1.05] md:text-5xl"
             >
               Looking for a platform to{" "}
-              <span className="text-primary">run your squash club?</span>
+              <span className="text-primary text-[#071536]">run your squash club?</span>
             </motion.h1>
 
             <motion.p

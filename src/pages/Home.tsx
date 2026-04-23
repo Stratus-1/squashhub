@@ -143,10 +143,10 @@ export default function Home() {
               <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
             </nav>
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                 Find/Create My Association
               </Button>
-              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full">
+              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                 Register Your Club
               </Button>
             </div>
@@ -190,10 +190,10 @@ export default function Home() {
               className="space-y-2 pt-2"
             >
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button size="lg" onClick={() => scrollTo("clubs")} className="bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+                <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                   Find/Create My Association
                 </Button>
-                <Button size="lg" onClick={() => navigate("/auth")}>
+                <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                   Register Your Club
                 </Button>
               </div>
@@ -282,10 +282,10 @@ export default function Home() {
 
               <div className="space-y-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button size="lg" onClick={() => scrollTo("clubs")} className="bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+                  <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                     Find/Create My Association
                   </Button>
-                  <Button size="lg" onClick={() => navigate("/auth")}>
+                  <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                     Register Your Club
                   </Button>
                 </div>
@@ -361,8 +361,7 @@ export default function Home() {
                 )}
                 {clubs.length > 3 && (
                   <Button
-                    variant="outline"
-                    className="w-full"
+                    className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
                     onClick={() => scrollTo("all-clubs")}
                   >
                     View More Clubs
@@ -396,8 +395,7 @@ export default function Home() {
                 )}
                 {associations.length > 3 && (
                   <Button
-                    variant="outline"
-                    className="w-full"
+                    className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
                     onClick={() => scrollTo("all-clubs")}
                   >
                     View More
@@ -511,7 +509,7 @@ export default function Home() {
             Run your club with less admin and more control.
           </p>
           <div className="space-y-2 pt-2 flex flex-col items-center">
-            <Button size="lg" onClick={() => navigate("/auth")}>
+            <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
               Register Your Club
             </Button>
             <p className="text-xs text-muted-foreground">
@@ -610,8 +608,7 @@ function PricingCard({
         {onGetStarted && (
           <Button
             onClick={onGetStarted}
-            variant="outline"
-            className="w-full bg-transparent border-white text-white hover:bg-white/10 hover:text-white"
+            className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
           >
             Get Started
           </Button>
@@ -713,7 +710,7 @@ function ContactForm() {
         />
       </div>
       <div className="flex justify-end">
-        <Button type="submit" size="lg" className="gap-2">
+        <Button type="submit" size="lg" className="gap-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
           <Mail className="w-4 h-4" />
           Submit Message
         </Button>

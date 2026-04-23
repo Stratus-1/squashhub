@@ -459,12 +459,14 @@ export default function Home() {
               title="Clubs"
               priceLabel="From R5"
               perks={["All features included", "Billed only on active members", "Free until September 2026"]}
+              onGetStarted={() => navigate("/auth")}
             />
             <PricingCard
               icon={Landmark}
               title="Associations"
               priceLabel="From R2"
               perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
+              onGetStarted={() => navigate("/auth")}
             />
           </div>
         </div>
@@ -571,11 +573,13 @@ function PricingCard({
   title,
   priceLabel,
   perks,
+  onGetStarted,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   priceLabel: string;
   perks: string[];
+  onGetStarted?: () => void;
 }) {
   return (
     <Card className="border-primary/30">
@@ -603,6 +607,16 @@ function PricingCard({
             </li>
           ))}
         </ul>
+        {onGetStarted && (
+          <Button
+            onClick={onGetStarted}
+            variant="outline"
+            className="w-full bg-transparent border-white text-white hover:bg-white/10 hover:text-white gap-2"
+          >
+            Get Started
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

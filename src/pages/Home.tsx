@@ -167,7 +167,7 @@ export default function Home() {
               className="text-base sm:text-lg text-muted-foreground max-w-2xl"
             >
               All-in-one squash club management software for South African clubs and associations.
-              Bookings, leagues, members, and payments — all in one simple platform.
+              Bookings, leagues, members, and payments, all in one simple platform.
             </motion.p>
 
             {/* Stats */}
@@ -546,7 +546,7 @@ export default function Home() {
           </nav>
         </div>
         <div className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} SquashHub · A product of HKFT Services (Pty) Ltd
+          © {new Date().getFullYear()} SquashHub · A product of HKFT Services (Pty) Ltd / Proudly designed by JLT Digital
         </div>
       </footer>
     </div>
@@ -558,7 +558,7 @@ export default function Home() {
 function Stat({ value, label, loading }: { value: number; label: string; loading: boolean }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-primary">
+      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-primary text-[#bc2424]">
         {loading ? "—" : value}
       </span>
       <span className="text-sm text-muted-foreground font-medium">{label}</span>

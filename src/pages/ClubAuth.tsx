@@ -260,6 +260,14 @@ export default function ClubAuth() {
     if (!clubMemberNo) { toast.error("Please enter your club membership number"); return; }
     if (!email) { toast.error("Please enter your email address"); return; }
     if (!phone) { toast.error("Please enter your cell phone number"); return; }
+    if (phone.includes("@") || /[a-zA-Z]/.test(phone)) {
+      toast.error("Cell phone number should contain only digits — please re-check the Phone field");
+      return;
+    }
+    if (!/^\+?[\d\s\-()]{7,20}$/.test(phone)) {
+      toast.error("Please enter a valid cell phone number (digits only)");
+      return;
+    }
     if (leaguePassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
     if (leaguePassword !== leagueConfirm) { toast.error("Passwords do not match"); return; }
     if (!leagueAcceptTerms) { toast.error("Please accept the Terms of Use and Privacy Policy"); return; }

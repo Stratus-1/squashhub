@@ -550,7 +550,7 @@ function Stat({ value, label, loading }: { value: number; label: string; loading
 function PricingCard({
   icon: Icon,
   title,
-  price,
+  priceLabel,
   perks,
 }: {
   icon: React.ComponentType<{ className?: string }>;

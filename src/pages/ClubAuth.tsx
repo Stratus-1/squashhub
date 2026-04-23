@@ -745,11 +745,11 @@ export default function ClubAuth() {
               {useLeagueNumberSignup ? (
                 <>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Already a member of {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and we'll set up your account. Your email and cell phone number will be saved to your profile.
+                    Already an NSA-registered member of {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and your <strong>Club Membership Number</strong>. Your email and cell phone will be saved to your profile, and your NSA league participation will be enabled automatically.
                   </p>
                   <form onSubmit={handleLeagueNumberSignup} className="space-y-3">
                     <div>
-                      <Label htmlFor="league-number">League Number <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="league-number">League Number (NSA) <span className="text-destructive">*</span></Label>
                       <Input
                         id="league-number"
                         type="text"
@@ -759,6 +759,19 @@ export default function ClubAuth() {
                         required
                         maxLength={20}
                         autoCapitalize="characters"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="league-club-member-no">Club Membership Number <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="league-club-member-no"
+                        type="text"
+                        placeholder="Your club membership number"
+                        value={leagueClubMemberNumber}
+                        onChange={(e) => setLeagueClubMemberNumber(e.target.value)}
+                        required
+                        maxLength={32}
                       />
                     </div>
 

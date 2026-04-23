@@ -237,7 +237,7 @@ export default function Home() {
         />
         <div
           className="absolute inset-0"
-          style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }}
+          style={{ backgroundColor: "rgba(11, 31, 80, 0.4)" }}
           aria-hidden="true"
         />
         <div className="relative max-w-6xl mx-auto px-4 py-20">

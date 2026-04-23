@@ -246,9 +246,9 @@ export default function Home() {
               <motion.h2
                 {...fadeUp}
                 transition={{ duration: 0.5 }}
-                className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-[#ec4155]"
+                className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-white"
               >
-                Manage everything in one place
+                Manage everything in <span className="text-[#ec4155]">one place</span>
               </motion.h2>
 
               <ul className="space-y-3">

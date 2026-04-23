@@ -256,14 +256,19 @@ export default function Home() {
                 ))}
               </ul>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
-                  Find your club
-                </Button>
-                <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
-                  Register Your Club
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+              <div className="space-y-2 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+                    Register Your Club
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                  <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
+                    Find your club
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Free until September 2026 · No credit card required
+                </p>
               </div>
             </div>
 

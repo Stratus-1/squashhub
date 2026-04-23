@@ -46,6 +46,18 @@ export default function ClubAuth() {
   >([]);
   const [chosenMemberId, setChosenMemberId] = useState<string>("");
 
+  // League-number signup (CSIR & similar imported-member clubs)
+  const [leagueNumber, setLeagueNumber] = useState("");
+  const [leagueEmail, setLeagueEmail] = useState("");
+  const [leaguePhone, setLeaguePhone] = useState("");
+  const [leaguePassword, setLeaguePassword] = useState("");
+  const [leagueConfirm, setLeagueConfirm] = useState("");
+  const [leagueAcceptTerms, setLeagueAcceptTerms] = useState(false);
+  const [leagueChoices, setLeagueChoices] = useState<
+    Array<{ id: string; masked_name: string; association_name: string }>
+  >([]);
+  const [chosenLeagueMemberId, setChosenLeagueMemberId] = useState<string>("");
+
   // New member signup
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");

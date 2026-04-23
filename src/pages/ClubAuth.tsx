@@ -48,6 +48,7 @@ export default function ClubAuth() {
 
   // League-number signup (CSIR & similar imported-member clubs)
   const [leagueNumber, setLeagueNumber] = useState("");
+  const [leagueClubMemberNumber, setLeagueClubMemberNumber] = useState("");
   const [leagueEmail, setLeagueEmail] = useState("");
   const [leaguePhone, setLeaguePhone] = useState("");
   const [leaguePassword, setLeaguePassword] = useState("");
@@ -253,8 +254,10 @@ export default function ClubAuth() {
     const number = leagueNumber.trim().toUpperCase();
     const email = leagueEmail.trim().toLowerCase();
     const phone = leaguePhone.trim();
+    const clubMemberNo = leagueClubMemberNumber.trim();
 
     if (!number) { toast.error("Please enter your league number (e.g. NSF1234)"); return; }
+    if (!clubMemberNo) { toast.error("Please enter your club membership number"); return; }
     if (!email) { toast.error("Please enter your email address"); return; }
     if (!phone) { toast.error("Please enter your cell phone number"); return; }
     if (leaguePassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
@@ -339,6 +342,7 @@ export default function ClubAuth() {
         _email: email,
         _phone: phone,
         _club_id: club.id,
+        _club_member_number: leagueClubMemberNumber.trim() || null,
       }
     );
     if (claimErr) {
@@ -741,11 +745,11 @@ export default function ClubAuth() {
               {useLeagueNumberSignup ? (
                 <>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Already a member of {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and we'll set up your account. Your email and cell phone number will be saved to your profile.
+                    Already an NSA-registered member of {clubName}? Enter your <strong>League Number</strong> (e.g. NSF1234) and your <strong>Club Membership Number</strong>. Your email and cell phone will be saved to your profile, and your NSA league participation will be enabled automatically.
                   </p>
                   <form onSubmit={handleLeagueNumberSignup} className="space-y-3">
                     <div>
-                      <Label htmlFor="league-number">League Number <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="league-number">League Number (NSA) <span className="text-destructive">*</span></Label>
                       <Input
                         id="league-number"
                         type="text"
@@ -755,6 +759,19 @@ export default function ClubAuth() {
                         required
                         maxLength={20}
                         autoCapitalize="characters"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="league-club-member-no">Club Membership Number <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="league-club-member-no"
+                        type="text"
+                        placeholder="Your club membership number"
+                        value={leagueClubMemberNumber}
+                        onChange={(e) => setLeagueClubMemberNumber(e.target.value)}
+                        required
+                        maxLength={32}
                       />
                     </div>
 

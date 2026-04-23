@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import heroBg from "@/assets/hero-court.jpg";
 import featureImg from "@/assets/feature-woman-phone.png";
+import playerRacketImg from "@/assets/player-racket.jpg";
 import shLogoFull from "@/assets/shub-logo-full.png";
 
 const fadeUp = {

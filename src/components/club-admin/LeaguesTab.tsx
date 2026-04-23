@@ -887,10 +887,37 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     }
   };
 
+  // Compare a league's current players to the snapshot loaded from the DB.
+  // Only return true if something actually changed (members, order, captain,
+  // or association number). This stops Save from wiping leagues admin never
+  // touched in this session.
+  const isLeagueChanged = (leagueId: string): boolean => {
+    const before = initialLeagueData.current[leagueId] || [];
+    const after = leagueData[leagueId] || [];
+    if (before.length !== after.length) return true;
+    for (let i = 0; i < after.length; i++) {
+      const a = after[i];
+      const b = before[i];
+      if (!b) return true;
+      if (a.club_member_id !== b.club_member_id) return true;
+      if (!!a.is_captain !== !!b.is_captain) return true;
+      if ((a.league_association_number || null) !== (b.league_association_number || null)) return true;
+    }
+    return false;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const league of leagues) {
+      const changedLeagues = leagues.filter(l => isLeagueChanged(l.id));
+      if (changedLeagues.length === 0) {
+        toast.info("No changes to save");
+        setSaving(false);
+        return;
+      }
+      for (const league of changedLeagues) {
+        // Only delete the rows we are about to replace — and only for leagues
+        // that actually changed in this session.
         await fromExt("member_league_registrations").delete().eq("league_id", league.id);
         const players = leagueData[league.id] || [];
         if (players.length > 0) {
@@ -906,8 +933,14 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           if (error) throw error;
         }
       }
-      toast.success("All allocations saved");
-      leagues.forEach(l => qc.invalidateQueries({ queryKey: ["league-registrations", l.id] }));
+      // Refresh snapshot so a second Save in the same session is a no-op.
+      initialLeagueData.current = Object.fromEntries(
+        Object.entries(leagueData).map(([k, v]) => [k, v.map(p => ({ ...p }))])
+      );
+      toast.success(
+        `Saved ${changedLeagues.length} league${changedLeagues.length === 1 ? "" : "s"}`,
+      );
+      changedLeagues.forEach(l => qc.invalidateQueries({ queryKey: ["league-registrations", l.id] }));
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to save");

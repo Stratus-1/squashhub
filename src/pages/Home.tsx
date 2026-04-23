@@ -555,7 +555,7 @@ function PricingCard({
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
-  price: string;
+  priceLabel: string;
   perks: string[];
 }) {
   return (
@@ -568,12 +568,12 @@ function PricingCard({
           <h3 className="font-semibold text-foreground">{title}</h3>
         </div>
         <div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold font-heading text-foreground">{price}</span>
+          <div className="flex items-baseline gap-1 flex-wrap">
+            <span className="text-3xl font-bold font-heading text-foreground">{priceLabel}</span>
             <span className="text-sm text-muted-foreground">/ member / month</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Estimated maximum. From September 2026.
+            From September 2026
           </p>
         </div>
         <ul className="space-y-2 text-sm text-muted-foreground pt-2 border-t border-border/40">

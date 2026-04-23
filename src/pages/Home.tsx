@@ -39,10 +39,10 @@ interface TenantPublic {
 
 const PROBLEMS = [
   { icon: Calendar, label: "Manual bookings and double-ups" },
-  { icon: Users, label: "Disorganised leagues and fixtures" },
+  { icon: Users, label: "Disorganized leagues and fixtures" },
   { icon: AlertCircle, label: "Time-consuming admin" },
-  { icon: Trophy, label: "Low member engagement" },
   { icon: BarChart3, label: "Poor payment tracking" },
+  { icon: Trophy, label: "Low member engagement" },
 ];
 
 const FEATURES = [
@@ -55,9 +55,10 @@ const FEATURES = [
 ];
 
 const BENEFITS = [
+  "Save hours of admin",
   "Eliminate booking errors",
   "Increase participation",
-  "Track payments",
+  "Track payments easily",
   "Run leagues effortlessly",
   "Improve member experience",
   "Make better decisions with data",
@@ -67,22 +68,13 @@ const BENEFITS = [
 ];
 
 const FAQS = [
-  {
-    q: "How long does it take to get our club set up?",
-    a: "Most clubs are fully operational within a day. Register your club, import your members via CSV (or invite them by email), set up your courts and fee categories, and you're ready to go.",
-  },
-  {
-    q: "Do members need to download an app?",
-    a: "No. SquashHub is a Progressive Web App that works in any browser. Members can also install it to their home screen on iOS and Android for a native-app feel, with push notifications.",
-  },
-  {
-    q: "How much does it cost?",
-    a: "SquashHub is completely free for clubs and associations until September 2026. After that, fees stay tiny and scale per active member — estimated maximum R5/member/month for clubs and R2/member/month for associations.",
-  },
-  {
-    q: "Can our league or association also use SquashHub?",
-    a: "Yes. Regional bodies and league associations get a tenant of their own with admin, fixtures, member oversight and finance tools — purpose-built for governing committees.",
-  },
+  { q: "What is SquashHub?", a: "A squash club management platform for bookings, leagues, members, and payments." },
+  { q: "Who is it for?", a: "Clubs and associations across South Africa." },
+  { q: "Is it free?", a: "Yes, until September 2026." },
+  { q: "How long does setup take?", a: "Under 2 minutes." },
+  { q: "Do members need accounts?", a: "Yes, for bookings and participation." },
+  { q: "Can associations use it?", a: "Yes, with full oversight tools." },
+  { q: "Is my data secure?", a: "Yes, fully POPIA-aligned." },
 ];
 
 export default function Home() {

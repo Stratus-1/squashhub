@@ -29,8 +29,36 @@ type Props = {
 export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region" }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
-  const rangeStart = weekStart ?? format(new Date(), "yyyy-MM-dd");
-  const rangeEnd = weekEnd ?? format(addDays(weekStart ? parseISO(weekStart) : new Date(), weekStart ? 6 : 14), "yyyy-MM-dd");
+
+  type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "custom";
+  const [rangeMode, setRangeMode] = useState<RangeMode>("this-week");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
+
+  const defaultStart = weekStart ?? format(new Date(), "yyyy-MM-dd");
+  const defaultEnd = weekEnd ?? format(addDays(weekStart ? parseISO(weekStart) : new Date(), weekStart ? 6 : 14), "yyyy-MM-dd");
+
+  const { rangeStart, rangeEnd } = useMemo(() => {
+    const baseStart = weekStart ? parseISO(weekStart) : new Date();
+    if (rangeMode === "this-week") {
+      return { rangeStart: defaultStart, rangeEnd: defaultEnd };
+    }
+    if (rangeMode === "next-week") {
+      const start = addDays(baseStart, 7);
+      const end = addDays(start, 6);
+      return { rangeStart: format(start, "yyyy-MM-dd"), rangeEnd: format(end, "yyyy-MM-dd") };
+    }
+    if (rangeMode === "next-two-weeks") {
+      const end = addDays(baseStart, 13);
+      return { rangeStart: defaultStart, rangeEnd: format(end, "yyyy-MM-dd") };
+    }
+    // custom
+    if (customRange?.from) {
+      const start = customRange.from;
+      const end = customRange.to ?? customRange.from;
+      return { rangeStart: format(start, "yyyy-MM-dd"), rangeEnd: format(end, "yyyy-MM-dd") };
+    }
+    return { rangeStart: defaultStart, rangeEnd: defaultEnd };
+  }, [rangeMode, customRange, weekStart, defaultStart, defaultEnd]);
 
   // Derive club code prefixes (alpha part) from registered team codes, e.g. "CSI001" -> "CSI"
   const clubPrefixes = useMemo(() => {

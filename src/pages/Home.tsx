@@ -286,19 +286,6 @@ export default function Home() {
               </div>
             </div>
 
-            <motion.div
-              {...fadeUp}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="hidden lg:flex justify-center"
-            >
-              <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-card to-background border border-border/40 shadow-2xl flex items-end justify-center">
-                <img
-                  src={featureImg}
-                  alt="Squash club member using SquashHub on phone"
-                  className="w-full h-full object-contain object-bottom"
-                />
-              </div>
-            </motion.div>
           </div>
         </div>
       </section>

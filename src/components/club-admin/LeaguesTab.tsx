@@ -509,6 +509,10 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const qc = useQueryClient();
   const { data: ladderPlayers } = useLadder();
   const [leagueData, setLeagueData] = useState<Record<string, LeaguePlayer[]>>({});
+  // Snapshot of registrations as loaded from the DB. Used by Save to detect
+  // which leagues actually changed in this session, so untouched leagues are
+  // never wiped.
+  const initialLeagueData = useRef<Record<string, LeaguePlayer[]>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const dragItem = useRef<{ leagueId: string; idx: number } | null>(null);
@@ -660,6 +664,10 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         }
       }
       setLeagueData(allData);
+      // Deep-clone for the snapshot so later edits to leagueData don't mutate it.
+      initialLeagueData.current = Object.fromEntries(
+        Object.entries(allData).map(([k, v]) => [k, v.map(p => ({ ...p }))])
+      );
       setLoaded(true);
     })();
   }, [open, leagues.length]);
@@ -689,11 +697,24 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     return `${num}${suffix}`;
   };
 
-  // Reshuffle: redistribute all league-eligible members across leagues based on ladder order
+  // Reshuffle: PRESERVE every player who is already placed (and their captain
+  // status / NSF). Only redistribute genuinely unassigned eligible members
+  // into the leagues that still have free space, in ladder order. This makes
+  // Reshuffle safe to use mid-season — admin's manual setup is never wiped.
   const handleReshuffle = useCallback(() => {
     if (!ladderPlayers || leagues.length === 0) return;
 
-    // Get ladder-ordered member IDs (club_member_id)
+    // Start from a deep clone of the current state — keep all current
+    // placements untouched.
+    const newData: Record<string, LeaguePlayer[]> = Object.fromEntries(
+      leagues.map(l => [l.id, (leagueData[l.id] || []).map(p => ({ ...p }))]),
+    );
+
+    const alreadyPlaced = new Set<string>(
+      Object.values(newData).flat().map(p => p.club_member_id),
+    );
+
+    // Build a ladder-ordered list of eligible-but-unassigned members.
     const ladderMemberIds = ladderPlayers
       .filter((lp: any) => {
         const g = lp.gender?.toLowerCase();
@@ -702,53 +723,58 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       })
       .map((lp: any) => lp.club_member_id);
 
-    // Only include members who are league-eligible
-    const eligibleIds = genderMembers.map(m => m.id);
-    const orderedMembers = ladderMemberIds.filter((id: string) => eligibleIds.includes(id));
-    const remainingEligible = eligibleIds.filter(id => !orderedMembers.includes(id));
-    const allOrdered = [...orderedMembers, ...remainingEligible];
+    const eligibleIds = new Set(genderMembers.map(m => m.id));
+    const ladderUnassigned = ladderMemberIds.filter(
+      (id: string) => eligibleIds.has(id) && !alreadyPlaced.has(id),
+    );
+    const remainingUnassigned = [...eligibleIds].filter(
+      id => !alreadyPlaced.has(id) && !ladderUnassigned.includes(id),
+    );
+    const toPlace = [...ladderUnassigned, ...remainingUnassigned];
 
-    const totalPlayers = allOrdered.length;
-    const numLeagues = leagues.length;
+    if (toPlace.length === 0) {
+      toast.info("Nothing to reshuffle — every eligible player is already placed.");
+      return;
+    }
 
-    // Calculate players per league: divide evenly, minimum 4 per league
-    // If not enough players, just spread what we have
-    const basePerLeague = Math.max(4, Math.floor(totalPlayers / numLeagues));
-    const remainder = totalPlayers - basePerLeague * numLeagues;
-
-    const newData: Record<string, LeaguePlayer[]> = {};
+    // Round-robin from the top league down, so stronger unassigned players
+    // land in the higher leagues first.
     let cursor = 0;
-
-    leagues.forEach((league, leagueIdx) => {
-      // Distribute remainder across first leagues (1 extra each)
-      const extraPlayer = leagueIdx < remainder ? 1 : 0;
-      const isLast = leagueIdx === numLeagues - 1;
-      const count = isLast ? totalPlayers - cursor : basePerLeague + extraPlayer;
-      const slice = allOrdered.slice(cursor, cursor + count);
-      cursor += count;
-
-      newData[league.id] = slice.map((memberId, i) => {
+    let safety = toPlace.length * leagues.length + 1;
+    while (cursor < toPlace.length && safety-- > 0) {
+      let placedThisPass = false;
+      for (const league of leagues) {
+        if (cursor >= toPlace.length) break;
+        const list = newData[league.id];
+        const memberId = toPlace[cursor];
         const member = members.find(m => m.id === memberId);
-        // Preserve NSF number from any previous league assignment
-        const allPrevPlayers = Object.values(leagueData).flat();
-        const prevEntry = allPrevPlayers.find(p => p.club_member_id === memberId);
-        const wasCaptain = prevEntry?.is_captain ?? false;
-        const prevNsf = prevEntry?.league_association_number ?? null;
-        return {
+        list.push({
           id: `reshuffle-${Date.now()}-${memberId}`,
           club_member_id: memberId,
           league_id: league.id,
-          player_rank: i + 1,
-          is_captain: wasCaptain,
-          league_association_number: prevNsf,
+          player_rank: list.length + 1,
+          is_captain: false,
+          // NSF stays null here — it must come from the player's own
+          // affiliation, never from another player's state.
+          league_association_number: null,
           member,
-        };
-      });
-    });
+        });
+        cursor += 1;
+        placedThisPass = true;
+      }
+      if (!placedThisPass) break;
+    }
 
-    const perLeague = leagues.map(l => newData[l.id]?.length || 0);
+    // Re-rank each league.
+    for (const league of leagues) {
+      newData[league.id] = newData[league.id].map((p, i) => ({ ...p, player_rank: i + 1 }));
+    }
+
     setLeagueData(newData);
-    toast.success(`Reshuffled ${totalPlayers} players across ${numLeagues} leagues (${perLeague.join(", ")} per league)`);
+    const perLeague = leagues.map(l => newData[l.id]?.length || 0);
+    toast.success(
+      `Placed ${toPlace.length} unassigned player${toPlace.length === 1 ? "" : "s"} (${perLeague.join(", ")} per league). Existing setup preserved.`,
+    );
   }, [ladderPlayers, leagues, genderMembers, members, gender, leagueData]);
 
   const getMemberName = (p: LeaguePlayer) => {
@@ -861,10 +887,37 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     }
   };
 
+  // Compare a league's current players to the snapshot loaded from the DB.
+  // Only return true if something actually changed (members, order, captain,
+  // or association number). This stops Save from wiping leagues admin never
+  // touched in this session.
+  const isLeagueChanged = (leagueId: string): boolean => {
+    const before = initialLeagueData.current[leagueId] || [];
+    const after = leagueData[leagueId] || [];
+    if (before.length !== after.length) return true;
+    for (let i = 0; i < after.length; i++) {
+      const a = after[i];
+      const b = before[i];
+      if (!b) return true;
+      if (a.club_member_id !== b.club_member_id) return true;
+      if (!!a.is_captain !== !!b.is_captain) return true;
+      if ((a.league_association_number || null) !== (b.league_association_number || null)) return true;
+    }
+    return false;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const league of leagues) {
+      const changedLeagues = leagues.filter(l => isLeagueChanged(l.id));
+      if (changedLeagues.length === 0) {
+        toast.info("No changes to save");
+        setSaving(false);
+        return;
+      }
+      for (const league of changedLeagues) {
+        // Only delete the rows we are about to replace — and only for leagues
+        // that actually changed in this session.
         await fromExt("member_league_registrations").delete().eq("league_id", league.id);
         const players = leagueData[league.id] || [];
         if (players.length > 0) {
@@ -880,8 +933,14 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           if (error) throw error;
         }
       }
-      toast.success("All allocations saved");
-      leagues.forEach(l => qc.invalidateQueries({ queryKey: ["league-registrations", l.id] }));
+      // Refresh snapshot so a second Save in the same session is a no-op.
+      initialLeagueData.current = Object.fromEntries(
+        Object.entries(leagueData).map(([k, v]) => [k, v.map(p => ({ ...p }))])
+      );
+      toast.success(
+        `Saved ${changedLeagues.length} league${changedLeagues.length === 1 ? "" : "s"}`,
+      );
+      changedLeagues.forEach(l => qc.invalidateQueries({ queryKey: ["league-registrations", l.id] }));
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to save");

@@ -255,18 +255,38 @@ export function useLeagueAssociations(clubId?: string) {
   });
 }
 
-/** Get the current user's league registration (from member_league_registrations) */
+/**
+ * Get the current user's primary league registration.
+ *
+ * A member can be slotted into many leagues by an admin (pool/guest depth),
+ * so we have to pick the *one* that represents their actual home team.
+ *
+ * Priority order:
+ *  1. The registration whose `league_association_number` matches the
+ *     member's permanent NSA/league number from `member_association_affiliations`.
+ *     This is the league the admin actually placed the player's permanent
+ *     number into (e.g. NSF7155 → Men's 6th League).
+ *  2. Any registration where they are captain.
+ *  3. The lowest player_rank registration with a number set.
+ *  4. Anything with a number, then anything at all.
+ */
 export function useMyLeagueRegistration(clubMemberId?: string) {
   return useQuery({
     queryKey: ["my-league-registration", clubMemberId],
     queryFn: async () => {
-      const { data, error } = await fromExt("member_league_registrations")
-        .select("*, leagues:league_id(association_id)")
-        .eq("club_member_id", clubMemberId!)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+      const [regsRes, affsRes] = await Promise.all([
+        fromExt("member_league_registrations")
+          .select("*, leagues:league_id(association_id)")
+          .eq("club_member_id", clubMemberId!)
+          .order("created_at", { ascending: true }),
+        fromExt("member_association_affiliations")
+          .select("association_id, league_association_number, active")
+          .eq("club_member_id", clubMemberId!)
+          .eq("active", true),
+      ]);
+      if (regsRes.error) throw regsRes.error;
 
-      const rows = (data || []) as Array<{
+      const rows = (regsRes.data || []) as Array<{
         id: string;
         club_member_id: string;
         league_id: string;
@@ -276,8 +296,47 @@ export function useMyLeagueRegistration(clubMemberId?: string) {
         player_rank: number | null;
         leagues?: { association_id?: string | null } | null;
       }>;
+      const affs = (affsRes.data || []) as Array<{
+        association_id: string;
+        league_association_number: string | null;
+      }>;
 
-      const bestRow = rows.find((row) => !!row.league_association_number?.trim()) || rows[0] || null;
+      // Set of canonical (permanent) NSA numbers this member owns.
+      const permanentNumbers = new Set(
+        affs
+          .map((a) => (a.league_association_number || "").trim().toUpperCase())
+          .filter((n) => n.length > 0),
+      );
+      // Map association_id → canonical permanent number, for matching by association.
+      const permanentNumberByAssoc: Record<string, string> = {};
+      for (const a of affs) {
+        const n = (a.league_association_number || "").trim().toUpperCase();
+        if (n) permanentNumberByAssoc[a.association_id] = n;
+      }
+
+      const numberMatchesPermanent = (row: typeof rows[number]) => {
+        const n = (row.league_association_number || "").trim().toUpperCase();
+        if (!n) return false;
+        if (permanentNumbers.has(n)) return true;
+        const aid = row.leagues?.association_id;
+        return !!aid && permanentNumberByAssoc[aid] === n;
+      };
+
+      const bestRow =
+        // 1. Registration carrying the permanent NSA number AND captain
+        rows.find((r) => numberMatchesPermanent(r) && r.is_captain) ||
+        // 2. Any registration carrying the permanent NSA number, lowest rank first
+        rows
+          .filter(numberMatchesPermanent)
+          .sort((a, b) => (a.player_rank ?? 99) - (b.player_rank ?? 99))[0] ||
+        // 3. Captain row with any number
+        rows.find((r) => r.is_captain && !!r.league_association_number?.trim()) ||
+        // 4. Any row with a number, lowest rank
+        rows
+          .filter((r) => !!r.league_association_number?.trim())
+          .sort((a, b) => (a.player_rank ?? 99) - (b.player_rank ?? 99))[0] ||
+        rows[0] ||
+        null;
 
       return bestRow
         ? {

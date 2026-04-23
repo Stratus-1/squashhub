@@ -248,6 +248,45 @@ export function MemberOnboardingWizard({
         }
       }
 
+      // Third strategy: signup token in user_metadata.name may be a league
+      // affiliation number (e.g. "NSF7155"). Existing member rows imported
+      // from a league sync often have NULL email/user_id but DO have a row
+      // in member_association_affiliations. Match through that table so
+      // returning league players get linked to their pre-existing record
+      // (and their NSA league shows pre-ticked with their number).
+      if (!member) {
+        const lookup = (user.user_metadata?.name || "").trim();
+        if (lookup && /^[A-Z]{2,5}\d{2,8}$/i.test(lookup)) {
+          const { data: affRows } = await fromExt("member_association_affiliations")
+            .select("club_member_id")
+            .ilike("league_association_number", lookup)
+            .eq("active", true)
+            .limit(5);
+          const affMemberIds = (affRows || []).map((r: any) => r.club_member_id).filter(Boolean);
+          if (affMemberIds.length > 0) {
+            const { data: candidateRows } = await fromExt("club_members")
+              .select("*")
+              .eq("club_id", clubId)
+              .in("id", affMemberIds);
+            if (candidateRows && candidateRows.length > 0) {
+              member = candidateRows.find((r: any) => r.name && !looksLikeLookupCode(r.name)) || candidateRows[0];
+              // Link the new auth user to this existing member record so
+              // future loads find it by user_id and admin tools see the link.
+              if (member && !member.user_id) {
+                try {
+                  await fromExt("club_members")
+                    .update({ user_id: user.id, email: user.email?.toLowerCase() || member.email })
+                    .eq("id", member.id);
+                  member.user_id = user.id;
+                } catch (e) {
+                  console.warn("[Wizard] could not link existing member to auth user", e);
+                }
+              }
+            }
+          }
+        }
+      }
+
       if (member) {
         setIsExistingMember(true);
         // Always use the member's real name when one exists and the current value is empty or a lookup code

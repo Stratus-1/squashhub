@@ -13,8 +13,7 @@ import {
 import { SEO } from "@/components/SEO";
 import {
   Building2, ChevronRight, ArrowRight, Landmark, Check,
-  AlertCircle, Calendar, Trophy, Users, Swords, BarChart3,
-  Globe2, Mail,
+  AlertCircle, Calendar, Trophy, Users, BarChart3, Mail,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";

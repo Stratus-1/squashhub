@@ -119,21 +119,21 @@ export default function Home() {
       />
 
       {/* ─── Top Bar ─── */}
-      <header className="sticky top-0 z-50 bg-background/85 backdrop-blur border-b border-border/40">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+      <header className="sticky top-4 z-50 px-4">
+        <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg">
           <div className="flex items-center gap-2">
             <img src={shLogoFull} alt="SquashHub" className="h-7 w-auto object-contain" />
           </div>
           <nav className="hidden sm:flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => scrollTo("top")}>Home</Button>
-            <Button variant="ghost" size="sm" onClick={() => scrollTo("features")}>Features</Button>
-            <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")}>Pricing</Button>
+            <Button variant="ghost" size="sm" onClick={() => scrollTo("top")} className="text-white hover:bg-white/10 hover:text-white">Home</Button>
+            <Button variant="ghost" size="sm" onClick={() => scrollTo("features")} className="text-white hover:bg-white/10 hover:text-white">Features</Button>
+            <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
           </nav>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => scrollTo("clubs")} className="bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+            <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
               Find/Create My Association
             </Button>
-            <Button size="sm" onClick={() => navigate("/auth")}>
+            <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full">
               Register Your Club
             </Button>
           </div>

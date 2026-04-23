@@ -283,11 +283,11 @@ export default function Home() {
 
               <div className="space-y-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-3">
+                  <Button size="lg" onClick={() => scrollTo("clubs")} className="bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+                    Find/Create My Association
+                  </Button>
                   <Button size="lg" onClick={() => navigate("/auth")}>
                     Register Your Club
-                  </Button>
-                  <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
-                    Find/Create My Association
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">

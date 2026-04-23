@@ -390,7 +390,7 @@ export default function ClubAuth() {
     return (
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
         <SEO title={`Reset Password | ${clubName}`} description="Reset your password." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="text-center mb-6">
@@ -421,7 +421,7 @@ export default function ClubAuth() {
     return (
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
         <SEO title={`Registration Complete | ${clubName}`} description="Account created." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
@@ -448,7 +448,7 @@ export default function ClubAuth() {
     return (
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
         <SEO title={`Visitor Registered | ${clubName}`} description="Visitor registered." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
@@ -474,7 +474,7 @@ export default function ClubAuth() {
   return (
     <div className="min-h-screen relative flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+      <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
       <SEO
         title={`Sign In | ${clubName}`}
         description={`Sign in or register for ${clubName} on SquashHub.`}

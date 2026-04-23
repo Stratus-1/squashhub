@@ -274,6 +274,47 @@ export function MemberOnboardingWizard({
         }
         if (member.plays_league) setPlaysLeague(member.plays_league);
 
+        // Pre-populate league selections from member_association_affiliations
+        // so existing league players (e.g. CSIR/NSA) see their league pre-ticked
+        // with their existing number filled in.
+        try {
+          const { data: affiliations } = await fromExt("member_association_affiliations")
+            .select("association_id, league_association_number, active")
+            .eq("club_member_id", member.id)
+            .eq("active", true);
+          if (affiliations && affiliations.length > 0) {
+            setPlaysLeague(true);
+            // Resolve label/fee from this club's league_associations rows
+            const { data: clubLeagues } = await fromExt("league_associations")
+              .select("id, name, abbreviation, fee_annual, scope, platform_association_id")
+              .eq("club_id", clubId);
+            const nextSelections: Record<string, LeagueSelection> = {};
+            for (const aff of affiliations as any[]) {
+              // Try to find a matching league_associations row in this club:
+              // 1) Direct id match (when affiliation.association_id IS the league_associations.id)
+              // 2) Match via platform_association_id
+              const match = (clubLeagues || []).find(
+                (l: any) => l.id === aff.association_id || l.platform_association_id === aff.association_id,
+              );
+              if (!match) continue;
+              const isInternal = match.scope === "internal";
+              nextSelections[match.id] = {
+                associationId: match.id,
+                kind: isInternal ? "internal" : "external_regional",
+                tenantSubdomain: null,
+                externalNumber: aff.league_association_number || "",
+                feeAmount: isInternal ? 0 : Number(match.fee_annual || 0),
+                label: `${match.name}${match.abbreviation ? ` (${match.abbreviation})` : ""}`,
+              };
+            }
+            if (Object.keys(nextSelections).length > 0) {
+              setLeagueSelections((prev) => ({ ...nextSelections, ...prev }));
+            }
+          }
+        } catch (e) {
+          console.warn("[Wizard] affiliation pre-fill failed", e);
+        }
+
         // Pull league registration → look up full name from platform_league_members
         // and auto-toggle plays_league when a league registration exists.
         try {

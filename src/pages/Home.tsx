@@ -589,7 +589,7 @@ function PricingCard({
         <div>
           <div className="flex items-baseline gap-1 flex-wrap">
             <span className="text-3xl font-bold font-heading text-foreground">{priceLabel}</span>
-            <span className="text-sm text-muted-foreground">/ member / month</span>
+            <span className="text-sm text-muted-foreground">/ member per month</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             From September 2026

@@ -48,6 +48,7 @@ export default function ClubAuth() {
 
   // League-number signup (CSIR & similar imported-member clubs)
   const [leagueNumber, setLeagueNumber] = useState("");
+  const [leagueClubMemberNumber, setLeagueClubMemberNumber] = useState("");
   const [leagueEmail, setLeagueEmail] = useState("");
   const [leaguePhone, setLeaguePhone] = useState("");
   const [leaguePassword, setLeaguePassword] = useState("");
@@ -253,8 +254,10 @@ export default function ClubAuth() {
     const number = leagueNumber.trim().toUpperCase();
     const email = leagueEmail.trim().toLowerCase();
     const phone = leaguePhone.trim();
+    const clubMemberNo = leagueClubMemberNumber.trim();
 
     if (!number) { toast.error("Please enter your league number (e.g. NSF1234)"); return; }
+    if (!clubMemberNo) { toast.error("Please enter your club membership number"); return; }
     if (!email) { toast.error("Please enter your email address"); return; }
     if (!phone) { toast.error("Please enter your cell phone number"); return; }
     if (leaguePassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
@@ -339,6 +342,7 @@ export default function ClubAuth() {
         _email: email,
         _phone: phone,
         _club_id: club.id,
+        _club_member_number: leagueClubMemberNumber.trim() || null,
       }
     );
     if (claimErr) {

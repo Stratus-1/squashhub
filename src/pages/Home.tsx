@@ -482,8 +482,13 @@ export default function Home() {
       </section>
 
       {/* ─── Get Started CTA ─── */}
-      <section id="get-started" className="bg-gradient-to-br from-primary/10 via-background to-background border-y border-border/40">
-        <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-6">
+      <section id="get-started" className="relative overflow-hidden border-y border-border/40">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${playerRacketImg})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/40" />
+        <div className="relative max-w-3xl mx-auto px-4 py-24 text-center space-y-6">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-foreground">
             Get Started
           </h2>

@@ -39,10 +39,10 @@ interface TenantPublic {
 
 const PROBLEMS = [
   { icon: Calendar, label: "Manual bookings and double-ups" },
-  { icon: Users, label: "Disorganised leagues and fixtures" },
+  { icon: Users, label: "Disorganized leagues and fixtures" },
   { icon: AlertCircle, label: "Time-consuming admin" },
-  { icon: Trophy, label: "Low member engagement" },
   { icon: BarChart3, label: "Poor payment tracking" },
+  { icon: Trophy, label: "Low member engagement" },
 ];
 
 const FEATURES = [
@@ -55,9 +55,10 @@ const FEATURES = [
 ];
 
 const BENEFITS = [
+  "Save hours of admin",
   "Eliminate booking errors",
   "Increase participation",
-  "Track payments",
+  "Track payments easily",
   "Run leagues effortlessly",
   "Improve member experience",
   "Make better decisions with data",
@@ -67,22 +68,13 @@ const BENEFITS = [
 ];
 
 const FAQS = [
-  {
-    q: "How long does it take to get our club set up?",
-    a: "Most clubs are fully operational within a day. Register your club, import your members via CSV (or invite them by email), set up your courts and fee categories, and you're ready to go.",
-  },
-  {
-    q: "Do members need to download an app?",
-    a: "No. SquashHub is a Progressive Web App that works in any browser. Members can also install it to their home screen on iOS and Android for a native-app feel, with push notifications.",
-  },
-  {
-    q: "How much does it cost?",
-    a: "SquashHub is completely free for clubs and associations until September 2026. After that, fees stay tiny and scale per active member — estimated maximum R5/member/month for clubs and R2/member/month for associations.",
-  },
-  {
-    q: "Can our league or association also use SquashHub?",
-    a: "Yes. Regional bodies and league associations get a tenant of their own with admin, fixtures, member oversight and finance tools — purpose-built for governing committees.",
-  },
+  { q: "What is SquashHub?", a: "A squash club management platform for bookings, leagues, members, and payments." },
+  { q: "Who is it for?", a: "Clubs and associations across South Africa." },
+  { q: "Is it free?", a: "Yes, until September 2026." },
+  { q: "How long does setup take?", a: "Under 2 minutes." },
+  { q: "Do members need accounts?", a: "Yes, for bookings and participation." },
+  { q: "Can associations use it?", a: "Yes, with full oversight tools." },
+  { q: "Is my data secure?", a: "Yes, fully POPIA-aligned." },
 ];
 
 export default function Home() {
@@ -182,15 +174,20 @@ export default function Home() {
             <motion.div
               {...fadeUp}
               transition={{ duration: 0.5, delay: 0.25 }}
-              className="flex flex-col sm:flex-row gap-3 pt-2"
+              className="space-y-2 pt-2"
             >
-              <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")} className="gap-2">
-                Find your club
-              </Button>
-              <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
-                Register Your Club
-                <ArrowRight className="w-4 h-4" />
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+                  Register Your Club
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+                <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
+                  Find your club
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Free until September 2026 · No credit card required
+              </p>
             </motion.div>
           </div>
         </div>
@@ -199,8 +196,8 @@ export default function Home() {
       {/* ─── Problem Section ─── */}
       <section className="bg-card/40 border-y border-border/40">
         <div className="max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
-            Running a squash club shouldn't be this complicated
+          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground max-w-4xl mx-auto">
+            Manually running a squash club is more complicated than it should be
           </h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 max-w-5xl mx-auto">
@@ -259,14 +256,19 @@ export default function Home() {
                 ))}
               </ul>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
-                  Find your club
-                </Button>
-                <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
-                  Register Your Club
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+              <div className="space-y-2 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+                    Register Your Club
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                  <Button size="lg" variant="outline" onClick={() => scrollTo("clubs")}>
+                    Find your club
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Free until September 2026 · No credit card required
+                </p>
               </div>
             </div>
 
@@ -422,15 +424,18 @@ export default function Home() {
         )}
       </section>
 
-      {/* ─── Pricing (kept) ─── */}
+      {/* ─── Pricing ─── */}
       <section id="pricing" className="bg-card/40 border-y border-border/40">
         <div className="max-w-5xl mx-auto px-4 py-20">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-foreground mb-3">
-              Simple, fair pricing
+          <div className="text-center mb-10 space-y-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-foreground">
+              Pricing
             </h2>
+            <p className="text-base sm:text-lg text-primary font-semibold">
+              Free until September 2026
+            </p>
             <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-              Free for all clubs and associations until September 2026. After that, tiny per-member fees only.
+              Only pay for active members. No hidden costs. No credit card required.
             </p>
           </div>
 
@@ -438,14 +443,14 @@ export default function Home() {
             <PricingCard
               icon={Building2}
               title="Clubs"
-              price="R5"
-              perks={["Free until September 2026", "All features included", "Billed only on active members"]}
+              priceLabel="From R5"
+              perks={["All features included", "Billed only on active members", "Free until September 2026"]}
             />
             <PricingCard
               icon={Landmark}
               title="Associations"
-              price="R2"
-              perks={["Free until September 2026", "Admin, fixtures & finance tools", "Oversight across affiliated clubs"]}
+              priceLabel="From R2"
+              perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
             />
           </div>
         </div>
@@ -454,7 +459,7 @@ export default function Home() {
       {/* ─── FAQs ─── */}
       <section id="faqs" className="max-w-3xl mx-auto px-4 py-20">
         <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
-          FAQs
+          FAQ
         </h2>
         <Accordion type="single" collapsible className="space-y-3">
           {FAQS.map((f, i) => (
@@ -474,12 +479,38 @@ export default function Home() {
         </Accordion>
       </section>
 
+      {/* ─── Get Started CTA ─── */}
+      <section id="get-started" className="bg-gradient-to-br from-primary/10 via-background to-background border-y border-border/40">
+        <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-foreground">
+            Get Started
+          </h2>
+          <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto">
+            Run your club with less admin and more control.
+          </p>
+          <div className="space-y-2 pt-2 flex flex-col items-center">
+            <Button size="lg" onClick={() => navigate("/auth")} className="gap-2">
+              Register Your Club
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Free until September 2026 · No credit card required
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Contact form ─── */}
       <section id="contact" className="bg-card/40 border-y border-border/40">
         <div className="max-w-2xl mx-auto px-4 py-20">
-          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
-            Contact us
-          </h2>
+          <div className="text-center mb-10 space-y-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-foreground">
+              Contact Us
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Need help? We'll get back to you shortly and help you get set up.
+            </p>
+          </div>
           <ContactForm />
         </div>
       </section>
@@ -519,12 +550,12 @@ function Stat({ value, label, loading }: { value: number; label: string; loading
 function PricingCard({
   icon: Icon,
   title,
-  price,
+  priceLabel,
   perks,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
-  price: string;
+  priceLabel: string;
   perks: string[];
 }) {
   return (
@@ -537,12 +568,12 @@ function PricingCard({
           <h3 className="font-semibold text-foreground">{title}</h3>
         </div>
         <div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold font-heading text-foreground">{price}</span>
+          <div className="flex items-baseline gap-1 flex-wrap">
+            <span className="text-3xl font-bold font-heading text-foreground">{priceLabel}</span>
             <span className="text-sm text-muted-foreground">/ member / month</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Estimated maximum. From September 2026.
+            From September 2026
           </p>
         </div>
         <ul className="space-y-2 text-sm text-muted-foreground pt-2 border-t border-border/40">

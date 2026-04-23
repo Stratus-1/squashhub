@@ -5,10 +5,11 @@ import { UserCheck, IdCard, Trophy, CreditCard, UserCog, ArrowRight } from "luci
 interface MembershipIntroModalProps {
   open: boolean;
   clubName?: string;
+  subdomain?: string;
   onClose: () => void;
 }
 
-const STEPS = [
+const DEFAULT_STEPS = [
   {
     icon: IdCard,
     title: "Your membership number",
@@ -31,7 +32,34 @@ const STEPS = [
   },
 ];
 
-export function MembershipIntroModal({ open, clubName, onClose }: MembershipIntroModalProps) {
+// CSIR members are existing NSA league players — they bring their own membership number
+// and league registration is already on file. The intro therefore skips the "club will
+// issue your number" message and the "tick the league option" step.
+const CSIR_STEPS = [
+  {
+    icon: IdCard,
+    title: "Your membership number",
+    body: "You've already entered your club membership number during signup — it's saved to your profile. You can review or update it under My Account.",
+  },
+  {
+    icon: Trophy,
+    title: "NSA league play",
+    body: "Your NSA league registration is already linked to your account using the league number on file. No need to opt in — you're ready for league fixtures.",
+  },
+  {
+    icon: CreditCard,
+    title: "Fees & payment",
+    body: "Annual membership and NSA league fees are paid directly to the club. You can review any outstanding amounts anytime under My Account.",
+  },
+  {
+    icon: UserCog,
+    title: "Complete your profile",
+    body: "Make sure to fill in any remaining personal details so the club has everything they need — this helps with communication and event invites.",
+  },
+];
+
+export function MembershipIntroModal({ open, clubName, subdomain, onClose }: MembershipIntroModalProps) {
+  const STEPS = (subdomain || "").toLowerCase() === "csir" ? CSIR_STEPS : DEFAULT_STEPS;
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-md p-0 overflow-hidden">

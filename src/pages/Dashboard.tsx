@@ -40,7 +40,7 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const { user } = useAuth();
-  const { club: contextClub } = useClubContext();
+  const { club: contextClub, subdomain } = useClubContext();
   const { linkedMembers, activeMember, switchMember, effectiveUserId } = useMemberContext();
   const showFamilySwitcher = linkedMembers.length > 1;
   const { data: profile, isLoading } = useProfile();
@@ -410,6 +410,7 @@ export default function Dashboard() {
       <MembershipIntroModal
         open={showIntro}
         clubName={effectiveClub?.name}
+        subdomain={subdomain || undefined}
         onClose={() => {
           const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile?.id}`;
           try { localStorage.setItem(introKey, "1"); } catch {}

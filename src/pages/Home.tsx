@@ -264,7 +264,7 @@ export default function Home() {
                     </div>
                     <p className="text-sm sm:text-base text-foreground">
                       <span className="font-semibold">{f.title}:</span>{" "}
-                      <span className="text-muted-foreground">{f.desc}</span>
+                      <span className="text-white">{f.desc}</span>
                     </p>
                   </motion.li>
                 ))}

@@ -248,7 +248,7 @@ export default function Home() {
                 transition={{ duration: 0.5 }}
                 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-white"
               >
-                Manage everything in <span className="text-[#071434]">one place</span>
+                MANAGE EVERYTHING IN <br /> <span className="text-[#071434]">ONE PLACE</span>
               </motion.h2>
 
               <ul className="space-y-3">

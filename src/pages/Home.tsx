@@ -361,8 +361,7 @@ export default function Home() {
                 )}
                 {clubs.length > 3 && (
                   <Button
-                    variant="outline"
-                    className="w-full"
+                    className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
                     onClick={() => scrollTo("all-clubs")}
                   >
                     View More Clubs

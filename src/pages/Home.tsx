@@ -158,7 +158,7 @@ export default function Home() {
             <motion.h1
               {...fadeUp}
               transition={{ duration: 0.5 }}
-              className="text-4xl sm:text-5xl md:text-6xl font-extrabold font-heading uppercase tracking-tight text-foreground leading-[1.05]"
+              className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-foreground leading-[1.05] md:text-5xl"
             >
               Looking for a platform to{" "}
               <span className="text-primary">run your squash club?</span>

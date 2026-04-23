@@ -608,8 +608,7 @@ function PricingCard({
         {onGetStarted && (
           <Button
             onClick={onGetStarted}
-            variant="outline"
-            className="w-full bg-transparent border-white text-white hover:bg-white/10 hover:text-white"
+            className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
           >
             Get Started
           </Button>

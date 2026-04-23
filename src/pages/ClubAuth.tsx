@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
-import heroBg from "@/assets/hero-bg.jpg";
+import heroBg from "@/assets/court-bg.jpg";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCaptcha";
 import { fromExt } from "@/lib/supabase-ext";
@@ -45,6 +45,18 @@ export default function ClubAuth() {
     Array<{ id: string; masked_name: string; has_number: boolean; has_phone: boolean }>
   >([]);
   const [chosenMemberId, setChosenMemberId] = useState<string>("");
+
+  // League-number signup (CSIR & similar imported-member clubs)
+  const [leagueNumber, setLeagueNumber] = useState("");
+  const [leagueEmail, setLeagueEmail] = useState("");
+  const [leaguePhone, setLeaguePhone] = useState("");
+  const [leaguePassword, setLeaguePassword] = useState("");
+  const [leagueConfirm, setLeagueConfirm] = useState("");
+  const [leagueAcceptTerms, setLeagueAcceptTerms] = useState(false);
+  const [leagueChoices, setLeagueChoices] = useState<
+    Array<{ id: string; masked_name: string; association_name: string }>
+  >([]);
+  const [chosenLeagueMemberId, setChosenLeagueMemberId] = useState<string>("");
 
   // New member signup
   const [newName, setNewName] = useState("");
@@ -78,6 +90,9 @@ export default function ClubAuth() {
   // NSC-specific: hide the member/league number field on existing-member signup
   // so members only need email + cell phone (numbers are issued by the club).
   const hideMemberNumberField = (subdomain || "").toLowerCase() === "nsc";
+  // CSIR-specific: members were imported with their NSA league number only.
+  // They register using League Number + Email + Phone + Password — no email verification.
+  const useLeagueNumberSignup = (subdomain || "").toLowerCase() === "csir";
 
   // Fetch only clubs affiliated with this association for the home-club picker
   const { data: pickerClubs } = useQuery({
@@ -230,7 +245,107 @@ export default function ClubAuth() {
     setLoading(false);
   };
 
-  const handleNewMemberSignup = async (e: React.FormEvent) => {
+  // CSIR-style: League Number + Email + Phone + Password.
+  // The league number is the lookup key against an imported club_members row.
+  // Email is required for the auth account but NOT verified — user is signed in immediately.
+  const handleLeagueNumberSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const number = leagueNumber.trim().toUpperCase();
+    const email = leagueEmail.trim().toLowerCase();
+    const phone = leaguePhone.trim();
+
+    if (!number) { toast.error("Please enter your league number (e.g. NSF1234)"); return; }
+    if (!email) { toast.error("Please enter your email address"); return; }
+    if (!phone) { toast.error("Please enter your cell phone number"); return; }
+    if (leaguePassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (leaguePassword !== leagueConfirm) { toast.error("Passwords do not match"); return; }
+    if (!leagueAcceptTerms) { toast.error("Please accept the Terms of Use and Privacy Policy"); return; }
+    if (!club?.id) { toast.error("Club not loaded — please refresh"); return; }
+
+    setLoading(true);
+
+    // 1) Look up the imported member by league number
+    let matchedMemberId = chosenLeagueMemberId;
+    if (!matchedMemberId) {
+      const { data: matches, error: lookupErr } = await (supabase as any).rpc(
+        "lookup_member_by_league_number",
+        { _club_id: club.id, _league_number: number }
+      );
+      if (lookupErr) {
+        toast.error(lookupErr.message || "Lookup failed");
+        setLoading(false);
+        return;
+      }
+      const rows = (matches || []) as Array<{ id: string; masked_name: string; association_name: string }>;
+      if (rows.length === 0) {
+        toast.error("No member found with that league number. Please contact your club admin.");
+        setLoading(false);
+        return;
+      }
+      if (rows.length > 1) {
+        setLeagueChoices(rows);
+        toast.message("Multiple members match — please pick which one is you", { duration: 4000 });
+        setLoading(false);
+        return;
+      }
+      matchedMemberId = rows[0].id;
+    }
+
+    // 2) Captcha
+    try {
+      if (captchaRef.current) {
+        const token = await captchaRef.current.execute();
+        const valid = await verifyCaptchaToken(token);
+        if (!valid) { toast.error("Captcha verification failed"); setLoading(false); return; }
+      }
+    } catch { toast.error("Captcha verification failed"); setLoading(false); return; }
+
+    // 3) Sign up (auto-confirm is on, so session is created immediately)
+    const nowIso = new Date().toISOString();
+    const { error: signUpErr } = await signUp(
+      email,
+      leaguePassword,
+      number, // identifier hint
+      phone,
+      { termsAcceptedAt: nowIso, privacyAcceptedAt: nowIso },
+      club ? {
+        clubName: club.name,
+        subdomain: subdomain || "",
+        registrationType: "club_member",
+      } : undefined
+    );
+    if (signUpErr) {
+      toast.error(signUpErr.message);
+      setLoading(false);
+      return;
+    }
+
+    // 4) Sign in (auto-confirm means the account is ready; signUp may already create a session,
+    // but we sign in explicitly to be sure auth.uid() is available for the claim RPC).
+    const { error: signInErr } = await signIn(email, leaguePassword);
+    if (signInErr) {
+      toast.error(signInErr.message);
+      setLoading(false);
+      return;
+    }
+
+    // 5) Claim the imported member row by league number
+    const { error: claimErr } = await (supabase as any).rpc(
+      "claim_member_by_league_number",
+      { _club_member_id: matchedMemberId, _league_number: number, _email: email, _phone: phone }
+    );
+    if (claimErr) {
+      console.warn("[CSIR signup] claim failed:", claimErr);
+      toast.error(claimErr.message || "Could not link your member record");
+      setLoading(false);
+      return;
+    }
+
+    toast.success("Welcome! Complete your profile to get started.");
+    setLoading(false);
+    // AuthProvider's onAuthStateChange will redirect via <Navigate to="/" /> at top of component.
+  };
+
     e.preventDefault();
     const name = newName.trim();
     const email = newEmail.trim();
@@ -390,7 +505,7 @@ export default function ClubAuth() {
     return (
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
         <SEO title={`Reset Password | ${clubName}`} description="Reset your password." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="text-center mb-6">
@@ -421,7 +536,7 @@ export default function ClubAuth() {
     return (
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
         <SEO title={`Registration Complete | ${clubName}`} description="Account created." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
@@ -448,7 +563,7 @@ export default function ClubAuth() {
     return (
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+        <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
         <SEO title={`Visitor Registered | ${clubName}`} description="Visitor registered." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
@@ -474,7 +589,7 @@ export default function ClubAuth() {
   return (
     <div className="min-h-screen relative flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
+      <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
       <SEO
         title={`Sign In | ${clubName}`}
         description={`Sign in or register for ${clubName} on SquashHub.`}

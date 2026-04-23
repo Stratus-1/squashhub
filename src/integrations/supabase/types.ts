@@ -3875,6 +3875,15 @@ export type Database = {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
       }
+      claim_member_by_league_number: {
+        Args: {
+          _club_member_id: string
+          _email: string
+          _league_number: string
+          _phone?: string
+        }
+        Returns: string
+      }
       get_club_analytics: { Args: { days_back?: number }; Returns: Json }
       get_head_to_head_by_member: {
         Args: { limit_count?: number; target_member_id: string }
@@ -3962,6 +3971,14 @@ export type Database = {
         Returns: {
           has_number: boolean
           has_phone: boolean
+          id: string
+          masked_name: string
+        }[]
+      }
+      lookup_member_by_league_number: {
+        Args: { _club_id: string; _league_number: string }
+        Returns: {
+          association_name: string
           id: string
           masked_name: string
         }[]

@@ -138,9 +138,15 @@ export default function Home() {
 
       {/* ─── Hero ─── */}
       <section id="top" className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroBg})` }}
+        <video
+          className="absolute inset-0 w-full h-full object-cover"
+          src="/videos/hero-bg.webm"
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={heroBg}
+          aria-hidden="true"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/85 via-background/75 to-background" />
 

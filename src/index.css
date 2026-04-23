@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'Sakana';
+  src: url('/fonts/Sakana.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -50,8 +58,8 @@
     --sidebar-border: 220 35% 20%;
     --sidebar-ring: 38 95% 55%;
 
-    --font-heading: 'Space Grotesk', system-ui, sans-serif;
-    --font-body: 'Inter', system-ui, sans-serif;
+    --font-heading: 'Sakana', 'Open Sans', system-ui, sans-serif;
+    --font-body: 'Open Sans', system-ui, sans-serif;
   }
 
   .dark {

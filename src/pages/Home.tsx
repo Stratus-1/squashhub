@@ -24,7 +24,7 @@ import heroBg from "@/assets/hero-court.jpg";
 import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";
 import playersMatchImg from "@/assets/players-match.jpg";
-import shLogoFull from "@/assets/shub-logo-full.png";
+import shLogoFull from "@/assets/shub-logo-white.png";
 import featuresCourtBg from "@/assets/features-court-bg.jpg";
 
 const fadeUp = {

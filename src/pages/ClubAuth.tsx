@@ -346,6 +346,7 @@ export default function ClubAuth() {
     // AuthProvider's onAuthStateChange will redirect via <Navigate to="/" /> at top of component.
   };
 
+  const handleNewMemberSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = newName.trim();
     const email = newEmail.trim();

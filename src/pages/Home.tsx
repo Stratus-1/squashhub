@@ -143,10 +143,10 @@ export default function Home() {
               <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
             </nav>
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                 Find/Create My Association
               </Button>
-              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full">
+              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
                 Register Your Club
               </Button>
             </div>

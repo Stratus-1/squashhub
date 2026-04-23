@@ -664,6 +664,10 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         }
       }
       setLeagueData(allData);
+      // Deep-clone for the snapshot so later edits to leagueData don't mutate it.
+      initialLeagueData.current = Object.fromEntries(
+        Object.entries(allData).map(([k, v]) => [k, v.map(p => ({ ...p }))])
+      );
       setLoaded(true);
     })();
   }, [open, leagues.length]);

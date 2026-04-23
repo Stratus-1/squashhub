@@ -118,29 +118,7 @@ export default function Home() {
         path="/"
       />
 
-      {/* ─── Top Bar ─── */}
-      <header className="sticky top-4 z-50 px-4">
-        <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg">
-          <div className="flex items-center gap-2">
-            <img src={shLogoFull} alt="SquashHub" className="h-7 w-auto object-contain" />
-          </div>
-          <nav className="hidden sm:flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => scrollTo("top")} className="text-white hover:bg-white/10 hover:text-white">Home</Button>
-            <Button variant="ghost" size="sm" onClick={() => scrollTo("features")} className="text-white hover:bg-white/10 hover:text-white">Features</Button>
-            <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
-              Find/Create My Association
-            </Button>
-            <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full">
-              Register Your Club
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* ─── Hero ─── */}
+      {/* ─── Hero with Top Bar ─── */}
       <section id="top" className="relative overflow-hidden">
         <video
           className="absolute inset-0 w-full h-full object-cover"
@@ -152,9 +130,30 @@ export default function Home() {
           poster={heroBg}
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/85 via-background/75 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
 
-        <div className="relative max-w-6xl mx-auto px-4 pt-16 pb-20">
+        <header className="relative z-50 pt-4 px-4">
+          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg">
+            <div className="flex items-center gap-2">
+              <img src={shLogoFull} alt="SquashHub" className="h-7 w-auto object-contain" />
+            </div>
+            <nav className="hidden sm:flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={() => scrollTo("top")} className="text-white hover:bg-white/10 hover:text-white">Home</Button>
+              <Button variant="ghost" size="sm" onClick={() => scrollTo("features")} className="text-white hover:bg-white/10 hover:text-white">Features</Button>
+              <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
+            </nav>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[#D5AF41] hover:bg-[#D5AF41]/90 text-black">
+                Find/Create My Association
+              </Button>
+              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full">
+                Register Your Club
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-20">
           <div className="max-w-3xl space-y-6">
             <motion.h1
               {...fadeUp}

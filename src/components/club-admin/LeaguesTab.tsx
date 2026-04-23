@@ -509,6 +509,10 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const qc = useQueryClient();
   const { data: ladderPlayers } = useLadder();
   const [leagueData, setLeagueData] = useState<Record<string, LeaguePlayer[]>>({});
+  // Snapshot of registrations as loaded from the DB. Used by Save to detect
+  // which leagues actually changed in this session, so untouched leagues are
+  // never wiped.
+  const initialLeagueData = useRef<Record<string, LeaguePlayer[]>>({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const dragItem = useRef<{ leagueId: string; idx: number } | null>(null);

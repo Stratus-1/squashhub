@@ -354,8 +354,72 @@ export default function ClubAuth() {
       }
     );
     if (claimErr) {
+      const claimMessage = claimErr.message || "";
+      const isAlreadyLinkedRace = claimMessage.includes("No unlinked member matches that league number");
+
+      if (isAlreadyLinkedRace) {
+        const { data: authData } = await supabase.auth.getUser();
+        const authUserId = authData.user?.id;
+
+        if (authUserId) {
+          let linkedMember: { id: string } | null = null;
+
+          if (matchedMemberId) {
+            const { data } = await fromExt("club_members")
+              .select("id")
+              .eq("id", matchedMemberId)
+              .eq("club_id", club.id)
+              .eq("user_id", authUserId)
+              .maybeSingle();
+            linkedMember = (data as { id: string } | null) ?? null;
+          }
+
+          if (!linkedMember) {
+            const { data } = await fromExt("club_members")
+              .select("id")
+              .eq("club_id", club.id)
+              .eq("user_id", authUserId)
+              .maybeSingle();
+            linkedMember = (data as { id: string } | null) ?? null;
+          }
+
+          if (linkedMember) {
+            const { data: affiliation } = await fromExt("member_association_affiliations")
+              .select("association_id")
+              .eq("club_member_id", linkedMember.id)
+              .eq("active", true)
+              .ilike("league_association_number", number)
+              .maybeSingle();
+
+            const memberPatch: Record<string, string | boolean | null> = {
+              email,
+              phone,
+              plays_league: true,
+            };
+
+            if (leagueClubMemberNumber.trim()) {
+              memberPatch.club_member_number = leagueClubMemberNumber.trim();
+            }
+
+            if (affiliation?.association_id) {
+              memberPatch.enable_league_association_id = affiliation.association_id;
+            }
+
+            const { error: repairErr } = await fromExt("club_members")
+              .update(memberPatch)
+              .eq("id", linkedMember.id);
+
+            if (!repairErr) {
+              toast.success("Welcome! Complete your profile to get started.");
+              setLoading(false);
+              return;
+            }
+          }
+        }
+      }
+
       console.warn("[CSIR signup] claim failed:", claimErr);
-      toast.error(claimErr.message || "Could not link your member record");
+      toast.error(claimMessage || "Could not link your member record");
       setLoading(false);
       return;
     }

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useMyLeagueRegistration } from "@/hooks/use-club";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { FillUpLeaguesTab } from "@/components/league-games/FillUpLeaguesTab";
@@ -27,6 +27,7 @@ type AssocRow = {
 export default function LeagueGames() {
   const { activeMember } = useMemberContext();
   const { data: clubData } = useMyClub();
+  const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(activeMember?.id);
   const clubId = clubData?.club?.id;
 
   // Fetch club's configured squash week start day (Wed=3 by default) — used as fallback
@@ -68,21 +69,6 @@ export default function LeagueGames() {
     enabled: !!clubId,
   });
 
-  // Get current member's league registrations (to flag "Your League" + default switcher)
-  const { data: myLeagueRegs } = useQuery({
-    queryKey: ["my-league-registrations", activeMember?.id],
-    queryFn: async () => {
-      if (!activeMember?.id) return [];
-      const { data, error } = await supabase
-        .from("member_league_registrations")
-        .select("*, league:leagues(id, name, code, association_id)")
-        .eq("club_member_id", activeMember.id);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!activeMember?.id,
-  });
-
   const associations = clubAssociations || [];
 
   // Selected association (segmented pills). Persisted per-user in localStorage.
@@ -98,12 +84,10 @@ export default function LeagueGames() {
       return;
     }
     // 2. Default to the association the member plays in
-    const myAssocIds = new Set(
-      ((myLeagueRegs || []) as any[]).map((r) => r.league?.association_id).filter(Boolean)
-    );
-    const myAssoc = associations.find((a) => myAssocIds.has(a.id));
+    const myAssocId = (myPrimaryLeagueReg as any)?.association_id as string | undefined;
+    const myAssoc = associations.find((a) => a.id === myAssocId);
     setSelectedAssocId((myAssoc || associations[0]).id);
-  }, [associations, myLeagueRegs, storageKey]);
+  }, [associations, myPrimaryLeagueReg, storageKey]);
 
   const handleSelect = (id: string) => {
     setSelectedAssocId(id);
@@ -143,14 +127,12 @@ export default function LeagueGames() {
   }, [leaguesInScope]);
 
   const myTeamCodes = useMemo(() => {
-    if (!myLeagueRegs) return new Set<string>();
-    return new Set(
-      (myLeagueRegs as any[])
-        .filter((r) => !selectedAssocId || r.league?.association_id === selectedAssocId)
-        .map((r) => r.league?.code)
-        .filter((c): c is string => typeof c === "string" && c.length > 0)
-    );
-  }, [myLeagueRegs, selectedAssocId]);
+    const assocId = (myPrimaryLeagueReg as any)?.association_id as string | undefined;
+    const code = (myPrimaryLeagueReg as any)?.leagues?.code as string | undefined;
+    if (!code) return new Set<string>();
+    if (selectedAssocId && assocId && selectedAssocId !== assocId) return new Set<string>();
+    return new Set([code]);
+  }, [myPrimaryLeagueReg, selectedAssocId]);
 
   const showSwitcher = associations.length > 1;
 

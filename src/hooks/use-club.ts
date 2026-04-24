@@ -276,7 +276,7 @@ export function useMyLeagueRegistration(clubMemberId?: string) {
     queryFn: async () => {
       const [regsRes, affsRes] = await Promise.all([
         fromExt("member_league_registrations")
-          .select("*, leagues:league_id(association_id)")
+          .select("*, leagues:league_id(id, name, code, association_id)")
           .eq("club_member_id", clubMemberId!)
           .order("created_at", { ascending: true }),
         fromExt("member_association_affiliations")
@@ -294,7 +294,12 @@ export function useMyLeagueRegistration(clubMemberId?: string) {
         ssa_number: string | null;
         is_captain: boolean;
         player_rank: number | null;
-        leagues?: { association_id?: string | null } | null;
+        leagues?: {
+          id?: string | null;
+          name?: string | null;
+          code?: string | null;
+          association_id?: string | null;
+        } | null;
       }>;
       const affs = (affsRes.data || []) as Array<{
         association_id: string;

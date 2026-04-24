@@ -289,7 +289,7 @@ export default function Home() {
                     Register Your Club
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white/80 drop-shadow">
                   Free until September 2026 · No credit card required
                 </p>
               </div>

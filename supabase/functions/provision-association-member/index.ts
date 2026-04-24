@@ -287,49 +287,101 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (homeMember?.id && homeAssoc?.id) {
-        // Find or create a default home-club league for this association so
-        // we can attach the allocated number via member_league_registrations.
-        let { data: leagueRow } = await supabaseAdmin
+        // Skip auto league-registration if the member is already registered in ANY
+        // league for this association at their home club. Admins control league
+        // placement (men's/ladies/division) — we must not silently drop them
+        // into the first league we find. The permanent affiliation row below
+        // still records the official NSA/LS number on the member.
+        const { data: assocLeagues } = await supabaseAdmin
           .from("leagues")
           .select("id")
           .eq("club_id", validatedHomeClubId)
-          .eq("association_id", homeAssoc.id)
-          .limit(1)
-          .maybeSingle();
+          .eq("association_id", homeAssoc.id);
 
-        if (!leagueRow?.id) {
-          const defaultName = `${homeAssoc.abbreviation || homeAssoc.name} Affiliation`;
-          const { data: created, error: leagueErr } = await supabaseAdmin
-            .from("leagues")
-            .insert({
-              club_id: validatedHomeClubId,
-              association_id: homeAssoc.id,
-              name: defaultName,
-              code: homeAssoc.abbreviation || null,
-            })
-            .select("id")
-            .single();
-          if (leagueErr) {
-            console.warn("[provision-association-member] default league create failed", leagueErr);
-          } else {
-            leagueRow = created;
+        const assocLeagueIds = (assocLeagues || []).map((l: any) => l.id);
+
+        let alreadyRegistered = false;
+        if (assocLeagueIds.length > 0) {
+          const { data: existingReg } = await supabaseAdmin
+            .from("member_league_registrations")
+            .select("id, league_association_number")
+            .eq("club_member_id", homeMember.id)
+            .in("league_id", assocLeagueIds)
+            .limit(1);
+
+          if (existingReg && existingReg.length > 0) {
+            alreadyRegistered = true;
+            // Backfill the association number on the existing registration if missing.
+            if (!existingReg[0].league_association_number) {
+              await supabaseAdmin
+                .from("member_league_registrations")
+                .update({ league_association_number: allocatedNumber })
+                .eq("id", existingReg[0].id);
+            }
           }
         }
 
-        if (leagueRow?.id) {
-          // Upsert the registration so re-joins don't duplicate.
-          const { error: regErr } = await supabaseAdmin
-            .from("member_league_registrations")
-            .upsert(
-              {
-                club_member_id: homeMember.id,
-                league_id: leagueRow.id,
-                league_association_number: allocatedNumber,
-              },
-              { onConflict: "club_member_id,league_id" }
-            );
-          if (regErr) {
-            console.warn("[provision-association-member] reg upsert failed", regErr);
+        // Only create a placeholder registration when the member has NO existing
+        // league placement at this association. Pick a league that matches the
+        // member's gender so we never drop a male player into a Ladies league.
+        if (!alreadyRegistered) {
+          const { data: memberRow } = await supabaseAdmin
+            .from("club_members")
+            .select("gender")
+            .eq("id", homeMember.id)
+            .maybeSingle();
+
+          const isLadies = (memberRow?.gender || "").toLowerCase() === "ladies"
+            || (memberRow?.gender || "").toLowerCase() === "female";
+
+          let leagueRow: { id: string } | null = null;
+          if (assocLeagueIds.length > 0) {
+            const { data: leaguesFull } = await supabaseAdmin
+              .from("leagues")
+              .select("id, name")
+              .in("id", assocLeagueIds);
+
+            const matches = (leaguesFull || []).filter((l: any) => {
+              const n = String(l.name || "").toLowerCase();
+              const looksLadies = n.includes("ladies") || n.includes("women");
+              return isLadies ? looksLadies : !looksLadies;
+            });
+            leagueRow = (matches[0] as any) || null;
+          }
+
+          if (!leagueRow?.id) {
+            const defaultName = `${homeAssoc.abbreviation || homeAssoc.name} Affiliation`;
+            const { data: created, error: leagueErr } = await supabaseAdmin
+              .from("leagues")
+              .insert({
+                club_id: validatedHomeClubId,
+                association_id: homeAssoc.id,
+                name: defaultName,
+                code: homeAssoc.abbreviation || null,
+              })
+              .select("id")
+              .single();
+            if (leagueErr) {
+              console.warn("[provision-association-member] default league create failed", leagueErr);
+            } else {
+              leagueRow = created;
+            }
+          }
+
+          if (leagueRow?.id) {
+            const { error: regErr } = await supabaseAdmin
+              .from("member_league_registrations")
+              .upsert(
+                {
+                  club_member_id: homeMember.id,
+                  league_id: leagueRow.id,
+                  league_association_number: allocatedNumber,
+                },
+                { onConflict: "club_member_id,league_id" }
+              );
+            if (regErr) {
+              console.warn("[provision-association-member] reg upsert failed", regErr);
+            }
           }
         }
 

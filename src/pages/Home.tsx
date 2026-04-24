@@ -258,7 +258,7 @@ export default function Home() {
               >
                 <span>MANAGE EVERYTHING IN</span>
                 <br />
-                <span className="text-[#071434]">ONE PLACE</span>
+                <span className="text-primary">ONE PLACE</span>
               </motion.h2>
 
               <ul className="space-y-3">
@@ -269,12 +269,12 @@ export default function Home() {
                     transition={{ duration: 0.4, delay: i * 0.05 }}
                     className="flex items-start gap-3"
                   >
-                    <div className="w-5 h-5 rounded-full bg-[#071434]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-3 h-3 text-[#071434]" />
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Check className="w-3 h-3 text-white" />
                     </div>
-                    <p className="text-sm sm:text-base text-foreground">
+                    <p className="text-sm sm:text-base text-white">
                       <span className="font-semibold">{f.title}:</span>{" "}
-                      <span className="text-white">{f.desc}</span>
+                      <span className="text-white/85">{f.desc}</span>
                     </p>
                   </motion.li>
                 ))}

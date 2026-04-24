@@ -78,7 +78,7 @@ const FAQS = [
   { q: "How long does setup take?", a: "Setting up your club on the platform is quick and easy — usually under 2 minutes. Onboarding your existing members is the more involved part, but our team will assist you to migrate them across seamlessly. Depending on the size of your club, this may take a bit of time." },
   { q: "Do members need accounts?", a: "Members don't sign up to SquashHub directly — the club creates its own platform on SquashHub, and its members join under the club. Every member has an account with their club, where bookings, participation, and any outstanding fees or payments are reflected." },
   { q: "Can associations use it?", a: "Yes. League associations in smaller or rural areas often don't have a dedicated administrative platform. SquashHub can provide a full association management platform at a small fee, and members affiliated to that league are automatically linked through to the clubs where they play." },
-  { q: "Is my data secure?", a: "Yes, fully POPIA-aligned." },
+  { q: "Is my data secure?", a: "Yes. The platform runs on secure HTTPS pages and is fully POPIA-aligned, with hCaptcha protection on sign-in and registration to guard against bots and site crawling. Only authorised club admin personnel — such as the Captain, Chairman, Secretary, and Financial Manager — have full admin rights and access to member information." },
 ];
 
 export default function Home() {

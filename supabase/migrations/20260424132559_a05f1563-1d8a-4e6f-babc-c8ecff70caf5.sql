@@ -1,0 +1,1 @@
+DELETE FROM public.member_league_registrations WHERE id = '3355aecb-f54d-4089-b418-0edac817207d';

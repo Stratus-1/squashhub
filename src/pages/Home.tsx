@@ -74,7 +74,7 @@ const BENEFITS = [
 const FAQS = [
   { q: "What is SquashHub?", a: "A squash club management platform for bookings, leagues, members, and payments." },
   { q: "Who is it for?", a: "Clubs and associations across South Africa." },
-  { q: "Is it free?", a: "Yes, until September 2026." },
+  { q: "Is it free?", a: "Yes, completely free until September 2026. Final subscription pricing has not yet been finalised, but it will not exceed R5 per member, and a sliding scale will further reduce the per-member rate as your club's membership grows." },
   { q: "How long does setup take?", a: "Under 2 minutes." },
   { q: "Do members need accounts?", a: "Yes, for bookings and participation." },
   { q: "Can associations use it?", a: "Yes, with full oversight tools." },

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
-import { useMyClub, useIsClubAdmin, useMyClubMember } from "@/hooks/use-club";
+import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -51,6 +51,7 @@ export default function Dashboard() {
   const myPermissions = useMyPermissions();
   const hasAnyAdminAccess = isClubAdmin || myPermissions.size > 0;
   const myMemberId = activeMember?.id || null;
+  const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
   const { data: challenges } = useChallenges(effectiveUserId, { memberId: myMemberId });
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
@@ -98,22 +99,25 @@ export default function Dashboard() {
     queryFn: async () => {
       if (!clubId || !myMemberId) return [] as any[];
 
-      const { data: regs } = await supabase
-        .from("member_league_registrations")
-        .select("league_id, league:leagues(id, code, name, association_id, association:league_associations(platform_association_id))")
-        .eq("club_member_id", myMemberId);
-
       const myLeagueCodes = new Set<string>();
       const platformAssocIds = new Set<string>();
       const clubPrefixes = new Set<string>();
-      for (const r of (regs || []) as any[]) {
-        const code = r.league?.code as string | undefined;
-        if (code) {
-          myLeagueCodes.add(code.toUpperCase());
-          const m = code.match(/^([A-Za-z]+)/);
-          if (m) clubPrefixes.add(m[1].toUpperCase());
-        }
-        const pa = r.league?.association?.platform_association_id as string | undefined;
+
+      const primaryCode = (myPrimaryLeagueReg as any)?.leagues?.code as string | undefined;
+      if (primaryCode) {
+        const upperCode = primaryCode.toUpperCase();
+        myLeagueCodes.add(upperCode);
+        const m = upperCode.match(/^([A-Za-z]+)/);
+        if (m) clubPrefixes.add(m[1].toUpperCase());
+      }
+
+      const primaryAssociationId = (myPrimaryLeagueReg as any)?.leagues?.association_id as string | undefined;
+      if (primaryAssociationId) {
+        const { data: assocRow } = await fromExt("league_associations")
+          .select("platform_association_id")
+          .eq("id", primaryAssociationId)
+          .maybeSingle();
+        const pa = (assocRow as any)?.platform_association_id as string | undefined;
         if (pa) platformAssocIds.add(pa);
       }
 

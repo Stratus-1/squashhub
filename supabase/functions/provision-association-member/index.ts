@@ -350,25 +350,13 @@ Deno.serve(async (req) => {
           }
 
           if (!leagueRow?.id) {
-            const defaultName = `${homeAssoc.abbreviation || homeAssoc.name} Affiliation`;
-            const { data: created, error: leagueErr } = await supabaseAdmin
-              .from("leagues")
-              .insert({
-                club_id: validatedHomeClubId,
-                association_id: homeAssoc.id,
-                name: defaultName,
-                code: homeAssoc.abbreviation || null,
-              })
-              .select("id")
-              .single();
-            if (leagueErr) {
-              console.warn("[provision-association-member] default league create failed", leagueErr);
-            } else {
-              leagueRow = created;
-            }
-          }
-
-          if (leagueRow?.id) {
+            console.warn("[provision-association-member] no gender-matched league found; skipping placeholder registration", {
+              homeClubId: validatedHomeClubId,
+              homeMemberId: homeMember.id,
+              associationId: homeAssoc.id,
+              gender: memberRow?.gender ?? null,
+            });
+          } else {
             const { error: regErr } = await supabaseAdmin
               .from("member_league_registrations")
               .upsert(

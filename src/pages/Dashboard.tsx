@@ -95,7 +95,7 @@ export default function Dashboard() {
   // Priority 1: fixtures where I'm in the lineup (filled-up team)
   // Priority 2 (fallback): fixtures for any league I'm registered in
   const { data: myLeagueFixtures } = useQuery({
-    queryKey: ["my-upcoming-league-fixtures", clubId, myMemberId],
+    queryKey: ["my-upcoming-league-fixtures", clubId, myMemberId, (myPrimaryLeagueReg as any)?.league_id || null],
     queryFn: async () => {
       if (!clubId || !myMemberId) return [] as any[];
 

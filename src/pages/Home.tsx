@@ -305,9 +305,9 @@ export default function Home() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${playersMatchImg})` }}
         />
-        <div className="absolute inset-0 bg-background/88 backdrop-blur-sm bg-neutral-950" />
+        <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-sm" />
         <div className="relative max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
+          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-white">
             Why use SquashHub
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 max-w-5xl mx-auto">
@@ -318,10 +318,10 @@ export default function Home() {
                 transition={{ duration: 0.4, delay: i * 0.04 }}
                 className="flex flex-col items-center text-center gap-3"
               >
-                <div className="w-14 h-14 rounded-xl bg-background border border-border shadow-sm flex items-center justify-center">
+                <div className="w-14 h-14 rounded-xl bg-white border border-white/20 shadow-sm flex items-center justify-center">
                   <Check className="w-6 h-6 text-primary" />
                 </div>
-                <p className="text-sm text-foreground font-medium leading-snug">{b}</p>
+                <p className="text-sm text-white font-medium leading-snug">{b}</p>
               </motion.div>
             ))}
           </div>

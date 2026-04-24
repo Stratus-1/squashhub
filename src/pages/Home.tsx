@@ -558,10 +558,10 @@ export default function Home() {
 function Stat({ value, label, loading }: { value: number; label: string; loading: boolean }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-primary text-[#bc2424]">
+      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-white drop-shadow-md">
         {loading ? "—" : value}
       </span>
-      <span className="text-sm text-muted-foreground font-medium">{label}</span>
+      <span className="text-sm text-white/90 font-medium drop-shadow">{label}</span>
     </div>
   );
 }

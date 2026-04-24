@@ -133,7 +133,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
 
         <header className="relative z-50 pt-4 px-4">
-          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg">
+          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-black/40 backdrop-blur-xl border border-white/20 shadow-lg">
             <div className="flex items-center gap-2">
               <img src={shLogoFull} alt="SquashHub" className="h-12 w-auto object-contain" />
             </div>
@@ -143,10 +143,10 @@ export default function Home() {
               <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
             </nav>
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                 Find/Create My Association
               </Button>
-              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                 Register Your Club
               </Button>
             </div>
@@ -161,13 +161,13 @@ export default function Home() {
               className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-foreground leading-[1.05] md:text-5xl"
             >
               Looking for a platform to{" "}
-              <span className="text-primary text-[#071536]">run your squash club?</span>
+              <span className="text-primary">run your squash club?</span>
             </motion.h1>
 
             <motion.p
               {...fadeUp}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-base sm:text-lg text-muted-foreground max-w-2xl"
+              className="text-base sm:text-lg text-white/90 max-w-2xl drop-shadow-md"
             >
               All-in-one squash club management software for South African clubs and associations.
               Bookings, leagues, members, and payments, all in one simple platform.
@@ -190,14 +190,14 @@ export default function Home() {
               className="space-y-2 pt-2"
             >
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+                <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                   Find/Create My Association
                 </Button>
-                <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+                <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                   Register Your Club
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-white/80 drop-shadow">
                 Free until September 2026 · No credit card required
               </p>
             </motion.div>
@@ -258,7 +258,7 @@ export default function Home() {
               >
                 <span>MANAGE EVERYTHING IN</span>
                 <br />
-                <span className="text-[#071434]">ONE PLACE</span>
+                <span className="text-primary">ONE PLACE</span>
               </motion.h2>
 
               <ul className="space-y-3">
@@ -269,12 +269,12 @@ export default function Home() {
                     transition={{ duration: 0.4, delay: i * 0.05 }}
                     className="flex items-start gap-3"
                   >
-                    <div className="w-5 h-5 rounded-full bg-[#071434]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-3 h-3 text-[#071434]" />
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Check className="w-3 h-3 text-white" />
                     </div>
-                    <p className="text-sm sm:text-base text-foreground">
+                    <p className="text-sm sm:text-base text-white">
                       <span className="font-semibold">{f.title}:</span>{" "}
-                      <span className="text-white">{f.desc}</span>
+                      <span className="text-white/85">{f.desc}</span>
                     </p>
                   </motion.li>
                 ))}
@@ -282,14 +282,14 @@ export default function Home() {
 
               <div className="space-y-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+                  <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                     Find/Create My Association
                   </Button>
-                  <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+                  <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                     Register Your Club
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white/80 drop-shadow">
                   Free until September 2026 · No credit card required
                 </p>
               </div>
@@ -305,9 +305,9 @@ export default function Home() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${playersMatchImg})` }}
         />
-        <div className="absolute inset-0 bg-background/88 backdrop-blur-sm bg-neutral-950" />
+        <div className="absolute inset-0 bg-neutral-950/90 backdrop-blur-sm" />
         <div className="relative max-w-6xl mx-auto px-4 py-16">
-          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-foreground">
+          <h2 className="text-2xl sm:text-3xl font-extrabold font-heading uppercase tracking-tight text-center mb-10 text-white">
             Why use SquashHub
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 max-w-5xl mx-auto">
@@ -318,10 +318,10 @@ export default function Home() {
                 transition={{ duration: 0.4, delay: i * 0.04 }}
                 className="flex flex-col items-center text-center gap-3"
               >
-                <div className="w-14 h-14 rounded-xl bg-background border border-border shadow-sm flex items-center justify-center">
+                <div className="w-14 h-14 rounded-xl bg-white border border-white/20 shadow-sm flex items-center justify-center">
                   <Check className="w-6 h-6 text-primary" />
                 </div>
-                <p className="text-sm text-foreground font-medium leading-snug">{b}</p>
+                <p className="text-sm text-white font-medium leading-snug">{b}</p>
               </motion.div>
             ))}
           </div>
@@ -361,7 +361,7 @@ export default function Home() {
                 )}
                 {clubs.length > 3 && (
                   <Button
-                    className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
+                    className="w-full rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg"
                     onClick={() => scrollTo("all-clubs")}
                   >
                     View More Clubs
@@ -395,7 +395,7 @@ export default function Home() {
                 )}
                 {associations.length > 3 && (
                   <Button
-                    className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
+                    className="w-full rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg"
                     onClick={() => scrollTo("all-clubs")}
                   >
                     View More
@@ -509,7 +509,7 @@ export default function Home() {
             Run your club with less admin and more control.
           </p>
           <div className="space-y-2 pt-2 flex flex-col items-center">
-            <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+            <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
               Register Your Club
             </Button>
             <p className="text-xs text-muted-foreground">
@@ -558,10 +558,10 @@ export default function Home() {
 function Stat({ value, label, loading }: { value: number; label: string; loading: boolean }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-primary text-[#bc2424]">
+      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-white drop-shadow-md">
         {loading ? "—" : value}
       </span>
-      <span className="text-sm text-muted-foreground font-medium">{label}</span>
+      <span className="text-sm text-white/90 font-medium drop-shadow">{label}</span>
     </div>
   );
 }
@@ -608,7 +608,7 @@ function PricingCard({
         {onGetStarted && (
           <Button
             onClick={onGetStarted}
-            className="w-full rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg"
+            className="w-full rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg"
           >
             Get Started
           </Button>
@@ -710,7 +710,7 @@ function ContactForm() {
         />
       </div>
       <div className="flex justify-end">
-        <Button type="submit" size="lg" className="gap-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 shadow-lg">
+        <Button type="submit" size="lg" className="gap-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
           <Mail className="w-4 h-4" />
           Submit Message
         </Button>

@@ -133,7 +133,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
 
         <header className="relative z-50 pt-4 px-4">
-          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-lg">
+          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-black/40 backdrop-blur-xl border border-white/20 shadow-lg">
             <div className="flex items-center gap-2">
               <img src={shLogoFull} alt="SquashHub" className="h-12 w-auto object-contain" />
             </div>

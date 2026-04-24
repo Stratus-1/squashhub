@@ -167,7 +167,7 @@ export default function Home() {
             <motion.p
               {...fadeUp}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-base sm:text-lg text-white/90 max-w-2xl drop-shadow-md"
+              className="text-base sm:text-lg text-gray-200 max-w-2xl [text-shadow:_0_2px_8px_rgb(0_0_0_/_70%)]"
             >
               All-in-one squash club management software for South African clubs and associations.
               Bookings, leagues, members, and payments, all in one simple platform.
@@ -558,10 +558,10 @@ export default function Home() {
 function Stat({ value, label, loading }: { value: number; label: string; loading: boolean }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-white drop-shadow-md">
+      <span className="text-3xl sm:text-4xl font-extrabold font-heading text-gray-200 [text-shadow:_0_2px_8px_rgb(0_0_0_/_70%)]">
         {loading ? "—" : value}
       </span>
-      <span className="text-sm text-white/90 font-medium drop-shadow">{label}</span>
+      <span className="text-sm text-gray-200 font-medium [text-shadow:_0_2px_6px_rgb(0_0_0_/_70%)]">{label}</span>
     </div>
   );
 }

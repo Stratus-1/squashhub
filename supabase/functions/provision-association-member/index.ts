@@ -287,11 +287,17 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (homeMember?.id && homeAssoc?.id) {
-        // Skip auto league-registration if the member is already registered in ANY
-        // league for this association at their home club. Admins control league
-        // placement (men's/ladies/division) — we must not silently drop them
-        // into the first league we find. The permanent affiliation row below
-        // still records the official NSA/LS number on the member.
+        // IMPORTANT: We deliberately do NOT create any `member_league_registrations`
+        // row here. A "league" (NSA / LS) is the governing association — `plays_league=true`
+        // plus the permanent `member_association_affiliations` row below is enough to
+        // mark the member as affiliated. A `member_league_registrations` row represents
+        // a *league team* (Men's 7th, Ladies 1st, etc.) and must ONLY be created by an
+        // admin via the league/team allocation UI. Auto-creating one here was the bug
+        // that kept dropping male players (Grant Williams) into the Ladies 1st league.
+        //
+        // Backfill the league_association_number on any EXISTING admin-created
+        // registrations for this association, so the official NSA/LS number shows
+        // on team rosters — but never insert a new registration.
         const { data: assocLeagues } = await supabaseAdmin
           .from("leagues")
           .select("id")
@@ -300,75 +306,19 @@ Deno.serve(async (req) => {
 
         const assocLeagueIds = (assocLeagues || []).map((l: any) => l.id);
 
-        let alreadyRegistered = false;
         if (assocLeagueIds.length > 0) {
-          const { data: existingReg } = await supabaseAdmin
+          const { data: existingRegs } = await supabaseAdmin
             .from("member_league_registrations")
             .select("id, league_association_number")
             .eq("club_member_id", homeMember.id)
-            .in("league_id", assocLeagueIds)
-            .limit(1);
+            .in("league_id", assocLeagueIds);
 
-          if (existingReg && existingReg.length > 0) {
-            alreadyRegistered = true;
-            // Backfill the association number on the existing registration if missing.
-            if (!existingReg[0].league_association_number) {
+          for (const reg of (existingRegs || []) as any[]) {
+            if (!reg.league_association_number) {
               await supabaseAdmin
                 .from("member_league_registrations")
                 .update({ league_association_number: allocatedNumber })
-                .eq("id", existingReg[0].id);
-            }
-          }
-        }
-
-        // Only create a placeholder registration when the member has NO existing
-        // league placement at this association. Pick a league that matches the
-        // member's gender so we never drop a male player into a Ladies league.
-        if (!alreadyRegistered) {
-          const { data: memberRow } = await supabaseAdmin
-            .from("club_members")
-            .select("gender")
-            .eq("id", homeMember.id)
-            .maybeSingle();
-
-          const isLadies = (memberRow?.gender || "").toLowerCase() === "ladies"
-            || (memberRow?.gender || "").toLowerCase() === "female";
-
-          let leagueRow: { id: string } | null = null;
-          if (assocLeagueIds.length > 0) {
-            const { data: leaguesFull } = await supabaseAdmin
-              .from("leagues")
-              .select("id, name")
-              .in("id", assocLeagueIds);
-
-            const matches = (leaguesFull || []).filter((l: any) => {
-              const n = String(l.name || "").toLowerCase();
-              const looksLadies = n.includes("ladies") || n.includes("women");
-              return isLadies ? looksLadies : !looksLadies;
-            });
-            leagueRow = (matches[0] as any) || null;
-          }
-
-          if (!leagueRow?.id) {
-            console.warn("[provision-association-member] no gender-matched league found; skipping placeholder registration", {
-              homeClubId: validatedHomeClubId,
-              homeMemberId: homeMember.id,
-              associationId: homeAssoc.id,
-              gender: memberRow?.gender ?? null,
-            });
-          } else {
-            const { error: regErr } = await supabaseAdmin
-              .from("member_league_registrations")
-              .upsert(
-                {
-                  club_member_id: homeMember.id,
-                  league_id: leagueRow.id,
-                  league_association_number: allocatedNumber,
-                },
-                { onConflict: "club_member_id,league_id" }
-              );
-            if (regErr) {
-              console.warn("[provision-association-member] reg upsert failed", regErr);
+                .eq("id", reg.id);
             }
           }
         }

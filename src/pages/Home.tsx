@@ -161,13 +161,13 @@ export default function Home() {
               className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-foreground leading-[1.05] md:text-5xl"
             >
               Looking for a platform to{" "}
-              <span className="text-primary text-[#071536]">run your squash club?</span>
+              <span className="text-primary">run your squash club?</span>
             </motion.h1>
 
             <motion.p
               {...fadeUp}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-base sm:text-lg text-muted-foreground max-w-2xl"
+              className="text-base sm:text-lg text-white/90 max-w-2xl drop-shadow-md"
             >
               All-in-one squash club management software for South African clubs and associations.
               Bookings, leagues, members, and payments, all in one simple platform.

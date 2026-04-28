@@ -47,6 +47,7 @@ function AnimatedCount({ value }: { value: number }) {
   return <motion.span>{rounded}</motion.span>;
 }
 
+interface ClubLandingProps {
   hostClub?: ClubData | null;
 }
 

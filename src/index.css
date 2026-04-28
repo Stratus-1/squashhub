@@ -25,6 +25,7 @@
 
     --primary: 220 65% 28%;
     --primary-foreground: 40 100% 97%;
+    --landing-navy: 223 74% 12%;
 
     --secondary: 220 10% 92%;
     --secondary-foreground: 220 30% 15%;
@@ -71,6 +72,7 @@
     --popover-foreground: 40 15% 92%;
     --primary: 220 55% 45%;
     --primary-foreground: 220 40% 5%;
+    --landing-navy: 223 74% 12%;
     --secondary: 220 20% 15%;
     --secondary-foreground: 40 15% 90%;
     --muted: 220 20% 15%;

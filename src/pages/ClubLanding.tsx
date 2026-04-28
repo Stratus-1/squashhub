@@ -2,9 +2,9 @@ import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight, ChevronDown } from "lucide-react";
+import { Loader2, Building2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { SEO } from "@/components/SEO";
 import { motion } from "framer-motion";
@@ -160,110 +160,127 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
 
         <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-16">
-          {/* Club header */}
           <motion.div
-            className="text-center space-y-3 mb-8"
+            className="w-full max-w-xl"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            {club.logo_url ? (
-              <img src={club.logo_url} alt={`${club.name} logo`} className="w-32 h-32 sm:w-36 sm:h-36 object-contain mx-auto rounded-xl shadow-lg" />
-            ) : (
-              <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
-                <Building2 className="w-10 h-10 text-primary-foreground" />
-              </div>
-            )}
-            <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-foreground">
-              {club.name}
-            </h1>
-            <p className="text-sm font-mono text-primary">{displaySubdomain}.squashhub.co.za</p>
-            {club.address && <p className="text-sm text-muted-foreground">{club.address}</p>}
-            {(club.email || club.phone) && (
-              <p className="text-xs text-muted-foreground">
-                {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
-              </p>
-            )}
-          </motion.div>
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="w-full h-auto p-0 bg-transparent grid grid-cols-2 gap-0 rounded-t-2xl overflow-hidden">
+                <TabsTrigger
+                  value="details"
+                  className="rounded-none rounded-tl-2xl py-4 text-base font-bold font-heading bg-white/90 text-landing-navy data-[state=active]:bg-landing-navy data-[state=active]:text-white shadow-none transition-colors"
+                >
+                  Club Details
+                </TabsTrigger>
+                <TabsTrigger
+                  value="fees"
+                  className="rounded-none rounded-tr-2xl py-4 text-base font-bold font-heading bg-white/90 text-landing-navy data-[state=active]:bg-landing-navy data-[state=active]:text-white shadow-none transition-colors"
+                >
+                  Membership Fees
+                </TabsTrigger>
+              </TabsList>
 
-          {/* Delegates inline */}
-          {hasDelegates && (
-            <motion.div
-              className="w-full max-w-lg mb-6 text-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.15 }}
-            >
-              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                {[
-                  { label: "Chairman", delegate: chairmanDelegate },
-                  { label: "Secretary", delegate: secretaryDelegate },
-                  { label: "Captain", delegate: captainDelegate },
-                ].filter(d => d.delegate).map(({ label, delegate }, i, arr) => (
-                  <span key={label} className="inline-flex items-center gap-1">
-                    <span className="font-medium text-foreground">{label}:</span>
-                    <span>{delegate!.name || "—"}</span>
-                    {i < arr.length - 1 && <span className="text-border ml-1">·</span>}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
+              <div className="rounded-b-2xl bg-white/30 backdrop-blur-md border border-white/40 shadow-2xl p-8">
+                <TabsContent value="details" className="mt-0 space-y-5 text-center">
+                  {club.logo_url ? (
+                    <img src={club.logo_url} alt={`${club.name} logo`} className="w-28 h-28 sm:w-32 sm:h-32 object-contain mx-auto rounded-xl shadow-lg" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
+                      <Building2 className="w-10 h-10 text-primary-foreground" />
+                    </div>
+                  )}
+                  <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-landing-navy">
+                    {club.name}
+                  </h1>
+                  <p className="text-sm font-bold font-mono text-landing-navy">{displaySubdomain}.squashhub.co.za</p>
+                  {club.address && <p className="text-base text-landing-navy/80">{club.address}</p>}
+                  {(club.email || club.phone) && (
+                    <p className="text-xs text-landing-navy/70">
+                      {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
+                    </p>
+                  )}
 
-          {/* Fees - collapsible small section */}
-          {hasFees && (
-            <motion.div
-              className="w-full max-w-sm mb-8"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            >
-              <details className="group">
-                <summary className="flex items-center justify-center gap-1 cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors select-none">
-                  <span>View Membership Fees</span>
-                  <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="mt-3 rounded-lg border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden">
-                  <table className="w-full text-xs">
-                    <tbody>
-                      {feeCategories.map((cat, i) => (
-                        <tr key={cat.id} className={i > 0 ? "border-t border-border/30" : ""}>
-                          <td className="px-3 py-2 text-foreground font-medium">
-                            {cat.name}
-                            {cat.description && (
-                              <span className="block text-[10px] text-muted-foreground font-normal">{cat.description}</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right font-semibold text-primary whitespace-nowrap">
-                            R{cat.annual_fee}<span className="text-muted-foreground font-normal">/yr</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {hasDelegates && (
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-landing-navy">
+                      {chairmanDelegate && (
+                        <div>
+                          <div className="font-bold text-sm">Chairman:</div>
+                          <div className="text-sm">{chairmanDelegate.name}</div>
+                        </div>
+                      )}
+                      {secretaryDelegate && (
+                        <div>
+                          <div className="font-bold text-sm">Secretary:</div>
+                          <div className="text-sm">{secretaryDelegate.name}</div>
+                        </div>
+                      )}
+                      {captainDelegate && (
+                        <div className="col-span-2">
+                          <div className="font-bold text-sm">Captain:</div>
+                          <div className="text-sm">{captainDelegate.name}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="fees" className="mt-0 space-y-5">
+                  <div className="flex flex-col items-center space-y-3">
+                    {club.logo_url ? (
+                      <img src={club.logo_url} alt={`${club.name} logo`} className="w-28 h-28 sm:w-32 sm:h-32 object-contain rounded-xl shadow-lg" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
+                        <Building2 className="w-10 h-10 text-primary-foreground" />
+                      </div>
+                    )}
+                    <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-landing-navy">
+                      {club.name}
+                    </h1>
+                  </div>
+
+                  {hasFees ? (
+                    <div className="rounded-xl bg-landing-navy/95 overflow-hidden shadow-lg">
+                      <table className="w-full text-sm">
+                        <tbody>
+                          {feeCategories.map((cat, i) => (
+                            <tr key={cat.id} className={i > 0 ? "border-t border-white/10" : ""}>
+                              <td className="px-4 py-3 text-white font-bold">
+                                {cat.name}
+                                {cat.description && (
+                                  <span className="block text-xs text-white/60 font-normal mt-0.5">{cat.description}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-primary whitespace-nowrap">
+                                R{cat.annual_fee}<span className="text-white/60 font-normal">/yr</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-center text-landing-navy/70 py-8">No membership fees configured.</p>
+                  )}
+                </TabsContent>
+
+                <div className="mt-6">
+                  <Button
+                    size="lg"
+                    className="w-full gap-2 bg-landing-navy hover:bg-landing-navy/90 text-white rounded-full h-12"
+                    onClick={() => { window.location.href = signInUrl; }}
+                  >
+                    Sign In / Register
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
                 </div>
-              </details>
-            </motion.div>
-          )}
+              </div>
 
-          {/* Centered Sign In button */}
-          <motion.div
-            className="w-full max-w-xs"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <Button
-              size="lg"
-              className="w-full gap-2"
-              onClick={() => { window.location.href = signInUrl; }}
-            >
-              Sign In / Register
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <div className="mt-4">
-              <PoweredBySquashHub />
-            </div>
+              <div className="mt-4 flex justify-center">
+                <PoweredBySquashHub />
+              </div>
+            </Tabs>
           </motion.div>
         </div>
       </section>

@@ -121,7 +121,7 @@ export default function Home() {
       {/* ─── Hero with Top Bar ─── */}
       <section id="top" className="relative overflow-hidden">
         <video
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover brightness-50"
           src="/videos/hero-bg.webm"
           autoPlay
           loop
@@ -130,7 +130,8 @@ export default function Home() {
           poster={heroBg}
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
+        {/* Fixed dark overlay — guarantees readable hero text whether the video plays or only the poster shows, in any color mode */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(220_45%_8%)]/70 via-[hsl(220_45%_10%)]/60 to-[hsl(220_45%_12%)]/85" />
 
         <header className="relative z-50 pt-4 px-4">
           <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-black/40 backdrop-blur-xl border border-white/20 shadow-lg">

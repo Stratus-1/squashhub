@@ -207,18 +207,19 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                     {club.name}
                   </h1>
                   <p className="text-sm font-bold font-mono text-white invisible">{displaySubdomain}.squashhub.co.za</p>
-                  {club.address && <p className="text-base text-white/90">{club.address}</p>}
-                  {(club.email || club.phone) && (
-                    <p className="text-white/80 text-base font-bold">
-                      {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
-                    </p>
-                  )}
 
                   {memberCount > 0 && (
                     <div className="flex items-baseline justify-center gap-2 pt-2">
                       <span className="text-5xl font-extrabold font-heading text-white tabular-nums">{memberCount}</span>
                       <span className="text-base font-bold text-white/90 uppercase tracking-wide">Squash Members</span>
                     </div>
+                  )}
+
+                  {club.address && <p className="text-base text-white/90">{club.address}</p>}
+                  {(club.email || club.phone) && (
+                    <p className="text-white/80 text-base font-bold">
+                      {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
+                    </p>
                   )}
 
                   {hasDelegates && (

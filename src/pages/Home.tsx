@@ -159,16 +159,16 @@ export default function Home() {
             <motion.h1
               {...fadeUp}
               transition={{ duration: 0.5 }}
-              className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-foreground leading-[1.05] md:text-5xl"
+              className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-white leading-[1.05] md:text-5xl [text-shadow:_0_2px_12px_rgb(0_0_0_/_60%)]"
             >
               Looking for a platform to{" "}
-              <span className="text-landing-navy">run your squash club?</span>
+              <span className="text-white">run your squash club?</span>
             </motion.h1>
 
             <motion.p
               {...fadeUp}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-base sm:text-lg text-gray-200 max-w-2xl [text-shadow:_0_2px_8px_rgb(0_0_0_/_70%)]"
+              className="text-base sm:text-lg text-gray-100 max-w-2xl [text-shadow:_0_2px_8px_rgb(0_0_0_/_70%)]"
             >
               All-in-one squash club management software for South African clubs and associations.
               Bookings, leagues, members, and payments, all in one simple platform.

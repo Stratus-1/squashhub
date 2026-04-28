@@ -99,9 +99,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
   const { data: memberCount = 0 } = useQuery({
     queryKey: ["club-member-count-public", club?.id],
     queryFn: async () => {
-      const { data, error } = await (fromExt as any).rpc
-        ? await (fromExt as any).rpc("get_club_member_count", { _club_id: club!.id })
-        : await import("@/integrations/supabase/client").then(m => m.supabase.rpc("get_club_member_count", { _club_id: club!.id }));
+      const { data, error } = await (supabase.rpc as any)("get_club_member_count", { _club_id: club!.id });
       if (error) throw error;
       return (data as number) ?? 0;
     },

@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { SEO } from "@/components/SEO";
 import { motion } from "framer-motion";
-import heroBg from "@/assets/hero-bg.jpg";
+
 
 interface ClubDelegate {
   id: string;
@@ -149,11 +149,15 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
       />
 
       <section className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroBg})` }}
+        <video
+          className="absolute inset-0 w-full h-full object-cover"
+          src="/videos/squash-hero.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
 
         <div className="relative flex flex-col items-center justify-center min-h-screen px-4 py-16">
           {/* Club header */}

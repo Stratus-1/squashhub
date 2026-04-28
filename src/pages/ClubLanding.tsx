@@ -1,6 +1,7 @@
 import { useParams, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, Building2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,17 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
         .order("sort_order");
       if (error) throw error;
       return (data || []) as FeeCategory[];
+    },
+    enabled: !!club?.id,
+  });
+
+  // Fetch member count (public, no PII)
+  const { data: memberCount = 0 } = useQuery({
+    queryKey: ["club-member-count-public", club?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_club_member_count", { _club_id: club!.id });
+      if (error) throw error;
+      return (data as number) ?? 0;
     },
     enabled: !!club?.id,
   });
@@ -200,6 +212,13 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                     <p className="text-white/80 text-base font-bold">
                       {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
                     </p>
+                  )}
+
+                  {memberCount > 0 && (
+                    <div className="flex items-baseline justify-center gap-2 pt-2">
+                      <span className="text-5xl font-extrabold font-heading text-white tabular-nums">{memberCount}</span>
+                      <span className="text-base font-bold text-white/90 uppercase tracking-wide">Squash Members</span>
+                    </div>
                   )}
 
                   {hasDelegates && (

@@ -121,7 +121,7 @@ export default function Home() {
       {/* ─── Hero with Top Bar ─── */}
       <section id="top" className="relative overflow-hidden">
         <video
-          className="absolute inset-0 w-full h-full object-cover brightness-50"
+          className="absolute inset-0 w-full h-full object-cover brightness-75"
           src="/videos/hero-bg.webm"
           autoPlay
           loop
@@ -130,8 +130,13 @@ export default function Home() {
           poster={heroBg}
           aria-hidden="true"
         />
-        {/* Fixed dark overlay — guarantees readable hero text whether the video plays or only the poster shows, in any color mode */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(220_45%_8%)]/70 via-[hsl(220_45%_10%)]/60 to-[hsl(220_45%_12%)]/85" />
+        {/* Layered cinematic overlay — guarantees readable hero text whether the video plays or only the poster shows, in any color mode */}
+        {/* 1. Base tint — uniform dark navy wash so the bright poster never punches through */}
+        <div className="absolute inset-0 bg-[hsl(220_50%_7%)]/55" />
+        {/* 2. Vertical fade — lighter at top, fully solid at bottom so hero blends seamlessly into next section */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(220_50%_6%)]/30 via-[hsl(220_50%_8%)]/55 to-[hsl(220_50%_10%)]" />
+        {/* 3. Radial vignette — subtle glow behind headline, darker edges for that cinematic feel */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,transparent_0%,hsl(220_50%_5%)/0.5_75%)]" />
 
         <header className="relative z-50 pt-4 px-4">
           <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-black/40 backdrop-blur-xl border border-white/20 shadow-lg">
@@ -162,7 +167,7 @@ export default function Home() {
               className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-white leading-[1.05] md:text-5xl [text-shadow:_0_2px_12px_rgb(0_0_0_/_60%)]"
             >
               Looking for a platform to{" "}
-              <span className="text-white">run your squash club?</span>
+              <span className="text-amber-300">run your squash club?</span>
             </motion.h1>
 
             <motion.p

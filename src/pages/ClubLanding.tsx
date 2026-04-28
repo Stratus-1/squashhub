@@ -191,19 +191,19 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                       <Building2 className="w-10 h-10 text-primary-foreground" />
                     </div>
                   )}
-                  <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-landing-navy">
+                  <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-white">
                     {club.name}
                   </h1>
-                  <p className="text-sm font-bold font-mono text-landing-navy">{displaySubdomain}.squashhub.co.za</p>
-                  {club.address && <p className="text-base text-landing-navy/80">{club.address}</p>}
+                  <p className="text-sm font-bold font-mono text-white">{displaySubdomain}.squashhub.co.za</p>
+                  {club.address && <p className="text-base text-white/90">{club.address}</p>}
                   {(club.email || club.phone) && (
-                    <p className="text-xs text-landing-navy/70">
+                    <p className="text-xs text-white/80">
                       {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
                     </p>
                   )}
 
                   {hasDelegates && (
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-landing-navy">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-white">
                       {chairmanDelegate && (
                         <div>
                           <div className="font-bold text-sm">Chairman:</div>
@@ -235,7 +235,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                         <Building2 className="w-10 h-10 text-primary-foreground" />
                       </div>
                     )}
-                    <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-landing-navy">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold font-heading tracking-tight text-white">
                       {club.name}
                     </h1>
                   </div>

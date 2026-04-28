@@ -197,7 +197,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                   <p className="text-sm font-bold font-mono text-white">{displaySubdomain}.squashhub.co.za</p>
                   {club.address && <p className="text-base text-white/90">{club.address}</p>}
                   {(club.email || club.phone) && (
-                    <p className="text-xs text-white/80">
+                    <p className="text-white/80 text-base font-bold">
                       {club.email}{club.email && club.phone ? " · " : ""}{club.phone}
                     </p>
                   )}

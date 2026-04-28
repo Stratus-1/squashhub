@@ -1,55 +1,30 @@
-# Fix washed-out homepage hero on other users' devices
+## Restore the elegant hero overlay
 
-## Root cause
+### What went wrong
 
-The hero is designed assuming the background video (`/videos/hero-bg.webm`) always loads and provides a dark backdrop for white text. On the other user's device the video isn't rendering — they are seeing only the light poster image (`hero-court.jpg`) plus a gradient overlay that fades to the page background color.
+When I fixed the "washed out text" issue, I replaced the original layered gradient with a flat low-opacity navy wash. That made text readable but stripped the premium feel — the bright squash-court poster image now bleeds through (especially at the bottom where the gradient only hits 85% opacity), and the smooth fade-into-the-page-below is gone.
 
-Combined with light color mode being active, this produces:
+### Fix (single file: `src/pages/Home.tsx`, hero section only)
 
-- Heading uses `text-foreground` → near-black, washed against the light poster → looks like faded gray
-- Description uses `text-gray-200` → essentially invisible on a white/light background
-- Only the `text-landing-navy` span ("run your squash club?") and stat numbers stay readable because their color is hard-coded
+**1. Restore a layered, deeper overlay** — replace the current single gradient (line 134) with two stacked layers:
 
-The video can fail to play for several normal reasons (slow connection, mobile data saver, autoplay blocked, codec not supported, ad-blocker, corporate firewall). Cache refresh does not help because the styling itself isn't safe without the video.
+- **Base tint layer**: solid dark navy at ~55% opacity across the whole hero. Kills the bright court poster uniformly so text reads everywhere, including if the video fails.
+- **Vignette/fade gradient on top**: vertical gradient that's lighter in the upper-middle (where the headline sits — lets a hint of the video motion show through) and **fully solid at the bottom** so the hero blends seamlessly into the next "Problem Section". Roughly: `from-[hsl(220_50%_6%)]/40 via-[hsl(220_50%_8%)]/65 to-[hsl(220_50%_10%)]` (no `/opacity` on the bottom stop = solid).
+- Add a subtle **radial highlight** behind the headline using a third absolutely-positioned div (`bg-[radial-gradient(ellipse_at_30%_40%,transparent,hsl(220_50%_6%)_70%)]`) so the text area glows slightly and the edges darken — the classic "cinematic hero" look.
 
-## Fix
+**2. Lighten the video brightness filter** from `brightness-50` to `brightness-75`. With the stronger overlay layers above, we no longer need to dim the video itself so aggressively — this lets the squash motion actually be visible through the overlay rather than looking muddy.
 
-Make the hero readable in all conditions — dark video loaded, light poster fallback, light mode, or dark mode — by:
+**3. Keep all text colors as-is** (`text-white`, `text-gray-100`, text-shadows) — they're already correct and were not the problem.
 
-1. **Force a guaranteed-dark backdrop behind the hero text**, independent of theme and video state. Replace the current theme-bound gradient (`from-background/40 via-background/60 to-background`) with a fixed dark overlay (e.g. dark navy → slightly lighter navy, ~50–70% opacity). This works whether the video plays or only the poster shows.
+**4. Re-introduce one subtle accent** — change the "run your squash club?" span (line 165) from plain `text-white` back to a brand-amber tint (e.g. `text-amber-300`) so the headline has a focal point again, instead of being one flat block of white.
 
-2. **Hard-code the hero text colors** so they don't follow `--foreground`:
-   - Heading: white instead of `text-foreground`
-   - "run your squash club?" accent: keep amber/golden or switch to a light accent that reads on dark (the current `text-landing-navy` only worked because the video was dark — on the failed-video light fallback it's the only readable piece, but on a proper dark overlay we want it to pop, so use a brand amber/gold or white)
-   - Description paragraph: keep `text-gray-200` (already correct for dark backdrop)
-   - Tagline under the buttons: keep white
+### What this does NOT change
 
-3. **Strengthen the poster fallback**: add a darkening filter (`brightness-50` or a dark tint layer) so even if the video never loads and only `hero-court.jpg` shows, the backdrop is dark enough for white text.
+- No CSS variable, Tailwind config, or other page changes
+- Text remains fully readable in all four scenarios (dark/light mode × video loads/fails)
+- Section below the hero is untouched
+- No changes to the nav bar, buttons, or stats
 
-4. **Keep stats and section below intact** — the problem is isolated to the hero overlay.
+### Verification
 
-## Files to change
-
-- `src/pages/Home.tsx` — hero `<section id="top">` only:
-  - Add `brightness-50` (or wrap in a dark tint layer) on the `<video>`/poster
-  - Replace the theme-bound gradient div with a fixed dark overlay
-  - Change heading from `text-foreground` to `text-white`
-  - Change the accent span from `text-landing-navy` back to a brand color that reads on dark (white or amber)
-
-No CSS variable, Tailwind config, or other page changes needed.
-
-## What this does NOT change
-
-- Color mode behavior elsewhere on the site
-- The dark video itself
-- The `--landing-navy` token (other places may still use it; we just stop relying on it for the hero accent)
-
-## Verification
-
-After the change, the hero will render correctly in all four scenarios:
-1. Dark mode + video loads ✓
-2. Dark mode + video fails (poster only) ✓
-3. Light mode + video loads ✓
-4. Light mode + video fails (poster only) ← this is the broken case the other user is hitting
-
-I'll re-fetch the published site afterward and visually confirm.
+After the edit I'll re-fetch the published hero and confirm the overlay now has depth (darker edges, slight glow behind text, solid fade into next section) and the amber accent is back.

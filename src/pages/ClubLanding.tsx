@@ -37,7 +37,16 @@ interface ClubData {
   club_captain_member_id?: string | null;
 }
 
-interface ClubLandingProps {
+function AnimatedCount({ value }: { value: number }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => Math.round(latest).toString());
+  useEffect(() => {
+    const controls = animate(count, value, { duration: 1.8, ease: "easeOut" });
+    return controls.stop;
+  }, [value, count]);
+  return <motion.span>{rounded}</motion.span>;
+}
+
   hostClub?: ClubData | null;
 }
 

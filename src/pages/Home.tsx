@@ -161,7 +161,7 @@ export default function Home() {
               className="text-4xl sm:text-5xl font-extrabold font-heading uppercase tracking-tight text-foreground leading-[1.05] md:text-5xl"
             >
               Looking for a platform to{" "}
-              <span className="text-primary text-[#081535]">run your squash club?</span>
+              <span className="text-landing-navy">run your squash club?</span>
             </motion.h1>
 
             <motion.p
@@ -258,7 +258,7 @@ export default function Home() {
               >
                 <span>MANAGE EVERYTHING IN</span>
                 <br />
-                <span className="text-primary text-[#081535]">ONE PLACE</span>
+                <span className="text-landing-navy">ONE PLACE</span>
               </motion.h2>
 
               <ul className="space-y-3">

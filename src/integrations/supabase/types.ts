@@ -3887,6 +3887,7 @@ export type Database = {
         Returns: string
       }
       get_club_analytics: { Args: { days_back?: number }; Returns: Json }
+      get_club_member_count: { Args: { _club_id: string }; Returns: number }
       get_head_to_head_by_member: {
         Args: { limit_count?: number; target_member_id: string }
         Returns: {

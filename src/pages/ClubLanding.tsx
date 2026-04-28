@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PoweredBySquashHub } from "@/components/PoweredBySquashHub";
 import { SEO } from "@/components/SEO";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { useEffect } from "react";
 
 
 interface ClubDelegate {
@@ -34,6 +35,16 @@ interface ClubData {
   chairman_member_id?: string | null;
   secretary_member_id?: string | null;
   club_captain_member_id?: string | null;
+}
+
+function AnimatedCount({ value }: { value: number }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => Math.round(latest).toString());
+  useEffect(() => {
+    const controls = animate(count, value, { duration: 1.8, ease: "easeOut" });
+    return controls.stop;
+  }, [value, count]);
+  return <motion.span>{rounded}</motion.span>;
 }
 
 interface ClubLandingProps {
@@ -210,7 +221,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
 
                   {memberCount > 0 && (
                     <div className="flex items-baseline justify-center gap-2 pt-2">
-                      <span className="text-5xl font-extrabold font-heading text-white tabular-nums">{memberCount}</span>
+                      <span className="text-5xl font-extrabold font-heading text-white tabular-nums"><AnimatedCount value={memberCount} /></span>
                       <span className="text-base font-bold text-white/90 uppercase tracking-wide">Squash Members</span>
                     </div>
                   )}

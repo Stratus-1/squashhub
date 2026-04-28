@@ -182,7 +182,7 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                 </TabsTrigger>
               </TabsList>
 
-              <div className="rounded-b-2xl bg-white/30 backdrop-blur-md border border-white/40 shadow-2xl p-8">
+              <div className="rounded-b-2xl bg-[#07122E]/20 backdrop-blur-md border border-white/20 shadow-2xl p-8">
                 <TabsContent value="details" className="mt-0 space-y-5 text-center">
                   {club.logo_url ? (
                     <img src={club.logo_url} alt={`${club.name} logo`} className="w-28 h-28 sm:w-32 sm:h-32 object-contain mx-auto rounded-xl shadow-lg" />

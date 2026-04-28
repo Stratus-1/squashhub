@@ -214,6 +214,13 @@ export default function ClubLanding({ hostClub }: ClubLandingProps = {}) {
                     </p>
                   )}
 
+                  {memberCount > 0 && (
+                    <div className="flex items-baseline justify-center gap-2 pt-2">
+                      <span className="text-5xl font-extrabold font-heading text-white tabular-nums">{memberCount}</span>
+                      <span className="text-base font-bold text-white/90 uppercase tracking-wide">Squash Members</span>
+                    </div>
+                  )}
+
                   {hasDelegates && (
                     <div className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4 text-white">
                       {chairmanDelegate && (

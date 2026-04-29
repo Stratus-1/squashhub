@@ -174,21 +174,25 @@ export default function Home() {
                     <SheetTitle className="text-left font-heading uppercase tracking-tight">Menu</SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col gap-2 mt-6">
-                    <SheetClose onClick={() => scrollTo("top")}>Home</SheetClose>
-                    <SheetClose onClick={() => scrollTo("features")}>Features</SheetClose>
-                    <SheetClose onClick={() => scrollTo("pricing")}>Pricing</SheetClose>
-                    <div className="h-px bg-border my-3" />
-                    <SheetClose
-                      variant="primary"
-                      onClick={() => scrollTo("clubs")}
-                    >
-                      Find/Create My Association
+                    <SheetClose asChild>
+                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("top")}>Home</Button>
                     </SheetClose>
-                    <SheetClose
-                      variant="primary"
-                      onClick={() => navigate("/auth")}
-                    >
-                      Register Your Club
+                    <SheetClose asChild>
+                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("features")}>Features</Button>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("pricing")}>Pricing</Button>
+                    </SheetClose>
+                    <div className="h-px bg-border my-3" />
+                    <SheetClose asChild>
+                      <Button className="rounded-full w-full" onClick={() => scrollTo("clubs")}>
+                        Find/Create My Association
+                      </Button>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button className="rounded-full w-full" onClick={() => navigate("/auth")}>
+                        Register Your Club
+                      </Button>
                     </SheetClose>
                   </nav>
                 </SheetContent>

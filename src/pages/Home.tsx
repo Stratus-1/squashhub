@@ -13,8 +13,9 @@ import {
 import { SEO } from "@/components/SEO";
 import {
   Building2, ChevronRight, Landmark, Check,
-  AlertCircle, Calendar, Trophy, Users, BarChart3, Mail,
+  AlertCircle, Calendar, Trophy, Users, BarChart3, Mail, Menu,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -134,21 +135,68 @@ export default function Home() {
 
         <header className="relative z-50 pt-4 px-4">
           <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-black/40 backdrop-blur-xl border border-white/20 shadow-lg">
-            <div className="flex items-center gap-2">
-              <img src={shLogoFull} alt="SquashHub" className="h-12 w-auto object-contain" />
+            <div className="flex items-center gap-2 min-w-0">
+              <img src={shLogoFull} alt="SquashHub" className="h-10 sm:h-12 w-auto object-contain" />
             </div>
-            <nav className="hidden sm:flex items-center gap-1">
+
+            {/* Desktop nav */}
+            <nav className="hidden md:flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={() => scrollTo("top")} className="text-white hover:bg-white/10 hover:text-white">Home</Button>
               <Button variant="ghost" size="sm" onClick={() => scrollTo("features")} className="text-white hover:bg-white/10 hover:text-white">Features</Button>
               <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
             </nav>
-            <div className="flex items-center gap-2">
+
+            {/* Desktop actions */}
+            <div className="hidden md:flex items-center gap-2">
               <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                 Find/Create My Association
               </Button>
               <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
                 Register Your Club
               </Button>
+            </div>
+
+            {/* Mobile hamburger */}
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full text-white hover:bg-white/10 hover:text-white"
+                    aria-label="Open menu"
+                  >
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[85vw] max-w-sm bg-background/95 backdrop-blur-xl border-l border-border">
+                  <SheetHeader>
+                    <SheetTitle className="text-left font-heading uppercase tracking-tight">Menu</SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col gap-2 mt-6">
+                    <SheetClose asChild>
+                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("top")}>Home</Button>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("features")}>Features</Button>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("pricing")}>Pricing</Button>
+                    </SheetClose>
+                    <div className="h-px bg-border my-3" />
+                    <SheetClose asChild>
+                      <Button className="rounded-full w-full" onClick={() => scrollTo("clubs")}>
+                        Find/Create My Association
+                      </Button>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Button className="rounded-full w-full" onClick={() => navigate("/auth")}>
+                        Register Your Club
+                      </Button>
+                    </SheetClose>
+                  </nav>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </header>

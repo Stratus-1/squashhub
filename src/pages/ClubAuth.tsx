@@ -705,7 +705,7 @@ export default function ClubAuth() {
           // Members join via their home club (one identity, multi-tenant).
           if (isAssociation) {
             return (
-              <Tabs defaultValue="login">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} defaultValue="login">
                 <TabsList className="w-full mb-4">
                   <TabsTrigger value="login" className="flex-1">Sign In</TabsTrigger>
                   <TabsTrigger value="info" className="flex-1">How to join</TabsTrigger>

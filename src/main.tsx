@@ -4,9 +4,11 @@ import App from "./App.tsx";
 import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
 
-// Initialize theme from localStorage before render
+// Initialize theme from localStorage before render.
+// Default to dark mode (the site is designed dark-first) unless the user
+// has explicitly opted into light mode via the in-app theme toggle.
 const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+if (savedTheme !== "light") {
   document.documentElement.classList.add("dark");
 }
 

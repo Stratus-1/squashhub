@@ -83,6 +83,10 @@ export default function ClubAuth() {
   // Home club selection (for association registrations)
   const [homeClubId, setHomeClubId] = useState<string>("");
 
+  // Controlled tab state — login is the default view; the other "tabs"
+  // are reached via links underneath the sign-in form (per UX redesign).
+  const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">("login");
+
   // Redirect if already logged in
   if (user) return <Navigate to="/" replace />;
 
@@ -701,7 +705,7 @@ export default function ClubAuth() {
           // Members join via their home club (one identity, multi-tenant).
           if (isAssociation) {
             return (
-              <Tabs defaultValue="login">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} defaultValue="login">
                 <TabsList className="w-full mb-4">
                   <TabsTrigger value="login" className="flex-1">Sign In</TabsTrigger>
                   <TabsTrigger value="info" className="flex-1">How to join</TabsTrigger>
@@ -765,12 +769,15 @@ export default function ClubAuth() {
           }
 
           return (
-        <Tabs defaultValue="login">
-          <TabsList className={`w-full mb-4 h-auto flex-wrap gap-1`}>
-            <TabsTrigger value="login" className="flex-1">Log In</TabsTrigger>
-            <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
-            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center"><span>New</span><br/><span>Member</span></TabsTrigger>
-            <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} defaultValue="login">
+          {/* Hidden TabsList — navigation now happens via links under each form
+              (see UX redesign: Sign In primary, then "Existing member" / "New member" /
+              "Visitor" links underneath, mirroring the members app pattern). */}
+          <TabsList className="sr-only">
+            <TabsTrigger value="login">Log In</TabsTrigger>
+            <TabsTrigger value="existing">Existing Member</TabsTrigger>
+            <TabsTrigger value="new">New Member</TabsTrigger>
+            <TabsTrigger value="visitor">Visitor</TabsTrigger>
           </TabsList>
 
           {/* ─── LOG IN ─── */}
@@ -809,6 +816,38 @@ export default function ClubAuth() {
                 </Button>
               </form>
             </Card>
+            {/* Registration links — mirror members-app pattern */}
+            <div className="mt-4 space-y-2 text-center">
+              <p className="text-xs text-muted-foreground">
+                Already a member without a login?{" "}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("existing")}
+                  className="text-primary font-medium hover:underline"
+                >
+                  Register existing membership
+                </button>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Not a member yet?{" "}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("new")}
+                  className="text-primary font-medium hover:underline"
+                >
+                  Sign up as a new member
+                </button>
+              </p>
+              <div className="pt-2 border-t border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("visitor")}
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                >
+                  Visiting? Sign up as a visitor →
+                </button>
+              </div>
+            </div>
           </TabsContent>
 
           {/* ─── EXISTING MEMBER ─── */}
@@ -1097,6 +1136,11 @@ export default function ClubAuth() {
                 </>
               )}
             </Card>
+            <div className="mt-3 text-center">
+              <button type="button" onClick={() => setActiveTab("login")} className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                ← Back to Sign in
+              </button>
+            </div>
           </TabsContent>
 
           {/* ─── NEW MEMBER ─── */}
@@ -1190,6 +1234,11 @@ export default function ClubAuth() {
                 </Button>
               </form>
             </Card>
+            <div className="mt-3 text-center">
+              <button type="button" onClick={() => setActiveTab("login")} className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                ← Back to Sign in
+              </button>
+            </div>
           </TabsContent>
 
           {/* ─── VISITOR ─── */}
@@ -1285,6 +1334,11 @@ export default function ClubAuth() {
                 </Button>
               </form>
             </Card>
+            <div className="mt-3 text-center">
+              <button type="button" onClick={() => setActiveTab("login")} className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                ← Back to Sign in
+              </button>
+            </div>
           </TabsContent>
         </Tabs>
           );

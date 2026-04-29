@@ -408,7 +408,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="bottom-nav-safe relative">
+    <div className="bottom-nav-safe relative bg-[hsl(220,14%,93%)] dark:bg-[hsl(220,14%,93%)] min-h-screen text-foreground">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
       <MembershipIntroModal

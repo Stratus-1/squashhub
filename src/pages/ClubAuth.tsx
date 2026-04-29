@@ -1234,6 +1234,11 @@ export default function ClubAuth() {
                 </Button>
               </form>
             </Card>
+            <div className="mt-3 text-center">
+              <button type="button" onClick={() => setActiveTab("login")} className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                ← Back to Sign in
+              </button>
+            </div>
           </TabsContent>
 
           {/* ─── VISITOR ─── */}

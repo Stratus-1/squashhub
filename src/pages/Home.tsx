@@ -15,7 +15,7 @@ import {
   Building2, ChevronRight, Landmark, Check,
   AlertCircle, Calendar, Trophy, Users, BarChart3, Mail, Menu,
 } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
@@ -85,6 +85,7 @@ const FAQS = [
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { data: tenants, isLoading: tenantsLoading } = useQuery({
     queryKey: ["public-tenants"],
@@ -110,6 +111,12 @@ export default function Home() {
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+
+  const handleMobileNav = (action: () => void) => {
+    setMobileMenuOpen(false);
+    // Defer so the sheet starts closing first and the target section is reachable.
+    setTimeout(action, 50);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,7 +165,7 @@ export default function Home() {
 
             {/* Mobile hamburger */}
             <div className="md:hidden">
-              <Sheet>
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <Button
                     variant="ghost"
@@ -174,26 +181,16 @@ export default function Home() {
                     <SheetTitle className="text-left font-heading uppercase tracking-tight">Menu</SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col gap-2 mt-6">
-                    <SheetClose asChild>
-                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("top")}>Home</Button>
-                    </SheetClose>
-                    <SheetClose asChild>
-                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("features")}>Features</Button>
-                    </SheetClose>
-                    <SheetClose asChild>
-                      <Button variant="ghost" className="justify-start text-base" onClick={() => scrollTo("pricing")}>Pricing</Button>
-                    </SheetClose>
+                    <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("top"))}>Home</Button>
+                    <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("features"))}>Features</Button>
+                    <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("pricing"))}>Pricing</Button>
                     <div className="h-px bg-border my-3" />
-                    <SheetClose asChild>
-                      <Button className="rounded-full w-full" onClick={() => scrollTo("clubs")}>
-                        Find/Create My Association
-                      </Button>
-                    </SheetClose>
-                    <SheetClose asChild>
-                      <Button className="rounded-full w-full" onClick={() => navigate("/auth")}>
-                        Register Your Club
-                      </Button>
-                    </SheetClose>
+                    <Button className="rounded-full w-full" onClick={() => handleMobileNav(() => scrollTo("clubs"))}>
+                      Find/Create My Association
+                    </Button>
+                    <Button className="rounded-full w-full" onClick={() => handleMobileNav(() => navigate("/auth"))}>
+                      Register Your Club
+                    </Button>
                   </nav>
                 </SheetContent>
               </Sheet>

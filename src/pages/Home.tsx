@@ -85,6 +85,7 @@ const FAQS = [
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { data: tenants, isLoading: tenantsLoading } = useQuery({
     queryKey: ["public-tenants"],

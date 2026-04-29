@@ -83,6 +83,10 @@ export default function ClubAuth() {
   // Home club selection (for association registrations)
   const [homeClubId, setHomeClubId] = useState<string>("");
 
+  // Controlled tab state — login is the default view; the other "tabs"
+  // are reached via links underneath the sign-in form (per UX redesign).
+  const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">("login");
+
   // Redirect if already logged in
   if (user) return <Navigate to="/" replace />;
 

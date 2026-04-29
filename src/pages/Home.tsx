@@ -112,6 +112,12 @@ export default function Home() {
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
+  const handleMobileNav = (action: () => void) => {
+    setMobileMenuOpen(false);
+    // Defer so the sheet starts closing first and the target section is reachable.
+    setTimeout(action, 50);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <SEO

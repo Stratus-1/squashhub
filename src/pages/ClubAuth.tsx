@@ -769,12 +769,15 @@ export default function ClubAuth() {
           }
 
           return (
-        <Tabs defaultValue="login">
-          <TabsList className={`w-full mb-4 h-auto flex-wrap gap-1`}>
-            <TabsTrigger value="login" className="flex-1">Log In</TabsTrigger>
-            <TabsTrigger value="existing" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Existing<br/>Member</TabsTrigger>
-            <TabsTrigger value="new" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center"><span>New</span><br/><span>Member</span></TabsTrigger>
-            <TabsTrigger value="visitor" className="flex-1 text-xs leading-tight py-2 whitespace-normal text-center">Visitor</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} defaultValue="login">
+          {/* Hidden TabsList — navigation now happens via links under each form
+              (see UX redesign: Sign In primary, then "Existing member" / "New member" /
+              "Visitor" links underneath, mirroring the members app pattern). */}
+          <TabsList className="sr-only">
+            <TabsTrigger value="login">Log In</TabsTrigger>
+            <TabsTrigger value="existing">Existing Member</TabsTrigger>
+            <TabsTrigger value="new">New Member</TabsTrigger>
+            <TabsTrigger value="visitor">Visitor</TabsTrigger>
           </TabsList>
 
           {/* ─── LOG IN ─── */}

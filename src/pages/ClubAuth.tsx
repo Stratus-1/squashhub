@@ -816,6 +816,38 @@ export default function ClubAuth() {
                 </Button>
               </form>
             </Card>
+            {/* Registration links — mirror members-app pattern */}
+            <div className="mt-4 space-y-2 text-center">
+              <p className="text-xs text-muted-foreground">
+                Already a member without a login?{" "}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("existing")}
+                  className="text-primary font-medium hover:underline"
+                >
+                  Register existing membership
+                </button>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Not a member yet?{" "}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("new")}
+                  className="text-primary font-medium hover:underline"
+                >
+                  Sign up as a new member
+                </button>
+              </p>
+              <div className="pt-2 border-t border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("visitor")}
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                >
+                  Visiting? Sign up as a visitor →
+                </button>
+              </div>
+            </div>
           </TabsContent>
 
           {/* ─── EXISTING MEMBER ─── */}

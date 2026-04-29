@@ -814,40 +814,42 @@ export default function ClubAuth() {
                 <Button type="button" variant="link" className="w-full text-sm" onClick={() => setShowReset(true)}>
                   Forgot password?
                 </Button>
+
+                {/* Registration links — kept inside the Sign In card so they're
+                    legible against the card background, not the court image. */}
+                <div className="pt-3 mt-1 border-t border-border/60 space-y-1.5 text-center">
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Already a member without a login? </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("existing")}
+                      className="text-primary font-medium hover:underline"
+                    >
+                      Register existing membership
+                    </button>
+                  </p>
+                  <p className="text-xs">
+                    <span className="text-muted-foreground">Not a member yet? </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("new")}
+                      className="text-primary font-medium hover:underline"
+                    >
+                      Sign up as a new member
+                    </button>
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("visitor")}
+                      className="text-[11px] text-muted-foreground hover:text-primary hover:underline"
+                    >
+                      Visiting? Sign up as a visitor →
+                    </button>
+                  </div>
+                </div>
               </form>
             </Card>
-            {/* Registration links — mirror members-app pattern */}
-            <div className="mt-4 space-y-2 text-center">
-              <p className="text-xs text-muted-foreground">
-                Already a member without a login?{" "}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("existing")}
-                  className="text-primary font-medium hover:underline"
-                >
-                  Register existing membership
-                </button>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Not a member yet?{" "}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("new")}
-                  className="text-primary font-medium hover:underline"
-                >
-                  Sign up as a new member
-                </button>
-              </p>
-              <div className="pt-2 border-t border-border/50">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("visitor")}
-                  className="text-xs text-muted-foreground hover:text-primary hover:underline"
-                >
-                  Visiting? Sign up as a visitor →
-                </button>
-              </div>
-            </div>
           </TabsContent>
 
           {/* ─── EXISTING MEMBER ─── */}

@@ -408,10 +408,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div
-      className="bottom-nav-safe relative min-h-screen"
-      style={{ background: "hsl(220 14% 93%)", color: "hsl(220 30% 10%)" }}
-    >
+    <div className="bottom-nav-safe relative">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
       <MembershipIntroModal

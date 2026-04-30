@@ -277,8 +277,9 @@ function AppRoutes() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         </Routes>
       )}
+      </DesktopShell>
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
-      {user && !isAdminRoute && !isTvRoute && <BottomNav />}
+      {user && !isAdminRoute && !isTvRoute && <MobileOnlyBottomNav />}
       {user && !isTvRoute && <OfflineBanner />}
       {user && !isTvRoute && <LiveSessionBanner />}
       <InstallAppPrompt />

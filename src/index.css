@@ -177,15 +177,20 @@
 
 /* Desktop-only minimum font-size enforcement.
    Ensures no rendered text falls below 14px on >=md screens, while keeping
-   the dense mobile layout (10–13px) untouched. */
+   the dense mobile layout (10–13px) untouched.
+   Note: brackets in attribute selector values must be escaped. */
 @media (min-width: 768px) {
   .text-xs,
-  [class*="text-[10px]"],
-  [class*="text-[11px]"],
-  [class*="text-[12px]"],
-  [class*="text-[13px]"] {
+  .text-\[10px\],
+  .text-\[11px\],
+  .text-\[12px\],
+  .text-\[13px\],
+  [class~="text-[10px]"],
+  [class~="text-[11px]"],
+  [class~="text-[12px]"],
+  [class~="text-[13px]"] {
     font-size: 14px !important;
-    line-height: 1.35 !important;
+    line-height: 1.4 !important;
   }
 }
 

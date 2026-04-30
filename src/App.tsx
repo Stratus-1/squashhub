@@ -9,6 +9,8 @@ import { ClubProvider, useClubContext } from "@/contexts/ClubContext";
 import { DynamicPwaManifest } from "@/components/DynamicPwaManifest";
 import { MemberProvider } from "@/contexts/MemberContext";
 import { BottomNav } from "@/components/BottomNav";
+import { DesktopShell } from "@/components/DesktopShell";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NotificationActionModal } from "@/components/NotificationActionModal";
@@ -169,6 +171,12 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function MobileOnlyBottomNav() {
+  const isMobile = useIsMobile();
+  if (!isMobile) return null;
+  return <BottomNav />;
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { subdomain: clubSubdomain, club: clubFromHost, isLoading: clubLoading } = useClubContext();
@@ -202,9 +210,13 @@ function AppRoutes() {
     return true;
   })();
 
+  // Desktop sidebar shell only for authenticated, non-admin, non-TV routes
+  const shellEnabled = !!user && !isAdminRoute && !isTvRoute;
+
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       {user && !isAdminRoute && <ClubBrandedBackground />}
+      <DesktopShell enabled={shellEnabled}>
       <Routes location={routeLocation}>
         <Route path="/" element={
           isClubSubdomain && !user
@@ -271,8 +283,9 @@ function AppRoutes() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         </Routes>
       )}
+      </DesktopShell>
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
-      {user && !isAdminRoute && !isTvRoute && <BottomNav />}
+      {user && !isAdminRoute && !isTvRoute && <MobileOnlyBottomNav />}
       {user && !isTvRoute && <OfflineBanner />}
       {user && !isTvRoute && <LiveSessionBanner />}
       <InstallAppPrompt />

@@ -540,10 +540,6 @@ export default function Dashboard() {
         />
       </div>
 
-  return (
-    <div className="bottom-nav-safe relative">
-      <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
-
 
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">

@@ -171,6 +171,12 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function MobileOnlyBottomNav() {
+  const isMobile = useIsMobile();
+  if (!isMobile) return null;
+  return <BottomNav />;
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { subdomain: clubSubdomain, club: clubFromHost, isLoading: clubLoading } = useClubContext();

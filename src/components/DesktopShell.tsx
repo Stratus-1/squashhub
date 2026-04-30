@@ -2,6 +2,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useMyClub } from "@/hooks/use-club";
+import { useLocation } from "react-router-dom";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 /**
@@ -23,6 +24,9 @@ export function DesktopShell({
   const isMobile = useIsMobile();
   const { data: clubData } = useMyClub();
   const clubLogoUrl = (clubData?.club as any)?.logo_url as string | undefined;
+  const { pathname } = useLocation();
+  // Routes where the layered background should NOT apply (keep original look)
+  const skipBg = pathname.startsWith("/bookings");
 
   if (!enabled || isMobile) {
     return <>{children}</>;
@@ -33,29 +37,33 @@ export function DesktopShell({
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0 relative isolate">
-          {/* Layer 1: photo background — confined to main content panel */}
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-            style={{ backgroundImage: `url(${squashCourtBg})` }}
-            aria-hidden="true"
-          />
-          {/* Layer 2: club logo watermark */}
-          {clubLogoUrl && (
-            <div
-              className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
-              style={{
-                backgroundImage: `url(${clubLogoUrl})`,
-                backgroundSize: "min(60vw, 520px)",
-              }}
-              aria-hidden="true"
-            />
+          {!skipBg && (
+            <>
+              {/* Layer 1: photo background — confined to main content panel */}
+              <div
+                className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+                style={{ backgroundImage: `url(${squashCourtBg})` }}
+                aria-hidden="true"
+              />
+              {/* Layer 2: club logo watermark */}
+              {clubLogoUrl && (
+                <div
+                  className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
+                  style={{
+                    backgroundImage: `url(${clubLogoUrl})`,
+                    backgroundSize: "min(60vw, 520px)",
+                  }}
+                  aria-hidden="true"
+                />
+              )}
+              {/* Layer 3: color overlay #111C37 @ 70% */}
+              <div
+                className="absolute inset-0 z-[2] pointer-events-none"
+                style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
+                aria-hidden="true"
+              />
+            </>
           )}
-          {/* Layer 3: color overlay #111C37 @ 70% */}
-          <div
-            className="absolute inset-0 z-[2] pointer-events-none"
-            style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
-            aria-hidden="true"
-          />
           <header className="relative z-10 h-10 flex items-center border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">
             <SidebarTrigger className="ml-2" />
           </header>

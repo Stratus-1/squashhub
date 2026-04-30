@@ -39,6 +39,7 @@ import { toast } from "sonner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const location = useLocation();
   const { user } = useAuth();

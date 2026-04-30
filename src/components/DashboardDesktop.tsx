@@ -4,10 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Calendar, ChevronRight, Trophy, History, CalendarDays, Plus } from "lucide-react";
+import { Calendar, ChevronRight, Trophy, History, CalendarDays, Plus, Users, Timer, Activity } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import heroCourt from "@/assets/hero-court.jpg";
+import { useClubAnalytics } from "@/hooks/use-analytics";
 
 interface DashboardDesktopProps {
   clubName: string;

@@ -9,6 +9,8 @@ import { ClubProvider, useClubContext } from "@/contexts/ClubContext";
 import { DynamicPwaManifest } from "@/components/DynamicPwaManifest";
 import { MemberProvider } from "@/contexts/MemberContext";
 import { BottomNav } from "@/components/BottomNav";
+import { DesktopShell } from "@/components/DesktopShell";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NotificationActionModal } from "@/components/NotificationActionModal";

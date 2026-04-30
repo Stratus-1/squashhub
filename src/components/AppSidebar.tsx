@@ -124,12 +124,7 @@ export function AppSidebar() {
             <Activity className="w-4 h-4" />
             {!collapsed && <span>Activities</span>}
           </SidebarGroupLabel>
-          {!collapsed && activitiesOpen && (
-            <SidebarGroupContent>
-              <SidebarMenuSub>{activityItems.map(renderSubItem)}</SidebarMenuSub>
-            </SidebarGroupContent>
-          )}
-          {!collapsed && !activitiesOpen && (
+          {!collapsed && (
             <SidebarGroupContent>
               <SidebarMenuSub>{activityItems.map(renderSubItem)}</SidebarMenuSub>
             </SidebarGroupContent>

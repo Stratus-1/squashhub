@@ -98,31 +98,8 @@ export default function ClubAdmin() {
   const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
 
   return (
-    <div className="relative isolate min-h-screen pb-20 text-[13px]">
-      {/* Layer 1: photo background */}
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url(${squashCourtBg})` }}
-        aria-hidden
-      />
-      {/* Layer 2: club logo watermark */}
-      {club.logo_url && (
-        <div
-          className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
-          style={{
-            backgroundImage: `url(${club.logo_url})`,
-            backgroundSize: "min(60vw, 520px)",
-          }}
-          aria-hidden
-        />
-      )}
-      {/* Layer 3: color overlay #111C37 @ 70% */}
-      <div
-        className="absolute inset-0 z-[2] pointer-events-none"
-        style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
-        aria-hidden
-      />
-      <div className="relative z-10">
+    <div className="min-h-screen pb-20 text-[13px]">
+      <div>
         <PageHeader
           title={club.name}
           subtitle="Club Administration"

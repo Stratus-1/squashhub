@@ -65,31 +65,8 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
   );
 
   return (
-    <div className="relative isolate min-h-[calc(100vh-2.5rem)]">
-      {/* Layer 1: photo background */}
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url(${squashCourtBg})` }}
-        aria-hidden="true"
-      />
-      {/* Layer 2: club logo watermark */}
-      {props.clubLogoUrl && (
-        <div
-          className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
-          style={{
-            backgroundImage: `url(${props.clubLogoUrl})`,
-            backgroundSize: "min(60vw, 520px)",
-          }}
-          aria-hidden="true"
-        />
-      )}
-      {/* Layer 3: color overlay #111C37 @ 70% */}
-      <div
-        className="absolute inset-0 z-[2] pointer-events-none"
-        style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
-        aria-hidden="true"
-      />
-      <div className="relative z-10">
+    <div className="min-h-[calc(100vh-2.5rem)]">
+      <div>
 
       {/* Welcome row */}
       <div className="px-8 pt-6 pb-4 flex items-end justify-between gap-4">

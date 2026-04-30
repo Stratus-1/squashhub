@@ -931,7 +931,6 @@ export default function Dashboard() {
         </Button>
       </div>
       <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
-      </div>
     </div>
   );
 }

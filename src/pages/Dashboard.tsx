@@ -410,9 +410,63 @@ export default function Dashboard() {
     return <AssociationDashboard />;
   }
 
-  return (
-    <div className="bottom-nav-safe relative">
-      <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
+  // Desktop dashboard — keeps mobile layout below untouched
+  if (!isMobile) {
+    const played = (recentMatches || []).length;
+    const wins = (recentMatches || []).filter((m: any) =>
+      m.winner_id === effectiveUserId || (myMemberId && m.winner_member_id === myMemberId)
+    ).length;
+    const losses = Math.max(0, played - wins - (recentMatches || []).filter((m: any) => !m.winner_id && !m.winner_member_id).length);
+    const winRate = played > 0 ? (wins / played) * 100 : 0;
+    const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
+
+    return (
+      <div className="relative">
+        <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
+        <MembershipIntroModal
+          open={showIntro}
+          clubName={effectiveClub?.name}
+          subdomain={subdomain || undefined}
+          onClose={() => {
+            const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile?.id}`;
+            try { localStorage.setItem(introKey, "1"); } catch {}
+            setShowIntro(false);
+            setShowOnboarding(true);
+          }}
+        />
+        <MemberOnboardingWizard
+          open={showOnboarding}
+          onComplete={() => {
+            setShowOnboarding(false);
+            setOnboardingDone(true);
+            setTimeout(() => { window.location.href = "/my-account"; }, 300);
+          }}
+        />
+        <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
+
+        <DashboardDesktop
+          clubName={effectiveClub?.name || "SquashHub"}
+          firstName={firstName}
+          played={played}
+          wins={wins}
+          losses={losses}
+          winRate={winRate}
+          rank={myLadderPosition}
+          totalBookings={(myBookings || []).length}
+          courtsUsed={courtsUsed}
+          myBookings={myBookings || []}
+          recentMatches={recentMatches || []}
+          matchPlayerNameMap={matchPlayerNameMap}
+          effectiveUserId={effectiveUserId}
+          myMemberId={myMemberId}
+          myLeagueFixtures={myLeagueFixtures || []}
+          hasLeagues={hasLeagues}
+          eventsSlot={<CreateClubEvent />}
+        />
+      </div>
+    );
+  }
+
 
       <MembershipIntroModal
         open={showIntro}

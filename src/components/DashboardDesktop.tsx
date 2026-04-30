@@ -369,6 +369,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
           </Accordion>
         </div>
       </div>
+      </div>
     </div>
   );
 }

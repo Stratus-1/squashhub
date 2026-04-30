@@ -67,7 +67,21 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
   return (
     <div className="min-h-[calc(100vh-2.5rem)]">
       <div>
-
+        <div className="px-8 pt-5 pb-4 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              {props.clubLogoUrl && (
+                <img src={props.clubLogoUrl} alt="Club logo" className="h-5 w-5 object-contain rounded-sm shrink-0" />
+              )}
+              <p className="text-xs uppercase tracking-[0.18em] text-white/65 font-heading truncate">
+                {clubLabel(props.clubName)}
+              </p>
+            </div>
+            <h1 className="text-2xl font-heading font-bold text-white uppercase tracking-[0.08em] truncate">
+              Welcome back, {props.firstName}
+            </h1>
+          </div>
+        </div>
 
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
         {/* STATS card */}

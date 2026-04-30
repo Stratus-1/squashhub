@@ -470,31 +470,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="bottom-nav-safe relative isolate min-h-screen">
-      {/* Layer 1: photo background */}
-      <div
-        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url(${squashCourtBg})` }}
-        aria-hidden="true"
-      />
-      {/* Layer 2: club logo watermark */}
-      {(effectiveClub as any)?.logo_url && (
-        <div
-          className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
-          style={{
-            backgroundImage: `url(${(effectiveClub as any).logo_url})`,
-            backgroundSize: "min(60vw, 520px)",
-          }}
-          aria-hidden="true"
-        />
-      )}
-      {/* Layer 3: color overlay #111C37 @ 70% */}
-      <div
-        className="absolute inset-0 z-[2] pointer-events-none"
-        style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
-        aria-hidden="true"
-      />
-      <div className="relative z-10">
+    <div className="bottom-nav-safe relative">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
 
       <MembershipIntroModal

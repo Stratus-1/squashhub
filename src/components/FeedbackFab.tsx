@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Bug, Lightbulb, LifeBuoy, Plus, Send } from "lucide-react";
+import { Bug, HelpCircle, Lightbulb, LifeBuoy, Send } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useCreateSupportThread, useSendSupportMessage } from "@/hooks/use-support";
@@ -102,7 +102,7 @@ export function FeedbackFab() {
           onClick={() => setOpen(true)}
           aria-label="Help & feedback"
         >
-          <Plus className="w-5 h-5" />
+          <HelpCircle className="w-5 h-5" />
         </Button>
       </div>
 

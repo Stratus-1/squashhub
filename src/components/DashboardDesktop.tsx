@@ -119,9 +119,11 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              {/* Win rate radial */}
+              {/* Rate radial */}
               <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4 flex flex-col justify-between row-span-2 min-h-[230px]">
-                <span className="text-xs text-white/70 uppercase tracking-wider">Win rate</span>
+                <span className="text-xs text-white/70 uppercase tracking-wider">
+                  {scope === "club" ? "Confirmed rate" : "Win rate"}
+                </span>
                 <div className="flex-1 flex items-center justify-center">
                   <div
                     className="w-28 h-28 rounded-full grid place-items-center"
@@ -129,27 +131,49 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                   >
                     <div className="w-[88px] h-[88px] rounded-full bg-[hsl(220_45%_8%)] grid place-items-center">
                       <span className="text-2xl font-heading font-bold text-white">
-                        {winRate}%
+                        {displayedRate}%
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <StatTile label="Played" value={props.played} />
-              <StatTile label="Wins" value={props.wins} />
-              <StatTile label="Losses" value={props.losses} />
-              <StatTile label="Rank" value={props.rank != null ? `#${props.rank}` : "—"} />
+              {scope === "me" ? (
+                <>
+                  <StatTile label="Played" value={props.played} />
+                  <StatTile label="Wins" value={props.wins} />
+                  <StatTile label="Losses" value={props.losses} />
+                  <StatTile label="Rank" value={props.rank != null ? `#${props.rank}` : "—"} />
+                </>
+              ) : (
+                <>
+                  <StatTile label="Total Matches" value={clubStats?.total_matches ?? 0} />
+                  <StatTile label="Active Players" value={clubStats?.active_players ?? 0} />
+                  <StatTile
+                    label="Avg Duration"
+                    value={clubStats?.avg_duration_min != null ? `${Math.round(clubStats.avg_duration_min)}m` : "—"}
+                  />
+                  <StatTile label="Confirmed" value={clubStats?.confirmed_matches ?? 0} />
+                </>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-white/70 uppercase tracking-wider">Total Bookings</span>
-                <span className="text-2xl font-heading font-bold text-white tabular-nums">{props.totalBookings}</span>
+                <span className="text-xs text-white/70 uppercase tracking-wider">
+                  {scope === "club" ? "Club Bookings (30d)" : "Total Bookings"}
+                </span>
+                <span className="text-2xl font-heading font-bold text-white tabular-nums">
+                  {scope === "club" ? clubStats?.total_bookings ?? 0 : props.totalBookings}
+                </span>
               </div>
               <div className="rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-white/70 uppercase tracking-wider">Courts Used</span>
-                <span className="text-2xl font-heading font-bold text-white tabular-nums">{props.courtsUsed}</span>
+                <span className="text-xs text-white/70 uppercase tracking-wider">
+                  {scope === "club" ? "Top Players" : "Courts Used"}
+                </span>
+                <span className="text-2xl font-heading font-bold text-white tabular-nums">
+                  {scope === "club" ? (clubStats?.top_players?.length ?? 0) : props.courtsUsed}
+                </span>
               </div>
             </div>
           </Card>

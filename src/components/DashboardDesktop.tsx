@@ -39,14 +39,21 @@ type StatsScope = "me" | "club";
 export function DashboardDesktop(props: DashboardDesktopProps) {
   const navigate = useNavigate();
   const [scope, setScope] = useState<StatsScope>("me");
+  const { data: clubStats } = useClubAnalytics(30);
 
   const winRate = Math.max(0, Math.min(100, Math.round(props.winRate)));
+  // Club "win rate" = confirmation rate over last 30 days
+  const clubConfirmRate =
+    clubStats && clubStats.total_matches > 0
+      ? Math.round((clubStats.confirmed_matches / clubStats.total_matches) * 100)
+      : 0;
+  const displayedRate = scope === "club" ? clubConfirmRate : winRate;
   // Radial conic gradient ring
   const ringStyle = useMemo(
     () => ({
-      background: `conic-gradient(hsl(var(--primary)) ${winRate * 3.6}deg, hsl(var(--muted-foreground) / 0.25) 0deg)`,
+      background: `conic-gradient(hsl(var(--primary)) ${displayedRate * 3.6}deg, hsl(var(--muted-foreground) / 0.25) 0deg)`,
     }),
-    [winRate]
+    [displayedRate]
   );
 
   const StatTile = ({ label, value }: { label: string; value: React.ReactNode }) => (

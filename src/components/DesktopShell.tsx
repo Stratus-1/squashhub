@@ -33,16 +33,16 @@ export function DesktopShell({
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0 relative isolate">
-          {/* Layer 1: photo background */}
+          {/* Layer 1: photo background — confined to main content panel */}
           <div
-            className="fixed inset-0 z-0 bg-cover bg-center pointer-events-none"
+            className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
             style={{ backgroundImage: `url(${squashCourtBg})` }}
             aria-hidden="true"
           />
           {/* Layer 2: club logo watermark */}
           {clubLogoUrl && (
             <div
-              className="fixed inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
+              className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
               style={{
                 backgroundImage: `url(${clubLogoUrl})`,
                 backgroundSize: "min(60vw, 520px)",
@@ -52,7 +52,7 @@ export function DesktopShell({
           )}
           {/* Layer 3: color overlay #111C37 @ 70% */}
           <div
-            className="fixed inset-0 z-[2] pointer-events-none"
+            className="absolute inset-0 z-[2] pointer-events-none"
             style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
             aria-hidden="true"
           />

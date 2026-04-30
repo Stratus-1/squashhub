@@ -204,9 +204,13 @@ function AppRoutes() {
     return true;
   })();
 
+  // Desktop sidebar shell only for authenticated, non-admin, non-TV routes
+  const shellEnabled = !!user && !isAdminRoute && !isTvRoute;
+
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       {user && !isAdminRoute && <ClubBrandedBackground />}
+      <DesktopShell enabled={shellEnabled}>
       <Routes location={routeLocation}>
         <Route path="/" element={
           isClubSubdomain && !user

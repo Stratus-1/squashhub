@@ -68,10 +68,6 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
     <div className="min-h-[calc(100vh-2.5rem)]">
       <div>
 
-      </div>
-
-      <div className="px-8 pt-2"></div>
-
 
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
         {/* STATS card */}

@@ -449,6 +449,7 @@ export default function Dashboard() {
           subtitle={`Welcome back, ${firstName}`}
           showNotifications
           showProfile
+          actionsOnly
         />
 
         <DashboardDesktop

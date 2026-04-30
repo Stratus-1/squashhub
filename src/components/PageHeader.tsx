@@ -22,6 +22,7 @@ interface PageHeaderProps {
   profileTo?: string;
   showBack?: boolean;
   backTo?: string;
+  actionsOnly?: boolean;
 }
 
 export function PageHeader({
@@ -33,6 +34,7 @@ export function PageHeader({
   profileTo = "/profile",
   showBack,
   backTo,
+  actionsOnly = false,
 }: PageHeaderProps) {
   const { user, signOut } = useAuth();
   const { activeMember } = useMemberContext();
@@ -77,6 +79,7 @@ export function PageHeader({
   return (
     <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2">
       <div className="flex items-center justify-between gap-3">
+        {!actionsOnly && (
         <div className="min-w-0 flex-1 flex items-start gap-2">
           {shouldShowBack ? (
             <Button
@@ -102,9 +105,10 @@ export function PageHeader({
             </div>
           </div>
         </div>
+        )}
 
         {user && (
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5">
             <TenantSwitcher />
             {showNotifications && <NotificationsDropdown />}
             {showChallengesInbox ? (

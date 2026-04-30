@@ -14,15 +14,17 @@ import {
   Settings as SettingsIcon,
   Activity,
   LayoutGrid,
+  ChevronDown,
+  User,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -33,6 +35,9 @@ import {
 } from "@/components/ui/sidebar";
 import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
 import { cn } from "@/lib/utils";
+import { useProfile } from "@/hooks/use-data";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -41,6 +46,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
   const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess } = useSidebarFlags();
+  const { data: profile } = useProfile();
+  const { activeMember } = useMemberContext();
 
   const isActive = (path: string) => pathname === path;
 
@@ -62,54 +69,94 @@ export function AppSidebar() {
     { title: "My Account", url: "/my-account", icon: Wallet },
   ];
 
-  const homeOpen = homeItems.some((i) => isActive(i.url)) || pathname === "/";
-  const activitiesOpen = activityItems.some((i) => isActive(i.url));
+  // Independent collapsible state per group — auto-open the group containing the active route
+  const homeAuto = homeItems.some((i) => isActive(i.url)) || pathname === "/";
+  const activitiesAuto = activityItems.some((i) => isActive(i.url));
 
-  // Uppercase, tracked label style matching the mockup
-  const groupLabelClass =
-    "uppercase tracking-[0.18em] text-[11px] font-bold text-sidebar-foreground/90";
+  const [homeOpen, setHomeOpen] = useState<boolean>(homeAuto);
+  const [activitiesOpen, setActivitiesOpen] = useState<boolean>(activitiesAuto);
+
+  // Re-open the group containing the active route when navigation changes
+  useEffect(() => { if (homeAuto) setHomeOpen(true); }, [homeAuto]);
+  useEffect(() => { if (activitiesAuto) setActivitiesOpen(true); }, [activitiesAuto]);
+
+  // Sakana display, uppercase, wider tracking — matches mockup
+  const groupHeaderClass =
+    "uppercase tracking-[0.22em] text-[13px] font-bold font-heading text-sidebar-foreground";
 
   const renderSubItem = (item: Item) => (
     <SidebarMenuSubItem key={item.title + item.url}>
       <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
         <NavLink to={item.url} className="flex items-center gap-2">
           <item.icon className="w-3.5 h-3.5 shrink-0" />
-          <span className="uppercase tracking-wider text-[11px] font-medium">{item.title}</span>
+          <span className="uppercase tracking-[0.14em] text-[11px] font-semibold font-heading">
+            {item.title}
+          </span>
         </NavLink>
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
   );
 
+  const memberName = activeMember?.name || profile?.name || "Player";
+  const initials = memberName
+    .split(" ")
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const avatarUrl = (activeMember as any)?.avatar_url || (profile as any)?.avatar_url || null;
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarContent className="gap-0 pt-3">
-        {/* HOME group */}
-        <SidebarGroup>
-          <SidebarGroupLabel asChild>
-            <NavLink to="/" className={cn(groupLabelClass, "flex items-center gap-2")}>
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-sidebar-border bg-[hsl(220_45%_5%)]"
+    >
+      <SidebarContent className="gap-0 pt-6 px-1 bg-[hsl(220_45%_5%)]">
+        {/* HOME group — collapsible */}
+        <SidebarGroup className="px-2">
+          <button
+            type="button"
+            onClick={() => setHomeOpen((v) => !v)}
+            className={cn(
+              "flex items-center justify-between w-full py-2 group",
+              groupHeaderClass,
+              homeOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
+            )}
+          >
+            <span className="flex items-center gap-2">
               <Home className="w-4 h-4" />
               {!collapsed && <span>Home</span>}
-            </NavLink>
-          </SidebarGroupLabel>
+            </span>
+            {!collapsed && (
+              <ChevronDown
+                className={cn("w-4 h-4 transition-transform", homeOpen && "rotate-180")}
+              />
+            )}
+          </button>
           {!collapsed && homeOpen && (
-            <SidebarGroupContent>
-              <SidebarMenuSub>{homeItems.map(renderSubItem)}</SidebarMenuSub>
+            <SidebarGroupContent className="mt-1.5">
+              <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
+                {homeItems.map(renderSubItem)}
+              </SidebarMenuSub>
             </SidebarGroupContent>
           )}
         </SidebarGroup>
 
         {/* COURTS — single link */}
-        <SidebarGroup>
+        <SidebarGroup className="px-2 mt-3">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/bookings")}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/bookings")}
+                  className="py-2"
+                >
                   <NavLink to="/bookings" className="flex items-center gap-2">
                     <LayoutGrid className="w-4 h-4" />
                     {!collapsed && (
-                      <span className="uppercase tracking-[0.18em] text-[11px] font-bold">
-                        Courts
-                      </span>
+                      <span className={groupHeaderClass}>Courts</span>
                     )}
                   </NavLink>
                 </SidebarMenuButton>
@@ -118,32 +165,51 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* ACTIVITIES group */}
-        <SidebarGroup>
-          <SidebarGroupLabel className={cn(groupLabelClass, "flex items-center gap-2")}>
-            <Activity className="w-4 h-4" />
-            {!collapsed && <span>Activities</span>}
-          </SidebarGroupLabel>
-          {!collapsed && (
-            <SidebarGroupContent>
-              <SidebarMenuSub>{activityItems.map(renderSubItem)}</SidebarMenuSub>
+        {/* ACTIVITIES group — collapsible */}
+        <SidebarGroup className="px-2 mt-3">
+          <button
+            type="button"
+            onClick={() => setActivitiesOpen((v) => !v)}
+            className={cn(
+              "flex items-center justify-between w-full py-2 group",
+              groupHeaderClass,
+              activitiesOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              {!collapsed && <span>Activities</span>}
+            </span>
+            {!collapsed && (
+              <ChevronDown
+                className={cn("w-4 h-4 transition-transform", activitiesOpen && "rotate-180")}
+              />
+            )}
+          </button>
+          {!collapsed && activitiesOpen && (
+            <SidebarGroupContent className="mt-1.5">
+              <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
+                {activityItems.map(renderSubItem)}
+              </SidebarMenuSub>
             </SidebarGroupContent>
           )}
         </SidebarGroup>
 
         {/* CLUB ADMIN — single link, only if user has admin access */}
         {hasAnyAdminAccess && (
-          <SidebarGroup>
+          <SidebarGroup className="px-2 mt-3">
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/club-admin")}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/club-admin")}
+                    className="py-2"
+                  >
                     <NavLink to="/club-admin" className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4" />
                       {!collapsed && (
-                        <span className="uppercase tracking-[0.18em] text-[11px] font-bold">
-                          Club Admin
-                        </span>
+                        <span className={groupHeaderClass}>Club Admin</span>
                       )}
                     </NavLink>
                   </SidebarMenuButton>
@@ -154,17 +220,25 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      {/* SETTINGS pinned at bottom */}
-      <SidebarFooter className="border-t border-sidebar-border">
+      {/* SETTINGS pinned at bottom with member avatar */}
+      <SidebarFooter className="border-t border-sidebar-border bg-[hsl(220_45%_5%)] px-2 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/settings")}>
-              <NavLink to="/settings" className="flex items-center gap-2">
-                <SettingsIcon className="w-4 h-4" />
+            <SidebarMenuButton asChild isActive={isActive("/settings")} className="py-2 gap-3">
+              <NavLink to="/settings" className="flex items-center gap-3">
+                <Avatar className="h-7 w-7 ring-1 ring-sidebar-border">
+                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={memberName} /> : null}
+                  <AvatarFallback className="bg-sidebar-accent text-[10px] font-semibold">
+                    {initials || <User className="w-3.5 h-3.5" />}
+                  </AvatarFallback>
+                </Avatar>
                 {!collapsed && (
-                  <span className="uppercase tracking-[0.18em] text-[11px] font-bold">
+                  <span className="uppercase tracking-[0.22em] text-[13px] font-bold font-heading">
                     Settings
                   </span>
+                )}
+                {!collapsed && (
+                  <SettingsIcon className="w-4 h-4 ml-auto opacity-70" />
                 )}
               </NavLink>
             </SidebarMenuButton>

@@ -24,6 +24,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
+import { DashboardDesktop } from "@/components/DashboardDesktop";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -37,6 +39,7 @@ import { toast } from "sonner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const location = useLocation();
   const { user } = useAuth();
@@ -407,6 +410,63 @@ export default function Dashboard() {
     return <AssociationDashboard />;
   }
 
+  // Desktop dashboard — keeps mobile layout below untouched
+  if (!isMobile) {
+    const played = (recentMatches || []).length;
+    const wins = (recentMatches || []).filter((m: any) =>
+      m.winner_id === effectiveUserId || (myMemberId && m.winner_member_id === myMemberId)
+    ).length;
+    const losses = Math.max(0, played - wins - (recentMatches || []).filter((m: any) => !m.winner_id && !m.winner_member_id).length);
+    const winRate = played > 0 ? (wins / played) * 100 : 0;
+    const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
+
+    return (
+      <div className="relative">
+        <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
+        <MembershipIntroModal
+          open={showIntro}
+          clubName={effectiveClub?.name}
+          subdomain={subdomain || undefined}
+          onClose={() => {
+            const introKey = `membershipIntroSeen:${effectiveClub?.id || "default"}:${profile?.id}`;
+            try { localStorage.setItem(introKey, "1"); } catch {}
+            setShowIntro(false);
+            setShowOnboarding(true);
+          }}
+        />
+        <MemberOnboardingWizard
+          open={showOnboarding}
+          onComplete={() => {
+            setShowOnboarding(false);
+            setOnboardingDone(true);
+            setTimeout(() => { window.location.href = "/my-account"; }, 300);
+          }}
+        />
+        <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
+
+        <DashboardDesktop
+          clubName={effectiveClub?.name || "SquashHub"}
+          firstName={firstName}
+          played={played}
+          wins={wins}
+          losses={losses}
+          winRate={winRate}
+          rank={myLadderPosition}
+          totalBookings={(myBookings || []).length}
+          courtsUsed={courtsUsed}
+          myBookings={myBookings || []}
+          recentMatches={recentMatches || []}
+          matchPlayerNameMap={matchPlayerNameMap}
+          effectiveUserId={effectiveUserId}
+          myMemberId={myMemberId}
+          myLeagueFixtures={myLeagueFixtures || []}
+          hasLeagues={hasLeagues}
+          eventsSlot={<CreateClubEvent />}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="bottom-nav-safe relative">
       <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
@@ -480,7 +540,6 @@ export default function Dashboard() {
         />
       </div>
 
-      
 
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">

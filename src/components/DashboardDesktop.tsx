@@ -7,11 +7,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Calendar, ChevronRight, Trophy, History, CalendarDays, Plus, Users, Timer, Activity } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import heroCourt from "@/assets/hero-court.jpg";
+import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { useClubAnalytics } from "@/hooks/use-analytics";
 
 interface DashboardDesktopProps {
   clubName: string;
+  clubLogoUrl?: string | null;
   firstName: string;
   // stats
   played: number;
@@ -65,14 +66,27 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
   return (
     <div className="relative min-h-[calc(100vh-2.5rem)]">
-      {/* Hero background */}
+      {/* Layer 1: photo background */}
       <div
-        className="absolute inset-0 -z-10 bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroCourt})` }}
+        className="absolute inset-0 -z-30 bg-cover bg-center"
+        style={{ backgroundImage: `url(${squashCourtBg})` }}
         aria-hidden="true"
       />
+      {/* Layer 2: club logo watermark */}
+      {props.clubLogoUrl && (
+        <div
+          className="absolute inset-0 -z-20 bg-center bg-no-repeat opacity-30"
+          style={{
+            backgroundImage: `url(${props.clubLogoUrl})`,
+            backgroundSize: "min(60vw, 520px)",
+          }}
+          aria-hidden="true"
+        />
+      )}
+      {/* Layer 3: color overlay #111C37 @ 70% */}
       <div
-        className="absolute inset-0 -z-10 bg-[hsl(220_45%_5%/0.78)]"
+        className="absolute inset-0 -z-10"
+        style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
         aria-hidden="true"
       />
 

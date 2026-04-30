@@ -23,6 +23,7 @@ import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
+import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
 const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug }[] = [
@@ -97,7 +98,30 @@ export default function ClubAdmin() {
   const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
 
   return (
-    <div className="min-h-screen bg-background pb-20 text-[13px]">
+    <div className="relative min-h-screen pb-20 text-[13px]">
+      {/* Layer 1: photo background */}
+      <div
+        className="fixed inset-0 -z-30 bg-cover bg-center"
+        style={{ backgroundImage: `url(${squashCourtBg})` }}
+        aria-hidden
+      />
+      {/* Layer 2: club logo watermark */}
+      {club.logo_url && (
+        <div
+          className="fixed inset-0 -z-20 bg-center bg-no-repeat opacity-30"
+          style={{
+            backgroundImage: `url(${club.logo_url})`,
+            backgroundSize: "min(60vw, 520px)",
+          }}
+          aria-hidden
+        />
+      )}
+      {/* Layer 3: color overlay #111C37 @ 70% */}
+      <div
+        className="fixed inset-0 -z-10"
+        style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
+        aria-hidden
+      />
       <PageHeader
         title={club.name}
         subtitle="Club Administration"

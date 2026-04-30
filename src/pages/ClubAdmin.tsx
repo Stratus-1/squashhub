@@ -98,17 +98,17 @@ export default function ClubAdmin() {
   const activeTabMeta = visibleTabs.find(t => t.value === activeTab);
 
   return (
-    <div className="relative min-h-screen pb-20 text-[13px]">
+    <div className="relative isolate min-h-screen pb-20 text-[13px]">
       {/* Layer 1: photo background */}
       <div
-        className="fixed inset-0 -z-30 bg-cover bg-center"
+        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
         style={{ backgroundImage: `url(${squashCourtBg})` }}
         aria-hidden
       />
       {/* Layer 2: club logo watermark */}
       {club.logo_url && (
         <div
-          className="fixed inset-0 -z-20 bg-center bg-no-repeat opacity-30"
+          className="absolute inset-0 z-[1] bg-center bg-no-repeat opacity-30 pointer-events-none"
           style={{
             backgroundImage: `url(${club.logo_url})`,
             backgroundSize: "min(60vw, 520px)",
@@ -118,51 +118,53 @@ export default function ClubAdmin() {
       )}
       {/* Layer 3: color overlay #111C37 @ 70% */}
       <div
-        className="fixed inset-0 -z-10"
+        className="absolute inset-0 z-[2] pointer-events-none"
         style={{ backgroundColor: "rgba(17, 28, 55, 0.7)" }}
         aria-hidden
       />
-      <PageHeader
-        title={club.name}
-        subtitle="Club Administration"
-      />
-      <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
-        {/* Tile grid — responsive across all breakpoints */}
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
-          {visibleTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.value;
-            return (
-              <button
-                key={tab.value}
-                onClick={() => setActiveTab(tab.value)}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                  isActive
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active section header + content */}
-        {activeTabMeta && (
-          <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-            <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
-            <h2 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h2>
+      <div className="relative z-10">
+        <PageHeader
+          title={club.name}
+          subtitle="Club Administration"
+        />
+        <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
+          {/* Tile grid — responsive across all breakpoints */}
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+            {visibleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-card/80 text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
-        )}
 
-        <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
-          {renderContent()}
+          {/* Active section header + content */}
+          {activeTabMeta && (
+            <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+              <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
+              <h2 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h2>
+            </div>
+          )}
+
+          <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
+            {renderContent()}
+          </div>
         </div>
+        <BackToDashboard />
       </div>
-      <BackToDashboard />
     </div>
   );
 }

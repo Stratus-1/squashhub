@@ -2,6 +2,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useMyClub } from "@/hooks/use-club";
+import { useLocation } from "react-router-dom";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 /**

@@ -1,41 +1,72 @@
-## Problem
+## Goal
 
-The hamburger menu items on the homepage don't reliably navigate to the right sections. The target sections (`#top`, `#features`, `#pricing`, `#clubs`) all exist on the page, but the menu buttons are wrapped in Radix `SheetClose asChild`. When tapped, Radix immediately closes the sheet and unmounts the menu, which can cancel the inner button's `onClick` (smooth scroll) before it runs — so the menu just closes and nothing happens, or it jumps to the wrong place.
+Add the new **left sidebar navigation** from the mockup to the **desktop view only** (≥ md breakpoint). The mobile experience (bottom nav, current dashboard) stays exactly as today. No existing dashboard content is removed — the sidebar is added *around* the current layout so every feature remains accessible.
 
-## Fix
+## What changes
 
-Convert the hamburger Sheet to a **controlled** component and run the action *first*, then close the sheet — instead of relying on `SheetClose asChild` to do both.
+### 1. New desktop sidebar component
+`src/components/AppSidebar.tsx` — a shadcn `Sidebar` with `collapsible="icon"`, styled to match the mockup (dark navy, uppercase labels, amber active accent matching the brand).
 
-### Changes in `src/pages/Home.tsx`
+Top-level items + sub-items:
 
-1. Add controlled state for the mobile sheet:
-   ```tsx
-   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-   ```
+```text
+HOME            (group, expandable)
+  ├── Stats           → /analytics
+  ├── Bookings        → /bookings
+  └── Match Results   → /add-result
 
-2. Add a small helper that performs the action then closes the menu:
-   ```tsx
-   const handleMobileNav = (action: () => void) => {
-     setMobileMenuOpen(false);
-     // Defer scroll/navigate one tick so the sheet starts closing first
-     // and the target section is reachable.
-     setTimeout(action, 50);
-   };
-   ```
+COURTS          → /bookings
 
-3. Wire `<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>`.
+ACTIVITIES      (group, expandable)
+  ├── Mark a Game     → /match-marker
+  ├── Enter Results   → /add-result
+  ├── Club Ladderboard→ /ladder
+  ├── Challenges      → /challenges
+  ├── League Games    → /league-games   (only if club has leagues)
+  ├── Events          → /events
+  ├── Honesty Bar     → /honesty-bar    (only if honesty_bar_enabled)
+  ├── Feed            → /feed
+  └── My Account      → /my-account
 
-4. Remove all `<SheetClose asChild>` wrappers inside the mobile nav and replace each item with a plain `<Button>` whose `onClick` calls `handleMobileNav(...)`:
-   - Home → `handleMobileNav(() => scrollTo("top"))`
-   - Features → `handleMobileNav(() => scrollTo("features"))`
-   - Pricing → `handleMobileNav(() => scrollTo("pricing"))`
-   - Find/Create My Association → `handleMobileNav(() => scrollTo("clubs"))`
-   - Register Your Club → `handleMobileNav(() => navigate("/auth"))`
+CLUB ADMIN      → /club-admin           (only if hasAnyAdminAccess)
 
-5. Drop the now-unused `SheetClose` import.
+SETTINGS        → /settings  (pinned at bottom, with theme toggle dot like mockup)
+```
 
-### Why this works
+Behaviour:
+- Active route highlighted via `NavLink` + `isActive`.
+- Group containing the active route stays expanded by default.
+- Collapsed state shrinks to a narrow icon-only strip; sidebar never disappears.
+- `SidebarTrigger` placed in the desktop header so the user can toggle.
 
-Closing the sheet via state (rather than via Radix's `SheetClose` intercepting the click) guarantees the `onClick` handler runs to completion. The 50 ms `setTimeout` ensures the target section is laid out and reachable before `scrollIntoView` runs, so smooth-scroll lands on the correct anchor every time.
+### 2. Layout wrapper (desktop only)
+Create `src/components/DesktopShell.tsx` that:
+- On `<md` (mobile/tablet) — renders `{children}` unchanged. Bottom nav and current mobile dashboard stay intact.
+- On `≥md` — wraps children in `SidebarProvider` + `<AppSidebar />` + main column with a slim header containing the `SidebarTrigger` and existing notifications/profile widgets.
+- Hides the `BottomNav` on `≥md` (it's currently mobile-oriented anyway).
 
-No other files need to change. Section IDs (`top`, `features`, `clubs`, `pricing`) are already correctly defined on the page.
+Mount `DesktopShell` once in `src/App.tsx` around the authenticated routes (the same place `BottomNav` is rendered today).
+
+### 3. Dashboard content
+**No changes** to `src/pages/Dashboard.tsx`. All existing sections (Welcome banner, Profile Completion, Family switcher, Action tiles, League Games, Bookings, Match Results, Scheduled Matches, Honesty Bar tile, etc.) continue to render inside the new desktop main column. The mockup's "My Stats / Club tabs / accordions" restyle is **not** in this scope per your decision to keep all features.
+
+### 4. Mobile guarantees
+- `useIsMobile` (existing hook) gates the shell so mobile renders identically to today.
+- `BottomNav` and `MobileHeader` paths unchanged.
+- No CSS/className changes to existing pages.
+
+## Technical notes
+- Reuses shadcn `Sidebar`, `SidebarProvider`, `SidebarTrigger`, `SidebarGroup`, `SidebarMenu*` from `src/components/ui/sidebar.tsx`.
+- Conditional sidebar items: read `useClubContext`, `useMyClub`, `useIsClubAdmin`, `useMyPermissions`, plus a small query for `clubLeagueAssociations` (already used in Dashboard) — wrap in a tiny hook `useSidebarFlags()` to avoid duplicating queries.
+- Styling tokens: navy `#1E3A5F` background, amber `#F59E0B` accent for active items, uppercase tracking-wider labels, matching the mockup. Defined via Tailwind classes inside `AppSidebar.tsx`; no global theme changes.
+- `SidebarTrigger` lives in a thin desktop header bar so the user can collapse to icon-only and back.
+
+## Out of scope (will not change)
+- Mobile dashboard, bottom nav, mobile header.
+- Dashboard content/structure (no tabs, no accordions, no removed sections).
+- ClubAuth / login page.
+- Any backend/database changes.
+
+## Files touched
+- **New:** `src/components/AppSidebar.tsx`, `src/components/DesktopShell.tsx`, `src/hooks/use-sidebar-flags.ts`
+- **Edited:** `src/App.tsx` (wrap authenticated routes in `DesktopShell`, hide `BottomNav` on `md+`)

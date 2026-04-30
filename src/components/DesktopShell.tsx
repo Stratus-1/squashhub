@@ -24,6 +24,9 @@ export function DesktopShell({
   const isMobile = useIsMobile();
   const { data: clubData } = useMyClub();
   const clubLogoUrl = (clubData?.club as any)?.logo_url as string | undefined;
+  const { pathname } = useLocation();
+  // Routes where the layered background should NOT apply (keep original look)
+  const skipBg = pathname.startsWith("/bookings");
 
   if (!enabled || isMobile) {
     return <>{children}</>;

@@ -444,6 +444,13 @@ export default function Dashboard() {
         />
         <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
 
+        <PageHeader
+          title={effectiveClub?.name || "SquashHub"}
+          subtitle={`Welcome back, ${firstName}`}
+          showNotifications
+          showProfile
+        />
+
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}

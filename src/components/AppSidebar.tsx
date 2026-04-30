@@ -113,27 +113,35 @@ export function AppSidebar() {
       className="border-r border-sidebar-border bg-[hsl(220_45%_5%)]"
     >
       <SidebarContent className="gap-0 pt-6 px-1 bg-[hsl(220_45%_5%)]">
-        {/* HOME group — collapsible */}
+        {/* HOME group — label navigates to dashboard, chevron toggles */}
         <SidebarGroup className="px-2">
-          <button
-            type="button"
-            onClick={() => setHomeOpen((v) => !v)}
+          <div
             className={cn(
-              "flex items-center justify-between w-full py-2 group",
+              "flex items-center justify-between w-full py-2",
               groupHeaderClass,
               homeOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
             )}
           >
-            <span className="flex items-center gap-2">
+            <NavLink
+              to="/"
+              className="flex items-center gap-2 flex-1 hover:opacity-80"
+            >
               <Home className="w-4 h-4" />
               {!collapsed && <span>Home</span>}
-            </span>
+            </NavLink>
             {!collapsed && (
-              <ChevronDown
-                className={cn("w-4 h-4 transition-transform", homeOpen && "rotate-180")}
-              />
+              <button
+                type="button"
+                onClick={() => setHomeOpen((v) => !v)}
+                aria-label={homeOpen ? "Collapse Home" : "Expand Home"}
+                className="p-1 -m-1 hover:opacity-80"
+              >
+                <ChevronDown
+                  className={cn("w-4 h-4 transition-transform", homeOpen && "rotate-180")}
+                />
+              </button>
             )}
-          </button>
+          </div>
           {!collapsed && homeOpen && (
             <SidebarGroupContent className="mt-1.5">
               <SidebarMenuSub className="border-l-0 ml-1.5 px-0">

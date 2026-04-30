@@ -68,17 +68,10 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
     <div className="min-h-[calc(100vh-2.5rem)]">
       <div>
 
-      {/* Welcome row */}
-      <div className="px-8 pt-6 pb-4 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-white/60 font-heading">
-            {clubLabel(props.clubName)}
-          </p>
-          <h1 className="text-2xl font-heading font-bold text-white mt-1">
-            Welcome back, {props.firstName}
-          </h1>
-        </div>
       </div>
+
+      <div className="px-8 pt-2"></div>
+
 
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
         {/* STATS card */}

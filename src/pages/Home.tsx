@@ -141,7 +141,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
 
         <header className="relative z-50 pt-4 px-4">
-          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-black/40 backdrop-blur-xl border border-white/20 shadow-lg">
+          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
             <div className="flex items-center gap-2 min-w-0">
               <img src={shLogoFull} alt="SquashHub" className="h-10 sm:h-12 w-auto object-contain" />
             </div>
@@ -382,7 +382,7 @@ export default function Home() {
         ) : (
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Clubs */}
-            <Card className="bg-card/80">
+            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
                   <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
@@ -416,7 +416,7 @@ export default function Home() {
             </Card>
 
             {/* Associations */}
-            <Card className="bg-card/80">
+            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
                   <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
@@ -526,7 +526,7 @@ export default function Home() {
             <AccordionItem
               key={i}
               value={`faq-${i}`}
-              className="rounded-lg border border-border/60 bg-card/60 px-4"
+              className="rounded-xl border border-white/10 bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md text-white px-4"
             >
               <AccordionTrigger className="text-left text-sm sm:text-base font-medium hover:no-underline">
                 {f.q}
@@ -625,7 +625,7 @@ function PricingCard({
   onGetStarted?: () => void;
 }) {
   return (
-    <Card className="border-primary/30">
+    <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -684,7 +684,7 @@ function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="w-full text-left rounded-lg border border-border/60 bg-background/60 hover:border-primary/50 hover:bg-background transition-colors p-3 flex items-center gap-3 group"
+      className="w-full text-left rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] backdrop-blur-md text-white transition-colors p-3 flex items-center gap-3 group"
     >
       {tenant.logo_url ? (
         <img

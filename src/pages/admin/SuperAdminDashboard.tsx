@@ -71,9 +71,9 @@ export default function SuperAdminDashboard() {
         {stats.map((s) => (
           <Card
             key={s.label}
-            className="admin-glass p-5 flex items-start gap-4 border-white/10 bg-white/5 backdrop-blur-xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] hover:bg-white/[0.08] transition-colors"
+            className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 backdrop-blur-md rounded-2xl p-5 flex items-start gap-4 text-white"
           >
-            <div className={`p-2.5 rounded-lg bg-white/10 ring-1 ring-white/10 ${s.color}`}>
+            <div className={`p-2.5 rounded-xl bg-white/[0.04] border border-white/10 ${s.color}`}>
               <s.icon className="h-5 w-5" />
             </div>
             <div>

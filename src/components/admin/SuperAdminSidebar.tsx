@@ -51,8 +51,8 @@ export function SuperAdminSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/admin"}
-                      className="rounded-md border border-white/10 bg-white/5 backdrop-blur-md text-white/80 hover:bg-white/10 hover:text-white transition-colors"
-                      activeClassName="bg-white/15 border-white/20 text-white shadow-[0_4px_20px_-8px_rgba(0,0,0,0.6)]"
+                      className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md text-white/80 hover:bg-white/[0.08] hover:text-white transition-colors"
+                      activeClassName="bg-[hsl(220_45%_8%/0.85)] border-white/15 text-white"
                     >
                       <item.icon className="mr-2 h-4 w-4 shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
@@ -69,7 +69,7 @@ export function SuperAdminSidebar() {
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start border border-white/10 bg-white/5 backdrop-blur-md text-white/70 hover:bg-destructive/20 hover:text-white hover:border-destructive/40"
+          className="w-full justify-start rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md text-white/70 hover:bg-white/[0.08] hover:text-white"
           onClick={() => signOut()}
         >
           <LogOut className="mr-2 h-4 w-4 shrink-0" />

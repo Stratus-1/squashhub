@@ -385,10 +385,10 @@ export default function Home() {
             <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
-                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
                     Clubs
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-white/60 mt-1">
                     Find your club and sign in through their portal.
                   </p>
                 </div>
@@ -419,10 +419,10 @@ export default function Home() {
             <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
-                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
                     Leagues & Associations
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-white/60 mt-1">
                     Regional &amp; national squash bodies on SquashHub.
                   </p>
                 </div>
@@ -628,24 +628,24 @@ function PricingCard({
     <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Icon className="w-5 h-5 text-primary" />
+          <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
+            <Icon className="w-5 h-5 text-[hsl(var(--accent))]" />
           </div>
-          <h3 className="font-semibold text-foreground">{title}</h3>
+          <h3 className="font-semibold text-white">{title}</h3>
         </div>
         <div>
           <div className="flex items-baseline gap-1 flex-wrap">
-            <span className="text-3xl font-bold font-heading text-foreground">{priceLabel}</span>
-            <span className="text-sm text-muted-foreground">/ member per month</span>
+            <span className="text-3xl font-bold font-heading text-white">{priceLabel}</span>
+            <span className="text-sm text-white/60">/ member per month</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-white/50 mt-1">
             From September 2026
           </p>
         </div>
-        <ul className="space-y-2 text-sm text-muted-foreground pt-2 border-t border-border/40">
+        <ul className="space-y-2 text-sm text-white/70 pt-2 border-t border-white/10">
           {perks.map((p) => (
             <li key={p} className="flex items-start gap-2">
-              <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+              <Check className="w-4 h-4 text-[hsl(var(--accent))] flex-shrink-0 mt-0.5" />
               <span>{p}</span>
             </li>
           ))}
@@ -690,25 +690,25 @@ function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
         <img
           src={tenant.logo_url}
           alt={`${tenant.name} logo`}
-          className="w-10 h-10 rounded-md object-contain flex-shrink-0 bg-background"
+          className="w-10 h-10 rounded-md object-contain flex-shrink-0 bg-white/10"
         />
       ) : (
-        <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-primary" />
+        <div className="w-10 h-10 rounded-md bg-white/[0.06] border border-white/10 flex items-center justify-center flex-shrink-0">
+          <Icon className="w-5 h-5 text-[hsl(var(--accent))]" />
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <h4 className="font-semibold text-foreground text-sm truncate">{tenant.name}</h4>
+        <h4 className="font-semibold text-white text-sm truncate">{tenant.name}</h4>
         {tenant.subdomain && (
-          <p className="text-xs font-mono text-primary truncate">
+          <p className="text-xs font-mono text-[hsl(var(--accent))] truncate">
             {tenant.subdomain}.squashhub.co.za
           </p>
         )}
         {tenant.address && (
-          <p className="text-xs text-muted-foreground truncate">{tenant.address}</p>
+          <p className="text-xs text-white/50 truncate">{tenant.address}</p>
         )}
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white transition-colors flex-shrink-0" />
     </button>
   );
 }

@@ -141,7 +141,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
 
         <header className="relative z-50 pt-4 px-4">
-          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-black/40 backdrop-blur-xl border border-white/20 shadow-lg">
+          <div className="max-w-6xl mx-auto h-14 px-4 flex items-center justify-between rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
             <div className="flex items-center gap-2 min-w-0">
               <img src={shLogoFull} alt="SquashHub" className="h-10 sm:h-12 w-auto object-contain" />
             </div>
@@ -155,10 +155,10 @@ export default function Home() {
 
             {/* Desktop actions */}
             <div className="hidden md:flex items-center gap-2">
-              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+              <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                 Find/Create My Association
               </Button>
-              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                 Register Your Club
               </Button>
             </div>
@@ -235,10 +235,10 @@ export default function Home() {
               className="space-y-2 pt-2"
             >
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+                <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                   Find/Create My Association
                 </Button>
-                <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+                <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                   Register Your Club
                 </Button>
               </div>
@@ -327,10 +327,10 @@ export default function Home() {
 
               <div className="space-y-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+                  <Button size="lg" onClick={() => scrollTo("clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                     Find/Create My Association
                   </Button>
-                  <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+                  <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                     Register Your Club
                   </Button>
                 </div>
@@ -382,13 +382,13 @@ export default function Home() {
         ) : (
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Clubs */}
-            <Card className="bg-card/80">
+            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
-                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
                     Clubs
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-white/60 mt-1">
                     Find your club and sign in through their portal.
                   </p>
                 </div>
@@ -406,7 +406,7 @@ export default function Home() {
                 )}
                 {clubs.length > 3 && (
                   <Button
-                    className="w-full rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg"
+                    className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
                     onClick={() => scrollTo("all-clubs")}
                   >
                     View More Clubs
@@ -416,13 +416,13 @@ export default function Home() {
             </Card>
 
             {/* Associations */}
-            <Card className="bg-card/80">
+            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
-                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
                     Leagues & Associations
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-white/60 mt-1">
                     Regional &amp; national squash bodies on SquashHub.
                   </p>
                 </div>
@@ -440,7 +440,7 @@ export default function Home() {
                 )}
                 {associations.length > 3 && (
                   <Button
-                    className="w-full rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg"
+                    className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
                     onClick={() => scrollTo("all-clubs")}
                   >
                     View More
@@ -526,7 +526,7 @@ export default function Home() {
             <AccordionItem
               key={i}
               value={`faq-${i}`}
-              className="rounded-lg border border-border/60 bg-card/60 px-4"
+              className="rounded-xl border border-white/10 bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md text-white px-4"
             >
               <AccordionTrigger className="text-left text-sm sm:text-base font-medium hover:no-underline">
                 {f.q}
@@ -554,7 +554,7 @@ export default function Home() {
             Run your club with less admin and more control.
           </p>
           <div className="space-y-2 pt-2 flex flex-col items-center">
-            <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+            <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               Register Your Club
             </Button>
             <p className="text-xs text-muted-foreground">
@@ -625,27 +625,27 @@ function PricingCard({
   onGetStarted?: () => void;
 }) {
   return (
-    <Card className="border-primary/30">
+    <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Icon className="w-5 h-5 text-primary" />
+          <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
+            <Icon className="w-5 h-5 text-[hsl(var(--accent))]" />
           </div>
-          <h3 className="font-semibold text-foreground">{title}</h3>
+          <h3 className="font-semibold text-white">{title}</h3>
         </div>
         <div>
           <div className="flex items-baseline gap-1 flex-wrap">
-            <span className="text-3xl font-bold font-heading text-foreground">{priceLabel}</span>
-            <span className="text-sm text-muted-foreground">/ member per month</span>
+            <span className="text-3xl font-bold font-heading text-white">{priceLabel}</span>
+            <span className="text-sm text-white/60">/ member per month</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-white/50 mt-1">
             From September 2026
           </p>
         </div>
-        <ul className="space-y-2 text-sm text-muted-foreground pt-2 border-t border-border/40">
+        <ul className="space-y-2 text-sm text-white/70 pt-2 border-t border-white/10">
           {perks.map((p) => (
             <li key={p} className="flex items-start gap-2">
-              <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+              <Check className="w-4 h-4 text-[hsl(var(--accent))] flex-shrink-0 mt-0.5" />
               <span>{p}</span>
             </li>
           ))}
@@ -653,7 +653,7 @@ function PricingCard({
         {onGetStarted && (
           <Button
             onClick={onGetStarted}
-            className="w-full rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg"
+            className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
           >
             Get Started
           </Button>
@@ -684,31 +684,31 @@ function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="w-full text-left rounded-lg border border-border/60 bg-background/60 hover:border-primary/50 hover:bg-background transition-colors p-3 flex items-center gap-3 group"
+      className="w-full text-left rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] backdrop-blur-md text-white transition-colors p-3 flex items-center gap-3 group"
     >
       {tenant.logo_url ? (
         <img
           src={tenant.logo_url}
           alt={`${tenant.name} logo`}
-          className="w-10 h-10 rounded-md object-contain flex-shrink-0 bg-background"
+          className="w-10 h-10 rounded-md object-contain flex-shrink-0 bg-white/10"
         />
       ) : (
-        <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-primary" />
+        <div className="w-10 h-10 rounded-md bg-white/[0.06] border border-white/10 flex items-center justify-center flex-shrink-0">
+          <Icon className="w-5 h-5 text-[hsl(var(--accent))]" />
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <h4 className="font-semibold text-foreground text-sm truncate">{tenant.name}</h4>
+        <h4 className="font-semibold text-white text-sm truncate">{tenant.name}</h4>
         {tenant.subdomain && (
-          <p className="text-xs font-mono text-primary truncate">
+          <p className="text-xs font-mono text-[hsl(var(--accent))] truncate">
             {tenant.subdomain}.squashhub.co.za
           </p>
         )}
         {tenant.address && (
-          <p className="text-xs text-muted-foreground truncate">{tenant.address}</p>
+          <p className="text-xs text-white/50 truncate">{tenant.address}</p>
         )}
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white transition-colors flex-shrink-0" />
     </button>
   );
 }
@@ -755,7 +755,7 @@ function ContactForm() {
         />
       </div>
       <div className="flex justify-end">
-        <Button type="submit" size="lg" className="gap-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/30 text-white hover:bg-black/60 shadow-lg">
+        <Button type="submit" size="lg" className="gap-2 rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
           <Mail className="w-4 h-4" />
           Submit Message
         </Button>

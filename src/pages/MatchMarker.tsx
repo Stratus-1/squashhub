@@ -118,7 +118,11 @@ export default function MatchMarker() {
         console.error("Failed to save match:", error);
         toast.error("Could not save match result");
         return;
-      }
+      // Match saved — clear persisted in-progress state
+      try {
+        localStorage.removeItem(MARKER_CONFIG_KEY);
+        localStorage.removeItem(MARKER_STATE_KEY);
+      } catch {}
 
       toast.success(autoConfirm ? "Match result saved and confirmed!" : "Match result saved! Awaiting player confirmation.");
 

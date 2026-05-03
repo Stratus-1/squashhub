@@ -9,6 +9,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export default function MatchMarker() {
@@ -22,6 +23,7 @@ export default function MatchMarker() {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Persist config so user can navigate away and resume
   useEffect(() => {
@@ -139,10 +141,18 @@ export default function MatchMarker() {
               status: "completed",
             })
             .eq("id", config.sourceId);
+          // Refresh tournament views
+          queryClient.invalidateQueries({ queryKey: ["club-champ-matches"] });
+          queryClient.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
+          queryClient.invalidateQueries({ queryKey: ["my-champ-matches-events"] });
+          queryClient.invalidateQueries({ queryKey: ["club-champs-all-entries"] });
         } catch (e) {
           console.warn("Could not update tournament match:", e);
         }
       }
+
+      // Note: For league fixtures, marking is launched from the League Game Detail page
+      // which already persists into league_match_results via its own handler.
       const otherMember = memberA?.user_id === user?.id ? memberB : memberA;
       if (otherMember?.user_id) {
         try {

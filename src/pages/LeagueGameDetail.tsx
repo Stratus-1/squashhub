@@ -385,6 +385,8 @@ export default function LeagueGameDetail() {
       // Also update fixture result summary
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+      queryClient.invalidateQueries({ queryKey: ["league-fixture-results"] });
+      queryClient.invalidateQueries({ queryKey: ["assoc-fixture-results"] });
     } catch (err: any) {
       console.error("Auto-save failed:", err);
     }

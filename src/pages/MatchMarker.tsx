@@ -171,12 +171,12 @@ export default function MatchMarker() {
 
       <div className="px-4 mt-3 mb-6 max-w-lg mx-auto">
         {!config ? (
-          <MarkerSetup onStart={setConfig} />
+          <MarkerSetup onStart={startConfig} />
         ) : (
           <MarkerScoreboard
             config={config}
             onMatchComplete={handleMatchComplete}
-            onReset={() => setConfig(null)}
+            onReset={resetMatch}
           />
         )}
       </div>

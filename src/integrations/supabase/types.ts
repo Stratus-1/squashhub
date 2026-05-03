@@ -1713,6 +1713,7 @@ export type Database = {
           league_member_annual_fee: number
           league_week_start_dow: number
           light_fee_per_hour: number | null
+          lights_integration_enabled: boolean
           logo_url: string | null
           max_peak_bookings_per_day: number
           member_fee_annual: number | null
@@ -1753,6 +1754,7 @@ export type Database = {
           league_member_annual_fee?: number
           league_week_start_dow?: number
           light_fee_per_hour?: number | null
+          lights_integration_enabled?: boolean
           logo_url?: string | null
           max_peak_bookings_per_day?: number
           member_fee_annual?: number | null
@@ -1793,6 +1795,7 @@ export type Database = {
           league_member_annual_fee?: number
           league_week_start_dow?: number
           light_fee_per_hour?: number | null
+          lights_integration_enabled?: boolean
           logo_url?: string | null
           max_peak_bookings_per_day?: number
           member_fee_annual?: number | null

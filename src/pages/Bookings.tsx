@@ -273,7 +273,8 @@ export default function Bookings() {
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
   const myClub = myClubData?.club;
-  const lightFeePerHour = (myClub as any)?.light_fee_per_hour ?? 0;
+  const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
+  const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
   const slotMinutes: 30 | 60 = ((myClub as any)?.booking_slot_minutes === 60 ? 60 : 30) as 30 | 60;
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
   const dynamicTimeSlots = useMemo(() => buildTimeSlots(slotMinutes), [slotMinutes]);
@@ -981,7 +982,7 @@ export default function Bookings() {
                           onClick={() => {
                             if (isPastSlot && !booking) return;
                             if (booking) setBookingDetails(booking);
-                            else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: true, lightFeeSplit: "booker" });
+                            else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >
                           {booking ? (
@@ -1295,24 +1296,26 @@ export default function Bookings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border p-3">
-                <div className="min-w-0">
-                  <Label className="text-xs font-semibold">Switch on Lights Automatically</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {bookingDialog.lightsOn
-                      ? (lightFeePerHour > 0
-                          ? `Lights turn on when your booking starts · R${lightFeePerHour}/hr`
-                          : "Lights will activate automatically at booking time")
-                      : "Member will be prompted to switch on the lights"}
-                  </p>
+              {lightsIntegrationEnabled && (
+                <div className="flex items-center justify-between rounded-xl border p-3">
+                  <div className="min-w-0">
+                    <Label className="text-xs font-semibold">Switch on Lights Automatically</Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {bookingDialog.lightsOn
+                        ? (lightFeePerHour > 0
+                            ? `Lights turn on when your booking starts · R${lightFeePerHour}/hr`
+                            : "Lights will activate automatically at booking time")
+                        : "Member will be prompted to switch on the lights"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={bookingDialog.lightsOn}
+                    onCheckedChange={(checked) =>
+                      setBookingDialog((s) => (s ? { ...s, lightsOn: checked } : s))
+                    }
+                  />
                 </div>
-                <Switch
-                  checked={bookingDialog.lightsOn}
-                  onCheckedChange={(checked) =>
-                    setBookingDialog((s) => (s ? { ...s, lightsOn: checked } : s))
-                  }
-                />
-              </div>
+              )}
 
 
               <div className="space-y-2">

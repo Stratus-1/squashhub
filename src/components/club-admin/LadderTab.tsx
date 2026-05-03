@@ -588,6 +588,9 @@ export function LadderTab({ clubId }: { clubId: string }) {
             saving={saving}
             onSave={handleSave}
             searchQuery={searchQuery}
+            leagues={leagues}
+            affiliationsByMember={affiliationsByMember}
+            onAllocated={handleAllocated}
           />
         </div>
       )}

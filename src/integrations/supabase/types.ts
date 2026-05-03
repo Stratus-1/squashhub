@@ -644,6 +644,7 @@ export type Database = {
           name: string
           num_groups: number
           play_days: number[]
+          source_league_id: string | null
           start_date: string
           start_time: string
           status: string
@@ -662,6 +663,7 @@ export type Database = {
           name: string
           num_groups?: number
           play_days?: number[]
+          source_league_id?: string | null
           start_date: string
           start_time?: string
           status?: string
@@ -680,6 +682,7 @@ export type Database = {
           name?: string
           num_groups?: number
           play_days?: number[]
+          source_league_id?: string | null
           start_date?: string
           start_time?: string
           status?: string
@@ -691,6 +694,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_source_league_id_fkey"
+            columns: ["source_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
         ]

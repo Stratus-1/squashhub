@@ -1,0 +1,3 @@
+ALTER TABLE public.club_champs ADD COLUMN IF NOT EXISTS source_league_id uuid REFERENCES public.leagues(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_club_champs_source_league_id ON public.club_champs(source_league_id) WHERE source_league_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_club_champs_matches_scheduled_date ON public.club_champs_matches(scheduled_date) WHERE scheduled_date IS NOT NULL;

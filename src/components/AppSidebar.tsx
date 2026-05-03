@@ -57,12 +57,18 @@ export function AppSidebar() {
     return pathname === path;
   };
 
+  const dashboardTabUrl = (tab: string) => {
+    const params = new URLSearchParams(search);
+    params.set("tab", tab);
+    return `${pathname || "/"}?${params.toString()}`;
+  };
+
   // Association tenants get a slimmed-down menu — no club-player items
   const homeItems: Item[] = isAssociation
     ? [
-        { title: "Affiliated Clubs", url: "/?tab=affiliated", icon: Network },
-        { title: "Members", url: "/?tab=members", icon: Users },
-        { title: "Fees Owing", url: "/?tab=fees", icon: Receipt },
+        { title: "Affiliated Clubs", url: dashboardTabUrl("affiliated"), icon: Network },
+        { title: "Members", url: dashboardTabUrl("members"), icon: Users },
+        { title: "Fees Owing", url: dashboardTabUrl("fees"), icon: Receipt },
       ]
     : [
         { title: "Stats", url: "/analytics", icon: BarChart3 },

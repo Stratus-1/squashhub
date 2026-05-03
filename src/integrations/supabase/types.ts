@@ -645,6 +645,7 @@ export type Database = {
           num_groups: number
           play_days: number[]
           source_league_id: string | null
+          source_league_ids: string[]
           start_date: string
           start_time: string
           status: string
@@ -664,6 +665,7 @@ export type Database = {
           num_groups?: number
           play_days?: number[]
           source_league_id?: string | null
+          source_league_ids?: string[]
           start_date: string
           start_time?: string
           status?: string
@@ -683,6 +685,7 @@ export type Database = {
           num_groups?: number
           play_days?: number[]
           source_league_id?: string | null
+          source_league_ids?: string[]
           start_date?: string
           start_time?: string
           status?: string

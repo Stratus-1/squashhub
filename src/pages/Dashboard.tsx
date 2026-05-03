@@ -177,12 +177,16 @@ export default function Dashboard() {
 
       // 3) Tournament matches linked to a league where I'm a player
       const { data: champMatches } = await fromExt("club_champs_matches")
-        .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id, champ_id, player_a:player_a_member_id(name), player_b:player_b_member_id(name), club_champs:champ_id(name, source_league_id, club_id)")
+        .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id, champ_id, player_a:player_a_member_id(name), player_b:player_b_member_id(name), club_champs:champ_id(name, source_league_id, source_league_ids, club_id)")
         .or(`player_a_member_id.eq.${myMemberId},player_b_member_id.eq.${myMemberId}`)
         .gte("scheduled_date", today)
         .lte("scheduled_date", horizon);
       const champRows = ((champMatches || []) as any[])
-        .filter((m) => m.club_champs?.source_league_id && m.club_champs?.club_id === clubId)
+        .filter((m) => {
+          const c = m.club_champs;
+          if (!c || c.club_id !== clubId) return false;
+          return !!c.source_league_id || (Array.isArray(c.source_league_ids) && c.source_league_ids.length > 0);
+        })
         .map((m) => {
           const isA = m.player_a_member_id === myMemberId;
           const opponent = isA ? (m.player_b?.name || "TBD") : (m.player_a?.name || "TBD");

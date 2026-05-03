@@ -128,8 +128,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [includeVisitors, setIncludeVisitors] = useState(false);
   const [selectedVisitorClubs, setSelectedVisitorClubs] = useState<Set<string>>(new Set());
 
-  // League pre-fill (internal or external/regional)
-  const [sourceLeagueId, setSourceLeagueId] = useState<string>("");
+  // League pre-fill (internal or external/regional) — supports multiple leagues
+  const [sourceLeagueIds, setSourceLeagueIds] = useState<Set<string>>(new Set());
 
   const { data: availableLeagues = [] } = useQuery({
     queryKey: ["club-leagues-for-tournament", clubId],
@@ -144,13 +144,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!clubId,
   });
 
-  // When admin selects a league, pre-fill players from its registrations
-  const applyLeaguePrefill = async (leagueId: string) => {
-    setSourceLeagueId(leagueId);
-    if (!leagueId) return;
+  // Re-fetch & merge players whenever the league selection changes
+  const applyLeaguePrefill = async (leagueIds: Set<string>) => {
+    setSourceLeagueIds(leagueIds);
+    if (leagueIds.size === 0) {
+      setSelectedPlayerIds(new Set());
+      return;
+    }
     const { data: regs, error } = await fromExt("member_league_registrations")
       .select("club_member_id")
-      .eq("league_id", leagueId);
+      .in("league_id", Array.from(leagueIds));
     if (error) {
       toast.error("Failed to load league players");
       return;
@@ -158,11 +161,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const ids = new Set<string>((regs || []).map((r: any) => r.club_member_id).filter(Boolean));
     setSelectedPlayerIds(ids);
     if (ids.size > 0) {
-      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from league`);
+      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from ${leagueIds.size} league${leagueIds.size === 1 ? "" : "s"}`);
     } else {
-      toast.info("No registered players found in that league");
+      toast.info("No registered players found in the selected leagues");
     }
   };
+
+  const toggleSourceLeague = (leagueId: string) => {
+    const next = new Set(sourceLeagueIds);
+    if (next.has(leagueId)) next.delete(leagueId); else next.add(leagueId);
+    applyLeaguePrefill(next);
+  };
+
+  const hasLeagueSelection = sourceLeagueIds.size > 0;
 
   // Fetch registered visitors
   const { data: allVisitors = [] } = useQuery({
@@ -228,7 +239,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const goToStep = (s: WizardStep) => {
     if (s === "players" && step === "category") {
       // Don't override if league pre-fill already set the player list
-      if (!isDoubles && !sourceLeagueId) {
+      if (!isDoubles && !hasLeagueSelection) {
         const memberIds = genderMembers.map((m) => m.id);
         const visitorIds = filteredVisitors.map((v) => `visitor-${v.id}`);
         setSelectedPlayerIds(new Set([...memberIds, ...visitorIds]));
@@ -449,7 +460,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
-            source_league_id: sourceLeagueId || null,
+            source_league_id: Array.from(sourceLeagueIds)[0] || null,
+            source_league_ids: Array.from(sourceLeagueIds),
           })
           .eq("id", editingChampId);
         if (updateErr) throw updateErr;
@@ -469,7 +481,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
-            source_league_id: sourceLeagueId || null,
+            source_league_id: Array.from(sourceLeagueIds)[0] || null,
+            source_league_ids: Array.from(sourceLeagueIds),
           })
           .select()
           .single();
@@ -645,7 +658,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setGroupAssignments(new Map());
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
-    setSourceLeagueId("");
+    setSourceLeagueIds(new Set());
     setEditingChampId(null);
   };
 
@@ -663,7 +676,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 30);
-    setSourceLeagueId(champ.source_league_id || "");
+    const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
+      ? champ.source_league_ids
+      : (champ.source_league_id ? [champ.source_league_id] : []);
+    setSourceLeagueIds(new Set(initialLeagueIds));
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
@@ -850,41 +866,94 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         <Card>
           <CardHeader><CardTitle>Select Category</CardTitle></CardHeader>
           <CardContent className="space-y-6">
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
-              <div className="grid grid-cols-3 gap-3">
-                {(["men", "ladies", "mixed"] as GenderCategory[]).map((g) => (
-                  <Button
-                    key={g}
-                    variant={gender === g ? "default" : "outline"}
-                    className="h-16 text-base"
-                    onClick={() => setGender(g)}
-                  >
-                    {g === "men" ? "🏆 Men's" : g === "ladies" ? "🏆 Ladies'" : "🏆 Mixed"}
-                  </Button>
-                ))}
+            {/* League pre-fill — moved to TOP. When leagues are picked, the tournament inherits
+                their players, gender mix and format, so the manual fields below are hidden. */}
+            {availableLeagues.length > 0 && (
+              <div className="rounded-lg border p-3 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Pre-fill from League(s)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Plan a tournament around one or more existing leagues (e.g. League 6 &amp; 7). All registered players in the chosen leagues are loaded automatically. Leave empty to pick players manually.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[260px] overflow-y-auto">
+                  {availableLeagues.map((l: any) => {
+                    const scope = l.league_associations?.scope === "internal" ? "Internal" : (l.league_associations?.name || "League");
+                    const checked = sourceLeagueIds.has(l.id);
+                    return (
+                      <label
+                        key={l.id}
+                        className={cn(
+                          "flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 border",
+                          checked ? "bg-primary/10 border-primary" : "hover:bg-accent border-transparent"
+                        )}
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => toggleSourceLeague(l.id)} />
+                        <span className="text-sm font-medium">{l.name}</span>
+                        {l.code && <Badge variant="outline" className="text-[10px]">{l.code}</Badge>}
+                        <Badge variant="secondary" className="ml-auto text-[10px]">{scope}</Badge>
+                      </label>
+                    );
+                  })}
+                </div>
+                {hasLeagueSelection && (
+                  <p className="text-[11px] text-primary">
+                    ✓ {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} loaded from {sourceLeagueIds.size} league{sourceLeagueIds.size === 1 ? "" : "s"} — scheduled matches will appear in their upcoming league games.
+                  </p>
+                )}
               </div>
-            </div>
+            )}
 
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Match Type</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant={matchType === "singles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("singles")}
-                >
-                  👤 Singles
-                </Button>
-                <Button
-                  variant={matchType === "doubles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("doubles")}
-                >
-                  👥 Doubles
-                </Button>
-              </div>
-            </div>
+            {/* When leagues are chosen, the rest is auto-derived (mixed singles, no visitors) */}
+            {!hasLeagueSelection && (
+              <>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(["men", "ladies", "mixed"] as GenderCategory[]).map((g) => (
+                      <Button
+                        key={g}
+                        variant={gender === g ? "default" : "outline"}
+                        className="h-16 text-base"
+                        onClick={() => setGender(g)}
+                      >
+                        {g === "men" ? "🏆 Men's" : g === "ladies" ? "🏆 Ladies'" : "🏆 Mixed"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Match Type</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant={matchType === "singles" ? "default" : "outline"}
+                      className="h-16 text-base"
+                      onClick={() => setMatchType("singles")}
+                    >
+                      👤 Singles
+                    </Button>
+                    <Button
+                      variant={matchType === "doubles" ? "default" : "outline"}
+                      className="h-16 text-base"
+                      onClick={() => setMatchType("doubles")}
+                    >
+                      👥 Doubles
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <Label className="text-sm font-medium">Include Visitors</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Add registered visitors to the tournament player pool
+                    </p>
+                  </div>
+                  <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
+                </div>
+              </>
+            )}
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
@@ -895,44 +964,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
               <Switch checked={enablePlayoffs} onCheckedChange={setEnablePlayoffs} />
             </div>
-
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <Label className="text-sm font-medium">Include Visitors</Label>
-                <p className="text-xs text-muted-foreground">
-                  Add registered visitors to the tournament player pool
-                </p>
-              </div>
-              <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
-            </div>
-
-            {availableLeagues.length > 0 && (
-              <div className="rounded-lg border p-3 space-y-2">
-                <Label className="text-sm font-medium">Pre-fill from League (optional)</Label>
-                <p className="text-xs text-muted-foreground">
-                  Plan a tournament around an existing internal or regional league. Players already registered in that league will be loaded automatically.
-                </p>
-                <Select value={sourceLeagueId || "none"} onValueChange={(v) => applyLeaguePrefill(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Select league..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— None (manual selection) —</SelectItem>
-                    {availableLeagues.map((l: any) => {
-                      const scope = l.league_associations?.scope === "internal" ? "Internal" : (l.league_associations?.name || "League");
-                      return (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name} {l.code ? `(${l.code})` : ""} · {scope}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {sourceLeagueId && (
-                  <p className="text-[11px] text-primary">
-                    ✓ {selectedPlayerIds.size} league players loaded — scheduled matches will appear in their upcoming league games.
-                  </p>
-                )}
-              </div>
-            )}
 
             {includeVisitors && visitorClubs.length > 0 && (
               <div className="space-y-2 rounded-lg border p-3">

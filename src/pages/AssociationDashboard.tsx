@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +90,19 @@ export default function AssociationDashboard() {
   if (hasAdminAccess && !visibleAdminTabs.find(t => t.value === adminTab)) {
     setAdminTab(visibleAdminTabs[0].value);
   }
+
+  // Deep-link via ?tab=members etc. → jump to admin view + tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (!tab) return;
+    const match = visibleAdminTabs.find(t => t.value === tab);
+    if (match) {
+      setAdminTab(match.value);
+      setView("admin");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, visibleAdminTabs.length]);
 
   const overviewTiles: OverviewTile[] = [
     ...(hasAdminAccess ? [{

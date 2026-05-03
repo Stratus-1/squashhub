@@ -1452,6 +1452,13 @@ export type Database = {
             foreignKeyName: "club_members_enable_league_association_id_fkey"
             columns: ["enable_league_association_id"]
             isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "club_members_enable_league_association_id_fkey"
+            columns: ["enable_league_association_id"]
+            isOneToOne: false
             referencedRelation: "league_associations"
             referencedColumns: ["id"]
           },
@@ -2155,6 +2162,7 @@ export type Database = {
           platform_association_id: string | null
           pro_rate: boolean
           scope: string
+          tenant_association_id: string | null
           updated_at: string
           website: string | null
           week_start_dow: number | null
@@ -2178,6 +2186,7 @@ export type Database = {
           platform_association_id?: string | null
           pro_rate?: boolean
           scope?: string
+          tenant_association_id?: string | null
           updated_at?: string
           website?: string | null
           week_start_dow?: number | null
@@ -2201,6 +2210,7 @@ export type Database = {
           platform_association_id?: string | null
           pro_rate?: boolean
           scope?: string
+          tenant_association_id?: string | null
           updated_at?: string
           website?: string | null
           week_start_dow?: number | null
@@ -2218,6 +2228,13 @@ export type Database = {
             columns: ["platform_association_id"]
             isOneToOne: false
             referencedRelation: "platform_league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_associations_tenant_association_id_fkey"
+            columns: ["tenant_association_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -2648,6 +2665,13 @@ export type Database = {
             foreignKeyName: "leagues_association_id_fkey"
             columns: ["association_id"]
             isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "leagues_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
             referencedRelation: "league_associations"
             referencedColumns: ["id"]
           },
@@ -2978,6 +3002,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "member_association_affiliations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
           {
             foreignKeyName: "member_association_affiliations_association_id_fkey"
             columns: ["association_id"]
@@ -3869,6 +3900,56 @@ export type Database = {
       }
     }
     Views: {
+      association_member_affiliations_v: {
+        Row: {
+          active: boolean | null
+          affiliation_id: string | null
+          association_tenant_id: string | null
+          club_id: string | null
+          club_member_id: string | null
+          club_name: string | null
+          club_subdomain: string | null
+          gender: string | null
+          joined_at: string | null
+          league_association_id: string | null
+          league_association_number: string | null
+          league_fee_annual: number | null
+          league_name: string | null
+          member_email: string | null
+          member_name: string | null
+          members_pay_directly: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_associations_tenant_association_id_fkey"
+            columns: ["association_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_association_affiliations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_association_affiliations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_delegates_public: {
         Row: {
           club_id: string | null

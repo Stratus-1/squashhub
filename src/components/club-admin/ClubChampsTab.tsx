@@ -224,7 +224,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   const goToStep = (s: WizardStep) => {
     if (s === "players" && step === "category") {
-      if (!isDoubles) {
+      // Don't override if league pre-fill already set the player list
+      if (!isDoubles && !sourceLeagueId) {
         const memberIds = genderMembers.map((m) => m.id);
         const visitorIds = filteredVisitors.map((v) => `visitor-${v.id}`);
         setSelectedPlayerIds(new Set([...memberIds, ...visitorIds]));

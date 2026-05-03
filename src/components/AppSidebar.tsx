@@ -51,7 +51,6 @@ export function AppSidebar() {
 
   const isActive = (path: string) => {
     if (path.includes("?")) return `${pathname}${search}` === path;
-    if (path === "/events") return pathname === path && !search.includes("tab=tournaments");
     return pathname === path;
   };
 
@@ -67,7 +66,7 @@ export function AppSidebar() {
     { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
     { title: "Challenges", url: "/challenges", icon: Swords },
     ...(hasLeagues ? [{ title: "League Games", url: "/league-games", icon: Trophy }] : []),
-    { title: "Tournaments", url: "/events?tab=tournaments", icon: Trophy },
+    { title: "Tournaments", url: "/tournaments", icon: Trophy },
     { title: "Events", url: "/events", icon: CalendarDays },
     ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
     { title: "Feed", url: "/feed", icon: MessageCircle },

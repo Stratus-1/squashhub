@@ -33,6 +33,7 @@ import Challenges from "./pages/Challenges";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Events from "./pages/Events";
+import Tournaments from "./pages/Tournaments";
 import EventDetail from "./pages/EventDetail";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";

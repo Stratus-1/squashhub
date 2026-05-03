@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useProfile } from "@/hooks/use-data";
+import { useProfile, useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { useMemberContext } from "@/contexts/MemberContext";

@@ -129,14 +129,14 @@ export default function ClubAdmin() {
               const Icon = tab.icon;
               const isActive = activeTab === tab.value;
               return (
-                <button
+              <button
                   key={tab.value}
                   onClick={() => setActiveTab(tab.value)}
                   className={cn(
                     "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
                     isActive
                       ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-card/80 text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                      : COLOR_STYLES[tab.color] || "bg-card/80 text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
                   <Icon className="w-4 h-4 md:w-5 md:h-5" />

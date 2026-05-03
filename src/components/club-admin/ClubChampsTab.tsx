@@ -75,6 +75,29 @@ const GENDER_LABELS: Record<GenderCategory, string> = {
   mixed: "Mixed",
 };
 
+function SortableRow({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 py-1">
+      <button
+        type="button"
+        className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+      >
+        <GripVertical className="w-3.5 h-3.5" />
+      </button>
+      {children}
+    </div>
+  );
+}
+
 export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();

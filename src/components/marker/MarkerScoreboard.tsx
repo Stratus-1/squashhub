@@ -9,6 +9,24 @@ import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
 import { CastDialog } from "./CastDialog";
 import { useClubContext } from "@/contexts/ClubContext";
 import { toast } from "sonner";
+import { MARKER_STATE_KEY } from "@/lib/marker-storage";
+
+interface PersistedState {
+  scoreA: number; scoreB: number;
+  gamesA: number; gamesB: number;
+  completedGames: GameScore[];
+  server: "a" | "b"; serveSide: ServeSide;
+  history: PointEvent[];
+  matchOver: boolean; matchWinner: "a" | "b" | null;
+  elapsed: number;
+}
+
+function loadPersisted(): PersistedState | null {
+  try {
+    const raw = localStorage.getItem(MARKER_STATE_KEY);
+    return raw ? (JSON.parse(raw) as PersistedState) : null;
+  } catch { return null; }
+}
 
 type ServeSide = "R" | "L";
 
@@ -78,16 +96,18 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const cast = useMarkerCast(club?.id);
   const [castDialogOpen, setCastDialogOpen] = useState(false);
 
-  const [scoreA, setScoreA] = useState(0);
-  const [scoreB, setScoreB] = useState(0);
-  const [gamesA, setGamesA] = useState(0);
-  const [gamesB, setGamesB] = useState(0);
-  const [completedGames, setCompletedGames] = useState<GameScore[]>([]);
-  const [server, setServer] = useState<"a" | "b">("a");
-  const [serveSide, setServeSide] = useState<ServeSide>("R");
-  const [history, setHistory] = useState<PointEvent[]>([]);
-  const [matchOver, setMatchOver] = useState(false);
-  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(null);
+  const persisted = useRef<PersistedState | null>(loadPersisted()).current;
+
+  const [scoreA, setScoreA] = useState(persisted?.scoreA ?? 0);
+  const [scoreB, setScoreB] = useState(persisted?.scoreB ?? 0);
+  const [gamesA, setGamesA] = useState(persisted?.gamesA ?? 0);
+  const [gamesB, setGamesB] = useState(persisted?.gamesB ?? 0);
+  const [completedGames, setCompletedGames] = useState<GameScore[]>(persisted?.completedGames ?? []);
+  const [server, setServer] = useState<"a" | "b">(persisted?.server ?? "a");
+  const [serveSide, setServeSide] = useState<ServeSide>(persisted?.serveSide ?? "R");
+  const [history, setHistory] = useState<PointEvent[]>(persisted?.history ?? []);
+  const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
+  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
 
   // Rest timer between games
   const [resting, setResting] = useState(false);
@@ -95,12 +115,13 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const restTimerRef = useRef<number | null>(null);
 
   // Match timer
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(persisted?.elapsed ?? 0);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef(Date.now());
-  const pausedElapsedRef = useRef(0);
+  const pausedElapsedRef = useRef(persisted?.elapsed ?? 0);
 
   useEffect(() => {
+    if (matchOver) return;
     startTimeRef.current = Date.now();
     timerRef.current = window.setInterval(() => {
       setElapsed(pausedElapsedRef.current + Math.floor((Date.now() - startTimeRef.current) / 1000));
@@ -108,7 +129,20 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Persist scoreboard state so user can navigate away and resume
+  useEffect(() => {
+    if (matchOver) return;
+    try {
+      const snapshot: PersistedState = {
+        scoreA, scoreB, gamesA, gamesB, completedGames,
+        server, serveSide, history, matchOver, matchWinner, elapsed,
+      };
+      localStorage.setItem(MARKER_STATE_KEY, JSON.stringify(snapshot));
+    } catch {}
+  }, [scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide, history, matchOver, matchWinner, elapsed]);
 
   // Pause match timer during rest
   const pauseMatchTimer = useCallback(() => {

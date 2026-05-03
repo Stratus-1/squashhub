@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";
@@ -11,9 +12,37 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 export default function MatchMarker() {
-  const [config, setConfig] = useState<MarkerConfig | null>(null);
+  const [config, setConfig] = useState<MarkerConfig | null>(() => {
+    try {
+      const raw = localStorage.getItem(MARKER_CONFIG_KEY);
+      return raw ? (JSON.parse(raw) as MarkerConfig) : null;
+    } catch {
+      return null;
+    }
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Persist config so user can navigate away and resume
+  useEffect(() => {
+    try {
+      if (config) localStorage.setItem(MARKER_CONFIG_KEY, JSON.stringify(config));
+      else localStorage.removeItem(MARKER_CONFIG_KEY);
+    } catch {}
+  }, [config]);
+
+  const startConfig = (c: MarkerConfig) => {
+    try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
+    setConfig(c);
+  };
+
+  const resetMatch = () => {
+    try {
+      localStorage.removeItem(MARKER_CONFIG_KEY);
+      localStorage.removeItem(MARKER_STATE_KEY);
+    } catch {}
+    setConfig(null);
+  };
 
   const handleMatchComplete = async (result: {
     games: GameScore[];
@@ -91,6 +120,12 @@ export default function MatchMarker() {
         return;
       }
 
+      // Match saved — clear persisted in-progress state
+      try {
+        localStorage.removeItem(MARKER_CONFIG_KEY);
+        localStorage.removeItem(MARKER_STATE_KEY);
+      } catch {}
+
       toast.success(autoConfirm ? "Match result saved and confirmed!" : "Match result saved! Awaiting player confirmation.");
 
       // If this was a tournament match, update the club_champs_matches record too
@@ -136,12 +171,12 @@ export default function MatchMarker() {
 
       <div className="px-4 mt-3 mb-6 max-w-lg mx-auto">
         {!config ? (
-          <MarkerSetup onStart={setConfig} />
+          <MarkerSetup onStart={startConfig} />
         ) : (
           <MarkerScoreboard
             config={config}
             onMatchComplete={handleMatchComplete}
-            onReset={() => setConfig(null)}
+            onReset={resetMatch}
           />
         )}
       </div>

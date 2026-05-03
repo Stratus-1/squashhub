@@ -18,7 +18,8 @@ import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCar
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
-import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine } from "lucide-react";
+import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
+import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,6 +63,19 @@ export default function Dashboard() {
   const { data: todayBookings } = useBookings(todayStr, clubId);
   const { data: myBookings } = useMyBookings(effectiveUserId, { memberId: myMemberId });
   const { data: myScheduledMatches } = useMyScheduledMatches(effectiveUserId);
+
+  // Detect in-progress marker session (re-check on focus / route changes)
+  const [hasMarkerSession, setHasMarkerSession] = useState(() => hasActiveMarkerSession());
+  useEffect(() => {
+    const check = () => setHasMarkerSession(hasActiveMarkerSession());
+    check();
+    window.addEventListener("focus", check);
+    window.addEventListener("storage", check);
+    return () => {
+      window.removeEventListener("focus", check);
+      window.removeEventListener("storage", check);
+    };
+  }, [location.pathname]);
 
   // Check if club has any league associations (to show/hide League Games tile)
   const { data: clubLeagueAssociations } = useQuery({
@@ -604,9 +618,20 @@ export default function Dashboard() {
             <Swords className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Challenges</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20" onClick={() => navigate("/match-marker")}>
-            <Crosshair className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Mark a Game</span>
+          <Button
+            variant="outline"
+            className={cn(
+              "flex-col h-auto py-3 gap-1.5",
+              hasMarkerSession
+                ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-2 ring-emerald-500/40 animate-pulse"
+                : "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20"
+            )}
+            onClick={() => navigate("/match-marker")}
+          >
+            {hasMarkerSession ? <Play className="w-5 h-5" /> : <Crosshair className="w-5 h-5" />}
+            <span className="text-xs font-medium leading-tight text-center">
+              {hasMarkerSession ? "Resume Marking" : "Mark a Game"}
+            </span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-400 hover:bg-pink-500/20" onClick={() => navigate("/events")}>
             <CalendarDays className="w-5 h-5" />

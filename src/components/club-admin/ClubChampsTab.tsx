@@ -128,8 +128,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [includeVisitors, setIncludeVisitors] = useState(false);
   const [selectedVisitorClubs, setSelectedVisitorClubs] = useState<Set<string>>(new Set());
 
-  // League pre-fill (internal or external/regional)
-  const [sourceLeagueId, setSourceLeagueId] = useState<string>("");
+  // League pre-fill (internal or external/regional) — supports multiple leagues
+  const [sourceLeagueIds, setSourceLeagueIds] = useState<Set<string>>(new Set());
 
   const { data: availableLeagues = [] } = useQuery({
     queryKey: ["club-leagues-for-tournament", clubId],
@@ -144,13 +144,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     enabled: !!clubId,
   });
 
-  // When admin selects a league, pre-fill players from its registrations
-  const applyLeaguePrefill = async (leagueId: string) => {
-    setSourceLeagueId(leagueId);
-    if (!leagueId) return;
+  // Re-fetch & merge players whenever the league selection changes
+  const applyLeaguePrefill = async (leagueIds: Set<string>) => {
+    setSourceLeagueIds(leagueIds);
+    if (leagueIds.size === 0) {
+      setSelectedPlayerIds(new Set());
+      return;
+    }
     const { data: regs, error } = await fromExt("member_league_registrations")
       .select("club_member_id")
-      .eq("league_id", leagueId);
+      .in("league_id", Array.from(leagueIds));
     if (error) {
       toast.error("Failed to load league players");
       return;
@@ -158,11 +161,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const ids = new Set<string>((regs || []).map((r: any) => r.club_member_id).filter(Boolean));
     setSelectedPlayerIds(ids);
     if (ids.size > 0) {
-      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from league`);
+      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from ${leagueIds.size} league${leagueIds.size === 1 ? "" : "s"}`);
     } else {
-      toast.info("No registered players found in that league");
+      toast.info("No registered players found in the selected leagues");
     }
   };
+
+  const toggleSourceLeague = (leagueId: string) => {
+    const next = new Set(sourceLeagueIds);
+    if (next.has(leagueId)) next.delete(leagueId); else next.add(leagueId);
+    applyLeaguePrefill(next);
+  };
+
+  const hasLeagueSelection = sourceLeagueIds.size > 0;
 
   // Fetch registered visitors
   const { data: allVisitors = [] } = useQuery({

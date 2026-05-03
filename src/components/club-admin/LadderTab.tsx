@@ -4,7 +4,8 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { GripVertical, Loader2, Save, X, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { GripVertical, Loader2, Save, X, Users, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { rpcExt } from "@/lib/supabase-ext";
@@ -91,9 +92,10 @@ interface GenderLadderProps {
   genderFilter: string;
   saving: boolean;
   onSave: (ordered: LadderMember[], genderFilter: string) => void;
+  searchQuery: string;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -138,9 +140,11 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={list.map((p) => p.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-1.5">
-            {list.map((player, index) => (
-              <DraggablePlayerRow key={player.id} player={player} index={index} />
-            ))}
+            {list.map((player, index) => {
+              const q = searchQuery.trim().toLowerCase();
+              if (q && !player.name.toLowerCase().includes(q)) return null;
+              return <DraggablePlayerRow key={player.id} player={player} index={index} />;
+            })}
             {list.length === 0 && (
               <p className="text-xs text-muted-foreground py-4 text-center">No members found</p>
             )}
@@ -157,6 +161,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);
   const [mixedOrder, setMixedOrder] = useState<LadderMember[] | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Load mixed_ladder_enabled flag
@@ -283,6 +288,16 @@ export function LadderTab({ clubId }: { clubId: string }) {
         <Switch checked={mixedEnabled} onCheckedChange={toggleMixed} />
       </Card>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search members..."
+          className="pl-9 h-9"
+        />
+      </div>
+
       <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
         Drag members into the desired order, then save.
       </p>
@@ -300,6 +315,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             genderFilter="mixed"
             saving={saving}
             onSave={handleSave}
+            searchQuery={searchQuery}
           />
         </div>
       ) : (
@@ -312,6 +328,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             genderFilter="male"
             saving={saving}
             onSave={handleSave}
+            searchQuery={searchQuery}
           />
           <GenderLadder
             title="Ladies' Ladder"
@@ -321,6 +338,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             genderFilter="female"
             saving={saving}
             onSave={handleSave}
+            searchQuery={searchQuery}
           />
         </div>
       )}

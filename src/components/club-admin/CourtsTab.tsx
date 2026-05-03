@@ -107,6 +107,73 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     <div className="space-y-6 mt-4">
       <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} />
 
+      {/* Booking Rules */}
+      <Card className="p-6 space-y-4">
+        <div>
+          <h3 className="font-semibold">Booking Rules</h3>
+          <p className="text-sm text-muted-foreground">Control slot length and peak-hour limits for member bookings.</p>
+        </div>
+
+        <div className="space-y-1">
+          <Label>Booking slot length</Label>
+          <Select
+            value={String(rulesForm.booking_slot_minutes)}
+            onValueChange={(v) => setRulesForm(p => ({ ...p, booking_slot_minutes: parseInt(v, 10) }))}
+          >
+            <SelectTrigger className="w-full md:w-64"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">Allow 30-minute slots</SelectItem>
+              <SelectItem value="60">Full hours only (60 min)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Determines what increments members can book in.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2 rounded-lg border p-3">
+            <Label className="text-sm font-semibold">Weekday peak hours (Mon–Fri)</Label>
+            <div className="flex items-center gap-2">
+              <Input type="time" value={rulesForm.peak_weekday_start}
+                onChange={e => setRulesForm(p => ({ ...p, peak_weekday_start: e.target.value }))} />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input type="time" value={rulesForm.peak_weekday_end}
+                onChange={e => setRulesForm(p => ({ ...p, peak_weekday_end: e.target.value }))} />
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border p-3">
+            <Label className="text-sm font-semibold">Weekend peak hours (Sat–Sun)</Label>
+            <div className="flex items-center gap-2">
+              <Input type="time" value={rulesForm.peak_weekend_start}
+                onChange={e => setRulesForm(p => ({ ...p, peak_weekend_start: e.target.value }))} />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input type="time" value={rulesForm.peak_weekend_end}
+                onChange={e => setRulesForm(p => ({ ...p, peak_weekend_end: e.target.value }))} />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <Label>Max peak-hour bookings per member, per day</Label>
+          <Input
+            type="number" min={1} max={10} step={1}
+            className="w-full md:w-40"
+            value={rulesForm.max_peak_bookings_per_day}
+            onChange={e => setRulesForm(p => ({ ...p, max_peak_bookings_per_day: Math.max(1, parseInt(e.target.value) || 1) }))}
+          />
+          <p className="text-xs text-muted-foreground">
+            E.g. <span className="font-semibold text-foreground">1</span> = one 60-min booking, or up to two 30-min bookings if 30-min slots are enabled.
+            Counted against confirmed bookings inside the peak window on the same day.
+          </p>
+        </div>
+
+        <Button onClick={handleSaveRules} disabled={updateClub.isPending} className="w-full md:w-auto">
+          {updateClub.isPending ? "Saving..." : "Save Booking Rules"}
+        </Button>
+      </Card>
+
       {/* Court Lights */}
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Court Lights</h3>

@@ -899,7 +899,7 @@ export function MarkerSetup({ onStart }: Props) {
             bestOf,
             deuceRule,
             source,
-            sourceId: selectedSourceId || selectedLeagueId || undefined,
+            sourceId: selectedSourceId || undefined,
           })
         }
       >

@@ -92,6 +92,7 @@ export default function LeagueGameDetail() {
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [savingSetup, setSavingSetup] = useState(false);
+  const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away" } | null>(null);
 
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");

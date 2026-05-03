@@ -96,30 +96,45 @@ export default function Tournaments() {
     const today = matchDate && isToday(matchDate);
 
     return (
-      <button
+      <div
         key={m.id}
-        onClick={() => navigate(`/club-champs/${m.champ_id}`)}
         className={cn(
-          "w-full flex items-center gap-2 text-sm p-2 rounded text-left",
-          today ? "bg-primary/10 border border-primary/20" : "bg-muted/50 hover:bg-muted",
+          "w-full flex items-center gap-2 text-sm p-2 rounded",
+          today ? "bg-primary/10 border border-primary/20" : "bg-muted/50",
         )}
       >
-        <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-        <span className="text-muted-foreground w-24 shrink-0">
-          {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
-        </span>
-        <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
-        <span className="font-medium truncate">
-          {teamA} vs {teamB}
-        </span>
-        {champ && (
-          <Badge variant="outline" className="text-[10px] ml-auto shrink-0">
-            {champ.name}
-          </Badge>
-        )}
-        {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
-        {today && <Badge className="text-[10px] shrink-0">Today</Badge>}
-      </button>
+        <button
+          onClick={() => navigate(`/club-champs/${m.champ_id}`)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80"
+        >
+          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <span className="text-muted-foreground w-24 shrink-0">
+            {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
+          </span>
+          <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
+          <span className="font-medium truncate">
+            {teamA} vs {teamB}
+          </span>
+          {champ && (
+            <Badge variant="outline" className="text-[10px] ml-auto shrink-0">
+              {champ.name}
+            </Badge>
+          )}
+          {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
+          {today && <Badge className="text-[10px] shrink-0">Today</Badge>}
+        </button>
+        <Button
+          size="sm"
+          variant="default"
+          className="h-7 px-2 gap-1 shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/match-marker?source=tournament&matchId=${m.id}`);
+          }}
+        >
+          <Gavel className="w-3 h-3" /> Mark
+        </Button>
+      </div>
     );
   };
 

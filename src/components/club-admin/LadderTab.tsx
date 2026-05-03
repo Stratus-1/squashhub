@@ -92,6 +92,7 @@ interface GenderLadderProps {
   genderFilter: string;
   saving: boolean;
   onSave: (ordered: LadderMember[], genderFilter: string) => void;
+  searchQuery: string;
 }
 
 function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave }: GenderLadderProps) {

@@ -643,11 +643,16 @@ export default function Dashboard() {
               <span className="text-xs font-medium leading-tight text-center">League Games</span>
             </Button>
           )}
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20" onClick={() => navigate("/tournaments")}>
+            <Trophy className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">Tournaments</span>
+          </Button>
+          {/* My Account & My Profile moved to bottom nav on mobile; still shown here on desktop */}
+          <Button variant="outline" className="hidden sm:flex flex-col h-auto py-3 gap-1.5 border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Account</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/20" onClick={() => openProfile("/profile?edit=1")}>
+          <Button variant="outline" className="hidden sm:flex flex-col h-auto py-3 gap-1.5 border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/20" onClick={() => openProfile("/profile?edit=1")}>
             <Settings className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>
           </Button>

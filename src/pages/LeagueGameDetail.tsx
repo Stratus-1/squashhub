@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { cn } from "@/lib/utils";
+import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 
 interface PositionEntry {
   homeCode: string;
@@ -91,6 +92,7 @@ export default function LeagueGameDetail() {
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [savingSetup, setSavingSetup] = useState(false);
+  const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away" } | null>(null);
 
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");
@@ -368,6 +370,87 @@ export default function LeagueGameDetail() {
   };
 
   const setupValid = positions.some((p) => p.homeCode && p.awayCode);
+
+  // Map of currently-assigned NSF codes -> location, for the swap dialog
+  const buildInUseMap = useCallback((side: "home" | "away") => {
+    const map = new Map<string, { side: "home" | "away"; position: number }>();
+    positions.forEach((p, i) => {
+      if (p.homeCode) map.set(p.homeCode.toUpperCase(), { side: "home", position: i + 1 });
+      if (p.awayCode) map.set(p.awayCode.toUpperCase(), { side: "away", position: i + 1 });
+    });
+    return map;
+  }, [positions]);
+
+  const handleSwap = useCallback(async (c: SwapCandidate) => {
+    if (!swapTarget) return;
+    const { idx, side } = swapTarget;
+    const codeUpper = c.code.toUpperCase();
+    const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
+    const targetNameKey = side === "home" ? "homeName" : "awayName";
+
+    setPositions((prev) => {
+      const next = prev.map((p) => ({ ...p }));
+
+      // Find if candidate is already in lineup somewhere → that becomes the displaced slot
+      let existingIdx = -1;
+      let existingSide: "home" | "away" | null = null;
+      next.forEach((p, i) => {
+        if (p.homeCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "home"; }
+        else if (p.awayCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "away"; }
+      });
+
+      const targetOldCode = next[idx][targetCodeKey];
+      const targetOldName = next[idx][targetNameKey];
+
+      // Place new player at target
+      next[idx] = { ...next[idx], [targetCodeKey]: codeUpper, [targetNameKey]: c.name };
+
+      // If candidate was elsewhere on the same side → swap (move displaced player into candidate's old spot)
+      if (existingIdx >= 0 && existingSide === side && existingIdx !== idx) {
+        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: targetOldCode, [oldNameKey]: targetOldName };
+      } else if (existingIdx >= 0 && existingSide && existingSide !== side) {
+        // Candidate was on the OTHER team — clear that other-side slot (shouldn't happen, but safe)
+        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: "", [oldNameKey]: "" };
+      }
+      return next;
+    });
+
+    setSwapTarget(null);
+    toast.success(`Player swapped — remember to save setup`);
+
+    // If setup already saved, persist immediately
+    if (setupDone && fixtureId && user) {
+      try {
+        // Re-derive the updated positions snapshot (state hasn't flushed yet, so recompute manually)
+        setTimeout(async () => {
+          for (let i = 0; i < 4; i++) {
+            const p = positions[i];
+            if (!p.homeCode && !p.awayCode) continue;
+            await supabase.from("league_match_results" as any).upsert({
+              fixture_id: fixtureId, position: i + 1,
+              home_player_code: (i === idx && side === "home" ? codeUpper : p.homeCode.toUpperCase()),
+              away_player_code: (i === idx && side === "away" ? codeUpper : p.awayCode.toUpperCase()),
+              home_player_name: (i === idx && side === "home" ? c.name : p.homeName),
+              away_player_name: (i === idx && side === "away" ? c.name : p.awayName),
+              game_scores: p.scores, home_games_won: 0, away_games_won: 0,
+              winner: null,
+            } as any, { onConflict: "fixture_id,position" });
+          }
+          queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+        }, 50);
+      } catch (e) { console.error("Swap persist failed", e); }
+    }
+  }, [swapTarget, setupDone, fixtureId, user, positions, queryClient]);
+
+  const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
+    updatePosition(idx, side === "home" ? "homeCode" : "awayCode", "");
+    updatePosition(idx, side === "home" ? "homeName" : "awayName", "");
+  }, []);
+
 
   // ---- Auto-save a single position's scores to DB ----
   const persistPositionScores = useCallback(async (posIdx: number, updatedPos: PositionEntry) => {
@@ -740,7 +823,17 @@ export default function LeagueGameDetail() {
                               onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700">{pos.homeName}</span>
-                            <span />
+                            <span className="flex items-center justify-center">
+                              {!isSubmitted && (
+                                <button
+                                  onClick={() => setSwapTarget({ idx, side: "home" })}
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Pick from squad / reserves"
+                                >
+                                  <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           </>
                         ) : (
                           <>
@@ -752,7 +845,17 @@ export default function LeagueGameDetail() {
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
-                            <span />
+                            <span className="flex items-center justify-center">
+                              {!isSubmitted && !pos.completed && (
+                                <button
+                                  onClick={() => setSwapTarget({ idx, side: "home" })}
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Swap player"
+                                >
+                                  <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           </>
                         )}
                       </div>
@@ -770,7 +873,17 @@ export default function LeagueGameDetail() {
                               onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700">{pos.awayName}</span>
-                            <span />
+                            <span className="flex items-center justify-center">
+                              {!isSubmitted && (
+                                <button
+                                  onClick={() => setSwapTarget({ idx, side: "away" })}
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Pick from squad / reserves"
+                                >
+                                  <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           </>
                         ) : (
                           <>
@@ -800,6 +913,15 @@ export default function LeagueGameDetail() {
                                   >
                                     <Edit3 className="w-3 h-3" />
                                   </button>
+                                  {!pos.completed && (
+                                    <button
+                                      onClick={() => setSwapTarget({ idx, side: "away" })}
+                                      className="text-muted-foreground hover:text-primary"
+                                      title="Swap player"
+                                    >
+                                      <ArrowLeftRight className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </span>
@@ -897,6 +1019,21 @@ export default function LeagueGameDetail() {
       </div>
 
       <BackToDashboard />
+
+      {swapTarget && (
+        <LineupSwapDialog
+          open={!!swapTarget}
+          onOpenChange={(o) => { if (!o) setSwapTarget(null); }}
+          teamCode={swapTarget.side === "home" ? homeCode : awayCode}
+          side={swapTarget.side}
+          position={swapTarget.idx + 1}
+          currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
+          currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
+          inUseCodes={buildInUseMap(swapTarget.side)}
+          onSelect={handleSwap}
+          onClear={() => handleClearSlot(swapTarget.idx, swapTarget.side)}
+        />
+      )}
     </div>
   );
 }

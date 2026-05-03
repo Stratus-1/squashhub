@@ -60,8 +60,11 @@ export function AppSidebar() {
   const dashboardTabUrl = (tab: string) => {
     const params = new URLSearchParams(search);
     params.set("tab", tab);
-    return `${pathname || "/"}?${params.toString()}`;
+    const query = params.toString();
+    return query ? `/?${query}` : "/";
   };
+
+  const settingsUrl = isAssociation ? dashboardTabUrl("settings") : "/settings";
 
   // Association tenants get a slimmed-down menu — no club-player items
   const homeItems: Item[] = isAssociation
@@ -261,8 +264,8 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border bg-[hsl(220_45%_5%)] px-2 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/settings")} className="py-2 gap-3">
-              <NavLink to="/settings" className="flex items-center gap-3">
+            <SidebarMenuButton asChild isActive={isActive(settingsUrl)} className="py-2 gap-3">
+              <NavLink to={settingsUrl} className="flex items-center gap-3">
                 <Avatar className="h-7 w-7 ring-1 ring-sidebar-border">
                   {avatarUrl ? <AvatarImage src={avatarUrl} alt={memberName} /> : null}
                   <AvatarFallback className="bg-sidebar-accent text-[10px] font-semibold">

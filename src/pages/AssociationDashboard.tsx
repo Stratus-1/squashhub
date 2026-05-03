@@ -159,9 +159,12 @@ export default function AssociationDashboard() {
       color: "text-rose-500 bg-rose-500/10",
     },
     {
-      to: "/settings",
+      onClick: hasAdminAccess && visibleAdminTabs.some((tab) => tab.value === "settings")
+        ? () => { setAdminTab("settings"); setView("admin"); }
+        : undefined,
+      to: hasAdminAccess && visibleAdminTabs.some((tab) => tab.value === "settings") ? undefined : "/settings",
       label: "Settings",
-      description: "Theme & preferences",
+      description: hasAdminAccess ? "Association preferences" : "Theme & preferences",
       icon: Settings,
       color: "text-slate-500 bg-slate-500/10",
     },

@@ -639,6 +639,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setGroupAssignments(new Map());
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
+    setSourceLeagueId("");
     setEditingChampId(null);
   };
 

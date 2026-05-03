@@ -175,8 +175,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   // Compute the proposed allocation
   const allocation = useMemo(() => {
     const teamPlayers = numTeams * perTeam;
-    const totalToTake = Math.min(numMembers, sortedPool.length);
-    const top = sortedPool.slice(0, totalToTake);
+    const startIdx = Math.max(0, (startPosition || 1) - 1);
+    const available = sortedPool.slice(startIdx);
+    const totalToTake = Math.min(numMembers, available.length);
+    const top = available.slice(0, totalToTake);
     const teamPicks = top.slice(0, teamPlayers);
     const reservePicks = top.slice(teamPlayers, teamPlayers + reserves);
     const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
@@ -192,7 +194,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       return ap - bp;
     }));
     return { teams, reserves: reservePicks, taken: top.length };
-  }, [sortedPool, numMembers, numTeams, perTeam, reserves, distribution, leagueNumber]);
+  }, [sortedPool, numMembers, numTeams, perTeam, reserves, distribution, leagueNumber, startPosition]);
 
   // Detect existing league rows for this association+gender+number that we'd need
   const existingLeagueNames = useMemo(() => {

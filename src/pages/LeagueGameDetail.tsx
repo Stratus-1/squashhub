@@ -873,7 +873,17 @@ export default function LeagueGameDetail() {
                               onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700">{pos.awayName}</span>
-                            <span />
+                            <span className="flex items-center justify-center">
+                              {!isSubmitted && (
+                                <button
+                                  onClick={() => setSwapTarget({ idx, side: "away" })}
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Pick from squad / reserves"
+                                >
+                                  <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           </>
                         ) : (
                           <>
@@ -903,6 +913,15 @@ export default function LeagueGameDetail() {
                                   >
                                     <Edit3 className="w-3 h-3" />
                                   </button>
+                                  {!pos.completed && (
+                                    <button
+                                      onClick={() => setSwapTarget({ idx, side: "away" })}
+                                      className="text-muted-foreground hover:text-primary"
+                                      title="Swap player"
+                                    >
+                                      <ArrowLeftRight className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </span>

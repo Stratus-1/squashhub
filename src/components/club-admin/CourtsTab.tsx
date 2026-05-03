@@ -28,6 +28,43 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
 
+  const [rulesForm, setRulesForm] = useState({
+    booking_slot_minutes: club.booking_slot_minutes ?? 30,
+    peak_weekday_start: (club.peak_weekday_start ?? "16:00:00").slice(0, 5),
+    peak_weekday_end: (club.peak_weekday_end ?? "19:00:00").slice(0, 5),
+    peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
+    peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
+    max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+  });
+
+  useEffect(() => {
+    setRulesForm({
+      booking_slot_minutes: club.booking_slot_minutes ?? 30,
+      peak_weekday_start: (club.peak_weekday_start ?? "16:00:00").slice(0, 5),
+      peak_weekday_end: (club.peak_weekday_end ?? "19:00:00").slice(0, 5),
+      peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
+      peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
+      max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+    });
+  }, [club.id, club.booking_slot_minutes, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day]);
+
+  const handleSaveRules = async () => {
+    try {
+      await updateClub.mutateAsync({
+        id: club.id,
+        booking_slot_minutes: rulesForm.booking_slot_minutes,
+        peak_weekday_start: rulesForm.peak_weekday_start,
+        peak_weekday_end: rulesForm.peak_weekday_end,
+        peak_weekend_start: rulesForm.peak_weekend_start,
+        peak_weekend_end: rulesForm.peak_weekend_end,
+        max_peak_bookings_per_day: rulesForm.max_peak_bookings_per_day,
+      } as any);
+      toast.success("Booking rules saved");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    }
+  };
+
   const [lightsForm, setLightsForm] = useState({
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
     shelly_auth_key: "",

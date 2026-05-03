@@ -115,12 +115,13 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const restTimerRef = useRef<number | null>(null);
 
   // Match timer
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(persisted?.elapsed ?? 0);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef(Date.now());
-  const pausedElapsedRef = useRef(0);
+  const pausedElapsedRef = useRef(persisted?.elapsed ?? 0);
 
   useEffect(() => {
+    if (matchOver) return;
     startTimeRef.current = Date.now();
     timerRef.current = window.setInterval(() => {
       setElapsed(pausedElapsedRef.current + Math.floor((Date.now() - startTimeRef.current) / 1000));
@@ -128,7 +129,20 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Persist scoreboard state so user can navigate away and resume
+  useEffect(() => {
+    if (matchOver) return;
+    try {
+      const snapshot: PersistedState = {
+        scoreA, scoreB, gamesA, gamesB, completedGames,
+        server, serveSide, history, matchOver, matchWinner, elapsed,
+      };
+      localStorage.setItem(MARKER_STATE_KEY, JSON.stringify(snapshot));
+    } catch {}
+  }, [scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide, history, matchOver, matchWinner, elapsed]);
 
   // Pause match timer during rest
   const pauseMatchTimer = useCallback(() => {

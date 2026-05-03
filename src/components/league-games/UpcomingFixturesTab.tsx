@@ -186,6 +186,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           venue_name: "Club courts",
           division: ch?.name || "Tournament",
           isTournament: true,
+          champId: m.champ_id,
         };
       });
     },

@@ -26,6 +26,7 @@ import { FeesTab } from "@/components/club-admin/FeesTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
 import { AssociationMembersTab } from "@/components/association-admin/AssociationMembersTab";
 import { AssociationFeesTab } from "@/components/association-admin/AssociationFeesTab";
+import { AssociationSetupTab } from "@/components/association-admin/AssociationSetupTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
@@ -41,6 +42,7 @@ interface TabDef {
 
 const ADMIN_TABS: TabDef[] = [
   { value: "association", label: "Association", icon: Building2, permission: "club" },
+  { value: "setup", label: "Setup", icon: Settings, permission: "settings" },
   { value: "affiliated", label: "Affiliated Clubs", icon: Network, permission: "club" },
   { value: "leagues", label: "Regional Leagues", icon: Trophy, permission: "leagues" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs" },
@@ -49,7 +51,7 @@ const ADMIN_TABS: TabDef[] = [
   { value: "fees", label: "Fees", icon: Receipt, permission: "fees" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
-  { value: "settings", label: "Settings", icon: Settings, permission: "settings" },
+  { value: "settings", label: "Preferences", icon: Settings, permission: "settings" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, adminOnly: true },
 ];
 
@@ -176,6 +178,7 @@ export default function AssociationDashboard() {
     if (!association) return null;
     switch (adminTab) {
       case "association": return <AssociationInfoTab club={association as any} clubId={association.id} />;
+      case "setup": return <AssociationSetupTab clubId={association.id} />;
       case "affiliated": return <AffiliatedClubsTab clubId={association.id} />;
       case "leagues": return <LeaguesTab clubId={association.id} />;
       case "champs": return <ClubChampsTab clubId={association.id} />;

@@ -1229,65 +1229,73 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </div>
             <Separator />
             <p className="text-xs text-muted-foreground">
-              {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Use the dropdown to move between groups.
+              {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Drag the handle to reorder within a group, or use the dropdown to move between groups.
             </p>
             <div className="space-y-4">
               {isDoubles ? (
                 (groups as DoublePair[][]).map((g, gi) => (
                   <div key={gi} className="border rounded-lg p-3">
                     <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} pairs)</span></h4>
-                    <div className="space-y-1">
-                      {g.map((pair) => (
-                        <div key={pair.id} className="flex items-center gap-2 py-1">
-                          <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="flex-1 text-sm font-medium">{getPairLabel(pair)}</span>
-                          <Select
-                            value={String(pairGroupAssignments.get(pair.id) ?? 0)}
-                            onValueChange={(v) => {
-                              const newMap = new Map(pairGroupAssignments);
-                              newMap.set(pair.id, Number(v));
-                              setPairGroupAssignments(newMap);
-                            }}
-                          >
-                            <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: numGroups }, (_, i) => (
-                                <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                    <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handlePairDragEnd(gi)}>
+                      <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-1">
+                          {g.map((pair) => (
+                            <SortableRow key={pair.id} id={pair.id}>
+                              <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                              <span className="flex-1 text-sm font-medium">{getPairLabel(pair)}</span>
+                              <Select
+                                value={String(pairGroupAssignments.get(pair.id) ?? 0)}
+                                onValueChange={(v) => {
+                                  const newMap = new Map(pairGroupAssignments);
+                                  newMap.set(pair.id, Number(v));
+                                  setPairGroupAssignments(newMap);
+                                }}
+                              >
+                                <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: numGroups }, (_, i) => (
+                                    <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </SortableRow>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 ))
               ) : (
                 (groups as ClubMember[][]).map((g, gi) => (
                   <div key={gi} className="border rounded-lg p-3">
                     <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
-                    <div className="space-y-1">
-                      {g.map((p) => (
-                        <div key={p.id} className="flex items-center gap-2 py-1">
-                          <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
-                          {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
-                          <Select
-                            value={String(groupAssignments.get(p.id) ?? 0)}
-                            onValueChange={(v) => {
-                              const newMap = new Map(groupAssignments);
-                              newMap.set(p.id, Number(v));
-                              setGroupAssignments(newMap);
-                            }}
-                          >
-                            <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: numGroups }, (_, i) => (
-                                <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                    <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handlePlayerDragEnd(gi)}>
+                      <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-1">
+                          {g.map((p) => (
+                            <SortableRow key={p.id} id={p.id}>
+                              <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                              {p.ladder_position && <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>}
+                              <Select
+                                value={String(groupAssignments.get(p.id) ?? 0)}
+                                onValueChange={(v) => {
+                                  const newMap = new Map(groupAssignments);
+                                  newMap.set(p.id, Number(v));
+                                  setGroupAssignments(newMap);
+                                }}
+                              >
+                                <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: numGroups }, (_, i) => (
+                                    <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </SortableRow>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 ))
               )}

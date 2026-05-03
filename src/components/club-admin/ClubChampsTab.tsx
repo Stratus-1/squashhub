@@ -446,6 +446,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             end_time: endTime,
             match_duration_minutes: matchDuration,
             source_league_id: sourceLeagueId || null,
+          })
+          .eq("id", editingChampId);
         if (updateErr) throw updateErr;
         champId = editingChampId;
       } else {

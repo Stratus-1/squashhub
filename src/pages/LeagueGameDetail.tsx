@@ -371,6 +371,87 @@ export default function LeagueGameDetail() {
 
   const setupValid = positions.some((p) => p.homeCode && p.awayCode);
 
+  // Map of currently-assigned NSF codes -> location, for the swap dialog
+  const buildInUseMap = useCallback((side: "home" | "away") => {
+    const map = new Map<string, { side: "home" | "away"; position: number }>();
+    positions.forEach((p, i) => {
+      if (p.homeCode) map.set(p.homeCode.toUpperCase(), { side: "home", position: i + 1 });
+      if (p.awayCode) map.set(p.awayCode.toUpperCase(), { side: "away", position: i + 1 });
+    });
+    return map;
+  }, [positions]);
+
+  const handleSwap = useCallback(async (c: SwapCandidate) => {
+    if (!swapTarget) return;
+    const { idx, side } = swapTarget;
+    const codeUpper = c.code.toUpperCase();
+    const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
+    const targetNameKey = side === "home" ? "homeName" : "awayName";
+
+    setPositions((prev) => {
+      const next = prev.map((p) => ({ ...p }));
+
+      // Find if candidate is already in lineup somewhere → that becomes the displaced slot
+      let existingIdx = -1;
+      let existingSide: "home" | "away" | null = null;
+      next.forEach((p, i) => {
+        if (p.homeCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "home"; }
+        else if (p.awayCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "away"; }
+      });
+
+      const targetOldCode = next[idx][targetCodeKey];
+      const targetOldName = next[idx][targetNameKey];
+
+      // Place new player at target
+      next[idx] = { ...next[idx], [targetCodeKey]: codeUpper, [targetNameKey]: c.name };
+
+      // If candidate was elsewhere on the same side → swap (move displaced player into candidate's old spot)
+      if (existingIdx >= 0 && existingSide === side && existingIdx !== idx) {
+        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: targetOldCode, [oldNameKey]: targetOldName };
+      } else if (existingIdx >= 0 && existingSide && existingSide !== side) {
+        // Candidate was on the OTHER team — clear that other-side slot (shouldn't happen, but safe)
+        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: "", [oldNameKey]: "" };
+      }
+      return next;
+    });
+
+    setSwapTarget(null);
+    toast.success(`Player swapped — remember to save setup`);
+
+    // If setup already saved, persist immediately
+    if (setupDone && fixtureId && user) {
+      try {
+        // Re-derive the updated positions snapshot (state hasn't flushed yet, so recompute manually)
+        setTimeout(async () => {
+          for (let i = 0; i < 4; i++) {
+            const p = positions[i];
+            if (!p.homeCode && !p.awayCode) continue;
+            await supabase.from("league_match_results" as any).upsert({
+              fixture_id: fixtureId, position: i + 1,
+              home_player_code: (i === idx && side === "home" ? codeUpper : p.homeCode.toUpperCase()),
+              away_player_code: (i === idx && side === "away" ? codeUpper : p.awayCode.toUpperCase()),
+              home_player_name: (i === idx && side === "home" ? c.name : p.homeName),
+              away_player_name: (i === idx && side === "away" ? c.name : p.awayName),
+              game_scores: p.scores, home_games_won: 0, away_games_won: 0,
+              winner: null,
+            } as any, { onConflict: "fixture_id,position" });
+          }
+          queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+        }, 50);
+      } catch (e) { console.error("Swap persist failed", e); }
+    }
+  }, [swapTarget, setupDone, fixtureId, user, positions, queryClient]);
+
+  const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
+    updatePosition(idx, side === "home" ? "homeCode" : "awayCode", "");
+    updatePosition(idx, side === "home" ? "homeName" : "awayName", "");
+  }, []);
+
+
   // ---- Auto-save a single position's scores to DB ----
   const persistPositionScores = useCallback(async (posIdx: number, updatedPos: PositionEntry) => {
     if (!fixtureId || !user) return;

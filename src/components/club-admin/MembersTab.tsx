@@ -1030,19 +1030,35 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             <Label>Plays League</Label>
           </div>
           {playsLeague && (
-            <>
-              <div className="space-y-1">
-                <Label>League Association *</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
-                  <option value="">— Select Association —</option>
-                  {associations.map(a => <option key={a.id} value={a.id}>{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label>Association Number *</Label>
-                <Input value={associationNumber} onChange={e => setAssociationNumber(e.target.value)} placeholder="e.g. NSF12345" />
-              </div>
-            </>
+            <div className="space-y-2 rounded-md border border-input p-2">
+              <Label className="text-xs">Leagues *</Label>
+              {associations.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No leagues configured for this club. Add them in the Leagues tab.</p>
+              ) : (
+                associations.filter((a: any) => a.active !== false).map((a: any) => {
+                  const checked = selectedLeagueIds.includes(a.id);
+                  return (
+                    <label key={a.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setSelectedLeagueIds((prev) =>
+                            e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id)
+                          );
+                        }}
+                      />
+                      <span>
+                        {a.name}
+                        {a.abbreviation ? ` (${a.abbreviation})` : ""}
+                        {a.fee_annual > 0 ? ` — R${a.fee_annual}` : ""}
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+              <p className="text-[11px] text-muted-foreground">League numbers will be auto-allocated after the member is added.</p>
+            </div>
           )}
 
           {/* Fee preview */}

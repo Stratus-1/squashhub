@@ -1019,6 +1019,21 @@ export default function LeagueGameDetail() {
       </div>
 
       <BackToDashboard />
+
+      {swapTarget && (
+        <LineupSwapDialog
+          open={!!swapTarget}
+          onOpenChange={(o) => { if (!o) setSwapTarget(null); }}
+          teamCode={swapTarget.side === "home" ? homeCode : awayCode}
+          side={swapTarget.side}
+          position={swapTarget.idx + 1}
+          currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
+          currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
+          inUseCodes={buildInUseMap(swapTarget.side)}
+          onSelect={handleSwap}
+          onClear={() => handleClearSlot(swapTarget.idx, swapTarget.side)}
+        />
+      )}
     </div>
   );
 }

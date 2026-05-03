@@ -141,38 +141,40 @@ Deno.serve(async (req) => {
         } else {
           allocatedAssocNumber = await allocateNextNumber(admin, assocTenant.id, assocTenant);
 
-          if (member.user_id) {
-            const { data: newAssocMem } = await admin
-              .from("club_members")
+          // Create the association-tenant member row even if the home-club
+          // member is not yet linked to an auth user. user_id stays null and
+          // will be claimed when they sign up with a matching email.
+          const { data: newAssocMem } = await admin
+            .from("club_members")
+            .insert({
+              club_id: assocTenant.id,
+              user_id: member.user_id ?? null,
+              name: member.name,
+              email: (member as any).email ?? null,
+              plays_league: true,
+              role: "member",
+              is_league_only_membership: true,
+              club_member_number: allocatedAssocNumber,
+              home_club_id: clubId,
+            })
+            .select("id")
+            .single();
+
+          // Seed association-tenant fee
+          if (newAssocMem?.id && Number(la.fee_annual) > 0) {
+            const { data: assocFee } = await admin
+              .from("club_member_fee_payments")
               .insert({
-                club_id: assocTenant.id,
-                user_id: member.user_id,
-                name: member.name,
-                plays_league: true,
-                role: "member",
-                is_league_only_membership: true,
-                club_member_number: allocatedAssocNumber,
-                home_club_id: clubId,
+                club_member_id: newAssocMem.id,
+                fee_type: "league",
+                fee_label: la.name + (la.abbreviation ? ` (${la.abbreviation})` : ""),
+                amount: Number(la.fee_annual),
+                paid: false,
+                season_year: seasonYear,
               })
               .select("id")
               .single();
-
-            // Seed association-tenant fee
-            if (newAssocMem?.id && Number(la.fee_annual) > 0) {
-              const { data: assocFee } = await admin
-                .from("club_member_fee_payments")
-                .insert({
-                  club_member_id: newAssocMem.id,
-                  fee_type: "league",
-                  fee_label: la.name + (la.abbreviation ? ` (${la.abbreviation})` : ""),
-                  amount: Number(la.fee_annual),
-                  paid: false,
-                  season_year: seasonYear,
-                })
-                .select("id")
-                .single();
-              assocFeeRowId = assocFee?.id ?? null;
-            }
+            assocFeeRowId = assocFee?.id ?? null;
           }
         }
       }

@@ -64,16 +64,13 @@ export default function ClubChampsView() {
     return `${getPlayerName(player)} & ${getPlayerName(partner)}`;
   };
 
-  // Build standings per group
+  // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     const groupMatches = matches.filter((m: any) => m.group_number === groupNum && m.status === "completed");
 
-    return groupEntries.map((e: any) => {
-      const memberId = e.club_member_id;
-      const partnerId = e.partner_member_id;
+    const computeFor = (memberId: string) => {
       let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0;
-
       groupMatches.forEach((m: any) => {
         const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
         const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
@@ -87,7 +84,6 @@ export default function ClubChampsView() {
         } else {
           lost++;
         }
-        // Tally game scores for game difference
         if (m.game_scores) {
           try {
             const gs = JSON.parse(m.game_scores);
@@ -99,20 +95,62 @@ export default function ClubChampsView() {
           } catch { /* ignore */ }
         }
       });
+      return { played, won, lost, gamesWon, gamesLost };
+    };
+
+    const rows = groupEntries.map((e: any) => {
+      const stats = computeFor(e.club_member_id);
       return {
         ...e,
-        played,
-        won,
-        lost,
-        gamesWon,
-        gamesLost,
-        gameDiff: gamesWon - gamesLost,
-        points: won * 2 + (played - won - lost),
+        ...stats,
+        gameDiff: stats.gamesWon - stats.gamesLost,
+        points: stats.won * 2 + (stats.played - stats.won - stats.lost),
         name: isDoubles
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
       };
-    }).sort((a: any, b: any) => b.points - a.points || b.gameDiff - a.gameDiff || b.won - a.won);
+    });
+
+    // Add substitutes — any member appearing in completed matches but not already represented by an entry
+    const knownIds = new Set<string>();
+    groupEntries.forEach((e: any) => {
+      if (e.club_member_id) knownIds.add(e.club_member_id);
+      if (e.partner_member_id) knownIds.add(e.partner_member_id);
+    });
+    const subs = new Map<string, { name: string }>();
+    groupMatches.forEach((m: any) => {
+      const slots: Array<["player_a" | "player_b" | "partner_a" | "partner_b", any]> = [
+        ["player_a", m.player_a],
+        ["player_b", m.player_b],
+      ];
+      if (isDoubles) {
+        slots.push(["partner_a", m.partner_a]);
+        slots.push(["partner_b", m.partner_b]);
+      }
+      slots.forEach(([slot, p]) => {
+        const id = m[`${slot}_member_id`];
+        if (id && !knownIds.has(id) && !subs.has(id)) {
+          subs.set(id, { name: getPlayerName(p) });
+        }
+      });
+    });
+
+    subs.forEach((info, id) => {
+      const stats = computeFor(id);
+      if (stats.played === 0) return;
+      rows.push({
+        id: `sub-${id}`,
+        club_member_id: id,
+        partner_member_id: null,
+        ...stats,
+        gameDiff: stats.gamesWon - stats.gamesLost,
+        points: stats.won * 2 + (stats.played - stats.won - stats.lost),
+        name: info.name,
+        isSubstitute: true,
+      } as any);
+    });
+
+    return rows.sort((a: any, b: any) => b.points - a.points || b.gameDiff - a.gameDiff || b.won - a.won);
   };
 
   const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();
@@ -223,7 +261,7 @@ export default function ClubChampsView() {
                               return (
                                 <tr key={s.id} className={cn("border-b border-border/50", isMe && "bg-primary/5 font-semibold")}>
                                   <td className="py-2 text-muted-foreground">{i + 1}</td>
-                                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}</td>
+                                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
                                   <td className="py-2 text-center">{s.played}</td>
                                   <td className="py-2 text-center">{s.won}</td>
                                   <td className="py-2 text-center">{s.lost}</td>
@@ -315,7 +353,7 @@ export default function ClubChampsView() {
                     return (
                       <tr key={s.id} className={cn("border-b border-border/50", isMe && "bg-primary/5")}>
                         <td className="py-2 text-muted-foreground">{i + 1}</td>
-                        <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}</td>
+                        <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
                         <td className="py-2 text-center">{s.played}</td>
                         <td className="py-2 text-center">{s.won}</td>
                         <td className="py-2 text-center">{s.lost}</td>

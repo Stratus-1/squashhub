@@ -173,28 +173,29 @@ export function AppSidebar() {
           )}
         </SidebarGroup>
 
-        {/* COURTS — single link */}
-        <SidebarGroup className="px-2 mt-3">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/bookings")}
-                  className="py-2"
-                >
-                  <NavLink to="/bookings" className="flex items-center gap-2">
-                    <LayoutGrid className="w-4 h-4" />
-                    {!collapsed && (
-                      <span className={groupHeaderClass}>Courts</span>
-                    )}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
+        {/* COURTS — hidden for association tenants */}
+        {!isAssociation && (
+          <SidebarGroup className="px-2 mt-3">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/bookings")}
+                    className="py-2"
+                  >
+                    <NavLink to="/bookings" className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4" />
+                      {!collapsed && (
+                        <span className={groupHeaderClass}>Courts</span>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {/* ACTIVITIES group — collapsible */}
         <SidebarGroup className="px-2 mt-3">
           <button

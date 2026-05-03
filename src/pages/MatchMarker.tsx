@@ -151,41 +151,8 @@ export default function MatchMarker() {
         }
       }
 
-      // If this was a league fixture match, persist into league_match_results
-      if (config.source === "league" && config.sourceId) {
-        try {
-          // Find next free position (1..4) for this fixture
-          const { data: existing } = await supabase
-            .from("league_match_results" as any)
-            .select("position")
-            .eq("fixture_id", config.sourceId);
-          const taken = new Set((existing || []).map((r: any) => r.position));
-          let position: number | null = null;
-          for (let i = 1; i <= 4; i++) if (!taken.has(i)) { position = i; break; }
-          if (position) {
-            const homeGames = result.games.reduce((n, g) => n + (g.a > g.b ? 1 : 0), 0);
-            const awayGames = result.games.reduce((n, g) => n + (g.b > g.a ? 1 : 0), 0);
-            await supabase.from("league_match_results" as any).upsert({
-              fixture_id: config.sourceId,
-              position,
-              home_player_code: (config.playerA.number || "").toUpperCase() || null,
-              away_player_code: (config.playerB.number || "").toUpperCase() || null,
-              home_player_name: config.playerA.name,
-              away_player_name: config.playerB.name,
-              game_scores: result.games.map((g) => ({ home: g.a, away: g.b })),
-              home_games_won: homeGames,
-              away_games_won: awayGames,
-              winner: homeGames > awayGames ? "home" : awayGames > homeGames ? "away" : null,
-            } as any, { onConflict: "fixture_id,position" });
-          }
-          queryClient.invalidateQueries({ queryKey: ["league-match-results", config.sourceId] });
-          queryClient.invalidateQueries({ queryKey: ["league-fixture-result", config.sourceId] });
-          queryClient.invalidateQueries({ queryKey: ["league-fixture-results"] });
-          queryClient.invalidateQueries({ queryKey: ["assoc-fixture-results"] });
-        } catch (e) {
-          console.warn("Could not update league match result:", e);
-        }
-      }
+      // Note: For league fixtures, marking is launched from the League Game Detail page
+      // which already persists into league_match_results via its own handler.
       const otherMember = memberA?.user_id === user?.id ? memberB : memberA;
       if (otherMember?.user_id) {
         try {

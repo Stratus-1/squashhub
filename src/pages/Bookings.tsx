@@ -77,15 +77,32 @@ function formatTimeDisplay(t: string) {
   return t;
 }
 
-const timeSlots = (() => {
+function buildTimeSlots(stepMinutes: number) {
   const slots: string[] = [];
   const start = 6 * 60;
   const end = 22 * 60;
-  for (let m = start; m < end; m += 30) {
+  const step = stepMinutes === 60 ? 60 : 30;
+  for (let m = start; m < end; m += step) {
     slots.push(minutesToTime(m));
   }
   return slots;
-})();
+}
+
+const timeSlots = buildTimeSlots(30);
+
+function isPeakSlot(date: Date, startTime: string, club: any | null | undefined) {
+  if (!club) return false;
+  const day = date.getDay(); // 0=Sun, 6=Sat
+  const isWeekend = day === 0 || day === 6;
+  const startKey = isWeekend ? "peak_weekend_start" : "peak_weekday_start";
+  const endKey = isWeekend ? "peak_weekend_end" : "peak_weekday_end";
+  const peakStart = String(club[startKey] ?? (isWeekend ? "08:00:00" : "16:00:00")).slice(0, 5);
+  const peakEnd = String(club[endKey] ?? (isWeekend ? "12:00:00" : "19:00:00")).slice(0, 5);
+  const m = timeToMinutes(startTime.slice(0, 5));
+  const ps = timeToMinutes(peakStart);
+  const pe = timeToMinutes(peakEnd);
+  return m >= ps && m < pe;
+}
 
 // courts are loaded dynamically from the database
 

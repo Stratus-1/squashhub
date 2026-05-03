@@ -41,12 +41,17 @@ export function FinalizeTournamentSetupDialog({
   const { data: matches = [], isLoading } = useQuery({
     queryKey: ["finalize-tournament-matches", champId],
     queryFn: async () => {
-      const today = format(new Date(), "yyyy-MM-dd");
+      const now = new Date();
+      const today = format(now, "yyyy-MM-dd");
+      const horizon = new Date(now);
+      horizon.setDate(horizon.getDate() + 7);
+      const horizonStr = format(horizon, "yyyy-MM-dd");
       const { data, error } = await fromExt("club_champs_matches")
         .select("id, scheduled_date, scheduled_time, group_number, round_number, status, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name)")
         .eq("champ_id", champId)
         .eq("status", "scheduled")
         .gte("scheduled_date", today)
+        .lte("scheduled_date", horizonStr)
         .order("scheduled_date")
         .order("scheduled_time");
       if (error) throw error;

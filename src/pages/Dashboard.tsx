@@ -669,7 +669,7 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-primary" /> My Upcoming League Games
+              <Trophy className="w-4 h-4 text-primary" /> My Upcoming League & Tournament Games
             </h2>
             <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/league-games")}>
               View all <ChevronRight className="w-3 h-3 ml-1" />

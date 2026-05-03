@@ -287,7 +287,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
               >
                 <AccordionTrigger className="hover:no-underline py-4">
                   <span className="flex items-center gap-2 text-white font-heading uppercase tracking-[0.18em] text-base">
-                    <Trophy className="w-4 h-4" /> League Games
+                    <Trophy className="w-4 h-4" /> League & Tournament Games
                   </span>
                 </AccordionTrigger>
                 <AccordionContent>

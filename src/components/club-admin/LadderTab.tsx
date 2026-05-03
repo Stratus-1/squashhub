@@ -455,6 +455,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
         avatar_url: m.profiles?.avatar_url || null,
         gender: m.gender || null,
         ladder_position: m.ladder_position ?? null,
+        plays_league: !!m.plays_league,
+        enable_league_association_id: m.enable_league_association_id || null,
       })),
     [members]
   );

@@ -25,8 +25,10 @@ export default function Tournaments() {
   const { club: contextClub } = useClubContext();
   const { data: clubData } = useMyClub();
   const { activeMember } = useMemberContext();
+  const isClubAdmin = useIsClubAdmin();
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
+  const [finalizeChamp, setFinalizeChamp] = useState<any | null>(null);
 
   const { data: champs = [], isLoading: champsLoading } = useQuery({
     queryKey: ["tournaments-list", clubId],

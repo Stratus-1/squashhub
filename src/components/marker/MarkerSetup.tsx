@@ -567,7 +567,7 @@ export function MarkerSetup({ onStart }: Props) {
   // Reset when source changes
   useEffect(() => {
     setSelectedSourceId("");
-    setSelectedLeagueId("");
+    
     setPlayerA(emptyPlayer());
     setPlayerB(emptyPlayer());
     setPartnerA(emptyPlayer());

@@ -306,19 +306,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const groups = useMemo(() => {
     if (isDoubles) {
       const g: DoublePair[][] = Array.from({ length: numGroups }, () => []);
-      doublesPairs.forEach((p) => {
+      const orderIdx = new Map(pairOrder.map((id, i) => [id, i]));
+      const sorted = [...doublesPairs].sort(
+        (a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9)
+      );
+      sorted.forEach((p) => {
         const gi = pairGroupAssignments.get(p.id) ?? 0;
         if (gi < numGroups) g[gi].push(p);
       });
       return g;
     }
     const g: ClubMember[][] = Array.from({ length: numGroups }, () => []);
-    selectedPlayers.forEach((p) => {
+    const orderIdx = new Map(playerOrder.map((id, i) => [id, i]));
+    const sorted = [...selectedPlayers].sort(
+      (a, b) => (orderIdx.get(a.id) ?? 1e9) - (orderIdx.get(b.id) ?? 1e9)
+    );
+    sorted.forEach((p) => {
       const gi = groupAssignments.get(p.id) ?? 0;
       if (gi < numGroups) g[gi].push(p);
     });
     return g;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, pairGroupAssignments]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, pairGroupAssignments, playerOrder, pairOrder]);
 
   // Schedule preview
   const schedulePreview = useMemo(() => {

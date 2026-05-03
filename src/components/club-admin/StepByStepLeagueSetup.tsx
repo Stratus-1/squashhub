@@ -84,6 +84,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   const [associationId, setAssociationId] = useState<string>("");
   const [gender, setGender] = useState<Gender>("men");
   const [leagueNumber, setLeagueNumber] = useState<string>("1st");
+  const [startPosition, setStartPosition] = useState<number>(1);
   const [numMembers, setNumMembers] = useState<number>(0);
   const [numTeams, setNumTeams] = useState<number>(1);
   const [perTeam, setPerTeam] = useState<number>(4);
@@ -107,6 +108,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       setAssociationId("");
       setGender("men");
       setLeagueNumber("1st");
+      setStartPosition(1);
       setNumMembers(0);
       setNumTeams(1);
       setPerTeam(4);
@@ -173,8 +175,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   // Compute the proposed allocation
   const allocation = useMemo(() => {
     const teamPlayers = numTeams * perTeam;
-    const totalToTake = Math.min(numMembers, sortedPool.length);
-    const top = sortedPool.slice(0, totalToTake);
+    const startIdx = Math.max(0, (startPosition || 1) - 1);
+    const available = sortedPool.slice(startIdx);
+    const totalToTake = Math.min(numMembers, available.length);
+    const top = available.slice(0, totalToTake);
     const teamPicks = top.slice(0, teamPlayers);
     const reservePicks = top.slice(teamPlayers, teamPlayers + reserves);
     const order = buildDraftOrder(numTeams, teamPicks.length, distribution);
@@ -190,7 +194,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
       return ap - bp;
     }));
     return { teams, reserves: reservePicks, taken: top.length };
-  }, [sortedPool, numMembers, numTeams, perTeam, reserves, distribution, leagueNumber]);
+  }, [sortedPool, numMembers, numTeams, perTeam, reserves, distribution, leagueNumber, startPosition]);
 
   // Detect existing league rows for this association+gender+number that we'd need
   const existingLeagueNames = useMemo(() => {
@@ -327,6 +331,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
     setStep(2);
     setGender("men");
     setLeagueNumber("1st");
+    setStartPosition(1);
     setNumMembers(0);
     setNumTeams(1);
     setPerTeam(4);
@@ -442,37 +447,43 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">a. How many members?</Label>
-                <Input type="number" min={0} max={eligiblePool.length} value={numMembers || ""} onChange={(e) => setNumMembers(parseInt(e.target.value) || 0)} />
+                <Label className="text-xs">a. Starting ladder position</Label>
+                <Input type="number" min={1} value={startPosition || ""} onChange={(e) => setStartPosition(parseInt(e.target.value) || 1)} />
+                <p className="text-[10px] text-muted-foreground mt-1">Pick from position {startPosition} downward (e.g. 30 → 30, 31, 32…). Use higher numbers for lower leagues.</p>
               </div>
               <div>
-                <Label className="text-xs">b. How many teams?</Label>
+                <Label className="text-xs">b. How many members?</Label>
+                <Input type="number" min={0} value={numMembers || ""} onChange={(e) => setNumMembers(parseInt(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label className="text-xs">c. How many teams?</Label>
                 <Input type="number" min={1} max={8} value={numTeams || ""} onChange={(e) => setNumTeams(parseInt(e.target.value) || 1)} />
               </div>
               <div>
-                <Label className="text-xs">c. Members per team?</Label>
+                <Label className="text-xs">d. Members per team?</Label>
                 <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
               </div>
               <div>
-                <Label className="text-xs">d. How many reserves?</Label>
+                <Label className="text-xs">e. How many reserves?</Label>
                 <Input type="number" min={0} value={reserves || 0} onChange={(e) => setReserves(parseInt(e.target.value) || 0)} />
               </div>
             </div>
 
             <div className="text-xs rounded-md bg-muted p-2.5 space-y-0.5">
+              <p>Starting from ladder position: <strong>{startPosition}</strong></p>
               <p>Team players needed: <strong>{numTeams * perTeam}</strong></p>
               <p>+ Reserves: <strong>{reserves}</strong></p>
               <p>Total to allocate: <strong>{numTeams * perTeam + reserves}</strong> / {numMembers} requested</p>
               {(numTeams * perTeam + reserves) > numMembers && (
                 <p className="text-destructive font-medium mt-1">⚠ Teams + reserves exceeds member count.</p>
               )}
-              {numMembers > eligiblePool.length && (
-                <p className="text-destructive font-medium mt-1">⚠ Requested more members than the eligible pool ({eligiblePool.length}).</p>
+              {(startPosition - 1 + numMembers) > eligiblePool.length && numMembers > 0 && (
+                <p className="text-destructive font-medium mt-1">⚠ Start position + members exceeds the eligible pool ({eligiblePool.length}).</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs">e. Distribution method</Label>
+              <Label className="text-xs">f. Distribution method</Label>
               <RadioGroup value={distribution} onValueChange={(v) => setDistribution(v as Distribution)} className="space-y-2">
                 {DISTRIBUTIONS.map(d => (
                   <label key={d.value} className={`flex items-start gap-2 border rounded-md p-2.5 cursor-pointer hover:bg-accent ${distribution === d.value ? "border-primary bg-accent" : ""}`}>

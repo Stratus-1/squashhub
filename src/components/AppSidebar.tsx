@@ -16,6 +16,9 @@ import {
   LayoutGrid,
   ChevronDown,
   User,
+  Network,
+  Users,
+  Receipt,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";

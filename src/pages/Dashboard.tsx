@@ -679,7 +679,7 @@ export default function Dashboard() {
                   "p-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-accent/50 transition-colors",
                   f.inLineup ? "border-2 border-primary bg-primary/10" : "border-primary/40 bg-primary/5"
                 )}
-                onClick={() => navigate(f.isTournament ? `/club-admin?tab=tournaments` : `/league-games/${f.id}`)}
+                onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">

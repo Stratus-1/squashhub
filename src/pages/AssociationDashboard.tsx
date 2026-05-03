@@ -69,9 +69,11 @@ export default function AssociationDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: profile } = useProfile();
+  const { data: myRoles = [] } = useMyRoles();
   const { data: clubData } = useMyClub();
   const { activeMember } = useMemberContext();
   const isClubAdmin = useIsClubAdmin();
+  const isPlatformAdmin = myRoles.includes("admin");
   const myPermissions = useMyPermissions();
 
   const association = clubData?.club;
@@ -79,12 +81,13 @@ export default function AssociationDashboard() {
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 
   const visibleAdminTabs = ADMIN_TABS.filter(tab => {
+    if (isPlatformAdmin) return true;
     if (tab.adminOnly) return isClubAdmin;
     if (!tab.permission) return isClubAdmin;
     return isClubAdmin || myPermissions.has(tab.permission);
   });
 
-  const hasAdminAccess = visibleAdminTabs.length > 0;
+  const hasAdminAccess = isPlatformAdmin || visibleAdminTabs.length > 0;
 
   // "overview" or admin tab value
   const [view, setView] = useState<string>("overview");

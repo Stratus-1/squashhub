@@ -314,6 +314,18 @@ export default function Tournaments() {
         )}
       </div>
       <BackToDashboard />
+
+      {finalizeChamp && clubId && (
+        <FinalizeTournamentSetupDialog
+          open={!!finalizeChamp}
+          onOpenChange={(o) => { if (!o) setFinalizeChamp(null); }}
+          champId={finalizeChamp.id}
+          champName={finalizeChamp.name}
+          clubId={clubId}
+          gender={finalizeChamp.gender}
+          isDoubles={finalizeChamp.match_type === "doubles"}
+        />
+      )}
     </div>
   );
 }

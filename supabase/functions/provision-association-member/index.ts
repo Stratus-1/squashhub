@@ -81,56 +81,127 @@ Deno.serve(async (req) => {
     const memberName = (meta.name as string) || (user.email?.split("@")[0] ?? "Member");
     const memberPhone = (meta.phone as string) || null;
 
-    // Auto-allocate the next sequential league number using the association's
-    // number-config (prefix / length / start). Inactive until fees are paid.
-    const prefix = (assoc as any).member_number_prefix || "";
-    const numLength = Number((assoc as any).member_number_length || 4);
-    const numStart = Number((assoc as any).member_number_start || 1);
+    // ---------------------------------------------------------------
+    // CLAIM EXISTING PRE-LOADED ROW (admin pre-allocated members)
+    // ---------------------------------------------------------------
+    // Admin may have already created a club_members row for this person at
+    // the association tenant (with a club_member_number / league number,
+    // email and/or phone) but with user_id IS NULL because they hadn't
+    // signed up yet. When they now sign up, we MUST link to that existing
+    // row instead of inserting a duplicate with a fresh number.
+    //
+    // Match priority: email (case-insensitive) → phone (digits-only).
+    const normalisePhone = (p: string | null | undefined) =>
+      (p || "").replace(/\D+/g, "").replace(/^0+/, "");
+    const userEmailLower = (user.email || "").toLowerCase();
+    const userPhoneDigits = normalisePhone(memberPhone) || normalisePhone(user.phone || "");
 
-    const { data: existingNumbers } = await supabaseAdmin
-      .from("club_members")
-      .select("club_member_number")
-      .eq("club_id", assoc.id)
-      .not("club_member_number", "is", null);
+    let claimedMember: { id: string; club_member_number: string | null } | null = null;
+    if (userEmailLower || userPhoneDigits) {
+      const { data: candidates } = await supabaseAdmin
+        .from("club_members")
+        .select("id, email, phone, club_member_number, user_id")
+        .eq("club_id", assoc.id)
+        .is("user_id", null);
 
-    let maxNum = numStart - 1;
-    const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`^${escapedPrefix}(\\d+)$`);
-    for (const row of (existingNumbers || []) as any[]) {
-      const v = String(row.club_member_number || "");
-      const m = v.match(re);
-      if (m) {
-        const n = parseInt(m[1], 10);
-        if (!isNaN(n) && n > maxNum) maxNum = n;
+      // 1) email match
+      if (userEmailLower) {
+        const m = (candidates || []).find(
+          (r: any) => (r.email || "").toLowerCase() === userEmailLower
+        );
+        if (m) claimedMember = { id: m.id, club_member_number: m.club_member_number };
+      }
+      // 2) phone match (only if no email match)
+      if (!claimedMember && userPhoneDigits) {
+        const m = (candidates || []).find(
+          (r: any) => normalisePhone(r.phone) === userPhoneDigits
+        );
+        if (m) claimedMember = { id: m.id, club_member_number: m.club_member_number };
       }
     }
-    const nextNum = maxNum + 1;
-    const allocatedNumber = `${prefix}${String(nextNum).padStart(numLength, "0")}`;
 
-    const insertPayload: Record<string, unknown> = {
-      club_id: assoc.id,
-      user_id: user.id,
-      name: memberName,
-      email: user.email,
-      phone: memberPhone,
-      plays_league: true,
-      role: "member",
-      is_league_only_membership: true,
-      club_member_number: allocatedNumber,
-    };
-    if (validatedHomeClubId) {
-      insertPayload.home_club_id = validatedHomeClubId;
-    }
+    let newMember: { id: string };
+    let allocatedNumber: string;
 
-    const { data: newMember, error: insertErr } = await supabaseAdmin
-      .from("club_members")
-      .insert(insertPayload)
-      .select("id")
-      .single();
+    if (claimedMember) {
+      // Link existing row → keep their club_member_number and any prior setup.
+      const updatePayload: Record<string, unknown> = {
+        user_id: user.id,
+        name: memberName,
+        plays_league: true,
+      };
+      if (memberPhone) updatePayload.phone = memberPhone;
+      if (user.email) updatePayload.email = user.email;
+      if (validatedHomeClubId) updatePayload.home_club_id = validatedHomeClubId;
 
-    if (insertErr) {
-      console.error("[provision-association-member] insert failed", insertErr);
-      return jsonResp(500, { error: insertErr.message });
+      const { error: updErr } = await supabaseAdmin
+        .from("club_members")
+        .update(updatePayload)
+        .eq("id", claimedMember.id);
+      if (updErr) {
+        console.error("[provision-association-member] claim update failed", updErr);
+        return jsonResp(500, { error: updErr.message });
+      }
+      newMember = { id: claimedMember.id };
+      allocatedNumber = claimedMember.club_member_number || "";
+      console.log(
+        "[provision-association-member] claimed pre-loaded member",
+        claimedMember.id,
+        "number",
+        allocatedNumber
+      );
+    } else {
+      // No pre-loaded row → allocate a fresh sequential league number.
+      const prefix = (assoc as any).member_number_prefix || "";
+      const numLength = Number((assoc as any).member_number_length || 4);
+      const numStart = Number((assoc as any).member_number_start || 1);
+
+      const { data: existingNumbers } = await supabaseAdmin
+        .from("club_members")
+        .select("club_member_number")
+        .eq("club_id", assoc.id)
+        .not("club_member_number", "is", null);
+
+      let maxNum = numStart - 1;
+      const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`^${escapedPrefix}(\\d+)$`);
+      for (const row of (existingNumbers || []) as any[]) {
+        const v = String(row.club_member_number || "");
+        const m = v.match(re);
+        if (m) {
+          const n = parseInt(m[1], 10);
+          if (!isNaN(n) && n > maxNum) maxNum = n;
+        }
+      }
+      const nextNum = maxNum + 1;
+      allocatedNumber = `${prefix}${String(nextNum).padStart(numLength, "0")}`;
+
+      const insertPayload: Record<string, unknown> = {
+        club_id: assoc.id,
+        user_id: user.id,
+        name: memberName,
+        email: user.email,
+        phone: memberPhone,
+        plays_league: true,
+        role: "member",
+        is_league_only_membership: true,
+        club_member_number: allocatedNumber,
+      };
+      if (validatedHomeClubId) {
+        insertPayload.home_club_id = validatedHomeClubId;
+      }
+
+      const { data: inserted, error: insertErr } = await supabaseAdmin
+        .from("club_members")
+        .insert(insertPayload)
+        .select("id")
+        .single();
+
+      if (insertErr) {
+        console.error("[provision-association-member] insert failed", insertErr);
+        return jsonResp(500, { error: insertErr.message });
+      }
+      newMember = inserted;
     }
 
     // Seed unpaid league-affiliation fees from the association's configured
@@ -146,7 +217,24 @@ Deno.serve(async (req) => {
     //    association-tenant row and journals "club owes league" on the club books.
     const insertedAssocFeeIds: string[] = [];
     const homeClubFeeSeeds: Array<{ label: string; amount: number; assocFeeIndex: number }> = [];
-    try {
+
+    // If we claimed a pre-loaded row that already has fee payments seeded by
+    // admin, skip fee seeding entirely — admin's setup wins.
+    let skipFeeSeed = false;
+    if (claimedMember) {
+      const { count: existingFeeCount } = await supabaseAdmin
+        .from("club_member_fee_payments")
+        .select("id", { count: "exact", head: true })
+        .eq("club_member_id", newMember.id);
+      if ((existingFeeCount ?? 0) > 0) {
+        skipFeeSeed = true;
+        console.log(
+          "[provision-association-member] claimed member already has fees, skipping seed"
+        );
+      }
+    }
+
+    if (!skipFeeSeed) try {
       const seasonYear = new Date().getFullYear();
       const feeRecords: any[] = [];
 

@@ -6,7 +6,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 const baseNavItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/bookings", icon: Calendar, label: "Courts" },
-  { to: "/events?tab=tournaments", icon: Trophy, label: "Tournaments" },
+  { to: "/tournaments", icon: Trophy, label: "Tournaments" },
   { to: "/feed", icon: MessageCircle, label: "Feed" },
   { to: "/settings", icon: SettingsIcon, label: "Settings" },
 ];

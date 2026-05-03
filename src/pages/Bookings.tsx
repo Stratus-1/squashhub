@@ -77,15 +77,32 @@ function formatTimeDisplay(t: string) {
   return t;
 }
 
-const timeSlots = (() => {
+function buildTimeSlots(stepMinutes: number) {
   const slots: string[] = [];
   const start = 6 * 60;
   const end = 22 * 60;
-  for (let m = start; m < end; m += 30) {
+  const step = stepMinutes === 60 ? 60 : 30;
+  for (let m = start; m < end; m += step) {
     slots.push(minutesToTime(m));
   }
   return slots;
-})();
+}
+
+const timeSlots = buildTimeSlots(30);
+
+function isPeakSlot(date: Date, startTime: string, club: any | null | undefined) {
+  if (!club) return false;
+  const day = date.getDay(); // 0=Sun, 6=Sat
+  const isWeekend = day === 0 || day === 6;
+  const startKey = isWeekend ? "peak_weekend_start" : "peak_weekday_start";
+  const endKey = isWeekend ? "peak_weekend_end" : "peak_weekday_end";
+  const peakStart = String(club[startKey] ?? (isWeekend ? "08:00:00" : "16:00:00")).slice(0, 5);
+  const peakEnd = String(club[endKey] ?? (isWeekend ? "12:00:00" : "19:00:00")).slice(0, 5);
+  const m = timeToMinutes(startTime.slice(0, 5));
+  const ps = timeToMinutes(peakStart);
+  const pe = timeToMinutes(peakEnd);
+  return m >= ps && m < pe;
+}
 
 // courts are loaded dynamically from the database
 
@@ -257,6 +274,9 @@ export default function Bookings() {
   const { data: myClubData } = useMyClub();
   const myClub = myClubData?.club;
   const lightFeePerHour = (myClub as any)?.light_fee_per_hour ?? 0;
+  const slotMinutes: 30 | 60 = ((myClub as any)?.booking_slot_minutes === 60 ? 60 : 30) as 30 | 60;
+  const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
+  const dynamicTimeSlots = useMemo(() => buildTimeSlots(slotMinutes), [slotMinutes]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -516,13 +536,28 @@ export default function Bookings() {
     acc[courtId] = allCourtBookings.filter((b: any) => b.court_id === courtId).length;
     return acc;
   }, {} as Record<number, number>);
-  const totalSlots = timeSlots.length;
+  const totalSlots = dynamicTimeSlots.length;
   const dayBookingsCount = allCourtBookings.length;
 
   const handleBook = async () => {
     if (!bookingDialog) return;
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
+
+    // Enforce peak-hour cap
+    if (isPeakSlot(selectedDate, bookingDialog.time, myClub)) {
+      const myExistingPeakCount = (bookings || []).filter((b: any) => {
+        const mine = (b.user_id && b.user_id === user?.id)
+          || (activeMember?.id && b.club_member_id === activeMember.id);
+        if (!mine) return false;
+        if (b.status && b.status !== "active") return false;
+        return isPeakSlot(selectedDate, String(b.start_time || ""), myClub);
+      }).length;
+      if (myExistingPeakCount >= maxPeakPerDay) {
+        toast.error(`Peak-hour limit reached (max ${maxPeakPerDay} per day).`);
+        return;
+      }
+    }
 
     try {
       const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
@@ -896,7 +931,7 @@ export default function Bookings() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {timeSlots.map((time, idx) => {
+          {dynamicTimeSlots.map((time, idx) => {
             const isHour = time.endsWith(":00");
             return (
               <div
@@ -946,7 +981,7 @@ export default function Bookings() {
                           onClick={() => {
                             if (isPastSlot && !booking) return;
                             if (booking) setBookingDetails(booking);
-                            else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: 30, lightsOn: true, lightFeeSplit: "booker" });
+                            else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: true, lightFeeSplit: "booker" });
                           }}
                         >
                           {booking ? (
@@ -1231,7 +1266,7 @@ export default function Bookings() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Duration</Label>
                 <div className="flex gap-1.5">
-                  {([30, 60] as const).map((d) => (
+                  {(slotMinutes === 30 ? ([30, 60] as const) : ([60] as const)).map((d) => (
                     <Button
                       key={d}
                       size="sm"

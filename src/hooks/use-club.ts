@@ -30,6 +30,12 @@ export interface Club {
   tenant_type?: string;
   league_member_annual_fee?: number;
   league_fee_due_month?: number;
+  booking_slot_minutes?: number;
+  peak_weekday_start?: string;
+  peak_weekday_end?: string;
+  peak_weekend_start?: string;
+  peak_weekend_end?: string;
+  max_peak_bookings_per_day?: number;
   created_by?: string;
   created_at: string;
   updated_at: string;

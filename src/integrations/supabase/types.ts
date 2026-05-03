@@ -1697,6 +1697,7 @@ export type Database = {
         Row: {
           address: string | null
           auto_number_existing_onboarding: boolean
+          booking_slot_minutes: number
           chairman_member_id: string | null
           challenge_levels_up: number | null
           club_captain_member_id: string | null
@@ -1713,6 +1714,7 @@ export type Database = {
           league_week_start_dow: number
           light_fee_per_hour: number | null
           logo_url: string | null
+          max_peak_bookings_per_day: number
           member_fee_annual: number | null
           member_fee_due_month: number | null
           member_number_length: number | null
@@ -1722,6 +1724,10 @@ export type Database = {
           name: string
           payment_gateway: string | null
           payment_gateway_public_key: string | null
+          peak_weekday_end: string
+          peak_weekday_start: string
+          peak_weekend_end: string
+          peak_weekend_start: string
           phone: string | null
           secretary_member_id: string | null
           subdomain: string | null
@@ -1731,6 +1737,7 @@ export type Database = {
         Insert: {
           address?: string | null
           auto_number_existing_onboarding?: boolean
+          booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null
@@ -1747,6 +1754,7 @@ export type Database = {
           league_week_start_dow?: number
           light_fee_per_hour?: number | null
           logo_url?: string | null
+          max_peak_bookings_per_day?: number
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
           member_number_length?: number | null
@@ -1756,6 +1764,10 @@ export type Database = {
           name: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
+          peak_weekday_end?: string
+          peak_weekday_start?: string
+          peak_weekend_end?: string
+          peak_weekend_start?: string
           phone?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null
@@ -1765,6 +1777,7 @@ export type Database = {
         Update: {
           address?: string | null
           auto_number_existing_onboarding?: boolean
+          booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null
@@ -1781,6 +1794,7 @@ export type Database = {
           league_week_start_dow?: number
           light_fee_per_hour?: number | null
           logo_url?: string | null
+          max_peak_bookings_per_day?: number
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
           member_number_length?: number | null
@@ -1790,6 +1804,10 @@ export type Database = {
           name?: string
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
+          peak_weekday_end?: string
+          peak_weekday_start?: string
+          peak_weekend_end?: string
+          peak_weekend_start?: string
           phone?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null

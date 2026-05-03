@@ -375,18 +375,21 @@ export function MarkerSetup({ onStart }: Props) {
     staleTime: 2 * 60 * 1000,
   });
 
-  // Fetch today's bookings
+  // Fetch upcoming bookings (today + next 7 days)
   const today = format(new Date(), "yyyy-MM-dd");
+  const horizonBookings = format(addDays(new Date(), 7), "yyyy-MM-dd");
   const { data: todayBookings = [] } = useQuery({
-    queryKey: ["marker-bookings", clubId, today],
+    queryKey: ["marker-bookings", clubId, today, horizonBookings],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await supabase
         .from("bookings")
         .select("id, date, start_time, end_time, court_id, user_id, opponent_id, club_member_id, opponent_member_id, guest_name, status")
         .eq("club_id", clubId)
-        .eq("date", today)
+        .gte("date", today)
+        .lte("date", horizonBookings)
         .eq("status", "active")
+        .order("date")
         .order("start_time");
       if (error) throw error;
 

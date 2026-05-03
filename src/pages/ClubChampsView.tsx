@@ -261,7 +261,7 @@ export default function ClubChampsView() {
                               return (
                                 <tr key={s.id} className={cn("border-b border-border/50", isMe && "bg-primary/5 font-semibold")}>
                                   <td className="py-2 text-muted-foreground">{i + 1}</td>
-                                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>}</td>
+                                  <td className="py-2 font-medium">{s.name} {isMe && <Badge variant="secondary" className="text-[9px] ml-1">You</Badge>} {s.isSubstitute && <Badge variant="outline" className="text-[9px] ml-1">Sub</Badge>}</td>
                                   <td className="py-2 text-center">{s.played}</td>
                                   <td className="py-2 text-center">{s.won}</td>
                                   <td className="py-2 text-center">{s.lost}</td>

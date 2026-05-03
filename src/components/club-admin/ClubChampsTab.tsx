@@ -125,6 +125,42 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [includeVisitors, setIncludeVisitors] = useState(false);
   const [selectedVisitorClubs, setSelectedVisitorClubs] = useState<Set<string>>(new Set());
 
+  // League pre-fill (internal or external/regional)
+  const [sourceLeagueId, setSourceLeagueId] = useState<string>("");
+
+  const { data: availableLeagues = [] } = useQuery({
+    queryKey: ["club-leagues-for-tournament", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("leagues")
+        .select("id, name, code, association_id, league_associations:association_id(name, scope)")
+        .eq("club_id", clubId)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!clubId,
+  });
+
+  // When admin selects a league, pre-fill players from its registrations
+  const applyLeaguePrefill = async (leagueId: string) => {
+    setSourceLeagueId(leagueId);
+    if (!leagueId) return;
+    const { data: regs, error } = await fromExt("member_league_registrations")
+      .select("club_member_id")
+      .eq("league_id", leagueId);
+    if (error) {
+      toast.error("Failed to load league players");
+      return;
+    }
+    const ids = new Set<string>((regs || []).map((r: any) => r.club_member_id).filter(Boolean));
+    setSelectedPlayerIds(ids);
+    if (ids.size > 0) {
+      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from league`);
+    } else {
+      toast.info("No registered players found in that league");
+    }
+  };
+
   // Fetch registered visitors
   const { data: allVisitors = [] } = useQuery({
     queryKey: ["club-visitors-tournament", clubId],

@@ -142,22 +142,37 @@ export const HCaptcha = forwardRef<HCaptchaHandle>((_props, ref) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const resetWidget = useCallback(() => {
+    try {
+      if (window.grecaptcha && widgetIdRef.current !== null) {
+        window.grecaptcha.reset(widgetIdRef.current);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useImperativeHandle(ref, () => ({
     execute: () =>
       new Promise<string>((resolve, reject) => {
+        const wrapResolve = (token: string) => {
+          resolve(token);
+          // Reset so the next signup attempt requires a fresh tick
+          setTimeout(() => resetWidget(), 0);
+        };
         const tryGet = (attemptsLeft: number) => {
           if (readyRef.current && window.grecaptcha && widgetIdRef.current !== null) {
             try {
               const existing = window.grecaptcha.getResponse(widgetIdRef.current);
               if (existing && existing.length > 0) {
-                resolve(existing);
+                wrapResolve(existing);
                 return;
               }
             } catch {
               // fall through and wait for callback
             }
             // Checkbox not yet completed — wait for the user to tick it
-            resolveRef.current = resolve;
+            resolveRef.current = wrapResolve;
             rejectRef.current = (err) => reject(err);
             return;
           }

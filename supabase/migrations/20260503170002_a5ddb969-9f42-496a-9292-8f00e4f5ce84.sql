@@ -1,0 +1,1 @@
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS lights_integration_enabled BOOLEAN NOT NULL DEFAULT false;

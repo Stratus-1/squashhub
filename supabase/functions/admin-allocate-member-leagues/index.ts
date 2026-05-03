@@ -315,3 +315,40 @@ async function allocateNextNumber(admin: any, tenantId: string, tenant: any): Pr
   const next = maxNum + 1;
   return `${prefix}${String(next).padStart(numLength, "0")}`;
 }
+
+// Allocate the next free association number considering BOTH the assoc-tenant's
+// club_members.club_member_number AND member_association_affiliations.league_association_number
+// (the latter has the unique constraint that fires on insert/upsert).
+async function allocateNextAssocNumber(admin: any, assocTenant: any, leagueAssociationId: string): Promise<string> {
+  const prefix = assocTenant?.member_number_prefix || "";
+  const numLength = Number(assocTenant?.member_number_length || 4);
+  const numStart = Number(assocTenant?.member_number_start || 1);
+  const escaped = String(prefix).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`^${escaped}(\\d+)$`);
+
+  const used = new Set<number>();
+
+  const { data: tenantMembers } = await admin
+    .from("club_members")
+    .select("club_member_number")
+    .eq("club_id", assocTenant.id)
+    .not("club_member_number", "is", null);
+  for (const r of (tenantMembers || []) as any[]) {
+    const m = String(r.club_member_number || "").match(re);
+    if (m) used.add(parseInt(m[1], 10));
+  }
+
+  const { data: maaRows } = await admin
+    .from("member_association_affiliations")
+    .select("league_association_number")
+    .eq("association_id", leagueAssociationId)
+    .not("league_association_number", "is", null);
+  for (const r of (maaRows || []) as any[]) {
+    const m = String(r.league_association_number || "").match(re);
+    if (m) used.add(parseInt(m[1], 10));
+  }
+
+  let n = numStart;
+  while (used.has(n)) n++;
+  return `${prefix}${String(n).padStart(numLength, "0")}`;
+}

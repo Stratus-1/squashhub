@@ -230,6 +230,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/auth" element={<AuthGate />} />

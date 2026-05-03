@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     // Load member + club
     const { data: member, error: mErr } = await admin
       .from("club_members")
-      .select("id, club_id, user_id, name, club_member_number, plays_league, enable_league_association_id")
+      .select("id, club_id, user_id, name, email, club_member_number, plays_league, enable_league_association_id")
       .eq("id", memberId)
       .maybeSingle();
     if (mErr || !member) return jsonResp(404, { error: "Member not found" });
@@ -86,10 +86,11 @@ Deno.serve(async (req) => {
     let clubNumber = member.club_member_number as string | null;
     if (!clubNumber) {
       clubNumber = await allocateNextNumber(admin, clubId, club);
-      await admin
+      const { error: clubNumberErr } = await admin
         .from("club_members")
         .update({ club_member_number: clubNumber })
         .eq("id", memberId);
+      if (clubNumberErr) throw clubNumberErr;
     }
 
     // 2) Load the home-club league_associations rows the admin selected
@@ -129,12 +130,25 @@ Deno.serve(async (req) => {
 
       if (assocTenant) {
         // Idempotency: see if member already has a row at the association tenant
-        const { data: existingAssocMember } = await admin
-          .from("club_members")
-          .select("id, club_member_number")
-          .eq("club_id", assocTenant.id)
-          .eq("user_id", member.user_id || "00000000-0000-0000-0000-000000000000")
-          .maybeSingle();
+        let existingAssocMember: any = null;
+        if (member.user_id) {
+          const { data } = await admin
+            .from("club_members")
+            .select("id, club_member_number")
+            .eq("club_id", assocTenant.id)
+            .eq("user_id", member.user_id)
+            .maybeSingle();
+          existingAssocMember = data;
+        } else if (member.email) {
+          const { data } = await admin
+            .from("club_members")
+            .select("id, club_member_number")
+            .eq("club_id", assocTenant.id)
+            .eq("home_club_id", clubId)
+            .ilike("email", member.email)
+            .maybeSingle();
+          existingAssocMember = data;
+        }
 
         if (existingAssocMember?.id) {
           allocatedAssocNumber = existingAssocMember.club_member_number;

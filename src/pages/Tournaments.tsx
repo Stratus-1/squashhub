@@ -221,14 +221,27 @@ export default function Tournaments() {
                             {champ.start_date} to {champ.end_date}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0 gap-1"
-                          onClick={() => navigate(`/club-champs/${champ.id}`)}
-                        >
-                          View <ChevronRight className="w-3 h-3" />
-                        </Button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isClubAdmin && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => setFinalizeChamp(champ)}
+                              title="Swap players in upcoming matches"
+                            >
+                              <Settings2 className="w-3 h-3" /> Finalize Setup
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/club-champs/${champ.id}`)}
+                          >
+                            View <ChevronRight className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>

@@ -287,6 +287,16 @@ export function LadderTab({ clubId }: { clubId: string }) {
         <Switch checked={mixedEnabled} onCheckedChange={toggleMixed} />
       </Card>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search members..."
+          className="pl-9 h-9"
+        />
+      </div>
+
       <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
         Drag members into the desired order, then save.
       </p>
@@ -304,6 +314,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             genderFilter="mixed"
             saving={saving}
             onSave={handleSave}
+            searchQuery={searchQuery}
           />
         </div>
       ) : (
@@ -316,6 +327,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             genderFilter="male"
             saving={saving}
             onSave={handleSave}
+            searchQuery={searchQuery}
           />
           <GenderLadder
             title="Ladies' Ladder"
@@ -325,6 +337,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             genderFilter="female"
             saving={saving}
             onSave={handleSave}
+            searchQuery={searchQuery}
           />
         </div>
       )}

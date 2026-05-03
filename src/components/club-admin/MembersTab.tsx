@@ -961,12 +961,23 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         await fromExt("club_member_fee_payments").insert(feeRecords);
       }
 
+      // Allocate selected leagues (auto-issues association numbers + seeds pass-through fees)
+      if (playsLeague && selectedLeagueIds.length > 0) {
+        const { error: allocErr } = await supabase.functions.invoke("admin-allocate-member-leagues", {
+          body: { memberId: memberData.id, leagueAssociationIds: selectedLeagueIds },
+        });
+        if (allocErr) {
+          toast.error(`Member added, but league allocation failed: ${allocErr.message}`);
+        }
+      }
+
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
       toast.success(msg);
-      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false); setSelectedLeagueIds([]);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
       qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      qc.invalidateQueries({ queryKey: ["member-association-affiliations"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to add member");
     } finally { setLoading(false); }

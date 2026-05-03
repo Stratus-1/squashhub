@@ -75,12 +75,27 @@ export function FinalizeTournamentSetupDialog({
     enabled: open && !!clubId,
   });
 
+  // Build a map: memberId -> Set of "date|time" they are already booked at across all upcoming matches
+  const busyByMember = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const m of matches as any[]) {
+      if (!m.scheduled_date || !m.scheduled_time) continue;
+      const key = `${m.scheduled_date}|${m.scheduled_time}`;
+      for (const id of [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id]) {
+        if (!id) continue;
+        if (!map.has(id)) map.set(id, new Set());
+        map.get(id)!.add(key);
+      }
+    }
+    return map;
+  }, [matches]);
+
   const filteredCandidates = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? candidates.filter((c) => (c.name || "").toLowerCase().includes(q)) : candidates;
   }, [candidates, search]);
 
-  const handleSwap = async (newMemberId: string, newName: string) => {
+  const handleReplace = async (newMemberId: string, newName: string) => {
     if (!pendingSwap) return;
     const { matchId, slot } = pendingSwap;
     try {
@@ -89,19 +104,26 @@ export function FinalizeTournamentSetupDialog({
         .update({ [`${slot}_member_id`]: newMemberId })
         .eq("id", matchId);
       if (error) throw error;
-      toast.success(`Swapped in ${newName}`);
+      toast.success(`Replaced with ${newName}`);
       qc.invalidateQueries({ queryKey: ["finalize-tournament-matches", champId] });
       qc.invalidateQueries({ queryKey: ["tournaments-upcoming-matches"] });
       qc.invalidateQueries({ queryKey: ["club-champs-matches"] });
       setPendingSwap(null);
       setSearch("");
     } catch (err: any) {
-      toast.error(err.message || "Swap failed");
+      toast.error(err.message || "Replacement failed");
     }
   };
 
   const renderSlot = (m: any, slot: Slot, current: { id?: string; name?: string } | null) => {
     if (!isDoubles && (slot === "partner_a" || slot === "partner_b")) return null;
+
+    // Players already in this match (cannot pick — would be playing themselves / partnering themselves)
+    const inMatchIds = new Set<string>(
+      [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].filter(Boolean)
+    );
+    const matchSlotKey = m.scheduled_date && m.scheduled_time ? `${m.scheduled_date}|${m.scheduled_time}` : null;
+
     return (
       <Popover
         key={`${m.id}-${slot}`}
@@ -116,7 +138,7 @@ export function FinalizeTournamentSetupDialog({
             variant="outline"
             size="sm"
             className="h-7 px-2 text-xs gap-1 max-w-[150px] truncate justify-between"
-            title={`Swap ${SLOT_LABEL[slot]}`}
+            title={`Replace ${SLOT_LABEL[slot]}`}
           >
             <span className="truncate">{current?.name || <span className="italic text-muted-foreground">empty</span>}</span>
             <ArrowLeftRight className="w-3 h-3 shrink-0 opacity-60" />
@@ -141,15 +163,32 @@ export function FinalizeTournamentSetupDialog({
             ) : (
               filteredCandidates.map((c) => {
                 const isCurrent = c.id === current?.id;
+                // Conflict: already in this same match (opponent / partner / self)
+                const inThisMatch = inMatchIds.has(c.id) && !isCurrent;
+                // Conflict: booked in another match at the same date+time
+                const busy = matchSlotKey ? busyByMember.get(c.id) : undefined;
+                const otherBusy = !!(busy && busy.has(matchSlotKey!) && !inMatchIds.has(c.id));
+                const conflict = inThisMatch || otherBusy;
+                const reason = inThisMatch
+                  ? "in this match"
+                  : otherBusy
+                    ? "playing same time"
+                    : "";
                 return (
                   <button
                     key={c.id}
-                    disabled={isCurrent}
-                    onClick={() => handleSwap(c.id, c.name)}
-                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-40 flex items-center justify-between"
+                    disabled={isCurrent || conflict}
+                    onClick={() => handleReplace(c.id, c.name)}
+                    title={conflict ? reason : undefined}
+                    className="w-full text-left px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
                   >
                     <span className="truncate">{c.name}</span>
                     {isCurrent && <Badge variant="secondary" className="text-[9px]">current</Badge>}
+                    {!isCurrent && conflict && (
+                      <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 shrink-0">
+                        {reason}
+                      </Badge>
+                    )}
                   </button>
                 );
               })

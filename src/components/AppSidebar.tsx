@@ -16,6 +16,9 @@ import {
   LayoutGrid,
   ChevronDown,
   User,
+  Network,
+  Users,
+  Receipt,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -45,7 +48,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname, search } = useLocation();
-  const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess } = useSidebarFlags();
+  const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess, isAssociation } = useSidebarFlags();
   const { data: profile } = useProfile();
   const { activeMember } = useMemberContext();
 
@@ -54,24 +57,39 @@ export function AppSidebar() {
     return pathname === path;
   };
 
-  const homeItems: Item[] = [
-    { title: "Stats", url: "/analytics", icon: BarChart3 },
-    { title: "Bookings", url: "/bookings", icon: Calendar },
-    { title: "Match Results", url: "/add-result", icon: ClipboardCheck },
-  ];
+  // Association tenants get a slimmed-down menu — no club-player items
+  const homeItems: Item[] = isAssociation
+    ? [
+        { title: "Affiliated Clubs", url: "/?tab=affiliated", icon: Network },
+        { title: "Members", url: "/?tab=members", icon: Users },
+        { title: "Fees Owing", url: "/?tab=fees", icon: Receipt },
+      ]
+    : [
+        { title: "Stats", url: "/analytics", icon: BarChart3 },
+        { title: "Bookings", url: "/bookings", icon: Calendar },
+        { title: "Match Results", url: "/add-result", icon: ClipboardCheck },
+      ];
 
-  const activityItems: Item[] = [
-    { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
-    { title: "Enter Results", url: "/add-result", icon: ClipboardCheck },
-    { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
-    { title: "Challenges", url: "/challenges", icon: Swords },
-    ...(hasLeagues ? [{ title: "Regional Leagues", url: "/league-games", icon: Trophy }] : []),
-    { title: "Club Tournaments", url: "/tournaments", icon: Trophy },
-    { title: "Events", url: "/events", icon: CalendarDays },
-    ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
-    { title: "Feed", url: "/feed", icon: MessageCircle },
-    { title: "My Account", url: "/my-account", icon: Wallet },
-  ];
+  const activityItems: Item[] = isAssociation
+    ? [
+        { title: "Regional Leagues", url: "/league-games", icon: Trophy },
+        { title: "Tournaments", url: "/tournaments", icon: Trophy },
+        { title: "Events", url: "/events", icon: CalendarDays },
+        { title: "Feed", url: "/feed", icon: MessageCircle },
+        { title: "My Account", url: "/my-account", icon: Wallet },
+      ]
+    : [
+        { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
+        { title: "Enter Results", url: "/add-result", icon: ClipboardCheck },
+        { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
+        { title: "Challenges", url: "/challenges", icon: Swords },
+        ...(hasLeagues ? [{ title: "Regional Leagues", url: "/league-games", icon: Trophy }] : []),
+        { title: "Club Tournaments", url: "/tournaments", icon: Trophy },
+        { title: "Events", url: "/events", icon: CalendarDays },
+        ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
+        { title: "Feed", url: "/feed", icon: MessageCircle },
+        { title: "My Account", url: "/my-account", icon: Wallet },
+      ];
 
   // Independent collapsible state per group — auto-open the group containing the active route
   const homeAuto = homeItems.some((i) => isActive(i.url)) || pathname === "/";
@@ -155,28 +173,29 @@ export function AppSidebar() {
           )}
         </SidebarGroup>
 
-        {/* COURTS — single link */}
-        <SidebarGroup className="px-2 mt-3">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/bookings")}
-                  className="py-2"
-                >
-                  <NavLink to="/bookings" className="flex items-center gap-2">
-                    <LayoutGrid className="w-4 h-4" />
-                    {!collapsed && (
-                      <span className={groupHeaderClass}>Courts</span>
-                    )}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
+        {/* COURTS — hidden for association tenants */}
+        {!isAssociation && (
+          <SidebarGroup className="px-2 mt-3">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/bookings")}
+                    className="py-2"
+                  >
+                    <NavLink to="/bookings" className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4" />
+                      {!collapsed && (
+                        <span className={groupHeaderClass}>Courts</span>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {/* ACTIVITIES group — collapsible */}
         <SidebarGroup className="px-2 mt-3">
           <button
@@ -207,8 +226,8 @@ export function AppSidebar() {
           )}
         </SidebarGroup>
 
-        {/* CLUB ADMIN — single link, only if user has admin access */}
-        {hasAnyAdminAccess && (
+        {/* ADMIN — single link, only if user has admin access. Associations use the unified dashboard at "/". */}
+        {hasAnyAdminAccess && !isAssociation && (
           <SidebarGroup className="px-2 mt-3">
             <SidebarGroupContent>
               <SidebarMenu>

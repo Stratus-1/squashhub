@@ -64,6 +64,19 @@ export default function Dashboard() {
   const { data: myBookings } = useMyBookings(effectiveUserId, { memberId: myMemberId });
   const { data: myScheduledMatches } = useMyScheduledMatches(effectiveUserId);
 
+  // Detect in-progress marker session (re-check on focus / route changes)
+  const [hasMarkerSession, setHasMarkerSession] = useState(() => hasActiveMarkerSession());
+  useEffect(() => {
+    const check = () => setHasMarkerSession(hasActiveMarkerSession());
+    check();
+    window.addEventListener("focus", check);
+    window.addEventListener("storage", check);
+    return () => {
+      window.removeEventListener("focus", check);
+      window.removeEventListener("storage", check);
+    };
+  }, [location.pathname]);
+
   // Check if club has any league associations (to show/hide League Games tile)
   const { data: clubLeagueAssociations } = useQuery({
     queryKey: ["league-associations", clubId],

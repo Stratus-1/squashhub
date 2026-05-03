@@ -6,7 +6,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 const baseNavItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/bookings", icon: Calendar, label: "Courts" },
-  { to: "/analytics", icon: BarChart3, label: "Stats" },
+  { to: "/events?tab=tournaments", icon: Trophy, label: "Tournaments" },
   { to: "/feed", icon: MessageCircle, label: "Feed" },
   { to: "/settings", icon: SettingsIcon, label: "Settings" },
 ];
@@ -44,11 +44,11 @@ export function BottomNav() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === "/"}
+            end={item.to === "/" || item.to === "/events?tab=tournaments"}
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-0.5 py-2 px-2 text-[10px] font-medium transition-colors",
-                isActive
+                (isActive && item.to !== "/events?tab=tournaments")
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               )

@@ -42,6 +42,7 @@ export interface MarkerConfig {
   deuceRule: DeuceRule;
   source: MatchSource;
   sourceId?: string; // tournament match id or booking id
+  clubId?: string;
 }
 
 interface Props {
@@ -903,6 +904,7 @@ export function MarkerSetup({ onStart }: Props) {
             deuceRule,
             source,
             sourceId: selectedSourceId || undefined,
+            clubId: clubId || undefined,
           })
         }
       >

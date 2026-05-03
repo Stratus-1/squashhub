@@ -114,7 +114,8 @@ export default function MatchMarker() {
         submitted_by_member_id: null,
         confirmed: autoConfirm,
         notes: noteParts.join(". "),
-      });
+        club_id: config.clubId || null,
+      } as any);
 
       if (error) {
         console.error("Failed to save match:", error);

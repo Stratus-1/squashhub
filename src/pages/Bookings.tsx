@@ -274,6 +274,9 @@ export default function Bookings() {
   const { data: myClubData } = useMyClub();
   const myClub = myClubData?.club;
   const lightFeePerHour = (myClub as any)?.light_fee_per_hour ?? 0;
+  const slotMinutes: 30 | 60 = ((myClub as any)?.booking_slot_minutes === 60 ? 60 : 30) as 30 | 60;
+  const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
+  const dynamicTimeSlots = useMemo(() => buildTimeSlots(slotMinutes), [slotMinutes]);
 
   useEffect(() => {
     if (!user?.id) return;

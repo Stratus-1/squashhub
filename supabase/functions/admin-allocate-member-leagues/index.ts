@@ -158,13 +158,13 @@ Deno.serve(async (req) => {
           // Create the association-tenant member row even if the home-club
           // member is not yet linked to an auth user. user_id stays null and
           // will be claimed when they sign up with a matching email.
-          const { data: newAssocMem } = await admin
+          const { data: newAssocMem, error: newAssocMemErr } = await admin
             .from("club_members")
             .insert({
               club_id: assocTenant.id,
               user_id: member.user_id ?? null,
               name: member.name,
-              email: (member as any).email ?? null,
+              email: member.email ?? null,
               plays_league: true,
               role: "member",
               is_league_only_membership: true,
@@ -173,10 +173,11 @@ Deno.serve(async (req) => {
             })
             .select("id")
             .single();
+          if (newAssocMemErr) throw newAssocMemErr;
 
           // Seed association-tenant fee
           if (newAssocMem?.id && Number(la.fee_annual) > 0) {
-            const { data: assocFee } = await admin
+            const { data: assocFee, error: assocFeeErr } = await admin
               .from("club_member_fee_payments")
               .insert({
                 club_member_id: newAssocMem.id,
@@ -188,13 +189,14 @@ Deno.serve(async (req) => {
               })
               .select("id")
               .single();
+            if (assocFeeErr) throw assocFeeErr;
             assocFeeRowId = assocFee?.id ?? null;
           }
         }
       }
 
       // 3) Permanent affiliation on the home-club member row
-      await admin
+      const { error: affiliationErr } = await admin
         .from("member_association_affiliations")
         .upsert(
           {
@@ -205,6 +207,7 @@ Deno.serve(async (req) => {
           },
           { onConflict: "club_member_id,association_id" }
         );
+      if (affiliationErr) throw affiliationErr;
 
       // 4) Pass-through fee on the home-club member account
       if (Number(la.fee_annual) > 0) {

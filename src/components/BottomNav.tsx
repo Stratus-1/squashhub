@@ -25,7 +25,7 @@ export function BottomNav() {
     navItems = [
       baseNavItems[0],
       { to: "/events", icon: CalendarDays, label: "Events" },
-      { to: "/league-games", icon: Trophy, label: "Leagues" },
+      { to: "/league-games", icon: Trophy, label: "Regional" },
       baseNavItems[2], // Account
       baseNavItems[3], // Profile
     ];

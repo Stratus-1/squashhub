@@ -202,6 +202,13 @@ function AppRoutes() {
 
   const isTvRoute = (routeLocation.pathname || "/").startsWith("/tv");
 
+  const associationSettingsRedirect = (() => {
+    const params = new URLSearchParams(location.search);
+    params.set("tab", "settings");
+    const query = params.toString();
+    return query ? `/?${query}` : "/?tab=settings";
+  })();
+
   const showFooter = (() => {
     const p = routeLocation.pathname || "/";
     if (p === "/booking-response") return false;
@@ -260,7 +267,7 @@ function AppRoutes() {
         <Route path="/settings" element={
           <ProtectedRoute>
             {(clubFromHost as any)?.tenant_type === "association"
-              ? <Navigate to={`/${location.search ? `${location.search}&tab=settings` : "?tab=settings"}`} replace />
+              ? <Navigate to={associationSettingsRedirect} replace />
               : <Settings />}
           </ProtectedRoute>
         } />

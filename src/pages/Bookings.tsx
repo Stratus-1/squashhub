@@ -63,6 +63,16 @@ function timeToMinutes(t: string) {
   return hh * 60 + mm;
 }
 
+// "John Smith" -> "J. Smith"; single names returned as-is.
+function toInitialSurname(full: string): string {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return full.trim();
+  const first = parts[0];
+  const surname = parts[parts.length - 1];
+  const initial = first.charAt(0).toUpperCase();
+  return `${initial}. ${surname}`;
+}
+
 function minutesToTime(m: number) {
   const mm = ((m % 60) + 60) % 60;
   const hh = Math.floor(m / 60);

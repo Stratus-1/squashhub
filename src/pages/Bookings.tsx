@@ -1296,24 +1296,26 @@ export default function Bookings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border p-3">
-                <div className="min-w-0">
-                  <Label className="text-xs font-semibold">Switch on Lights Automatically</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {bookingDialog.lightsOn
-                      ? (lightFeePerHour > 0
-                          ? `Lights turn on when your booking starts · R${lightFeePerHour}/hr`
-                          : "Lights will activate automatically at booking time")
-                      : "Member will be prompted to switch on the lights"}
-                  </p>
+              {lightsIntegrationEnabled && (
+                <div className="flex items-center justify-between rounded-xl border p-3">
+                  <div className="min-w-0">
+                    <Label className="text-xs font-semibold">Switch on Lights Automatically</Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {bookingDialog.lightsOn
+                        ? (lightFeePerHour > 0
+                            ? `Lights turn on when your booking starts · R${lightFeePerHour}/hr`
+                            : "Lights will activate automatically at booking time")
+                        : "Member will be prompted to switch on the lights"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={bookingDialog.lightsOn}
+                    onCheckedChange={(checked) =>
+                      setBookingDialog((s) => (s ? { ...s, lightsOn: checked } : s))
+                    }
+                  />
                 </div>
-                <Switch
-                  checked={bookingDialog.lightsOn}
-                  onCheckedChange={(checked) =>
-                    setBookingDialog((s) => (s ? { ...s, lightsOn: checked } : s))
-                  }
-                />
-              </div>
+              )}
 
 
               <div className="space-y-2">

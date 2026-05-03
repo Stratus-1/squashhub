@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -276,6 +276,7 @@ export function MarkerSetup({ onStart }: Props) {
   const { data: myClubData } = useMyClub();
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const resolvedClub = hostClub || myClubData?.club || null;
   const clubId = resolvedClub?.id;
   const clubName = resolvedClub?.name || "";

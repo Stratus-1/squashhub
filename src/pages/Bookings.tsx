@@ -544,6 +544,21 @@ export default function Bookings() {
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 
+    // Enforce peak-hour cap
+    if (isPeakSlot(selectedDate, bookingDialog.time, myClub)) {
+      const myExistingPeakCount = (bookings || []).filter((b: any) => {
+        const mine = (b.user_id && b.user_id === user?.id)
+          || (activeMember?.id && b.club_member_id === activeMember.id);
+        if (!mine) return false;
+        if (b.status && b.status !== "active") return false;
+        return isPeakSlot(selectedDate, String(b.start_time || ""), myClub);
+      }).length;
+      if (myExistingPeakCount >= maxPeakPerDay) {
+        toast.error(`Peak-hour limit reached (max ${maxPeakPerDay} per day).`);
+        return;
+      }
+    }
+
     try {
       const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
       if (!isOnline) {

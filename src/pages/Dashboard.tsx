@@ -618,9 +618,20 @@ export default function Dashboard() {
             <Swords className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Challenges</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20" onClick={() => navigate("/match-marker")}>
-            <Crosshair className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Mark a Game</span>
+          <Button
+            variant="outline"
+            className={cn(
+              "flex-col h-auto py-3 gap-1.5",
+              hasMarkerSession
+                ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-2 ring-emerald-500/40 animate-pulse"
+                : "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400 hover:bg-violet-500/20"
+            )}
+            onClick={() => navigate("/match-marker")}
+          >
+            {hasMarkerSession ? <Play className="w-5 h-5" /> : <Crosshair className="w-5 h-5" />}
+            <span className="text-xs font-medium leading-tight text-center">
+              {hasMarkerSession ? "Resume Marking" : "Mark a Game"}
+            </span>
           </Button>
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-400 hover:bg-pink-500/20" onClick={() => navigate("/events")}>
             <CalendarDays className="w-5 h-5" />

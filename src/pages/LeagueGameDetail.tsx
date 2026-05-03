@@ -107,7 +107,7 @@ export default function LeagueGameDetail() {
         .eq("id", tournamentMatchId)
         .maybeSingle();
       if (error) throw error;
-      return data as { champ_id: string } | null;
+      return data as unknown as { champ_id: string } | null;
     },
     enabled: !!tournamentMatchId,
   });

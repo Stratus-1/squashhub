@@ -66,10 +66,19 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   };
 
   const [lightsForm, setLightsForm] = useState({
+    lights_integration_enabled: club.lights_integration_enabled ?? false,
     light_fee_per_hour: club.light_fee_per_hour ?? 0,
     shelly_auth_key: "",
     relay_device_type: "shelly" as RelayDevice,
   });
+
+  useEffect(() => {
+    setLightsForm(p => ({
+      ...p,
+      lights_integration_enabled: club.lights_integration_enabled ?? false,
+      light_fee_per_hour: club.light_fee_per_hour ?? 0,
+    }));
+  }, [club.id, club.lights_integration_enabled, club.light_fee_per_hour]);
 
   useEffect(() => {
     if (secrets) {
@@ -85,13 +94,16 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     try {
       await updateClub.mutateAsync({
         id: club.id,
-        light_fee_per_hour: lightsForm.light_fee_per_hour,
-      });
-      await updateSecrets.mutateAsync({
-        club_id: clubId,
-        shelly_auth_key: lightsForm.relay_device_type === "shelly" ? (lightsForm.shelly_auth_key || null) : null,
-        relay_device_type: lightsForm.relay_device_type,
+        lights_integration_enabled: lightsForm.lights_integration_enabled,
+        light_fee_per_hour: lightsForm.lights_integration_enabled ? lightsForm.light_fee_per_hour : 0,
       } as any);
+      if (lightsForm.lights_integration_enabled) {
+        await updateSecrets.mutateAsync({
+          club_id: clubId,
+          shelly_auth_key: lightsForm.relay_device_type === "shelly" ? (lightsForm.shelly_auth_key || null) : null,
+          relay_device_type: lightsForm.relay_device_type,
+        } as any);
+      }
       toast.success("Court light settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -102,186 +114,174 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const isSupported = lightsForm.relay_device_type === "shelly";
   const isOther = lightsForm.relay_device_type === "other";
   const isUnsupported = !isSupported && !isOther;
+  const lightsEnabled = lightsForm.lights_integration_enabled;
 
   return (
-    <div className="space-y-6 mt-4">
-      <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} />
+    <div className="space-y-4 mt-4">
+      <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
 
-      {/* Booking Rules */}
-      <Card className="p-6 space-y-4">
-        <div>
-          <h3 className="font-semibold">Booking Rules</h3>
-          <p className="text-sm text-muted-foreground">Control slot length and peak-hour limits for member bookings.</p>
-        </div>
-
-        <div className="space-y-1">
-          <Label>Booking slot length</Label>
-          <Select
-            value={String(rulesForm.booking_slot_minutes)}
-            onValueChange={(v) => setRulesForm(p => ({ ...p, booking_slot_minutes: parseInt(v, 10) }))}
-          >
-            <SelectTrigger className="w-full md:w-64"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="30">Allow 30-minute slots</SelectItem>
-              <SelectItem value="60">Full hours only (60 min)</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Determines what increments members can book in.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2 rounded-lg border p-3">
-            <Label className="text-sm font-semibold">Weekday peak hours (Mon–Fri)</Label>
-            <div className="flex items-center gap-2">
-              <Input type="time" value={rulesForm.peak_weekday_start}
-                onChange={e => setRulesForm(p => ({ ...p, peak_weekday_start: e.target.value }))} />
-              <span className="text-xs text-muted-foreground">to</span>
-              <Input type="time" value={rulesForm.peak_weekday_end}
-                onChange={e => setRulesForm(p => ({ ...p, peak_weekday_end: e.target.value }))} />
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Booking Rules */}
+        <Card className="p-4 space-y-3">
+          <div>
+            <h3 className="font-semibold text-sm">Booking Rules</h3>
+            <p className="text-xs text-muted-foreground">Slot length and peak-hour limits.</p>
           </div>
 
-          <div className="space-y-2 rounded-lg border p-3">
-            <Label className="text-sm font-semibold">Weekend peak hours (Sat–Sun)</Label>
-            <div className="flex items-center gap-2">
-              <Input type="time" value={rulesForm.peak_weekend_start}
-                onChange={e => setRulesForm(p => ({ ...p, peak_weekend_start: e.target.value }))} />
-              <span className="text-xs text-muted-foreground">to</span>
-              <Input type="time" value={rulesForm.peak_weekend_end}
-                onChange={e => setRulesForm(p => ({ ...p, peak_weekend_end: e.target.value }))} />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <Label>Max peak-hour bookings per member, per day</Label>
-          <Input
-            type="number" min={1} max={10} step={1}
-            className="w-full md:w-40"
-            value={rulesForm.max_peak_bookings_per_day}
-            onChange={e => setRulesForm(p => ({ ...p, max_peak_bookings_per_day: Math.max(1, parseInt(e.target.value) || 1) }))}
-          />
-          <p className="text-xs text-muted-foreground">
-            E.g. <span className="font-semibold text-foreground">1</span> = one 60-min booking, or up to two 30-min bookings if 30-min slots are enabled.
-            Counted against confirmed bookings inside the peak window on the same day.
-          </p>
-        </div>
-
-        <Button onClick={handleSaveRules} disabled={updateClub.isPending} className="w-full md:w-auto">
-          {updateClub.isPending ? "Saving..." : "Save Booking Rules"}
-        </Button>
-      </Card>
-
-      {/* Court Lights */}
-      <Card className="p-6 space-y-4">
-        <h3 className="font-semibold">Court Lights</h3>
-        <p className="text-sm text-muted-foreground">Configure automatic court light control via smart relays.</p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Device type selector */}
           <div className="space-y-1">
-            <Label>Relay Device Type</Label>
+            <Label className="text-xs">Booking slot length</Label>
             <Select
-              value={lightsForm.relay_device_type}
-              onValueChange={(v: RelayDevice) => setLightsForm(p => ({ ...p, relay_device_type: v }))}
+              value={String(rulesForm.booking_slot_minutes)}
+              onValueChange={(v) => setRulesForm(p => ({ ...p, booking_slot_minutes: parseInt(v, 10) }))}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {RELAY_DEVICES.map(d => (
-                  <SelectItem key={d.value} value={d.value}>
-                    <span className="flex items-center gap-2">
-                      {d.label}
-                      {d.value === "shelly" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Supported</span>}
-                    </span>
-                  </SelectItem>
-                ))}
+                <SelectItem value="30">Allow 30-minute slots</SelectItem>
+                <SelectItem value="60">Full hours only (60 min)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">{selectedDevice?.description}</p>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Charge light fees</Label>
-              <Switch
-                checked={lightsForm.light_fee_per_hour > 0}
-                onCheckedChange={(checked) =>
-                  setLightsForm(p => ({ ...p, light_fee_per_hour: checked ? 50 : 0 }))
-                }
-              />
-            </div>
-            {lightsForm.light_fee_per_hour > 0 ? (
-              <div className="space-y-1">
-                <Label>Fee per Hour (R)</Label>
-                <Input
-                  type="number" min={1} step={1}
-                  value={lightsForm.light_fee_per_hour}
-                  onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
-                  placeholder="e.g. 50"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Members will be charged <span className="font-semibold text-foreground">R{lightsForm.light_fee_per_hour}</span>/hour.
-                </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1 rounded-lg border p-2">
+              <Label className="text-[11px] font-semibold">Weekday peak (Mon–Fri)</Label>
+              <div className="flex items-center gap-1">
+                <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekday_start}
+                  onChange={e => setRulesForm(p => ({ ...p, peak_weekday_start: e.target.value }))} />
+                <span className="text-[10px] text-muted-foreground">to</span>
+                <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekday_end}
+                  onChange={e => setRulesForm(p => ({ ...p, peak_weekday_end: e.target.value }))} />
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No fees — lights are free for members.</p>
-            )}
+            </div>
+
+            <div className="space-y-1 rounded-lg border p-2">
+              <Label className="text-[11px] font-semibold">Weekend peak (Sat–Sun)</Label>
+              <div className="flex items-center gap-1">
+                <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekend_start}
+                  onChange={e => setRulesForm(p => ({ ...p, peak_weekend_start: e.target.value }))} />
+                <span className="text-[10px] text-muted-foreground">to</span>
+                <Input type="time" className="h-8 text-xs" value={rulesForm.peak_weekend_end}
+                  onChange={e => setRulesForm(p => ({ ...p, peak_weekend_end: e.target.value }))} />
+              </div>
+            </div>
           </div>
 
-          {/* Shelly-specific fields */}
-          {isSupported && (
-            <div className="space-y-1 md:col-span-2">
-              <Label>Shelly Cloud Auth Key</Label>
-              <Input
-                type="password"
-                value={lightsForm.shelly_auth_key}
-                onChange={e => setLightsForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
-                placeholder="Paste your Shelly Cloud auth key"
-              />
+          <div className="space-y-1">
+            <Label className="text-xs">Max peak-hour bookings per member, per day</Label>
+            <Input
+              type="number" min={1} max={10} step={1}
+              className="h-8 text-xs w-32"
+              value={rulesForm.max_peak_bookings_per_day}
+              onChange={e => setRulesForm(p => ({ ...p, max_peak_bookings_per_day: Math.max(1, parseInt(e.target.value) || 1) }))}
+            />
+          </div>
+
+          <Button size="sm" onClick={handleSaveRules} disabled={updateClub.isPending}>
+            {updateClub.isPending ? "Saving..." : "Save Booking Rules"}
+          </Button>
+        </Card>
+
+        {/* Court Lights */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-sm">Court Lights</h3>
               <p className="text-xs text-muted-foreground">
-                Find this in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key.
+                {lightsEnabled ? "Smart relay integration enabled." : "No light integration — booking dialog will not show light controls."}
               </p>
             </div>
-          )}
+            <Switch
+              checked={lightsEnabled}
+              onCheckedChange={(checked) => setLightsForm(p => ({ ...p, lights_integration_enabled: checked }))}
+            />
+          </div>
 
-          {/* Unsupported device notice */}
-          {isUnsupported && (
-            <div className="md:col-span-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Coming Soon</p>
-                <p className="text-xs text-muted-foreground">
-                  {selectedDevice?.label} integration is on our roadmap. For now, you can still configure light fees and court details.
-                  Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a> for early access or integration assistance.
-                </p>
+          {lightsEnabled && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Relay Device Type</Label>
+                  <Select
+                    value={lightsForm.relay_device_type}
+                    onValueChange={(v: RelayDevice) => setLightsForm(p => ({ ...p, relay_device_type: v }))}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {RELAY_DEVICES.map(d => (
+                        <SelectItem key={d.value} value={d.value}>
+                          <span className="flex items-center gap-2">
+                            {d.label}
+                            {d.value === "shelly" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Supported</span>}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Charge light fees</Label>
+                    <Switch
+                      checked={lightsForm.light_fee_per_hour > 0}
+                      onCheckedChange={(checked) =>
+                        setLightsForm(p => ({ ...p, light_fee_per_hour: checked ? 30 : 0 }))
+                      }
+                    />
+                  </div>
+                  {lightsForm.light_fee_per_hour > 0 && (
+                    <Input
+                      type="number" min={1} step={1}
+                      className="h-8 text-xs"
+                      value={lightsForm.light_fee_per_hour}
+                      onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
+                      placeholder="Fee per hour (R)"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
+
+              {isSupported && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Shelly Cloud Auth Key</Label>
+                  <Input
+                    type="password"
+                    className="h-8 text-xs"
+                    value={lightsForm.shelly_auth_key}
+                    onChange={e => setLightsForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
+                    placeholder="Paste your Shelly Cloud auth key"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Find in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key.
+                  </p>
+                </div>
+              )}
+
+              {isUnsupported && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 flex gap-2">
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-muted-foreground">
+                    {selectedDevice?.label} integration coming soon. Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
+                  </p>
+                </div>
+              )}
+
+              {isOther && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex gap-2">
+                  <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-muted-foreground">
+                    Custom integration — contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
-          {/* Other device notice */}
-          {isOther && (
-            <div className="md:col-span-2 rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Custom Integration</p>
-                <p className="text-xs text-muted-foreground">
-                  Using a different relay system? We can help integrate it. Contact us at{" "}
-                  <a href="mailto:support@squashhub.co.za" className="underline text-primary">support@squashhub.co.za</a>{" "}
-                  with your device details and we'll work with you to set it up.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Button onClick={handleSaveLights} disabled={updateClub.isPending} className="w-full md:w-auto">
-          {updateClub.isPending ? "Saving..." : "Save Light Settings"}
-        </Button>
-      </Card>
+          <Button size="sm" onClick={handleSaveLights} disabled={updateClub.isPending}>
+            {updateClub.isPending ? "Saving..." : "Save Light Settings"}
+          </Button>
+        </Card>
+      </div>
     </div>
   );
 }

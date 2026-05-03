@@ -49,10 +49,10 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
     queryKey: ["association-fee-payments", clubId, memberIds.join(",")],
     queryFn: async () => {
       if (memberIds.length === 0) return [] as PaymentRow[];
-      const { data, error } = await fromExt("member_fee_payments")
+      const { data, error } = await fromExt("club_member_fee_payments")
         .select("id, club_member_id, amount, paid, fee_label, fee_type")
         .in("club_member_id", memberIds)
-        .eq("fee_type", "league_association");
+        .in("fee_type", ["league_affiliation", "association"]);
       if (error) throw error;
       return (data || []) as PaymentRow[];
     },

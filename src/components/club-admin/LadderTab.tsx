@@ -140,9 +140,11 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={list.map((p) => p.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-1.5">
-            {list.map((player, index) => (
-              <DraggablePlayerRow key={player.id} player={player} index={index} />
-            ))}
+            {list.map((player, index) => {
+              const q = searchQuery.trim().toLowerCase();
+              if (q && !player.name.toLowerCase().includes(q)) return null;
+              return <DraggablePlayerRow key={player.id} player={player} index={index} />;
+            })}
             {list.length === 0 && (
               <p className="text-xs text-muted-foreground py-4 text-center">No members found</p>
             )}

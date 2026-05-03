@@ -1,5 +1,5 @@
 import { Home, Calendar, MessageCircle, Settings as SettingsIcon, Wine, Trophy, CalendarDays } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useClubContext } from "@/contexts/ClubContext";
 

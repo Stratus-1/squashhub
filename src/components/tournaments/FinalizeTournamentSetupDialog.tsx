@@ -55,14 +55,15 @@ export function FinalizeTournamentSetupDialog({
     enabled: open && !!champId,
   });
 
-  // Eligible replacement players: club members matching gender (and "mixed" allows all)
+  // Eligible replacement players: all club members (any gender) — admin can swap freely
   const { data: candidates = [] } = useQuery({
-    queryKey: ["finalize-tournament-candidates", clubId, gender],
+    queryKey: ["finalize-tournament-candidates", clubId],
     queryFn: async () => {
-      let q = (supabase as any).from("club_members").select("id, name, gender").eq("club_id", clubId);
-      if (gender === "men") q = q.eq("gender", "men");
-      else if (gender === "ladies") q = q.eq("gender", "ladies");
-      const { data, error } = await q.order("name");
+      const { data, error } = await (supabase as any)
+        .from("club_members")
+        .select("id, name, gender")
+        .eq("club_id", clubId)
+        .order("name");
       if (error) throw error;
       return (data || []) as { id: string; name: string; gender: string | null }[];
     },

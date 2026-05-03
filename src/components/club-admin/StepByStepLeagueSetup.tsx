@@ -331,6 +331,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
     setStep(2);
     setGender("men");
     setLeagueNumber("1st");
+    setStartPosition(1);
     setNumMembers(0);
     setNumTeams(1);
     setPerTeam(4);

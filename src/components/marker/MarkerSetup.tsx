@@ -585,6 +585,33 @@ export function MarkerSetup({ onStart }: Props) {
     }
   }, [source]);
 
+  // Deep-link prefill: ?source=tournament&matchId=... (also booking)
+  useEffect(() => {
+    const src = searchParams.get("source");
+    const matchId = searchParams.get("matchId") || searchParams.get("bookingId");
+    if (!src || !matchId) return;
+    if (src === "tournament" && tournamentMatches.length > 0) {
+      const exists = tournamentMatches.find((m) => m.id === matchId);
+      if (exists) {
+        setSource("tournament");
+        setSelectedSourceId(matchId);
+        searchParams.delete("source");
+        searchParams.delete("matchId");
+        setSearchParams(searchParams, { replace: true });
+      }
+    } else if (src === "booking" && todayBookings.length > 0) {
+      const exists = todayBookings.find((b) => b.id === matchId);
+      if (exists) {
+        setSource("booking");
+        setSelectedSourceId(matchId);
+        searchParams.delete("source");
+        searchParams.delete("bookingId");
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, tournamentMatches, todayBookings]);
+
+
   const playersFromSource = (source === "tournament" || source === "booking") && !!selectedSourceId;
   const canStart =
     playerA.name.trim().length > 0 &&

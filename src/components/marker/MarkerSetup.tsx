@@ -701,79 +701,86 @@ export function MarkerSetup({ onStart }: Props) {
             </div>
           )}
 
-          {/* League selector */}
+          {/* League fixtures list */}
           {source === "league" && (
             <div className="space-y-2">
-              <div>
-                <Label className="text-xs">Select League</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                  value={selectedLeagueId}
-                  onChange={(e) => {
-                    setSelectedLeagueId(e.target.value);
-                    setPlayerA(emptyPlayer());
-                    setPlayerB(emptyPlayer());
-                  }}
-                >
-                  <option value="">Choose a league…</option>
-                  {leaguesWithPlayers.map((l: any) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name} {l.code ? `(${l.code})` : ""} — {l.players.length} players
-                    </option>
-                  ))}
-                </select>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Upcoming league fixtures
+                </p>
+                <div className="inline-flex rounded-md border bg-muted/30 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setLeagueScope("mine")}
+                    className={`text-[10px] px-2 py-1 rounded ${leagueScope === "mine" ? "bg-background shadow-sm font-semibold" : "text-muted-foreground"}`}
+                  >
+                    My league
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeagueScope("all")}
+                    className={`text-[10px] px-2 py-1 rounded ${leagueScope === "all" ? "bg-background shadow-sm font-semibold" : "text-muted-foreground"}`}
+                  >
+                    All leagues
+                  </button>
+                </div>
               </div>
 
-              {selectedLeague && selectedLeague.players.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs mb-1 block">Player A</Label>
-                    <select
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
-                      value={playerA.clubMemberId || ""}
-                      onChange={(e) => {
-                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
-                        if (p) setPlayerA({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
-                        else setPlayerA(emptyPlayer());
-                      }}
-                    >
-                      <option value="">Select player…</option>
-                      {selectedLeague.players
-                        .filter((p: any) => p.clubMemberId !== playerB.clubMemberId)
-                        .map((p: any) => (
-                          <option key={p.clubMemberId} value={p.clubMemberId}>
-                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Player B</Label>
-                    <select
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
-                      value={playerB.clubMemberId || ""}
-                      onChange={(e) => {
-                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
-                        if (p) setPlayerB({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
-                        else setPlayerB(emptyPlayer());
-                      }}
-                    >
-                      <option value="">Select player…</option>
-                      {selectedLeague.players
-                        .filter((p: any) => p.clubMemberId !== playerA.clubMemberId)
-                        .map((p: any) => (
-                          <option key={p.clubMemberId} value={p.clubMemberId}>
-                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {selectedLeague && selectedLeague.players.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-3">No players registered in this league</p>
-              )}
+              <div className="max-h-72 overflow-y-auto space-y-1">
+                {visibleLeagueFixtures.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    No upcoming league fixtures in the next 3 weeks.
+                  </p>
+                ) : (
+                  visibleLeagueFixtures.map((f: any) => {
+                    const dateStr = f.fixture_date ? format(parseISO(f.fixture_date), "EEE dd MMM") : "";
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => navigate(`/league-games/${f.id}`)}
+                        className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-muted/40 ${
+                          f.inMyLineup
+                            ? "border-primary bg-primary/10"
+                            : f.isMyTeam
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1 mb-1 flex-wrap">
+                          {f.inMyLineup && (
+                            <Badge className="bg-primary text-primary-foreground text-[10px] gap-1">
+                              <UserCheck className="w-3 h-3" /> You're playing
+                            </Badge>
+                          )}
+                          {!f.inMyLineup && f.isMyTeam && (
+                            <Badge className="bg-primary/15 text-primary text-[10px] gap-1">
+                              <Star className="w-3 h-3" /> Your league
+                            </Badge>
+                          )}
+                          {f.division && (
+                            <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold">
+                          {f.home_team_code} <span className="text-muted-foreground text-xs">vs</span> {f.away_team_code}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span>{dateStr}{f.fixture_time ? ` · ${String(f.fixture_time).slice(0, 5)}` : ""}</span>
+                          {f.venue_name && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> {f.venue_name}
+                            </span>
+                          )}
+                        </p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                Tap a fixture to open the team scorecard, set up players and mark each rubber.
+              </p>
             </div>
           )}
         </Card>

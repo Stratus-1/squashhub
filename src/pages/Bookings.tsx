@@ -916,7 +916,7 @@ export default function Bookings() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {timeSlots.map((time, idx) => {
+          {dynamicTimeSlots.map((time, idx) => {
             const isHour = time.endsWith(":00");
             return (
               <div

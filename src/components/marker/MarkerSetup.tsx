@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, UserCheck, X, Trophy, CalendarDays, Users, ListOrdered } from "lucide-react";
+import { Search, UserCheck, X, Trophy, CalendarDays, Users, ListOrdered, Star, MapPin } from "lucide-react";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub } from "@/hooks/use-club";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, parseISO, addDays } from "date-fns";
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
 export type ScoringFormat = "par11" | "par15" | "english9";
@@ -271,6 +273,8 @@ function PlayerField({
 export function MarkerSetup({ onStart }: Props) {
   const { club: hostClub } = useClubContext();
   const { data: myClubData } = useMyClub();
+  const { activeMember } = useMemberContext();
+  const navigate = useNavigate();
   const resolvedClub = hostClub || myClubData?.club || null;
   const clubId = resolvedClub?.id;
   const clubName = resolvedClub?.name || "";
@@ -290,6 +294,9 @@ export function MarkerSetup({ onStart }: Props) {
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(3);
   const [deuceRule, setDeuceRule] = useState<DeuceRule>("win_by_2");
+
+  // League filter mode: "mine" (default — fixtures my league/team plays in) or "all"
+  const [leagueScope, setLeagueScope] = useState<"mine" | "all">("mine");
 
   // Fetch active tournament matches (scheduled, not yet completed)
   const { data: tournamentMatches = [] } = useQuery({
@@ -425,69 +432,81 @@ export function MarkerSetup({ onStart }: Props) {
     staleTime: 60 * 1000,
   });
 
-  // Fetch leagues and their registered players
-  const { data: leaguesWithPlayers = [] } = useQuery({
-    queryKey: ["marker-leagues", clubId],
+  // Fetch upcoming league fixtures for this club's teams (next ~21 days)
+  const { data: upcomingLeagueFixtures = [] } = useQuery({
+    queryKey: ["marker-upcoming-league-fixtures", clubId, activeMember?.id],
     queryFn: async () => {
-      if (!clubId) return [];
-      const { data: leagues, error } = await fromExt("leagues").select("id, name, code").eq("club_id", clubId!);
-      if (error) throw error;
+      if (!clubId) return [] as any[];
+
+      const { data: leagues } = await fromExt("leagues")
+        .select("id, name, code, association_id")
+        .eq("club_id", clubId);
       if (!leagues || leagues.length === 0) return [];
 
-      // Fetch all registrations for these leagues
-      const leagueIds = leagues.map((l: any) => l.id) as string[];
-      const { data: regs } = await fromExt("member_league_registrations")
-        .select("league_id, club_member_id, player_rank")
-        .in("league_id", leagueIds);
+      const assocIds = [...new Set(leagues.map((l: any) => l.association_id).filter(Boolean))] as string[];
+      const { data: assocs } = assocIds.length
+        ? await fromExt("league_associations").select("id, platform_association_id").in("id", assocIds)
+        : { data: [] as any[] };
+      const platformAssocIds = [...new Set((assocs || []).map((a: any) => a.platform_association_id).filter(Boolean))] as string[];
 
-      // Fetch member names
-      const memberIds = [...new Set((regs || []).map((r: any) => r.club_member_id))] as string[];
-      const { data: members } = memberIds.length > 0
-        ? await supabase.from("club_members").select("id, name, club_member_number").in("id", memberIds as string[])
-        : { data: [] };
-      const memberMap = new Map((members || []).map((m) => [m.id, m]));
+      const clubPrefixes = new Set<string>();
+      for (const l of leagues) {
+        const m = (l.code || "").match(/^([A-Za-z]+)/);
+        if (m) clubPrefixes.add(m[1].toUpperCase());
+      }
 
-      return leagues.map((l: any) => ({
-        ...l,
-        players: (regs || [])
-          .filter((r: any) => r.league_id === l.id)
-          .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99))
-          .map((r: any) => {
-            const m = memberMap.get(r.club_member_id);
-            return {
-              clubMemberId: r.club_member_id,
-              name: m?.name || "Unknown",
-              number: m?.club_member_number || "",
-              rank: r.player_rank,
-            };
-          }),
+      const today = format(new Date(), "yyyy-MM-dd");
+      const horizon = format(addDays(new Date(), 21), "yyyy-MM-dd");
+
+      let regional: any[] = [];
+      if (platformAssocIds.length > 0 && clubPrefixes.size > 0) {
+        const { data } = await supabase
+          .from("platform_league_fixtures")
+          .select("id, fixture_date, fixture_time, home_team_code, away_team_code, division, venue_name, association_id")
+          .in("association_id", platformAssocIds)
+          .gte("fixture_date", today)
+          .lte("fixture_date", horizon)
+          .order("fixture_date");
+        regional = (data || []).filter((f: any) => {
+          const home = (f.home_team_code || "").toUpperCase();
+          const away = (f.away_team_code || "").toUpperCase();
+          return [...clubPrefixes].some((p) => {
+            const re = new RegExp(`^${p}\\d+$`);
+            return re.test(home) || re.test(away);
+          });
+        });
+      }
+
+      // Which fixtures is the active member in the lineup for?
+      let myLineupIds = new Set<string>();
+      if (activeMember?.id && regional.length > 0) {
+        const { data: lineups } = await supabase
+          .from("league_fixture_lineups")
+          .select("fixture_id")
+          .eq("club_member_id", activeMember.id)
+          .in("fixture_id", regional.map((f: any) => f.id));
+        myLineupIds = new Set((lineups || []).map((l: any) => l.fixture_id as string));
+      }
+
+      const myCodes = new Set(leagues.map((l: any) => (l.code || "").toUpperCase()).filter(Boolean));
+
+      return regional.map((f: any) => ({
+        ...f,
+        inMyLineup: myLineupIds.has(f.id),
+        isMyTeam: myCodes.has((f.home_team_code || "").toUpperCase()) || myCodes.has((f.away_team_code || "").toUpperCase()),
       }));
-    },
-    enabled: !!clubId,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Check if any league fixtures have completed setup (captain has set up players)
-  const { data: readyLeagueFixtures = [] } = useQuery({
-    queryKey: ["marker-league-fixtures-ready", clubId],
-    queryFn: async () => {
-      if (!clubId) return [];
-      // Get fixture results that have setup done (status = setup, draft, submitted, confirmed)
-      const { data, error } = await supabase
-        .from("league_fixture_results" as any)
-        .select("fixture_id, status")
-        .in("status", ["setup", "draft", "submitted", "confirmed"]);
-      if (error) throw error;
-      return data || [];
     },
     enabled: !!clubId,
     staleTime: 2 * 60 * 1000,
   });
 
-  const leagueAvailable = leaguesWithPlayers.length > 0 && readyLeagueFixtures.length > 0;
+  const leagueAvailable = upcomingLeagueFixtures.length > 0;
 
-  const [selectedLeagueId, setSelectedLeagueId] = useState("");
-  const selectedLeague = leaguesWithPlayers.find((l: any) => l.id === selectedLeagueId);
+  const visibleLeagueFixtures = useMemo(() => {
+    if (leagueScope === "all") return upcomingLeagueFixtures;
+    const mine = upcomingLeagueFixtures.filter((f: any) => f.inMyLineup || f.isMyTeam);
+    return mine.length > 0 ? mine : upcomingLeagueFixtures;
+  }, [upcomingLeagueFixtures, leagueScope]);
 
   useEffect(() => {
     if (source === "tournament" && selectedSourceId) {
@@ -548,7 +567,7 @@ export function MarkerSetup({ onStart }: Props) {
   // Reset when source changes
   useEffect(() => {
     setSelectedSourceId("");
-    setSelectedLeagueId("");
+    
     setPlayerA(emptyPlayer());
     setPlayerB(emptyPlayer());
     setPartnerA(emptyPlayer());
@@ -682,79 +701,86 @@ export function MarkerSetup({ onStart }: Props) {
             </div>
           )}
 
-          {/* League selector */}
+          {/* League fixtures list */}
           {source === "league" && (
             <div className="space-y-2">
-              <div>
-                <Label className="text-xs">Select League</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                  value={selectedLeagueId}
-                  onChange={(e) => {
-                    setSelectedLeagueId(e.target.value);
-                    setPlayerA(emptyPlayer());
-                    setPlayerB(emptyPlayer());
-                  }}
-                >
-                  <option value="">Choose a league…</option>
-                  {leaguesWithPlayers.map((l: any) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name} {l.code ? `(${l.code})` : ""} — {l.players.length} players
-                    </option>
-                  ))}
-                </select>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Upcoming league fixtures
+                </p>
+                <div className="inline-flex rounded-md border bg-muted/30 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setLeagueScope("mine")}
+                    className={`text-[10px] px-2 py-1 rounded ${leagueScope === "mine" ? "bg-background shadow-sm font-semibold" : "text-muted-foreground"}`}
+                  >
+                    My league
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeagueScope("all")}
+                    className={`text-[10px] px-2 py-1 rounded ${leagueScope === "all" ? "bg-background shadow-sm font-semibold" : "text-muted-foreground"}`}
+                  >
+                    All leagues
+                  </button>
+                </div>
               </div>
 
-              {selectedLeague && selectedLeague.players.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs mb-1 block">Player A</Label>
-                    <select
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
-                      value={playerA.clubMemberId || ""}
-                      onChange={(e) => {
-                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
-                        if (p) setPlayerA({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
-                        else setPlayerA(emptyPlayer());
-                      }}
-                    >
-                      <option value="">Select player…</option>
-                      {selectedLeague.players
-                        .filter((p: any) => p.clubMemberId !== playerB.clubMemberId)
-                        .map((p: any) => (
-                          <option key={p.clubMemberId} value={p.clubMemberId}>
-                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1 block">Player B</Label>
-                    <select
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
-                      value={playerB.clubMemberId || ""}
-                      onChange={(e) => {
-                        const p = selectedLeague.players.find((pl: any) => pl.clubMemberId === e.target.value);
-                        if (p) setPlayerB({ name: p.name, number: p.number, club: clubName, clubMemberId: p.clubMemberId });
-                        else setPlayerB(emptyPlayer());
-                      }}
-                    >
-                      <option value="">Select player…</option>
-                      {selectedLeague.players
-                        .filter((p: any) => p.clubMemberId !== playerA.clubMemberId)
-                        .map((p: any) => (
-                          <option key={p.clubMemberId} value={p.clubMemberId}>
-                            {p.rank ? `#${p.rank} ` : ""}{p.name} {p.number ? `(${p.number})` : ""}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {selectedLeague && selectedLeague.players.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-3">No players registered in this league</p>
-              )}
+              <div className="max-h-72 overflow-y-auto space-y-1">
+                {visibleLeagueFixtures.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">
+                    No upcoming league fixtures in the next 3 weeks.
+                  </p>
+                ) : (
+                  visibleLeagueFixtures.map((f: any) => {
+                    const dateStr = f.fixture_date ? format(parseISO(f.fixture_date), "EEE dd MMM") : "";
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => navigate(`/league-games/${f.id}`)}
+                        className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-muted/40 ${
+                          f.inMyLineup
+                            ? "border-primary bg-primary/10"
+                            : f.isMyTeam
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1 mb-1 flex-wrap">
+                          {f.inMyLineup && (
+                            <Badge className="bg-primary text-primary-foreground text-[10px] gap-1">
+                              <UserCheck className="w-3 h-3" /> You're playing
+                            </Badge>
+                          )}
+                          {!f.inMyLineup && f.isMyTeam && (
+                            <Badge className="bg-primary/15 text-primary text-[10px] gap-1">
+                              <Star className="w-3 h-3" /> Your league
+                            </Badge>
+                          )}
+                          {f.division && (
+                            <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold">
+                          {f.home_team_code} <span className="text-muted-foreground text-xs">vs</span> {f.away_team_code}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span>{dateStr}{f.fixture_time ? ` · ${String(f.fixture_time).slice(0, 5)}` : ""}</span>
+                          {f.venue_name && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> {f.venue_name}
+                            </span>
+                          )}
+                        </p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                Tap a fixture to open the team scorecard, set up players and mark each rubber.
+              </p>
             </div>
           )}
         </Card>
@@ -873,7 +899,7 @@ export function MarkerSetup({ onStart }: Props) {
             bestOf,
             deuceRule,
             source,
-            sourceId: selectedSourceId || selectedLeagueId || undefined,
+            sourceId: selectedSourceId || undefined,
           })
         }
       >

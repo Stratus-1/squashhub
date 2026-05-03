@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, UserCheck, X, Trophy, CalendarDays, Users, ListOrdered } from "lucide-react";
+import { Search, UserCheck, X, Trophy, CalendarDays, Users, ListOrdered, Star, MapPin } from "lucide-react";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub } from "@/hooks/use-club";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, parseISO, addDays } from "date-fns";
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
 export type ScoringFormat = "par11" | "par15" | "english9";

@@ -42,6 +42,7 @@ interface TabDef {
 
 const ADMIN_TABS: TabDef[] = [
   { value: "association", label: "Association", icon: Building2, permission: "club" },
+  { value: "setup", label: "Setup", icon: Settings, permission: "settings" },
   { value: "affiliated", label: "Affiliated Clubs", icon: Network, permission: "club" },
   { value: "leagues", label: "Regional Leagues", icon: Trophy, permission: "leagues" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs" },
@@ -50,7 +51,7 @@ const ADMIN_TABS: TabDef[] = [
   { value: "fees", label: "Fees", icon: Receipt, permission: "fees" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
-  { value: "settings", label: "Settings", icon: Settings, permission: "settings" },
+  { value: "settings", label: "Preferences", icon: Settings, permission: "settings" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, adminOnly: true },
 ];
 

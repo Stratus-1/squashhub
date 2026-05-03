@@ -810,8 +810,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [gender, setGender] = useState("");
   const [skillLevel, setSkillLevel] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
-  const [associationId, setAssociationId] = useState("");
-  const [associationNumber, setAssociationNumber] = useState("");
+  const [selectedLeagueIds, setSelectedLeagueIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);

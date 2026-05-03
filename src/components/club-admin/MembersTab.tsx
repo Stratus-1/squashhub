@@ -810,8 +810,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
   const [gender, setGender] = useState("");
   const [skillLevel, setSkillLevel] = useState("");
   const [playsLeague, setPlaysLeague] = useState(false);
-  const [associationId, setAssociationId] = useState("");
-  const [associationNumber, setAssociationNumber] = useState("");
+  const [selectedLeagueIds, setSelectedLeagueIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
@@ -883,12 +882,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       toast.error("Fee category is required");
       return;
     }
-    if (playsLeague && !associationId) {
-      toast.error("Please select a league association");
-      return;
-    }
-    if (playsLeague && !associationNumber.trim()) {
-      toast.error("Please enter the association number");
+    if (playsLeague && selectedLeagueIds.length === 0) {
+      toast.error("Please select at least one league");
       return;
     }
 
@@ -966,12 +961,23 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         await fromExt("club_member_fee_payments").insert(feeRecords);
       }
 
+      // Allocate selected leagues (auto-issues association numbers + seeds pass-through fees)
+      if (playsLeague && selectedLeagueIds.length > 0) {
+        const { error: allocErr } = await supabase.functions.invoke("admin-allocate-member-leagues", {
+          body: { memberId: memberData.id, leagueAssociationIds: selectedLeagueIds },
+        });
+        if (allocErr) {
+          toast.error(`Member added, but league allocation failed: ${allocErr.message}`);
+        }
+      }
+
       const msg = profile ? "Member added & linked to their account" : "Member added — they'll be linked when they sign up";
       toast.success(msg);
-      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false);
+      setName(""); setEmail(""); setMemberNumber(""); setIdNumber(""); setPhone("+27"); setAddress(""); setFeeCategoryId(""); setGender(""); setSkillLevel(""); setPlaysLeague(false); setSelectedLeagueIds([]);
       onOpenChange(false);
       qc.invalidateQueries({ queryKey: ["club-members"] });
       qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      qc.invalidateQueries({ queryKey: ["member-association-affiliations"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to add member");
     } finally { setLoading(false); }
@@ -1035,19 +1041,35 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
             <Label>Plays League</Label>
           </div>
           {playsLeague && (
-            <>
-              <div className="space-y-1">
-                <Label>League Association *</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={associationId} onChange={e => setAssociationId(e.target.value)}>
-                  <option value="">— Select Association —</option>
-                  {associations.map(a => <option key={a.id} value={a.id}>{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label>Association Number *</Label>
-                <Input value={associationNumber} onChange={e => setAssociationNumber(e.target.value)} placeholder="e.g. NSF12345" />
-              </div>
-            </>
+            <div className="space-y-2 rounded-md border border-input p-2">
+              <Label className="text-xs">Leagues *</Label>
+              {associations.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No leagues configured for this club. Add them in the Leagues tab.</p>
+              ) : (
+                associations.filter((a: any) => a.active !== false).map((a: any) => {
+                  const checked = selectedLeagueIds.includes(a.id);
+                  return (
+                    <label key={a.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setSelectedLeagueIds((prev) =>
+                            e.target.checked ? [...prev, a.id] : prev.filter((id) => id !== a.id)
+                          );
+                        }}
+                      />
+                      <span>
+                        {a.name}
+                        {a.abbreviation ? ` (${a.abbreviation})` : ""}
+                        {a.fee_annual > 0 ? ` — R${a.fee_annual}` : ""}
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+              <p className="text-[11px] text-muted-foreground">League numbers will be auto-allocated after the member is added.</p>
+            </div>
           )}
 
           {/* Fee preview */}

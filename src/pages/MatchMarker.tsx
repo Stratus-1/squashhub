@@ -12,9 +12,37 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 export default function MatchMarker() {
-  const [config, setConfig] = useState<MarkerConfig | null>(null);
+  const [config, setConfig] = useState<MarkerConfig | null>(() => {
+    try {
+      const raw = localStorage.getItem(MARKER_CONFIG_KEY);
+      return raw ? (JSON.parse(raw) as MarkerConfig) : null;
+    } catch {
+      return null;
+    }
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Persist config so user can navigate away and resume
+  useEffect(() => {
+    try {
+      if (config) localStorage.setItem(MARKER_CONFIG_KEY, JSON.stringify(config));
+      else localStorage.removeItem(MARKER_CONFIG_KEY);
+    } catch {}
+  }, [config]);
+
+  const startConfig = (c: MarkerConfig) => {
+    try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
+    setConfig(c);
+  };
+
+  const resetMatch = () => {
+    try {
+      localStorage.removeItem(MARKER_CONFIG_KEY);
+      localStorage.removeItem(MARKER_STATE_KEY);
+    } catch {}
+    setConfig(null);
+  };
 
   const handleMatchComplete = async (result: {
     games: GameScore[];

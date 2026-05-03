@@ -866,41 +866,94 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         <Card>
           <CardHeader><CardTitle>Select Category</CardTitle></CardHeader>
           <CardContent className="space-y-6">
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
-              <div className="grid grid-cols-3 gap-3">
-                {(["men", "ladies", "mixed"] as GenderCategory[]).map((g) => (
-                  <Button
-                    key={g}
-                    variant={gender === g ? "default" : "outline"}
-                    className="h-16 text-base"
-                    onClick={() => setGender(g)}
-                  >
-                    {g === "men" ? "🏆 Men's" : g === "ladies" ? "🏆 Ladies'" : "🏆 Mixed"}
-                  </Button>
-                ))}
+            {/* League pre-fill — moved to TOP. When leagues are picked, the tournament inherits
+                their players, gender mix and format, so the manual fields below are hidden. */}
+            {availableLeagues.length > 0 && (
+              <div className="rounded-lg border p-3 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Pre-fill from League(s)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Plan a tournament around one or more existing leagues (e.g. League 6 &amp; 7). All registered players in the chosen leagues are loaded automatically. Leave empty to pick players manually.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[260px] overflow-y-auto">
+                  {availableLeagues.map((l: any) => {
+                    const scope = l.league_associations?.scope === "internal" ? "Internal" : (l.league_associations?.name || "League");
+                    const checked = sourceLeagueIds.has(l.id);
+                    return (
+                      <label
+                        key={l.id}
+                        className={cn(
+                          "flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 border",
+                          checked ? "bg-primary/10 border-primary" : "hover:bg-accent border-transparent"
+                        )}
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => toggleSourceLeague(l.id)} />
+                        <span className="text-sm font-medium">{l.name}</span>
+                        {l.code && <Badge variant="outline" className="text-[10px]">{l.code}</Badge>}
+                        <Badge variant="secondary" className="ml-auto text-[10px]">{scope}</Badge>
+                      </label>
+                    );
+                  })}
+                </div>
+                {hasLeagueSelection && (
+                  <p className="text-[11px] text-primary">
+                    ✓ {selectedPlayerIds.size} player{selectedPlayerIds.size === 1 ? "" : "s"} loaded from {sourceLeagueIds.size} league{sourceLeagueIds.size === 1 ? "" : "s"} — scheduled matches will appear in their upcoming league games.
+                  </p>
+                )}
               </div>
-            </div>
+            )}
 
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Match Type</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant={matchType === "singles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("singles")}
-                >
-                  👤 Singles
-                </Button>
-                <Button
-                  variant={matchType === "doubles" ? "default" : "outline"}
-                  className="h-16 text-base"
-                  onClick={() => setMatchType("doubles")}
-                >
-                  👥 Doubles
-                </Button>
-              </div>
-            </div>
+            {/* When leagues are chosen, the rest is auto-derived (mixed singles, no visitors) */}
+            {!hasLeagueSelection && (
+              <>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(["men", "ladies", "mixed"] as GenderCategory[]).map((g) => (
+                      <Button
+                        key={g}
+                        variant={gender === g ? "default" : "outline"}
+                        className="h-16 text-base"
+                        onClick={() => setGender(g)}
+                      >
+                        {g === "men" ? "🏆 Men's" : g === "ladies" ? "🏆 Ladies'" : "🏆 Mixed"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Match Type</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      variant={matchType === "singles" ? "default" : "outline"}
+                      className="h-16 text-base"
+                      onClick={() => setMatchType("singles")}
+                    >
+                      👤 Singles
+                    </Button>
+                    <Button
+                      variant={matchType === "doubles" ? "default" : "outline"}
+                      className="h-16 text-base"
+                      onClick={() => setMatchType("doubles")}
+                    >
+                      👥 Doubles
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <Label className="text-sm font-medium">Include Visitors</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Add registered visitors to the tournament player pool
+                    </p>
+                  </div>
+                  <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
+                </div>
+              </>
+            )}
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
@@ -911,44 +964,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
               <Switch checked={enablePlayoffs} onCheckedChange={setEnablePlayoffs} />
             </div>
-
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <Label className="text-sm font-medium">Include Visitors</Label>
-                <p className="text-xs text-muted-foreground">
-                  Add registered visitors to the tournament player pool
-                </p>
-              </div>
-              <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
-            </div>
-
-            {availableLeagues.length > 0 && (
-              <div className="rounded-lg border p-3 space-y-2">
-                <Label className="text-sm font-medium">Pre-fill from League (optional)</Label>
-                <p className="text-xs text-muted-foreground">
-                  Plan a tournament around an existing internal or regional league. Players already registered in that league will be loaded automatically.
-                </p>
-                <Select value={sourceLeagueId || "none"} onValueChange={(v) => applyLeaguePrefill(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Select league..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— None (manual selection) —</SelectItem>
-                    {availableLeagues.map((l: any) => {
-                      const scope = l.league_associations?.scope === "internal" ? "Internal" : (l.league_associations?.name || "League");
-                      return (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name} {l.code ? `(${l.code})` : ""} · {scope}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {sourceLeagueId && (
-                  <p className="text-[11px] text-primary">
-                    ✓ {selectedPlayerIds.size} league players loaded — scheduled matches will appear in their upcoming league games.
-                  </p>
-                )}
-              </div>
-            )}
 
             {includeVisitors && visitorClubs.length > 0 && (
               <div className="space-y-2 rounded-lg border p-3">

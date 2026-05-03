@@ -325,6 +325,53 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Number of "entities" (players for singles, pairs for doubles)
   const entityCount = isDoubles ? doublesPairs.length : selectedPlayerIds.size;
 
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  const handlePlayerDragEnd = (groupIndex: number) => (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const groupIds = (groups as ClubMember[][])[groupIndex].map((p) => p.id);
+    const oldIdx = groupIds.indexOf(String(active.id));
+    const newIdx = groupIds.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    const reorderedGroupIds = arrayMove(groupIds, oldIdx, newIdx);
+    // Rebuild full order: keep existing order for everyone else, swap in this group's new order
+    const current = playerOrder.length > 0 ? playerOrder : selectedPlayers.map((p) => p.id);
+    const groupSet = new Set(groupIds);
+    const next: string[] = [];
+    let gi = 0;
+    for (const id of current) {
+      if (groupSet.has(id)) {
+        next.push(reorderedGroupIds[gi++]);
+      } else {
+        next.push(id);
+      }
+    }
+    // Add any IDs not in current (new selections)
+    for (const p of selectedPlayers) if (!next.includes(p.id)) next.push(p.id);
+    setPlayerOrder(next);
+  };
+
+  const handlePairDragEnd = (groupIndex: number) => (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const groupIds = (groups as DoublePair[][])[groupIndex].map((p) => p.id);
+    const oldIdx = groupIds.indexOf(String(active.id));
+    const newIdx = groupIds.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    const reorderedGroupIds = arrayMove(groupIds, oldIdx, newIdx);
+    const current = pairOrder.length > 0 ? pairOrder : doublesPairs.map((p) => p.id);
+    const groupSet = new Set(groupIds);
+    const next: string[] = [];
+    let gi = 0;
+    for (const id of current) {
+      if (groupSet.has(id)) next.push(reorderedGroupIds[gi++]);
+      else next.push(id);
+    }
+    for (const p of doublesPairs) if (!next.includes(p.id)) next.push(p.id);
+    setPairOrder(next);
+  };
+
   // Build groups
   const groups = useMemo(() => {
     if (isDoubles) {

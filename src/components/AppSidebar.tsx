@@ -86,7 +86,7 @@ export function AppSidebar() {
 
   // Sakana display, uppercase, wider tracking — matches mockup
   const groupHeaderClass =
-    "uppercase tracking-[0.22em] text-[13px] font-bold font-heading text-sidebar-foreground";
+    "uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-sidebar-foreground";
 
   const renderSubItem = (item: Item) => (
     <SidebarMenuSubItem key={item.title + item.url}>

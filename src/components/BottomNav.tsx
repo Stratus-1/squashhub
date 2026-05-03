@@ -1,4 +1,4 @@
-import { Home, Calendar, MessageCircle, Settings as SettingsIcon, Wine, Trophy, CalendarDays } from "lucide-react";
+import { Home, Calendar, MessageCircle, Wine, Trophy, CalendarDays, Wallet, User } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -6,9 +6,9 @@ import { useClubContext } from "@/contexts/ClubContext";
 const baseNavItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/bookings", icon: Calendar, label: "Courts" },
-  { to: "/tournaments", icon: Trophy, label: "Tournaments" },
+  { to: "/my-account", icon: Wallet, label: "Account" },
+  { to: "/profile", icon: User, label: "Profile" },
   { to: "/feed", icon: MessageCircle, label: "Feed" },
-  { to: "/settings", icon: SettingsIcon, label: "Settings" },
 ];
 
 export function BottomNav() {
@@ -21,20 +21,21 @@ export function BottomNav() {
 
   if (isAssociation) {
     // Associations run everything from the unified dashboard at "/".
-    // Keep the bar minimal: Home + Events + Leagues + Feed.
+    // Keep the bar minimal: Home + Events + Leagues + Account + Profile.
     navItems = [
       baseNavItems[0],
       { to: "/events", icon: CalendarDays, label: "Events" },
       { to: "/league-games", icon: Trophy, label: "Leagues" },
-      baseNavItems[3],
+      baseNavItems[2], // Account
+      baseNavItems[3], // Profile
     ];
   } else if (honestyBarEnabled) {
     navItems = [
       baseNavItems[0],
       baseNavItems[1],
       { to: "/honesty-bar", icon: Wine, label: "Bar" },
-      baseNavItems[3],
-      baseNavItems[4],
+      baseNavItems[2], // Account
+      baseNavItems[3], // Profile
     ];
   }
 

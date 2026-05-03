@@ -456,12 +456,13 @@ export default function Bookings() {
   const getCourtName = (id: number) => courtsData?.find((c: any) => c.id === id)?.name || `Court ${id}`;
 
   const { data: availablePlayers } = useQuery({
-    queryKey: ["available-players-club", dateStr],
+    queryKey: ["available-players-club", dateStr, bookingClubId],
     queryFn: async () => {
-      // Get club members with their ladder rank
+      // Get club members (scoped to current club) with their ladder rank
       const { data: members, error: membersError } = await (supabase as any)
         .from("club_members")
-        .select("id, name, user_id, email, ladder_position");
+        .select("id, name, user_id, email, ladder_position")
+        .eq("club_id", bookingClubId);
       if (membersError) throw membersError;
 
       // Also get profiles for display names
@@ -494,7 +495,7 @@ export default function Bookings() {
 
       return combined as any;
     },
-    enabled: !!user,
+    enabled: !!user && !!bookingClubId,
   });
 
   const { data: clubVisitors = [] } = useQuery({

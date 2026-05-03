@@ -24,9 +24,13 @@ type Props = {
   weekEnd?: string;
   /** 'internal' associations have no platform fixture feed — show a tailored empty state. */
   associationScope?: "internal" | "region";
+  /** Used to surface tournament fixtures linked to leagues in this club. */
+  clubId?: string;
+  /** Filters tournament fixtures to leagues belonging to this association. */
+  associationId?: string;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region" }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
 
@@ -143,15 +147,65 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return new Set((myLineupRows || []).map((r: any) => r.fixture_id as string));
   }, [myLineupRows]);
 
+  // Tournament matches scheduled for leagues this club operates (filtered to current association)
+  const { data: tournamentFixtures } = useQuery({
+    queryKey: ["upcoming-tournament-fixtures", clubId, associationId, rangeStart, rangeEnd],
+    queryFn: async () => {
+      if (!clubId) return [] as any[];
+      // Find leagues in this club (optionally filtered by association)
+      let lq = supabase.from("leagues" as any).select("id, name, code, association_id").eq("club_id", clubId);
+      if (associationId) lq = lq.eq("association_id", associationId);
+      const { data: leagues } = await lq;
+      const leagueIds = (leagues || []).map((l: any) => l.id);
+      if (leagueIds.length === 0) return [];
+      const { data: champs } = await supabase
+        .from("club_champs" as any)
+        .select("id, name, source_league_id")
+        .eq("club_id", clubId)
+        .in("source_league_id", leagueIds);
+      const champIds = (champs || []).map((c: any) => c.id);
+      if (champIds.length === 0) return [];
+      const champMap = new Map((champs || []).map((c: any) => [c.id, c]));
+      const leagueMap = new Map((leagues || []).map((l: any) => [l.id, l]));
+      const { data: matches } = await supabase
+        .from("club_champs_matches" as any)
+        .select("id, scheduled_date, scheduled_time, court_id, champ_id, player_a_member_id, player_b_member_id")
+        .in("champ_id", champIds)
+        .gte("scheduled_date", rangeStart)
+        .lte("scheduled_date", rangeEnd)
+        .order("scheduled_date");
+      return (matches || []).map((m: any) => {
+        const ch: any = champMap.get(m.champ_id);
+        const lg: any = ch ? leagueMap.get(ch.source_league_id) : null;
+        return {
+          id: `champ-${m.id}`,
+          fixture_date: m.scheduled_date,
+          fixture_time: m.scheduled_time,
+          home_team_code: lg?.code || ch?.name || "Tournament",
+          away_team_code: "—",
+          venue_name: "Club courts",
+          division: ch?.name || "Tournament",
+          isTournament: true,
+        };
+      });
+    },
+    enabled: !!clubId,
+  });
+
   const fixturesByDate = useMemo(() => {
-    const groups = new Map<string, typeof fixtures>();
-    for (const f of fixtures || []) {
+    const groups = new Map<string, any[]>();
+    for (const f of (fixtures || []) as any[]) {
       const date = f.fixture_date;
       if (!groups.has(date)) groups.set(date, []);
       groups.get(date)!.push(f);
     }
-    return groups;
-  }, [fixtures]);
+    for (const f of (tournamentFixtures || []) as any[]) {
+      const date = f.fixture_date;
+      if (!groups.has(date)) groups.set(date, []);
+      groups.get(date)!.push(f);
+    }
+    return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
+  }, [fixtures, tournamentFixtures]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
@@ -315,10 +369,10 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       size="sm"
                       variant={inLineup || mine ? "default" : "outline"}
                       className="shrink-0"
-                      onClick={() => navigate(`/league-games/${f.id}`)}
+                      onClick={() => navigate(f.isTournament ? `/club-admin?tab=tournaments` : `/league-games/${f.id}`)}
                     >
                       <Pencil className="w-3 h-3 mr-1" />
-                      Set up & Score
+                      {f.isTournament ? "Tournament" : "Set up & Score"}
                     </Button>
                   </div>
                 </Card>

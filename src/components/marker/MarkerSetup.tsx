@@ -904,6 +904,7 @@ export function MarkerSetup({ onStart }: Props) {
             deuceRule,
             source,
             sourceId: selectedSourceId || undefined,
+            clubId: clubId || undefined,
           })
         }
       >

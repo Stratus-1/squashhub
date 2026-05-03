@@ -234,8 +234,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    try {
-      if (skipFeeSeed) throw new Error("__skip__");
+    if (!skipFeeSeed) try {
       const seasonYear = new Date().getFullYear();
       const feeRecords: any[] = [];
 

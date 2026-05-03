@@ -265,9 +265,12 @@ interface GenderLadderProps {
   saving: boolean;
   onSave: (ordered: LadderMember[], genderFilter: string) => void;
   searchQuery: string;
+  leagues: LeagueOption[];
+  affiliationsByMember: Map<string, Set<string>>;
+  onAllocated: () => void;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, onAllocated }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -321,6 +324,9 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                   player={player}
                   index={index}
                   total={list.length}
+                  leagues={leagues}
+                  currentAffiliations={affiliationsByMember.get(player.id) ?? new Set()}
+                  onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);
                     if (fromIdx === -1 || fromIdx === targetIndex) return;
@@ -338,6 +344,7 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
     </div>
   );
 }
+
 
 export function LadderTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading, error } = useClubMembers(clubId);

@@ -226,8 +226,8 @@ export function AppSidebar() {
           )}
         </SidebarGroup>
 
-        {/* CLUB ADMIN — single link, only if user has admin access */}
-        {hasAnyAdminAccess && (
+        {/* ADMIN — single link, only if user has admin access. Associations use the unified dashboard at "/". */}
+        {hasAnyAdminAccess && !isAssociation && (
           <SidebarGroup className="px-2 mt-3">
             <SidebarGroupContent>
               <SidebarMenu>

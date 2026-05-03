@@ -1251,7 +1251,7 @@ export default function Bookings() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Duration</Label>
                 <div className="flex gap-1.5">
-                  {([30, 60] as const).map((d) => (
+                  {(slotMinutes === 30 ? ([30, 60] as const) : ([60] as const)).map((d) => (
                     <Button
                       key={d}
                       size="sm"

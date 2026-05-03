@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { cn } from "@/lib/utils";
+import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 
 interface PositionEntry {
   homeCode: string;

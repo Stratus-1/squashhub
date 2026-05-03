@@ -882,12 +882,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       toast.error("Fee category is required");
       return;
     }
-    if (playsLeague && !associationId) {
-      toast.error("Please select a league association");
-      return;
-    }
-    if (playsLeague && !associationNumber.trim()) {
-      toast.error("Please enter the association number");
+    if (playsLeague && selectedLeagueIds.length === 0) {
+      toast.error("Please select at least one league");
       return;
     }
 

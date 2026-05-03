@@ -42,24 +42,44 @@ function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
+interface LeagueOption {
+  id: string;
+  name: string;
+  abbreviation: string | null;
+  fee_annual: number;
+}
+
 function DraggablePlayerRow({
   player,
   index,
   total,
   onMoveTo,
+  leagues,
+  currentAffiliations,
+  onAllocated,
 }: {
   player: LadderMember;
   index: number;
   total: number;
   onMoveTo: (playerId: string, targetIndex: number) => void;
+  leagues: LeagueOption[];
+  currentAffiliations: Set<string>;
+  onAllocated: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id });
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [posInput, setPosInput] = useState(String(index + 1));
+  const [leaguePopoverOpen, setLeaguePopoverOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [allocating, setAllocating] = useState(false);
 
   useEffect(() => {
     setPosInput(String(index + 1));
   }, [index]);
+
+  useEffect(() => {
+    if (leaguePopoverOpen) setSelected(new Set(currentAffiliations));
+  }, [leaguePopoverOpen, currentAffiliations]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -75,6 +95,42 @@ function DraggablePlayerRow({
     }
     onMoveTo(player.id, n - 1);
     setPopoverOpen(false);
+  };
+
+  const toggleLeague = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAllocate = async () => {
+    const newOnes = Array.from(selected).filter((id) => !currentAffiliations.has(id));
+    if (newOnes.length === 0) {
+      toast.info("No new leagues selected");
+      return;
+    }
+    setAllocating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-allocate-member-leagues", {
+        body: { memberId: player.id, leagueAssociationIds: newOnes },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const allocs = ((data as any)?.allocations || []) as Array<{ league: string; associationNumber: string | null; fee: number }>;
+      const summary = allocs
+        .map((a) => `${a.league}${a.associationNumber ? ` #${a.associationNumber}` : ""}${a.fee ? ` · R${a.fee}` : ""}`)
+        .join(", ");
+      toast.success(`${player.name} allocated: ${summary || "done"}`);
+      setLeaguePopoverOpen(false);
+      onAllocated();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to allocate");
+    } finally {
+      setAllocating(false);
+    }
   };
 
   return (
@@ -101,7 +157,68 @@ function DraggablePlayerRow({
 
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold truncate">{player.name}</p>
+          {currentAffiliations.size > 0 && (
+            <p className="text-[10px] text-muted-foreground truncate">
+              {leagues
+                .filter((l) => currentAffiliations.has(l.id))
+                .map((l) => l.abbreviation || l.name)
+                .join(" · ")}
+            </p>
+          )}
         </div>
+
+        {leagues.length > 0 && (
+          <Popover open={leaguePopoverOpen} onOpenChange={setLeaguePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-[11px]">
+                <Trophy className="w-3 h-3" />
+                Leagues
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-3 space-y-2">
+              <p className="text-xs font-semibold">Allocate to leagues</p>
+              <p className="text-[10px] text-muted-foreground">
+                Ticking a league allocates a league number and bills the member the affiliation fee.
+              </p>
+              <div className="space-y-1.5 pt-1">
+                {leagues.map((l) => {
+                  const already = currentAffiliations.has(l.id);
+                  return (
+                    <label
+                      key={l.id}
+                      className={cn(
+                        "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
+                        already ? "bg-muted/50" : "hover:bg-muted cursor-pointer"
+                      )}
+                    >
+                      <Checkbox
+                        checked={selected.has(l.id)}
+                        disabled={already}
+                        onCheckedChange={() => toggleLeague(l.id)}
+                      />
+                      <span className="flex-1 font-medium">
+                        {l.name}
+                        {l.abbreviation ? ` (${l.abbreviation})` : ""}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {l.fee_annual > 0 ? `R${l.fee_annual}` : "Free"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button size="sm" onClick={handleAllocate} disabled={allocating} className="flex-1 h-8 text-xs gap-1">
+                  {allocating ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                  Allocate
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setLeaguePopoverOpen(false)} className="h-8 text-xs">
+                  Cancel
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
 
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
@@ -132,6 +249,7 @@ function DraggablePlayerRow({
     </div>
   );
 }
+
 
 function isLadiesGender(gender: string | null | undefined) {
   const g = (gender || "").toLowerCase();

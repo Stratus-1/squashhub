@@ -21,20 +21,21 @@ export function BottomNav() {
 
   if (isAssociation) {
     // Associations run everything from the unified dashboard at "/".
-    // Keep the bar minimal: Home + Events + Leagues + Feed.
+    // Keep the bar minimal: Home + Events + Leagues + Account + Profile.
     navItems = [
       baseNavItems[0],
       { to: "/events", icon: CalendarDays, label: "Events" },
       { to: "/league-games", icon: Trophy, label: "Leagues" },
-      baseNavItems[3],
+      baseNavItems[2], // Account
+      baseNavItems[3], // Profile
     ];
   } else if (honestyBarEnabled) {
     navItems = [
       baseNavItems[0],
       baseNavItems[1],
       { to: "/honesty-bar", icon: Wine, label: "Bar" },
-      baseNavItems[3],
-      baseNavItems[4],
+      baseNavItems[2], // Account
+      baseNavItems[3], // Profile
     ];
   }
 

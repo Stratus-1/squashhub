@@ -217,7 +217,25 @@ Deno.serve(async (req) => {
     //    association-tenant row and journals "club owes league" on the club books.
     const insertedAssocFeeIds: string[] = [];
     const homeClubFeeSeeds: Array<{ label: string; amount: number; assocFeeIndex: number }> = [];
+
+    // If we claimed a pre-loaded row that already has fee payments seeded by
+    // admin, skip fee seeding entirely — admin's setup wins.
+    let skipFeeSeed = false;
+    if (claimedMember) {
+      const { count: existingFeeCount } = await supabaseAdmin
+        .from("club_member_fee_payments")
+        .select("id", { count: "exact", head: true })
+        .eq("club_member_id", newMember.id);
+      if ((existingFeeCount ?? 0) > 0) {
+        skipFeeSeed = true;
+        console.log(
+          "[provision-association-member] claimed member already has fees, skipping seed"
+        );
+      }
+    }
+
     try {
+      if (skipFeeSeed) throw new Error("__skip__");
       const seasonYear = new Date().getFullYear();
       const feeRecords: any[] = [];
 

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { MARKER_CONFIG_KEY, MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { MarkerSetup, type MarkerConfig } from "@/components/marker/MarkerSetup";

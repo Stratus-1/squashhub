@@ -169,7 +169,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
       const leagueMap = new Map((leagues || []).map((l: any) => [l.id, l]));
       const { data: matches } = await supabase
         .from("club_champs_matches" as any)
-        .select("id, scheduled_date, scheduled_time, court_id, champ_id, player_a_member_id, player_b_member_id")
+        .select("id, scheduled_date, scheduled_time, court_id, champ_id, player_a_member_id, player_b_member_id, player_a:player_a_member_id(name), player_b:player_b_member_id(name), court:court_id(name)")
         .in("champ_id", champIds)
         .gte("scheduled_date", rangeStart)
         .lte("scheduled_date", rangeEnd)
@@ -177,14 +177,16 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
       return (matches || []).map((m: any) => {
         const ch: any = champMap.get(m.champ_id);
         const lg: any = ch ? leagueMap.get(ch.source_league_id) : null;
+        const aName = m.player_a?.name || "TBD";
+        const bName = m.player_b?.name || "TBD";
         return {
           id: `champ-${m.id}`,
           fixture_date: m.scheduled_date,
           fixture_time: m.scheduled_time,
-          home_team_code: lg?.code || ch?.name || "Tournament",
-          away_team_code: "—",
-          venue_name: "Club courts",
-          division: ch?.name || "Tournament",
+          home_team_code: aName,
+          away_team_code: bName,
+          venue_name: m.court?.name || "Club courts",
+          division: `${lg?.code || lg?.name || "League"} · ${ch?.name || "Tournament"}`,
           isTournament: true,
           champId: m.champ_id,
         };

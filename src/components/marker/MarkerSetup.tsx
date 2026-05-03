@@ -695,7 +695,7 @@ export function MarkerSetup({ onStart }: Props) {
                         {b.bookerName} {b.opponentName ? `vs ${b.opponentName}` : "(Solo)"}
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {b.start_time?.slice(0, 5)} – {b.end_time?.slice(0, 5)}
+                        {b.date ? format(parseISO(b.date), "EEE dd MMM") + " · " : ""}{b.start_time?.slice(0, 5)} – {b.end_time?.slice(0, 5)}
                       </p>
                     </button>
                   );

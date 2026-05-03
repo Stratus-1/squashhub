@@ -122,10 +122,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchDuration, setMatchDuration] = useState(30);
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
+  const [playerOrder, setPlayerOrder] = useState<string[]>([]);
 
   // Doubles-specific state
   const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);
   const [pairGroupAssignments, setPairGroupAssignments] = useState<Map<string, number>>(new Map());
+  const [pairOrder, setPairOrder] = useState<string[]>([]);
 
   // Visitor inclusion state
   const [includeVisitors, setIncludeVisitors] = useState(false);

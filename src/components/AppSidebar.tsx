@@ -93,7 +93,7 @@ export function AppSidebar() {
       <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
         <NavLink to={item.url} className="flex items-center gap-2">
           <item.icon className="w-3.5 h-3.5 shrink-0" />
-          <span className="uppercase tracking-[0.14em] text-[11px] font-semibold font-heading">
+          <span className="uppercase tracking-[0.14em] text-[10px] font-semibold font-heading">
             {item.title}
           </span>
         </NavLink>

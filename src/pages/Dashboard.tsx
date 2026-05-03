@@ -37,18 +37,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-  // Detect in-progress marker session (re-check on focus / route changes)
-  const [hasMarkerSession, setHasMarkerSession] = useState(() => hasActiveMarkerSession());
-  useEffect(() => {
-    const check = () => setHasMarkerSession(hasActiveMarkerSession());
-    check();
-    window.addEventListener("focus", check);
-    window.addEventListener("storage", check);
-    return () => {
-      window.removeEventListener("focus", check);
-      window.removeEventListener("storage", check);
-    };
-  }, [location.pathname]);
 
 export default function Dashboard() {
   const navigate = useNavigate();

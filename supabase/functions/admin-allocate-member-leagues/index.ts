@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
           .eq("paid", false)
           .maybeSingle();
         if (!existingFee) {
-          await admin.from("club_member_fee_payments").insert({
+          const { error: memberFeeErr } = await admin.from("club_member_fee_payments").insert({
             club_member_id: memberId,
             fee_type: "league_affiliation",
             fee_label: label,
@@ -232,6 +232,7 @@ Deno.serve(async (req) => {
             is_pass_through: !!assocFeeRowId,
             linked_fee_payment_id: assocFeeRowId,
           });
+          if (memberFeeErr) throw memberFeeErr;
         }
       }
 
@@ -243,13 +244,14 @@ Deno.serve(async (req) => {
     }
 
     // 5) Mark plays_league + default association on the member
-    await admin
+    const { error: updateMemberErr } = await admin
       .from("club_members")
       .update({
         plays_league: true,
         enable_league_association_id: member.enable_league_association_id || firstHomeAssocId,
       })
       .eq("id", memberId);
+    if (updateMemberErr) throw updateMemberErr;
 
     return jsonResp(200, {
       ok: true,

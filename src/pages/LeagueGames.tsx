@@ -186,6 +186,8 @@ export default function LeagueGames() {
                 weekStart={weekRange.start}
                 weekEnd={weekRange.end}
                 associationScope={selectedAssoc?.scope ?? "region"}
+                clubId={clubId ?? undefined}
+                associationId={selectedAssocId ?? undefined}
               />
             </TabsContent>
 

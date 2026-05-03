@@ -125,6 +125,42 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [includeVisitors, setIncludeVisitors] = useState(false);
   const [selectedVisitorClubs, setSelectedVisitorClubs] = useState<Set<string>>(new Set());
 
+  // League pre-fill (internal or external/regional)
+  const [sourceLeagueId, setSourceLeagueId] = useState<string>("");
+
+  const { data: availableLeagues = [] } = useQuery({
+    queryKey: ["club-leagues-for-tournament", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("leagues")
+        .select("id, name, code, association_id, league_associations:association_id(name, scope)")
+        .eq("club_id", clubId)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!clubId,
+  });
+
+  // When admin selects a league, pre-fill players from its registrations
+  const applyLeaguePrefill = async (leagueId: string) => {
+    setSourceLeagueId(leagueId);
+    if (!leagueId) return;
+    const { data: regs, error } = await fromExt("member_league_registrations")
+      .select("club_member_id")
+      .eq("league_id", leagueId);
+    if (error) {
+      toast.error("Failed to load league players");
+      return;
+    }
+    const ids = new Set<string>((regs || []).map((r: any) => r.club_member_id).filter(Boolean));
+    setSelectedPlayerIds(ids);
+    if (ids.size > 0) {
+      toast.success(`Pre-filled ${ids.size} player${ids.size === 1 ? "" : "s"} from league`);
+    } else {
+      toast.info("No registered players found in that league");
+    }
+  };
+
   // Fetch registered visitors
   const { data: allVisitors = [] } = useQuery({
     queryKey: ["club-visitors-tournament", clubId],
@@ -409,6 +445,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
+            source_league_id: sourceLeagueId || null,
           })
           .eq("id", editingChampId);
         if (updateErr) throw updateErr;
@@ -428,6 +465,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
+            source_league_id: sourceLeagueId || null,
           })
           .select()
           .single();
@@ -603,6 +641,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setGroupAssignments(new Map());
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
+    setSourceLeagueId("");
     setEditingChampId(null);
   };
 
@@ -861,6 +900,34 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
               <Switch checked={includeVisitors} onCheckedChange={(v) => { setIncludeVisitors(v); if (!v) setSelectedVisitorClubs(new Set()); }} />
             </div>
+
+            {availableLeagues.length > 0 && (
+              <div className="rounded-lg border p-3 space-y-2">
+                <Label className="text-sm font-medium">Pre-fill from League (optional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Plan a tournament around an existing internal or regional league. Players already registered in that league will be loaded automatically.
+                </p>
+                <Select value={sourceLeagueId || "none"} onValueChange={(v) => applyLeaguePrefill(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select league..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— None (manual selection) —</SelectItem>
+                    {availableLeagues.map((l: any) => {
+                      const scope = l.league_associations?.scope === "internal" ? "Internal" : (l.league_associations?.name || "League");
+                      return (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.name} {l.code ? `(${l.code})` : ""} · {scope}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {sourceLeagueId && (
+                  <p className="text-[11px] text-primary">
+                    ✓ {selectedPlayerIds.size} league players loaded — scheduled matches will appear in their upcoming league games.
+                  </p>
+                )}
+              </div>
+            )}
 
             {includeVisitors && visitorClubs.length > 0 && (
               <div className="space-y-2 rounded-lg border p-3">

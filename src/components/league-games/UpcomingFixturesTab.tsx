@@ -370,7 +370,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       size="sm"
                       variant={inLineup || mine ? "default" : "outline"}
                       className="shrink-0"
-                      onClick={() => navigate(f.isTournament ? `/club-admin?tab=tournaments` : `/league-games/${f.id}`)}
+                      onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
                     >
                       <Pencil className="w-3 h-3 mr-1" />
                       {f.isTournament ? "Tournament" : "Set up & Score"}

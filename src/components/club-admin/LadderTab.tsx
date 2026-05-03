@@ -371,6 +371,58 @@ export function LadderTab({ clubId }: { clubId: string }) {
   });
   const mixedEnabled = !!clubFlags?.mixed_ladder_enabled;
 
+  // Load club's league associations (LS, NIL, ...)
+  const { data: leagues = [] } = useQuery({
+    queryKey: ["club-league-associations", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("league_associations")
+        .select("id, name, abbreviation, fee_annual, active")
+        .eq("club_id", clubId)
+        .eq("active", true);
+      if (error) throw error;
+      return ((data || []) as any[]).map((l) => ({
+        id: l.id as string,
+        name: l.name as string,
+        abbreviation: (l.abbreviation as string) || null,
+        fee_annual: Number(l.fee_annual || 0),
+      })) as LeagueOption[];
+    },
+    enabled: !!clubId,
+  });
+
+  // Load existing affiliations for this club's members
+  const memberIds = useMemo(() => members.map((m: any) => m.id), [members]);
+  const { data: affiliations = [], refetch: refetchAffiliations } = useQuery({
+    queryKey: ["club-member-affiliations", clubId, memberIds.length],
+    queryFn: async () => {
+      if (memberIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("member_association_affiliations")
+        .select("club_member_id, association_id, active")
+        .in("club_member_id", memberIds)
+        .eq("active", true);
+      if (error) throw error;
+      return (data || []) as Array<{ club_member_id: string; association_id: string; active: boolean }>;
+    },
+    enabled: !!clubId && memberIds.length > 0,
+  });
+
+  const affiliationsByMember = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const a of affiliations) {
+      if (!map.has(a.club_member_id)) map.set(a.club_member_id, new Set());
+      map.get(a.club_member_id)!.add(a.association_id);
+    }
+    return map;
+  }, [affiliations]);
+
+  const handleAllocated = useCallback(() => {
+    refetchAffiliations();
+    queryClient.invalidateQueries({ queryKey: ["club-members"] });
+  }, [refetchAffiliations, queryClient]);
+
+
   const toggleMixed = async (next: boolean) => {
     const { error: err } = await supabase
       .from("clubs")

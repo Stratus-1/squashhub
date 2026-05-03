@@ -9,6 +9,24 @@ import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
 import { CastDialog } from "./CastDialog";
 import { useClubContext } from "@/contexts/ClubContext";
 import { toast } from "sonner";
+import { MARKER_STATE_KEY } from "@/lib/marker-storage";
+
+interface PersistedState {
+  scoreA: number; scoreB: number;
+  gamesA: number; gamesB: number;
+  completedGames: GameScore[];
+  server: "a" | "b"; serveSide: ServeSide;
+  history: PointEvent[];
+  matchOver: boolean; matchWinner: "a" | "b" | null;
+  elapsed: number;
+}
+
+function loadPersisted(): PersistedState | null {
+  try {
+    const raw = localStorage.getItem(MARKER_STATE_KEY);
+    return raw ? (JSON.parse(raw) as PersistedState) : null;
+  } catch { return null; }
+}
 
 type ServeSide = "R" | "L";
 

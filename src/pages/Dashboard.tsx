@@ -177,25 +177,29 @@ export default function Dashboard() {
 
       // 3) Tournament matches linked to a league where I'm a player
       const { data: champMatches } = await fromExt("club_champs_matches")
-        .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id, champ_id, club_champs:champ_id(name, source_league_id, club_id)")
+        .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id, champ_id, player_a:player_a_member_id(name), player_b:player_b_member_id(name), club_champs:champ_id(name, source_league_id, club_id)")
         .or(`player_a_member_id.eq.${myMemberId},player_b_member_id.eq.${myMemberId}`)
         .gte("scheduled_date", today)
         .lte("scheduled_date", horizon);
       const champRows = ((champMatches || []) as any[])
         .filter((m) => m.club_champs?.source_league_id && m.club_champs?.club_id === clubId)
-        .map((m) => ({
-          id: `champ-${m.id}`,
-          fixture_date: m.scheduled_date,
-          fixture_time: m.scheduled_time,
-          home_team_code: m.club_champs?.name || "Tournament",
-          away_team_code: "",
-          venue_name: null,
-          division: "Tournament",
-          inLineup: true,
-          inMyLeague: true,
-          isTournament: true,
-          champId: m.champ_id,
-        }));
+        .map((m) => {
+          const isA = m.player_a_member_id === myMemberId;
+          const opponent = isA ? (m.player_b?.name || "TBD") : (m.player_a?.name || "TBD");
+          return {
+            id: `champ-${m.id}`,
+            fixture_date: m.scheduled_date,
+            fixture_time: m.scheduled_time,
+            home_team_code: "You",
+            away_team_code: opponent,
+            venue_name: null,
+            division: m.club_champs?.name || "Tournament",
+            inLineup: true,
+            inMyLeague: true,
+            isTournament: true,
+            champId: m.champ_id,
+          };
+        });
       for (const f of champRows) {
         if (seen.has(f.id)) continue;
         seen.add(f.id);
@@ -679,7 +683,7 @@ export default function Dashboard() {
                   "p-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-accent/50 transition-colors",
                   f.inLineup ? "border-2 border-primary bg-primary/10" : "border-primary/40 bg-primary/5"
                 )}
-                onClick={() => navigate(f.isTournament ? `/club-admin?tab=tournaments` : `/league-games/${f.id}`)}
+                onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">

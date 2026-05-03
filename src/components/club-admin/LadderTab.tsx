@@ -95,7 +95,7 @@ interface GenderLadderProps {
   searchQuery: string;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })

@@ -286,7 +286,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   );
 }
 
-function CourtsSection({ clubId, relayDeviceType }: { clubId: string; relayDeviceType: RelayDevice }) {
+function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: string; relayDeviceType: RelayDevice; lightsEnabled: boolean }) {
   const qc = useQueryClient();
   const [newCourt, setNewCourt] = useState("");
   const [editingRelay, setEditingRelay] = useState<Record<number, string>>({});
@@ -326,46 +326,50 @@ function CourtsSection({ clubId, relayDeviceType }: { clubId: string; relayDevic
   };
 
   return (
-    <Card className="p-6 space-y-4">
-      <h3 className="font-semibold">Courts ({courts.length})</h3>
-      <p className="text-xs text-muted-foreground">
-        💡 To enable automatic court lights, add the relay device ID for each court.
-      </p>
-      <div className="space-y-3">
+    <Card className="p-4 space-y-3">
+      <h3 className="font-semibold text-sm">Courts ({courts.length})</h3>
+      {lightsEnabled && (
+        <p className="text-[11px] text-muted-foreground">
+          💡 To enable automatic court lights, add the relay device ID for each court.
+        </p>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {courts.map(c => {
           const courtId = c.id;
           const relayValue = editingRelay[courtId] ?? c.relay_device_id ?? "";
           return (
-            <div key={c.id} className="rounded-lg border p-3 space-y-2">
+            <div key={c.id} className="rounded-lg border p-2 space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{c.name}</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(c.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
+                <span className="text-xs font-medium">{c.name}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(c.id)}>
+                  <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
-              <div className="flex gap-2 items-center">
-                <Input
-                  value={relayValue}
-                  onChange={e => setEditingRelay(prev => ({ ...prev, [courtId]: e.target.value }))}
-                  placeholder={relayDeviceType === "shelly" ? "Shelly Device ID (e.g. 98cdac123456)" : "Relay Device ID"}
-                  className="flex-1 text-xs h-8"
-                />
-                {editingRelay[courtId] !== undefined && (
-                  <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleSaveRelay(courtId)}>
-                    Save
-                  </Button>
-                )}
-              </div>
-              {c.relay_device_id && editingRelay[courtId] === undefined && (
-                <p className="text-[10px] text-muted-foreground">✅ Relay configured — lights will auto-switch</p>
+              {lightsEnabled && (
+                <div className="flex gap-1 items-center">
+                  <Input
+                    value={relayValue}
+                    onChange={e => setEditingRelay(prev => ({ ...prev, [courtId]: e.target.value }))}
+                    placeholder={relayDeviceType === "shelly" ? "Shelly Device ID" : "Relay Device ID"}
+                    className="flex-1 text-xs h-7"
+                  />
+                  {editingRelay[courtId] !== undefined && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleSaveRelay(courtId)}>
+                      Save
+                    </Button>
+                  )}
+                </div>
+              )}
+              {lightsEnabled && c.relay_device_id && editingRelay[courtId] === undefined && (
+                <p className="text-[10px] text-muted-foreground">✅ Relay configured</p>
               )}
             </div>
           );
         })}
-        {courts.length === 0 && !isLoading && <p className="text-sm text-muted-foreground">No courts added yet</p>}
+        {courts.length === 0 && !isLoading && <p className="text-xs text-muted-foreground col-span-2">No courts added yet</p>}
       </div>
       <div className="flex gap-2">
-        <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+        <Input value={newCourt} onChange={e => setNewCourt(e.target.value)} placeholder="e.g. Court 1" className="flex-1 h-8 text-xs" onKeyDown={e => e.key === "Enter" && handleAdd()} />
         <Button size="sm" onClick={handleAdd}><Plus className="w-4 h-4 mr-1" />Add</Button>
       </div>
     </Card>

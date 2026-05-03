@@ -161,6 +161,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);
   const [mixedOrder, setMixedOrder] = useState<LadderMember[] | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Load mixed_ladder_enabled flag

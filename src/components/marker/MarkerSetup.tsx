@@ -465,7 +465,7 @@ export function MarkerSetup({ onStart }: Props) {
       if (platformAssocIds.length > 0 && clubPrefixes.size > 0) {
         const { data } = await supabase
           .from("platform_league_fixtures")
-          .select("id, fixture_date, fixture_time, home_team_code, away_team_code, division, venue_name, association_id")
+          .select("id, fixture_date, home_team_code, away_team_code, division, venue_name, association_id")
           .in("association_id", platformAssocIds)
           .gte("fixture_date", today)
           .lte("fixture_date", horizon)

@@ -1317,15 +1317,7 @@ export default function Bookings() {
                 </div>
               )}
 
-// "John Smith" -> "J. Smith"; single names returned as-is.
-function toInitialSurname(full: string): string {
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return full.trim();
-  const first = parts[0];
-  const surname = parts[parts.length - 1];
-  const initial = first.charAt(0).toUpperCase();
-  return `${initial}. ${surname}`;
-}
+
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">2nd Player (optional)</Label>
                 <div className="flex flex-wrap gap-1.5">

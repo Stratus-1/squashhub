@@ -823,7 +823,17 @@ export default function LeagueGameDetail() {
                               onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700">{pos.homeName}</span>
-                            <span />
+                            <span className="flex items-center justify-center">
+                              {!isSubmitted && (
+                                <button
+                                  onClick={() => setSwapTarget({ idx, side: "home" })}
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Pick from squad / reserves"
+                                >
+                                  <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           </>
                         ) : (
                           <>
@@ -835,7 +845,17 @@ export default function LeagueGameDetail() {
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
-                            <span />
+                            <span className="flex items-center justify-center">
+                              {!isSubmitted && !pos.completed && (
+                                <button
+                                  onClick={() => setSwapTarget({ idx, side: "home" })}
+                                  className="text-muted-foreground hover:text-primary"
+                                  title="Swap player"
+                                >
+                                  <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </span>
                           </>
                         )}
                       </div>

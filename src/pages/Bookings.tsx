@@ -63,6 +63,16 @@ function timeToMinutes(t: string) {
   return hh * 60 + mm;
 }
 
+// "John Smith" -> "J. Smith"; single names returned as-is.
+function toInitialSurname(full: string): string {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return full.trim();
+  const first = parts[0];
+  const surname = parts[parts.length - 1];
+  const initial = first.charAt(0).toUpperCase();
+  return `${initial}. ${surname}`;
+}
+
 function minutesToTime(m: number) {
   const mm = ((m % 60) + 60) % 60;
   const hh = Math.floor(m / 60);
@@ -954,8 +964,8 @@ export default function Bookings() {
                   // Event bookings are club bookings with a guest_name acting as event title
                   const isEventBooking = !!(booking as any)?.is_club_booking && !!(booking as any)?.guest_name;
                   const eventLabel = isEventBooking ? String((booking as any).guest_name) : null;
-                  const a = (booking as any)?.player_name ? String((booking as any).player_name).split(" ")[0] : null;
-                  const b = !isEventBooking && (booking as any)?.opponent_name ? String((booking as any).opponent_name).split(" ")[0] : null;
+                  const a = (booking as any)?.player_name ? toInitialSurname(String((booking as any).player_name)) : null;
+                  const b = !isEventBooking && (booking as any)?.opponent_name ? toInitialSurname(String((booking as any).opponent_name)) : null;
                   const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);
                   const isBlocked = !!(booking as any)?.is_blocked;
                   const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";

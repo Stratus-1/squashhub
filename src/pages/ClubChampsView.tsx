@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -166,9 +166,9 @@ export default function ClubChampsView() {
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24">
       <div className="max-w-5xl mx-auto space-y-6 print:space-y-4">
         <div className="flex items-center justify-between print:hidden">
-          <Link to="/club-admin" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <ArrowLeft className="w-4 h-4" /> Back to Admin
-          </Link>
+          <button onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/league-games")} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="w-4 h-4 mr-1" /> Print / PDF

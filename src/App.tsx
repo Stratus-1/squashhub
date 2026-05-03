@@ -257,7 +257,13 @@ function AppRoutes() {
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/seasons" element={<ProtectedRoute><Seasons /></ProtectedRoute>} />
         <Route path="/register-club" element={<ProtectedRoute><RegisterClub /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            {(clubFromHost as any)?.tenant_type === "association"
+              ? <Navigate to={`/${location.search ? `${location.search}&tab=settings` : "?tab=settings"}`} replace />
+              : <Settings />}
+          </ProtectedRoute>
+        } />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
         <Route path="/honesty-bar" element={<ProtectedRoute><HonestyBar /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><ClubChampsView /></ProtectedRoute>} />

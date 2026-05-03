@@ -26,23 +26,41 @@ import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 
 
-const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug }[] = [
-  { value: "club", label: "Club", icon: Building2, permission: "club" },
-  { value: "settings", label: "Settings", icon: Settings, permission: "settings" },
-  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees" },
-  { value: "courts", label: "Courts", icon: LayoutGrid, permission: "courts" },
-  { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
-  { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
-  { value: "members", label: "Members", icon: Users, permission: "members" },
-  { value: "users", label: "Users", icon: UserCheck, permission: "users" },
-  { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors" },
-  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder" },
-  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues" },
-  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs" },
-  { value: "bar", label: "Bar", icon: Beer, permission: "bar" },
-  { value: "access", label: "Access", icon: DoorOpen, permission: "access" },
-  { value: "permissions", label: "Permissions", icon: ShieldCheck },
+const ADMIN_TABS: { value: string; label: string; icon: any; permission?: PermissionSlug; color: string }[] = [
+  { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
+  { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
+  { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald" },
+  { value: "courts", label: "Courts", icon: LayoutGrid, permission: "courts", color: "cyan" },
+  { value: "banking", label: "Banking", icon: Banknote, permission: "banking", color: "green" },
+  { value: "finance", label: "Finance", icon: Landmark, permission: "finance", color: "teal" },
+  { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
+  { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
+  { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky" },
+  { value: "ladder", label: "Ladder", icon: ListOrdered, permission: "ladder", color: "orange" },
+  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber" },
+  { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
+  { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
+  { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
+  { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
 ];
+
+const COLOR_STYLES: Record<string, string> = {
+  blue: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20",
+  slate: "border-slate-500/40 bg-slate-500/10 text-slate-700 dark:text-slate-300 hover:bg-slate-500/20",
+  emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20",
+  cyan: "border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20",
+  green: "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300 hover:bg-green-500/20",
+  teal: "border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300 hover:bg-teal-500/20",
+  indigo: "border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20",
+  violet: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20",
+  sky: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20",
+  orange: "border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-300 hover:bg-orange-500/20",
+  amber: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20",
+  yellow: "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/20",
+  rose: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20",
+  pink: "border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-300 hover:bg-pink-500/20",
+  red: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300 hover:bg-red-500/20",
+};
 
 export default function ClubAdmin() {
   const { user } = useAuth();

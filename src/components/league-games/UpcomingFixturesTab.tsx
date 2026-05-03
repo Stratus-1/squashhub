@@ -24,9 +24,13 @@ type Props = {
   weekEnd?: string;
   /** 'internal' associations have no platform fixture feed — show a tailored empty state. */
   associationScope?: "internal" | "region";
+  /** Used to surface tournament fixtures linked to leagues in this club. */
+  clubId?: string;
+  /** Filters tournament fixtures to leagues belonging to this association. */
+  associationId?: string;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region" }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
 

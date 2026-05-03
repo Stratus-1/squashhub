@@ -160,9 +160,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
       if (leagueIds.length === 0) return [];
       const { data: champs } = await supabase
         .from("club_champs" as any)
-        .select("id, name, source_league_id")
+        .select("id, name, source_league_id, source_league_ids")
         .eq("club_id", clubId)
-        .in("source_league_id", leagueIds);
+        .or(`source_league_id.in.(${leagueIds.join(",")}),source_league_ids.ov.{${leagueIds.join(",")}}`);
       const champIds = (champs || []).map((c: any) => c.id);
       if (champIds.length === 0) return [];
       const champMap = new Map((champs || []).map((c: any) => [c.id, c]));
@@ -176,7 +176,8 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
         .order("scheduled_date");
       return (matches || []).map((m: any) => {
         const ch: any = champMap.get(m.champ_id);
-        const lg: any = ch ? leagueMap.get(ch.source_league_id) : null;
+        const firstLeagueId = (ch?.source_league_ids && ch.source_league_ids[0]) || ch?.source_league_id;
+        const lg: any = firstLeagueId ? leagueMap.get(firstLeagueId) : null;
         const aName = m.player_a?.name || "TBD";
         const bName = m.player_b?.name || "TBD";
         return {

@@ -129,6 +129,14 @@ Deno.serve(async (req) => {
       let assocFeeRowId: string | null = null;
 
       if (assocTenant) {
+        // Check if there's already an MAA row for this (member, association)
+        const { data: existingMAA } = await admin
+          .from("member_association_affiliations")
+          .select("id, league_association_number")
+          .eq("club_member_id", memberId)
+          .eq("association_id", la.id)
+          .maybeSingle();
+
         // Idempotency: see if member already has a row at the association tenant
         let existingAssocMember: any = null;
         if (member.user_id) {
@@ -139,7 +147,8 @@ Deno.serve(async (req) => {
             .eq("user_id", member.user_id)
             .maybeSingle();
           existingAssocMember = data;
-        } else if (member.email) {
+        }
+        if (!existingAssocMember && member.email) {
           const { data } = await admin
             .from("club_members")
             .select("id, club_member_number")
@@ -150,14 +159,33 @@ Deno.serve(async (req) => {
           existingAssocMember = data;
         }
 
-        if (existingAssocMember?.id) {
-          allocatedAssocNumber = existingAssocMember.club_member_number;
+        // Pick number, prioritising MAA (the unique constraint lives there)
+        if (existingMAA?.league_association_number) {
+          allocatedAssocNumber = existingMAA.league_association_number;
+        } else if (existingAssocMember?.club_member_number) {
+          // Verify the tenant-row's number isn't already used by another MAA row
+          const { data: maaOwner } = await admin
+            .from("member_association_affiliations")
+            .select("club_member_id")
+            .eq("association_id", la.id)
+            .eq("league_association_number", existingAssocMember.club_member_number)
+            .maybeSingle();
+          if (!maaOwner || maaOwner.club_member_id === memberId) {
+            allocatedAssocNumber = existingAssocMember.club_member_number;
+          } else {
+            // Conflict: reassign a fresh number for this member
+            allocatedAssocNumber = await allocateNextAssocNumber(admin, assocTenant, la.id);
+            await admin
+              .from("club_members")
+              .update({ club_member_number: allocatedAssocNumber })
+              .eq("id", existingAssocMember.id);
+          }
         } else {
-          allocatedAssocNumber = await allocateNextNumber(admin, assocTenant.id, assocTenant);
+          allocatedAssocNumber = await allocateNextAssocNumber(admin, assocTenant, la.id);
+        }
 
-          // Create the association-tenant member row even if the home-club
-          // member is not yet linked to an auth user. user_id stays null and
-          // will be claimed when they sign up with a matching email.
+        // Create assoc-tenant member row if missing
+        if (!existingAssocMember) {
           const { data: newAssocMem, error: newAssocMemErr } = await admin
             .from("club_members")
             .insert({
@@ -175,7 +203,6 @@ Deno.serve(async (req) => {
             .single();
           if (newAssocMemErr) throw newAssocMemErr;
 
-          // Seed association-tenant fee
           if (newAssocMem?.id && Number(la.fee_annual) > 0) {
             const { data: assocFee, error: assocFeeErr } = await admin
               .from("club_member_fee_payments")

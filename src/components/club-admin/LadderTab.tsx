@@ -320,10 +320,12 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
             {list.map((player, index) => {
               const q = searchQuery.trim().toLowerCase();
               if (q && !player.name.toLowerCase().includes(q)) return null;
+              // Source of truth = member_association_affiliations only.
+              // The legacy enable_league_association_id column is set by the
+              // onboarding wizard's "interest" toggle and does NOT mean the
+              // member is actually affiliated — using it caused the ladder to
+              // show NIL/LS badges on members who were never allocated.
               const currentAffiliations = new Set(affiliationsByMember.get(player.id) ?? []);
-              if (player.plays_league && player.enable_league_association_id) {
-                currentAffiliations.add(player.enable_league_association_id);
-              }
               return (
                 <DraggablePlayerRow
                   key={player.id}

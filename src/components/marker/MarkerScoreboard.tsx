@@ -96,16 +96,18 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const cast = useMarkerCast(club?.id);
   const [castDialogOpen, setCastDialogOpen] = useState(false);
 
-  const [scoreA, setScoreA] = useState(0);
-  const [scoreB, setScoreB] = useState(0);
-  const [gamesA, setGamesA] = useState(0);
-  const [gamesB, setGamesB] = useState(0);
-  const [completedGames, setCompletedGames] = useState<GameScore[]>([]);
-  const [server, setServer] = useState<"a" | "b">("a");
-  const [serveSide, setServeSide] = useState<ServeSide>("R");
-  const [history, setHistory] = useState<PointEvent[]>([]);
-  const [matchOver, setMatchOver] = useState(false);
-  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(null);
+  const persisted = useRef<PersistedState | null>(loadPersisted()).current;
+
+  const [scoreA, setScoreA] = useState(persisted?.scoreA ?? 0);
+  const [scoreB, setScoreB] = useState(persisted?.scoreB ?? 0);
+  const [gamesA, setGamesA] = useState(persisted?.gamesA ?? 0);
+  const [gamesB, setGamesB] = useState(persisted?.gamesB ?? 0);
+  const [completedGames, setCompletedGames] = useState<GameScore[]>(persisted?.completedGames ?? []);
+  const [server, setServer] = useState<"a" | "b">(persisted?.server ?? "a");
+  const [serveSide, setServeSide] = useState<ServeSide>(persisted?.serveSide ?? "R");
+  const [history, setHistory] = useState<PointEvent[]>(persisted?.history ?? []);
+  const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
+  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
 
   // Rest timer between games
   const [resting, setResting] = useState(false);

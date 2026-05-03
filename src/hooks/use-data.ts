@@ -318,17 +318,25 @@ export function useCreateBooking() {
     }) => {
       if (!user) throw new Error("Must be logged in");
 
-      // Auto-merge: check for an adjacent booking on the same court/date by this user
+      // Auto-merge: only merge an adjacent booking when it's the SAME opponent
+      // and same friendly flag (otherwise we'd overwrite the original opponent name).
       const { data: adjacent } = await supabase
         .from("bookings")
-        .select("id, start_time, end_time")
+        .select("id, start_time, end_time, opponent_id, opponent_member_id, guest_name, is_friendly, challenge_id")
         .eq("court_id", courtId)
         .eq("date", date)
         .eq("user_id", user.id)
         .eq("status", "active") as any;
 
+      const sameOpponent = (b: any) =>
+        (b.opponent_id ?? null) === (opponentId ?? null)
+        && (b.opponent_member_id ?? null) === (opponentMemberId ?? null)
+        && (b.guest_name ?? null) === (guestName ?? null)
+        && !!b.is_friendly === !!isFriendly
+        && (b.challenge_id ?? null) === (challengeId ?? null);
+
       const existingMerge = (adjacent || []).find((b: any) =>
-        b.end_time === startTime || b.start_time === endTime
+        (b.end_time === startTime || b.start_time === endTime) && sameOpponent(b)
       );
 
       if (existingMerge) {
@@ -339,11 +347,6 @@ export function useCreateBooking() {
           .update({
             start_time: newStart,
             end_time: newEnd,
-            opponent_id: opponentId ?? null,
-            opponent_member_id: opponentMemberId ?? null,
-            is_friendly: !!isFriendly,
-            challenge_id: challengeId ?? null,
-            guest_name: guestName ?? null,
           } as any)
           .eq("id", existingMerge.id)
           .select()

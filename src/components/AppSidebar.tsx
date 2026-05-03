@@ -48,7 +48,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname, search } = useLocation();
-  const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess } = useSidebarFlags();
+  const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess, isAssociation } = useSidebarFlags();
   const { data: profile } = useProfile();
   const { activeMember } = useMemberContext();
 
@@ -57,24 +57,39 @@ export function AppSidebar() {
     return pathname === path;
   };
 
-  const homeItems: Item[] = [
-    { title: "Stats", url: "/analytics", icon: BarChart3 },
-    { title: "Bookings", url: "/bookings", icon: Calendar },
-    { title: "Match Results", url: "/add-result", icon: ClipboardCheck },
-  ];
+  // Association tenants get a slimmed-down menu — no club-player items
+  const homeItems: Item[] = isAssociation
+    ? [
+        { title: "Affiliated Clubs", url: "/?tab=affiliated", icon: Network },
+        { title: "Members", url: "/?tab=members", icon: Users },
+        { title: "Fees Owing", url: "/?tab=fees", icon: Receipt },
+      ]
+    : [
+        { title: "Stats", url: "/analytics", icon: BarChart3 },
+        { title: "Bookings", url: "/bookings", icon: Calendar },
+        { title: "Match Results", url: "/add-result", icon: ClipboardCheck },
+      ];
 
-  const activityItems: Item[] = [
-    { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
-    { title: "Enter Results", url: "/add-result", icon: ClipboardCheck },
-    { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
-    { title: "Challenges", url: "/challenges", icon: Swords },
-    ...(hasLeagues ? [{ title: "Regional Leagues", url: "/league-games", icon: Trophy }] : []),
-    { title: "Club Tournaments", url: "/tournaments", icon: Trophy },
-    { title: "Events", url: "/events", icon: CalendarDays },
-    ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
-    { title: "Feed", url: "/feed", icon: MessageCircle },
-    { title: "My Account", url: "/my-account", icon: Wallet },
-  ];
+  const activityItems: Item[] = isAssociation
+    ? [
+        { title: "Regional Leagues", url: "/league-games", icon: Trophy },
+        { title: "Tournaments", url: "/tournaments", icon: Trophy },
+        { title: "Events", url: "/events", icon: CalendarDays },
+        { title: "Feed", url: "/feed", icon: MessageCircle },
+        { title: "My Account", url: "/my-account", icon: Wallet },
+      ]
+    : [
+        { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
+        { title: "Enter Results", url: "/add-result", icon: ClipboardCheck },
+        { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
+        { title: "Challenges", url: "/challenges", icon: Swords },
+        ...(hasLeagues ? [{ title: "Regional Leagues", url: "/league-games", icon: Trophy }] : []),
+        { title: "Club Tournaments", url: "/tournaments", icon: Trophy },
+        { title: "Events", url: "/events", icon: CalendarDays },
+        ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
+        { title: "Feed", url: "/feed", icon: MessageCircle },
+        { title: "My Account", url: "/my-account", icon: Wallet },
+      ];
 
   // Independent collapsible state per group — auto-open the group containing the active route
   const homeAuto = homeItems.some((i) => isActive(i.url)) || pathname === "/";

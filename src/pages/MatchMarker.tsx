@@ -9,6 +9,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export default function MatchMarker() {

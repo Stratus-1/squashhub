@@ -13,7 +13,7 @@ const baseNavItems = [
 
 export function BottomNav() {
   const { club } = useClubContext();
-  const location = useLocation();
+  
   const honestyBarEnabled = !!club?.honesty_bar_enabled;
   const isAssociation = (club as any)?.tenant_type === "association";
 

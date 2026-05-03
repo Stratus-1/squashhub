@@ -26,6 +26,7 @@ import { FeesTab } from "@/components/club-admin/FeesTab";
 import { MembersTab } from "@/components/club-admin/MembersTab";
 import { AssociationMembersTab } from "@/components/association-admin/AssociationMembersTab";
 import { AssociationFeesTab } from "@/components/association-admin/AssociationFeesTab";
+import { AssociationSetupTab } from "@/components/association-admin/AssociationSetupTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";

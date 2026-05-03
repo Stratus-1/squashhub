@@ -23,6 +23,7 @@ export default function MatchMarker() {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Persist config so user can navigate away and resume
   useEffect(() => {

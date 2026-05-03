@@ -660,6 +660,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 30);
+    setSourceLeagueId(champ.source_league_id || "");
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")

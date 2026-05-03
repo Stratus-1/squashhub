@@ -196,7 +196,19 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
             {list.map((player, index) => {
               const q = searchQuery.trim().toLowerCase();
               if (q && !player.name.toLowerCase().includes(q)) return null;
-              return <DraggablePlayerRow key={player.id} player={player} index={index} />;
+              return (
+                <DraggablePlayerRow
+                  key={player.id}
+                  player={player}
+                  index={index}
+                  total={list.length}
+                  onMoveTo={(playerId, targetIndex) => {
+                    const fromIdx = list.findIndex((p) => p.id === playerId);
+                    if (fromIdx === -1 || fromIdx === targetIndex) return;
+                    setOrder(arrayMove(list, fromIdx, targetIndex));
+                  }}
+                />
+              );
             })}
             {list.length === 0 && (
               <p className="text-xs text-muted-foreground py-4 text-center">No members found</p>

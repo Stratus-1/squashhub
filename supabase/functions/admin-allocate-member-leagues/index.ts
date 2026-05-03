@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     // Load member + club
     const { data: member, error: mErr } = await admin
       .from("club_members")
-      .select("id, club_id, user_id, name, club_member_number, plays_league, enable_league_association_id")
+      .select("id, club_id, user_id, name, email, club_member_number, plays_league, enable_league_association_id")
       .eq("id", memberId)
       .maybeSingle();
     if (mErr || !member) return jsonResp(404, { error: "Member not found" });
@@ -86,10 +86,11 @@ Deno.serve(async (req) => {
     let clubNumber = member.club_member_number as string | null;
     if (!clubNumber) {
       clubNumber = await allocateNextNumber(admin, clubId, club);
-      await admin
+      const { error: clubNumberErr } = await admin
         .from("club_members")
         .update({ club_member_number: clubNumber })
         .eq("id", memberId);
+      if (clubNumberErr) throw clubNumberErr;
     }
 
     // 2) Load the home-club league_associations rows the admin selected
@@ -129,12 +130,25 @@ Deno.serve(async (req) => {
 
       if (assocTenant) {
         // Idempotency: see if member already has a row at the association tenant
-        const { data: existingAssocMember } = await admin
-          .from("club_members")
-          .select("id, club_member_number")
-          .eq("club_id", assocTenant.id)
-          .eq("user_id", member.user_id || "00000000-0000-0000-0000-000000000000")
-          .maybeSingle();
+        let existingAssocMember: any = null;
+        if (member.user_id) {
+          const { data } = await admin
+            .from("club_members")
+            .select("id, club_member_number")
+            .eq("club_id", assocTenant.id)
+            .eq("user_id", member.user_id)
+            .maybeSingle();
+          existingAssocMember = data;
+        } else if (member.email) {
+          const { data } = await admin
+            .from("club_members")
+            .select("id, club_member_number")
+            .eq("club_id", assocTenant.id)
+            .eq("home_club_id", clubId)
+            .ilike("email", member.email)
+            .maybeSingle();
+          existingAssocMember = data;
+        }
 
         if (existingAssocMember?.id) {
           allocatedAssocNumber = existingAssocMember.club_member_number;
@@ -144,13 +158,13 @@ Deno.serve(async (req) => {
           // Create the association-tenant member row even if the home-club
           // member is not yet linked to an auth user. user_id stays null and
           // will be claimed when they sign up with a matching email.
-          const { data: newAssocMem } = await admin
+          const { data: newAssocMem, error: newAssocMemErr } = await admin
             .from("club_members")
             .insert({
               club_id: assocTenant.id,
               user_id: member.user_id ?? null,
               name: member.name,
-              email: (member as any).email ?? null,
+              email: member.email ?? null,
               plays_league: true,
               role: "member",
               is_league_only_membership: true,
@@ -159,10 +173,11 @@ Deno.serve(async (req) => {
             })
             .select("id")
             .single();
+          if (newAssocMemErr) throw newAssocMemErr;
 
           // Seed association-tenant fee
           if (newAssocMem?.id && Number(la.fee_annual) > 0) {
-            const { data: assocFee } = await admin
+            const { data: assocFee, error: assocFeeErr } = await admin
               .from("club_member_fee_payments")
               .insert({
                 club_member_id: newAssocMem.id,
@@ -174,13 +189,14 @@ Deno.serve(async (req) => {
               })
               .select("id")
               .single();
+            if (assocFeeErr) throw assocFeeErr;
             assocFeeRowId = assocFee?.id ?? null;
           }
         }
       }
 
       // 3) Permanent affiliation on the home-club member row
-      await admin
+      const { error: affiliationErr } = await admin
         .from("member_association_affiliations")
         .upsert(
           {
@@ -191,6 +207,7 @@ Deno.serve(async (req) => {
           },
           { onConflict: "club_member_id,association_id" }
         );
+      if (affiliationErr) throw affiliationErr;
 
       // 4) Pass-through fee on the home-club member account
       if (Number(la.fee_annual) > 0) {
@@ -205,7 +222,7 @@ Deno.serve(async (req) => {
           .eq("paid", false)
           .maybeSingle();
         if (!existingFee) {
-          await admin.from("club_member_fee_payments").insert({
+          const { error: memberFeeErr } = await admin.from("club_member_fee_payments").insert({
             club_member_id: memberId,
             fee_type: "league_affiliation",
             fee_label: label,
@@ -215,6 +232,7 @@ Deno.serve(async (req) => {
             is_pass_through: !!assocFeeRowId,
             linked_fee_payment_id: assocFeeRowId,
           });
+          if (memberFeeErr) throw memberFeeErr;
         }
       }
 
@@ -226,13 +244,14 @@ Deno.serve(async (req) => {
     }
 
     // 5) Mark plays_league + default association on the member
-    await admin
+    const { error: updateMemberErr } = await admin
       .from("club_members")
       .update({
         plays_league: true,
         enable_league_association_id: member.enable_league_association_id || firstHomeAssocId,
       })
       .eq("id", memberId);
+    if (updateMemberErr) throw updateMemberErr;
 
     return jsonResp(200, {
       ok: true,

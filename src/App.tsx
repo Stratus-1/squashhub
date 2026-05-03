@@ -33,6 +33,7 @@ import Challenges from "./pages/Challenges";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Events from "./pages/Events";
+import Tournaments from "./pages/Tournaments";
 import EventDetail from "./pages/EventDetail";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
@@ -229,6 +230,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/auth" element={<AuthGate />} />

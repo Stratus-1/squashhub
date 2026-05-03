@@ -1,18 +1,19 @@
-import { Home, Calendar, BarChart3, MessageCircle, Settings as SettingsIcon, Wine, Trophy, CalendarDays } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Home, Calendar, MessageCircle, Settings as SettingsIcon, Wine, Trophy, CalendarDays } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useClubContext } from "@/contexts/ClubContext";
 
 const baseNavItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/bookings", icon: Calendar, label: "Courts" },
-  { to: "/analytics", icon: BarChart3, label: "Stats" },
+  { to: "/events?tab=tournaments", icon: Trophy, label: "Tournaments" },
   { to: "/feed", icon: MessageCircle, label: "Feed" },
   { to: "/settings", icon: SettingsIcon, label: "Settings" },
 ];
 
 export function BottomNav() {
   const { club } = useClubContext();
+  const location = useLocation();
   const honestyBarEnabled = !!club?.honesty_bar_enabled;
   const isAssociation = (club as any)?.tenant_type === "association";
 
@@ -44,26 +45,34 @@ export function BottomNav() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === "/"}
-            className={({ isActive }) =>
-              cn(
+            end={item.to === "/" || item.to === "/events?tab=tournaments"}
+            className={({ isActive }) => {
+              const active = item.to === "/events?tab=tournaments"
+                ? location.pathname === "/events" && location.search.includes("tab=tournaments")
+                : isActive;
+              return cn(
                 "flex flex-col items-center gap-0.5 py-2 px-2 text-[10px] font-medium transition-colors",
-                isActive
+                active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
-              )
-            }
+              );
+            }}
           >
             {({ isActive }) => (
-              <>
+              (() => {
+                const active = item.to === "/events?tab=tournaments"
+                  ? location.pathname === "/events" && location.search.includes("tab=tournaments")
+                  : isActive;
+                return <>
                 <div className={cn(
                   "flex items-center justify-center w-10 h-7 rounded-full transition-colors",
-                  isActive && "bg-primary/10"
+                  active && "bg-primary/10"
                 )}>
                   <item.icon className="w-5 h-5" />
                 </div>
                 <span>{item.label}</span>
-              </>
+              </>;
+              })()
             )}
           </NavLink>
         ))}

@@ -44,12 +44,16 @@ type Item = { title: string; url: string; icon: React.ComponentType<{ className?
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess } = useSidebarFlags();
   const { data: profile } = useProfile();
   const { activeMember } = useMemberContext();
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    if (path.includes("?")) return `${pathname}${search}` === path;
+    if (path === "/events") return pathname === path && !search.includes("tab=tournaments");
+    return pathname === path;
+  };
 
   const homeItems: Item[] = [
     { title: "Stats", url: "/analytics", icon: BarChart3 },
@@ -63,6 +67,7 @@ export function AppSidebar() {
     { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
     { title: "Challenges", url: "/challenges", icon: Swords },
     ...(hasLeagues ? [{ title: "League Games", url: "/league-games", icon: Trophy }] : []),
+    { title: "Tournaments", url: "/events?tab=tournaments", icon: Trophy },
     { title: "Events", url: "/events", icon: CalendarDays },
     ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
     { title: "Feed", url: "/feed", icon: MessageCircle },

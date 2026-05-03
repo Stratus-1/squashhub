@@ -95,6 +95,28 @@ export default function LeagueGameDetail() {
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");
   const [bestOf, setBestOf] = useState<3 | 5>(5);
+  const tournamentMatchId = fixtureId?.startsWith("champ-") ? fixtureId.slice(6) : null;
+
+  const { data: tournamentRedirect } = useQuery({
+    queryKey: ["league-game-tournament-redirect", tournamentMatchId],
+    queryFn: async () => {
+      if (!tournamentMatchId) return null;
+      const { data, error } = await supabase
+        .from("club_champs_matches" as any)
+        .select("champ_id")
+        .eq("id", tournamentMatchId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as { champ_id: string } | null;
+    },
+    enabled: !!tournamentMatchId,
+  });
+
+  useEffect(() => {
+    if (tournamentRedirect?.champ_id) {
+      navigate(`/club-champs/${tournamentRedirect.champ_id}`, { replace: true });
+    }
+  }, [navigate, tournamentRedirect]);
 
   const { data: fixture } = useQuery({
     queryKey: ["league-fixture", fixtureId],
@@ -102,7 +124,7 @@ export default function LeagueGameDetail() {
       const { data, error } = await supabase.from("platform_league_fixtures").select("*").eq("id", fixtureId!).single();
       if (error) throw error; return data;
     },
-    enabled: !!fixtureId,
+    enabled: !!fixtureId && !tournamentMatchId,
   });
 
   const { data: existingResult } = useQuery({

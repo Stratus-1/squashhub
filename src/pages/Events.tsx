@@ -14,7 +14,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, isPast, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'",
 
 export default function Events() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { club: contextClub } = useClubContext();
   const { data: clubData } = useMyClub();
   const { activeMember } = useMemberContext();
@@ -103,7 +104,7 @@ export default function Events() {
       <PageHeader title="Events" subtitle="Upcoming club events & tournaments" />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 mb-20">
-        <Tabs defaultValue="events">
+        <Tabs defaultValue={searchParams.get("tab") === "tournaments" ? "championships" : "events"}>
           <TabsList className="w-full mb-4">
             <TabsTrigger value="events" className="flex-1 gap-1.5">
               <CalendarDays className="w-3.5 h-3.5" /> Events

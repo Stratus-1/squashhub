@@ -296,7 +296,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                       {props.myLeagueFixtures.slice(0, 5).map((f: any) => (
                         <button
                           key={f.id}
-                          onClick={() => navigate(`/league-games/${f.id}`)}
+                          onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
                           className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] transition-colors text-left"
                         >
                           <div className="min-w-0">
@@ -309,7 +309,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                             </p>
                           </div>
                           <Badge className={cn("text-[10px] shrink-0", f.inLineup ? "bg-[hsl(var(--accent))]/20 text-[hsl(var(--accent))] border-[hsl(var(--accent))]/40" : "bg-white/10 text-white/80 border-white/20")}>
-                            {f.inLineup ? "You're playing" : "Your league"}
+                            {f.isTournament ? "Tournament" : f.inLineup ? "You're playing" : "Your league"}
                           </Badge>
                           <ChevronRight className="w-4 h-4 text-white/40 shrink-0" />
                         </button>

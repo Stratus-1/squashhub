@@ -273,6 +273,8 @@ function PlayerField({
 export function MarkerSetup({ onStart }: Props) {
   const { club: hostClub } = useClubContext();
   const { data: myClubData } = useMyClub();
+  const { activeMember } = useMemberContext();
+  const navigate = useNavigate();
   const resolvedClub = hostClub || myClubData?.club || null;
   const clubId = resolvedClub?.id;
   const clubName = resolvedClub?.name || "";
@@ -292,6 +294,9 @@ export function MarkerSetup({ onStart }: Props) {
   const [scoringFormat, setScoringFormat] = useState<ScoringFormat>("par11");
   const [bestOf, setBestOf] = useState<BestOf>(3);
   const [deuceRule, setDeuceRule] = useState<DeuceRule>("win_by_2");
+
+  // League filter mode: "mine" (default — fixtures my league/team plays in) or "all"
+  const [leagueScope, setLeagueScope] = useState<"mine" | "all">("mine");
 
   // Fetch active tournament matches (scheduled, not yet completed)
   const { data: tournamentMatches = [] } = useQuery({

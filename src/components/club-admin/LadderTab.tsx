@@ -36,6 +36,8 @@ interface LadderMember {
   avatar_url: string | null;
   gender: string | null;
   ladder_position: number | null;
+  plays_league: boolean;
+  enable_league_association_id: string | null;
 }
 
 function getInitials(name: string) {
@@ -318,6 +320,10 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
             {list.map((player, index) => {
               const q = searchQuery.trim().toLowerCase();
               if (q && !player.name.toLowerCase().includes(q)) return null;
+              const currentAffiliations = new Set(affiliationsByMember.get(player.id) ?? []);
+              if (player.plays_league && player.enable_league_association_id) {
+                currentAffiliations.add(player.enable_league_association_id);
+              }
               return (
                 <DraggablePlayerRow
                   key={player.id}
@@ -325,7 +331,7 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                   index={index}
                   total={list.length}
                   leagues={leagues}
-                  currentAffiliations={affiliationsByMember.get(player.id) ?? new Set()}
+                  currentAffiliations={currentAffiliations}
                   onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);
@@ -449,6 +455,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
         avatar_url: m.profiles?.avatar_url || null,
         gender: m.gender || null,
         ladder_position: m.ladder_position ?? null,
+        plays_league: !!m.plays_league,
+        enable_league_association_id: m.enable_league_association_id || null,
       })),
     [members]
   );

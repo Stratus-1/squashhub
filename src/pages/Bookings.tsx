@@ -536,7 +536,7 @@ export default function Bookings() {
     acc[courtId] = allCourtBookings.filter((b: any) => b.court_id === courtId).length;
     return acc;
   }, {} as Record<number, number>);
-  const totalSlots = timeSlots.length;
+  const totalSlots = dynamicTimeSlots.length;
   const dayBookingsCount = allCourtBookings.length;
 
   const handleBook = async () => {

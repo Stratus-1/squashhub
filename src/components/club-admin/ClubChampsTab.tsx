@@ -542,6 +542,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
     const usedSlots = new Set<number>();
     for (const match of allMatches) {
+      // Bye placeholders don't get a court / slot.
+      if (match.isBye) continue;
       const playersA = getPlayersForEntity(match.entityA);
       const playersB = getPlayersForEntity(match.entityB);
       const allPlayers = [...playersA, ...playersB];
@@ -560,8 +562,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
-    return { allMatches, totalSlots, totalMatches: allMatches.length, allDates, timeSlots };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration]);
+    const playableMatches = allMatches.filter((m) => !m.isBye);
+    return {
+      allMatches,
+      totalSlots,
+      totalMatches: playableMatches.length,
+      allDates,
+      timeSlots,
+    };
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling]);
 
   // Create/update champ
   const createChamp = useMutation({

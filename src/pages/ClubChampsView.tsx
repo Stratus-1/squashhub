@@ -160,14 +160,12 @@ export default function ClubChampsView() {
 
     subs.forEach((info, id) => {
       const stats = computeFor(id);
-      if (stats.played === 0) return;
+      if (stats.played === 0 && stats.byes === 0) return;
       rows.push({
         id: `sub-${id}`,
         club_member_id: id,
         partner_member_id: null,
-        ...stats,
-        gameDiff: stats.gamesWon - stats.gamesLost,
-        points: stats.won * 2 + (stats.played - stats.won - stats.lost),
+        ...buildRow(stats),
         name: info.name,
         isSubstitute: true,
       } as any);

@@ -377,3 +377,86 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
     </Card>
   );
 }
+
+function GoBookSection({ club, clubId }: { club: Club; clubId: string }) {
+  const updateClub = useUpdateClub();
+  const [form, setForm] = useState({
+    uses_gobook: (club as any).uses_gobook ?? false,
+    gobook_url: (club as any).gobook_url ?? "",
+  });
+
+  useEffect(() => {
+    setForm({
+      uses_gobook: (club as any).uses_gobook ?? false,
+      gobook_url: (club as any).gobook_url ?? "",
+    });
+  }, [club.id, (club as any).uses_gobook, (club as any).gobook_url]);
+
+  const handleSave = async () => {
+    if (form.uses_gobook && !form.gobook_url.trim()) {
+      toast.error("Please enter your GoBook booking URL");
+      return;
+    }
+    if (form.uses_gobook) {
+      try { new URL(form.gobook_url.trim()); } catch {
+        toast.error("Please enter a valid URL (e.g. https://gobook.co.za/yourclub)");
+        return;
+      }
+    }
+    try {
+      await updateClub.mutateAsync({
+        id: clubId,
+        uses_gobook: form.uses_gobook,
+        gobook_url: form.uses_gobook ? form.gobook_url.trim() : null,
+      } as any);
+      toast.success("GoBook settings saved");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    }
+  };
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-sm">External Booking System (GoBook)</h3>
+          <p className="text-xs text-muted-foreground">
+            If your club already uses GoBook for court bookings, enable this to send members straight there from SquashHub.
+          </p>
+        </div>
+        <Switch
+          checked={form.uses_gobook}
+          onCheckedChange={(checked) => setForm(p => ({ ...p, uses_gobook: checked }))}
+        />
+      </div>
+
+      {form.uses_gobook && (
+        <>
+          <div className="space-y-1">
+            <Label className="text-xs">Your GoBook Booking URL</Label>
+            <Input
+              type="url"
+              className="h-8 text-xs"
+              value={form.gobook_url}
+              onChange={(e) => setForm(p => ({ ...p, gobook_url: e.target.value }))}
+              placeholder="https://gobook.co.za/yourclub"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              The link members tap from SquashHub will open this page. They log in and book using their existing GoBook credentials.
+            </p>
+          </div>
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 flex gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground">
+              Bookings made on GoBook won't appear inside SquashHub until MN Software provides a real API. Members will record match results manually as usual.
+            </p>
+          </div>
+        </>
+      )}
+
+      <Button size="sm" onClick={handleSave} disabled={updateClub.isPending}>
+        {updateClub.isPending ? "Saving..." : "Save GoBook Settings"}
+      </Button>
+    </Card>
+  );
+}

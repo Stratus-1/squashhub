@@ -212,9 +212,10 @@ function DraggablePlayerRow({
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 p-3 space-y-2">
-              <p className="text-xs font-semibold">Allocate to leagues</p>
+              <p className="text-xs font-semibold">Manage league participation</p>
               <p className="text-[10px] text-muted-foreground">
-                Ticking a league allocates a league number and bills the member the affiliation fee.
+                Tick to allocate a league number and bill the affiliation fee. Untick to pause —
+                the number stays on file and reactivates when re-ticked.
               </p>
               <div className="space-y-1.5 pt-1">
                 {leagues.map((l) => {
@@ -223,13 +224,12 @@ function DraggablePlayerRow({
                     <label
                       key={l.id}
                       className={cn(
-                        "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
-                        already ? "bg-muted/50" : "hover:bg-muted cursor-pointer"
+                        "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs cursor-pointer hover:bg-muted",
+                        already && "bg-muted/40"
                       )}
                     >
                       <Checkbox
                         checked={selected.has(l.id)}
-                        disabled={already}
                         onCheckedChange={() => toggleLeague(l.id)}
                       />
                       <span className="flex-1 font-medium">
@@ -237,7 +237,7 @@ function DraggablePlayerRow({
                         {l.abbreviation ? ` (${l.abbreviation})` : ""}
                       </span>
                       <span className="text-muted-foreground">
-                        {l.fee_annual > 0 ? `R${l.fee_annual}` : "Free"}
+                        {already ? "Active" : l.fee_annual > 0 ? `R${l.fee_annual}` : "Free"}
                       </span>
                     </label>
                   );
@@ -246,7 +246,7 @@ function DraggablePlayerRow({
               <div className="flex gap-2 pt-1">
                 <Button size="sm" onClick={handleAllocate} disabled={allocating} className="flex-1 h-8 text-xs gap-1">
                   {allocating ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                  Allocate
+                  Apply
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setLeaguePopoverOpen(false)} className="h-8 text-xs">
                   Cancel

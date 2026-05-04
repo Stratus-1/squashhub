@@ -283,8 +283,13 @@ export default function Bookings() {
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
   const myClub = myClubData?.club;
-  const usesGoBook = !!(myClub as any)?.uses_gobook && !!(myClub as any)?.gobook_url;
-  const gobookUrl = (myClub as any)?.gobook_url as string | undefined;
+  const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
+    ((myClub as any)?.uses_gobook ? "gobook" : null);
+  const externalUrl = ((myClub as any)?.external_booking_url as string | undefined) ||
+    ((myClub as any)?.gobook_url as string | undefined);
+  const externalLabel = ((myClub as any)?.external_booking_label as string | undefined) ||
+    (externalProvider === "gobook" ? "GoBook" : externalProvider === "courtmanager" ? "Court Manager" : "the booking system");
+  const usesExternalBooking = !!externalProvider && externalProvider !== "none" && !!externalUrl;
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
   const slotMinutes: 30 | 60 = ((myClub as any)?.booking_slot_minutes === 60 ? 60 : 30) as 30 | 60;
@@ -869,8 +874,8 @@ export default function Bookings() {
         </div>
       </div>
 
-      {/* GoBook deep-link banner (only when club uses external GoBook system) */}
-      {usesGoBook && (
+      {/* External booking deep-link banner (GoBook, Court Manager, etc.) */}
+      {usesExternalBooking && (
         <div className="px-4 mt-3">
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-3 flex items-center gap-3">
@@ -878,17 +883,17 @@ export default function Bookings() {
                 <CalendarCheck className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">{(myClub as any)?.name || "Your club"} uses GoBook</p>
+                <p className="text-sm font-semibold">{(myClub as any)?.name || "Your club"} uses {externalLabel}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Court bookings are managed on GoBook. Log in there with your member number + PIN.
+                  Court bookings are managed on {externalLabel}. Log in there with your existing credentials.
                 </p>
               </div>
               <Button
                 size="sm"
-                onClick={() => openExternalUrl(gobookUrl!)}
+                onClick={() => openExternalUrl(externalUrl!)}
                 className="shrink-0"
               >
-                Open GoBook
+                Open {externalLabel}
               </Button>
             </CardContent>
           </Card>
@@ -1021,9 +1026,9 @@ export default function Bookings() {
                           onClick={() => {
                             if (isPastSlot && !booking) return;
                             if (booking) { setBookingDetails(booking); return; }
-                            if (usesGoBook && gobookUrl) {
-                              toast.info("Opening GoBook to complete your booking…");
-                              openExternalUrl(gobookUrl);
+                            if (usesExternalBooking && externalUrl) {
+                              toast.info(`Opening ${externalLabel} to complete your booking…`);
+                              openExternalUrl(externalUrl);
                               return;
                             }
                             setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });

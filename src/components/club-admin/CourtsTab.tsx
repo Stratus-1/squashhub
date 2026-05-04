@@ -120,7 +120,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     <div className="space-y-4 mt-4">
       <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
 
-      <GoBookSection club={club} clubId={clubId} />
+      <ExternalBookingSection club={club} clubId={clubId} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Booking Rules */}
@@ -378,38 +378,87 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
   );
 }
 
-function GoBookSection({ club, clubId }: { club: Club; clubId: string }) {
+const EXTERNAL_PROVIDERS = [
+  { value: "none", label: "None (use SquashHub bookings)" },
+  { value: "gobook", label: "GoBook", placeholder: "https://gobook.co.za/yourclub" },
+  { value: "courtmanager", label: "Court Manager", placeholder: "https://www.courtmanager.co.za/yourclub" },
+  { value: "other", label: "Other", placeholder: "https://your-booking-system.example.com" },
+] as const;
+
+type ProviderValue = typeof EXTERNAL_PROVIDERS[number]["value"];
+
+function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
+
+  // Resolve initial provider: prefer new field, fall back to legacy uses_gobook
+  const initialProvider: ProviderValue =
+    ((club as any).external_booking_provider as ProviderValue | null) ||
+    ((club as any).uses_gobook ? "gobook" : "none");
+  const initialUrl: string =
+    (club as any).external_booking_url ?? (club as any).gobook_url ?? "";
+  const initialLabel: string = (club as any).external_booking_label ?? "";
+
   const [form, setForm] = useState({
-    uses_gobook: (club as any).uses_gobook ?? false,
-    gobook_url: (club as any).gobook_url ?? "",
+    provider: initialProvider,
+    url: initialUrl,
+    label: initialLabel,
   });
 
   useEffect(() => {
     setForm({
-      uses_gobook: (club as any).uses_gobook ?? false,
-      gobook_url: (club as any).gobook_url ?? "",
+      provider:
+        ((club as any).external_booking_provider as ProviderValue | null) ||
+        ((club as any).uses_gobook ? "gobook" : "none"),
+      url: (club as any).external_booking_url ?? (club as any).gobook_url ?? "",
+      label: (club as any).external_booking_label ?? "",
     });
-  }, [club.id, (club as any).uses_gobook, (club as any).gobook_url]);
+  }, [
+    club.id,
+    (club as any).external_booking_provider,
+    (club as any).external_booking_url,
+    (club as any).external_booking_label,
+    (club as any).uses_gobook,
+    (club as any).gobook_url,
+  ]);
+
+  const enabled = form.provider !== "none";
+  const selected = EXTERNAL_PROVIDERS.find((p) => p.value === form.provider);
+  const placeholder = (selected as any)?.placeholder ?? "https://your-booking-system.example.com";
 
   const handleSave = async () => {
-    if (form.uses_gobook && !form.gobook_url.trim()) {
-      toast.error("Please enter your GoBook booking URL");
-      return;
-    }
-    if (form.uses_gobook) {
-      try { new URL(form.gobook_url.trim()); } catch {
-        toast.error("Please enter a valid URL (e.g. https://gobook.co.za/yourclub)");
+    if (enabled) {
+      if (!form.url.trim()) {
+        toast.error("Please enter your booking URL");
+        return;
+      }
+      try { new URL(form.url.trim()); } catch {
+        toast.error("Please enter a valid URL (including https://)");
+        return;
+      }
+      if (form.provider === "other" && !form.label.trim()) {
+        toast.error("Please enter a display name for your booking system");
         return;
       }
     }
+
+    const labelMap: Record<ProviderValue, string> = {
+      none: "",
+      gobook: "GoBook",
+      courtmanager: "Court Manager",
+      other: form.label.trim(),
+    };
+
     try {
       await updateClub.mutateAsync({
         id: clubId,
-        uses_gobook: form.uses_gobook,
-        gobook_url: form.uses_gobook ? form.gobook_url.trim() : null,
+        external_booking_provider: enabled ? form.provider : null,
+        external_booking_url: enabled ? form.url.trim() : null,
+        external_booking_label: enabled ? labelMap[form.provider] : null,
+        // Keep legacy fields in sync so older code paths still work
+        uses_gobook: form.provider === "gobook",
+        gobook_url: form.provider === "gobook" ? form.url.trim() : null,
       } as any);
-      toast.success("GoBook settings saved");
+      toast.success("External booking settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
@@ -417,45 +466,66 @@ function GoBookSection({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <Card className="p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-sm">External Booking System (GoBook)</h3>
-          <p className="text-xs text-muted-foreground">
-            If your club already uses GoBook for court bookings, enable this to send members straight there from SquashHub.
-          </p>
-        </div>
-        <Switch
-          checked={form.uses_gobook}
-          onCheckedChange={(checked) => setForm(p => ({ ...p, uses_gobook: checked }))}
-        />
+      <div>
+        <h3 className="font-semibold text-sm">External Booking System</h3>
+        <p className="text-xs text-muted-foreground">
+          If your club already uses a third-party court booking website (GoBook, Court Manager, etc.), select it here. Members tapping a court slot will be sent there to book using their existing credentials.
+        </p>
       </div>
 
-      {form.uses_gobook && (
-        <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Provider</Label>
+          <Select
+            value={form.provider}
+            onValueChange={(v: ProviderValue) => setForm((p) => ({ ...p, provider: v }))}
+          >
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {EXTERNAL_PROVIDERS.map((p) => (
+                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {enabled && (
           <div className="space-y-1">
-            <Label className="text-xs">Your GoBook Booking URL</Label>
+            <Label className="text-xs">Your club's booking URL</Label>
             <Input
               type="url"
               className="h-8 text-xs"
-              value={form.gobook_url}
-              onChange={(e) => setForm(p => ({ ...p, gobook_url: e.target.value }))}
-              placeholder="https://gobook.co.za/yourclub"
+              value={form.url}
+              onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))}
+              placeholder={placeholder}
             />
-            <p className="text-[10px] text-muted-foreground">
-              The link members tap from SquashHub will open this page. They log in and book using their existing GoBook credentials.
-            </p>
           </div>
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 flex gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground">
-              Bookings made on GoBook won't appear inside SquashHub until MN Software provides a real API. Members will record match results manually as usual.
-            </p>
-          </div>
-        </>
+        )}
+      </div>
+
+      {enabled && form.provider === "other" && (
+        <div className="space-y-1">
+          <Label className="text-xs">Display name</Label>
+          <Input
+            className="h-8 text-xs"
+            value={form.label}
+            onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))}
+            placeholder="e.g. CourtSide Bookings"
+          />
+        </div>
+      )}
+
+      {enabled && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 flex gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-muted-foreground">
+            Bookings made on the external system won't appear inside SquashHub until that provider gives us API access. Members will record match results manually as usual.
+          </p>
+        </div>
       )}
 
       <Button size="sm" onClick={handleSave} disabled={updateClub.isPending}>
-        {updateClub.isPending ? "Saving..." : "Save GoBook Settings"}
+        {updateClub.isPending ? "Saving..." : "Save Booking System"}
       </Button>
     </Card>
   );

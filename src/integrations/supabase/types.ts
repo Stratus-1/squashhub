@@ -1739,6 +1739,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           email: string | null
+          external_booking_label: string | null
+          external_booking_provider: string | null
+          external_booking_url: string | null
           face_enrolment_required: boolean
           fee_reminder_days_before: number | null
           fill_top_down_enabled: boolean
@@ -1782,6 +1785,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          external_booking_label?: string | null
+          external_booking_provider?: string | null
+          external_booking_url?: string | null
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
@@ -1825,6 +1831,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           email?: string | null
+          external_booking_label?: string | null
+          external_booking_provider?: string | null
+          external_booking_url?: string | null
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean

@@ -120,7 +120,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     <div className="space-y-4 mt-4">
       <CourtsSection clubId={clubId} relayDeviceType={lightsForm.relay_device_type} lightsEnabled={lightsEnabled} />
 
-      <GoBookSection club={club} clubId={clubId} />
+      <ExternalBookingSection club={club} clubId={clubId} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Booking Rules */}

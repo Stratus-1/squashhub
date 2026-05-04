@@ -1481,6 +1481,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-3 bg-muted/30">
+              <div>
+                <Label className="text-sm font-medium">Round Format</Label>
+                <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
+                    <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {roundFormat === "double_round_robin"
+                    ? "All teams play one another twice — first round home, second round away."
+                    : "All teams play one another once."}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Bye Handling</Label>
+                <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no_match">No match — bye not recorded</SelectItem>
+                    <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
+                    <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Applies when an odd number of teams means one sits out per round.
+                </p>
+              </div>
+            </div>
+
             <div>
               <Label>Available Courts</Label>
               <div className="flex flex-wrap gap-2 mt-1">

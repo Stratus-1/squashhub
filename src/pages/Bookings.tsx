@@ -1020,8 +1020,13 @@ export default function Bookings() {
                           )}
                           onClick={() => {
                             if (isPastSlot && !booking) return;
-                            if (booking) setBookingDetails(booking);
-                            else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
+                            if (booking) { setBookingDetails(booking); return; }
+                            if (usesGoBook && gobookUrl) {
+                              toast.info("Opening GoBook to complete your booking…");
+                              openExternalUrl(gobookUrl);
+                              return;
+                            }
+                            setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >
                           {booking ? (

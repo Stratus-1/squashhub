@@ -402,7 +402,22 @@ export default function ClubChampsView() {
           <button onClick={() => window.history.length > 1 ? window.history.back() : (window.location.href = "/league-games")} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            {canManage && unassignedCount > 0 && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => rescheduleUnassigned.mutate()}
+                disabled={rescheduleUnassigned.isPending}
+              >
+                {rescheduleUnassigned.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <CalendarClock className="w-4 h-4 mr-1" />
+                )}
+                Reschedule {unassignedCount} TBD match{unassignedCount === 1 ? "" : "es"}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="w-4 h-4 mr-1" /> Print / PDF
             </Button>

@@ -110,26 +110,60 @@ function DraggablePlayerRow({
 
   const handleAllocate = async () => {
     const newOnes = Array.from(selected).filter((id) => !currentAffiliations.has(id));
-    if (newOnes.length === 0) {
-      toast.info("No new leagues selected");
+    const removed = Array.from(currentAffiliations).filter((id) => !selected.has(id));
+    if (newOnes.length === 0 && removed.length === 0) {
+      toast.info("No changes");
       return;
     }
     setAllocating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-allocate-member-leagues", {
-        body: { memberId: player.id, leagueAssociationIds: newOnes },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const allocs = ((data as any)?.allocations || []) as Array<{ league: string; associationNumber: string | null; fee: number }>;
-      const summary = allocs
-        .map((a) => `${a.league}${a.associationNumber ? ` #${a.associationNumber}` : ""}${a.fee ? ` · R${a.fee}` : ""}`)
+      // Pause unticked affiliations (number is kept on file, never deleted).
+      if (removed.length > 0) {
+        const { error: deactErr } = await (supabase as any)
+          .from("member_association_affiliations")
+          .update({ active: false })
+          .eq("club_member_id", player.id)
+          .in("association_id", removed);
+        if (deactErr) throw deactErr;
+
+        // If the home-club's enable_league_association_id pointed at one we removed,
+        // clear/repoint it so plays_league flag stays consistent.
+        const stillTicked = Array.from(selected);
+        const newEnabled = stillTicked.length > 0 ? stillTicked[0] : null;
+        await (supabase as any)
+          .from("club_members")
+          .update({
+            enable_league_association_id: newEnabled,
+            plays_league: stillTicked.length > 0,
+          })
+          .eq("id", player.id);
+      }
+
+      let summary = "";
+      if (newOnes.length > 0) {
+        const { data, error } = await supabase.functions.invoke("admin-allocate-member-leagues", {
+          body: { memberId: player.id, leagueAssociationIds: newOnes },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const allocs = ((data as any)?.allocations || []) as Array<{ league: string; associationNumber: string | null; fee: number }>;
+        summary = allocs
+          .map((a) => `${a.league}${a.associationNumber ? ` #${a.associationNumber}` : ""}${a.fee ? ` · R${a.fee}` : ""}`)
+          .join(", ");
+      }
+
+      const removedLabels = leagues
+        .filter((l) => removed.includes(l.id))
+        .map((l) => l.abbreviation || l.name)
         .join(", ");
-      toast.success(`${player.name} allocated: ${summary || "done"}`);
+      const parts: string[] = [];
+      if (summary) parts.push(`allocated ${summary}`);
+      if (removedLabels) parts.push(`paused ${removedLabels}`);
+      toast.success(`${player.name}: ${parts.join("; ") || "done"}`);
       setLeaguePopoverOpen(false);
       onAllocated();
     } catch (e: any) {
-      toast.error(e.message || "Failed to allocate");
+      toast.error(e.message || "Failed to update leagues");
     } finally {
       setAllocating(false);
     }

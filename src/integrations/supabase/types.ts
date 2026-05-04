@@ -632,6 +632,7 @@ export type Database = {
       }
       club_champs: {
         Row: {
+          bye_handling: string
           club_id: string
           created_at: string
           enable_playoffs: boolean
@@ -644,6 +645,7 @@ export type Database = {
           name: string
           num_groups: number
           play_days: number[]
+          round_format: string
           source_league_id: string | null
           source_league_ids: string[]
           start_date: string
@@ -652,6 +654,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bye_handling?: string
           club_id: string
           created_at?: string
           enable_playoffs?: boolean
@@ -664,6 +667,7 @@ export type Database = {
           name: string
           num_groups?: number
           play_days?: number[]
+          round_format?: string
           source_league_id?: string | null
           source_league_ids?: string[]
           start_date: string
@@ -672,6 +676,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bye_handling?: string
           club_id?: string
           created_at?: string
           enable_playoffs?: boolean
@@ -684,6 +689,7 @@ export type Database = {
           name?: string
           num_groups?: number
           play_days?: number[]
+          round_format?: string
           source_league_id?: string | null
           source_league_ids?: string[]
           start_date?: string
@@ -773,12 +779,15 @@ export type Database = {
       }
       club_champs_matches: {
         Row: {
+          bye_member_id: string | null
           champ_id: string
           court_id: number | null
           created_at: string
           game_scores: string | null
           group_number: number
           id: string
+          is_bye: boolean
+          leg: string | null
           partner_a_member_id: string | null
           partner_b_member_id: string | null
           player_a_member_id: string
@@ -792,12 +801,15 @@ export type Database = {
           winner_member_id: string | null
         }
         Insert: {
+          bye_member_id?: string | null
           champ_id: string
           court_id?: number | null
           created_at?: string
           game_scores?: string | null
           group_number: number
           id?: string
+          is_bye?: boolean
+          leg?: string | null
           partner_a_member_id?: string | null
           partner_b_member_id?: string | null
           player_a_member_id: string
@@ -811,12 +823,15 @@ export type Database = {
           winner_member_id?: string | null
         }
         Update: {
+          bye_member_id?: string | null
           champ_id?: string
           court_id?: number | null
           created_at?: string
           game_scores?: string | null
           group_number?: number
           id?: string
+          is_bye?: boolean
+          leg?: string | null
           partner_a_member_id?: string | null
           partner_b_member_id?: string | null
           player_a_member_id?: string

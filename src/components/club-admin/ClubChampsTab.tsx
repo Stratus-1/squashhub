@@ -48,25 +48,67 @@ interface DoublePair {
   player2Id: string;
 }
 
-function generateRoundRobinRounds(entityIds: string[]): [string, string][][] {
+/**
+ * Generate round-robin rounds for a list of entity ids.
+ *
+ * - `single`  → each pair plays once (current default).
+ * - `double`  → each pair plays twice; the second leg swaps home/away
+ *               so the same pair appears in two different rounds.
+ *
+ * For odd counts a "BYE" placeholder is added; the byes are reported back
+ * via the third tuple member of `byes` (per round) so the caller can decide
+ * how to surface them (no_match / walkover / neutral).
+ */
+type RoundRobinResult = {
+  rounds: Array<Array<[string, string, "home" | "away" | null]>>;
+  byesPerRound: Array<string | null>;
+};
+
+function generateRoundRobinRounds(
+  entityIds: string[],
+  format: "single" | "double" = "single",
+): RoundRobinResult {
   const entities = [...entityIds];
-  if (entities.length % 2 !== 0) entities.push("BYE");
+  const hasBye = entities.length % 2 !== 0;
+  if (hasBye) entities.push("BYE");
   const n = entities.length;
-  const rounds: [string, string][][] = [];
+
+  const singleRounds: Array<Array<[string, string, "home" | "away" | null]>> = [];
+  const byesPerRound: Array<string | null> = [];
+
   for (let round = 0; round < n - 1; round++) {
-    const matches: [string, string][] = [];
+    const matches: Array<[string, string, "home" | "away" | null]> = [];
+    let byeId: string | null = null;
     for (let i = 0; i < n / 2; i++) {
       const a = entities[i];
       const b = entities[n - 1 - i];
-      if (a !== "BYE" && b !== "BYE") {
-        matches.push([a, b]);
+      if (a === "BYE") byeId = b;
+      else if (b === "BYE") byeId = a;
+      else {
+        // First leg: alternate home/away orientation each pair to keep things fair.
+        // Pair index i=0 → A home; the round-robin algorithm naturally varies who
+        // is in the "home" slot across rounds.
+        matches.push([a, b, format === "double" ? "home" : null]);
       }
     }
-    rounds.push(matches);
+    singleRounds.push(matches);
+    byesPerRound.push(byeId);
     const last = entities.pop()!;
     entities.splice(1, 0, last);
   }
-  return rounds;
+
+  if (format === "single") {
+    return { rounds: singleRounds, byesPerRound };
+  }
+
+  // Double round-robin: append the same fixtures with sides swapped (away leg).
+  const awayRounds = singleRounds.map((round) =>
+    round.map(([a, b]) => [b, a, "away"] as [string, string, "home" | "away" | null]),
+  );
+  return {
+    rounds: [...singleRounds, ...awayRounds],
+    byesPerRound: [...byesPerRound, ...byesPerRound],
+  };
 }
 
 const GENDER_LABELS: Record<GenderCategory, string> = {
@@ -143,6 +185,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(30);
+  const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
+  const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
@@ -427,29 +471,45 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     type MatchDef = {
       groupNum: number; roundNum: number;
       entityA: string; entityB: string; // player ID or pair ID
+      leg: "home" | "away" | null;
+      isBye?: boolean;
+      byeEntityId?: string;
       date?: string; time?: string; courtId?: number;
     };
     const allMatches: MatchDef[] = [];
+    const fmt = roundFormat === "double_round_robin" ? "double" : "single";
+
+    const ingestRounds = (gi: number, ids: string[]) => {
+      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
+      rounds.forEach((roundMatches, ri) => {
+        roundMatches.forEach(([a, b, leg]) => {
+          allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
+        });
+        // Record byes (only when there's actually an odd entity count and admin
+        // wants them tracked). Walkover/neutral are scoring concerns; the schedule
+        // simply notes who has the bye that round.
+        const byeId = byesPerRound[ri];
+        if (byeId && byeHandling !== "no_match") {
+          allMatches.push({
+            groupNum: gi + 1,
+            roundNum: ri + 1,
+            entityA: byeId,
+            entityB: byeId,
+            leg: null,
+            isBye: true,
+            byeEntityId: byeId,
+          });
+        }
+      });
+    };
 
     if (isDoubles) {
       (groups as DoublePair[][]).forEach((groupPairs, gi) => {
-        const pairIds = groupPairs.map((p) => p.id);
-        const rounds = generateRoundRobinRounds(pairIds);
-        rounds.forEach((roundMatches, ri) => {
-          roundMatches.forEach(([a, b]) => {
-            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b });
-          });
-        });
+        ingestRounds(gi, groupPairs.map((p) => p.id));
       });
     } else {
       (groups as ClubMember[][]).forEach((groupPlayers, gi) => {
-        const playerIds = groupPlayers.map((p) => p.id);
-        const rounds = generateRoundRobinRounds(playerIds);
-        rounds.forEach((roundMatches, ri) => {
-          roundMatches.forEach(([a, b]) => {
-            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b });
-          });
-        });
+        ingestRounds(gi, groupPlayers.map((p) => p.id));
       });
     }
 
@@ -482,6 +542,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
     const usedSlots = new Set<number>();
     for (const match of allMatches) {
+      // Bye placeholders don't get a court / slot.
+      if (match.isBye) continue;
       const playersA = getPlayersForEntity(match.entityA);
       const playersB = getPlayersForEntity(match.entityB);
       const allPlayers = [...playersA, ...playersB];
@@ -500,8 +562,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
-    return { allMatches, totalSlots, totalMatches: allMatches.length, allDates, timeSlots };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration]);
+    const playableMatches = allMatches.filter((m) => !m.isBye);
+    return {
+      allMatches,
+      totalSlots,
+      totalMatches: playableMatches.length,
+      allDates,
+      timeSlots,
+    };
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -543,6 +612,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
+            round_format: roundFormat,
+            bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
           })
@@ -564,6 +635,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
+            round_format: roundFormat,
+            bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
           })
@@ -606,6 +679,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // Create matches
       const matches = schedulePreview.allMatches.map((m) => {
+        const isBye = !!m.isBye;
+        // For bye rows we use the bye entity as both player_a/player_b so RLS-friendly
+        // NOT NULL columns stay populated, plus set is_bye + bye_member_id explicitly.
         if (isDoubles) {
           const pairA = pairMap.get(m.entityA);
           const pairB = pairMap.get(m.entityB);
@@ -617,9 +693,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             partner_a_member_id: pairA?.player2Id ? toDbId(pairA.player2Id) : null,
             player_b_member_id: toDbId(pairB?.player1Id || m.entityB),
             partner_b_member_id: pairB?.player2Id ? toDbId(pairB.player2Id) : null,
-            scheduled_date: m.date,
-            scheduled_time: m.time,
-            court_id: m.courtId,
+            scheduled_date: isBye ? null : m.date,
+            scheduled_time: isBye ? null : m.time,
+            court_id: isBye ? null : m.courtId,
+            leg: m.leg ?? null,
+            is_bye: isBye,
+            bye_member_id: isBye ? toDbId(pairA?.player1Id || m.entityA) : null,
+            status: isBye
+              ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
+              : "scheduled",
           };
         }
         return {
@@ -628,9 +710,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           round_number: m.roundNum,
           player_a_member_id: toDbId(m.entityA),
           player_b_member_id: toDbId(m.entityB),
-          scheduled_date: m.date,
-          scheduled_time: m.time,
-          court_id: m.courtId,
+          scheduled_date: isBye ? null : m.date,
+          scheduled_time: isBye ? null : m.time,
+          court_id: isBye ? null : m.courtId,
+          leg: m.leg ?? null,
+          is_bye: isBye,
+          bye_member_id: isBye ? toDbId(m.entityA) : null,
+          status: isBye
+            ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
+            : "scheduled",
         };
       });
       if (matches.length > 0) {
@@ -643,7 +731,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
 
       const bookings = schedulePreview.allMatches
-        .filter((m) => m.date && m.time && m.courtId)
+        .filter((m) => !m.isBye && m.date && m.time && m.courtId)
         .map((m) => {
           let bookerId: string | undefined;
           if (isDoubles) {
@@ -737,6 +825,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime("18:00");
     setEndTime("20:00");
     setMatchDuration(30);
+    setRoundFormat("single_round_robin");
+    setByeHandling("no_match");
     setSelectedCourtIds(new Set());
     setGroupAssignments(new Map());
     setDoublesPairs([]);
@@ -759,6 +849,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 30);
+    setRoundFormat((champ.round_format as any) || "single_round_robin");
+    setByeHandling((champ.bye_handling as any) || "no_match");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
       ? champ.source_league_ids
       : (champ.source_league_id ? [champ.source_league_id] : []);
@@ -1389,6 +1481,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-3 bg-muted/30">
+              <div>
+                <Label className="text-sm font-medium">Round Format</Label>
+                <Select value={roundFormat} onValueChange={(v) => setRoundFormat(v as any)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single_round_robin">Single round-robin (each plays once)</SelectItem>
+                    <SelectItem value="double_round_robin">Double round-robin (home &amp; away, 2 rounds)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {roundFormat === "double_round_robin"
+                    ? "All teams play one another twice — first round home, second round away."
+                    : "All teams play one another once."}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Bye Handling</Label>
+                <Select value={byeHandling} onValueChange={(v) => setByeHandling(v as any)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no_match">No match — bye not recorded</SelectItem>
+                    <SelectItem value="walkover_win">Walkover win — full points</SelectItem>
+                    <SelectItem value="neutral">Neutral — excluded from averages</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Applies when an odd number of teams means one sits out per round.
+                </p>
+              </div>
+            </div>
+
             <div>
               <Label>Available Courts</Label>
               <div className="flex flex-wrap gap-2 mt-1">
@@ -1435,6 +1559,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
               <p><strong>Time:</strong> {startTime} – {endTime} ({matchDuration} min per match)</p>
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
+              <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
               <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
             </div>
 

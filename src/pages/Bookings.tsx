@@ -874,8 +874,8 @@ export default function Bookings() {
         </div>
       </div>
 
-      {/* GoBook deep-link banner (only when club uses external GoBook system) */}
-      {usesGoBook && (
+      {/* External booking deep-link banner (GoBook, Court Manager, etc.) */}
+      {usesExternalBooking && (
         <div className="px-4 mt-3">
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-3 flex items-center gap-3">
@@ -883,17 +883,17 @@ export default function Bookings() {
                 <CalendarCheck className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">{(myClub as any)?.name || "Your club"} uses GoBook</p>
+                <p className="text-sm font-semibold">{(myClub as any)?.name || "Your club"} uses {externalLabel}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Court bookings are managed on GoBook. Log in there with your member number + PIN.
+                  Court bookings are managed on {externalLabel}. Log in there with your existing credentials.
                 </p>
               </div>
               <Button
                 size="sm"
-                onClick={() => openExternalUrl(gobookUrl!)}
+                onClick={() => openExternalUrl(externalUrl!)}
                 className="shrink-0"
               >
-                Open GoBook
+                Open {externalLabel}
               </Button>
             </CardContent>
           </Card>

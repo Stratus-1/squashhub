@@ -283,6 +283,8 @@ export default function Bookings() {
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
   const myClub = myClubData?.club;
+  const usesGoBook = !!(myClub as any)?.uses_gobook && !!(myClub as any)?.gobook_url;
+  const gobookUrl = (myClub as any)?.gobook_url as string | undefined;
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
   const slotMinutes: 30 | 60 = ((myClub as any)?.booking_slot_minutes === 60 ? 60 : 30) as 30 | 60;
@@ -868,7 +870,7 @@ export default function Bookings() {
       </div>
 
       {/* GoBook deep-link banner (only when club uses external GoBook system) */}
-      {(myClub as any)?.uses_gobook && (myClub as any)?.gobook_url && (
+      {usesGoBook && (
         <div className="px-4 mt-3">
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-3 flex items-center gap-3">
@@ -883,7 +885,7 @@ export default function Bookings() {
               </div>
               <Button
                 size="sm"
-                onClick={() => openExternalUrl((myClub as any).gobook_url)}
+                onClick={() => openExternalUrl(gobookUrl!)}
                 className="shrink-0"
               >
                 Open GoBook
@@ -1018,8 +1020,13 @@ export default function Bookings() {
                           )}
                           onClick={() => {
                             if (isPastSlot && !booking) return;
-                            if (booking) setBookingDetails(booking);
-                            else setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
+                            if (booking) { setBookingDetails(booking); return; }
+                            if (usesGoBook && gobookUrl) {
+                              toast.info("Opening GoBook to complete your booking…");
+                              openExternalUrl(gobookUrl);
+                              return;
+                            }
+                            setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >
                           {booking ? (

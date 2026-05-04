@@ -48,25 +48,67 @@ interface DoublePair {
   player2Id: string;
 }
 
-function generateRoundRobinRounds(entityIds: string[]): [string, string][][] {
+/**
+ * Generate round-robin rounds for a list of entity ids.
+ *
+ * - `single`  → each pair plays once (current default).
+ * - `double`  → each pair plays twice; the second leg swaps home/away
+ *               so the same pair appears in two different rounds.
+ *
+ * For odd counts a "BYE" placeholder is added; the byes are reported back
+ * via the third tuple member of `byes` (per round) so the caller can decide
+ * how to surface them (no_match / walkover / neutral).
+ */
+type RoundRobinResult = {
+  rounds: Array<Array<[string, string, "home" | "away" | null]>>;
+  byesPerRound: Array<string | null>;
+};
+
+function generateRoundRobinRounds(
+  entityIds: string[],
+  format: "single" | "double" = "single",
+): RoundRobinResult {
   const entities = [...entityIds];
-  if (entities.length % 2 !== 0) entities.push("BYE");
+  const hasBye = entities.length % 2 !== 0;
+  if (hasBye) entities.push("BYE");
   const n = entities.length;
-  const rounds: [string, string][][] = [];
+
+  const singleRounds: Array<Array<[string, string, "home" | "away" | null]>> = [];
+  const byesPerRound: Array<string | null> = [];
+
   for (let round = 0; round < n - 1; round++) {
-    const matches: [string, string][] = [];
+    const matches: Array<[string, string, "home" | "away" | null]> = [];
+    let byeId: string | null = null;
     for (let i = 0; i < n / 2; i++) {
       const a = entities[i];
       const b = entities[n - 1 - i];
-      if (a !== "BYE" && b !== "BYE") {
-        matches.push([a, b]);
+      if (a === "BYE") byeId = b;
+      else if (b === "BYE") byeId = a;
+      else {
+        // First leg: alternate home/away orientation each pair to keep things fair.
+        // Pair index i=0 → A home; the round-robin algorithm naturally varies who
+        // is in the "home" slot across rounds.
+        matches.push([a, b, format === "double" ? "home" : null]);
       }
     }
-    rounds.push(matches);
+    singleRounds.push(matches);
+    byesPerRound.push(byeId);
     const last = entities.pop()!;
     entities.splice(1, 0, last);
   }
-  return rounds;
+
+  if (format === "single") {
+    return { rounds: singleRounds, byesPerRound };
+  }
+
+  // Double round-robin: append the same fixtures with sides swapped (away leg).
+  const awayRounds = singleRounds.map((round) =>
+    round.map(([a, b]) => [b, a, "away"] as [string, string, "home" | "away" | null]),
+  );
+  return {
+    rounds: [...singleRounds, ...awayRounds],
+    byesPerRound: [...byesPerRound, ...byesPerRound],
+  };
 }
 
 const GENDER_LABELS: Record<GenderCategory, string> = {

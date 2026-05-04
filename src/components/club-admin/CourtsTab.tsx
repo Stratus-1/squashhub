@@ -381,7 +381,10 @@ function CourtsSection({ clubId, relayDeviceType, lightsEnabled }: { clubId: str
 const EXTERNAL_PROVIDERS = [
   { value: "none", label: "None (use SquashHub bookings)" },
   { value: "gobook", label: "GoBook", placeholder: "https://gobook.co.za/yourclub" },
-  { value: "courtmanager", label: "Court Manager", placeholder: "https://www.courtmanager.co.za/yourclub" },
+  { value: "courtmanager", label: "Court Manager (self-hosted)", placeholder: "http://yourclub.mywire.org/yourclub/index.php" },
+  { value: "sportyhq", label: "SportyHQ", placeholder: "https://www.sportyhq.com/club/yourclub" },
+  { value: "courtbookings", label: "CourtBookings.co.za", placeholder: "https://www.courtbookings.co.za/yourclub" },
+  { value: "squashman", label: "SquashMan", placeholder: "https://www.squashman.com/yourclub" },
   { value: "other", label: "Other", placeholder: "https://your-booking-system.example.com" },
 ] as const;
 
@@ -445,6 +448,9 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
       none: "",
       gobook: "GoBook",
       courtmanager: "Court Manager",
+      sportyhq: "SportyHQ",
+      courtbookings: "CourtBookings.co.za",
+      squashman: "SquashMan",
       other: form.label.trim(),
     };
 

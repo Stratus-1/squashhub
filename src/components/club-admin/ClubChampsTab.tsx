@@ -731,7 +731,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
 
       const bookings = schedulePreview.allMatches
-        .filter((m) => m.date && m.time && m.courtId)
+        .filter((m) => !m.isBye && m.date && m.time && m.courtId)
         .map((m) => {
           let bookerId: string | undefined;
           if (isDoubles) {

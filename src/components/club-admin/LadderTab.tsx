@@ -110,26 +110,60 @@ function DraggablePlayerRow({
 
   const handleAllocate = async () => {
     const newOnes = Array.from(selected).filter((id) => !currentAffiliations.has(id));
-    if (newOnes.length === 0) {
-      toast.info("No new leagues selected");
+    const removed = Array.from(currentAffiliations).filter((id) => !selected.has(id));
+    if (newOnes.length === 0 && removed.length === 0) {
+      toast.info("No changes");
       return;
     }
     setAllocating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-allocate-member-leagues", {
-        body: { memberId: player.id, leagueAssociationIds: newOnes },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const allocs = ((data as any)?.allocations || []) as Array<{ league: string; associationNumber: string | null; fee: number }>;
-      const summary = allocs
-        .map((a) => `${a.league}${a.associationNumber ? ` #${a.associationNumber}` : ""}${a.fee ? ` · R${a.fee}` : ""}`)
+      // Pause unticked affiliations (number is kept on file, never deleted).
+      if (removed.length > 0) {
+        const { error: deactErr } = await (supabase as any)
+          .from("member_association_affiliations")
+          .update({ active: false })
+          .eq("club_member_id", player.id)
+          .in("association_id", removed);
+        if (deactErr) throw deactErr;
+
+        // If the home-club's enable_league_association_id pointed at one we removed,
+        // clear/repoint it so plays_league flag stays consistent.
+        const stillTicked = Array.from(selected);
+        const newEnabled = stillTicked.length > 0 ? stillTicked[0] : null;
+        await (supabase as any)
+          .from("club_members")
+          .update({
+            enable_league_association_id: newEnabled,
+            plays_league: stillTicked.length > 0,
+          })
+          .eq("id", player.id);
+      }
+
+      let summary = "";
+      if (newOnes.length > 0) {
+        const { data, error } = await supabase.functions.invoke("admin-allocate-member-leagues", {
+          body: { memberId: player.id, leagueAssociationIds: newOnes },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const allocs = ((data as any)?.allocations || []) as Array<{ league: string; associationNumber: string | null; fee: number }>;
+        summary = allocs
+          .map((a) => `${a.league}${a.associationNumber ? ` #${a.associationNumber}` : ""}${a.fee ? ` · R${a.fee}` : ""}`)
+          .join(", ");
+      }
+
+      const removedLabels = leagues
+        .filter((l) => removed.includes(l.id))
+        .map((l) => l.abbreviation || l.name)
         .join(", ");
-      toast.success(`${player.name} allocated: ${summary || "done"}`);
+      const parts: string[] = [];
+      if (summary) parts.push(`allocated ${summary}`);
+      if (removedLabels) parts.push(`paused ${removedLabels}`);
+      toast.success(`${player.name}: ${parts.join("; ") || "done"}`);
       setLeaguePopoverOpen(false);
       onAllocated();
     } catch (e: any) {
-      toast.error(e.message || "Failed to allocate");
+      toast.error(e.message || "Failed to update leagues");
     } finally {
       setAllocating(false);
     }
@@ -178,9 +212,10 @@ function DraggablePlayerRow({
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 p-3 space-y-2">
-              <p className="text-xs font-semibold">Allocate to leagues</p>
+              <p className="text-xs font-semibold">Manage league participation</p>
               <p className="text-[10px] text-muted-foreground">
-                Ticking a league allocates a league number and bills the member the affiliation fee.
+                Tick to allocate a league number and bill the affiliation fee. Untick to pause —
+                the number stays on file and reactivates when re-ticked.
               </p>
               <div className="space-y-1.5 pt-1">
                 {leagues.map((l) => {
@@ -189,13 +224,12 @@ function DraggablePlayerRow({
                     <label
                       key={l.id}
                       className={cn(
-                        "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
-                        already ? "bg-muted/50" : "hover:bg-muted cursor-pointer"
+                        "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs cursor-pointer hover:bg-muted",
+                        already && "bg-muted/40"
                       )}
                     >
                       <Checkbox
                         checked={selected.has(l.id)}
-                        disabled={already}
                         onCheckedChange={() => toggleLeague(l.id)}
                       />
                       <span className="flex-1 font-medium">
@@ -203,7 +237,7 @@ function DraggablePlayerRow({
                         {l.abbreviation ? ` (${l.abbreviation})` : ""}
                       </span>
                       <span className="text-muted-foreground">
-                        {l.fee_annual > 0 ? `R${l.fee_annual}` : "Free"}
+                        {already ? "Active" : l.fee_annual > 0 ? `R${l.fee_annual}` : "Free"}
                       </span>
                     </label>
                   );
@@ -212,7 +246,7 @@ function DraggablePlayerRow({
               <div className="flex gap-2 pt-1">
                 <Button size="sm" onClick={handleAllocate} disabled={allocating} className="flex-1 h-8 text-xs gap-1">
                   {allocating ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                  Allocate
+                  Apply
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setLeaguePopoverOpen(false)} className="h-8 text-xs">
                   Cancel

@@ -612,6 +612,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
+            round_format: roundFormat,
+            bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
           })

@@ -849,6 +849,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 30);
+    setRoundFormat((champ.round_format as any) || "single_round_robin");
+    setByeHandling((champ.bye_handling as any) || "no_match");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
       ? champ.source_league_ids
       : (champ.source_league_id ? [champ.source_league_id] : []);

@@ -39,6 +39,9 @@ export interface Club {
   max_peak_bookings_per_day?: number;
   uses_gobook?: boolean;
   gobook_url?: string;
+  external_booking_provider?: string | null;
+  external_booking_url?: string | null;
+  external_booking_label?: string | null;
   created_by?: string;
   created_at: string;
   updated_at: string;

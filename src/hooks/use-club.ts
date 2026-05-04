@@ -37,6 +37,8 @@ export interface Club {
   peak_weekend_start?: string;
   peak_weekend_end?: string;
   max_peak_bookings_per_day?: number;
+  uses_gobook?: boolean;
+  gobook_url?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;

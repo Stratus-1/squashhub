@@ -1,0 +1,3 @@
+ALTER TABLE public.clubs
+  ADD COLUMN IF NOT EXISTS uses_gobook BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS gobook_url TEXT;

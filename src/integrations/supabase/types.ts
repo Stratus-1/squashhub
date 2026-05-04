@@ -1742,6 +1742,7 @@ export type Database = {
           face_enrolment_required: boolean
           fee_reminder_days_before: number | null
           fill_top_down_enabled: boolean
+          gobook_url: string | null
           honesty_bar_enabled: boolean
           id: string
           league_fee_due_month: number
@@ -1769,6 +1770,7 @@ export type Database = {
           subdomain: string | null
           tenant_type: string
           updated_at: string
+          uses_gobook: boolean
         }
         Insert: {
           address?: string | null
@@ -1783,6 +1785,7 @@ export type Database = {
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
+          gobook_url?: string | null
           honesty_bar_enabled?: boolean
           id?: string
           league_fee_due_month?: number
@@ -1810,6 +1813,7 @@ export type Database = {
           subdomain?: string | null
           tenant_type?: string
           updated_at?: string
+          uses_gobook?: boolean
         }
         Update: {
           address?: string | null
@@ -1824,6 +1828,7 @@ export type Database = {
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
+          gobook_url?: string | null
           honesty_bar_enabled?: boolean
           id?: string
           league_fee_due_month?: number
@@ -1851,6 +1856,7 @@ export type Database = {
           subdomain?: string | null
           tenant_type?: string
           updated_at?: string
+          uses_gobook?: boolean
         }
         Relationships: [
           {

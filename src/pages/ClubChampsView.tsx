@@ -65,12 +65,23 @@ export default function ClubChampsView() {
   };
 
   // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
+  const byeHandling: string = (champ as any)?.bye_handling || "no_match";
+
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
-    const groupMatches = matches.filter((m: any) => m.group_number === groupNum && m.status === "completed");
+    // Exclude byes from standings entirely; we'll add walkover credit separately.
+    const groupMatches = matches.filter(
+      (m: any) => m.group_number === groupNum && m.status === "completed" && !m.is_bye,
+    );
+    const groupByes = matches.filter(
+      (m: any) => m.group_number === groupNum && m.is_bye,
+    );
 
     const computeFor = (memberId: string) => {
-      let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0;
+      let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0, byes = 0;
+      groupByes.forEach((m: any) => {
+        if (m.bye_member_id === memberId || m.player_a_member_id === memberId) byes++;
+      });
       groupMatches.forEach((m: any) => {
         const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
         const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);

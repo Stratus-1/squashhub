@@ -65,12 +65,23 @@ export default function ClubChampsView() {
   };
 
   // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
+  const byeHandling: string = (champ as any)?.bye_handling || "no_match";
+
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
-    const groupMatches = matches.filter((m: any) => m.group_number === groupNum && m.status === "completed");
+    // Exclude byes from standings entirely; we'll add walkover credit separately.
+    const groupMatches = matches.filter(
+      (m: any) => m.group_number === groupNum && m.status === "completed" && !m.is_bye,
+    );
+    const groupByes = matches.filter(
+      (m: any) => m.group_number === groupNum && m.is_bye,
+    );
 
     const computeFor = (memberId: string) => {
-      let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0;
+      let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0, byes = 0;
+      groupByes.forEach((m: any) => {
+        if (m.bye_member_id === memberId || m.player_a_member_id === memberId) byes++;
+      });
       groupMatches.forEach((m: any) => {
         const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
         const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
@@ -95,16 +106,28 @@ export default function ClubChampsView() {
           } catch { /* ignore */ }
         }
       });
-      return { played, won, lost, gamesWon, gamesLost };
+      return { played, won, lost, gamesWon, gamesLost, byes };
+    };
+
+    const buildRow = (stats: ReturnType<typeof computeFor>) => {
+      // Walkover bye = win + points (treat like a played win). Other modes ignore byes.
+      const byeWins = byeHandling === "walkover_win" ? stats.byes : 0;
+      const totalPlayed = stats.played + byeWins;
+      const totalWon = stats.won + byeWins;
+      return {
+        ...stats,
+        played: totalPlayed,
+        won: totalWon,
+        gameDiff: stats.gamesWon - stats.gamesLost,
+        points: totalWon * 2 + (totalPlayed - totalWon - stats.lost),
+      };
     };
 
     const rows = groupEntries.map((e: any) => {
       const stats = computeFor(e.club_member_id);
       return {
         ...e,
-        ...stats,
-        gameDiff: stats.gamesWon - stats.gamesLost,
-        points: stats.won * 2 + (stats.played - stats.won - stats.lost),
+        ...buildRow(stats),
         name: isDoubles
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
@@ -137,14 +160,12 @@ export default function ClubChampsView() {
 
     subs.forEach((info, id) => {
       const stats = computeFor(id);
-      if (stats.played === 0) return;
+      if (stats.played === 0 && stats.byes === 0) return;
       rows.push({
         id: `sub-${id}`,
         club_member_id: id,
         partner_member_id: null,
-        ...stats,
-        gameDiff: stats.gamesWon - stats.gamesLost,
-        points: stats.won * 2 + (stats.played - stats.won - stats.lost),
+        ...buildRow(stats),
         name: info.name,
         isSubstitute: true,
       } as any);
@@ -288,23 +309,25 @@ export default function ClubChampsView() {
                       const opponent = isA ? getMatchTeamB(m) : getMatchTeamA(m);
                       const won = m.winner_member_id === myMemberId;
                       const lost = m.winner_member_id && m.winner_member_id !== myMemberId;
+                      const isBye = !!m.is_bye;
 
                       return (
                         <div key={m.id} className={cn(
                           "flex items-center gap-2 text-sm p-2 rounded",
+                          isBye ? "bg-amber-500/10 border border-amber-500/20" :
                           m.status === "completed"
                             ? won ? "bg-green-500/10" : lost ? "bg-destructive/10" : "bg-muted/50"
                             : "bg-muted/50"
                         )}>
                           <span className="text-muted-foreground w-24 shrink-0">
-                            {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
+                            {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : isBye ? `Round ${m.round_number}` : "TBD"}
                           </span>
-                          <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
-                          <span className="font-medium">vs {opponent}</span>
-                          {m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
-                          {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
-                          <Badge variant={m.status === "completed" ? (won ? "default" : "secondary") : "secondary"} className="text-[10px]">
-                            {m.status === "completed" ? (won ? "Won" : lost ? "Lost" : "Played") : m.status}
+                          <span className="text-muted-foreground w-12 shrink-0">{isBye ? "—" : (m.scheduled_time?.slice(0, 5) || "TBD")}</span>
+                          <span className="font-medium">{isBye ? "BYE (rest round)" : `vs ${opponent}`}</span>
+                          {!isBye && m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
+                          {!isBye && m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
+                          <Badge variant={isBye ? "outline" : m.status === "completed" ? (won ? "default" : "secondary") : "secondary"} className={cn("text-[10px]", isBye && "ml-auto border-amber-500/40 text-amber-600 dark:text-amber-400")}>
+                            {isBye ? (byeHandling === "walkover_win" ? "Bye · walkover" : "Bye") : m.status === "completed" ? (won ? "Won" : lost ? "Lost" : "Played") : m.status}
                           </Badge>
                         </div>
                       );
@@ -374,16 +397,34 @@ export default function ClubChampsView() {
                 {groupMatches.map((m: any) => {
                   const mine = isMyMatch(m);
                   const completed = m.status === "completed";
-                  const winnerIsA = completed && m.winner_member_id === m.player_a_member_id;
-                  const winnerIsB = completed && m.winner_member_id === m.player_b_member_id;
+                  const isBye = !!m.is_bye;
+                  const winnerIsA = !isBye && completed && m.winner_member_id === m.player_a_member_id;
+                  const winnerIsB = !isBye && completed && m.winner_member_id === m.player_b_member_id;
 
                   // Parse game scores for display
                   let gameBadges: { a: number; b: number }[] = [];
-                  if (m.game_scores) {
+                  if (!isBye && m.game_scores) {
                     try {
                       const gs = JSON.parse(m.game_scores);
                       gameBadges = gs.sets || [];
                     } catch { /* ignore */ }
+                  }
+
+                  if (isBye) {
+                    return (
+                      <div key={m.id} className={cn(
+                        "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded border border-amber-500/20 bg-amber-500/10",
+                        mine && "ring-1 ring-primary/30",
+                      )}>
+                        <span className="text-muted-foreground w-24 shrink-0 text-xs">Round {m.round_number}</span>
+                        <span className="text-muted-foreground w-12 shrink-0 text-xs">—</span>
+                        <span className="font-medium">{getMatchTeamA(m)}</span>
+                        <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">— BYE (rest round)</span>
+                        <Badge variant="outline" className="ml-auto text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">
+                          {byeHandling === "walkover_win" ? "Walkover" : byeHandling === "neutral" ? "Neutral" : "Bye"}
+                        </Badge>
+                      </div>
+                    );
                   }
 
                   return (

@@ -471,29 +471,45 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     type MatchDef = {
       groupNum: number; roundNum: number;
       entityA: string; entityB: string; // player ID or pair ID
+      leg: "home" | "away" | null;
+      isBye?: boolean;
+      byeEntityId?: string;
       date?: string; time?: string; courtId?: number;
     };
     const allMatches: MatchDef[] = [];
+    const fmt = roundFormat === "double_round_robin" ? "double" : "single";
+
+    const ingestRounds = (gi: number, ids: string[]) => {
+      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
+      rounds.forEach((roundMatches, ri) => {
+        roundMatches.forEach(([a, b, leg]) => {
+          allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
+        });
+        // Record byes (only when there's actually an odd entity count and admin
+        // wants them tracked). Walkover/neutral are scoring concerns; the schedule
+        // simply notes who has the bye that round.
+        const byeId = byesPerRound[ri];
+        if (byeId && byeHandling !== "no_match") {
+          allMatches.push({
+            groupNum: gi + 1,
+            roundNum: ri + 1,
+            entityA: byeId,
+            entityB: byeId,
+            leg: null,
+            isBye: true,
+            byeEntityId: byeId,
+          });
+        }
+      });
+    };
 
     if (isDoubles) {
       (groups as DoublePair[][]).forEach((groupPairs, gi) => {
-        const pairIds = groupPairs.map((p) => p.id);
-        const rounds = generateRoundRobinRounds(pairIds);
-        rounds.forEach((roundMatches, ri) => {
-          roundMatches.forEach(([a, b]) => {
-            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b });
-          });
-        });
+        ingestRounds(gi, groupPairs.map((p) => p.id));
       });
     } else {
       (groups as ClubMember[][]).forEach((groupPlayers, gi) => {
-        const playerIds = groupPlayers.map((p) => p.id);
-        const rounds = generateRoundRobinRounds(playerIds);
-        rounds.forEach((roundMatches, ri) => {
-          roundMatches.forEach(([a, b]) => {
-            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b });
-          });
-        });
+        ingestRounds(gi, groupPlayers.map((p) => p.id));
       });
     }
 

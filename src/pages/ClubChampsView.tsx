@@ -397,16 +397,34 @@ export default function ClubChampsView() {
                 {groupMatches.map((m: any) => {
                   const mine = isMyMatch(m);
                   const completed = m.status === "completed";
-                  const winnerIsA = completed && m.winner_member_id === m.player_a_member_id;
-                  const winnerIsB = completed && m.winner_member_id === m.player_b_member_id;
+                  const isBye = !!m.is_bye;
+                  const winnerIsA = !isBye && completed && m.winner_member_id === m.player_a_member_id;
+                  const winnerIsB = !isBye && completed && m.winner_member_id === m.player_b_member_id;
 
                   // Parse game scores for display
                   let gameBadges: { a: number; b: number }[] = [];
-                  if (m.game_scores) {
+                  if (!isBye && m.game_scores) {
                     try {
                       const gs = JSON.parse(m.game_scores);
                       gameBadges = gs.sets || [];
                     } catch { /* ignore */ }
+                  }
+
+                  if (isBye) {
+                    return (
+                      <div key={m.id} className={cn(
+                        "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded border border-amber-500/20 bg-amber-500/10",
+                        mine && "ring-1 ring-primary/30",
+                      )}>
+                        <span className="text-muted-foreground w-24 shrink-0 text-xs">Round {m.round_number}</span>
+                        <span className="text-muted-foreground w-12 shrink-0 text-xs">—</span>
+                        <span className="font-medium">{getMatchTeamA(m)}</span>
+                        <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">— BYE (rest round)</span>
+                        <Badge variant="outline" className="ml-auto text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">
+                          {byeHandling === "walkover_win" ? "Walkover" : byeHandling === "neutral" ? "Neutral" : "Bye"}
+                        </Badge>
+                      </div>
+                    );
                   }
 
                   return (

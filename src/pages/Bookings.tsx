@@ -870,7 +870,7 @@ export default function Bookings() {
       </div>
 
       {/* GoBook deep-link banner (only when club uses external GoBook system) */}
-      {(myClub as any)?.uses_gobook && (myClub as any)?.gobook_url && (
+      {usesGoBook && (
         <div className="px-4 mt-3">
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-3 flex items-center gap-3">

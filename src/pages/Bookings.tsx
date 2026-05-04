@@ -283,8 +283,13 @@ export default function Bookings() {
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
   const myClub = myClubData?.club;
-  const usesGoBook = !!(myClub as any)?.uses_gobook && !!(myClub as any)?.gobook_url;
-  const gobookUrl = (myClub as any)?.gobook_url as string | undefined;
+  const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
+    ((myClub as any)?.uses_gobook ? "gobook" : null);
+  const externalUrl = ((myClub as any)?.external_booking_url as string | undefined) ||
+    ((myClub as any)?.gobook_url as string | undefined);
+  const externalLabel = ((myClub as any)?.external_booking_label as string | undefined) ||
+    (externalProvider === "gobook" ? "GoBook" : externalProvider === "courtmanager" ? "Court Manager" : "the booking system");
+  const usesExternalBooking = !!externalProvider && externalProvider !== "none" && !!externalUrl;
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
   const slotMinutes: 30 | 60 = ((myClub as any)?.booking_slot_minutes === 60 ? 60 : 30) as 30 | 60;

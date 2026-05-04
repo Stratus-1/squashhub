@@ -679,6 +679,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // Create matches
       const matches = schedulePreview.allMatches.map((m) => {
+        const isBye = !!m.isBye;
+        // For bye rows we use the bye entity as both player_a/player_b so RLS-friendly
+        // NOT NULL columns stay populated, plus set is_bye + bye_member_id explicitly.
         if (isDoubles) {
           const pairA = pairMap.get(m.entityA);
           const pairB = pairMap.get(m.entityB);
@@ -690,9 +693,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             partner_a_member_id: pairA?.player2Id ? toDbId(pairA.player2Id) : null,
             player_b_member_id: toDbId(pairB?.player1Id || m.entityB),
             partner_b_member_id: pairB?.player2Id ? toDbId(pairB.player2Id) : null,
-            scheduled_date: m.date,
-            scheduled_time: m.time,
-            court_id: m.courtId,
+            scheduled_date: isBye ? null : m.date,
+            scheduled_time: isBye ? null : m.time,
+            court_id: isBye ? null : m.courtId,
+            leg: m.leg ?? null,
+            is_bye: isBye,
+            bye_member_id: isBye ? toDbId(pairA?.player1Id || m.entityA) : null,
+            status: isBye
+              ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
+              : "scheduled",
           };
         }
         return {
@@ -701,9 +710,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           round_number: m.roundNum,
           player_a_member_id: toDbId(m.entityA),
           player_b_member_id: toDbId(m.entityB),
-          scheduled_date: m.date,
-          scheduled_time: m.time,
-          court_id: m.courtId,
+          scheduled_date: isBye ? null : m.date,
+          scheduled_time: isBye ? null : m.time,
+          court_id: isBye ? null : m.courtId,
+          leg: m.leg ?? null,
+          is_bye: isBye,
+          bye_member_id: isBye ? toDbId(m.entityA) : null,
+          status: isBye
+            ? (byeHandling === "walkover_win" ? "completed" : "scheduled")
+            : "scheduled",
         };
       });
       if (matches.length > 0) {

@@ -885,7 +885,7 @@ export default function Bookings() {
               </div>
               <Button
                 size="sm"
-                onClick={() => openExternalUrl((myClub as any).gobook_url)}
+                onClick={() => openExternalUrl(gobookUrl!)}
                 className="shrink-0"
               >
                 Open GoBook

@@ -309,23 +309,25 @@ export default function ClubChampsView() {
                       const opponent = isA ? getMatchTeamB(m) : getMatchTeamA(m);
                       const won = m.winner_member_id === myMemberId;
                       const lost = m.winner_member_id && m.winner_member_id !== myMemberId;
+                      const isBye = !!m.is_bye;
 
                       return (
                         <div key={m.id} className={cn(
                           "flex items-center gap-2 text-sm p-2 rounded",
+                          isBye ? "bg-amber-500/10 border border-amber-500/20" :
                           m.status === "completed"
                             ? won ? "bg-green-500/10" : lost ? "bg-destructive/10" : "bg-muted/50"
                             : "bg-muted/50"
                         )}>
                           <span className="text-muted-foreground w-24 shrink-0">
-                            {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD"}
+                            {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : isBye ? `Round ${m.round_number}` : "TBD"}
                           </span>
-                          <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || "TBD"}</span>
-                          <span className="font-medium">vs {opponent}</span>
-                          {m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
-                          {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
-                          <Badge variant={m.status === "completed" ? (won ? "default" : "secondary") : "secondary"} className="text-[10px]">
-                            {m.status === "completed" ? (won ? "Won" : lost ? "Lost" : "Played") : m.status}
+                          <span className="text-muted-foreground w-12 shrink-0">{isBye ? "—" : (m.scheduled_time?.slice(0, 5) || "TBD")}</span>
+                          <span className="font-medium">{isBye ? "BYE (rest round)" : `vs ${opponent}`}</span>
+                          {!isBye && m.score && <Badge variant="secondary" className="ml-auto text-xs">{m.score}</Badge>}
+                          {!isBye && m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
+                          <Badge variant={isBye ? "outline" : m.status === "completed" ? (won ? "default" : "secondary") : "secondary"} className={cn("text-[10px]", isBye && "ml-auto border-amber-500/40 text-amber-600 dark:text-amber-400")}>
+                            {isBye ? (byeHandling === "walkover_win" ? "Bye · walkover" : "Bye") : m.status === "completed" ? (won ? "Won" : lost ? "Lost" : "Played") : m.status}
                           </Badge>
                         </div>
                       );

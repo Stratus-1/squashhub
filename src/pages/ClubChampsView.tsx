@@ -215,6 +215,178 @@ export default function ClubChampsView() {
     URL.revokeObjectURL(url);
   };
 
+  const canManage = useHasPermission("champs");
+  const qc = useQueryClient();
+
+  const unassignedCount = matches.filter(
+    (m: any) => !m.is_bye && m.status === "scheduled" && (!m.scheduled_date || !m.scheduled_time || !m.court_id),
+  ).length;
+
+  const rescheduleUnassigned = useMutation({
+    mutationFn: async () => {
+      if (!champ) throw new Error("Tournament not loaded");
+
+      // 1. Identify TBD matches needing slots
+      const tbdMatches = matches.filter(
+        (m: any) => !m.is_bye && m.status === "scheduled" && (!m.scheduled_date || !m.scheduled_time || !m.court_id),
+      );
+      if (tbdMatches.length === 0) {
+        throw new Error("No unassigned matches to reschedule");
+      }
+
+      // 2. Determine candidate slots: play days × time slots × courts
+      const playDaysSet = new Set((champ.play_days as number[]) || []);
+      const allDates = eachDayOfInterval({
+        start: new Date(champ.start_date),
+        end: new Date(champ.end_date),
+      }).filter((d) => playDaysSet.has(getDay(d)));
+
+      const matchDuration = champ.match_duration_minutes || 30;
+      const [sh, sm] = (champ.start_time || "18:00").split(":").map(Number);
+      const [eh, em] = (champ.end_time || "20:00").split(":").map(Number);
+      const startMins = sh * 60 + sm;
+      const endMins = eh * 60 + em;
+      const slotsPerSession = Math.max(0, Math.floor((endMins - startMins) / matchDuration));
+      const timeSlots: string[] = [];
+      for (let i = 0; i < slotsPerSession; i++) {
+        const mins = startMins + i * matchDuration;
+        timeSlots.push(
+          `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`,
+        );
+      }
+
+      // Reuse the courts already used by this tournament's existing matches
+      const courtIds = [
+        ...new Set(
+          matches.map((m: any) => m.court_id).filter((c: any) => c != null) as number[],
+        ),
+      ];
+      if (courtIds.length === 0) {
+        throw new Error("This tournament has no courts assigned. Edit it from the admin panel first.");
+      }
+
+      // 3. Build the set of slots already taken (by THIS champ's other matches)
+      const takenSlots = new Set<string>();
+      matches.forEach((m: any) => {
+        if (m.scheduled_date && m.scheduled_time && m.court_id) {
+          takenSlots.add(`${m.scheduled_date}|${m.scheduled_time.slice(0, 5)}|${m.court_id}`);
+        }
+      });
+
+      // 4. Track each player's last play date (2-day gap rule)
+      const entityLastDate = new Map<string, string>();
+      matches.forEach((m: any) => {
+        if (!m.scheduled_date) return;
+        [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id]
+          .filter(Boolean)
+          .forEach((pid: string) => {
+            const cur = entityLastDate.get(pid);
+            if (!cur || new Date(m.scheduled_date) > new Date(cur)) {
+              entityLastDate.set(pid, m.scheduled_date);
+            }
+          });
+      });
+
+      const canScheduleOn = (pid: string, dateStr: string) => {
+        const last = entityLastDate.get(pid);
+        if (!last) return true;
+        const diff = Math.round(
+          (new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24),
+        );
+        return Math.abs(diff) >= 2;
+      };
+
+      // 5. Allocate slots
+      const updates: { id: string; date: string; time: string; courtId: number; players: string[] }[] = [];
+      for (const m of tbdMatches) {
+        const players = [
+          m.player_a_member_id,
+          m.player_b_member_id,
+          m.partner_a_member_id,
+          m.partner_b_member_id,
+        ].filter(Boolean) as string[];
+
+        let assigned = false;
+        outer: for (const d of allDates) {
+          const ds = format(d, "yyyy-MM-dd");
+          if (!players.every((p) => canScheduleOn(p, ds))) continue;
+          for (const ts of timeSlots) {
+            for (const cid of courtIds) {
+              const key = `${ds}|${ts}|${cid}`;
+              if (takenSlots.has(key)) continue;
+              updates.push({ id: m.id, date: ds, time: ts, courtId: cid, players });
+              takenSlots.add(key);
+              players.forEach((p) => entityLastDate.set(p, ds));
+              assigned = true;
+              break outer;
+            }
+          }
+        }
+        if (!assigned) break; // out of capacity
+      }
+
+      if (updates.length === 0) {
+        throw new Error("No free slots available — try expanding the tournament window or adding courts.");
+      }
+
+      // 6. Persist match updates one by one
+      for (const u of updates) {
+        const { error } = await fromExt("club_champs_matches")
+          .update({
+            scheduled_date: u.date,
+            scheduled_time: u.time,
+            court_id: u.courtId,
+          })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+
+      // 7. Create court bookings (best-effort)
+      const allPlayerIds = [...new Set(updates.flatMap((u) => u.players))];
+      const { data: memberUsers } = await fromExt("club_members")
+        .select("id, user_id")
+        .in("id", allPlayerIds);
+      const userMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
+
+      const bookings = updates
+        .map((u) => {
+          const bookerId = userMap.get(u.players[0]);
+          if (!bookerId) return null;
+          const [h, mn] = u.time.split(":").map(Number);
+          const endTotal = h * 60 + mn + matchDuration;
+          const endTimeStr = `${String(Math.floor(endTotal / 60)).padStart(2, "0")}:${String(endTotal % 60).padStart(2, "0")}`;
+          return {
+            user_id: bookerId,
+            court_id: u.courtId,
+            date: u.date,
+            start_time: u.time,
+            end_time: endTimeStr,
+            status: "active",
+            is_friendly: false,
+          };
+        })
+        .filter(Boolean);
+
+      if (bookings.length > 0) {
+        const { error: bookErr } = await fromExt("bookings").insert(bookings);
+        if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);
+      }
+
+      return { scheduled: updates.length, remaining: tbdMatches.length - updates.length };
+    },
+    onSuccess: ({ scheduled, remaining }) => {
+      if (remaining > 0) {
+        toast.warning(`Scheduled ${scheduled} match${scheduled === 1 ? "" : "es"}; ${remaining} could not fit. Expand dates or add courts.`);
+      } else {
+        toast.success(`Scheduled ${scheduled} previously TBD match${scheduled === 1 ? "" : "es"}.`);
+      }
+      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to reschedule"),
+  });
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>;
   }

@@ -1,14 +1,16 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User } from "lucide-react";
-import { format } from "date-fns";
+import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock } from "lucide-react";
+import { format, eachDayOfInterval, getDay } from "date-fns";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useHasPermission } from "@/hooks/use-club-permissions";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

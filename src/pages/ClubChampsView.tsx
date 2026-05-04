@@ -106,16 +106,28 @@ export default function ClubChampsView() {
           } catch { /* ignore */ }
         }
       });
-      return { played, won, lost, gamesWon, gamesLost };
+      return { played, won, lost, gamesWon, gamesLost, byes };
+    };
+
+    const buildRow = (stats: ReturnType<typeof computeFor>) => {
+      // Walkover bye = win + points (treat like a played win). Other modes ignore byes.
+      const byeWins = byeHandling === "walkover_win" ? stats.byes : 0;
+      const totalPlayed = stats.played + byeWins;
+      const totalWon = stats.won + byeWins;
+      return {
+        ...stats,
+        played: totalPlayed,
+        won: totalWon,
+        gameDiff: stats.gamesWon - stats.gamesLost,
+        points: totalWon * 2 + (totalPlayed - totalWon - stats.lost),
+      };
     };
 
     const rows = groupEntries.map((e: any) => {
       const stats = computeFor(e.club_member_id);
       return {
         ...e,
-        ...stats,
-        gameDiff: stats.gamesWon - stats.gamesLost,
-        points: stats.won * 2 + (stats.played - stats.won - stats.lost),
+        ...buildRow(stats),
         name: isDoubles
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),

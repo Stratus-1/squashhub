@@ -1008,7 +1008,19 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {/* Scorecard table */}
+        {/* NSA Squad roster — click to assign players to lineup */}
+        {nsaLive && !setupDone && !isSubmitted && (
+          <RosterPanel
+            homeCode={fixture?.home_team_code}
+            awayCode={fixture?.away_team_code}
+            homePlayers={nsaHomeTeam?.players}
+            awayPlayers={nsaAwayTeam?.players}
+            assignedCodes={assignedCodes}
+            onAssign={handleRosterAssign}
+          />
+        )}
+
+
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-xs">
             <thead>

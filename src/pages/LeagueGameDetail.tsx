@@ -1094,22 +1094,20 @@ export default function LeagueGameDetail() {
                                   >
                                     <ArrowLeftRight className="w-3 h-3" />
                                   </button>
-                                  {/* Forfeit available even when away player slot is empty:
-                                      captain marks the missing opponent as a no-show. */}
-                                  {(pos.homeCode || pos.awayCode) && (
-                                    <button
-                                      onClick={() => {
-                                        const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
-                                        if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                          markForfeit(idx, "away");
-                                        }
-                                      }}
-                                      className="text-destructive hover:bg-destructive/10 rounded p-0.5"
-                                      title="Forfeit away player (no-show)"
-                                    >
-                                      <UserX className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
+                                  {/* Forfeit always available — even when both player slots are empty,
+                                      captain can mark this position as a no-show for either side. */}
+                                  <button
+                                    onClick={() => {
+                                      const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
+                                      if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                        markForfeit(idx, "away");
+                                      }
+                                    }}
+                                    className="text-destructive hover:bg-destructive/10 rounded p-0.5"
+                                    title="Forfeit away player (no-show)"
+                                  >
+                                    <UserX className="w-3.5 h-3.5" />
+                                  </button>
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (

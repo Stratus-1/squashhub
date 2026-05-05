@@ -537,6 +537,22 @@ export default function LeagueGameDetail() {
     toast.success(`Position ${posIdx + 1} forfeit undone`);
   }, [positions, persistPositionScores]);
 
+  // ---- Clear scores for a completed (non-forfeit) position so it can be re-entered. ----
+  const clearScores = useCallback((posIdx: number) => {
+    const current = positions[posIdx];
+    if (!current) return;
+    const updatedPos: PositionEntry = {
+      ...current,
+      scores: [],
+      completed: false,
+      isForfeit: false,
+      forfeitSide: null,
+    };
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = updatedPos; return next; });
+    persistPositionScores(posIdx, updatedPos);
+    toast.success(`Position ${posIdx + 1} scores cleared`);
+  }, [positions, persistPositionScores]);
+
 
   // ---- Save Setup (persist player data without submitting results) ----
   const handleSaveSetup = async () => {

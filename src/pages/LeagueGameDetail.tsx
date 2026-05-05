@@ -156,6 +156,54 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId,
   });
 
+  // ---- NSA team-id lookup for home/away codes (used to pull live roster + W/L) ----
+  const { data: nsaTeamIds } = useQuery({
+    queryKey: ["nsa-team-ids", fixture?.home_team_code, fixture?.away_team_code],
+    queryFn: async () => {
+      if (!fixture) return { home: null as string | null, away: null as string | null };
+      const codes = [fixture.home_team_code, fixture.away_team_code].filter(Boolean) as string[];
+      if (codes.length === 0) return { home: null, away: null };
+      const { data } = await (supabase as any)
+        .from("leagues")
+        .select("code, nsa_team_id")
+        .in("code", codes);
+      const byCode = new Map<string, string | null>();
+      (data || []).forEach((r: any) => byCode.set(r.code, r.nsa_team_id));
+      return {
+        home: fixture.home_team_code ? byCode.get(fixture.home_team_code) ?? null : null,
+        away: fixture.away_team_code ? byCode.get(fixture.away_team_code) ?? null : null,
+      };
+    },
+    enabled: !!fixture,
+  });
+
+  const { data: nsaHomeTeam } = useNsaTeam(nsaTeamIds?.home, !!nsaTeamIds?.home);
+  const { data: nsaAwayTeam } = useNsaTeam(nsaTeamIds?.away, !!nsaTeamIds?.away);
+
+  // NSF code -> overlay info from NSA roster
+  const nsaRosterMap = useMemo(() => {
+    const map = new Map<string, { name: string; won: number; lost: number; played: number; side: "home" | "away" }>();
+    const ingest = (players: NsaTeamPlayer[] | undefined, side: "home" | "away") => {
+      (players || []).forEach((p) => {
+        const code = (p.code || "").toUpperCase().trim();
+        if (!code) return;
+        map.set(code, {
+          name: `${p.name || ""} ${p.surname || ""}`.trim(),
+          won: Number(p.result_summary?.won ?? 0) || 0,
+          lost: Number(p.result_summary?.lost ?? 0) || 0,
+          played: Number(p.result_summary?.played ?? 0) || 0,
+          side,
+        });
+      });
+    };
+    ingest(nsaHomeTeam?.players, "home");
+    ingest(nsaAwayTeam?.players, "away");
+    return map;
+  }, [nsaHomeTeam, nsaAwayTeam]);
+
+  const nsaLive = !!(nsaHomeTeam || nsaAwayTeam);
+
+
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
       const loaded = [1, 2, 3, 4].map((pos) => {

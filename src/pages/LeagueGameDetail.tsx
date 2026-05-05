@@ -883,15 +883,31 @@ export default function LeagueGameDetail() {
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
-                            <span className="flex items-center justify-center">
+                            <span className="flex items-center justify-center gap-0.5">
                               {!isSubmitted && !pos.completed && (
-                                <button
-                                  onClick={() => setSwapTarget({ idx, side: "home" })}
-                                  className="text-muted-foreground hover:text-primary"
-                                  title="Swap player"
-                                >
-                                  <ArrowLeftRight className="w-3 h-3" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "home" })}
+                                    className="text-muted-foreground hover:text-primary"
+                                    title="Swap player"
+                                  >
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Mark home player at position ${idx + 1} as a forfeit?\n\nAway team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and home team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                        markForfeit(idx, "home");
+                                      }
+                                    }}
+                                    className="text-muted-foreground hover:text-destructive"
+                                    title="Forfeit (player not available)"
+                                  >
+                                    <UserX className="w-3 h-3" />
+                                  </button>
+                                </>
+                              )}
+                              {pos.isForfeit && pos.forfeitSide === "home" && (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-destructive text-destructive">FFT</Badge>
                               )}
                             </span>
                           </>

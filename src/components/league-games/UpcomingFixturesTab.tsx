@@ -104,6 +104,63 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     enabled: platformAssocIds.length > 0 && clubPrefixes.length > 0,
   });
 
+  // ----- Live NSA fixtures (when this association is linked to NSA) -----
+  const isNsaLive = externalSource === "nsa" && !!externalClubId;
+  const { data: nsaFixtures, isFetching: nsaLoading, error: nsaError } = useNsaFixtures({
+    club: externalClubId ?? undefined,
+    league: isNsaLive ? "s79" : undefined, // current season — TODO: make dynamic
+    enabled: isNsaLive,
+  });
+
+  // Merge: when live NSA data is available, use it as the primary list (filtered to range),
+  // and resolve each to the matching snapshot row to keep the existing score-button working.
+  const mergedFixtures = useMemo(() => {
+    if (!isNsaLive || !nsaFixtures) return fixtures || [];
+
+    const snapshot = (fixtures || []) as any[];
+    const snapByExternal = new Map<string, any>();
+    const snapByKey = new Map<string, any>(); // date|home|away
+    for (const s of snapshot) {
+      if (s.external_id) snapByExternal.set(String(s.external_id), s);
+      const k = `${s.fixture_date}|${(s.home_team_code || "").toUpperCase()}|${(s.away_team_code || "").toUpperCase()}`;
+      snapByKey.set(k, s);
+    }
+
+    return (nsaFixtures as NsaFixture[])
+      .filter((f) => f.date >= rangeStart && f.date <= rangeEnd)
+      .filter((f) => {
+        const home = f.team1.code.toUpperCase();
+        const away = f.team2.code.toUpperCase();
+        return clubPrefixes.some((p) => {
+          const re = new RegExp(`^${p}\\d+$`);
+          return re.test(home) || re.test(away);
+        });
+      })
+      .map((f) => {
+        const homeCode = f.team1.code.toUpperCase();
+        const awayCode = f.team2.code.toUpperCase();
+        const key = `${f.date}|${homeCode}|${awayCode}`;
+        const snap = snapByExternal.get(f.id) || snapByKey.get(key);
+        return {
+          // Use snapshot id if found (so scoring works); otherwise synthesize a stable display id
+          id: snap?.id || `nsa-${f.id}`,
+          fixture_date: f.date,
+          home_team_code: homeCode,
+          away_team_code: awayCode,
+          venue_name: f.venue,
+          division: `${f.category} ${f.league}`,
+          association_id: snap?.association_id || null,
+          external_id: f.id,
+          _isLive: true,
+          _hasSnapshot: !!snap,
+          _nsaStatus: f.status,
+        };
+      })
+      .sort((a, b) => a.fixture_date.localeCompare(b.fixture_date) || a.division.localeCompare(b.division));
+  }, [isNsaLive, nsaFixtures, fixtures, rangeStart, rangeEnd, clubPrefixes]);
+
+  const displayFixtures = isNsaLive ? mergedFixtures : (fixtures || []);
+
   const fixtureIds = (fixtures || []).map((f) => f.id);
   const { data: existingResults } = useQuery({
     queryKey: ["league-fixture-results", fixtureIds.join(",")],

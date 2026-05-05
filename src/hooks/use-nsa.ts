@@ -89,8 +89,42 @@ export function useNsaTeam(teamId: string | null | undefined, enabled = true) {
   });
 }
 
-/** Imperative fetch for one-off lookups (e.g. bulk auto-link in admin UI). */
+/** Imperative fetch for one-off lookups. */
 export async function fetchNsaFixtures(opts: { league: string; club?: string }): Promise<NsaFixture[]> {
   return callProxy<NsaFixture[]>("fixtures", { league: opts.league, club: opts.club });
 }
+
+/** Current NSA season — TODO: make this dynamic / configurable per association. */
+export const NSA_CURRENT_SEASON = "s79";
+
+/** Normalize a team code for matching: uppercase, strip non-alphanumeric. */
+const normalizeCode = (s: string | null | undefined) =>
+  (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/**
+ * Resolve a local team code (e.g. "CSI006") to NSA's numeric team_id by scanning
+ * the season's fixtures, then fetch that team's roster. No DB column required —
+ * codes are the contract since the club assigns them.
+ */
+export function useNsaTeamByCode(code: string | null | undefined, enabled = true) {
+  const { data: fixtures } = useNsaFixtures({
+    league: NSA_CURRENT_SEASON,
+    enabled: enabled && !!code,
+  });
+
+  const teamId = (() => {
+    if (!code || !fixtures) return null;
+    const target = normalizeCode(code);
+    if (!target) return null;
+    for (const f of fixtures) {
+      for (const t of [f.team1, f.team2]) {
+        if (t?.code && normalizeCode(t.code) === target) return String(t.id);
+      }
+    }
+    return null;
+  })();
+
+  return useNsaTeam(teamId, enabled && !!teamId);
+}
+
 

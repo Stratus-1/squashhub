@@ -161,7 +161,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
 
   const displayFixtures = isNsaLive ? mergedFixtures : (fixtures || []);
 
-  const fixtureIds = (fixtures || []).map((f) => f.id);
+  // Only the snapshot fixtures (with real UUIDs) get result/lineup lookups
+  const fixtureIds = useMemo(
+    () => (displayFixtures as any[]).filter((f) => !f._isLive || f._hasSnapshot).map((f) => f.id),
+    [displayFixtures]
+  );
   const { data: existingResults } = useQuery({
     queryKey: ["league-fixture-results", fixtureIds.join(",")],
     queryFn: async () => {
@@ -213,13 +217,13 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
 
   const fixturesByDate = useMemo(() => {
     const groups = new Map<string, any[]>();
-    for (const f of (fixtures || []) as any[]) {
+    for (const f of (displayFixtures || []) as any[]) {
       const date = f.fixture_date;
       if (!groups.has(date)) groups.set(date, []);
       groups.get(date)!.push(f);
     }
     return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  }, [fixtures]);
+  }, [displayFixtures]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);

@@ -965,18 +965,20 @@ export default function LeagueGameDetail() {
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-destructive text-destructive font-bold">FORFEIT</Badge>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm(`Undo forfeit for position ${idx + 1} (home)?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
-                                        undoForfeit(idx);
-                                      }
-                                    }}
-                                    className="text-primary hover:bg-primary/10 rounded px-1.5 py-0.5 border border-primary/50 flex items-center gap-1 text-[10px] font-medium"
-                                    title="Undo forfeit"
-                                  >
-                                    <RotateCcw className="w-3.5 h-3.5" />
-                                    Undo
-                                  </button>
+                                  {!isSubmitted && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Undo forfeit for position ${idx + 1} (home)?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
+                                          undoForfeit(idx);
+                                        }
+                                      }}
+                                      className="text-primary hover:bg-primary/10 rounded px-1.5 py-0.5 border border-primary/50 flex items-center gap-1 text-[10px] font-medium"
+                                      title="Undo forfeit"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                      Undo
+                                    </button>
+                                  )}
                                 </>
                               )}
                               {!isSubmitted && (
@@ -1027,17 +1029,19 @@ export default function LeagueGameDetail() {
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>
                                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
-                                        undoForfeit(idx);
-                                      }
-                                    }}
-                                    className="text-primary hover:bg-primary/10 rounded p-0.5 border border-primary/40"
-                                    title="Undo forfeit"
-                                  >
-                                    <RotateCcw className="w-3.5 h-3.5" />
-                                  </button>
+                                  {!isSubmitted && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
+                                          undoForfeit(idx);
+                                        }
+                                      }}
+                                      className="text-primary hover:bg-primary/10 rounded p-0.5 border border-primary/40"
+                                      title="Undo forfeit"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                               {!isSubmitted && pos.completed && !pos.isForfeit && (
@@ -1082,18 +1086,20 @@ export default function LeagueGameDetail() {
                               {pos.isForfeit && pos.forfeitSide === "away" && (
                                 <>
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-destructive text-destructive font-bold">FORFEIT</Badge>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm(`Undo forfeit for position ${idx + 1} (away)?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
-                                        undoForfeit(idx);
-                                      }
-                                    }}
-                                    className="text-primary hover:bg-primary/10 rounded px-1.5 py-0.5 border border-primary/50 flex items-center gap-1 text-[10px] font-medium"
-                                    title="Undo forfeit"
-                                  >
-                                    <RotateCcw className="w-3.5 h-3.5" />
-                                    Undo
-                                  </button>
+                                  {!isSubmitted && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Undo forfeit for position ${idx + 1} (away)?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
+                                          undoForfeit(idx);
+                                        }
+                                      }}
+                                      className="text-primary hover:bg-primary/10 rounded px-1.5 py-0.5 border border-primary/50 flex items-center gap-1 text-[10px] font-medium"
+                                      title="Undo forfeit"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                      Undo
+                                    </button>
+                                  )}
                                 </>
                               )}
                               {!isSubmitted && (
@@ -1183,17 +1189,19 @@ export default function LeagueGameDetail() {
                               {pos.isForfeit && pos.forfeitSide === "away" && (
                                 <>
                                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
-                                        undoForfeit(idx);
-                                      }
-                                    }}
-                                    className="text-primary hover:bg-primary/10 rounded p-0.5 border border-primary/40"
-                                    title="Undo forfeit"
-                                  >
-                                    <RotateCcw className="w-3.5 h-3.5" />
-                                  </button>
+                                  {!isSubmitted && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
+                                          undoForfeit(idx);
+                                        }
+                                      }}
+                                      className="text-primary hover:bg-primary/10 rounded p-0.5 border border-primary/40"
+                                      title="Undo forfeit"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                               {!isSubmitted && pos.completed && !pos.isForfeit && (

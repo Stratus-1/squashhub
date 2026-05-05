@@ -506,7 +506,15 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
       {expanded && (() => {
         const assoc = associations.find(a => a.id === league.association_id);
         if (assoc?.external_source !== "nsa") return null;
-        return <NsaTeamIdEditor league={league} />;
+        return (
+          <div className="mt-2 border-t pt-2 flex items-center gap-2 text-[10px] text-emerald-700">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="font-semibold">NSA Live</span>
+            <span className="text-muted-foreground">
+              Roster + W/L auto-resolved from team code <span className="font-mono">{(league as any).code}</span>.
+            </span>
+          </div>
+        );
       })()}
     </Card>
   );

@@ -88,3 +88,9 @@ export function useNsaTeam(teamId: string | null | undefined, enabled = true) {
     retry: 1,
   });
 }
+
+/** Imperative fetch for one-off lookups (e.g. bulk auto-link in admin UI). */
+export async function fetchNsaFixtures(opts: { league: string; club?: string }): Promise<NsaFixture[]> {
+  return callProxy<NsaFixture[]>("fixtures", { league: opts.league, club: opts.club });
+}
+

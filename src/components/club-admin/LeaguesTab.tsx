@@ -547,6 +547,78 @@ function NsaTeamIdEditor({ league }: { league: League }) {
   );
 }
 
+// ─── Bulk auto-link local league codes → NSA team IDs from fixtures feed ───
+function NsaDiscoverButton({
+  associationId,
+  externalClubId,
+  leagues,
+}: {
+  associationId: string;
+  externalClubId?: string | null;
+  leagues: League[];
+}) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const normalize = (s: string) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      const { fetchNsaFixtures } = await import("@/hooks/use-nsa");
+      // Pull all NSA fixtures for current season (filtered by club if known, else all)
+      const fixtures = await fetchNsaFixtures({
+        league: "s79",
+        club: externalClubId || undefined,
+      });
+
+      // Build normalized code → team_id map from every team referenced in fixtures
+      const codeToId = new Map<string, string>();
+      for (const f of fixtures || []) {
+        for (const t of [f.team1, f.team2]) {
+          if (t?.code && t?.id) codeToId.set(normalize(t.code), String(t.id));
+        }
+      }
+
+      // Match unmapped local leagues by normalized code
+      let matched = 0, skipped = 0, unmatched: string[] = [];
+      for (const l of leagues) {
+        if (l.nsa_team_id) { skipped++; continue; }
+        const key = normalize((l as any).code || "");
+        const teamId = key ? codeToId.get(key) : undefined;
+        if (!teamId) { unmatched.push((l as any).code || l.id); continue; }
+        const { error } = await fromExt("leagues").update({ nsa_team_id: teamId }).eq("id", l.id);
+        if (!error) matched++;
+      }
+
+      qc.invalidateQueries({ queryKey: ["leagues"] });
+      if (matched > 0) toast.success(`Linked ${matched} team${matched === 1 ? "" : "s"} to NSA`);
+      if (matched === 0 && unmatched.length === 0) toast.info("All NSA-eligible teams already linked");
+      if (unmatched.length > 0) toast.warning(`No NSA match for: ${unmatched.join(", ")}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to discover NSA teams");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unlinkedCount = leagues.filter((l) => !l.nsa_team_id).length;
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-7 text-[10px] px-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+      onClick={run}
+      disabled={busy || leagues.length === 0}
+      title={`Auto-link ${unlinkedCount} unmapped league${unlinkedCount === 1 ? "" : "s"} to NSA team IDs`}
+    >
+      {busy ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+      Discover NSA IDs {unlinkedCount > 0 && `(${unlinkedCount})`}
+    </Button>
+  );
+}
+
 // ─── Allocate Players Dialog (drag & drop across leagues) ───
 function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenChange }: {
   gender: "men" | "ladies" | "mixed";

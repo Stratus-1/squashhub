@@ -387,12 +387,17 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
                         {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
                         {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
+                        {f._isLive && !f._hasSnapshot && (
+                          <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700">Not yet imported</Badge>
+                        )}
                       </div>
                     </div>
                     <Button
                       size="sm"
                       variant={inLineup || mine ? "default" : "outline"}
                       className="shrink-0"
+                      disabled={f._isLive && !f._hasSnapshot}
+                      title={f._isLive && !f._hasSnapshot ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring." : undefined}
                       onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
                     >
                       <Pencil className="w-3 h-3 mr-1" />

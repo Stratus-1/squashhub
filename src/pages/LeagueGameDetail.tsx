@@ -393,10 +393,14 @@ export default function LeagueGameDetail() {
 
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {
     if (!code || code.length < 3) return "";
-    const { data } = await supabase.from("platform_league_members" as any).select("first_name, surname").eq("user_code", code.toUpperCase()).maybeSingle();
+    const upper = code.toUpperCase();
+    // Prefer NSA live roster when available
+    const nsa = nsaRosterMap.get(upper);
+    if (nsa?.name) return nsa.name;
+    const { data } = await supabase.from("platform_league_members" as any).select("first_name, surname").eq("user_code", upper).maybeSingle();
     if (data) return `${(data as any).first_name} ${(data as any).surname}`;
     return "";
-  }, []);
+  }, [nsaRosterMap]);
 
   const updatePosition = (idx: number, field: keyof PositionEntry, value: any) => {
     setPositions((prev) => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next; });

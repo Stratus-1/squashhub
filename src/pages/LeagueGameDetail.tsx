@@ -156,11 +156,13 @@ export default function LeagueGameDetail() {
     if (existingMatches && existingMatches.length > 0) {
       const loaded = [1, 2, 3, 4].map((pos) => {
         const m = existingMatches.find((r: any) => r.position === pos);
-        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false };
+        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
         return {
           homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
           awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
-          scores: (m.game_scores as any[]) || [], completed: (m.game_scores as any[])?.length > 0,
+          scores: (m.game_scores as any[]) || [], completed: (m.game_scores as any[])?.length > 0 || !!m.is_forfeit,
+          isForfeit: !!m.is_forfeit,
+          forfeitSide: (m.forfeit_side as "home" | "away" | null) ?? null,
         };
       });
       setPositions(loaded);

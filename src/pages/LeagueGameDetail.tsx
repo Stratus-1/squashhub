@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -537,6 +537,22 @@ export default function LeagueGameDetail() {
     toast.success(`Position ${posIdx + 1} forfeit undone`);
   }, [positions, persistPositionScores]);
 
+  // ---- Clear scores for a completed (non-forfeit) position so it can be re-entered. ----
+  const clearScores = useCallback((posIdx: number) => {
+    const current = positions[posIdx];
+    if (!current) return;
+    const updatedPos: PositionEntry = {
+      ...current,
+      scores: [],
+      completed: false,
+      isForfeit: false,
+      forfeitSide: null,
+    };
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = updatedPos; return next; });
+    persistPositionScores(posIdx, updatedPos);
+    toast.success(`Position ${posIdx + 1} scores cleared`);
+  }, [positions, persistPositionScores]);
+
 
   // ---- Save Setup (persist player data without submitting results) ----
   const handleSaveSetup = async () => {
@@ -898,10 +914,10 @@ export default function LeagueGameDetail() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-muted/70 text-[10px] font-semibold">
-                <th className="p-0" colSpan={bestOf + 5}>
+                <th className="p-0" colSpan={bestOf + 6}>
                   <div className="grid items-center"
                     style={setupDone
-                      ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 96px` }
+                      ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px 96px` }
                       : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                     }>
                     <span className="p-1 text-left">#</span>
@@ -912,6 +928,7 @@ export default function LeagueGameDetail() {
                       <span key={i} className="p-1 text-center">{i + 1}</span>
                     ))}
                     {setupDone && <span className="p-1 text-center">G</span>}
+                    {setupDone && <span className="p-1 text-center" title="Total points">P</span>}
                     <span className="p-1"></span>
                   </div>
                 </th>
@@ -926,14 +943,14 @@ export default function LeagueGameDetail() {
                 const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
                 return (
                   <tr key={idx} className={cn("border-t", pos.isForfeit && "bg-destructive/10")}>
-                    <td className="p-0" colSpan={bestOf + 5}>
+                    <td className="p-0" colSpan={bestOf + 6}>
                       {/* Home row */}
                       <div className={cn(
                         "grid items-center border-b",
                         pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
                       )}
                         style={setupDone
-                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 96px` }
+                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px 96px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
@@ -983,6 +1000,7 @@ export default function LeagueGameDetail() {
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? homeTotalPts : ""}</span>
                             <span className="flex items-center justify-center gap-0.5">
                               {!isSubmitted && !pos.completed && (
                                 <>
@@ -1022,6 +1040,23 @@ export default function LeagueGameDetail() {
                                   </button>
                                 </>
                               )}
+                              {!isSubmitted && pos.completed && !pos.isForfeit && (
+                                <button
+                                  onClick={() => {
+                                    if (!window.confirm(`Delete the recorded score for position ${idx + 1}?\n\nThis cannot be undone — you will need to re-enter or re-mark the game.`)) return;
+                                    const typed = window.prompt(`To confirm, type DELETE (in capitals) to clear position ${idx + 1} scores:`);
+                                    if (typed === "DELETE") {
+                                      clearScores(idx);
+                                    } else if (typed !== null) {
+                                      toast.error("Deletion cancelled — text did not match");
+                                    }
+                                  }}
+                                  className="text-destructive hover:bg-destructive/10 rounded p-0.5 border border-destructive/40"
+                                  title="Delete recorded scores"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </span>
                           </>
                         )}
@@ -1032,7 +1067,7 @@ export default function LeagueGameDetail() {
                         pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
                       )}
                         style={setupDone
-                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 96px` }
+                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px 96px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                         }>
                         <span></span>
@@ -1082,6 +1117,7 @@ export default function LeagueGameDetail() {
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.awayWins : ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? awayTotalPts : ""}</span>
                             {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
                               {!isSubmitted && !pos.completed && (
@@ -1159,6 +1195,23 @@ export default function LeagueGameDetail() {
                                     <RotateCcw className="w-3.5 h-3.5" />
                                   </button>
                                 </>
+                              )}
+                              {!isSubmitted && pos.completed && !pos.isForfeit && (
+                                <button
+                                  onClick={() => {
+                                    if (!window.confirm(`Delete the recorded score for position ${idx + 1}?\n\nThis cannot be undone — you will need to re-enter or re-mark the game.`)) return;
+                                    const typed = window.prompt(`To confirm, type DELETE (in capitals) to clear position ${idx + 1} scores:`);
+                                    if (typed === "DELETE") {
+                                      clearScores(idx);
+                                    } else if (typed !== null) {
+                                      toast.error("Deletion cancelled — text did not match");
+                                    }
+                                  }}
+                                  className="text-destructive hover:bg-destructive/10 rounded p-0.5 border border-destructive/40"
+                                  title="Delete recorded scores"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               )}
                             </span>
                           </>

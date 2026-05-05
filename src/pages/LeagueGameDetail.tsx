@@ -992,19 +992,17 @@ export default function LeagueGameDetail() {
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>
                                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
-                                  {!isSubmitted && (
-                                    <button
-                                      onClick={() => {
-                                        if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty.`)) {
-                                          undoForfeit(idx);
-                                        }
-                                      }}
-                                      className="text-muted-foreground hover:text-primary"
-                                      title="Undo forfeit"
-                                    >
-                                      <RotateCcw className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
+                                        undoForfeit(idx);
+                                      }
+                                    }}
+                                    className="text-primary hover:bg-primary/10 rounded p-0.5 border border-primary/40"
+                                    title="Undo forfeit"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
                                 </>
                               )}
                             </span>
@@ -1117,19 +1115,17 @@ export default function LeagueGameDetail() {
                               {pos.isForfeit && pos.forfeitSide === "away" && (
                                 <>
                                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
-                                  {!isSubmitted && (
-                                    <button
-                                      onClick={() => {
-                                        if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty.`)) {
-                                          undoForfeit(idx);
-                                        }
-                                      }}
-                                      className="text-muted-foreground hover:text-primary"
-                                      title="Undo forfeit"
-                                    >
-                                      <RotateCcw className="w-3 h-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
+                                        undoForfeit(idx);
+                                      }
+                                    }}
+                                    className="text-primary hover:bg-primary/10 rounded p-0.5 border border-primary/40"
+                                    title="Undo forfeit"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
                                 </>
                               )}
                             </span>

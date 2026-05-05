@@ -93,6 +93,9 @@ export default function LeagueGameDetail() {
   const [setupDone, setSetupDone] = useState(false);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const [manualEntry, setManualEntry] = useState<number | null>(null);
+  // Indices of completed games (within the current manualEntry rubber) that the
+  // user has explicitly chosen to edit. All other completed games are locked.
+  const [manualUnlocked, setManualUnlocked] = useState<Set<number>>(new Set());
   const [homeSig, setHomeSig] = useState("");
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);

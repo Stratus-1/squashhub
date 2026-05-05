@@ -158,6 +158,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
     if (matchOver) return;
     try {
       const snapshot: PersistedState = {
+        sessionKey,
         scoreA, scoreB, gamesA, gamesB, completedGames,
         server, serveSide, history, matchOver, matchWinner, elapsed,
       };

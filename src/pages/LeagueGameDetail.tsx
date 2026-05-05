@@ -1231,13 +1231,28 @@ export default function LeagueGameDetail() {
               })}
 
               {/* Totals rows */}
-              {setupDone && (
+              {setupDone && (() => {
+                const homeAllPts = positions.reduce((sum, p) => sum + p.scores.reduce((s, g) => s + g.home, 0), 0);
+                const awayAllPts = positions.reduce((sum, p) => sum + p.scores.reduce((s, g) => s + g.away, 0), 0);
+                return (
                 <>
-                  <tr className="border-t bg-muted/40 font-semibold text-xs">
-                    <td colSpan={2} className="p-1 text-right">SUB TOTALS</td>
+                  <tr className="border-t bg-muted/60 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <td colSpan={2} className="p-1 text-right"></td>
+                    <td colSpan={bestOf} />
+                    <td className="text-center p-1 text-primary">H</td>
+                    <td className="text-center p-1 text-secondary-foreground">V</td>
+                  </tr>
+                  <tr className="bg-muted/40 font-semibold text-xs">
+                    <td colSpan={2} className="p-1 text-right">SUB TOTALS (G)</td>
                     <td colSpan={bestOf} />
                     <td className="text-center p-1">{summary.homeTotalGames}</td>
                     <td className="text-center p-1">{summary.awayTotalGames}</td>
+                  </tr>
+                  <tr className="bg-muted/40 font-semibold text-xs">
+                    <td colSpan={2} className="p-1 text-right">TOTAL POINTS (P)</td>
+                    <td colSpan={bestOf} />
+                    <td className="text-center p-1 text-primary">{homeAllPts}</td>
+                    <td className="text-center p-1 text-primary">{awayAllPts}</td>
                   </tr>
                   <tr className="bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
@@ -1260,7 +1275,8 @@ export default function LeagueGameDetail() {
                     <td className="text-center p-1">{summary.awayTotal}</td>
                   </tr>
                 </>
-              )}
+                );
+              })()}
             </tbody>
           </table>
         </div>

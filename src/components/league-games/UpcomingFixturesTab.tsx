@@ -274,6 +274,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           </PopoverContent>
         </Popover>
       )}
+      {isNsaLive && (
+        <Badge variant="outline" className="text-[10px] gap-1 border-green-500/50 text-green-700">
+          <Wifi className="w-3 h-3" />
+          {nsaError ? "Live offline · using cache" : nsaLoading ? "Syncing live…" : "Live from NSA"}
+        </Badge>
+      )}
       <span className="text-xs text-muted-foreground ml-auto">
         Showing {format(parseISO(rangeStart), "dd MMM")} – {format(parseISO(rangeEnd), "dd MMM yyyy")}
       </span>

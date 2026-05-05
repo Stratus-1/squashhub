@@ -116,7 +116,8 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const cast = useMarkerCast(club?.id);
   const [castDialogOpen, setCastDialogOpen] = useState(false);
 
-  const persisted = useRef<PersistedState | null>(loadPersisted()).current;
+  const sessionKey = getSessionKey(config);
+  const persisted = useRef<PersistedState | null>(loadPersisted(sessionKey)).current;
 
   const [scoreA, setScoreA] = useState(persisted?.scoreA ?? 0);
   const [scoreB, setScoreB] = useState(persisted?.scoreB ?? 0);

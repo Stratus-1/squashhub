@@ -914,10 +914,10 @@ export default function LeagueGameDetail() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-muted/70 text-[10px] font-semibold">
-                <th className="p-0" colSpan={bestOf + 5}>
+                <th className="p-0" colSpan={bestOf + 6}>
                   <div className="grid items-center"
                     style={setupDone
-                      ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 96px` }
+                      ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px 96px` }
                       : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                     }>
                     <span className="p-1 text-left">#</span>
@@ -928,6 +928,7 @@ export default function LeagueGameDetail() {
                       <span key={i} className="p-1 text-center">{i + 1}</span>
                     ))}
                     {setupDone && <span className="p-1 text-center">G</span>}
+                    {setupDone && <span className="p-1 text-center" title="Total points">P</span>}
                     <span className="p-1"></span>
                   </div>
                 </th>

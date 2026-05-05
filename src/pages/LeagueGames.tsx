@@ -190,6 +190,8 @@ export default function LeagueGames() {
                 associationScope={selectedAssoc?.scope ?? "region"}
                 clubId={clubId ?? undefined}
                 associationId={selectedAssocId ?? undefined}
+                externalSource={selectedAssoc?.external_source ?? null}
+                externalClubId={selectedAssoc?.external_club_id ?? null}
               />
             </TabsContent>
 

@@ -493,8 +493,15 @@ export default function LeagueGameDetail() {
       : { home: 15, away: 0 };
     const games = bestOf === 5 ? 3 : 2; // win majority of best-of
     const scores = Array.from({ length: games }, () => ({ ...winningGame }));
+    const current = positions[posIdx];
+    // If the forfeiting side has no player listed, fill with a "—" placeholder so
+    // the row still persists and shows the no-show clearly.
     const updatedPos: PositionEntry = {
-      ...positions[posIdx],
+      ...current,
+      homeCode: side === "home" && !current.homeCode ? "—" : current.homeCode,
+      homeName: side === "home" && !current.homeName ? "No player" : current.homeName,
+      awayCode: side === "away" && !current.awayCode ? "—" : current.awayCode,
+      awayName: side === "away" && !current.awayName ? "No player" : current.awayName,
       scores,
       completed: true,
       isForfeit: true,
@@ -845,10 +852,13 @@ export default function LeagueGameDetail() {
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
                 const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
                 return (
-                  <tr key={idx} className="border-t">
+                  <tr key={idx} className={cn("border-t", pos.isForfeit && "bg-destructive/10")}>
                     <td className="p-0" colSpan={bestOf + 5}>
                       {/* Home row */}
-                      <div className="grid items-center border-b"
+                      <div className={cn(
+                        "grid items-center border-b",
+                        pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
+                      )}
                         style={setupDone
                           ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
@@ -907,14 +917,17 @@ export default function LeagueGameDetail() {
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "home" && (
-                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-destructive text-destructive">FFT</Badge>
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
                               )}
                             </span>
                           </>
                         )}
                       </div>
                       {/* Away row */}
-                      <div className="grid items-center"
+                      <div className={cn(
+                        "grid items-center",
+                        pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
+                      )}
                         style={setupDone
                           ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
@@ -951,48 +964,53 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.awayWins : ""}</span>
                             {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
-                              {hasPlayers && !isSubmitted && (
+                              {!isSubmitted && !pos.completed && (
                                 <>
-                                  <button
-                                    onClick={() => startMarking(idx)}
-                                    className="bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80"
-                                    title="Mark game live"
-                                  >
-                                    <Play className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => { if (pos.scores.length === 0) addGame(idx); setManualEntry(idx); }}
-                                    className="text-muted-foreground hover:text-foreground"
-                                    title="Enter scores manually"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                  </button>
-                                  {!pos.completed && (
-                                    <button
-                                      onClick={() => setSwapTarget({ idx, side: "away" })}
-                                      className="text-muted-foreground hover:text-primary"
-                                      title="Swap player"
-                                    >
-                                      <ArrowLeftRight className="w-3 h-3" />
-                                    </button>
+                                  {hasPlayers && (
+                                    <>
+                                      <button
+                                        onClick={() => startMarking(idx)}
+                                        className="bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80"
+                                        title="Mark game live"
+                                      >
+                                        <Play className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => { if (pos.scores.length === 0) addGame(idx); setManualEntry(idx); }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                        title="Enter scores manually"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+                                    </>
                                   )}
-                                  {!pos.completed && (
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "away" })}
+                                    className="text-muted-foreground hover:text-primary"
+                                    title="Swap / pick away player"
+                                  >
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                  </button>
+                                  {/* Forfeit available even when away player slot is empty:
+                                      captain marks the missing opponent as a no-show. */}
+                                  {(pos.homeCode || pos.awayCode) && (
                                     <button
                                       onClick={() => {
-                                        if (window.confirm(`Mark away player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                        const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
+                                        if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
                                           markForfeit(idx, "away");
                                         }
                                       }}
-                                      className="text-muted-foreground hover:text-destructive"
-                                      title="Forfeit (player not available)"
+                                      className="text-destructive hover:bg-destructive/10 rounded p-0.5"
+                                      title="Forfeit away player (no-show)"
                                     >
-                                      <UserX className="w-3 h-3" />
+                                      <UserX className="w-3.5 h-3.5" />
                                     </button>
                                   )}
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (
-                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-destructive text-destructive">FFT</Badge>
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
                               )}
                             </span>
                           </>

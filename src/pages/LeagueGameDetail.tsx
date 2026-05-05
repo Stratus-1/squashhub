@@ -18,6 +18,7 @@ import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScor
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
+import { useNsaTeam, type NsaTeamPlayer } from "@/hooks/use-nsa";
 
 interface PositionEntry {
   homeCode: string;
@@ -154,6 +155,54 @@ export default function LeagueGameDetail() {
     },
     enabled: !!fixtureId,
   });
+
+  // ---- NSA team-id lookup for home/away codes (used to pull live roster + W/L) ----
+  const { data: nsaTeamIds } = useQuery({
+    queryKey: ["nsa-team-ids", fixture?.home_team_code, fixture?.away_team_code],
+    queryFn: async () => {
+      if (!fixture) return { home: null as string | null, away: null as string | null };
+      const codes = [fixture.home_team_code, fixture.away_team_code].filter(Boolean) as string[];
+      if (codes.length === 0) return { home: null, away: null };
+      const { data } = await (supabase as any)
+        .from("leagues")
+        .select("code, nsa_team_id")
+        .in("code", codes);
+      const byCode = new Map<string, string | null>();
+      (data || []).forEach((r: any) => byCode.set(r.code, r.nsa_team_id));
+      return {
+        home: fixture.home_team_code ? byCode.get(fixture.home_team_code) ?? null : null,
+        away: fixture.away_team_code ? byCode.get(fixture.away_team_code) ?? null : null,
+      };
+    },
+    enabled: !!fixture,
+  });
+
+  const { data: nsaHomeTeam } = useNsaTeam(nsaTeamIds?.home, !!nsaTeamIds?.home);
+  const { data: nsaAwayTeam } = useNsaTeam(nsaTeamIds?.away, !!nsaTeamIds?.away);
+
+  // NSF code -> overlay info from NSA roster
+  const nsaRosterMap = useMemo(() => {
+    const map = new Map<string, { name: string; won: number; lost: number; played: number; side: "home" | "away" }>();
+    const ingest = (players: NsaTeamPlayer[] | undefined, side: "home" | "away") => {
+      (players || []).forEach((p) => {
+        const code = (p.code || "").toUpperCase().trim();
+        if (!code) return;
+        map.set(code, {
+          name: `${p.name || ""} ${p.surname || ""}`.trim(),
+          won: Number(p.result_summary?.won ?? 0) || 0,
+          lost: Number(p.result_summary?.lost ?? 0) || 0,
+          played: Number(p.result_summary?.played ?? 0) || 0,
+          side,
+        });
+      });
+    };
+    ingest(nsaHomeTeam?.players, "home");
+    ingest(nsaAwayTeam?.players, "away");
+    return map;
+  }, [nsaHomeTeam, nsaAwayTeam]);
+
+  const nsaLive = !!(nsaHomeTeam || nsaAwayTeam);
+
 
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
@@ -344,10 +393,14 @@ export default function LeagueGameDetail() {
 
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {
     if (!code || code.length < 3) return "";
-    const { data } = await supabase.from("platform_league_members" as any).select("first_name, surname").eq("user_code", code.toUpperCase()).maybeSingle();
+    const upper = code.toUpperCase();
+    // Prefer NSA live roster when available
+    const nsa = nsaRosterMap.get(upper);
+    if (nsa?.name) return nsa.name;
+    const { data } = await supabase.from("platform_league_members" as any).select("first_name, surname").eq("user_code", upper).maybeSingle();
     if (data) return `${(data as any).first_name} ${(data as any).surname}`;
     return "";
-  }, []);
+  }, [nsaRosterMap]);
 
   const updatePosition = (idx: number, field: keyof PositionEntry, value: any) => {
     setPositions((prev) => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next; });
@@ -909,6 +962,17 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
+        {/* Live NSA roster banner */}
+        {nsaLive && !setupDone && !isSubmitted && (
+          <div className="flex items-center gap-2 text-[11px] bg-emerald-50 border border-emerald-200 text-emerald-800 rounded px-2 py-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold">Live from NSA</span>
+            <span className="text-emerald-700/80">
+              Type an NSF code to auto-fill name; W/L stats shown next to each player.
+            </span>
+          </div>
+        )}
+
         {/* Scorecard table */}
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-xs">
@@ -960,7 +1024,18 @@ export default function LeagueGameDetail() {
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
                               onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
-                            <span className="text-xs truncate px-1 text-green-700">{pos.homeName}</span>
+                            <span className="text-xs truncate px-1 text-green-700 flex items-center gap-1">
+                              <span className="truncate">{pos.homeName}</span>
+                              {(() => {
+                                const r = pos.homeCode ? nsaRosterMap.get(pos.homeCode.toUpperCase()) : null;
+                                if (!r || r.played === 0) return null;
+                                return (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-mono border-emerald-300 text-emerald-700" title={`NSA season: ${r.played} played`}>
+                                    {r.won}W–{r.lost}L
+                                  </Badge>
+                                );
+                              })()}
+                            </span>
                             <span className="flex items-center justify-end gap-1 pr-1">
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>
@@ -1081,7 +1156,18 @@ export default function LeagueGameDetail() {
                             <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}
                               onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
-                            <span className="text-xs truncate px-1 text-green-700">{pos.awayName}</span>
+                            <span className="text-xs truncate px-1 text-green-700 flex items-center gap-1">
+                              <span className="truncate">{pos.awayName}</span>
+                              {(() => {
+                                const r = pos.awayCode ? nsaRosterMap.get(pos.awayCode.toUpperCase()) : null;
+                                if (!r || r.played === 0) return null;
+                                return (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-mono border-emerald-300 text-emerald-700" title={`NSA season: ${r.played} played`}>
+                                    {r.won}W–{r.lost}L
+                                  </Badge>
+                                );
+                              })()}
+                            </span>
                             <span className="flex items-center justify-end gap-1 pr-1">
                               {pos.isForfeit && pos.forfeitSide === "away" && (
                                 <>

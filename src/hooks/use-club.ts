@@ -127,6 +127,8 @@ export interface LeagueAssociation {
   fee_class: "club_income" | "pass_through";
   platform_association_id?: string | null;
   scope?: "internal" | "region";
+  external_source?: string | null;
+  external_club_id?: string | null;
 }
 
 export interface League {
@@ -135,6 +137,7 @@ export interface League {
   association_id?: string;
   name: string;
   code?: string;
+  nsa_team_id?: string | null;
 }
 
 export interface NationalBodyFee {

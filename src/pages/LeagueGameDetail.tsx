@@ -1249,12 +1249,6 @@ export default function LeagueGameDetail() {
                     <td className="text-center p-1">{summary.awayTotalGames}</td>
                   </tr>
                   <tr className="bg-muted/40 font-semibold text-xs">
-                    <td colSpan={2} className="p-1 text-right">TOTAL POINTS (P)</td>
-                    <td colSpan={bestOf} />
-                    <td className="text-center p-1 text-primary">{homeAllPts}</td>
-                    <td className="text-center p-1 text-primary">{awayAllPts}</td>
-                  </tr>
-                  <tr className="bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
                     <td colSpan={bestOf} />
                     <td className="text-center p-1">{summary.homeBonusPoints}</td>
@@ -1273,6 +1267,12 @@ export default function LeagueGameDetail() {
                     <td colSpan={bestOf} />
                     <td className="text-center p-1">{summary.homeTotal}</td>
                     <td className="text-center p-1">{summary.awayTotal}</td>
+                  </tr>
+                  <tr className="bg-primary/10 font-bold text-sm border-t-2 border-primary/30">
+                    <td colSpan={2} className="p-1 text-right text-primary">TOTAL POINTS (P)</td>
+                    <td colSpan={bestOf} />
+                    <td className="text-center p-1 text-primary">{homeAllPts}</td>
+                    <td className="text-center p-1 text-primary">{awayAllPts}</td>
                   </tr>
                 </>
                 );

@@ -26,12 +26,17 @@ interface PositionEntry {
   awayName: string;
   scores: { home: number; away: number }[];
   completed: boolean;
+  isForfeit?: boolean;
+  forfeitSide?: "home" | "away" | null;
 }
+
+// Penalty points deducted from a team when one of their players forfeits a position
+const FORFEIT_PENALTY_POINTS = 2;
 
 function emptyPositions(): PositionEntry[] {
   return [1, 2, 3, 4].map(() => ({
     homeCode: "", homeName: "", awayCode: "", awayName: "",
-    scores: [], completed: false,
+    scores: [], completed: false, isForfeit: false, forfeitSide: null,
   }));
 }
 

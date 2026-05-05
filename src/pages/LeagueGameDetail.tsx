@@ -18,6 +18,7 @@ import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScor
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
+import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, type NsaTeamPlayer } from "@/hooks/use-nsa";
 
 interface PositionEntry {
@@ -443,6 +444,40 @@ export default function LeagueGameDetail() {
     });
     return map;
   }, [positions]);
+
+  // Set of all NSF codes currently assigned (used by RosterPanel to disable taken players)
+  const assignedCodes = useMemo(() => {
+    const s = new Set<string>();
+    positions.forEach((p) => {
+      if (p.homeCode) s.add(p.homeCode.toUpperCase());
+      if (p.awayCode) s.add(p.awayCode.toUpperCase());
+    });
+    return s;
+  }, [positions]);
+
+  // Click a roster player → fill the next empty position on their side
+  const handleRosterAssign = useCallback((side: "home" | "away", player: NsaTeamPlayer) => {
+    const codeUpper = (player.code || "").toUpperCase();
+    if (!codeUpper) return;
+    if (assignedCodes.has(codeUpper)) {
+      toast.error(`${player.name} ${player.surname} is already in the lineup`);
+      return;
+    }
+    const fullName = `${player.name || ""} ${player.surname || ""}`.trim();
+    const codeKey = side === "home" ? "homeCode" : "awayCode";
+    const nameKey = side === "home" ? "homeName" : "awayName";
+    setPositions((prev) => {
+      const emptyIdx = prev.findIndex((p) => !p[codeKey]);
+      if (emptyIdx === -1) {
+        toast.error(`All ${side === "home" ? "home" : "visitors"} positions are full`);
+        return prev;
+      }
+      const next = [...prev];
+      next[emptyIdx] = { ...next[emptyIdx], [codeKey]: codeUpper, [nameKey]: fullName };
+      toast.success(`${fullName} → position ${emptyIdx + 1}`);
+      return next;
+    });
+  }, [assignedCodes]);
 
   const handleSwap = useCallback(async (c: SwapCandidate) => {
     if (!swapTarget) return;
@@ -973,7 +1008,19 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {/* Scorecard table */}
+        {/* NSA Squad roster — click to assign players to lineup */}
+        {nsaLive && !setupDone && !isSubmitted && (
+          <RosterPanel
+            homeCode={fixture?.home_team_code}
+            awayCode={fixture?.away_team_code}
+            homePlayers={nsaHomeTeam?.players}
+            awayPlayers={nsaAwayTeam?.players}
+            assignedCodes={assignedCodes}
+            onAssign={handleRosterAssign}
+          />
+        )}
+
+
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-xs">
             <thead>

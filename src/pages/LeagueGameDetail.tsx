@@ -19,7 +19,7 @@ import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { RosterPanel } from "@/components/league-games/RosterPanel";
-import { useNsaTeam, type NsaTeamPlayer } from "@/hooks/use-nsa";
+import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 
 interface PositionEntry {
   homeCode: string;
@@ -157,29 +157,10 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId,
   });
 
-  // ---- NSA team-id lookup for home/away codes (used to pull live roster + W/L) ----
-  const { data: nsaTeamIds } = useQuery({
-    queryKey: ["nsa-team-ids", fixture?.home_team_code, fixture?.away_team_code],
-    queryFn: async () => {
-      if (!fixture) return { home: null as string | null, away: null as string | null };
-      const codes = [fixture.home_team_code, fixture.away_team_code].filter(Boolean) as string[];
-      if (codes.length === 0) return { home: null, away: null };
-      const { data } = await (supabase as any)
-        .from("leagues")
-        .select("code, nsa_team_id")
-        .in("code", codes);
-      const byCode = new Map<string, string | null>();
-      (data || []).forEach((r: any) => byCode.set(r.code, r.nsa_team_id));
-      return {
-        home: fixture.home_team_code ? byCode.get(fixture.home_team_code) ?? null : null,
-        away: fixture.away_team_code ? byCode.get(fixture.away_team_code) ?? null : null,
-      };
-    },
-    enabled: !!fixture,
-  });
-
-  const { data: nsaHomeTeam } = useNsaTeam(nsaTeamIds?.home, !!nsaTeamIds?.home);
-  const { data: nsaAwayTeam } = useNsaTeam(nsaTeamIds?.away, !!nsaTeamIds?.away);
+  // ---- NSA live roster: resolved by team code, no DB mapping needed ----
+  // Codes are the contract — the club assigns "CSI006" and gives the same to NSA.
+  const { data: nsaHomeTeam } = useNsaTeamByCode(fixture?.home_team_code, !!fixture);
+  const { data: nsaAwayTeam } = useNsaTeamByCode(fixture?.away_team_code, !!fixture);
 
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {

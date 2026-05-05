@@ -203,13 +203,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {a.external_source === "nsa" && (
-                  <NsaDiscoverButton
-                    associationId={a.id}
-                    externalClubId={a.external_club_id}
-                    leagues={leagues.filter((l: any) => l.association_id === a.id)}
-                  />
-                )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
                   <Trash2 className="w-4 h-4" />
@@ -506,116 +499,17 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
       {expanded && (() => {
         const assoc = associations.find(a => a.id === league.association_id);
         if (assoc?.external_source !== "nsa") return null;
-        return <NsaTeamIdEditor league={league} />;
+        return (
+          <div className="mt-2 border-t pt-2 flex items-center gap-2 text-[10px] text-emerald-700">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="font-semibold">NSA Live</span>
+            <span className="text-muted-foreground">
+              Roster + W/L auto-resolved from team code <span className="font-mono">{(league as any).code}</span>.
+            </span>
+          </div>
+        );
       })()}
     </Card>
-  );
-}
-
-// ─── Inline editor for NSA team ID (only shown for NSA-linked leagues) ───
-function NsaTeamIdEditor({ league }: { league: League }) {
-  const qc = useQueryClient();
-  const [draft, setDraft] = useState(league.nsa_team_id || "");
-  const [saving, setSaving] = useState(false);
-  const dirty = (draft || "").trim() !== (league.nsa_team_id || "");
-  const save = async () => {
-    setSaving(true);
-    const value = draft.trim() || null;
-    const { error } = await fromExt("leagues").update({ nsa_team_id: value }).eq("id", league.id);
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(value ? `Linked to NSA team ${value}` : "NSA link cleared");
-    qc.invalidateQueries({ queryKey: ["leagues"] });
-  };
-  return (
-    <div className="mt-2 border-t pt-2 flex items-center gap-2">
-      <Label className="text-[10px] text-muted-foreground whitespace-nowrap">NSA Team ID</Label>
-      <Input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
-        onKeyDown={(e) => { if (e.key === "Enter" && dirty) save(); }}
-        placeholder="e.g. 123"
-        className="h-6 text-xs font-mono w-24"
-      />
-      {dirty && (
-        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" disabled={saving} onClick={save}>
-          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-        </Button>
-      )}
-      <span className="text-[10px] text-muted-foreground">Pulls live roster + W/L from NSA</span>
-    </div>
-  );
-}
-
-// ─── Bulk auto-link local league codes → NSA team IDs from fixtures feed ───
-function NsaDiscoverButton({
-  associationId,
-  externalClubId,
-  leagues,
-}: {
-  associationId: string;
-  externalClubId?: string | null;
-  leagues: League[];
-}) {
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState(false);
-
-  const normalize = (s: string) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-  const run = async () => {
-    setBusy(true);
-    try {
-      const { fetchNsaFixtures } = await import("@/hooks/use-nsa");
-      // Pull all NSA fixtures for current season (filtered by club if known, else all)
-      const fixtures = await fetchNsaFixtures({
-        league: "s79",
-        club: externalClubId || undefined,
-      });
-
-      // Build normalized code → team_id map from every team referenced in fixtures
-      const codeToId = new Map<string, string>();
-      for (const f of fixtures || []) {
-        for (const t of [f.team1, f.team2]) {
-          if (t?.code && t?.id) codeToId.set(normalize(t.code), String(t.id));
-        }
-      }
-
-      // Match unmapped local leagues by normalized code
-      let matched = 0, skipped = 0, unmatched: string[] = [];
-      for (const l of leagues) {
-        if (l.nsa_team_id) { skipped++; continue; }
-        const key = normalize((l as any).code || "");
-        const teamId = key ? codeToId.get(key) : undefined;
-        if (!teamId) { unmatched.push((l as any).code || l.id); continue; }
-        const { error } = await fromExt("leagues").update({ nsa_team_id: teamId }).eq("id", l.id);
-        if (!error) matched++;
-      }
-
-      qc.invalidateQueries({ queryKey: ["leagues"] });
-      if (matched > 0) toast.success(`Linked ${matched} team${matched === 1 ? "" : "s"} to NSA`);
-      if (matched === 0 && unmatched.length === 0) toast.info("All NSA-eligible teams already linked");
-      if (unmatched.length > 0) toast.warning(`No NSA match for: ${unmatched.join(", ")}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to discover NSA teams");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const unlinkedCount = leagues.filter((l) => !l.nsa_team_id).length;
-
-  return (
-    <Button
-      size="sm"
-      variant="outline"
-      className="h-7 text-[10px] px-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-      onClick={run}
-      disabled={busy || leagues.length === 0}
-      title={`Auto-link ${unlinkedCount} unmapped league${unlinkedCount === 1 ? "" : "s"} to NSA team IDs`}
-    >
-      {busy ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-      Discover NSA IDs {unlinkedCount > 0 && `(${unlinkedCount})`}
-    </Button>
   );
 }
 

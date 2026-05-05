@@ -1043,7 +1043,24 @@ export default function LeagueGameDetail() {
                               onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700">{pos.awayName}</span>
-                            <span className="flex items-center justify-center">
+                            <span className="flex items-center justify-end gap-1 pr-1">
+                              {pos.isForfeit && pos.forfeitSide === "away" && (
+                                <>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-destructive text-destructive font-bold">FORFEIT</Badge>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Undo forfeit for position ${idx + 1} (away)?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty so the game can be played/marked normally.`)) {
+                                        undoForfeit(idx);
+                                      }
+                                    }}
+                                    className="text-primary hover:bg-primary/10 rounded px-1.5 py-0.5 border border-primary/50 flex items-center gap-1 text-[10px] font-medium"
+                                    title="Undo forfeit"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    Undo
+                                  </button>
+                                </>
+                              )}
                               {!isSubmitted && (
                                 <button
                                   onClick={() => setSwapTarget({ idx, side: "away" })}

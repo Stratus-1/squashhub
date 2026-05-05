@@ -493,8 +493,15 @@ export default function LeagueGameDetail() {
       : { home: 15, away: 0 };
     const games = bestOf === 5 ? 3 : 2; // win majority of best-of
     const scores = Array.from({ length: games }, () => ({ ...winningGame }));
+    const current = positions[posIdx];
+    // If the forfeiting side has no player listed, fill with a "—" placeholder so
+    // the row still persists and shows the no-show clearly.
     const updatedPos: PositionEntry = {
-      ...positions[posIdx],
+      ...current,
+      homeCode: side === "home" && !current.homeCode ? "—" : current.homeCode,
+      homeName: side === "home" && !current.homeName ? "No player" : current.homeName,
+      awayCode: side === "away" && !current.awayCode ? "—" : current.awayCode,
+      awayName: side === "away" && !current.awayName ? "No player" : current.awayName,
       scores,
       completed: true,
       isForfeit: true,

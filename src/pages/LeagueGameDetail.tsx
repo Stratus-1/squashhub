@@ -939,7 +939,22 @@ export default function LeagueGameDetail() {
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "home" && (
-                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
+                                <>
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
+                                  {!isSubmitted && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty.`)) {
+                                          undoForfeit(idx);
+                                        }
+                                      }}
+                                      className="text-muted-foreground hover:text-primary"
+                                      title="Undo forfeit"
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </span>
                           </>

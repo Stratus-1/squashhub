@@ -1000,6 +1000,7 @@ export default function LeagueGameDetail() {
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? homeTotalPts : ""}</span>
                             <span className="flex items-center justify-center gap-0.5">
                               {!isSubmitted && !pos.completed && (
                                 <>
@@ -1038,6 +1039,23 @@ export default function LeagueGameDetail() {
                                     <RotateCcw className="w-3.5 h-3.5" />
                                   </button>
                                 </>
+                              )}
+                              {!isSubmitted && pos.completed && !pos.isForfeit && (
+                                <button
+                                  onClick={() => {
+                                    if (!window.confirm(`Delete the recorded score for position ${idx + 1}?\n\nThis cannot be undone — you will need to re-enter or re-mark the game.`)) return;
+                                    const typed = window.prompt(`To confirm, type DELETE (in capitals) to clear position ${idx + 1} scores:`);
+                                    if (typed === "DELETE") {
+                                      clearScores(idx);
+                                    } else if (typed !== null) {
+                                      toast.error("Deletion cancelled — text did not match");
+                                    }
+                                  }}
+                                  className="text-destructive hover:bg-destructive/10 rounded p-0.5 border border-destructive/40"
+                                  title="Delete recorded scores"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               )}
                             </span>
                           </>

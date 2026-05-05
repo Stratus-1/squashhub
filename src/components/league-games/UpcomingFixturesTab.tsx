@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi } from "lucide-react";
 import { format, parseISO, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
+import { useNsaFixtures, type NsaFixture } from "@/hooks/use-nsa";
 
 type Props = {
   platformAssocIds: string[];
@@ -28,9 +29,13 @@ type Props = {
   clubId?: string;
   /** Filters tournament fixtures to leagues belonging to this association. */
   associationId?: string;
+  /** External source on this association ("nsa") — triggers live API merge. */
+  externalSource?: string | null;
+  /** External system's club ID (e.g. "6" for CSIR on NSA). */
+  externalClubId?: string | null;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
 
@@ -99,7 +104,68 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     enabled: platformAssocIds.length > 0 && clubPrefixes.length > 0,
   });
 
-  const fixtureIds = (fixtures || []).map((f) => f.id);
+  // ----- Live NSA fixtures (when this association is linked to NSA) -----
+  const isNsaLive = externalSource === "nsa" && !!externalClubId;
+  const { data: nsaFixtures, isFetching: nsaLoading, error: nsaError } = useNsaFixtures({
+    club: externalClubId ?? undefined,
+    league: isNsaLive ? "s79" : undefined, // current season — TODO: make dynamic
+    enabled: isNsaLive,
+  });
+
+  // Merge: when live NSA data is available, use it as the primary list (filtered to range),
+  // and resolve each to the matching snapshot row to keep the existing score-button working.
+  const mergedFixtures = useMemo(() => {
+    if (!isNsaLive || !nsaFixtures) return fixtures || [];
+
+    const snapshot = (fixtures || []) as any[];
+    const snapByExternal = new Map<string, any>();
+    const snapByKey = new Map<string, any>(); // date|home|away
+    for (const s of snapshot) {
+      if (s.external_id) snapByExternal.set(String(s.external_id), s);
+      const k = `${s.fixture_date}|${(s.home_team_code || "").toUpperCase()}|${(s.away_team_code || "").toUpperCase()}`;
+      snapByKey.set(k, s);
+    }
+
+    return (nsaFixtures as NsaFixture[])
+      .filter((f) => f.date >= rangeStart && f.date <= rangeEnd)
+      .filter((f) => {
+        const home = f.team1.code.toUpperCase();
+        const away = f.team2.code.toUpperCase();
+        return clubPrefixes.some((p) => {
+          const re = new RegExp(`^${p}\\d+$`);
+          return re.test(home) || re.test(away);
+        });
+      })
+      .map((f) => {
+        const homeCode = f.team1.code.toUpperCase();
+        const awayCode = f.team2.code.toUpperCase();
+        const key = `${f.date}|${homeCode}|${awayCode}`;
+        const snap = snapByExternal.get(f.id) || snapByKey.get(key);
+        return {
+          // Use snapshot id if found (so scoring works); otherwise synthesize a stable display id
+          id: snap?.id || `nsa-${f.id}`,
+          fixture_date: f.date,
+          home_team_code: homeCode,
+          away_team_code: awayCode,
+          venue_name: f.venue,
+          division: `${f.category} ${f.league}`,
+          association_id: snap?.association_id || null,
+          external_id: f.id,
+          _isLive: true,
+          _hasSnapshot: !!snap,
+          _nsaStatus: f.status,
+        };
+      })
+      .sort((a, b) => a.fixture_date.localeCompare(b.fixture_date) || a.division.localeCompare(b.division));
+  }, [isNsaLive, nsaFixtures, fixtures, rangeStart, rangeEnd, clubPrefixes]);
+
+  const displayFixtures = isNsaLive ? mergedFixtures : (fixtures || []);
+
+  // Only the snapshot fixtures (with real UUIDs) get result/lineup lookups
+  const fixtureIds = useMemo(
+    () => (displayFixtures as any[]).filter((f) => !f._isLive || f._hasSnapshot).map((f) => f.id),
+    [displayFixtures]
+  );
   const { data: existingResults } = useQuery({
     queryKey: ["league-fixture-results", fixtureIds.join(",")],
     queryFn: async () => {
@@ -151,13 +217,13 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
 
   const fixturesByDate = useMemo(() => {
     const groups = new Map<string, any[]>();
-    for (const f of (fixtures || []) as any[]) {
+    for (const f of (displayFixtures || []) as any[]) {
       const date = f.fixture_date;
       if (!groups.has(date)) groups.set(date, []);
       groups.get(date)!.push(f);
     }
     return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  }, [fixtures]);
+  }, [displayFixtures]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
@@ -208,13 +274,19 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           </PopoverContent>
         </Popover>
       )}
+      {isNsaLive && (
+        <Badge variant="outline" className="text-[10px] gap-1 border-green-500/50 text-green-700">
+          <Wifi className="w-3 h-3" />
+          {nsaError ? "Live offline · using cache" : nsaLoading ? "Syncing live…" : "Live from NSA"}
+        </Badge>
+      )}
       <span className="text-xs text-muted-foreground ml-auto">
         Showing {format(parseISO(rangeStart), "dd MMM")} – {format(parseISO(rangeEnd), "dd MMM yyyy")}
       </span>
     </div>
   );
 
-  if (isLoading) {
+  if (isLoading || (isNsaLive && nsaLoading && (!nsaFixtures || nsaFixtures.length === 0))) {
     return (
       <div>
         {filterBar}
@@ -315,12 +387,17 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
                         {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
                         {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
+                        {f._isLive && !f._hasSnapshot && (
+                          <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700">Not yet imported</Badge>
+                        )}
                       </div>
                     </div>
                     <Button
                       size="sm"
                       variant={inLineup || mine ? "default" : "outline"}
                       className="shrink-0"
+                      disabled={f._isLive && !f._hasSnapshot}
+                      title={f._isLive && !f._hasSnapshot ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring." : undefined}
                       onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
                     >
                       <Pencil className="w-3 h-3 mr-1" />

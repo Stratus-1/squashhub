@@ -22,6 +22,8 @@ type AssocRow = {
   scope?: "internal" | "region" | null;
   platform_association_id?: string | null;
   week_start_dow?: number | null;
+  external_source?: string | null;
+  external_club_id?: string | null;
 };
 
 export default function LeagueGames() {
@@ -41,13 +43,13 @@ export default function LeagueGames() {
     enabled: !!clubId,
   });
 
-  // Get club's league associations (with scope + per-league week start)
+  // Get club's league associations (with scope + per-league week start + external link)
   const { data: clubAssociations } = useQuery({
     queryKey: ["league-associations-with-week", clubId],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("league_associations")
-        .select("id, name, abbreviation, scope, platform_association_id, week_start_dow")
+        .select("id, name, abbreviation, scope, platform_association_id, week_start_dow, external_source, external_club_id")
         .eq("club_id", clubId!);
       if (error) throw error;
       return (data || []) as AssocRow[];
@@ -188,6 +190,8 @@ export default function LeagueGames() {
                 associationScope={selectedAssoc?.scope ?? "region"}
                 clubId={clubId ?? undefined}
                 associationId={selectedAssocId ?? undefined}
+                externalSource={selectedAssoc?.external_source ?? null}
+                externalClubId={selectedAssoc?.external_club_id ?? null}
               />
             </TabsContent>
 

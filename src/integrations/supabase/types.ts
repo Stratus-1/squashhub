@@ -2181,6 +2181,8 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           due_day: number
+          external_club_id: string | null
+          external_source: string | null
           fee_annual: number | null
           fee_class: string
           fee_due_month: number | null
@@ -2205,6 +2207,8 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           due_day?: number
+          external_club_id?: string | null
+          external_source?: string | null
           fee_annual?: number | null
           fee_class?: string
           fee_due_month?: number | null
@@ -2229,6 +2233,8 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           due_day?: number
+          external_club_id?: string | null
+          external_source?: string | null
           fee_annual?: number | null
           fee_class?: string
           fee_due_month?: number | null
@@ -3409,6 +3415,7 @@ export type Database = {
           away_team_code: string
           created_at: string
           division: string
+          external_id: string | null
           fixture_date: string
           game_scores: string | null
           home_team_code: string
@@ -3425,6 +3432,7 @@ export type Database = {
           away_team_code: string
           created_at?: string
           division: string
+          external_id?: string | null
           fixture_date: string
           game_scores?: string | null
           home_team_code: string
@@ -3441,6 +3449,7 @@ export type Database = {
           away_team_code?: string
           created_at?: string
           division?: string
+          external_id?: string | null
           fixture_date?: string
           game_scores?: string | null
           home_team_code?: string

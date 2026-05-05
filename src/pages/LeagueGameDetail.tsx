@@ -1092,7 +1092,7 @@ export default function LeagueGameDetail() {
         )}
 
         <p className="text-[10px] text-muted-foreground text-center">
-          Bonus points are awarded only to the winning team — one point per individual match won
+          Bonus points: 1 per individual match won (winner only). Forfeit: away/home awarded a clean sweep (15-0) and the absent team loses {FORFEIT_PENALTY_POINTS} penalty points.
         </p>
       </div>
 

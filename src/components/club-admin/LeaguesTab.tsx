@@ -198,8 +198,18 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 >
                   {a.scope === "internal" ? "Internal" : "Regional"}
                 </Badge>
+                {a.external_source === "nsa" && (
+                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0 border-emerald-300 text-emerald-700">NSA Live</Badge>
+                )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                {a.external_source === "nsa" && (
+                  <NsaDiscoverButton
+                    associationId={a.id}
+                    externalClubId={a.external_club_id}
+                    leagues={leagues.filter((l: any) => l.association_id === a.id)}
+                  />
+                )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
                   <Trash2 className="w-4 h-4" />

@@ -1013,7 +1013,24 @@ export default function LeagueGameDetail() {
                                         <Play className="w-3.5 h-3.5" />
                                       </button>
                                       <button
-                                        onClick={() => { if (pos.scores.length === 0) addGame(idx); setManualEntry(idx); }}
+                                        onClick={() => {
+                                          // Determine games needed to win the match
+                                          const gamesToWin = bestOf === 5 ? 3 : 2;
+                                          let hw = 0, aw = 0;
+                                          for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+                                          const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+                                          // Last entered game still in progress (no clear winner yet)
+                                          const last = pos.scores[pos.scores.length - 1];
+                                          const lastInProgress = last && last.home === last.away; // 0-0 or tied
+                                          // Auto-prepare a fresh empty row for the next game so the user
+                                          // doesn't accidentally overwrite a completed game's score.
+                                          if (pos.scores.length === 0) {
+                                            addGame(idx);
+                                          } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
+                                            addGame(idx);
+                                          }
+                                          setManualEntry(idx);
+                                        }}
                                         className="text-muted-foreground hover:text-foreground"
                                         title="Enter scores manually"
                                       >

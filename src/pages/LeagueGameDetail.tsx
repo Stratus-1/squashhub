@@ -512,6 +512,28 @@ export default function LeagueGameDetail() {
     toast.success(`Position ${posIdx + 1} forfeited — ${side === "home" ? "away" : "home"} team awarded a clean sweep`);
   }, [positions, bestOf, persistPositionScores]);
 
+  // ---- Undo a forfeit: clears scores, completion, and forfeit flags so the
+  // position can be played/marked normally again. ----
+  const undoForfeit = useCallback((posIdx: number) => {
+    const current = positions[posIdx];
+    if (!current?.isForfeit) return;
+    const updatedPos: PositionEntry = {
+      ...current,
+      // Clear placeholder "—"/"No player" entries inserted by markForfeit
+      homeCode: current.homeCode === "—" ? "" : current.homeCode,
+      homeName: current.homeName === "No player" ? "" : current.homeName,
+      awayCode: current.awayCode === "—" ? "" : current.awayCode,
+      awayName: current.awayName === "No player" ? "" : current.awayName,
+      scores: [],
+      completed: false,
+      isForfeit: false,
+      forfeitSide: null,
+    };
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = updatedPos; return next; });
+    persistPositionScores(posIdx, updatedPos);
+    toast.success(`Position ${posIdx + 1} forfeit undone`);
+  }, [positions, persistPositionScores]);
+
 
   // ---- Save Setup (persist player data without submitting results) ----
   const handleSaveSetup = async () => {

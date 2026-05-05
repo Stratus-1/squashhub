@@ -43,13 +43,13 @@ export default function LeagueGames() {
     enabled: !!clubId,
   });
 
-  // Get club's league associations (with scope + per-league week start)
+  // Get club's league associations (with scope + per-league week start + external link)
   const { data: clubAssociations } = useQuery({
     queryKey: ["league-associations-with-week", clubId],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("league_associations")
-        .select("id, name, abbreviation, scope, platform_association_id, week_start_dow")
+        .select("id, name, abbreviation, scope, platform_association_id, week_start_dow, external_source, external_club_id")
         .eq("club_id", clubId!);
       if (error) throw error;
       return (data || []) as AssocRow[];

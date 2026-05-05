@@ -845,10 +845,13 @@ export default function LeagueGameDetail() {
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
                 const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
                 return (
-                  <tr key={idx} className="border-t">
+                  <tr key={idx} className={cn("border-t", pos.isForfeit && "bg-destructive/10")}>
                     <td className="p-0" colSpan={bestOf + 5}>
                       {/* Home row */}
-                      <div className="grid items-center border-b"
+                      <div className={cn(
+                        "grid items-center border-b",
+                        pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
+                      )}
                         style={setupDone
                           ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }

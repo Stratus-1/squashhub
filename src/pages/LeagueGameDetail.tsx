@@ -93,6 +93,9 @@ export default function LeagueGameDetail() {
   const [setupDone, setSetupDone] = useState(false);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const [manualEntry, setManualEntry] = useState<number | null>(null);
+  // Indices of completed games (within the current manualEntry rubber) that the
+  // user has explicitly chosen to edit. All other completed games are locked.
+  const [manualUnlocked, setManualUnlocked] = useState<Set<number>>(new Set());
   const [homeSig, setHomeSig] = useState("");
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -718,23 +721,26 @@ export default function LeagueGameDetail() {
   // ---- Manual entry overlay ----
   if (manualEntry !== null) {
     const pos = positions[manualEntry];
+    // A game is "decided" once one side has scored more than the other (i.e. a clear winner).
+    const isDecided = (s: { home: number; away: number }) => s.home !== s.away && (s.home > 0 || s.away > 0);
+    const closeOverlay = () => {
+      const updatedPos = { ...positions[manualEntry], completed: pos.scores.length > 0 };
+      updatePosition(manualEntry, "completed", pos.scores.length > 0);
+      if (pos.scores.length > 0) persistPositionScores(manualEntry, updatedPos);
+      setManualUnlocked(new Set());
+      setManualEntry(null);
+    };
     return (
       <div className="bottom-nav-safe">
         <SEO title="Enter Scores" description="Manual scores" path={`/league-games/${fixtureId}`} noIndex />
-        <div className="px-4 pt-4 space-y-3">
+        <div className="px-4 pt-4 space-y-3 max-w-md mx-auto">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => {
-              const updatedPos = { ...positions[manualEntry], completed: pos.scores.length > 0 };
-              updatePosition(manualEntry, "completed", pos.scores.length > 0);
-              // Auto-save on exit
-              if (pos.scores.length > 0) persistPositionScores(manualEntry, updatedPos);
-              setManualEntry(null);
-            }}>
+            <Button variant="ghost" size="sm" onClick={closeOverlay}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
             <span className="text-sm font-semibold">Position {manualEntry + 1} — Manual Scores</span>
           </div>
-          <div className="text-sm mb-2">
+          <div className="text-sm mb-1">
             <span className="font-medium">{pos.homeName || pos.homeCode}</span>
             <span className="text-muted-foreground mx-2">vs</span>
             <span className="font-medium">{pos.awayName || pos.awayCode}</span>
@@ -742,24 +748,69 @@ export default function LeagueGameDetail() {
           <div className="text-xs text-muted-foreground mb-1">
             Format: {scoringFormat === "par11" ? "PAR 11" : "PAR 15"} · Best of {bestOf}
           </div>
-          {pos.scores.map((s, gi) => (
-            <div key={gi} className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-14">Game {gi + 1}</span>
-              <Input type="number" min={0} value={s.home} onChange={(e) => updateScore(manualEntry, gi, "home", parseInt(e.target.value) || 0)} className="w-16 text-center text-sm" />
-              <span className="text-xs text-muted-foreground">-</span>
-              <Input type="number" min={0} value={s.away} onChange={(e) => updateScore(manualEntry, gi, "away", parseInt(e.target.value) || 0)} className="w-16 text-center text-sm" />
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => removeGame(manualEntry, gi)}>×</Button>
-            </div>
-          ))}
+          {pos.scores.map((s, gi) => {
+            const decided = isDecided(s);
+            const unlocked = manualUnlocked.has(gi);
+            const locked = decided && !unlocked;
+            return (
+              <div
+                key={gi}
+                className={cn(
+                  "flex items-center gap-2 p-1.5 rounded border",
+                  locked ? "bg-muted/50 border-muted" : "bg-background border-primary/40"
+                )}
+              >
+                <span className="text-xs font-semibold w-16">Game {gi + 1}{locked && <span className="ml-1 text-[10px] text-muted-foreground">✓</span>}</span>
+                <Input
+                  type="number" min={0} value={s.home}
+                  onChange={(e) => updateScore(manualEntry, gi, "home", parseInt(e.target.value) || 0)}
+                  className={cn("w-16 text-center text-sm", locked && "opacity-60 cursor-not-allowed")}
+                  disabled={locked}
+                />
+                <span className="text-xs text-muted-foreground">-</span>
+                <Input
+                  type="number" min={0} value={s.away}
+                  onChange={(e) => updateScore(manualEntry, gi, "away", parseInt(e.target.value) || 0)}
+                  className={cn("w-16 text-center text-sm", locked && "opacity-60 cursor-not-allowed")}
+                  disabled={locked}
+                />
+                {locked ? (
+                  <Button
+                    variant="ghost" size="sm" className="h-7 px-2 text-[10px]"
+                    onClick={() => setManualUnlocked((prev) => { const n = new Set(prev); n.add(gi); return n; })}
+                    title="Unlock to edit completed game"
+                  >
+                    Edit
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive"
+                    onClick={() => {
+                      removeGame(manualEntry, gi);
+                      setManualUnlocked((prev) => { const n = new Set(prev); n.delete(gi); return n; });
+                    }}
+                    title="Delete this game"
+                  >
+                    ×
+                  </Button>
+                )}
+              </div>
+            );
+          })}
           {pos.scores.length < bestOf && (
-            <Button variant="outline" size="sm" className="text-xs" onClick={() => addGame(manualEntry)}>+ Add Game</Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="w-full"
+              onClick={() => addGame(manualEntry)}
+            >
+              + Add Game {pos.scores.length + 1}
+            </Button>
           )}
-          <Button className="w-full mt-2" onClick={() => {
-            const updatedPos = { ...positions[manualEntry], completed: pos.scores.length > 0 };
-            updatePosition(manualEntry, "completed", pos.scores.length > 0);
-            if (pos.scores.length > 0) persistPositionScores(manualEntry, updatedPos);
-            setManualEntry(null);
-          }}>
+          <p className="text-[10px] text-muted-foreground italic">
+            Completed games are locked to prevent accidental overwrites. Tap <span className="font-semibold">Edit</span> to change a previous game.
+          </p>
+          <Button className="w-full mt-2" onClick={closeOverlay}>
             <Check className="w-4 h-4 mr-1" /> Done
           </Button>
         </div>
@@ -1013,7 +1064,24 @@ export default function LeagueGameDetail() {
                                         <Play className="w-3.5 h-3.5" />
                                       </button>
                                       <button
-                                        onClick={() => { if (pos.scores.length === 0) addGame(idx); setManualEntry(idx); }}
+                                        onClick={() => {
+                                          // Determine games needed to win the match
+                                          const gamesToWin = bestOf === 5 ? 3 : 2;
+                                          let hw = 0, aw = 0;
+                                          for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+                                          const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+                                          // Last entered game still in progress (no clear winner yet)
+                                          const last = pos.scores[pos.scores.length - 1];
+                                          const lastInProgress = last && last.home === last.away; // 0-0 or tied
+                                          // Auto-prepare a fresh empty row for the next game so the user
+                                          // doesn't accidentally overwrite a completed game's score.
+                                          if (pos.scores.length === 0) {
+                                            addGame(idx);
+                                          } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
+                                            addGame(idx);
+                                          }
+                                          setManualEntry(idx);
+                                        }}
                                         className="text-muted-foreground hover:text-foreground"
                                         title="Enter scores manually"
                                       >

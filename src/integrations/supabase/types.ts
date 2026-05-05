@@ -2359,12 +2359,14 @@ export type Database = {
         Row: {
           away_bonus_points: number
           away_captain_signature: string | null
+          away_penalty_points: number
           away_total_games: number
           away_total_points: number
           created_at: string
           fixture_id: string
           home_bonus_points: number
           home_captain_signature: string | null
+          home_penalty_points: number
           home_total_games: number
           home_total_points: number
           id: string
@@ -2378,12 +2380,14 @@ export type Database = {
         Insert: {
           away_bonus_points?: number
           away_captain_signature?: string | null
+          away_penalty_points?: number
           away_total_games?: number
           away_total_points?: number
           created_at?: string
           fixture_id: string
           home_bonus_points?: number
           home_captain_signature?: string | null
+          home_penalty_points?: number
           home_total_games?: number
           home_total_points?: number
           id?: string
@@ -2397,12 +2401,14 @@ export type Database = {
         Update: {
           away_bonus_points?: number
           away_captain_signature?: string | null
+          away_penalty_points?: number
           away_total_games?: number
           away_total_points?: number
           created_at?: string
           fixture_id?: string
           home_bonus_points?: number
           home_captain_signature?: string | null
+          home_penalty_points?: number
           home_total_games?: number
           home_total_points?: number
           id?: string
@@ -2430,11 +2436,13 @@ export type Database = {
           away_player_name: string | null
           created_at: string
           fixture_id: string
+          forfeit_side: string | null
           game_scores: Json | null
           home_games_won: number
           home_player_code: string | null
           home_player_name: string | null
           id: string
+          is_forfeit: boolean
           position: number
           updated_at: string
           winner: string | null
@@ -2445,11 +2453,13 @@ export type Database = {
           away_player_name?: string | null
           created_at?: string
           fixture_id: string
+          forfeit_side?: string | null
           game_scores?: Json | null
           home_games_won?: number
           home_player_code?: string | null
           home_player_name?: string | null
           id?: string
+          is_forfeit?: boolean
           position: number
           updated_at?: string
           winner?: string | null
@@ -2460,11 +2470,13 @@ export type Database = {
           away_player_name?: string | null
           created_at?: string
           fixture_id?: string
+          forfeit_side?: string | null
           game_scores?: Json | null
           home_games_won?: number
           home_player_code?: string | null
           home_player_name?: string | null
           id?: string
+          is_forfeit?: boolean
           position?: number
           updated_at?: string
           winner?: string | null

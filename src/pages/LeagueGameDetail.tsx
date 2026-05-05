@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,12 +26,17 @@ interface PositionEntry {
   awayName: string;
   scores: { home: number; away: number }[];
   completed: boolean;
+  isForfeit?: boolean;
+  forfeitSide?: "home" | "away" | null;
 }
+
+// Penalty points deducted from a team when one of their players forfeits a position
+const FORFEIT_PENALTY_POINTS = 2;
 
 function emptyPositions(): PositionEntry[] {
   return [1, 2, 3, 4].map(() => ({
     homeCode: "", homeName: "", awayCode: "", awayName: "",
-    scores: [], completed: false,
+    scores: [], completed: false, isForfeit: false, forfeitSide: null,
   }));
 }
 
@@ -151,11 +156,13 @@ export default function LeagueGameDetail() {
     if (existingMatches && existingMatches.length > 0) {
       const loaded = [1, 2, 3, 4].map((pos) => {
         const m = existingMatches.find((r: any) => r.position === pos);
-        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false };
+        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
         return {
           homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
           awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
-          scores: (m.game_scores as any[]) || [], completed: (m.game_scores as any[])?.length > 0,
+          scores: (m.game_scores as any[]) || [], completed: (m.game_scores as any[])?.length > 0 || !!m.is_forfeit,
+          isForfeit: !!m.is_forfeit,
+          forfeitSide: (m.forfeit_side as "home" | "away" | null) ?? null,
         };
       });
       setPositions(loaded);
@@ -464,6 +471,8 @@ export default function LeagueGameDetail() {
         home_player_name: updatedPos.homeName, away_player_name: updatedPos.awayName,
         game_scores: updatedPos.scores, home_games_won: hw, away_games_won: aw,
         winner: hw > aw ? "home" : aw > hw ? "away" : null,
+        is_forfeit: !!updatedPos.isForfeit,
+        forfeit_side: updatedPos.forfeitSide ?? null,
       } as any, { onConflict: "fixture_id,position" });
       // Also update fixture result summary
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
@@ -474,6 +483,28 @@ export default function LeagueGameDetail() {
       console.error("Auto-save failed:", err);
     }
   }, [fixtureId, user, queryClient]);
+
+  // ---- Mark a position as a forfeit (player unavailable) ----
+  // Awards the non-forfeiting side 3 clean games (15-0, 15-0, 15-0) and applies a
+  // penalty of FORFEIT_PENALTY_POINTS to the forfeiting team in the summary.
+  const markForfeit = useCallback((posIdx: number, side: "home" | "away") => {
+    const winningGame = side === "home"
+      ? { home: 0, away: 15 }   // home forfeits → away wins each game 15-0
+      : { home: 15, away: 0 };
+    const games = bestOf === 5 ? 3 : 2; // win majority of best-of
+    const scores = Array.from({ length: games }, () => ({ ...winningGame }));
+    const updatedPos: PositionEntry = {
+      ...positions[posIdx],
+      scores,
+      completed: true,
+      isForfeit: true,
+      forfeitSide: side,
+    };
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = updatedPos; return next; });
+    persistPositionScores(posIdx, updatedPos);
+    toast.success(`Position ${posIdx + 1} forfeited — ${side === "home" ? "away" : "home"} team awarded a clean sweep`);
+  }, [positions, bestOf, persistPositionScores]);
+
 
   // ---- Save Setup (persist player data without submitting results) ----
   const handleSaveSetup = async () => {
@@ -557,6 +588,7 @@ export default function LeagueGameDetail() {
   const summary = useMemo(() => {
     let homeTotalGames = 0, awayTotalGames = 0;
     let homeMatchWins = 0, awayMatchWins = 0;
+    let homePenaltyPoints = 0, awayPenaltyPoints = 0;
     const posResults: { homeWins: number; awayWins: number }[] = [];
     for (const pos of positions) {
       let hw = 0, aw = 0;
@@ -564,6 +596,9 @@ export default function LeagueGameDetail() {
       homeTotalGames += hw; awayTotalGames += aw;
       if (hw > aw) homeMatchWins++; else if (aw > hw) awayMatchWins++;
       posResults.push({ homeWins: hw, awayWins: aw });
+      // Forfeit penalty: deduct points from the side whose player did not show up
+      if (pos.isForfeit && pos.forfeitSide === "home") homePenaltyPoints += FORFEIT_PENALTY_POINTS;
+      if (pos.isForfeit && pos.forfeitSide === "away") awayPenaltyPoints += FORFEIT_PENALTY_POINTS;
     }
     // Bonus points: only the overall fixture winner gets them (= their match wins count)
     const homeGamesOnly = homeTotalGames;
@@ -575,10 +610,10 @@ export default function LeagueGameDetail() {
     // Only the winner gets bonus points
     const homeBonusPoints = fixtureWinner === "home" ? homeMatchWins : 0;
     const awayBonusPoints = fixtureWinner === "away" ? awayMatchWins : 0;
-    const homeTotal = homeTotalGames + homeBonusPoints;
-    const awayTotal = awayTotalGames + awayBonusPoints;
+    const homeTotal = homeTotalGames + homeBonusPoints - homePenaltyPoints;
+    const awayTotal = awayTotalGames + awayBonusPoints - awayPenaltyPoints;
     const winner = fixtureWinner;
-    return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homeTotal, awayTotal, winner, posResults };
+    return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homePenaltyPoints, awayPenaltyPoints, homeTotal, awayTotal, winner, posResults };
   }, [positions]);
 
   // ---- Submit ----
@@ -597,6 +632,8 @@ export default function LeagueGameDetail() {
           home_player_name: pos.homeName, away_player_name: pos.awayName,
           game_scores: pos.scores, home_games_won: hw, away_games_won: aw,
           winner: hw > aw ? "home" : aw > hw ? "away" : null,
+          is_forfeit: !!pos.isForfeit,
+          forfeit_side: pos.forfeitSide ?? null,
         } as any, { onConflict: "fixture_id,position" });
         if (error) throw error;
       }
@@ -604,6 +641,7 @@ export default function LeagueGameDetail() {
         fixture_id: fixtureId,
         home_total_games: summary.homeTotalGames, away_total_games: summary.awayTotalGames,
         home_bonus_points: summary.homeBonusPoints, away_bonus_points: summary.awayBonusPoints,
+        home_penalty_points: summary.homePenaltyPoints, away_penalty_points: summary.awayPenaltyPoints,
         home_total_points: summary.homeTotal, away_total_points: summary.awayTotal,
         winner: summary.winner, status: homeSig && awaySig ? "submitted" : "draft",
         home_captain_signature: homeSig || null, away_captain_signature: awaySig || null,
@@ -845,15 +883,31 @@ export default function LeagueGameDetail() {
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
-                            <span className="flex items-center justify-center">
+                            <span className="flex items-center justify-center gap-0.5">
                               {!isSubmitted && !pos.completed && (
-                                <button
-                                  onClick={() => setSwapTarget({ idx, side: "home" })}
-                                  className="text-muted-foreground hover:text-primary"
-                                  title="Swap player"
-                                >
-                                  <ArrowLeftRight className="w-3 h-3" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "home" })}
+                                    className="text-muted-foreground hover:text-primary"
+                                    title="Swap player"
+                                  >
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(`Mark home player at position ${idx + 1} as a forfeit?\n\nAway team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and home team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                        markForfeit(idx, "home");
+                                      }
+                                    }}
+                                    className="text-muted-foreground hover:text-destructive"
+                                    title="Forfeit (player not available)"
+                                  >
+                                    <UserX className="w-3 h-3" />
+                                  </button>
+                                </>
+                              )}
+                              {pos.isForfeit && pos.forfeitSide === "home" && (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-destructive text-destructive">FFT</Badge>
                               )}
                             </span>
                           </>
@@ -922,7 +976,23 @@ export default function LeagueGameDetail() {
                                       <ArrowLeftRight className="w-3 h-3" />
                                     </button>
                                   )}
+                                  {!pos.completed && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Mark away player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                          markForfeit(idx, "away");
+                                        }
+                                      }}
+                                      className="text-muted-foreground hover:text-destructive"
+                                      title="Forfeit (player not available)"
+                                    >
+                                      <UserX className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </>
+                              )}
+                              {pos.isForfeit && pos.forfeitSide === "away" && (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-destructive text-destructive">FFT</Badge>
                               )}
                             </span>
                           </>
@@ -948,6 +1018,14 @@ export default function LeagueGameDetail() {
                     <td className="text-center p-1">{summary.homeBonusPoints}</td>
                     <td className="text-center p-1">{summary.awayBonusPoints}</td>
                   </tr>
+                  {(summary.homePenaltyPoints > 0 || summary.awayPenaltyPoints > 0) && (
+                    <tr className="bg-destructive/10 font-semibold text-xs text-destructive">
+                      <td colSpan={2} className="p-1 text-right">FORFEIT PENALTY</td>
+                      <td colSpan={bestOf} />
+                      <td className="text-center p-1">{summary.homePenaltyPoints > 0 ? `-${summary.homePenaltyPoints}` : ""}</td>
+                      <td className="text-center p-1">{summary.awayPenaltyPoints > 0 ? `-${summary.awayPenaltyPoints}` : ""}</td>
+                    </tr>
+                  )}
                   <tr className="bg-muted/60 font-bold text-sm">
                     <td colSpan={2} className="p-1 text-right">TOTAL</td>
                     <td colSpan={bestOf} />
@@ -1014,7 +1092,7 @@ export default function LeagueGameDetail() {
         )}
 
         <p className="text-[10px] text-muted-foreground text-center">
-          Bonus points are awarded only to the winning team — one point per individual match won
+          Bonus points: 1 per individual match won (winner only). Forfeit: away/home awarded a clean sweep (15-0) and the absent team loses {FORFEIT_PENALTY_POINTS} penalty points.
         </p>
       </div>
 

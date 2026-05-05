@@ -962,6 +962,17 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
+        {/* Live NSA roster banner */}
+        {nsaLive && !setupDone && !isSubmitted && (
+          <div className="flex items-center gap-2 text-[11px] bg-emerald-50 border border-emerald-200 text-emerald-800 rounded px-2 py-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold">Live from NSA</span>
+            <span className="text-emerald-700/80">
+              Type an NSF code to auto-fill name; W/L stats shown next to each player.
+            </span>
+          </div>
+        )}
+
         {/* Scorecard table */}
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-xs">

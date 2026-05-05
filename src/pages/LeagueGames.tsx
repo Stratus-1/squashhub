@@ -22,6 +22,8 @@ type AssocRow = {
   scope?: "internal" | "region" | null;
   platform_association_id?: string | null;
   week_start_dow?: number | null;
+  external_source?: string | null;
+  external_club_id?: string | null;
 };
 
 export default function LeagueGames() {

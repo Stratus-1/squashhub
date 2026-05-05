@@ -493,7 +493,47 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
       {expanded && regs.length === 0 && (
         <p className="mt-2 border-t pt-2 text-xs text-muted-foreground text-center">No players allocated</p>
       )}
+      {expanded && (() => {
+        const assoc = associations.find(a => a.id === league.association_id);
+        if (assoc?.external_source !== "nsa") return null;
+        return <NsaTeamIdEditor league={league} />;
+      })()}
     </Card>
+  );
+}
+
+// ─── Inline editor for NSA team ID (only shown for NSA-linked leagues) ───
+function NsaTeamIdEditor({ league }: { league: League }) {
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState(league.nsa_team_id || "");
+  const [saving, setSaving] = useState(false);
+  const dirty = (draft || "").trim() !== (league.nsa_team_id || "");
+  const save = async () => {
+    setSaving(true);
+    const value = draft.trim() || null;
+    const { error } = await fromExt("leagues").update({ nsa_team_id: value }).eq("id", league.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(value ? `Linked to NSA team ${value}` : "NSA link cleared");
+    qc.invalidateQueries({ queryKey: ["leagues"] });
+  };
+  return (
+    <div className="mt-2 border-t pt-2 flex items-center gap-2">
+      <Label className="text-[10px] text-muted-foreground whitespace-nowrap">NSA Team ID</Label>
+      <Input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
+        onKeyDown={(e) => { if (e.key === "Enter" && dirty) save(); }}
+        placeholder="e.g. 123"
+        className="h-6 text-xs font-mono w-24"
+      />
+      {dirty && (
+        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" disabled={saving} onClick={save}>
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+        </Button>
+      )}
+      <span className="text-[10px] text-muted-foreground">Pulls live roster + W/L from NSA</span>
+    </div>
   );
 }
 

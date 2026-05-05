@@ -1049,7 +1049,7 @@ export default function LeagueGameDetail() {
                         pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
                       )}
                         style={setupDone
-                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 96px` }
+                          ? { gridTemplateColumns: `28px 24px 56px minmax(0,1fr) ${Array(bestOf).fill('28px').join(' ')} 28px 32px 96px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                         }>
                         <span></span>

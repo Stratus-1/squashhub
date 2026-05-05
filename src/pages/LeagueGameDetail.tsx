@@ -982,10 +982,10 @@ export default function LeagueGameDetail() {
                                         markForfeit(idx, "home");
                                       }
                                     }}
-                                    className="text-muted-foreground hover:text-destructive"
-                                    title="Forfeit (player not available)"
+                                    className="text-destructive hover:bg-destructive/10 rounded p-0.5"
+                                    title="Forfeit home player (no-show)"
                                   >
-                                    <UserX className="w-3 h-3" />
+                                    <UserX className="w-3.5 h-3.5" />
                                   </button>
                                 </>
                               )}

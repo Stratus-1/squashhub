@@ -632,6 +632,8 @@ export default function LeagueGameDetail() {
           home_player_name: pos.homeName, away_player_name: pos.awayName,
           game_scores: pos.scores, home_games_won: hw, away_games_won: aw,
           winner: hw > aw ? "home" : aw > hw ? "away" : null,
+          is_forfeit: !!pos.isForfeit,
+          forfeit_side: pos.forfeitSide ?? null,
         } as any, { onConflict: "fixture_id,position" });
         if (error) throw error;
       }
@@ -639,6 +641,7 @@ export default function LeagueGameDetail() {
         fixture_id: fixtureId,
         home_total_games: summary.homeTotalGames, away_total_games: summary.awayTotalGames,
         home_bonus_points: summary.homeBonusPoints, away_bonus_points: summary.awayBonusPoints,
+        home_penalty_points: summary.homePenaltyPoints, away_penalty_points: summary.awayPenaltyPoints,
         home_total_points: summary.homeTotal, away_total_points: summary.awayTotal,
         winner: summary.winner, status: homeSig && awaySig ? "submitted" : "draft",
         home_captain_signature: homeSig || null, away_captain_signature: awaySig || null,

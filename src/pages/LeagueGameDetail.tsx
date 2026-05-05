@@ -471,6 +471,8 @@ export default function LeagueGameDetail() {
         home_player_name: updatedPos.homeName, away_player_name: updatedPos.awayName,
         game_scores: updatedPos.scores, home_games_won: hw, away_games_won: aw,
         winner: hw > aw ? "home" : aw > hw ? "away" : null,
+        is_forfeit: !!updatedPos.isForfeit,
+        forfeit_side: updatedPos.forfeitSide ?? null,
       } as any, { onConflict: "fixture_id,position" });
       // Also update fixture result summary
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
@@ -481,6 +483,28 @@ export default function LeagueGameDetail() {
       console.error("Auto-save failed:", err);
     }
   }, [fixtureId, user, queryClient]);
+
+  // ---- Mark a position as a forfeit (player unavailable) ----
+  // Awards the non-forfeiting side 3 clean games (15-0, 15-0, 15-0) and applies a
+  // penalty of FORFEIT_PENALTY_POINTS to the forfeiting team in the summary.
+  const markForfeit = useCallback((posIdx: number, side: "home" | "away") => {
+    const winningGame = side === "home"
+      ? { home: 0, away: 15 }   // home forfeits → away wins each game 15-0
+      : { home: 15, away: 0 };
+    const games = bestOf === 5 ? 3 : 2; // win majority of best-of
+    const scores = Array.from({ length: games }, () => ({ ...winningGame }));
+    const updatedPos: PositionEntry = {
+      ...positions[posIdx],
+      scores,
+      completed: true,
+      isForfeit: true,
+      forfeitSide: side,
+    };
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = updatedPos; return next; });
+    persistPositionScores(posIdx, updatedPos);
+    toast.success(`Position ${posIdx + 1} forfeited — ${side === "home" ? "away" : "home"} team awarded a clean sweep`);
+  }, [positions, bestOf, persistPositionScores]);
+
 
   // ---- Save Setup (persist player data without submitting results) ----
   const handleSaveSetup = async () => {

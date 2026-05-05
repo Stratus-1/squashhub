@@ -18,6 +18,7 @@ import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScor
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
+import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, type NsaTeamPlayer } from "@/hooks/use-nsa";
 
 interface PositionEntry {

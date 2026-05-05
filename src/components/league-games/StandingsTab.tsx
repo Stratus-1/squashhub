@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3 } from "lucide-react";
 
 type Props = {
@@ -108,6 +109,33 @@ export function StandingsTab({ platformAssocIds, clubTeamCodes, associationScope
 
   const myCodes = useMemo(() => new Set(clubTeamCodes), [clubTeamCodes]);
 
+  // Scope filter: "mine" = only divisions my club has a team in; "all" = every division
+  const [scope, setScope] = useState<"mine" | "all">("mine");
+  const [divisionFilter, setDivisionFilter] = useState<string>("all");
+
+  // Divisions where my club has at least one team
+  const myDivisions = useMemo(() => {
+    const set = new Set<string>();
+    for (const [div, rows] of standingsByDivision) {
+      if (rows.some((r) => myCodes.has(r.team_code))) set.add(div);
+    }
+    return set;
+  }, [standingsByDivision, myCodes]);
+
+  // Apply scope + division filters
+  const visibleEntries = useMemo(() => {
+    const all = [...standingsByDivision.entries()];
+    return all
+      .filter(([div]) => (scope === "mine" ? myDivisions.has(div) : true))
+      .filter(([div]) => (divisionFilter === "all" ? true : div === divisionFilter));
+  }, [standingsByDivision, scope, myDivisions, divisionFilter]);
+
+  // Available divisions for the division dropdown (depends on scope)
+  const divisionOptions = useMemo(() => {
+    const all = [...standingsByDivision.keys()];
+    return scope === "mine" ? all.filter((d) => myDivisions.has(d)) : all;
+  }, [standingsByDivision, scope, myDivisions]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -141,46 +169,91 @@ export function StandingsTab({ platformAssocIds, clubTeamCodes, associationScope
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={scope}
+          onValueChange={(v) => {
+            setScope(v as "mine" | "all");
+            setDivisionFilter("all");
+          }}
+        >
+          <SelectTrigger className="h-8 w-[180px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="mine">My Club's Leagues</SelectItem>
+            <SelectItem value="all">All Leagues</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+          <SelectTrigger className="h-8 w-[180px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Divisions</SelectItem>
+            {divisionOptions.map((d) => (
+              <SelectItem key={d} value={d}>{d}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <span className="text-[11px] text-muted-foreground ml-auto">
+          {visibleEntries.length} division{visibleEntries.length === 1 ? "" : "s"} shown
+        </span>
+      </div>
+
       <p className="text-xs text-muted-foreground">
-        Live standings calculated from submitted fixture results. Official imported tables will display here when synced.
+        Live standings calculated from submitted fixture results. Your club's teams are highlighted.
       </p>
-      {[...standingsByDivision.entries()].map(([division, rows]) => (
-        <div key={division}>
-          <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
-            {division}
-            <Badge variant="outline" className="text-[10px]">Calculated</Badge>
-          </h2>
-          <Card className="overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8 text-center">#</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead className="text-center w-10">P</TableHead>
-                  <TableHead className="text-center w-10">W</TableHead>
-                  <TableHead className="text-center w-10">D</TableHead>
-                  <TableHead className="text-center w-10">L</TableHead>
-                  <TableHead className="text-center w-12 font-bold">Pts</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((s, i) => (
-                  <TableRow key={s.team_code} className={myCodes.has(s.team_code) ? "bg-primary/5 font-medium" : ""}>
-                    <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
-                    <TableCell className="font-mono text-xs">{s.team_code}</TableCell>
-                    <TableCell className="text-center text-xs">{s.played}</TableCell>
-                    <TableCell className="text-center text-xs">{s.won}</TableCell>
-                    <TableCell className="text-center text-xs">{s.drawn}</TableCell>
-                    <TableCell className="text-center text-xs">{s.lost}</TableCell>
-                    <TableCell className="text-center font-bold">{s.points}</TableCell>
+
+      {visibleEntries.length === 0 ? (
+        <Card className="p-6 text-center text-sm text-muted-foreground">
+          No standings match the current filter.
+        </Card>
+      ) : (
+        visibleEntries.map(([division, rows]) => (
+          <div key={division}>
+            <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+              {division}
+              <Badge variant="outline" className="text-[10px]">Calculated</Badge>
+              {rows.some((r) => myCodes.has(r.team_code)) && (
+                <Badge className="text-[10px]">My club plays here</Badge>
+              )}
+            </h2>
+            <Card className="overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 text-center">#</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead className="text-center w-10">P</TableHead>
+                    <TableHead className="text-center w-10">W</TableHead>
+                    <TableHead className="text-center w-10">D</TableHead>
+                    <TableHead className="text-center w-10">L</TableHead>
+                    <TableHead className="text-center w-12 font-bold">Pts</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </div>
-      ))}
+                </TableHeader>
+                <TableBody>
+                  {rows.map((s, i) => (
+                    <TableRow key={s.team_code} className={myCodes.has(s.team_code) ? "bg-primary/5 font-medium" : ""}>
+                      <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
+                      <TableCell className="font-mono text-xs">{s.team_code}</TableCell>
+                      <TableCell className="text-center text-xs">{s.played}</TableCell>
+                      <TableCell className="text-center text-xs">{s.won}</TableCell>
+                      <TableCell className="text-center text-xs">{s.drawn}</TableCell>
+                      <TableCell className="text-center text-xs">{s.lost}</TableCell>
+                      <TableCell className="text-center font-bold">{s.points}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+        ))
+      )}
     </div>
   );
 }

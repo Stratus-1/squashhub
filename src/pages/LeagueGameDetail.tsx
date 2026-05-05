@@ -588,6 +588,7 @@ export default function LeagueGameDetail() {
   const summary = useMemo(() => {
     let homeTotalGames = 0, awayTotalGames = 0;
     let homeMatchWins = 0, awayMatchWins = 0;
+    let homePenaltyPoints = 0, awayPenaltyPoints = 0;
     const posResults: { homeWins: number; awayWins: number }[] = [];
     for (const pos of positions) {
       let hw = 0, aw = 0;
@@ -595,6 +596,9 @@ export default function LeagueGameDetail() {
       homeTotalGames += hw; awayTotalGames += aw;
       if (hw > aw) homeMatchWins++; else if (aw > hw) awayMatchWins++;
       posResults.push({ homeWins: hw, awayWins: aw });
+      // Forfeit penalty: deduct points from the side whose player did not show up
+      if (pos.isForfeit && pos.forfeitSide === "home") homePenaltyPoints += FORFEIT_PENALTY_POINTS;
+      if (pos.isForfeit && pos.forfeitSide === "away") awayPenaltyPoints += FORFEIT_PENALTY_POINTS;
     }
     // Bonus points: only the overall fixture winner gets them (= their match wins count)
     const homeGamesOnly = homeTotalGames;
@@ -606,10 +610,10 @@ export default function LeagueGameDetail() {
     // Only the winner gets bonus points
     const homeBonusPoints = fixtureWinner === "home" ? homeMatchWins : 0;
     const awayBonusPoints = fixtureWinner === "away" ? awayMatchWins : 0;
-    const homeTotal = homeTotalGames + homeBonusPoints;
-    const awayTotal = awayTotalGames + awayBonusPoints;
+    const homeTotal = homeTotalGames + homeBonusPoints - homePenaltyPoints;
+    const awayTotal = awayTotalGames + awayBonusPoints - awayPenaltyPoints;
     const winner = fixtureWinner;
-    return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homeTotal, awayTotal, winner, posResults };
+    return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homePenaltyPoints, awayPenaltyPoints, homeTotal, awayTotal, winner, posResults };
   }, [positions]);
 
   // ---- Submit ----

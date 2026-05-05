@@ -957,48 +957,53 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.awayWins : ""}</span>
                             {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
-                              {hasPlayers && !isSubmitted && (
+                              {!isSubmitted && !pos.completed && (
                                 <>
-                                  <button
-                                    onClick={() => startMarking(idx)}
-                                    className="bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80"
-                                    title="Mark game live"
-                                  >
-                                    <Play className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => { if (pos.scores.length === 0) addGame(idx); setManualEntry(idx); }}
-                                    className="text-muted-foreground hover:text-foreground"
-                                    title="Enter scores manually"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                  </button>
-                                  {!pos.completed && (
-                                    <button
-                                      onClick={() => setSwapTarget({ idx, side: "away" })}
-                                      className="text-muted-foreground hover:text-primary"
-                                      title="Swap player"
-                                    >
-                                      <ArrowLeftRight className="w-3 h-3" />
-                                    </button>
+                                  {hasPlayers && (
+                                    <>
+                                      <button
+                                        onClick={() => startMarking(idx)}
+                                        className="bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80"
+                                        title="Mark game live"
+                                      >
+                                        <Play className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => { if (pos.scores.length === 0) addGame(idx); setManualEntry(idx); }}
+                                        className="text-muted-foreground hover:text-foreground"
+                                        title="Enter scores manually"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+                                    </>
                                   )}
-                                  {!pos.completed && (
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "away" })}
+                                    className="text-muted-foreground hover:text-primary"
+                                    title="Swap / pick away player"
+                                  >
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                  </button>
+                                  {/* Forfeit available even when away player slot is empty:
+                                      captain marks the missing opponent as a no-show. */}
+                                  {(pos.homeCode || pos.awayCode) && (
                                     <button
                                       onClick={() => {
-                                        if (window.confirm(`Mark away player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                        const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
+                                        if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
                                           markForfeit(idx, "away");
                                         }
                                       }}
-                                      className="text-muted-foreground hover:text-destructive"
-                                      title="Forfeit (player not available)"
+                                      className="text-destructive hover:bg-destructive/10 rounded p-0.5"
+                                      title="Forfeit away player (no-show)"
                                     >
-                                      <UserX className="w-3 h-3" />
+                                      <UserX className="w-3.5 h-3.5" />
                                     </button>
                                   )}
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (
-                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-destructive text-destructive">FFT</Badge>
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
                               )}
                             </span>
                           </>

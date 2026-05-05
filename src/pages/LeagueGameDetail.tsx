@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -512,6 +512,28 @@ export default function LeagueGameDetail() {
     toast.success(`Position ${posIdx + 1} forfeited — ${side === "home" ? "away" : "home"} team awarded a clean sweep`);
   }, [positions, bestOf, persistPositionScores]);
 
+  // ---- Undo a forfeit: clears scores, completion, and forfeit flags so the
+  // position can be played/marked normally again. ----
+  const undoForfeit = useCallback((posIdx: number) => {
+    const current = positions[posIdx];
+    if (!current?.isForfeit) return;
+    const updatedPos: PositionEntry = {
+      ...current,
+      // Clear placeholder "—"/"No player" entries inserted by markForfeit
+      homeCode: current.homeCode === "—" ? "" : current.homeCode,
+      homeName: current.homeName === "No player" ? "" : current.homeName,
+      awayCode: current.awayCode === "—" ? "" : current.awayCode,
+      awayName: current.awayName === "No player" ? "" : current.awayName,
+      scores: [],
+      completed: false,
+      isForfeit: false,
+      forfeitSide: null,
+    };
+    setPositions((prev) => { const next = [...prev]; next[posIdx] = updatedPos; return next; });
+    persistPositionScores(posIdx, updatedPos);
+    toast.success(`Position ${posIdx + 1} forfeit undone`);
+  }, [positions, persistPositionScores]);
+
 
   // ---- Save Setup (persist player data without submitting results) ----
   const handleSaveSetup = async () => {
@@ -917,7 +939,22 @@ export default function LeagueGameDetail() {
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "home" && (
-                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
+                                <>
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
+                                  {!isSubmitted && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty.`)) {
+                                          undoForfeit(idx);
+                                        }
+                                      }}
+                                      className="text-muted-foreground hover:text-primary"
+                                      title="Undo forfeit"
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </span>
                           </>
@@ -1010,7 +1047,22 @@ export default function LeagueGameDetail() {
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (
-                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
+                                <>
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
+                                  {!isSubmitted && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Undo forfeit for position ${idx + 1}?\n\nThis clears the 15-0 sweep and the ${FORFEIT_PENALTY_POINTS}-point penalty.`)) {
+                                          undoForfeit(idx);
+                                        }
+                                      }}
+                                      className="text-muted-foreground hover:text-primary"
+                                      title="Undo forfeit"
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </span>
                           </>

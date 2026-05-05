@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi } from "lucide-react";
 import { format, parseISO, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
+import { useNsaFixtures, type NsaFixture } from "@/hooks/use-nsa";
 
 type Props = {
   platformAssocIds: string[];
@@ -28,9 +29,13 @@ type Props = {
   clubId?: string;
   /** Filters tournament fixtures to leagues belonging to this association. */
   associationId?: string;
+  /** External source on this association ("nsa") — triggers live API merge. */
+  externalSource?: string | null;
+  /** External system's club ID (e.g. "6" for CSIR on NSA). */
+  externalClubId?: string | null;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
 

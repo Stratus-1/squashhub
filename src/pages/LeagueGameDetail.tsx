@@ -1018,6 +1018,14 @@ export default function LeagueGameDetail() {
                     <td className="text-center p-1">{summary.homeBonusPoints}</td>
                     <td className="text-center p-1">{summary.awayBonusPoints}</td>
                   </tr>
+                  {(summary.homePenaltyPoints > 0 || summary.awayPenaltyPoints > 0) && (
+                    <tr className="bg-destructive/10 font-semibold text-xs text-destructive">
+                      <td colSpan={2} className="p-1 text-right">FORFEIT PENALTY</td>
+                      <td colSpan={bestOf} />
+                      <td className="text-center p-1">{summary.homePenaltyPoints > 0 ? `-${summary.homePenaltyPoints}` : ""}</td>
+                      <td className="text-center p-1">{summary.awayPenaltyPoints > 0 ? `-${summary.awayPenaltyPoints}` : ""}</td>
+                    </tr>
+                  )}
                   <tr className="bg-muted/60 font-bold text-sm">
                     <td colSpan={2} className="p-1 text-right">TOTAL</td>
                     <td colSpan={bestOf} />

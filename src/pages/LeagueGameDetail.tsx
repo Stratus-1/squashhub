@@ -1024,7 +1024,18 @@ export default function LeagueGameDetail() {
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
                               onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
-                            <span className="text-xs truncate px-1 text-green-700">{pos.homeName}</span>
+                            <span className="text-xs truncate px-1 text-green-700 flex items-center gap-1">
+                              <span className="truncate">{pos.homeName}</span>
+                              {(() => {
+                                const r = pos.homeCode ? nsaRosterMap.get(pos.homeCode.toUpperCase()) : null;
+                                if (!r || r.played === 0) return null;
+                                return (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-mono border-emerald-300 text-emerald-700" title={`NSA season: ${r.played} played`}>
+                                    {r.won}W–{r.lost}L
+                                  </Badge>
+                                );
+                              })()}
+                            </span>
                             <span className="flex items-center justify-end gap-1 pr-1">
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>

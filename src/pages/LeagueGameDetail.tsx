@@ -910,7 +910,7 @@ export default function LeagueGameDetail() {
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "home" && (
-                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 border-destructive text-destructive">FFT</Badge>
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-destructive text-destructive font-bold">FORFEIT</Badge>
                               )}
                             </span>
                           </>

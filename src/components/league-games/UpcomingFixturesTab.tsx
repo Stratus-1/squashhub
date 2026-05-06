@@ -218,6 +218,69 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return new Set((myLineupRows || []).map((r: any) => r.fixture_id as string));
   }, [myLineupRows]);
 
+  // ---------- Availability (per squash week) ----------
+  const dow = (typeof weekStartDow === "number" ? weekStartDow : 3); // default Wed
+  const fixtureWeekStart = (fixtureDate: string): string =>
+    format(startOfWeek(parseISO(fixtureDate), { weekStartsOn: dow as any }), "yyyy-MM-dd");
+
+  const fixtureWeeks = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of (displayFixtures || []) as any[]) {
+      if (f?.fixture_date) set.add(fixtureWeekStart(f.fixture_date));
+    }
+    return [...set];
+  }, [displayFixtures, dow]);
+
+  const { data: availRows = [] } = useQuery<{ week_start_date: string }[]>({
+    queryKey: ["my-lwa", clubId, activeMember?.id, fixtureWeeks.join(",")],
+    enabled: !!clubId && !!activeMember?.id && fixtureWeeks.length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_week_availability")
+        .select("week_start_date")
+        .eq("club_id", clubId)
+        .eq("club_member_id", activeMember!.id)
+        .in("week_start_date", fixtureWeeks);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const { data: unavailRows = [] } = useQuery<{ week_start_date: string }[]>({
+    queryKey: ["my-lwu", clubId, activeMember?.id, fixtureWeeks.join(",")],
+    enabled: !!clubId && !!activeMember?.id && fixtureWeeks.length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_week_unavailability")
+        .select("week_start_date")
+        .eq("club_id", clubId)
+        .eq("club_member_id", activeMember!.id)
+        .in("week_start_date", fixtureWeeks);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const availableWeeks = useMemo(() => new Set(availRows.map((r) => r.week_start_date)), [availRows]);
+  const unavailableWeeks = useMemo(() => new Set(unavailRows.map((r) => r.week_start_date)), [unavailRows]);
+
+  const respondAvailability = useMutation({
+    mutationFn: async ({ weekStartDate, response }: { weekStartDate: string; response: "available" | "unavailable" }) => {
+      if (!activeMember?.id) throw new Error("Not signed in as a club member");
+      const { error } = await supabase.rpc("respond_league_week_availability" as any, {
+        _club_member_id: activeMember.id,
+        _week_start_date: weekStartDate,
+        _response: response,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["my-lwa", clubId, activeMember?.id] });
+      qc.invalidateQueries({ queryKey: ["my-lwu", clubId, activeMember?.id] });
+      qc.invalidateQueries({ queryKey: ["lwa", clubId] });
+      qc.invalidateQueries({ queryKey: ["lwu", clubId] });
+      toast.success(vars.response === "available" ? "Marked available" : "Marked unavailable");
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to update availability"),
+  });
+
   // NOTE: Tournament/championship matches intentionally excluded here — they live on the dedicated /tournaments page.
 
   const fixturesByDate = useMemo(() => {

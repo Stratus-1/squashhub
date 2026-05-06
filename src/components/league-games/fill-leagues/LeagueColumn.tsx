@@ -108,6 +108,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                     name={mem.name || "Unknown"}
                     leagueNumber={leagueNumberByMember?.get(mem.id) || null}
                     disabled={!canEdit}
+                    available={availableSet?.has(mem.id)}
                     badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}
                   />
                 )}

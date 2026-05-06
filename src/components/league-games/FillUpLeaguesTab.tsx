@@ -805,8 +805,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
                     memberId={u.club_member_id}
                     origin="na"
                     name={mem.name || "Unknown"}
-                    muted
+                    unavailable
                     badge={{ label: "NA", variant: "destructive" }}
+                    onMarkAvailable={(amIAdmin || sortedLeagues.some(canEditLeague)) ? () => clearUnavailable.mutate(u.club_member_id) : undefined}
                   />
                 );
               })}

@@ -143,7 +143,7 @@ function AuthGate() {
   }
 
   const isPlatformAdmin = !clubSubdomain && (roles || []).includes("admin");
-  const isClubAdmin = clubData?.membership?.role === "captain" || clubData?.membership?.role === "admin";
+  const isClubAdmin = clubData?.membership?.role === "admin";
   const defaultRedirect = clubSubdomain
     ? (isClubAdmin ? "/club-admin" : "/")
     : (isPlatformAdmin ? "/admin" : "/");

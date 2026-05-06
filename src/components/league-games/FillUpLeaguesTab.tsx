@@ -72,7 +72,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       if (!activeMemberId) return false;
       const { data, error } = await supabase.from("club_members").select("role").eq("id", activeMemberId).maybeSingle();
       if (error) return false;
-      return data?.role === "admin" || data?.role === "captain";
+      // 'captain' role is league-scoped; only true club admins get global Fill-up edit rights.
+      return data?.role === "admin";
     },
     enabled: !!activeMemberId,
   });

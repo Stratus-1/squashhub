@@ -213,7 +213,8 @@ export function useIsClubAdmin() {
     staleTime: 5 * 60 * 1000,
   });
   const isSuperAdmin = (superRoles || []).includes("admin") || (superRoles || []).includes("moderator");
-  return isSuperAdmin || data?.membership?.role === "captain" || data?.membership?.role === "admin";
+  // Note: 'captain' is a TEAM captain (league-scoped), NOT a full club admin.
+  return isSuperAdmin || data?.membership?.role === "admin";
 }
 
 /** Get the current user's own club member record */

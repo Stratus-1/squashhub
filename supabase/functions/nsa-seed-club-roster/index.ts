@@ -190,6 +190,26 @@ Deno.serve(async (req) => {
     return jsonResp(200, { ok: true, message: "No teams found for this club in season", season, club_id: clubId, leagues_created: 0 });
   }
 
+  // Order teams so that ladder_position is assigned strongest-first:
+  // Men L1 players get the lowest (best) positions, then Men L2, ... then Mixed, then Ladies.
+  // Without this, teams iterate in fixture-encounter order, so L13 players can end up
+  // ranked above L7 on the club ladder.
+  const categoryRank = (c: string): number => {
+    if (c === "Mens") return 0;
+    if (c === "Mixed") return 1;
+    if (c === "Ladies") return 2;
+    return 3;
+  };
+  const leagueNum = (l: string): number => {
+    const m = String(l || "").match(/\d+/);
+    return m ? parseInt(m[0], 10) : 999;
+  };
+  const orderedTeams = Array.from(teams.values()).sort((a, b) => {
+    const c = categoryRank(a.category) - categoryRank(b.category);
+    if (c !== 0) return c;
+    return leagueNum(a.league) - leagueNum(b.league);
+  });
+
   // Preload existing leagues for this club (to skip duplicates by code)
   const { data: existingLeagues } = await supabase
     .from("leagues")
@@ -233,7 +253,7 @@ Deno.serve(async (req) => {
   };
 
   // 2. For each team, ensure a league row exists and fetch its roster
-  for (const meta of teams.values()) {
+  for (const meta of orderedTeams) {
     let league = leaguesByNsaId.get(meta.id) || leaguesByCode.get(meta.code);
 
     if (!league) {

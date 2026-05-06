@@ -14,8 +14,7 @@ interface NsaSubmitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clubMemberId: string;
-  fixtureId: number | null;          // The NSA fixture ID (from fixture.nsa_fixture_id or similar)
-  // matches: 4 entries to send to NSA. Caller is responsible for NSF lookup.
+  defaultFixtureId?: number | null;  // Optional pre-filled NSA fixture ID
   matches: Array<{
     home_nsf: string;
     away_nsf: string;

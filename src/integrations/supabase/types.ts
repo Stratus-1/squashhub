@@ -4248,6 +4248,18 @@ export type Database = {
         Args: { _member_id: string; _permission: string }
         Returns: boolean
       }
+      next_league_week_start: {
+        Args: { _dow: number; _from: string }
+        Returns: string
+      }
+      respond_league_week_availability: {
+        Args: {
+          _club_member_id: string
+          _response: string
+          _week_start_date: string
+        }
+        Returns: undefined
+      }
       respond_to_booking_invite: {
         Args: { invite_token: string; new_status: string; reason?: string }
         Returns: undefined

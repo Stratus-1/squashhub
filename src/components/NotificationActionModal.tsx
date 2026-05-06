@@ -8,8 +8,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, ExternalLink } from "lucide-react";
+import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, ExternalLink, ThumbsUp, ThumbsDown, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 type NotificationRow = {
   id: string;
@@ -20,6 +21,8 @@ type NotificationRow = {
   url?: string | null;
   read: boolean;
   created_at: string;
+  data?: Record<string, any> | null;
+  club_member_id?: string | null;
 };
 
 const iconMap: Record<string, typeof Bell> = {
@@ -30,6 +33,8 @@ const iconMap: Record<string, typeof Bell> = {
   marketing: Bell,
   event: Calendar,
   general: Bell,
+  league_availability: Trophy,
+  captain_fillup_reminder: Users,
 };
 
 const typeLabel: Record<string, string> = {
@@ -40,6 +45,8 @@ const typeLabel: Record<string, string> = {
   marketing: "Club News",
   event: "Event",
   general: "Notification",
+  league_availability: "League",
+  captain_fillup_reminder: "Captain",
 };
 
 /** Tracks when the app was last active to detect "returning" users */
@@ -133,10 +140,47 @@ export function NotificationActionModal() {
     },
   });
 
+  const respondAvailability = useMutation({
+    mutationFn: async ({
+      notificationId,
+      memberId,
+      weekStart,
+      response,
+    }: { notificationId: string; memberId: string; weekStart: string; response: "available" | "unavailable" }) => {
+      const { error } = await supabase.rpc("respond_league_week_availability" as any, {
+        _club_member_id: memberId,
+        _week_start_date: weekStart,
+        _response: response,
+      });
+      if (error) throw error;
+      await supabase.from("notifications").update({ read: true }).eq("id", notificationId);
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(
+        vars.response === "available"
+          ? "Marked available — your captain will see you in the fill-up pool."
+          : "Marked unavailable for the week.",
+      );
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["league-week-unavailability"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not save your response"),
+  });
+
   const notifications = unreadNotifications || [];
   const current = notifications[currentIndex] || null;
   const total = notifications.length;
   const isLast = currentIndex >= total - 1;
+
+  const advanceOrClose = useCallback(() => {
+    if (isLast) {
+      setOpen(false);
+      setDismissed(true);
+    } else {
+      setCurrentIndex((i) => i + 1);
+    }
+  }, [isLast]);
 
   const handleAction = useCallback(() => {
     if (!current) return;
@@ -224,7 +268,42 @@ export function NotificationActionModal() {
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2 pt-1">
-              {current.url && !current.url.startsWith("/notifications") && (
+              {current.type === "league_availability" && current.data?.week_start_date && current.data?.club_member_id && (
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    disabled={respondAvailability.isPending}
+                    onClick={() => {
+                      respondAvailability.mutate({
+                        notificationId: current.id,
+                        memberId: String(current.data!.club_member_id),
+                        weekStart: String(current.data!.week_start_date),
+                        response: "available",
+                      }, { onSuccess: () => advanceOrClose() });
+                    }}
+                  >
+                    <ThumbsUp className="w-4 h-4 mr-1.5" />
+                    Available
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={respondAvailability.isPending}
+                    onClick={() => {
+                      respondAvailability.mutate({
+                        notificationId: current.id,
+                        memberId: String(current.data!.club_member_id),
+                        weekStart: String(current.data!.week_start_date),
+                        response: "unavailable",
+                      }, { onSuccess: () => advanceOrClose() });
+                    }}
+                  >
+                    <ThumbsDown className="w-4 h-4 mr-1.5" />
+                    Not available
+                  </Button>
+                </div>
+              )}
+              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && (
                 <Button className="w-full" onClick={handleAction}>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   {getActionLabel(current.type)}

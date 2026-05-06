@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const TIME_OPTIONS = (() => {
   const opts: string[] = [];
-  for (let h = 6; h < 22; h++) {
+  for (let h = 5; h < 22; h++) {
     opts.push(`${String(h).padStart(2, "0")}:00`);
     opts.push(`${String(h).padStart(2, "0")}:30`);
   }

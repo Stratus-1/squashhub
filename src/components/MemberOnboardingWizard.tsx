@@ -843,7 +843,7 @@ export function MemberOnboardingWizard({
 
   const canProceed = () => {
     if (step === 1) return name.trim().length >= 2;
-    if (step === 2) return !!feeCategoryId;
+    if (step === 2) return feeCategories.length === 0 || !!feeCategoryId;
     if (currentStepId === "face") return !!capturedPhoto;
     return true;
   };
@@ -1018,28 +1018,34 @@ export function MemberOnboardingWizard({
                     )}
                   </div>
 
-                  <div>
-                    <Label>Membership Category <span className="text-destructive">*</span></Label>
-                    <Select value={feeCategoryId} onValueChange={setFeeCategoryId}>
-                      <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                      <SelectContent>
-                        {feeCategories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name} — R{cat.annual_fee.toFixed(2)}/year
-                            {cat.id === suggestedCategory && " ⭐ Suggested"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
-                      <p className="text-[10px] text-primary mt-0.5">
-                        ⭐ Auto-suggested based on your age ({detectedAge} years). You may change this if needed.
-                      </p>
-                    )}
-                    {selectedCategory?.description && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{selectedCategory.description}</p>
-                    )}
-                  </div>
+                  {feeCategories.length > 0 ? (
+                    <div>
+                      <Label>Membership Category</Label>
+                      <Select value={feeCategoryId} onValueChange={setFeeCategoryId}>
+                        <SelectTrigger><SelectValue placeholder="Select category (optional)" /></SelectTrigger>
+                        <SelectContent>
+                          {feeCategories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name} — R{cat.annual_fee.toFixed(2)}/year
+                              {cat.id === suggestedCategory && " ⭐ Suggested"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {suggestedCategory && feeCategoryId === suggestedCategory && detectedAge !== null && (
+                        <p className="text-[10px] text-primary mt-0.5">
+                          ⭐ Auto-suggested based on your age ({detectedAge} years). You may change this if needed.
+                        </p>
+                      )}
+                      {selectedCategory?.description && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{selectedCategory.description}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground italic">
+                      Your club hasn't set up membership categories yet — you'll be prompted to complete this later.
+                    </p>
+                  )}
 
                   <Separator />
 

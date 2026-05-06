@@ -89,7 +89,7 @@ function formatTimeDisplay(t: string) {
 
 function buildTimeSlots(stepMinutes: number) {
   const slots: string[] = [];
-  const start = 6 * 60;
+  const start = 5 * 60;
   const end = 22 * 60;
   const step = stepMinutes === 60 ? 60 : 30;
   for (let m = start; m < end; m += step) {

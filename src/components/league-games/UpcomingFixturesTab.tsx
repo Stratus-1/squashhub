@@ -443,12 +443,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                             <Star className="w-3 h-3 mr-1" /> Your League
                           </Badge>
                         )}
-                        {isAvailable && (
+                        {(mine || inLineup) && isAvailable && (
                           <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border border-emerald-500/40">
                             <Check className="w-3 h-3 mr-1" /> Available
                           </Badge>
                         )}
-                        {isUnavailable && (
+                        {(mine || inLineup) && isUnavailable && (
                           <Badge variant="destructive" className="text-[10px]">
                             <X className="w-3 h-3 mr-1" /> Not available
                           </Badge>

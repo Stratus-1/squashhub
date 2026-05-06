@@ -358,13 +358,40 @@ export default function LeagueSignup() {
           </div>
         </Card>
 
-        <Card className="p-4 bg-muted/30 border-dashed">
-          <div className="text-xs text-muted-foreground space-y-1">
-            <div className="font-semibold text-foreground">Are you a club admin?</div>
-            <p>
-              Unlock full club admin, finance, court bookings & access control.{" "}
-              <a href="https://squashhub.co.za/#pricing" className="text-primary underline">See club pricing →</a>
-            </p>
+        <Card className="p-6 md:p-8 text-center space-y-4 border-primary/30 bg-primary/5">
+          <h2 className="text-2xl md:text-3xl font-bold font-heading text-primary">
+            Are you a club admin?
+          </h2>
+          <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto">
+            Visit the SquashHub website to see plans, features and pricing for full club administration, finance, court bookings & access control.
+          </p>
+          <div>
+            <a
+              href="https://squashhub.co.za"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
+            >
+              Visit squashhub.co.za →
+            </a>
+          </div>
+          <div className="pt-3 border-t border-border/50 space-y-1.5 text-sm">
+            <div className="font-semibold text-foreground">Or get in touch:</div>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center items-center text-muted-foreground">
+              <a
+                href="https://wa.me/27833759003"
+                target="_blank"
+                rel="noopener"
+                className="text-primary hover:underline"
+              >
+                WhatsApp +27 83 375 9003
+              </a>
+              <span className="hidden sm:inline">·</span>
+              <a
+                href="mailto:register@squashhub.co.za"
+                className="text-primary hover:underline"
+              >
+                register@squashhub.co.za
+              </a>
+            </div>
           </div>
         </Card>
       </div>

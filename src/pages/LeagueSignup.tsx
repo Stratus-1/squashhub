@@ -172,13 +172,16 @@ export default function LeagueSignup() {
           <img
             src={shLogo}
             alt="SquashHub"
-            className="h-16 md:h-20 w-auto mx-auto"
+            className="h-20 md:h-24 w-auto mx-auto"
           />
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold">
             <Trophy className="w-3.5 h-3.5" /> Free forever for league players
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold font-heading">
-            Sign up in 30 seconds
+          <h1 className="text-3xl md:text-4xl font-bold font-heading leading-tight">
+            NSA League Player?
+            <span className="block text-xl md:text-2xl font-semibold text-muted-foreground mt-1">
+              Sign up in 30 seconds
+            </span>
           </h1>
           <div className="text-sm text-muted-foreground max-w-sm mx-auto space-y-2">
             <p>

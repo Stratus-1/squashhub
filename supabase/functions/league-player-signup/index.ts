@@ -41,24 +41,33 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// ---------- AES-GCM helpers (mirror nsa-submit-result) ----------
+// ---------- AES-GCM helpers (mirror nsa-submit-result, key = NSA_CRED_KEY base64 32 bytes) ----------
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+function bytesToB64(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
 async function getKey(): Promise<CryptoKey> {
-  const secret = Deno.env.get("NSA_CRED_ENCRYPTION_KEY");
-  if (!secret) throw new Error("NSA_CRED_ENCRYPTION_KEY not configured");
-  const raw = new TextEncoder().encode(secret).slice(0, 32);
-  const padded = new Uint8Array(32);
-  padded.set(raw);
-  return crypto.subtle.importKey("raw", padded, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  const raw = Deno.env.get("NSA_CRED_KEY");
+  if (!raw) throw new Error("NSA_CRED_KEY not configured");
+  const keyBytes = b64ToBytes(raw);
+  if (keyBytes.length !== 32) throw new Error("NSA_CRED_KEY must be 32 bytes (base64)");
+  return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 async function encryptPassword(plain: string) {
   const key = await getKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = new Uint8Array(
+  const cipher = new Uint8Array(
     await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain)),
   );
-  const b64 = (u8: Uint8Array) => btoa(String.fromCharCode(...u8));
-  return { ciphertext: b64(ciphertext), iv: b64(iv) };
+  return { ciphertext: bytesToB64(cipher), iv: bytesToB64(iv) };
 }
 
 // ---------- NSA login probe (mirrors nsa-submit-result) ----------

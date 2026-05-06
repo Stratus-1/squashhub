@@ -724,6 +724,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
       availableSet={availableSet}
+      onMarkUnavailable={(mid) => markUnavailable.mutate(mid)}
     />
   );
 
@@ -804,8 +805,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
                     memberId={u.club_member_id}
                     origin="na"
                     name={mem.name || "Unknown"}
-                    muted
+                    unavailable
                     badge={{ label: "NA", variant: "destructive" }}
+                    onMarkAvailable={(amIAdmin || sortedLeagues.some(canEditLeague)) ? () => clearUnavailable.mutate(u.club_member_id) : undefined}
                   />
                 );
               })}

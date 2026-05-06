@@ -20,9 +20,11 @@ type Props = {
   canEdit: boolean;
   /** memberIds who confirmed availability for this week — render green. */
   availableSet?: Set<string>;
+  /** Callback to mark a player unavailable for the whole week. */
+  onMarkUnavailable?: (memberId: string) => void;
 };
 
-export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, availableSet }: Props) {
+export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, availableSet, onMarkUnavailable }: Props) {
   const opponentCode = fixture
     ? fixture.home_team_code === league.code
       ? fixture.away_team_code
@@ -109,6 +111,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                     leagueNumber={leagueNumberByMember?.get(mem.id) || null}
                     disabled={!canEdit}
                     available={availableSet?.has(mem.id)}
+                    onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(mem.id) : undefined}
                     badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}
                   />
                 )}
@@ -147,6 +150,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   disabled={!canEdit}
                   positionLabel={`${i + 1}.`}
                   available={availableSet?.has(b.memberId)}
+                  onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(b.memberId) : undefined}
                   badge={
                     b.isPulled
                       ? { label: "♀ guest", variant: "outline" }

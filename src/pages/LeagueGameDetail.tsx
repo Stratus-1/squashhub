@@ -1481,6 +1481,21 @@ export default function LeagueGameDetail() {
           onClear={() => handleClearSlot(swapTarget.idx, swapTarget.side)}
         />
       )}
+
+      {activeMember?.id && (
+        <NsaSubmitDialog
+          open={nsaDialogOpen}
+          onOpenChange={setNsaDialogOpen}
+          clubMemberId={activeMember.id}
+          matches={positions.map((p) => ({
+            home_nsf: (p.homeCode || "").toUpperCase(),
+            away_nsf: (p.awayCode || "").toUpperCase(),
+            home_player_name: p.homeName,
+            away_player_name: p.awayName,
+            games: (p.scores || []).slice(0, 5).map((s) => [s.home, s.away] as [number, number]),
+          }))}
+        />
+      )}
     </div>
   );
 }

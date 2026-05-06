@@ -277,6 +277,34 @@ Deno.serve(async (req) => {
         });
       }
 
+      case "verify_committed": {
+        // Re-fetch a single fixture from NSA's public feed and confirm status === "completed".
+        // body: { fixture_id, league? (defaults s79) }
+        const fixtureId = Number(body.fixture_id);
+        const leagueParam = String(body.league || "s79");
+        if (!fixtureId) return json({ error: "fixture_id required" }, 400);
+        try {
+          const url = `${NSA_BASE}/fixtures.php?league=${encodeURIComponent(leagueParam)}&status=completed&json`;
+          const res = await fetch(url, { headers: { Accept: "application/json" } });
+          const text = await res.text();
+          let parsed: any = null;
+          try { parsed = JSON.parse(text); } catch (_) { /* ignore */ }
+          const list: any[] = Array.isArray(parsed?.data) ? parsed.data : Array.isArray(parsed) ? parsed : [];
+          const match = list.find((f) => Number(f.id) === fixtureId);
+          if (!match) {
+            return json({ ok: false, found: false, message: "Fixture not found in NSA completed feed yet" });
+          }
+          return json({
+            ok: String(match.status || "").toLowerCase() === "completed",
+            found: true,
+            status: match.status,
+            fixture_id: fixtureId,
+          });
+        } catch (e) {
+          return json({ error: (e as Error).message }, 500);
+        }
+      }
+
       case "verify_credentials":
       case "list_editable":
       case "submit_result": {

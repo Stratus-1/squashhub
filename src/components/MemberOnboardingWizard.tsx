@@ -693,13 +693,17 @@ export function MemberOnboardingWizard({
         // Reset to bottom only if the imported row hadn't been claimed yet
         // (user_id was null) — preserves ladder history for re-logins.
         const updatePayload: any = { ...memberData, user_id: user.id };
-        const { data: prior } = await fromExt("club_members")
-          .select("user_id, matches_played")
+        const { data: prior, error: priorErr } = await fromExt("club_members")
+          .select("user_id")
           .eq("id", existingMember.id)
           .maybeSingle();
+        if (priorErr) {
+          console.warn("[MemberOnboardingWizard] prior lookup error", priorErr);
+        }
+        // If we cannot determine prior state, default to "unclaimed" so a
+        // first-time claimer always lands at the bottom of the ladder.
         const wasUnclaimed = !prior?.user_id;
-        const noHistory = !prior?.matches_played || Number(prior.matches_played) === 0;
-        if (wasUnclaimed && noHistory) {
+        if (wasUnclaimed) {
           updatePayload.ladder_position = bottomLadderPosition;
         }
         const { error: memErr } = await fromExt("club_members")

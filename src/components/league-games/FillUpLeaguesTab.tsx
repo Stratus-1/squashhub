@@ -320,6 +320,20 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
   });
   const unavailableSet = useMemo(() => new Set(unavailable.map(u => u.club_member_id)), [unavailable]);
 
+  // Week-wide POSITIVE availability confirmations
+  const { data: availableRows = [] } = useQuery<{ id: string; club_member_id: string }[]>({
+    queryKey: ["lwa", clubId, weekStart],
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_week_availability")
+        .select("id, club_member_id")
+        .eq("club_id", clubId)
+        .eq("week_start_date", weekStart);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const availableSet = useMemo(() => new Set(availableRows.map(r => r.club_member_id)), [availableRows]);
+
   // Next upcoming fixture per league code
   const leagueCodes = useMemo(
     () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),

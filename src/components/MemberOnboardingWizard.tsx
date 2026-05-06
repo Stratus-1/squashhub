@@ -671,15 +671,50 @@ export function MemberOnboardingWizard({
       // vs a genuinely new member joining. Fees only apply to new members.
       const isPreExistingMember = !!existingMember;
 
+      // Always place self-registering members at the bottom of the ladder
+      // (within their gender group). Admins reposition them afterwards based
+      // on league standing or skill assessment. This applies to both brand-new
+      // inserts AND pre-existing imported rows being linked for the first time.
+      const isLadiesGroup = ["female", "ladies", "f"].includes((gender || "").toLowerCase());
+      const { data: bottomRows } = await fromExt("club_members")
+        .select("ladder_position, gender")
+        .eq("club_id", clubId)
+        .not("ladder_position", "is", null);
+      const groupMax = (bottomRows || []).reduce((mx: number, r: any) => {
+        const isLadies = ["female", "ladies", "f"].includes(String(r.gender || "").toLowerCase());
+        if (isLadies !== isLadiesGroup) return mx;
+        const p = Number(r.ladder_position) || 0;
+        return p > mx ? p : mx;
+      }, 0);
+      const bottomLadderPosition = groupMax + 1;
+
       if (existingMember) {
-        // Make sure the row is linked to this auth user
+        // Make sure the row is linked to this auth user.
+        // Reset to bottom only if the imported row hadn't been claimed yet
+        // (user_id was null) — preserves ladder history for re-logins.
+        const updatePayload: any = { ...memberData, user_id: user.id };
+        const { data: prior } = await fromExt("club_members")
+          .select("user_id, matches_played")
+          .eq("id", existingMember.id)
+          .maybeSingle();
+        const wasUnclaimed = !prior?.user_id;
+        const noHistory = !prior?.matches_played || Number(prior.matches_played) === 0;
+        if (wasUnclaimed && noHistory) {
+          updatePayload.ladder_position = bottomLadderPosition;
+        }
         const { error: memErr } = await fromExt("club_members")
-          .update({ ...memberData, user_id: user.id })
+          .update(updatePayload)
           .eq("id", existingMember.id);
         if (memErr) throw memErr;
       } else {
         const { error: memErr } = await fromExt("club_members")
-          .insert({ ...memberData, club_id: clubId, user_id: user.id, role: "member" });
+          .insert({
+            ...memberData,
+            club_id: clubId,
+            user_id: user.id,
+            role: "member",
+            ladder_position: bottomLadderPosition,
+          });
         if (memErr) throw memErr;
       }
 

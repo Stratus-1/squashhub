@@ -10,6 +10,7 @@ import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { Trophy, Search, CheckCircle2, Loader2, Crown } from "lucide-react";
 import { motion } from "framer-motion";
+import shLogo from "@/assets/sh-logo.png";
 
 type LookupHit = {
   member_id: string;
@@ -167,16 +168,26 @@ export default function LeagueSignup() {
         description="Sign up free for SquashHub. View your league fixtures, submit scorecards to NSA, and connect with teammates."
       />
       <div className="max-w-xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
+          <img
+            src={shLogo}
+            alt="SquashHub"
+            className="h-16 md:h-20 w-auto mx-auto"
+          />
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold">
             <Trophy className="w-3.5 h-3.5" /> Free forever for league players
           </div>
           <h1 className="text-3xl md:text-4xl font-bold font-heading">
             Sign up in 30 seconds
           </h1>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            View your fixtures, submit scorecards to NSA, and chat with your team — completely free for every NSA league player.
-          </p>
+          <div className="text-sm text-muted-foreground max-w-sm mx-auto space-y-2">
+            <p>
+              View your fixtures, set up league teams for the week ahead, and mark and post league games directly to the NSA site.
+            </p>
+            <p className="text-base font-semibold text-primary">
+              Completely free for every NSA league player.
+            </p>
+          </div>
         </div>
 
         <Card className="p-5 md:p-6 space-y-5">

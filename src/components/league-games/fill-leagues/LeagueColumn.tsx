@@ -150,6 +150,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   disabled={!canEdit}
                   positionLabel={`${i + 1}.`}
                   available={availableSet?.has(b.memberId)}
+                  onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(b.memberId) : undefined}
                   badge={
                     b.isPulled
                       ? { label: "♀ guest", variant: "outline" }

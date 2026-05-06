@@ -1745,6 +1745,7 @@ export type Database = {
           face_enrolment_required: boolean
           fee_reminder_days_before: number | null
           fill_top_down_enabled: boolean
+          free_tier_until: string | null
           gobook_url: string | null
           honesty_bar_enabled: boolean
           id: string
@@ -1762,6 +1763,7 @@ export type Database = {
           member_number_start: number | null
           mixed_ladder_enabled: boolean
           name: string
+          nsa_club_id: string | null
           payment_gateway: string | null
           payment_gateway_public_key: string | null
           peak_weekday_end: string
@@ -1791,6 +1793,7 @@ export type Database = {
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
+          free_tier_until?: string | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean
           id?: string
@@ -1808,6 +1811,7 @@ export type Database = {
           member_number_start?: number | null
           mixed_ladder_enabled?: boolean
           name: string
+          nsa_club_id?: string | null
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
           peak_weekday_end?: string
@@ -1837,6 +1841,7 @@ export type Database = {
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
+          free_tier_until?: string | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean
           id?: string
@@ -1854,6 +1859,7 @@ export type Database = {
           member_number_start?: number | null
           mixed_ladder_enabled?: boolean
           name?: string
+          nsa_club_id?: string | null
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
           peak_weekday_end?: string
@@ -2684,6 +2690,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          nsa_team_code: string | null
           nsa_team_id: string | null
           updated_at: string
         }
@@ -2696,6 +2703,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          nsa_team_code?: string | null
           nsa_team_id?: string | null
           updated_at?: string
         }
@@ -2708,6 +2716,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          nsa_team_code?: string | null
           nsa_team_id?: string | null
           updated_at?: string
         }

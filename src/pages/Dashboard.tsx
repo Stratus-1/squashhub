@@ -27,6 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder, useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { DashboardDesktop } from "@/components/DashboardDesktop";
+import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -511,6 +512,12 @@ export default function Dashboard() {
           actionsOnly
         />
 
+        {hasLeagues && (
+          <div className="px-8 pt-3">
+            <LeagueWeekAvailabilityCard />
+          </div>
+        )}
+
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}
@@ -569,6 +576,13 @@ export default function Dashboard() {
 
       {/* Prompt members to join an affiliated league association */}
       <JoinLeagueAssociationCard clubId={clubId} variant="banner" />
+
+      {/* Confirm next week's league availability */}
+      {hasLeagues && (
+        <div className="px-4 mt-3">
+          <LeagueWeekAvailabilityCard />
+        </div>
+      )}
 
       {/* Family Member Switcher */}
       {showFamilySwitcher && (

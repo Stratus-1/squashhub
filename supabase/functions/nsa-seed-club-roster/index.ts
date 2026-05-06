@@ -28,7 +28,8 @@ const corsHeaders = {
 };
 
 const NSA_BASE = "https://admin.northerns.co.za/nsa";
-const NSA_ASSOCIATION_ID = "ff79125c-1c69-4a1a-a5bb-6e0724a493b8"; // Northern Squash Association
+// Platform-wide Northern Squash Association record (platform_league_associations)
+const NSA_PLATFORM_ASSOC_ID = "b1cb8b56-bc97-4f31-a8ea-69fab4fc6259";
 const DEFAULT_SEASON = "s79";
 const SEASON_YEAR = "2026";
 

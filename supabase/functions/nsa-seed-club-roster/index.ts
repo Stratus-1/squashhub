@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
       .from("member_association_affiliations")
       .select("club_member_id, league_association_number")
       .in("club_member_id", memberIds)
-      .eq("association_id", NSA_ASSOCIATION_ID);
+      .eq("association_id", clubNsaAssocId);
     existingAffiliations = data || [];
   }
   const affilByMemberId = new Set(existingAffiliations.map((a: any) => a.club_member_id));
@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
         .from("leagues")
         .insert({
           club_id: clubId,
-          association_id: NSA_ASSOCIATION_ID,
+          association_id: clubNsaAssocId,
           name: leagueDisplayName(meta.category, meta.league),
           code: meta.code,
           nsa_team_id: meta.id,
@@ -306,6 +306,7 @@ Deno.serve(async (req) => {
             name,
             gender: inferGender(meta.category),
             plays_league: true,
+            enable_league_association_id: clubNsaAssocId,
             ladder_position: nextLadderPos++,
           })
           .select("id, name, gender, ladder_position")
@@ -314,6 +315,15 @@ Deno.serve(async (req) => {
         member = mIns;
         membersByName.set(name.toLowerCase(), member);
         counts.members_created += 1;
+      } else {
+        // Backfill plays_league + association on existing rows so they appear under NSA leagues
+        await supabase
+          .from("club_members")
+          .update({ plays_league: true, enable_league_association_id: clubNsaAssocId })
+          .eq("id", member.id);
+        counts.members_existing += 1;
+        // prevent the original "else { counts.members_existing += 1 }" branch below from double-counting
+        continue_member_existing_handled: void 0;
       } else {
         counts.members_existing += 1;
       }

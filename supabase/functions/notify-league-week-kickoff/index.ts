@@ -95,10 +95,11 @@ Deno.serve(async (req) => {
           },
         }));
 
+      console.log(`[${club.name}] week=${weekStartStr} roster=${memberIds.length} alreadyNotified=${alreadyNotified.size} toInsert=${playerRows.length}`);
       if (playerRows.length > 0) {
-        const { error: insErr } = await supabase.from("notifications").insert(playerRows);
+        const { error: insErr, data: insData } = await supabase.from("notifications").insert(playerRows).select("id");
         if (insErr) console.error("player notif insert failed", insErr);
-        else totalPlayerNotifs += playerRows.length;
+        else totalPlayerNotifs += (insData?.length || 0);
       }
 
       // Captain reminders — one per captain

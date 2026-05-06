@@ -130,6 +130,37 @@ Deno.serve(async (req) => {
   if (clubErr || !club) return jsonResp(404, { error: "Club not found" });
   if (!club.nsa_club_id) return jsonResp(400, { error: "Club has no nsa_club_id; not an NSA-seeded tenant" });
 
+  // Ensure a per-club league_associations row exists pointing at the platform NSA record
+  let clubNsaAssocId: string;
+  {
+    const { data: existing } = await supabase
+      .from("league_associations")
+      .select("id")
+      .eq("club_id", clubId)
+      .eq("platform_association_id", NSA_PLATFORM_ASSOC_ID)
+      .maybeSingle();
+    if (existing?.id) {
+      clubNsaAssocId = existing.id;
+    } else {
+      const { data: ins, error: insErr } = await supabase
+        .from("league_associations")
+        .insert({
+          club_id: clubId,
+          name: "Northern Squash Association",
+          abbreviation: "NSA",
+          platform_association_id: NSA_PLATFORM_ASSOC_ID,
+          fee_annual: 0,
+          active: true,
+          scope: "region",
+        })
+        .select("id")
+        .single();
+      if (insErr || !ins) return jsonResp(500, { error: `Failed to create NSA league_association: ${insErr?.message || "unknown"}` });
+      clubNsaAssocId = ins.id;
+    }
+  }
+
+
   // 1. Fetch the season's completed fixtures and find every team belonging to this club
   let fixtures: NsaFixture[] = [];
   try {

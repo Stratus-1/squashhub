@@ -57,16 +57,16 @@ export default function LeagueGames() {
     enabled: !!clubId,
   });
 
-  // Get club's leagues (with code + id + association_id)
+  // Get club's leagues (with code + id + association_id + NSA mapping)
   const { data: clubLeagues } = useQuery({
     queryKey: ["club-leagues-codes-assoc", clubId],
     queryFn: async () => {
       if (!clubId) return [];
       const { data, error } = await fromExt("leagues")
-        .select("id, code, name, association_id")
+        .select("id, code, name, association_id, nsa_team_code")
         .eq("club_id", clubId!);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null }>;
+      return (data || []) as Array<{ id: string; code: string | null; name: string; association_id: string | null; nsa_team_code: string | null }>;
     },
     enabled: !!clubId,
   });
@@ -208,9 +208,10 @@ export default function LeagueGames() {
 
             <TabsContent value="standings" className="mt-4">
               <StandingsTab
-                platformAssocIds={platformAssocIds}
-                clubTeamCodes={clubTeamCodes}
+                clubLeagues={leaguesInScope}
+                myLeagueCode={(myPrimaryLeagueReg as any)?.leagues?.code ?? null}
                 associationScope={selectedAssoc?.scope ?? "region"}
+                externalSource={selectedAssoc?.external_source ?? null}
               />
             </TabsContent>
           </Tabs>

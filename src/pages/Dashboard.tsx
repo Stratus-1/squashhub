@@ -23,7 +23,7 @@ import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder } from "@/hooks/use-data";
+import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder, useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -388,8 +388,14 @@ export default function Dashboard() {
   const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
 
+  const { data: myRoles } = useMyRoles();
+  const isSuperAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
+
   useEffect(() => {
     if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
+
+    // Super admins (platform-level) can browse any club without being forced to onboard.
+    if (isSuperAdmin) return;
 
     // Club admins (captains/admins) skip the member onboarding wizard.
     // Only show the membership intro modal to admins who are themselves
@@ -444,6 +450,7 @@ export default function Dashboard() {
     myClubMember,
     clubData,
     onboardingDone,
+    isSuperAdmin,
   ]);
 
   if (isLoading) {

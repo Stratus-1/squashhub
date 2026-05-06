@@ -843,7 +843,7 @@ export function MemberOnboardingWizard({
 
   const canProceed = () => {
     if (step === 1) return name.trim().length >= 2;
-    if (step === 2) return feeCategories.length === 0 || !!feeCategoryId;
+    if (step === 2) return true;
     if (currentStepId === "face") return !!capturedPhoto;
     return true;
   };

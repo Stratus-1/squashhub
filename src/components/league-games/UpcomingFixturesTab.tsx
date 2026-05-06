@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi } from "lucide-react";
-import { format, parseISO, addDays } from "date-fns";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X } from "lucide-react";
+import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useNsaFixtures, type NsaFixture } from "@/hooks/use-nsa";
+import { toast } from "sonner";
 
 type Props = {
   platformAssocIds: string[];
@@ -33,6 +35,8 @@ type Props = {
   externalSource?: string | null;
   /** External system's club ID (e.g. "6" for CSIR on NSA). */
   externalClubId?: string | null;
+  /** Day-of-week (0=Sun..6=Sat) the squash week starts on, for availability week computation. */
+  weekStartDow?: number;
 };
 
 export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId }: Props) {

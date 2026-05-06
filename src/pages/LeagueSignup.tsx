@@ -194,9 +194,10 @@ export default function LeagueSignup() {
                   <Input
                     id="nsa"
                     value={nsaInput}
-                    onChange={(e) => setNsaInput(e.target.value)}
+                    onChange={(e) => setNsaInput(e.target.value.toUpperCase())}
                     placeholder="e.g. 12345"
-                    className="pr-10"
+                    className="pr-10 uppercase"
+                    style={{ textTransform: "uppercase" }}
                   />
                   {lookingUp && <Loader2 className="w-4 h-4 absolute right-3 top-3 animate-spin text-muted-foreground" />}
                 </div>

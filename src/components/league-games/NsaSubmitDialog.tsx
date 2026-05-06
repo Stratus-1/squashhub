@@ -1,20 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Shield, AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
+import { Loader2, Shield, AlertTriangle, CheckCircle2, ExternalLink, Search } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNsaFixtures, NSA_CURRENT_SEASON } from "@/hooks/use-nsa";
 
 interface NsaSubmitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clubMemberId: string;
-  defaultFixtureId?: number | null;  // Optional pre-filled NSA fixture ID
+  /** Auto-resolution context (preferred) */
+  homeTeamCode?: string | null;
+  awayTeamCode?: string | null;
+  fixtureDate?: string | null; // YYYY-MM-DD
+  /** Optional explicit override */
+  defaultFixtureId?: number | null;
   matches: Array<{
     home_nsf: string;
     away_nsf: string;
@@ -31,15 +36,43 @@ type CredMeta = {
   last_verification_status: string | null;
 };
 
-export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, defaultFixtureId, matches }: NsaSubmitDialogProps) {
+export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, homeTeamCode, awayTeamCode, fixtureDate, defaultFixtureId, matches }: NsaSubmitDialogProps) {
   const qc = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [fixtureIdInput, setFixtureIdInput] = useState<string>(defaultFixtureId ? String(defaultFixtureId) : "");
-  const fixtureId = fixtureIdInput.trim() ? Number(fixtureIdInput.trim()) : null;
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState<"check" | "commit" | null>(null);
   const [result, setResult] = useState<{ ok: boolean; errors: string[]; notes: string[]; mode: string; title?: string | null } | null>(null);
+
+  // Auto-resolve NSA fixture id by querying the public fixtures feed and matching
+  // on team codes (case-insensitive) + date.
+  const canAutoResolve = !!(open && homeTeamCode && awayTeamCode && fixtureDate);
+  const { data: nsaFixtures, isFetching: resolvingFixture } = useNsaFixtures({
+    league: NSA_CURRENT_SEASON,
+    enabled: canAutoResolve,
+  });
+
+  const resolvedFixtureId = useMemo<number | null>(() => {
+    if (!canAutoResolve || !nsaFixtures) return null;
+    const h = (homeTeamCode || "").toUpperCase();
+    const a = (awayTeamCode || "").toUpperCase();
+    const match = nsaFixtures.find((f) => {
+      const c1 = (f.team1?.code || "").toUpperCase();
+      const c2 = (f.team2?.code || "").toUpperCase();
+      const dateMatches = !fixtureDate || f.date === fixtureDate;
+      return dateMatches && ((c1 === h && c2 === a) || (c1 === a && c2 === h));
+    });
+    return match ? Number(match.id) : null;
+  }, [nsaFixtures, canAutoResolve, homeTeamCode, awayTeamCode, fixtureDate]);
+
+  // When auto-resolved id arrives and user hasn't typed an override, populate input.
+  useEffect(() => {
+    if (resolvedFixtureId && !fixtureIdInput) setFixtureIdInput(String(resolvedFixtureId));
+  }, [resolvedFixtureId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fixtureId = fixtureIdInput.trim() ? Number(fixtureIdInput.trim()) : null;
+
 
   const metaQ = useQuery({
     queryKey: ["nsa-cred-meta", clubMemberId],

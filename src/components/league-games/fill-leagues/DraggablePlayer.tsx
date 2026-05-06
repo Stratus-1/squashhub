@@ -35,9 +35,11 @@ export function DraggablePlayer({ memberId, origin, name, rank, leagueNumber, di
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-1.5 px-1.5 py-1 rounded border border-border/60 bg-background/80",
-        "text-sm select-none",
-        disabled ? "opacity-60" : "hover:bg-accent/40",
+        "flex items-center gap-1.5 px-1.5 py-1 rounded border text-sm select-none",
+        available
+          ? "border-emerald-500/60 bg-emerald-500/15 dark:bg-emerald-500/20"
+          : "border-border/60 bg-background/80",
+        disabled ? "opacity-60" : available ? "hover:bg-emerald-500/25" : "hover:bg-accent/40",
         isDragging && "opacity-30",
         muted && "opacity-50",
       )}

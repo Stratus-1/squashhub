@@ -93,6 +93,8 @@ export default function LeagueGameDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
+  const [nsaDialogOpen, setNsaDialogOpen] = useState(false);
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);

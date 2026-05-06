@@ -469,11 +469,13 @@ export default function Dashboard() {
 
   // Desktop dashboard — keeps mobile layout below untouched
   if (!isMobile) {
-    const played = (recentMatches || []).length;
-    const wins = (recentMatches || []).filter((m: any) =>
-      m.winner_id === effectiveUserId || (myMemberId && m.winner_member_id === myMemberId)
-    ).length;
-    const losses = Math.max(0, played - wins - (recentMatches || []).filter((m: any) => !m.winner_id && !m.winner_member_id).length);
+    // Source W/L from ladder entry (which merges NSA league stats — single source of truth)
+    const myLadderEntry = (ladder || []).find((p: any) =>
+      (myMemberId && p.club_member_id === myMemberId) || (user?.id && (p.user_id === user.id || p.id === user.id))
+    ) as any;
+    const wins = myLadderEntry?.wins ?? 0;
+    const losses = myLadderEntry?.losses ?? 0;
+    const played = myLadderEntry?.matches_played ?? (wins + losses);
     const winRate = played > 0 ? (wins / played) * 100 : 0;
     const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
 

@@ -146,6 +146,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   leagueNumber={leagueNumberByMember?.get(b.memberId) || null}
                   disabled={!canEdit}
                   positionLabel={`${i + 1}.`}
+                  available={availableSet?.has(b.memberId)}
                   badge={
                     b.isPulled
                       ? { label: "♀ guest", variant: "outline" }

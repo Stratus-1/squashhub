@@ -78,6 +78,7 @@ import { useMyClub } from "@/hooks/use-club";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import { SiteFooter } from "@/components/SiteFooter";
+import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
 const queryClient = new QueryClient();
 
@@ -156,6 +157,7 @@ function AuthGate() {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { data: roles, isLoading } = useMyRoles();
+  const { subdomain } = useClubContext();
 
   if (loading || isLoading) {
     return (
@@ -169,6 +171,25 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
   const allowed = (roles || []).includes("admin") || (roles || []).includes("moderator");
   if (!allowed) return <Navigate to="/" replace />;
+
+  // Super-admin panel is global — must be accessed on the root host (no club subdomain).
+  // If the user is on a club subdomain, redirect them to the root host's /admin.
+  if (subdomain && typeof window !== "undefined") {
+    const { protocol, hostname, port } = window.location;
+    const portSuffix = port ? `:${port}` : "";
+    const KNOWN_ROOTS = ["squashhub.co.za", "squashhub.app"];
+    let root: string | null = null;
+    for (const r of KNOWN_ROOTS) {
+      if (hostname === r || hostname.endsWith(`.${r}`)) { root = r; break; }
+    }
+    if (root) {
+      window.location.href = `${protocol}//${root}${portSuffix}/admin`;
+      return null;
+    }
+    // Lovable preview / localhost: just drop the ?club= and stay on /admin
+    window.location.href = `${protocol}//${hostname}${portSuffix}/admin`;
+    return null;
+  }
 
   return <>{children}</>;
 }
@@ -315,6 +336,12 @@ function AppRoutes() {
       {user && <OutboxSync />}
       <PwaUpdatePrompt />
       <FeedbackFab />
+      {/* Mobile-only floating Super-Admin shortcut (desktop has it in the header) */}
+      {user && !isAdminRoute && !isTvRoute && (
+        <div className="md:hidden fixed top-2 right-2 z-50">
+          <SuperAdminMenu />
+        </div>
+      )}
       
     </div>
   );

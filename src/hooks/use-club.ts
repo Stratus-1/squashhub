@@ -195,10 +195,25 @@ export function useMyClub() {
   });
 }
 
-/** Check if user is club admin */
+/** Check if user is club admin (or platform super-admin) */
 export function useIsClubAdmin() {
+  const { user } = useAuth();
   const { data } = useMyClub();
-  return data?.membership?.role === "captain" || data?.membership?.role === "admin";
+  const { data: superRoles } = useQuery({
+    queryKey: ["my-super-roles", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as string[];
+      const { data: rows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      return (rows || []).map((r: any) => r.role as string);
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+  const isSuperAdmin = (superRoles || []).includes("admin") || (superRoles || []).includes("moderator");
+  return isSuperAdmin || data?.membership?.role === "captain" || data?.membership?.role === "admin";
 }
 
 /** Get the current user's own club member record */

@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { useMyClub } from "@/hooks/use-club";
 import { useLocation } from "react-router-dom";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
+import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
 /**
  * Wraps authenticated app routes with a left sidebar on desktop (>= md).
@@ -66,6 +67,9 @@ export function DesktopShell({
           )}
           <header className="relative z-10 h-10 flex items-center border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">
             <SidebarTrigger className="ml-2" />
+            <div className="ml-auto mr-2 flex items-center gap-1">
+              <SuperAdminMenu />
+            </div>
           </header>
           <main className="relative z-10 flex-1 min-w-0">{children}</main>
         </div>

@@ -571,6 +571,13 @@ export default function Dashboard() {
       {/* Prompt members to join an affiliated league association */}
       <JoinLeagueAssociationCard clubId={clubId} variant="banner" />
 
+      {/* Confirm next week's league availability */}
+      {hasLeagues && (
+        <div className="px-4 mt-3">
+          <LeagueWeekAvailabilityCard />
+        </div>
+      )}
+
       {/* Family Member Switcher */}
       {showFamilySwitcher && (
         <div className="px-4 mt-2">

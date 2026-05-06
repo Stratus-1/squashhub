@@ -325,7 +325,7 @@ export default function LeagueSignup() {
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 pl-6 border-l-2 border-amber-500/30">
                       <div className="space-y-2">
                         <Label htmlFor="nsau" className="text-xs">NSA admin username</Label>
-                        <Input id="nsau" value={nsaUser} onChange={(e) => setNsaUser(e.target.value.toUpperCase())} placeholder="e.g. SMITHJ" />
+                        <Input id="nsau" value={nsaUser} onChange={(e) => setNsaUser(e.target.value)} placeholder="e.g. smithj" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="nsap" className="text-xs">NSA admin password</Label>

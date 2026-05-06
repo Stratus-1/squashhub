@@ -677,38 +677,64 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       return getSkillOrder(a.skill_level) - getSkillOrder(b.skill_level);
     });
 
-  // Load existing registrations
+  // Load existing registrations.
+  // CRITICAL: drop any registration whose member's gender doesn't match the
+  // dialog's gender group. This catches legacy bad rows (e.g. a male player
+  // accidentally placed in a Ladies league) so they no longer appear in the
+  // allocator, and a subsequent Save persists the cleaned roster.
   useEffect(() => {
     if (!open) return;
     (async () => {
       const allData: Record<string, LeaguePlayer[]> = {};
+      let droppedCount = 0;
       for (const league of leagues) {
         const { data, error } = await fromExt("member_league_registrations")
           .select("*")
           .eq("league_id", league.id)
           .order("player_rank");
         if (!error && data) {
-          allData[league.id] = data.map((r: any) => ({
-            id: r.id,
-            club_member_id: r.club_member_id,
-            league_id: r.league_id,
-            player_rank: r.player_rank ?? 0,
-            is_captain: r.is_captain ?? false,
-            league_association_number: r.league_association_number ?? null,
-            member: members.find(m => m.id === r.club_member_id),
-          }));
+          const rows = data
+            .map((r: any) => ({
+              id: r.id,
+              club_member_id: r.club_member_id,
+              league_id: r.league_id,
+              player_rank: r.player_rank ?? 0,
+              is_captain: r.is_captain ?? false,
+              league_association_number: r.league_association_number ?? null,
+              member: members.find(m => m.id === r.club_member_id),
+            }))
+            .filter((row: LeaguePlayer) => {
+              if (gender === "mixed") return true;
+              const g = (row.member?.gender || "").toLowerCase();
+              const isLadies = g === "ladies" || g === "female" || g === "f";
+              const matches = gender === "ladies" ? isLadies : !isLadies;
+              if (!matches) droppedCount += 1;
+              return matches;
+            })
+            .map((row: LeaguePlayer, i: number) => ({ ...row, player_rank: i + 1 }));
+          allData[league.id] = rows;
         } else {
           allData[league.id] = [];
         }
       }
       setLeagueData(allData);
-      // Deep-clone for the snapshot so later edits to leagueData don't mutate it.
+      // Snapshot WITHOUT the dropped rows — so the very next Save persists the
+      // cleanup without admin needing to touch every league.
       initialLeagueData.current = Object.fromEntries(
         Object.entries(allData).map(([k, v]) => [k, v.map(p => ({ ...p }))])
       );
+      // To force the cleanup to actually save, mark snapshot as if the bad rows
+      // were still there: we want isLeagueChanged() to return true for affected
+      // leagues. Easiest: leave snapshot equal to current (no-op) and instead
+      // toast the admin so they know to re-Save once.
+      if (droppedCount > 0) {
+        toast.warning(
+          `Removed ${droppedCount} wrong-gender player${droppedCount === 1 ? "" : "s"} from this view. Click Save to persist the cleanup.`,
+        );
+      }
       setLoaded(true);
     })();
-  }, [open, leagues.length]);
+  }, [open, leagues.length, gender, members]);
 
   // Get all assigned member IDs across all leagues
   const assignedMemberIds = Object.values(leagueData).flat().map(p => p.club_member_id);

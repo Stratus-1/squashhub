@@ -111,6 +111,7 @@ const normalizeCode = (s: string | null | undefined) =>
 export function useNsaTeamByCode(code: string | null | undefined, enabled = true) {
   const { data: fixtures } = useNsaFixtures({
     league: NSA_CURRENT_SEASON,
+    status: "completed",
     enabled: enabled && !!code,
   });
 

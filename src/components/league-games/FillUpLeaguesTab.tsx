@@ -719,6 +719,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       leagueNumberByMember={leagueNumberByMember}
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
+      availableSet={availableSet}
     />
   );
 

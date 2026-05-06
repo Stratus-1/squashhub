@@ -18,7 +18,7 @@ import {
 } from "@/hooks/use-availability";
 
 const TIME_OPTIONS: string[] = [];
-for (let h = 6; h <= 21; h++) {
+for (let h = 5; h <= 21; h++) {
   for (const m of ["00", "30"]) {
     TIME_OPTIONS.push(`${String(h).padStart(2, "0")}:${m}`);
   }

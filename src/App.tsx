@@ -68,6 +68,7 @@ import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
 import SuperAdminLeagues from "./pages/admin/SuperAdminLeagues";
+import SuperAdminNsaImport from "./pages/admin/SuperAdminNsaImport";
 import MyAccount from "./pages/MyAccount";
 import HonestyBar from "./pages/HonestyBar";
 import Settings from "./pages/Settings";
@@ -282,6 +283,7 @@ function AppRoutes() {
           <Route path="clubs" element={<SuperAdminClubs />} />
           <Route path="users" element={<SuperAdminUsers />} />
           <Route path="leagues" element={<SuperAdminLeagues />} />
+          <Route path="nsa-import" element={<SuperAdminNsaImport />} />
           <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
           <Route path="settings" element={<SuperAdminSettings />} />
           <Route path="support" element={<AdminSupport />} />

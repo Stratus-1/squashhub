@@ -87,7 +87,8 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   });
 
   const memberRole = memberRow?.role;
-  const isFullAccess = memberRole === "captain" || memberRole === "admin";
+  // 'captain' = team captain only (league-scoped). Full admin = 'admin' role.
+  const isFullAccess = memberRole === "admin";
 
   const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
 
@@ -117,7 +118,7 @@ export function useMyPermissions(): Set<string> {
   });
 
   const memberRole = memberRow?.role;
-  const isFullAccess = memberRole === "captain" || memberRole === "admin";
+  const isFullAccess = memberRole === "admin";
   const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
 
   if (isFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));

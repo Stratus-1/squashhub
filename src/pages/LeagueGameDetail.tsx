@@ -1445,6 +1445,13 @@ export default function LeagueGameDetail() {
           </Button>
         )}
 
+        {/* NSA Post — visible once setup is done so captains can validate/submit upstream */}
+        {setupDone && activeMember?.id && (
+          <Button variant="outline" className="w-full border-amber-500/50 text-amber-700 hover:bg-amber-500/10" size="sm" onClick={() => setNsaDialogOpen(true)}>
+            <Send className="w-4 h-4 mr-1" /> Post to NSA
+          </Button>
+        )}
+
         {isSubmitted && (
           <div className="text-center py-2">
             <Badge className="bg-green-500/15 text-green-700 text-sm px-4 py-1">

@@ -31,10 +31,12 @@ type CredMeta = {
   last_verification_status: string | null;
 };
 
-export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureId, matches }: NsaSubmitDialogProps) {
+export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, defaultFixtureId, matches }: NsaSubmitDialogProps) {
   const qc = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [fixtureIdInput, setFixtureIdInput] = useState<string>(defaultFixtureId ? String(defaultFixtureId) : "");
+  const fixtureId = fixtureIdInput.trim() ? Number(fixtureIdInput.trim()) : null;
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState<"check" | "commit" | null>(null);
   const [result, setResult] = useState<{ ok: boolean; errors: string[]; notes: string[]; mode: string; title?: string | null } | null>(null);

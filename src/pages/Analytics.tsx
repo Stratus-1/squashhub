@@ -190,24 +190,23 @@ function PersonalStatsSnapshot() {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const memberId = activeMember?.id || null;
-  const { data: squashTotals } = useSquashTotals(user?.id, { memberId });
   const { data: ladder } = useLadder();
-  const myLadderPosition = useMemo(() => {
-    if (!ladder) return null;
+  const myEntry = useMemo(() => {
+    if (!ladder) return null as any;
     if (memberId) {
-      const entry = ladder.find((p: any) => p.club_member_id === memberId);
-      if (entry) return entry.ladder_position ?? null;
+      const e = ladder.find((p: any) => p.club_member_id === memberId);
+      if (e) return e;
     }
     if (user?.id) {
-      const entry = ladder.find((p: any) => p.user_id === user.id || p.id === user.id);
-      if (entry) return entry.ladder_position ?? null;
+      return ladder.find((p: any) => p.user_id === user.id || p.id === user.id) || null;
     }
     return null;
   }, [ladder, memberId, user?.id]);
-  const matchesPlayed = squashTotals?.matches ?? 0;
-  const wins = squashTotals?.wins ?? 0;
-  const losses = squashTotals?.losses ?? 0;
-  const winRate = squashTotals?.win_rate ?? 0;
+  const myLadderPosition = (myEntry as any)?.ladder_position ?? (myEntry as any)?.league_rank ?? (myEntry as any)?.rank ?? null;
+  const wins = (myEntry as any)?.wins ?? 0;
+  const losses = (myEntry as any)?.losses ?? 0;
+  const matchesPlayed = (myEntry as any)?.matches_played ?? (wins + losses);
+  const winRate = matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>

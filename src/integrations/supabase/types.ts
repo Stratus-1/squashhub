@@ -2509,6 +2509,33 @@ export type Database = {
           },
         ]
       }
+      league_week_availability: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          marked_by: string | null
+          week_start_date: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          week_start_date: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          week_start_date?: string
+        }
+        Relationships: []
+      }
       league_week_lineups: {
         Row: {
           club_id: string

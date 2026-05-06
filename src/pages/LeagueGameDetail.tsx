@@ -1487,6 +1487,7 @@ export default function LeagueGameDetail() {
           open={nsaDialogOpen}
           onOpenChange={setNsaDialogOpen}
           clubMemberId={activeMember.id}
+          fixtureRowId={fixture?.id}
           homeTeamCode={fixture?.home_team_code}
           awayTeamCode={fixture?.away_team_code}
           fixtureDate={fixture?.fixture_date}

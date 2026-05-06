@@ -3478,6 +3478,10 @@ export type Database = {
           home_team_code: string
           id: string
           notes: string | null
+          nsa_fixture_id: number | null
+          nsa_submission_notes: string | null
+          nsa_submitted_at: string | null
+          nsa_submitted_by: string | null
           score: string | null
           status: string
           updated_at: string
@@ -3495,6 +3499,10 @@ export type Database = {
           home_team_code: string
           id?: string
           notes?: string | null
+          nsa_fixture_id?: number | null
+          nsa_submission_notes?: string | null
+          nsa_submitted_at?: string | null
+          nsa_submitted_by?: string | null
           score?: string | null
           status?: string
           updated_at?: string
@@ -3512,6 +3520,10 @@ export type Database = {
           home_team_code?: string
           id?: string
           notes?: string | null
+          nsa_fixture_id?: number | null
+          nsa_submission_notes?: string | null
+          nsa_submitted_at?: string | null
+          nsa_submitted_by?: string | null
           score?: string | null
           status?: string
           updated_at?: string
@@ -3524,6 +3536,20 @@ export type Database = {
             columns: ["association_id"]
             isOneToOne: false
             referencedRelation: "platform_league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_league_fixtures_nsa_submitted_by_fkey"
+            columns: ["nsa_submitted_by"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_league_fixtures_nsa_submitted_by_fkey"
+            columns: ["nsa_submitted_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]

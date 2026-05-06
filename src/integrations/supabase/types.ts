@@ -1771,6 +1771,7 @@ export type Database = {
           peak_weekend_end: string
           peak_weekend_start: string
           phone: string | null
+          roster_seeded_at: string | null
           secretary_member_id: string | null
           subdomain: string | null
           tenant_type: string
@@ -1819,6 +1820,7 @@ export type Database = {
           peak_weekend_end?: string
           peak_weekend_start?: string
           phone?: string | null
+          roster_seeded_at?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null
           tenant_type?: string
@@ -1867,6 +1869,7 @@ export type Database = {
           peak_weekend_end?: string
           peak_weekend_start?: string
           phone?: string | null
+          roster_seeded_at?: string | null
           secretary_member_id?: string | null
           subdomain?: string | null
           tenant_type?: string

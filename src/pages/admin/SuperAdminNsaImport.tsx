@@ -25,6 +25,7 @@ type ClubRow = {
   divisions: string[];
   existing_subdomain: string | null;
   existing_club_id: string | null;
+  roster_seeded_at: string | null;
 };
 
 function slugFromCode(code: string): string {
@@ -48,7 +49,7 @@ export default function SuperAdminNsaImport() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, nsa_club_id, tenant_type")
+        .select("id, name, subdomain, nsa_club_id, tenant_type, roster_seeded_at")
         .or("nsa_club_id.not.is.null,subdomain.not.is.null");
       if (error) throw error;
       return data || [];
@@ -64,14 +65,16 @@ export default function SuperAdminNsaImport() {
           const proposed = slugFromCode(t.code) || `nsa${t.club_id}`;
           const existingByNsa = (existing as any[]).find((c) => c.nsa_club_id === t.club_id);
           const existingBySlug = (existing as any[]).find((c) => c.subdomain === proposed);
+          const matched = existingByNsa || existingBySlug;
           map.set(t.club_id, {
             nsa_club_id: t.club_id,
             name: t.club,
             proposed_slug: proposed,
             team_count: 0,
             divisions: [],
-            existing_subdomain: existingByNsa?.subdomain || existingBySlug?.subdomain || null,
-            existing_club_id: existingByNsa?.id || existingBySlug?.id || null,
+            existing_subdomain: matched?.subdomain || null,
+            existing_club_id: matched?.id || null,
+            roster_seeded_at: matched?.roster_seeded_at || null,
           });
         }
         const r = map.get(t.club_id)!;
@@ -155,6 +158,7 @@ export default function SuperAdminNsaImport() {
         `Seeded: ${res.leagues_created} leagues, ${res.members_created} members, ${res.registrations_created} registrations${errs ? ` (${errs} warnings)` : ""}`
       );
       setSeedingClubId(null);
+      qc.invalidateQueries({ queryKey: ["clubs-with-nsa-id"] });
     },
     onError: (e: any) => {
       toast.error(e.message || "Seed failed");
@@ -265,9 +269,19 @@ export default function SuperAdminNsaImport() {
                       <td className="py-2 pr-3">
                         {isExisting ? (
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
-                              Provisioned
-                            </Badge>
+                            {r.roster_seeded_at ? (
+                              <Badge
+                                variant="outline"
+                                className="border-emerald-500/40 text-emerald-300 bg-emerald-500/15"
+                                title={`Roster seeded ${new Date(r.roster_seeded_at).toLocaleString()}`}
+                              >
+                                Seeded
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                                Provisioned
+                              </Badge>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -280,7 +294,7 @@ export default function SuperAdminNsaImport() {
                               ) : (
                                 <Users className="w-3 h-3 mr-1" />
                               )}
-                              Seed roster
+                              {r.roster_seeded_at ? "Re-seed" : "Seed roster"}
                             </Button>
                           </div>
                         ) : (

@@ -387,6 +387,12 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Mark club as roster-seeded so the bulk import UI can show the status.
+  await supabase
+    .from("clubs")
+    .update({ roster_seeded_at: new Date().toISOString() })
+    .eq("id", clubId);
+
   return jsonResp(200, {
     ok: true,
     club_id: clubId,

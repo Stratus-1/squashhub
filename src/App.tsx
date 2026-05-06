@@ -46,6 +46,7 @@ import MarkerTv from "./pages/MarkerTv";
 import AddMatchResult from "./pages/AddMatchResult";
 import PlayerProfile from "./pages/PlayerProfile";
 import RegisterClub from "./pages/RegisterClub";
+import LeagueSignup from "./pages/LeagueSignup";
 import ClubAdmin from "./pages/ClubAdmin";
 import ClubChampsView from "./pages/ClubChampsView";
 import ClubLanding from "./pages/ClubLanding";
@@ -312,6 +313,7 @@ function AppRoutes() {
         <Route path="/league-games" element={<ProtectedRoute><LeagueGames /></ProtectedRoute>} />
         <Route path="/league-games/:fixtureId" element={<ProtectedRoute><LeagueGameDetail /></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />
+        <Route path="/league" element={<LeagueSignup />} />
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="clubs" element={<SuperAdminClubs />} />

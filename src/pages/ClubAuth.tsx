@@ -19,6 +19,7 @@ import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCapt
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -696,6 +697,11 @@ export default function ClubAuth() {
           )}
           <h1 className="text-2xl font-bold font-heading">{clubName}</h1>
           <p className="text-xs text-primary font-mono mt-0.5">{subdomain}.squashhub.co.za</p>
+        </div>
+
+        {/* NSA league player free-signup CTA */}
+        <div className="mb-4">
+          <LeaguePlayerSignupBanner clubSubdomain={subdomain || null} clubName={clubName} />
         </div>
 
         {(() => {

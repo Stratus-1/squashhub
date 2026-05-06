@@ -1402,6 +1402,7 @@ export type Database = {
           joined_at: string
           ladder_position: number | null
           name: string | null
+          pending_captain_claim: boolean
           phone: string | null
           plays_league: boolean
           role: Database["public"]["Enums"]["club_member_role"]
@@ -1425,6 +1426,7 @@ export type Database = {
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
+          pending_captain_claim?: boolean
           phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
@@ -1448,6 +1450,7 @@ export type Database = {
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
+          pending_captain_claim?: boolean
           phone?: string | null
           plays_league?: boolean
           role?: Database["public"]["Enums"]["club_member_role"]
@@ -4239,6 +4242,20 @@ export type Database = {
           masked_name: string
         }[]
       }
+      lookup_league_player_by_nsa: {
+        Args: { _club_subdomain?: string; _nsa_number: string }
+        Returns: {
+          already_claimed: boolean
+          club_id: string
+          club_name: string
+          club_subdomain: string
+          full_name: string
+          gender: string
+          league_name: string
+          masked_name: string
+          member_id: string
+        }[]
+      }
       lookup_member_by_league_number: {
         Args: { _club_id: string; _league_number: string }
         Returns: {
@@ -4266,6 +4283,17 @@ export type Database = {
       respond_to_booking_invite: {
         Args: { invite_token: string; new_status: string; reason?: string }
         Returns: undefined
+      }
+      search_league_players_by_name: {
+        Args: { _club_subdomain?: string; _query: string }
+        Returns: {
+          already_claimed: boolean
+          club_name: string
+          club_subdomain: string
+          masked_name: string
+          member_id: string
+          nsa_number: string
+        }[]
       }
     }
     Enums: {

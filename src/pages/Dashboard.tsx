@@ -15,6 +15,7 @@ import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
+import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";

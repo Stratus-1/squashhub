@@ -904,6 +904,16 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+      {myPrimaryLeagueReg?.is_captain && myClubMember?.id && (
+        <motion.div
+          className="px-4 mt-3"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <CaptainInviteTeamCard clubMemberId={myClubMember.id} />
+        </motion.div>
+      )}
+
       {/* Scheduled Matches */}
       {myScheduledMatches && myScheduledMatches.length > 0 && (
         <motion.div

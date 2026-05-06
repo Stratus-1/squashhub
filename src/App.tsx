@@ -175,7 +175,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   // Super-admin panel is global — must be accessed on the root host (no club subdomain).
   // If the user is on a club subdomain, redirect them to the root host's /admin.
   if (subdomain && typeof window !== "undefined") {
-    const { protocol, hostname, port } = window.location;
+    const { protocol, hostname, port, pathname } = window.location;
     const portSuffix = port ? `:${port}` : "";
     const KNOWN_ROOTS = ["squashhub.co.za", "squashhub.app"];
     let root: string | null = null;
@@ -186,9 +186,22 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
       window.location.href = `${protocol}//${root}${portSuffix}/admin`;
       return null;
     }
-    // Lovable preview / localhost: just drop the ?club= and stay on /admin
-    window.location.href = `${protocol}//${hostname}${portSuffix}/admin`;
-    return null;
+    // Lovable preview / localhost: clear remembered preview tenant so the
+    // super-admin panel renders without a club context, then continue.
+    try {
+      window.sessionStorage.removeItem("active_preview_tenant_subdomain");
+    } catch {
+      // ignore
+    }
+    // If the URL still carries ?club=, strip it once and reload cleanly.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("club")) {
+      url.searchParams.delete("club");
+      window.location.replace(url.toString());
+      return null;
+    }
+    // No ?club= and we just cleared storage — render the panel.
+    return <>{children}</>;
   }
 
   return <>{children}</>;

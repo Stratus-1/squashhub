@@ -15,6 +15,7 @@ import { MyChampionships } from "@/components/MyChampionships";
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
+import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
@@ -900,6 +901,16 @@ export default function Dashboard() {
               Track
             </Button>
           </Card>
+        </motion.div>
+      )}
+
+      {myPrimaryLeagueReg?.is_captain && myClubMember?.id && (
+        <motion.div
+          className="px-4 mt-3"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <CaptainInviteTeamCard clubMemberId={myClubMember.id} />
         </motion.div>
       )}
 

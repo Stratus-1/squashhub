@@ -4139,6 +4139,18 @@ export type Database = {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
       }
+      captain_list_unclaimed_teammates: {
+        Args: { _club_member_id: string }
+        Returns: {
+          club_subdomain: string
+          email: string
+          full_name: string
+          league_name: string
+          member_id: string
+          nsa_number: string
+          phone: string
+        }[]
+      }
       claim_member_by_league_number: {
         Args: {
           _club_id?: string

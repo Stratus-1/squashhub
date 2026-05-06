@@ -191,16 +191,31 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, homeTeamCode
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="nsa-fix" className="text-xs">NSA Fixture ID</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="nsa-fix" className="text-xs">NSA Fixture ID</Label>
+                {canAutoResolve && (
+                  <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                    {resolvingFixture ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> Looking up…</>
+                    ) : resolvedFixtureId ? (
+                      <><CheckCircle2 className="w-3 h-3 text-green-600" /> Auto-detected from {homeTeamCode} vs {awayTeamCode}</>
+                    ) : (
+                      <><Search className="w-3 h-3 text-amber-600" /> No NSA match for {homeTeamCode} vs {awayTeamCode} on {fixtureDate}</>
+                    )}
+                  </span>
+                )}
+              </div>
               <Input
                 id="nsa-fix"
                 inputMode="numeric"
-                placeholder="e.g. 294400 (find on NSA admin → Fixtures)"
+                placeholder="e.g. 294400"
                 value={fixtureIdInput}
                 onChange={(e) => setFixtureIdInput(e.target.value.replace(/\D/g, ""))}
               />
               <p className="text-[10px] text-muted-foreground">
-                Visible in your NSA admin URL: <code>fixtureinput.php?fixture=<b>NNNNNN</b></code>
+                {resolvedFixtureId
+                  ? "Override only if NSA assigned a different fixture ID."
+                  : <>Find it on NSA admin → Fixtures: <code>fixtureinput.php?fixture=<b>NNNNNN</b></code></>}
               </p>
             </div>
 

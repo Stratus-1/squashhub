@@ -268,7 +268,42 @@ export function NotificationActionModal() {
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2 pt-1">
-              {current.url && !current.url.startsWith("/notifications") && (
+              {current.type === "league_availability" && current.data?.week_start_date && current.data?.club_member_id && (
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    disabled={respondAvailability.isPending}
+                    onClick={() => {
+                      respondAvailability.mutate({
+                        notificationId: current.id,
+                        memberId: String(current.data!.club_member_id),
+                        weekStart: String(current.data!.week_start_date),
+                        response: "available",
+                      }, { onSuccess: () => advanceOrClose() });
+                    }}
+                  >
+                    <ThumbsUp className="w-4 h-4 mr-1.5" />
+                    Available
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={respondAvailability.isPending}
+                    onClick={() => {
+                      respondAvailability.mutate({
+                        notificationId: current.id,
+                        memberId: String(current.data!.club_member_id),
+                        weekStart: String(current.data!.week_start_date),
+                        response: "unavailable",
+                      }, { onSuccess: () => advanceOrClose() });
+                    }}
+                  >
+                    <ThumbsDown className="w-4 h-4 mr-1.5" />
+                    Not available
+                  </Button>
+                </div>
+              )}
+              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && (
                 <Button className="w-full" onClick={handleAction}>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   {getActionLabel(current.type)}

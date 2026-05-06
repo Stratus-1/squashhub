@@ -28,7 +28,8 @@ const corsHeaders = {
 };
 
 const NSA_BASE = "https://admin.northerns.co.za/nsa";
-const NSA_ASSOCIATION_ID = "ff79125c-1c69-4a1a-a5bb-6e0724a493b8"; // Northern Squash Association
+// Platform-wide Northern Squash Association record (platform_league_associations)
+const NSA_PLATFORM_ASSOC_ID = "b1cb8b56-bc97-4f31-a8ea-69fab4fc6259";
 const DEFAULT_SEASON = "s79";
 const SEASON_YEAR = "2026";
 
@@ -129,6 +130,37 @@ Deno.serve(async (req) => {
   if (clubErr || !club) return jsonResp(404, { error: "Club not found" });
   if (!club.nsa_club_id) return jsonResp(400, { error: "Club has no nsa_club_id; not an NSA-seeded tenant" });
 
+  // Ensure a per-club league_associations row exists pointing at the platform NSA record
+  let clubNsaAssocId: string;
+  {
+    const { data: existing } = await supabase
+      .from("league_associations")
+      .select("id")
+      .eq("club_id", clubId)
+      .eq("platform_association_id", NSA_PLATFORM_ASSOC_ID)
+      .maybeSingle();
+    if (existing?.id) {
+      clubNsaAssocId = existing.id;
+    } else {
+      const { data: ins, error: insErr } = await supabase
+        .from("league_associations")
+        .insert({
+          club_id: clubId,
+          name: "Northern Squash Association",
+          abbreviation: "NSA",
+          platform_association_id: NSA_PLATFORM_ASSOC_ID,
+          fee_annual: 0,
+          active: true,
+          scope: "region",
+        })
+        .select("id")
+        .single();
+      if (insErr || !ins) return jsonResp(500, { error: `Failed to create NSA league_association: ${insErr?.message || "unknown"}` });
+      clubNsaAssocId = ins.id;
+    }
+  }
+
+
   // 1. Fetch the season's completed fixtures and find every team belonging to this club
   let fixtures: NsaFixture[] = [];
   try {
@@ -182,7 +214,7 @@ Deno.serve(async (req) => {
       .from("member_association_affiliations")
       .select("club_member_id, league_association_number")
       .in("club_member_id", memberIds)
-      .eq("association_id", NSA_ASSOCIATION_ID);
+      .eq("association_id", clubNsaAssocId);
     existingAffiliations = data || [];
   }
   const affilByMemberId = new Set(existingAffiliations.map((a: any) => a.club_member_id));
@@ -209,7 +241,7 @@ Deno.serve(async (req) => {
         .from("leagues")
         .insert({
           club_id: clubId,
-          association_id: NSA_ASSOCIATION_ID,
+          association_id: clubNsaAssocId,
           name: leagueDisplayName(meta.category, meta.league),
           code: meta.code,
           nsa_team_id: meta.id,
@@ -274,6 +306,7 @@ Deno.serve(async (req) => {
             name,
             gender: inferGender(meta.category),
             plays_league: true,
+            enable_league_association_id: clubNsaAssocId,
             ladder_position: nextLadderPos++,
           })
           .select("id, name, gender, ladder_position")
@@ -283,6 +316,11 @@ Deno.serve(async (req) => {
         membersByName.set(name.toLowerCase(), member);
         counts.members_created += 1;
       } else {
+        // Backfill plays_league + association on existing rows so they appear under NSA leagues
+        await supabase
+          .from("club_members")
+          .update({ plays_league: true, enable_league_association_id: clubNsaAssocId })
+          .eq("id", member.id);
         counts.members_existing += 1;
       }
 
@@ -292,7 +330,7 @@ Deno.serve(async (req) => {
           .from("member_association_affiliations")
           .insert({
             club_member_id: member.id,
-            association_id: NSA_ASSOCIATION_ID,
+            association_id: clubNsaAssocId,
             league_association_number: nsf,
             active: true,
           });

@@ -3263,6 +3263,60 @@ export type Database = {
           },
         ]
       }
+      member_nsa_credentials: {
+        Row: {
+          club_member_id: string
+          created_at: string
+          id: string
+          last_verification_status: string | null
+          last_verified_at: string | null
+          nsa_password_ciphertext: string
+          nsa_password_iv: string
+          nsa_username: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club_member_id: string
+          created_at?: string
+          id?: string
+          last_verification_status?: string | null
+          last_verified_at?: string | null
+          nsa_password_ciphertext: string
+          nsa_password_iv: string
+          nsa_username: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          last_verification_status?: string | null
+          last_verified_at?: string | null
+          nsa_password_ciphertext?: string
+          nsa_password_iv?: string
+          nsa_username?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_nsa_credentials_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_nsa_credentials_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       national_body_fees: {
         Row: {
           abbreviation: string | null

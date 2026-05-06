@@ -168,6 +168,11 @@ export function NotificationActionModal() {
     onError: (e: any) => toast.error(e?.message || "Could not save your response"),
   });
 
+  const notifications = unreadNotifications || [];
+  const current = notifications[currentIndex] || null;
+  const total = notifications.length;
+  const isLast = currentIndex >= total - 1;
+
   const advanceOrClose = useCallback(() => {
     if (isLast) {
       setOpen(false);
@@ -176,11 +181,6 @@ export function NotificationActionModal() {
       setCurrentIndex((i) => i + 1);
     }
   }, [isLast]);
-
-  const notifications = unreadNotifications || [];
-  const current = notifications[currentIndex] || null;
-  const total = notifications.length;
-  const isLast = currentIndex >= total - 1;
 
   const handleAction = useCallback(() => {
     if (!current) return;

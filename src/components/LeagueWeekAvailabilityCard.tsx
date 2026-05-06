@@ -41,16 +41,26 @@ export function LeagueWeekAvailabilityCard() {
     [weekStartStr]
   );
 
-  // Is the member on any league roster?
-  const { data: rosterCount } = useQuery({
-    queryKey: ["lwa-roster-check", clubId, memberId],
+  // Is the member league-affiliated? Check team placement OR association affiliation OR plays_league flag.
+  const { data: isLeaguePlayer } = useQuery({
+    queryKey: ["lwa-eligible", clubId, memberId],
     enabled: !!clubId && !!memberId,
     queryFn: async () => {
-      const { count, error } = await fromExt("member_league_registrations")
-        .select("club_member_id", { count: "exact", head: true })
-        .eq("club_member_id", memberId!);
-      if (error) throw error;
-      return count ?? 0;
+      const [{ count: regCount }, { count: affCount }, { data: cm }] = await Promise.all([
+        fromExt("member_league_registrations")
+          .select("club_member_id", { count: "exact", head: true })
+          .eq("club_member_id", memberId!),
+        fromExt("member_association_affiliations")
+          .select("club_member_id", { count: "exact", head: true })
+          .eq("club_member_id", memberId!)
+          .eq("is_active", true),
+        supabase
+          .from("club_members")
+          .select("plays_league")
+          .eq("id", memberId!)
+          .maybeSingle(),
+      ]);
+      return (regCount ?? 0) > 0 || (affCount ?? 0) > 0 || !!(cm as any)?.plays_league;
     },
   });
 
@@ -98,7 +108,7 @@ export function LeagueWeekAvailabilityCard() {
   });
 
   if (!clubId || !memberId) return null;
-  if (!rosterCount || rosterCount === 0) return null;
+  if (!isLeaguePlayer) return null;
 
   const niceRange = `${format(new Date(weekStartStr), "EEE d MMM")} – ${format(new Date(weekEndStr), "EEE d MMM")}`;
 

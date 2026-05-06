@@ -32,7 +32,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const NSA_BASE = "https://admin.northerns.co.za/nsa";
+const NSA_BASE = "https://admin.northerns.co.za";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

@@ -684,7 +684,7 @@ function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="w-full text-left rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] backdrop-blur-md text-white transition-colors p-3 flex items-center gap-3 group"
+      className="w-full text-left rounded-xl border border-primary/20 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors p-3 flex items-center gap-3 group shadow-sm"
     >
       {tenant.logo_url ? (
         <img
@@ -693,22 +693,22 @@ function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
           className="w-10 h-10 rounded-md object-contain flex-shrink-0 bg-white/10"
         />
       ) : (
-        <div className="w-10 h-10 rounded-md bg-white/[0.06] border border-white/10 flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-md bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
           <Icon className="w-5 h-5 text-[hsl(var(--accent))]" />
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <h4 className="font-semibold text-white text-sm truncate">{tenant.name}</h4>
+        <h4 className="font-semibold text-primary-foreground text-sm truncate">{tenant.name}</h4>
         {tenant.subdomain && (
           <p className="text-xs font-mono text-[hsl(var(--accent))] truncate">
             {tenant.subdomain}.squashhub.co.za
           </p>
         )}
         {tenant.address && (
-          <p className="text-xs text-white/50 truncate">{tenant.address}</p>
+          <p className="text-xs text-primary-foreground/70 truncate">{tenant.address}</p>
         )}
       </div>
-      <ChevronRight className="w-4 h-4 text-white/50 group-hover:text-white transition-colors flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-primary-foreground/70 group-hover:text-primary-foreground transition-colors flex-shrink-0" />
     </button>
   );
 }

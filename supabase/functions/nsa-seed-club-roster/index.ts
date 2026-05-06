@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
   };
 
   // 2. For each team, ensure a league row exists and fetch its roster
-  for (const meta of teams.values()) {
+  for (const meta of orderedTeams) {
     let league = leaguesByNsaId.get(meta.id) || leaguesByCode.get(meta.code);
 
     if (!league) {

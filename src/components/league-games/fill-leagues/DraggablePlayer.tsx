@@ -14,9 +14,11 @@ type Props = {
   badge?: { label: string; variant?: "outline" | "secondary" | "destructive" } | null;
   positionLabel?: string | null; // e.g. "1." or "#3"
   muted?: boolean;
+  /** True when the member has confirmed they ARE available for this week. Renders a green pill. */
+  available?: boolean;
 };
 
-export function DraggablePlayer({ memberId, origin, name, rank, leagueNumber, disabled, badge, positionLabel, muted }: Props) {
+export function DraggablePlayer({ memberId, origin, name, rank, leagueNumber, disabled, badge, positionLabel, muted, available }: Props) {
   const id = dragId(memberId, origin);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id,

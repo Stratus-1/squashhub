@@ -61,26 +61,47 @@ async function encryptPassword(plain: string) {
   return { ciphertext: b64(ciphertext), iv: b64(iv) };
 }
 
-// ---------- NSA login probe ----------
+// ---------- NSA login probe (mirrors nsa-submit-result) ----------
+function parseNsfSessionCookie(headers: Headers): string | null {
+  // deno-lint-ignore no-explicit-any
+  const anyH = headers as any;
+  let cookies: string[] = [];
+  if (typeof anyH.getSetCookie === "function") cookies = anyH.getSetCookie();
+  else {
+    const raw = headers.get("set-cookie");
+    if (raw) cookies = [raw];
+  }
+  for (const c of cookies) {
+    const m = c.match(/NSFSESSION=([^;]+)/);
+    if (m) return `NSFSESSION=${m[1]}`;
+  }
+  return null;
+}
+
 async function nsaLoginProbe(username: string, password: string): Promise<boolean> {
   try {
-    const body = new URLSearchParams({ username, password });
+    // NSA login expects field names `uname` / `passwd` (NOT username/password)
+    const body = new URLSearchParams({ uname: username, passwd: password }).toString();
     const res = await fetch(`${NSA_BASE}/login.php`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
+      body,
       redirect: "manual",
     });
-    const cookie = res.headers.get("set-cookie") || "";
-    if (!cookie || !cookie.toLowerCase().includes("phpsessid")) return false;
-    // Verify the cookie is authenticated by hitting a protected page
-    const check = await fetch(`${NSA_BASE}/index.php`, {
-      headers: { Cookie: cookie },
-    });
+    const cookie = parseNsfSessionCookie(res.headers);
+    if (!cookie) {
+      console.log("[nsaLoginProbe] no NSFSESSION cookie returned");
+      return false;
+    }
+    const check = await fetch(`${NSA_BASE}/index.php`, { headers: { cookie } });
     const html = await check.text();
-    return !html.toLowerCase().includes("login.php") && !html.toLowerCase().includes("logout");
-    // Heuristic: logged-in pages contain a "logout" link; logged-out pages redirect to login.
-  } catch {
+    const ok = /now logged in|Log Out|logout/i.test(html);
+    if (!ok) console.log("[nsaLoginProbe] cookie obtained but page doesn't show logged-in markers");
+    // Best-effort logout to free the session
+    try { await fetch(`${NSA_BASE}/logout.php`, { headers: { cookie } }); } catch (_) { /* ignore */ }
+    return ok;
+  } catch (e) {
+    console.log("[nsaLoginProbe] error:", (e as Error).message);
     return false;
   }
 }

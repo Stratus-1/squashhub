@@ -681,11 +681,13 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   // CRITICAL: drop any registration whose member's gender doesn't match the
   // dialog's gender group. This catches legacy bad rows (e.g. a male player
   // accidentally placed in a Ladies league) so they no longer appear in the
-  // allocator, and a subsequent Save persists the cleaned roster.
+  // allocator. The snapshot keeps the original (uncleaned) rows so a Save
+  // click persists the removal.
   useEffect(() => {
     if (!open) return;
     (async () => {
       const allData: Record<string, LeaguePlayer[]> = {};
+      const snapshotData: Record<string, LeaguePlayer[]> = {};
       let droppedCount = 0;
       for (const league of leagues) {
         const { data, error } = await fromExt("member_league_registrations")
@@ -693,40 +695,34 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           .eq("league_id", league.id)
           .order("player_rank");
         if (!error && data) {
-          const rows = data
-            .map((r: any) => ({
-              id: r.id,
-              club_member_id: r.club_member_id,
-              league_id: r.league_id,
-              player_rank: r.player_rank ?? 0,
-              is_captain: r.is_captain ?? false,
-              league_association_number: r.league_association_number ?? null,
-              member: members.find(m => m.id === r.club_member_id),
-            }))
-            .filter((row: LeaguePlayer) => {
-              if (gender === "mixed") return true;
-              const g = (row.member?.gender || "").toLowerCase();
-              const isLadies = g === "ladies" || g === "female" || g === "f";
-              const matches = gender === "ladies" ? isLadies : !isLadies;
-              if (!matches) droppedCount += 1;
-              return matches;
-            })
-            .map((row: LeaguePlayer, i: number) => ({ ...row, player_rank: i + 1 }));
-          allData[league.id] = rows;
+          const allRows: LeaguePlayer[] = data.map((r: any) => ({
+            id: r.id,
+            club_member_id: r.club_member_id,
+            league_id: r.league_id,
+            player_rank: r.player_rank ?? 0,
+            is_captain: r.is_captain ?? false,
+            league_association_number: r.league_association_number ?? null,
+            member: members.find(m => m.id === r.club_member_id),
+          }));
+          const cleanRows = allRows.filter((row) => {
+            if (gender === "mixed") return true;
+            const g = (row.member?.gender || "").toLowerCase();
+            const isLadies = g === "ladies" || g === "female" || g === "f";
+            const matches = gender === "ladies" ? isLadies : !isLadies;
+            if (!matches) droppedCount += 1;
+            return matches;
+          }).map((row, i) => ({ ...row, player_rank: i + 1 }));
+          allData[league.id] = cleanRows;
+          // Snapshot retains the original (dirty) rows so isLeagueChanged()
+          // detects the cleanup as a real change to persist on Save.
+          snapshotData[league.id] = allRows.map(p => ({ ...p }));
         } else {
           allData[league.id] = [];
+          snapshotData[league.id] = [];
         }
       }
       setLeagueData(allData);
-      // Snapshot WITHOUT the dropped rows — so the very next Save persists the
-      // cleanup without admin needing to touch every league.
-      initialLeagueData.current = Object.fromEntries(
-        Object.entries(allData).map(([k, v]) => [k, v.map(p => ({ ...p }))])
-      );
-      // To force the cleanup to actually save, mark snapshot as if the bad rows
-      // were still there: we want isLeagueChanged() to return true for affected
-      // leagues. Easiest: leave snapshot equal to current (no-op) and instead
-      // toast the admin so they know to re-Save once.
+      initialLeagueData.current = snapshotData;
       if (droppedCount > 0) {
         toast.warning(
           `Removed ${droppedCount} wrong-gender player${droppedCount === 1 ? "" : "s"} from this view. Click Save to persist the cleanup.`,

@@ -535,6 +535,13 @@ export function useLadder(clubId?: string) {
   return useQuery({
     queryKey: ["ladder", clubId],
     queryFn: async () => {
+      const toNumber = (value: unknown) => {
+        const parsed = Number(value ?? 0);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const normalizeNsaCode = (value: unknown) =>
+        String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
       // 1. Get club members scoped to the user's club
       let query = supabase
         .from("club_members")
@@ -558,18 +565,78 @@ export function useLadder(clubId?: string) {
         }
       }
 
-      // 3. Build ladder entries (single source of truth: club_members.ladder_position)
+      // 3. Pull live NSA player summaries for this club's league teams.
+      // NSA is the source of truth for league W/L, so prefer these values over stale profile counters.
+      const memberIds = (members || []).map((m) => m.id);
+      const nsaCodesByMember = new Map<string, Set<string>>();
+      if (memberIds.length > 0) {
+        const { data: affiliations } = await fromAny("member_association_affiliations")
+          .select("club_member_id, league_association_number")
+          .in("club_member_id", memberIds)
+          .eq("active", true);
+
+        for (const row of affiliations || []) {
+          const code = normalizeNsaCode((row as any).league_association_number);
+          if (!code) continue;
+          const memberId = String((row as any).club_member_id);
+          if (!nsaCodesByMember.has(memberId)) nsaCodesByMember.set(memberId, new Set());
+          nsaCodesByMember.get(memberId)?.add(code);
+        }
+      }
+
+      const liveStatsByCode = new Map<string, { wins: number; losses: number; matches_played: number }>();
+      if (clubId) {
+        const { data: leagues } = await fromAny("leagues")
+          .select("nsa_team_id")
+          .eq("club_id", clubId)
+          .not("nsa_team_id", "is", null);
+        const teamIds = [...new Set((leagues || []).map((l: any) => String(l.nsa_team_id || "").trim()).filter(Boolean))];
+
+        await Promise.allSettled(
+          teamIds.map(async (teamId) => {
+            const { data, error } = await supabase.functions.invoke("nsa-proxy", {
+              body: { endpoint: "team", params: { team: teamId } },
+            });
+            if (error || data?.error) throw new Error(error?.message || data?.error || "NSA team fetch failed");
+
+            for (const player of data?.data?.players || []) {
+              const code = normalizeNsaCode(player?.code);
+              if (!code) continue;
+              const existing = liveStatsByCode.get(code) || { wins: 0, losses: 0, matches_played: 0 };
+              liveStatsByCode.set(code, {
+                wins: existing.wins + toNumber(player?.result_summary?.won),
+                losses: existing.losses + toNumber(player?.result_summary?.lost),
+                matches_played: existing.matches_played + toNumber(player?.result_summary?.played),
+              });
+            }
+          })
+        );
+      }
+
+      // 4. Build ladder entries (single source of truth: club_members.ladder_position)
       const ladder = (members || []).map(m => {
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
         const ladderPos = m.ladder_position ?? null;
+        const liveStats = [...(nsaCodesByMember.get(m.id) || [])]
+          .map((code) => liveStatsByCode.get(code))
+          .filter(Boolean)
+          .reduce(
+            (acc, stats) => ({
+              wins: acc.wins + (stats?.wins || 0),
+              losses: acc.losses + (stats?.losses || 0),
+              matches_played: acc.matches_played + (stats?.matches_played || 0),
+            }),
+            { wins: 0, losses: 0, matches_played: 0 }
+          );
+        const hasLiveStats = liveStats.matches_played > 0 || liveStats.wins > 0 || liveStats.losses > 0;
         return {
           id: m.id,
           club_member_id: m.id,
           name: m.name || profile?.name || "Unknown",
           avatar_url: (m as any).avatar_url || profile?.avatar_url || null,
-          wins: profile?.wins ?? 0,
-          losses: profile?.losses ?? 0,
-          matches_played: profile?.matches_played ?? 0,
+          wins: hasLiveStats ? liveStats.wins : profile?.wins ?? 0,
+          losses: hasLiveStats ? liveStats.losses : profile?.losses ?? 0,
+          matches_played: hasLiveStats ? liveStats.matches_played : profile?.matches_played ?? 0,
           rank: ladderPos,
           league_rank: ladderPos,
           user_id: m.user_id,

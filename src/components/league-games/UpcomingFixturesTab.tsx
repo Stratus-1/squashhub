@@ -39,9 +39,10 @@ type Props = {
   weekStartDow?: number;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "custom";
   const [rangeMode, setRangeMode] = useState<RangeMode>("this-week");

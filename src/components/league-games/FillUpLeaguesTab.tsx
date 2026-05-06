@@ -724,6 +724,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
       availableSet={availableSet}
+      onMarkUnavailable={(mid) => markUnavailable.mutate(mid)}
     />
   );
 

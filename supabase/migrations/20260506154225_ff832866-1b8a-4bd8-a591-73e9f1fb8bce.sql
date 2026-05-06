@@ -1,0 +1,1 @@
+DELETE FROM public.clubs WHERE id = '0804770f-9814-4baf-a16c-d55190f90af5' AND subdomain = 'csi' AND tenant_type = 'nsa_seeded';

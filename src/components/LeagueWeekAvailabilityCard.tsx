@@ -108,7 +108,7 @@ export function LeagueWeekAvailabilityCard() {
   });
 
   if (!clubId || !memberId) return null;
-  if (!rosterCount || rosterCount === 0) return null;
+  if (!isLeaguePlayer) return null;
 
   const niceRange = `${format(new Date(weekStartStr), "EEE d MMM")} – ${format(new Date(weekEndStr), "EEE d MMM")}`;
 

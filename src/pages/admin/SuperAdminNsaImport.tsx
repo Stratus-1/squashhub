@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Building2, Loader2, RefreshCw } from "lucide-react";
+import { Building2, Loader2, RefreshCw, Users } from "lucide-react";
 import { useNsaFixtures, NSA_CURRENT_SEASON } from "@/hooks/use-nsa";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -138,6 +138,30 @@ export default function SuperAdminNsaImport() {
     onError: (e: any) => toast.error(e.message || "Provision failed"),
   });
 
+  const [seedingClubId, setSeedingClubId] = useState<string | null>(null);
+  const seedRoster = useMutation({
+    mutationFn: async (clubId: string) => {
+      setSeedingClubId(clubId);
+      const { data, error } = await supabase.functions.invoke("nsa-seed-club-roster", {
+        body: { club_id: clubId, season },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: (res: any) => {
+      const errs = (res?.player_errors || []).length;
+      toast.success(
+        `Seeded: ${res.leagues_created} leagues, ${res.members_created} members, ${res.registrations_created} registrations${errs ? ` (${errs} warnings)` : ""}`
+      );
+      setSeedingClubId(null);
+    },
+    onError: (e: any) => {
+      toast.error(e.message || "Seed failed");
+      setSeedingClubId(null);
+    },
+  });
+
   return (
     <div className="space-y-4 p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between gap-3">
@@ -240,9 +264,25 @@ export default function SuperAdminNsaImport() {
                       </td>
                       <td className="py-2 pr-3">
                         {isExisting ? (
-                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
-                            Already provisioned
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                              Provisioned
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={seedingClubId === r.existing_club_id}
+                              onClick={() => seedRoster.mutate(r.existing_club_id!)}
+                              className="h-6 px-2 text-[11px] border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
+                            >
+                              {seedingClubId === r.existing_club_id ? (
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              ) : (
+                                <Users className="w-3 h-3 mr-1" />
+                              )}
+                              Seed roster
+                            </Button>
+                          </div>
                         ) : (
                           <Badge variant="outline" className="border-amber-500/40 text-amber-200 bg-amber-500/10">
                             Available

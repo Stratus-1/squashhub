@@ -20,6 +20,9 @@ import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
+import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { Send } from "lucide-react";
 
 interface PositionEntry {
   homeCode: string;
@@ -90,6 +93,8 @@ export default function LeagueGameDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { activeMember } = useMemberContext();
+  const [nsaDialogOpen, setNsaDialogOpen] = useState(false);
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
@@ -1440,6 +1445,13 @@ export default function LeagueGameDetail() {
           </Button>
         )}
 
+        {/* NSA Post — visible once setup is done so captains can validate/submit upstream */}
+        {setupDone && activeMember?.id && (
+          <Button variant="outline" className="w-full border-amber-500/50 text-amber-700 hover:bg-amber-500/10" size="sm" onClick={() => setNsaDialogOpen(true)}>
+            <Send className="w-4 h-4 mr-1" /> Post to NSA
+          </Button>
+        )}
+
         {isSubmitted && (
           <div className="text-center py-2">
             <Badge className="bg-green-500/15 text-green-700 text-sm px-4 py-1">
@@ -1467,6 +1479,21 @@ export default function LeagueGameDetail() {
           inUseCodes={buildInUseMap(swapTarget.side)}
           onSelect={handleSwap}
           onClear={() => handleClearSlot(swapTarget.idx, swapTarget.side)}
+        />
+      )}
+
+      {activeMember?.id && (
+        <NsaSubmitDialog
+          open={nsaDialogOpen}
+          onOpenChange={setNsaDialogOpen}
+          clubMemberId={activeMember.id}
+          matches={positions.map((p) => ({
+            home_nsf: (p.homeCode || "").toUpperCase(),
+            away_nsf: (p.awayCode || "").toUpperCase(),
+            home_player_name: p.homeName,
+            away_player_name: p.awayName,
+            games: (p.scores || []).slice(0, 5).map((s) => [s.home, s.away] as [number, number]),
+          }))}
         />
       )}
     </div>

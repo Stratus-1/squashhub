@@ -158,6 +158,7 @@ export default function SuperAdminNsaImport() {
         `Seeded: ${res.leagues_created} leagues, ${res.members_created} members, ${res.registrations_created} registrations${errs ? ` (${errs} warnings)` : ""}`
       );
       setSeedingClubId(null);
+      qc.invalidateQueries({ queryKey: ["clubs-with-nsa-id"] });
     },
     onError: (e: any) => {
       toast.error(e.message || "Seed failed");

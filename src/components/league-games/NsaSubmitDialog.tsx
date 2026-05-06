@@ -157,8 +157,22 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, defaultFixtu
               <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={handleDeleteCreds}>Remove</Button>
             </div>
 
+            <div className="space-y-1">
+              <Label htmlFor="nsa-fix" className="text-xs">NSA Fixture ID</Label>
+              <Input
+                id="nsa-fix"
+                inputMode="numeric"
+                placeholder="e.g. 294400 (find on NSA admin → Fixtures)"
+                value={fixtureIdInput}
+                onChange={(e) => setFixtureIdInput(e.target.value.replace(/\D/g, ""))}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Visible in your NSA admin URL: <code>fixtureinput.php?fixture=<b>NNNNNN</b></code>
+              </p>
+            </div>
+
             <div className="border rounded p-2 text-xs space-y-1">
-              <div className="font-medium text-[11px]">Scorecard preview (NSA fixture #{fixtureId ?? "—"})</div>
+              <div className="font-medium text-[11px]">Scorecard preview</div>
               {matches.map((m, i) => (
                 <div key={i} className="flex justify-between gap-2 font-mono text-[10px]">
                   <span className="truncate">{i + 1}. {m.home_player_name || m.home_nsf || "—"} vs {m.away_player_name || m.away_nsf || "—"}</span>

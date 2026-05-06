@@ -25,6 +25,7 @@ type ClubRow = {
   divisions: string[];
   existing_subdomain: string | null;
   existing_club_id: string | null;
+  roster_seeded_at: string | null;
 };
 
 function slugFromCode(code: string): string {

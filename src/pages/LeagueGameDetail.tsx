@@ -20,6 +20,9 @@ import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
+import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
+import { useMember } from "@/contexts/MemberContext";
+import { Send } from "lucide-react";
 
 interface PositionEntry {
   homeCode: string;

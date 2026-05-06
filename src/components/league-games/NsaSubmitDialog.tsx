@@ -128,10 +128,10 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
       if (data.nsa_submitted_by) {
         const { data: cm } = await supabase
           .from("club_members")
-          .select("first_name, last_name")
+          .select("name")
           .eq("id", data.nsa_submitted_by)
           .maybeSingle();
-        if (cm) submittedByName = `${cm.first_name ?? ""} ${cm.last_name ?? ""}`.trim();
+        if (cm) submittedByName = (cm.name ?? "").trim() || null;
       }
       return { ...(data as any), submitted_by_name: submittedByName };
     },

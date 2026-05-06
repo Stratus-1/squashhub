@@ -450,6 +450,7 @@ export default function Dashboard() {
     myClubMember,
     clubData,
     onboardingDone,
+    isSuperAdmin,
   ]);
 
   if (isLoading) {

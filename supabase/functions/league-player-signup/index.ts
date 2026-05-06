@@ -224,13 +224,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ---------- 6. Resolve club subdomain for redirect ----------
-  const { data: clubRow } = await admin
-    .from("clubs")
-    .select("subdomain, name")
-    .eq("id", member.club_id)
-    .maybeSingle();
-
+  // ---------- 6. Return response (clubRow already fetched above) ----------
   return json({
     ok: true,
     user_id: userId,

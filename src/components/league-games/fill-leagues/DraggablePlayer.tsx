@@ -37,9 +37,9 @@ export function DraggablePlayer({ memberId, origin, name, rank, leagueNumber, di
       className={cn(
         "flex items-center gap-1.5 px-1.5 py-1 rounded border text-sm select-none",
         available
-          ? "border-emerald-500/60 bg-emerald-500/15 dark:bg-emerald-500/20"
+          ? "border-win bg-win text-primary-foreground font-semibold shadow-sm"
           : "border-border/60 bg-background/80",
-        disabled ? "opacity-60" : available ? "hover:bg-emerald-500/25" : "hover:bg-accent/40",
+        disabled && !available ? "opacity-60" : available ? "hover:bg-win/90" : "hover:bg-accent/40",
         isDragging && "opacity-30",
         muted && "opacity-50",
       )}
@@ -55,11 +55,11 @@ export function DraggablePlayer({ memberId, origin, name, rank, leagueNumber, di
           <GripVertical className="w-3 h-3" />
         </button>
       )}
-      {positionLabel && <span className="text-[10px] text-muted-foreground w-4 shrink-0">{positionLabel}</span>}
+      {positionLabel && <span className={cn("text-[10px] w-4 shrink-0", available ? "text-primary-foreground/80" : "text-muted-foreground")}>{positionLabel}</span>}
       <span className={cn("flex-1 truncate text-xs", muted && "line-through")}>
         {name}
-        {leagueNumber && <span className="text-muted-foreground ml-1">#{leagueNumber}</span>}
-        {typeof rank === "number" && <span className="text-muted-foreground ml-1">R{rank}</span>}
+        {leagueNumber && <span className={cn("ml-1", available ? "text-primary-foreground/80" : "text-muted-foreground")}>#{leagueNumber}</span>}
+        {typeof rank === "number" && <span className={cn("ml-1", available ? "text-primary-foreground/80" : "text-muted-foreground")}>R{rank}</span>}
       </span>
       {badge && (
         <Badge variant={badge.variant ?? "outline"} className="text-[9px] px-1 py-0 shrink-0">

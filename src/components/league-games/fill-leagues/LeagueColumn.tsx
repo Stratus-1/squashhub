@@ -18,9 +18,11 @@ type Props = {
   leagueNumberByMember?: Map<string, string>;
   fixture: FixtureLite | null;
   canEdit: boolean;
+  /** memberIds who confirmed availability for this week — render green. */
+  availableSet?: Set<string>;
 };
 
-export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit }: Props) {
+export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, availableSet }: Props) {
   const opponentCode = fixture
     ? fixture.home_team_code === league.code
       ? fixture.away_team_code
@@ -106,6 +108,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                     name={mem.name || "Unknown"}
                     leagueNumber={leagueNumberByMember?.get(mem.id) || null}
                     disabled={!canEdit}
+                    available={availableSet?.has(mem.id)}
                     badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}
                   />
                 )}
@@ -143,6 +146,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   leagueNumber={leagueNumberByMember?.get(b.memberId) || null}
                   disabled={!canEdit}
                   positionLabel={`${i + 1}.`}
+                  available={availableSet?.has(b.memberId)}
                   badge={
                     b.isPulled
                       ? { label: "♀ guest", variant: "outline" }

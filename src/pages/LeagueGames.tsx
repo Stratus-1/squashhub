@@ -192,6 +192,7 @@ export default function LeagueGames() {
                 associationId={selectedAssocId ?? undefined}
                 externalSource={selectedAssoc?.external_source ?? null}
                 externalClubId={selectedAssoc?.external_club_id ?? null}
+                weekStartDow={selectedAssoc?.week_start_dow ?? clubWeekDow ?? 3}
               />
             </TabsContent>
 

@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi } from "lucide-react";
-import { format, parseISO, addDays } from "date-fns";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X } from "lucide-react";
+import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { useNsaFixtures, type NsaFixture } from "@/hooks/use-nsa";
+import { toast } from "sonner";
 
 type Props = {
   platformAssocIds: string[];
@@ -33,11 +35,14 @@ type Props = {
   externalSource?: string | null;
   /** External system's club ID (e.g. "6" for CSIR on NSA). */
   externalClubId?: string | null;
+  /** Day-of-week (0=Sun..6=Sat) the squash week starts on, for availability week computation. */
+  weekStartDow?: number;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "custom";
   const [rangeMode, setRangeMode] = useState<RangeMode>("this-week");
@@ -213,6 +218,69 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return new Set((myLineupRows || []).map((r: any) => r.fixture_id as string));
   }, [myLineupRows]);
 
+  // ---------- Availability (per squash week) ----------
+  const dow = (typeof weekStartDow === "number" ? weekStartDow : 3); // default Wed
+  const fixtureWeekStart = (fixtureDate: string): string =>
+    format(startOfWeek(parseISO(fixtureDate), { weekStartsOn: dow as any }), "yyyy-MM-dd");
+
+  const fixtureWeeks = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of (displayFixtures || []) as any[]) {
+      if (f?.fixture_date) set.add(fixtureWeekStart(f.fixture_date));
+    }
+    return [...set];
+  }, [displayFixtures, dow]);
+
+  const { data: availRows = [] } = useQuery<{ week_start_date: string }[]>({
+    queryKey: ["my-lwa", clubId, activeMember?.id, fixtureWeeks.join(",")],
+    enabled: !!clubId && !!activeMember?.id && fixtureWeeks.length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_week_availability")
+        .select("week_start_date")
+        .eq("club_id", clubId)
+        .eq("club_member_id", activeMember!.id)
+        .in("week_start_date", fixtureWeeks);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const { data: unavailRows = [] } = useQuery<{ week_start_date: string }[]>({
+    queryKey: ["my-lwu", clubId, activeMember?.id, fixtureWeeks.join(",")],
+    enabled: !!clubId && !!activeMember?.id && fixtureWeeks.length > 0,
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_week_unavailability")
+        .select("week_start_date")
+        .eq("club_id", clubId)
+        .eq("club_member_id", activeMember!.id)
+        .in("week_start_date", fixtureWeeks);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const availableWeeks = useMemo(() => new Set(availRows.map((r) => r.week_start_date)), [availRows]);
+  const unavailableWeeks = useMemo(() => new Set(unavailRows.map((r) => r.week_start_date)), [unavailRows]);
+
+  const respondAvailability = useMutation({
+    mutationFn: async ({ weekStartDate, response }: { weekStartDate: string; response: "available" | "unavailable" }) => {
+      if (!activeMember?.id) throw new Error("Not signed in as a club member");
+      const { error } = await supabase.rpc("respond_league_week_availability" as any, {
+        _club_member_id: activeMember.id,
+        _week_start_date: weekStartDate,
+        _response: response,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["my-lwa", clubId, activeMember?.id] });
+      qc.invalidateQueries({ queryKey: ["my-lwu", clubId, activeMember?.id] });
+      qc.invalidateQueries({ queryKey: ["lwa", clubId] });
+      qc.invalidateQueries({ queryKey: ["lwu", clubId] });
+      toast.success(vars.response === "available" ? "Marked available" : "Marked unavailable");
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to update availability"),
+  });
+
   // NOTE: Tournament/championship matches intentionally excluded here — they live on the dedicated /tournaments page.
 
   const fixturesByDate = useMemo(() => {
@@ -342,6 +410,15 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
               const mine = isMyFixture(f);
               const inLineup = isInLineup(f);
               const result = resultMap.get(f.id);
+              const fxWeek = f?.fixture_date ? fixtureWeekStart(f.fixture_date) : null;
+              const isAvailable = !!(fxWeek && availableWeeks.has(fxWeek));
+              const isUnavailable = !!(fxWeek && unavailableWeeks.has(fxWeek));
+              const showAvailability =
+                !!activeMember?.id &&
+                !!clubId &&
+                mine &&
+                !inLineup &&
+                !(result && (result.status === "submitted" || result.status === "confirmed"));
               return (
                 <Card
                   key={f.id}
@@ -364,6 +441,16 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         {!inLineup && mine && (
                           <Badge className="bg-primary/15 text-primary text-[10px]">
                             <Star className="w-3 h-3 mr-1" /> Your League
+                          </Badge>
+                        )}
+                        {isAvailable && (
+                          <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border border-emerald-500/40">
+                            <Check className="w-3 h-3 mr-1" /> Available
+                          </Badge>
+                        )}
+                        {isUnavailable && (
+                          <Badge variant="destructive" className="text-[10px]">
+                            <X className="w-3 h-3 mr-1" /> Not available
                           </Badge>
                         )}
                       </div>
@@ -404,6 +491,36 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       {f.isTournament ? "Tournament" : "Set up & Score"}
                     </Button>
                   </div>
+                  {showAvailability && fxWeek && (
+                    <div className="mt-2 pt-2 border-t border-border/50 flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                        Are you available this squash week?
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isAvailable ? "default" : "outline"}
+                        className={cn(
+                          "h-7 px-2 text-[11px] gap-1",
+                          isAvailable && "bg-emerald-600 hover:bg-emerald-600/90 text-white border-transparent",
+                        )}
+                        disabled={respondAvailability.isPending}
+                        onClick={() => respondAvailability.mutate({ weekStartDate: fxWeek, response: "available" })}
+                      >
+                        <Check className="w-3 h-3" /> Available
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isUnavailable ? "destructive" : "outline"}
+                        className="h-7 px-2 text-[11px] gap-1"
+                        disabled={respondAvailability.isPending}
+                        onClick={() => respondAvailability.mutate({ weekStartDate: fxWeek, response: "unavailable" })}
+                      >
+                        <X className="w-3 h-3" /> Not available
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               );
             })}

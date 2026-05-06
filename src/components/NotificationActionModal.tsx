@@ -140,6 +140,43 @@ export function NotificationActionModal() {
     },
   });
 
+  const respondAvailability = useMutation({
+    mutationFn: async ({
+      notificationId,
+      memberId,
+      weekStart,
+      response,
+    }: { notificationId: string; memberId: string; weekStart: string; response: "available" | "unavailable" }) => {
+      const { error } = await supabase.rpc("respond_league_week_availability" as any, {
+        _club_member_id: memberId,
+        _week_start_date: weekStart,
+        _response: response,
+      });
+      if (error) throw error;
+      await supabase.from("notifications").update({ read: true }).eq("id", notificationId);
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(
+        vars.response === "available"
+          ? "Marked available — your captain will see you in the fill-up pool."
+          : "Marked unavailable for the week.",
+      );
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["league-week-unavailability"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not save your response"),
+  });
+
+  const advanceOrClose = useCallback(() => {
+    if (isLast) {
+      setOpen(false);
+      setDismissed(true);
+    } else {
+      setCurrentIndex((i) => i + 1);
+    }
+  }, [isLast]);
+
   const notifications = unreadNotifications || [];
   const current = notifications[currentIndex] || null;
   const total = notifications.length;

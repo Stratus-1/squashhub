@@ -81,9 +81,10 @@ export default function ClubAdmin() {
     return <Navigate to="/" replace />;
   }
 
-  // Filter tabs by permission — tabs without a permission slug (like "permissions") are only for full-access users
+  // Filter tabs by permission — full admins (club captain/admin or platform super-admin) see everything
   const visibleTabs = ADMIN_TABS.filter(tab => {
-    if (!tab.permission) return isAdmin; // permissions tab only for admins
+    if (isAdmin) return true;
+    if (!tab.permission) return false; // permissions tab only for full admins
     return myPermissions.has(tab.permission);
   });
 

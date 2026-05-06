@@ -130,7 +130,14 @@ Deno.serve(async (req) => {
     }, 409);
   }
 
-  // ---------- 2. Create auth user ----------
+  // ---------- 2. Resolve club subdomain (needed for branded auth emails) ----------
+  const { data: clubRow } = await admin
+    .from("clubs")
+    .select("subdomain, name")
+    .eq("id", member.club_id)
+    .maybeSingle();
+
+  // ---------- 3. Create auth user ----------
   const fullName = member.name || email.split("@")[0];
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
@@ -139,6 +146,8 @@ Deno.serve(async (req) => {
     user_metadata: {
       name: fullName,
       phone: phone || undefined,
+      club_subdomain: clubRow?.subdomain || null,
+      club_name: clubRow?.name || null,
       terms_accepted_at: new Date().toISOString(),
       privacy_accepted_at: new Date().toISOString(),
     },

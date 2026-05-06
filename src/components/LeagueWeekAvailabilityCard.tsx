@@ -27,13 +27,22 @@ export function LeagueWeekAvailabilityCard() {
   const memberId = activeMember?.id;
   const dow = (club as any)?.league_week_start_dow ?? 3; // default Wed
 
-  // Compute the next league week_start_date (today or future occurrence of dow).
+  // Compute the active league week_start_date — matches FillUpLeaguesTab logic.
+  // Use the CURRENT squash week (the one containing today) so mid-week confirmations
+  // light up the captain's planning grid for the in-progress week.
   const weekStartStr = useMemo(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Monday of this calendar week
+    const monday = new Date(today);
     const todayDow = today.getDay();
-    let diff = (dow - todayDow + 7) % 7;
-    if (diff === 0) diff = 7; // always the *next* week, never today
-    return format(addDays(today, diff), "yyyy-MM-dd");
+    const diffToMon = (todayDow + 6) % 7;
+    monday.setDate(today.getDate() - diffToMon);
+    // Squash week starts on `dow` (0=Sun..6=Sat). Compute that anchor.
+    let currentStart = new Date(monday);
+    currentStart.setDate(monday.getDate() + ((dow + 6) % 7));
+    if (currentStart > today) currentStart.setDate(currentStart.getDate() - 7);
+    return format(currentStart, "yyyy-MM-dd");
   }, [dow]);
 
   const weekEndStr = useMemo(

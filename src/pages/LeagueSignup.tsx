@@ -10,6 +10,7 @@ import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
 import { Trophy, Search, CheckCircle2, Loader2, Crown } from "lucide-react";
 import { motion } from "framer-motion";
+import shLogo from "@/assets/sh-logo.png";
 
 type LookupHit = {
   member_id: string;

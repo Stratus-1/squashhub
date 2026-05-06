@@ -398,12 +398,31 @@ Deno.serve(async (req) => {
 
 
     // Parse the webhook payload from the auth system
-    const payload = await req.json();
+    const rawBody = await req.text();
+    console.log(`[auth-email-hook] raw body length=${rawBody.length}, headers=${JSON.stringify([...req.headers.entries()].filter(([k]) => !k.toLowerCase().includes("auth")))}`);
+
+    let payload: any = {};
+    if (rawBody && rawBody.trim().length > 0) {
+      try {
+        payload = JSON.parse(rawBody);
+      } catch (e) {
+        console.error(`[auth-email-hook] Failed to parse body as JSON: ${(e as Error).message}. Body preview: ${rawBody.slice(0, 200)}`);
+        return new Response(JSON.stringify({}), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      console.log("[auth-email-hook] Empty body received, passing through");
+      return new Response(JSON.stringify({}), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const user = payload?.user;
     const emailData = payload?.email_data;
 
     if (!user || !emailData) {
-      console.log("[auth-email-hook] No user or email_data in payload, passing through");
+      console.log(`[auth-email-hook] No user or email_data in payload. Payload keys: ${Object.keys(payload).join(",")}`);
       return new Response(JSON.stringify({}), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

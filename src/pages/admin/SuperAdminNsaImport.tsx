@@ -269,9 +269,19 @@ export default function SuperAdminNsaImport() {
                       <td className="py-2 pr-3">
                         {isExisting ? (
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
-                              Provisioned
-                            </Badge>
+                            {r.roster_seeded_at ? (
+                              <Badge
+                                variant="outline"
+                                className="border-emerald-500/40 text-emerald-300 bg-emerald-500/15"
+                                title={`Roster seeded ${new Date(r.roster_seeded_at).toLocaleString()}`}
+                              >
+                                Seeded
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                                Provisioned
+                              </Badge>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"
@@ -284,7 +294,7 @@ export default function SuperAdminNsaImport() {
                               ) : (
                                 <Users className="w-3 h-3 mr-1" />
                               )}
-                              Seed roster
+                              {r.roster_seeded_at ? "Re-seed" : "Seed roster"}
                             </Button>
                           </div>
                         ) : (

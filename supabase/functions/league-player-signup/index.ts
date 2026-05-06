@@ -240,10 +240,34 @@ Deno.serve(async (req) => {
     }
 
     if (verified) {
-      // Promote to captain role
+      // Promote to team captain role (league-scoped, NOT full club admin)
       await admin.from("club_members")
         .update({ role: "captain", pending_captain_claim: false })
         .eq("id", member.id);
+
+      // Flag is_captain on every league registration this member already has,
+      // and set leagues.captain_member_id where it's empty so the league shows them as captain.
+      const { data: regs } = await admin
+        .from("member_league_registrations")
+        .select("id, league_id")
+        .eq("club_member_id", member.id);
+
+      const leagueIds = (regs || []).map((r: any) => r.league_id);
+      if (regs && regs.length > 0) {
+        await admin
+          .from("member_league_registrations")
+          .update({ is_captain: true })
+          .in("id", regs.map((r: any) => r.id));
+      }
+      if (leagueIds.length > 0) {
+        // Only fill captain_member_id where it's currently null (don't override an existing captain)
+        await admin
+          .from("leagues")
+          .update({ captain_member_id: member.id })
+          .in("id", leagueIds)
+          .is("captain_member_id", null);
+      }
+
       captainStatus = "verified";
     } else {
       // Soft fall-back: stays as player, flag pending claim

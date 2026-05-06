@@ -48,8 +48,10 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, homeTeamCode
   // Auto-resolve NSA fixture id by querying the public fixtures feed and matching
   // on team codes (case-insensitive) + date.
   const canAutoResolve = !!(open && homeTeamCode && awayTeamCode && fixtureDate);
+  // Pull the full season (status=completed returns all rounds, not just current week).
   const { data: nsaFixtures, isFetching: resolvingFixture } = useNsaFixtures({
     league: NSA_CURRENT_SEASON,
+    status: "completed",
     enabled: canAutoResolve,
   });
 

@@ -32,7 +32,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const NSA_BASE = "https://admin.northerns.co.za/nsa";
+const NSA_BASE = "https://admin.northerns.co.za";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -41,46 +41,76 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// ---------- AES-GCM helpers (mirror nsa-submit-result) ----------
+// ---------- AES-GCM helpers (mirror nsa-submit-result, key = NSA_CRED_KEY base64 32 bytes) ----------
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+function bytesToB64(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
 async function getKey(): Promise<CryptoKey> {
-  const secret = Deno.env.get("NSA_CRED_ENCRYPTION_KEY");
-  if (!secret) throw new Error("NSA_CRED_ENCRYPTION_KEY not configured");
-  const raw = new TextEncoder().encode(secret).slice(0, 32);
-  const padded = new Uint8Array(32);
-  padded.set(raw);
-  return crypto.subtle.importKey("raw", padded, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  const raw = Deno.env.get("NSA_CRED_KEY");
+  if (!raw) throw new Error("NSA_CRED_KEY not configured");
+  const keyBytes = b64ToBytes(raw);
+  if (keyBytes.length !== 32) throw new Error("NSA_CRED_KEY must be 32 bytes (base64)");
+  return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 async function encryptPassword(plain: string) {
   const key = await getKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = new Uint8Array(
+  const cipher = new Uint8Array(
     await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain)),
   );
-  const b64 = (u8: Uint8Array) => btoa(String.fromCharCode(...u8));
-  return { ciphertext: b64(ciphertext), iv: b64(iv) };
+  return { ciphertext: bytesToB64(cipher), iv: bytesToB64(iv) };
 }
 
-// ---------- NSA login probe ----------
+// ---------- NSA login probe (mirrors nsa-submit-result) ----------
+function parseNsfSessionCookie(headers: Headers): string | null {
+  // deno-lint-ignore no-explicit-any
+  const anyH = headers as any;
+  let cookies: string[] = [];
+  if (typeof anyH.getSetCookie === "function") cookies = anyH.getSetCookie();
+  else {
+    const raw = headers.get("set-cookie");
+    if (raw) cookies = [raw];
+  }
+  for (const c of cookies) {
+    const m = c.match(/NSFSESSION=([^;]+)/);
+    if (m) return `NSFSESSION=${m[1]}`;
+  }
+  return null;
+}
+
 async function nsaLoginProbe(username: string, password: string): Promise<boolean> {
   try {
-    const body = new URLSearchParams({ username, password });
+    // NSA login expects field names `uname` / `passwd` (NOT username/password)
+    const body = new URLSearchParams({ uname: username, passwd: password }).toString();
     const res = await fetch(`${NSA_BASE}/login.php`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
+      body,
       redirect: "manual",
     });
-    const cookie = res.headers.get("set-cookie") || "";
-    if (!cookie || !cookie.toLowerCase().includes("phpsessid")) return false;
-    // Verify the cookie is authenticated by hitting a protected page
-    const check = await fetch(`${NSA_BASE}/index.php`, {
-      headers: { Cookie: cookie },
-    });
+    const cookie = parseNsfSessionCookie(res.headers);
+    if (!cookie) {
+      console.log("[nsaLoginProbe] no NSFSESSION cookie returned");
+      return false;
+    }
+    const check = await fetch(`${NSA_BASE}/index.php`, { headers: { cookie } });
     const html = await check.text();
-    return !html.toLowerCase().includes("login.php") && !html.toLowerCase().includes("logout");
-    // Heuristic: logged-in pages contain a "logout" link; logged-out pages redirect to login.
-  } catch {
+    const ok = /now logged in|Log Out|logout/i.test(html);
+    if (!ok) console.log("[nsaLoginProbe] cookie obtained but page doesn't show logged-in markers");
+    // Best-effort logout to free the session
+    try { await fetch(`${NSA_BASE}/logout.php`, { headers: { cookie } }); } catch (_) { /* ignore */ }
+    return ok;
+  } catch (e) {
+    console.log("[nsaLoginProbe] error:", (e as Error).message);
     return false;
   }
 }

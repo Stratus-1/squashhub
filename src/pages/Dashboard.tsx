@@ -512,6 +512,12 @@ export default function Dashboard() {
           actionsOnly
         />
 
+        {hasLeagues && (
+          <div className="px-8 pt-3">
+            <LeagueWeekAvailabilityCard />
+          </div>
+        )}
+
         <DashboardDesktop
           clubName={effectiveClub?.name || "SquashHub"}
           clubLogoUrl={(effectiveClub as any)?.logo_url || null}

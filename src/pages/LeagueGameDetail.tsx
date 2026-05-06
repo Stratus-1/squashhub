@@ -1487,6 +1487,9 @@ export default function LeagueGameDetail() {
           open={nsaDialogOpen}
           onOpenChange={setNsaDialogOpen}
           clubMemberId={activeMember.id}
+          homeTeamCode={fixture?.home_team_code}
+          awayTeamCode={fixture?.away_team_code}
+          fixtureDate={fixture?.fixture_date}
           matches={positions.map((p) => ({
             home_nsf: (p.homeCode || "").toUpperCase(),
             away_nsf: (p.awayCode || "").toUpperCase(),

@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       // Get user_id mapping (some shared accounts have null user_id)
       const { data: members } = await supabase
         .from("club_members")
-        .select("id, user_id, first_name")
+        .select("id, user_id, name")
         .in("id", memberIds);
 
       // Build notifications for players (skip duplicates already sent for this week)

@@ -410,6 +410,15 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
               const mine = isMyFixture(f);
               const inLineup = isInLineup(f);
               const result = resultMap.get(f.id);
+              const fxWeek = f?.fixture_date ? fixtureWeekStart(f.fixture_date) : null;
+              const isAvailable = !!(fxWeek && availableWeeks.has(fxWeek));
+              const isUnavailable = !!(fxWeek && unavailableWeeks.has(fxWeek));
+              const showAvailability =
+                !!activeMember?.id &&
+                !!clubId &&
+                mine &&
+                !inLineup &&
+                !(result && (result.status === "submitted" || result.status === "confirmed"));
               return (
                 <Card
                   key={f.id}
@@ -432,6 +441,16 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         {!inLineup && mine && (
                           <Badge className="bg-primary/15 text-primary text-[10px]">
                             <Star className="w-3 h-3 mr-1" /> Your League
+                          </Badge>
+                        )}
+                        {isAvailable && (
+                          <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border border-emerald-500/40">
+                            <Check className="w-3 h-3 mr-1" /> Available
+                          </Badge>
+                        )}
+                        {isUnavailable && (
+                          <Badge variant="destructive" className="text-[10px]">
+                            <X className="w-3 h-3 mr-1" /> Not available
                           </Badge>
                         )}
                       </div>
@@ -472,6 +491,36 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       {f.isTournament ? "Tournament" : "Set up & Score"}
                     </Button>
                   </div>
+                  {showAvailability && fxWeek && (
+                    <div className="mt-2 pt-2 border-t border-border/50 flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                        Are you available this squash week?
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isAvailable ? "default" : "outline"}
+                        className={cn(
+                          "h-7 px-2 text-[11px] gap-1",
+                          isAvailable && "bg-emerald-600 hover:bg-emerald-600/90 text-white border-transparent",
+                        )}
+                        disabled={respondAvailability.isPending}
+                        onClick={() => respondAvailability.mutate({ weekStartDate: fxWeek, response: "available" })}
+                      >
+                        <Check className="w-3 h-3" /> Available
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isUnavailable ? "destructive" : "outline"}
+                        className="h-7 px-2 text-[11px] gap-1"
+                        disabled={respondAvailability.isPending}
+                        onClick={() => respondAvailability.mutate({ weekStartDate: fxWeek, response: "unavailable" })}
+                      >
+                        <X className="w-3 h-3" /> Not available
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               );
             })}

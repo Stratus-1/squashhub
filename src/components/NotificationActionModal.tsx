@@ -8,8 +8,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, ExternalLink } from "lucide-react";
+import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, ExternalLink, ThumbsUp, ThumbsDown, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 type NotificationRow = {
   id: string;
@@ -20,6 +21,8 @@ type NotificationRow = {
   url?: string | null;
   read: boolean;
   created_at: string;
+  data?: Record<string, any> | null;
+  club_member_id?: string | null;
 };
 
 const iconMap: Record<string, typeof Bell> = {
@@ -30,6 +33,8 @@ const iconMap: Record<string, typeof Bell> = {
   marketing: Bell,
   event: Calendar,
   general: Bell,
+  league_availability: Trophy,
+  captain_fillup_reminder: Users,
 };
 
 const typeLabel: Record<string, string> = {
@@ -40,6 +45,8 @@ const typeLabel: Record<string, string> = {
   marketing: "Club News",
   event: "Event",
   general: "Notification",
+  league_availability: "League",
+  captain_fillup_reminder: "Captain",
 };
 
 /** Tracks when the app was last active to detect "returning" users */

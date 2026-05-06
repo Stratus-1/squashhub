@@ -78,6 +78,7 @@ import { useMyClub } from "@/hooks/use-club";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import { SiteFooter } from "@/components/SiteFooter";
+import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
 const queryClient = new QueryClient();
 
@@ -335,6 +336,12 @@ function AppRoutes() {
       {user && <OutboxSync />}
       <PwaUpdatePrompt />
       <FeedbackFab />
+      {/* Mobile-only floating Super-Admin shortcut (desktop has it in the header) */}
+      {user && !isAdminRoute && !isTvRoute && (
+        <div className="md:hidden fixed top-2 right-2 z-50">
+          <SuperAdminMenu />
+        </div>
+      )}
       
     </div>
   );

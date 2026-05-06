@@ -322,10 +322,6 @@ Deno.serve(async (req) => {
           .update({ plays_league: true, enable_league_association_id: clubNsaAssocId })
           .eq("id", member.id);
         counts.members_existing += 1;
-        // prevent the original "else { counts.members_existing += 1 }" branch below from double-counting
-        continue_member_existing_handled: void 0;
-      } else {
-        counts.members_existing += 1;
       }
 
       // Affiliation to NSA with NSF code
@@ -334,7 +330,7 @@ Deno.serve(async (req) => {
           .from("member_association_affiliations")
           .insert({
             club_member_id: member.id,
-            association_id: NSA_ASSOCIATION_ID,
+            association_id: clubNsaAssocId,
             league_association_number: nsf,
             active: true,
           });

@@ -66,12 +66,14 @@ async function callProxy<T>(
   return data?.data as T;
 }
 
-/** Fetch fixtures filtered by league season ID (e.g. "s79") and optional NSA club ID (e.g. "6"). */
-export function useNsaFixtures(opts: { league?: string; club?: string; enabled?: boolean }) {
-  const { league, club, enabled = true } = opts;
+/** Fetch fixtures filtered by league season ID (e.g. "s79") and optional NSA club ID (e.g. "6").
+ *  status: omit for current/upcoming round only; pass "completed" to retrieve the
+ *  full season including past rounds. */
+export function useNsaFixtures(opts: { league?: string; club?: string; status?: string; enabled?: boolean }) {
+  const { league, club, status, enabled = true } = opts;
   return useQuery({
-    queryKey: ["nsa-fixtures", league, club],
-    queryFn: () => callProxy<NsaFixture[]>("fixtures", { league, club }),
+    queryKey: ["nsa-fixtures", league, club, status],
+    queryFn: () => callProxy<NsaFixture[]>("fixtures", { league, club, status }),
     enabled: enabled && !!league,
     staleTime: 60_000,
     retry: 1,

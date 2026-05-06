@@ -46,7 +46,7 @@ export function DraggablePlayer({
       className={cn(
         "flex items-center gap-1.5 px-1.5 py-1 rounded border text-sm select-none",
         unavailable
-          ? "border-destructive bg-destructive/15 text-destructive"
+          ? "border-destructive bg-destructive text-destructive-foreground font-semibold shadow-sm"
           : available
           ? "border-win bg-win text-primary-foreground font-semibold shadow-sm"
           : "border-border/60 bg-background/80",
@@ -63,7 +63,7 @@ export function DraggablePlayer({
           className={cn(
             "shrink-0 cursor-grab active:cursor-grabbing touch-none",
             available ? "text-primary-foreground/80 hover:text-primary-foreground"
-            : unavailable ? "text-destructive/80 hover:text-destructive"
+            : unavailable ? "text-destructive-foreground/80 hover:text-destructive-foreground"
             : "text-muted-foreground hover:text-foreground"
           )}
           aria-label={`Drag ${name}`}
@@ -76,7 +76,7 @@ export function DraggablePlayer({
       {positionLabel && (
         <span className={cn("text-[10px] w-4 shrink-0",
           available ? "text-primary-foreground/80"
-          : unavailable ? "text-destructive/80"
+          : unavailable ? "text-destructive-foreground/80"
           : "text-muted-foreground")}>{positionLabel}</span>
       )}
       <span className={cn("flex-1 truncate text-xs", muted && "line-through")}>
@@ -84,13 +84,13 @@ export function DraggablePlayer({
         {leagueNumber && (
           <span className={cn("ml-1",
             available ? "text-primary-foreground/80"
-            : unavailable ? "text-destructive/80"
+            : unavailable ? "text-destructive-foreground/80"
             : "text-muted-foreground")}>#{leagueNumber}</span>
         )}
         {typeof rank === "number" && (
           <span className={cn("ml-1",
             available ? "text-primary-foreground/80"
-            : unavailable ? "text-destructive/80"
+            : unavailable ? "text-destructive-foreground/80"
             : "text-muted-foreground")}>R{rank}</span>
         )}
       </span>
@@ -103,7 +103,7 @@ export function DraggablePlayer({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onMarkUnavailable(); }}
-          className="shrink-0 rounded p-0.5 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+          className="shrink-0 rounded p-0.5 text-destructive hover:bg-destructive/20 transition-colors"
           aria-label={`Mark ${name} unavailable`}
           title="Mark unavailable for the week"
         >

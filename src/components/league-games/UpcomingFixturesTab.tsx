@@ -21,6 +21,8 @@ type Props = {
   platformAssocIds: string[];
   clubTeamCodes: string[];
   myTeamCodes: Set<string>;
+  /** Optional map of team code -> custom team/league display name (e.g. "Cobras"). */
+  teamNameByCode?: Record<string, string>;
   /** Start of the configured squash week (yyyy-MM-dd). Falls back to today. */
   weekStart?: string;
   /** End of the squash week window (yyyy-MM-dd). Falls back to weekStart + 6 days, or today + 14 days. */
@@ -39,7 +41,7 @@ type Props = {
   weekStartDow?: number;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, teamNameByCode, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const qc = useQueryClient();

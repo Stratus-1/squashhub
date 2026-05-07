@@ -196,6 +196,9 @@ export default function Home() {
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("features"))}>Features</Button>
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("pricing"))}>Pricing</Button>
                     <div className="h-px bg-border my-3" />
+                    <Button className="rounded-full w-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold" onClick={() => handleMobileNav(() => navigate("/league"))}>
+                      <Trophy className="w-4 h-4 mr-1" /> NSA Player? Register Here
+                    </Button>
                     <Button className="rounded-full w-full" onClick={() => handleMobileNav(() => scrollTo("clubs"))}>
                       Find/Create My Association
                     </Button>

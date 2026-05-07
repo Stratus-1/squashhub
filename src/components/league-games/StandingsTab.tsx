@@ -267,10 +267,23 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
                 <TableBody>
                   {result.rows.map((s, i) => {
                     const mine = myCodes.has(s.team_code);
+                    const ourLeague = clubLeagues.find(
+                      (cl) => (cl.nsa_team_code || cl.code) === s.team_code,
+                    );
+                    const customName =
+                      ourLeague &&
+                      ourLeague.name &&
+                      !/^\s*(?:men'?s?|ladies|ladie|women|mixed)\b.*\bleague\b/i.test(ourLeague.name) &&
+                      !/reserves?/i.test(ourLeague.name)
+                        ? ourLeague.name
+                        : null;
                     return (
                       <TableRow key={s.team_code} className={mine ? "bg-primary/10 font-medium" : ""}>
                         <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
-                        <TableCell className="font-mono text-xs">{s.team_code}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {s.team_code}
+                          {customName && <span className="ml-2 font-sans font-semibold text-primary">{customName}</span>}
+                        </TableCell>
                         <TableCell className="text-center font-bold">{s.total}</TableCell>
                         {s.weeks.map((w, j) => (
                           <TableCell key={j} className="text-center text-xs">

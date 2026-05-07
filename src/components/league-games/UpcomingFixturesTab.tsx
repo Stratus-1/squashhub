@@ -21,6 +21,8 @@ type Props = {
   platformAssocIds: string[];
   clubTeamCodes: string[];
   myTeamCodes: Set<string>;
+  /** Optional map of team code -> custom team/league display name (e.g. "Cobras"). */
+  teamNameByCode?: Record<string, string>;
   /** Start of the configured squash week (yyyy-MM-dd). Falls back to today. */
   weekStart?: string;
   /** End of the squash week window (yyyy-MM-dd). Falls back to weekStart + 6 days, or today + 14 days. */
@@ -39,7 +41,7 @@ type Props = {
   weekStartDow?: number;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, teamNameByCode, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -455,7 +457,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="font-bold">{f.home_team_code}</span>
+                        <span className="font-bold flex flex-col leading-tight">
+                          <span>{f.home_team_code}</span>
+                          {teamNameByCode?.[(f.home_team_code || "").toUpperCase()] && (
+                            <span className="text-[11px] font-medium text-primary">{teamNameByCode[(f.home_team_code || "").toUpperCase()]}</span>
+                          )}
+                        </span>
                         {result && (result.status === "submitted" || result.status === "confirmed") ? (
                           <>
                             <span className="font-bold text-primary">{result.homePoints}</span>
@@ -465,7 +472,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         ) : (
                           <span className="text-muted-foreground text-xs">vs</span>
                         )}
-                        <span className="font-bold">{f.away_team_code}</span>
+                        <span className="font-bold flex flex-col leading-tight">
+                          <span>{f.away_team_code}</span>
+                          {teamNameByCode?.[(f.away_team_code || "").toUpperCase()] && (
+                            <span className="text-[11px] font-medium text-primary">{teamNameByCode[(f.away_team_code || "").toUpperCase()]}</span>
+                          )}
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">

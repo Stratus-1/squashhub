@@ -123,13 +123,14 @@ function getDateLabel(date: Date) {
   return format(date, "EEEE");
 }
 
-// Quick date chips for the next 7 days (+ admin can pick up to 30 days ahead)
-function DateChips({ selectedDate, onSelect, isAdmin }: { selectedDate: Date; onSelect: (d: Date) => void; isAdmin?: boolean }) {
+// Quick date chips for the next 7 days (+ admin: 30 days, super-admin: 365 days)
+function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selectedDate: Date; onSelect: (d: Date) => void; isAdmin?: boolean; isSuperAdmin?: boolean }) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const [pickerOpen, setPickerOpen] = useState(false);
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
-  const maxDate = addDays(todayMidnight, 30);
+  const maxDate = addDays(todayMidnight, isSuperAdmin ? 365 : 30);
+  const canPick = isAdmin || isSuperAdmin;
   const selectedBeyondStrip = selectedDate > addDays(todayMidnight, 6);
 
   return (

@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
     password,
-    email_confirm: false, // require email verification
+    email_confirm: true, // NSA league signups: skip email verification
     user_metadata: {
       name: fullName,
       phone: phone || undefined,
@@ -286,6 +286,6 @@ Deno.serve(async (req) => {
     club_subdomain: clubRow?.subdomain || null,
     club_name: clubRow?.name || null,
     captain_status: captainStatus,
-    email_verification_required: true,
+    email_verification_required: false,
   });
 });

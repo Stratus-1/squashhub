@@ -78,8 +78,12 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         if (ownErr) throw ownErr;
 
         const myMembership = (ownMembers || [])[0] as any;
-        // Captain is league-scoped only — only 'admin' grants full club admin rights.
-        const adminRole = myMembership?.role === "admin";
+        const ownIds = (ownMembers || []).map((m: any) => m.id);
+        const c: any = club;
+        const delegateIds = [c?.chairman_member_id, c?.secretary_member_id, c?.club_captain_member_id].filter(Boolean);
+        const isDelegate = delegateIds.some((id: string) => ownIds.includes(id));
+        // Captain is league-scoped only — only 'admin' or a delegate position grants full club admin rights.
+        const adminRole = myMembership?.role === "admin" || isDelegate;
         setIsAdmin(adminRole);
 
         let linked: LinkedMember[] = [];

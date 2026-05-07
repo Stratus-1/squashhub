@@ -195,7 +195,7 @@ export function useMyClub() {
   });
 }
 
-/** Check if user is club admin (or platform super-admin) */
+/** Check if user is club admin (or platform super-admin or club delegate) */
 export function useIsClubAdmin() {
   const { user } = useAuth();
   const { data } = useMyClub();
@@ -212,10 +212,31 @@ export function useIsClubAdmin() {
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
+  // Check if user holds a delegate position (Chairman / Secretary / Club Captain) at the active club
+  const clubId = data?.club?.id;
+  const { data: isDelegate } = useQuery({
+    queryKey: ["my-delegate-flag", user?.id, clubId],
+    queryFn: async () => {
+      if (!user || !clubId) return false;
+      const { data: members } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("user_id", user.id);
+      const memberIds = (members || []).map((m: any) => m.id);
+      if (memberIds.length === 0) return false;
+      const club: any = data?.club;
+      return [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id]
+        .filter(Boolean)
+        .some((id: string) => memberIds.includes(id));
+    },
+    enabled: !!user && !!clubId,
+    staleTime: 60 * 1000,
+  });
   const isSuperAdmin = (superRoles || []).includes("admin") || (superRoles || []).includes("moderator");
   // Note: 'captain' is a TEAM captain (league-scoped), NOT a full club admin.
-  return isSuperAdmin || data?.membership?.role === "admin";
+  return isSuperAdmin || data?.membership?.role === "admin" || !!isDelegate;
 }
+
 
 /** Check if user is a platform super-admin (or moderator) */
 export function useIsSuperAdmin() {

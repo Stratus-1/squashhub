@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
     password,
-    email_confirm: false, // require email verification
+    email_confirm: true, // NSA league signups: skip email verification
     user_metadata: {
       name: fullName,
       phone: phone || undefined,

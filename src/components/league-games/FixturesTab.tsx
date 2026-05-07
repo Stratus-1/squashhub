@@ -209,8 +209,9 @@ function RoundCard({
     queryKey: ["round-fixtures", round.id],
     queryFn: async () => {
       const { data, error } = await fromExt("platform_league_fixtures")
-        .select("id, home_team_code, away_team_code, court_id, start_time")
+        .select("id, home_team_code, away_team_code, court_id, start_time, fixture_date")
         .eq("round_id", round.id)
+        .order("fixture_date", { ascending: true })
         .order("start_time", { ascending: true });
       if (error) throw error;
       return (data ?? []) as EditableFixture[];
@@ -224,16 +225,25 @@ function RoundCard({
 
   const autoDistribute = () => {
     const pairs = allPairsOnce(selectedTeams);
-    const slots = allocateSlots(pairs, round.court_ids, round.start_time, round.end_time, round.slot_minutes);
+    const slots = allocateSlots(
+      pairs,
+      round.court_ids,
+      round.start_time,
+      round.end_time,
+      round.slot_minutes,
+      round.round_date,
+      round.end_date,
+    );
     setDraft(
       slots.map((s) => ({
         home_team_code: s.home,
         away_team_code: s.away,
         court_id: s.courtId,
         start_time: s.startTime,
+        fixture_date: s.date,
       })),
     );
-    toast.success(`Generated ${slots.length} fixtures`);
+    toast.success(`Generated ${slots.length} fixtures across ${new Set(slots.map(s => s.date)).size} day(s)`);
   };
 
   const saveFixtures = useMutation({

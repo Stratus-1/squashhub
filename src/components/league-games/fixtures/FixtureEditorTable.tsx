@@ -9,6 +9,7 @@ export type EditableFixture = {
   away_team_code: string;
   court_id: number | null;
   start_time: string | null; // HH:mm
+  fixture_date?: string | null; // yyyy-MM-dd
 };
 
 type Props = {
@@ -16,9 +17,12 @@ type Props = {
   teams: { code: string; name: string }[];
   courts: { id: number; name: string }[];
   onChange: (next: EditableFixture[]) => void;
+  defaultDate?: string;
+  minDate?: string;
+  maxDate?: string;
 };
 
-export function FixtureEditorTable({ fixtures, teams, courts, onChange }: Props) {
+export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultDate, minDate, maxDate }: Props) {
   const update = (idx: number, patch: Partial<EditableFixture>) => {
     const next = [...fixtures];
     next[idx] = { ...next[idx], ...patch };
@@ -37,6 +41,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange }: Props)
         away_team_code: teams[1]?.code ?? teams[0]?.code ?? "",
         court_id: courts[0]?.id ?? null,
         start_time: "18:00",
+        fixture_date: defaultDate ?? null,
       },
     ]);
   };
@@ -46,6 +51,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange }: Props)
       <table className="w-full text-xs">
         <thead className="bg-muted/50">
           <tr className="text-left">
+            <th className="p-2">Date</th>
             <th className="p-2">Home</th>
             <th className="p-2">Away</th>
             <th className="p-2">Court</th>
@@ -56,6 +62,16 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange }: Props)
         <tbody>
           {fixtures.map((f, i) => (
             <tr key={i} className="border-t">
+              <td className="p-1">
+                <Input
+                  type="date"
+                  className="h-8"
+                  min={minDate}
+                  max={maxDate}
+                  value={f.fixture_date ?? defaultDate ?? ""}
+                  onChange={(e) => update(i, { fixture_date: e.target.value || null })}
+                />
+              </td>
               <td className="p-1">
                 <Select value={f.home_team_code} onValueChange={(v) => update(i, { home_team_code: v })}>
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
@@ -106,7 +122,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange }: Props)
           ))}
           {!fixtures.length && (
             <tr>
-              <td colSpan={5} className="p-3 text-center text-muted-foreground">
+              <td colSpan={6} className="p-3 text-center text-muted-foreground">
                 No fixtures yet — add manually or auto-distribute.
               </td>
             </tr>

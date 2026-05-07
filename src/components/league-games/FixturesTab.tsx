@@ -285,7 +285,7 @@ function RoundCard({
             .insert({
               court_id: f.court_id,
               user_id: user.id,
-              date: round.round_date,
+              date: (f as any).fixture_date || round.round_date,
               start_time: String(f.start_time).slice(0, 5),
               end_time: endTime,
               status: "active",

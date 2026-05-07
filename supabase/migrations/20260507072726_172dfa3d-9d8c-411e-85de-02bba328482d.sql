@@ -1,0 +1,1 @@
+ALTER TABLE public.league_rounds ADD COLUMN IF NOT EXISTS auto_create_bookings boolean NOT NULL DEFAULT false;

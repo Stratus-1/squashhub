@@ -92,6 +92,34 @@ export default function ClubAuth() {
   if (user) return <Navigate to="/" replace />;
 
   const clubName = club?.name || "Club";
+
+  // Friendly handler for "User already registered" errors during signup.
+  // Switches the user to the Sign In tab with the email pre-filled and
+  // shows an action toast offering a password reset.
+  const handleSignupError = (error: { message?: string } | null | undefined, attemptedEmail: string) => {
+    const msg = error?.message || "";
+    const looksRegistered =
+      /already\s+registered|already\s+exists|user\s+already|duplicate|already\s+been\s+registered/i.test(msg);
+    if (looksRegistered) {
+      const emailLower = attemptedEmail.trim().toLowerCase();
+      setLoginEmail(emailLower);
+      setActiveTab("login");
+      toast.info("This email is already registered", {
+        description: "Sign in with your existing password to finish your registration.",
+        duration: 8000,
+        action: {
+          label: "Forgot password",
+          onClick: async () => {
+            const { error: resetErr } = await resetPassword(emailLower);
+            if (resetErr) toast.error(resetErr.message);
+            else toast.success("Password reset email sent");
+          },
+        },
+      });
+      return;
+    }
+    toast.error(msg || "Sign-up failed");
+  };
   const isAssociation = (club as any)?.tenant_type === "association";
   // NSC-specific: hide the member/league number field on existing-member signup
   // so members only need email + cell phone (numbers are issued by the club).
@@ -244,7 +272,7 @@ export default function ClubAuth() {
       } : undefined
     );
     if (error) {
-      toast.error(error.message);
+      handleSignupError(error, email);
     } else {
       setSignupDone(true);
     }
@@ -332,7 +360,7 @@ export default function ClubAuth() {
       } : undefined
     );
     if (signUpErr) {
-      toast.error(signUpErr.message);
+      handleSignupError(signUpErr, email);
       setLoading(false);
       return;
     }
@@ -489,7 +517,7 @@ export default function ClubAuth() {
       } : undefined
     );
     if (error) {
-      toast.error(error.message);
+      handleSignupError(error, email);
     } else {
       setSignupDone(true);
     }

@@ -94,7 +94,7 @@ export default function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, logo_url, address, tenant_type")
+        .select("id, name, subdomain, logo_url, address, tenant_type, nsa_club_id, chairman_member_id")
         .not("subdomain", "is", null)
         .order("name");
       if (error) throw error;
@@ -103,7 +103,13 @@ export default function Home() {
     staleTime: 60_000,
   });
 
-  const clubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
+  // A club is "live" once an admin (chairman) is assigned. Until then, clicking
+  // a club routes NSA players to the /league self-signup flow instead of the
+  // tenant portal.
+  const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
+  const liveClubs = allClubs.filter((t) => !!t.chairman_member_id);
+  const nsaClubs = allClubs.filter((t) => !t.chairman_member_id);
+  const clubs = allClubs;
   const associations = tenants?.filter((t) => t.tenant_type === "association") ?? [];
 
   if (user) {

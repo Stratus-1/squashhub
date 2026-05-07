@@ -258,9 +258,6 @@ export default function Home() {
                   <Trophy className="w-4 h-4 mr-1.5" /> NSA Player? Register Here
                 </Button>
               </div>
-              <p className="text-xs text-white/80 drop-shadow">
-                Free until September 2026 · No credit card required
-              </p>
               <p className="text-xs text-amber-200/90 drop-shadow max-w-2xl">
                 Pretoria clubs affiliated with NSA don't need to register — just request SquashHub to activate your full administrative functionality. SquashHub is fully integrated with NSA via API.
               </p>

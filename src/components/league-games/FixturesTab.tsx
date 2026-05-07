@@ -139,6 +139,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
           round={r}
           teams={teams}
           clubId={clubId}
+          isAdmin={isAdmin}
           open={openRoundId === r.id}
           onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
           onEdit={() => {

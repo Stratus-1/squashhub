@@ -101,6 +101,16 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
+  const [editSetup, setEditSetup] = useState<null | {
+    associationId: string;
+    gender: "men" | "ladies" | "mixed";
+    leagueNumber: string;
+    numTeams: number;
+    perTeam: number;
+    reserves: number;
+    teamNames: Record<number, string>;
+    reservesName: string;
+  }>(null);
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const qc = useQueryClient();

@@ -1239,18 +1239,20 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             <div className="flex-1 overflow-y-auto space-y-3">
               {leagues.map(league => {
                 const players = leagueData[league.id] || [];
+                const isRes = /reserves?/i.test(league.name);
                 return (
                   <Card
                     key={league.id}
-                    className="p-3"
+                    className={`p-3 ${isRes ? "border-dashed bg-muted/30" : ""}`}
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => handleDropOnLeague(league.id)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <div>
+                      <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold">{league.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{league.code || ""} • {players.length} player{players.length !== 1 ? "s" : ""} • League {getLeagueOrdinal(league)}</p>
+                        {isRes && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">Reserves</Badge>}
                       </div>
+                      <p className="text-[10px] text-muted-foreground">{league.code || ""} • {players.length} player{players.length !== 1 ? "s" : ""} • League {getLeagueOrdinal(league)}</p>
                     </div>
                     <div className="space-y-0.5 min-h-[32px] border border-dashed rounded-md p-1">
                       {players.length === 0 && (

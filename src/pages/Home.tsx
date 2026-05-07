@@ -163,6 +163,9 @@ export default function Home() {
 
             {/* Desktop actions */}
             <div className="hidden md:flex items-center gap-2">
+              <Button size="sm" onClick={() => navigate("/league")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 border border-amber-300/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] font-semibold">
+                <Trophy className="w-3.5 h-3.5 mr-1" /> NSA Player? Register Here
+              </Button>
               <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                 Find/Create My Association
               </Button>

@@ -60,66 +60,103 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
           </tr>
         </thead>
         <tbody>
-          {fixtures.map((f, i) => (
-            <tr key={i} className="border-t">
-              <td className="p-1">
-                <Input
-                  type="date"
-                  className="h-8"
-                  min={minDate}
-                  max={maxDate}
-                  value={f.fixture_date ?? defaultDate ?? ""}
-                  onChange={(e) => update(i, { fixture_date: e.target.value || null })}
-                />
-              </td>
-              <td className="p-1">
-                <Select value={f.home_team_code} onValueChange={(v) => update(i, { home_team_code: v })}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {teams.map((t) => (
-                      <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </td>
-              <td className="p-1">
-                <Select value={f.away_team_code} onValueChange={(v) => update(i, { away_team_code: v })}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {teams.map((t) => (
-                      <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </td>
-              <td className="p-1">
-                <Select
-                  value={f.court_id ? String(f.court_id) : ""}
-                  onValueChange={(v) => update(i, { court_id: v ? Number(v) : null })}
-                >
-                  <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    {courts.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </td>
-              <td className="p-1">
-                <Input
-                  type="time"
-                  className="h-8"
-                  value={f.start_time ?? ""}
-                  onChange={(e) => update(i, { start_time: e.target.value || null })}
-                />
-              </td>
-              <td className="p-1 text-right">
-                <Button size="icon" variant="ghost" onClick={() => remove(i)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </td>
-            </tr>
-          ))}
+          {fixtures.map((f, i) => {
+            const isBye = f.away_team_code === "__BYE__";
+            if (isBye) {
+              return (
+                <tr key={i} className="border-t bg-amber-500/5">
+                  <td className="p-1">
+                    <Input
+                      type="date"
+                      className="h-8"
+                      min={minDate}
+                      max={maxDate}
+                      value={f.fixture_date ?? defaultDate ?? ""}
+                      onChange={(e) => update(i, { fixture_date: e.target.value || null })}
+                    />
+                  </td>
+                  <td className="p-1">
+                    <Select value={f.home_team_code} onValueChange={(v) => update(i, { home_team_code: v })}>
+                      <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {teams.map((t) => (
+                          <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-1 text-xs font-medium text-amber-700 dark:text-amber-400" colSpan={3}>
+                    BYE — no match this round
+                  </td>
+                  <td className="p-1 text-right">
+                    <Button size="icon" variant="ghost" onClick={() => remove(i)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            }
+            return (
+              <tr key={i} className="border-t">
+                <td className="p-1">
+                  <Input
+                    type="date"
+                    className="h-8"
+                    min={minDate}
+                    max={maxDate}
+                    value={f.fixture_date ?? defaultDate ?? ""}
+                    onChange={(e) => update(i, { fixture_date: e.target.value || null })}
+                  />
+                </td>
+                <td className="p-1">
+                  <Select value={f.home_team_code} onValueChange={(v) => update(i, { home_team_code: v })}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {teams.map((t) => (
+                        <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </td>
+                <td className="p-1">
+                  <Select value={f.away_team_code} onValueChange={(v) => update(i, { away_team_code: v })}>
+                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {teams.map((t) => (
+                        <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </td>
+                <td className="p-1">
+                  <Select
+                    value={f.court_id ? String(f.court_id) : ""}
+                    onValueChange={(v) => update(i, { court_id: v ? Number(v) : null })}
+                  >
+                    <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      {courts.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </td>
+                <td className="p-1">
+                  <Input
+                    type="time"
+                    className="h-8"
+                    value={f.start_time ?? ""}
+                    onChange={(e) => update(i, { start_time: e.target.value || null })}
+                  />
+                </td>
+                <td className="p-1 text-right">
+                  <Button size="icon" variant="ghost" onClick={() => remove(i)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
           {!fixtures.length && (
             <tr>
               <td colSpan={6} className="p-3 text-center text-muted-foreground">

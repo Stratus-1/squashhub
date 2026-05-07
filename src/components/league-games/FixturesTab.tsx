@@ -29,7 +29,7 @@ type Round = RoundDraft & {
 
 export function FixturesTab({ clubId, associationId }: Props) {
   const qc = useQueryClient();
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const [openRoundId, setOpenRoundId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRound, setEditingRound] = useState<Partial<RoundDraft> | undefined>();
@@ -114,20 +114,22 @@ export function FixturesTab({ clubId, associationId }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Rounds & fixtures</h3>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditingRound({ round_number: nextRoundNumber, name: `Round ${nextRoundNumber}` });
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-1" /> Add round
-        </Button>
+        {isAdmin && (
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingRound({ round_number: nextRoundNumber, name: `Round ${nextRoundNumber}` });
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" /> Add round
+          </Button>
+        )}
       </div>
 
       {!rounds?.length && (
         <Card className="p-6 text-center text-sm text-muted-foreground">
-          No rounds scheduled yet. Click <strong>Add round</strong> to get started.
+          {isAdmin ? <>No rounds scheduled yet. Click <strong>Add round</strong> to get started.</> : <>No rounds scheduled yet.</>}
         </Card>
       )}
 
@@ -137,6 +139,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
           round={r}
           teams={teams}
           clubId={clubId}
+          isAdmin={isAdmin}
           open={openRoundId === r.id}
           onToggle={() => setOpenRoundId(openRoundId === r.id ? null : r.id)}
           onEdit={() => {
@@ -167,6 +170,7 @@ function RoundCard({
   round,
   teams,
   clubId,
+  isAdmin,
   open,
   onToggle,
   onEdit,
@@ -175,6 +179,7 @@ function RoundCard({
   round: Round;
   teams: { code: string; name: string }[];
   clubId: string;
+  isAdmin: boolean;
   open: boolean;
   onToggle: () => void;
   onEdit: () => void;
@@ -310,63 +315,118 @@ function RoundCard({
         </div>
         <div className="flex items-center gap-1">
           <Badge variant="outline" className="text-[10px]">{round.status}</Badge>
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {isAdmin && (
+            <>
+              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
         </div>
       </button>
 
       {open && (
         <div className="p-3 border-t space-y-3">
-          <div className="rounded border bg-muted/20 p-2 space-y-2">
-            <div className="text-xs font-medium">Teams in this round</div>
-            <div className="flex flex-wrap gap-2">
-              {teams.map((t) => (
-                <label key={t.code} className="flex items-center gap-1.5 text-xs">
-                  <Checkbox
-                    checked={selectedTeams.includes(t.code)}
-                    onCheckedChange={(v) =>
-                      setSelectedTeams((prev) =>
-                        v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
-                      )
-                    }
-                  />
-                  {t.name}
+          {isAdmin && (
+            <div className="rounded border bg-muted/20 p-2 space-y-2">
+              <div className="text-xs font-medium">Teams in this round</div>
+              <div className="flex flex-wrap gap-2">
+                {teams.map((t) => (
+                  <label key={t.code} className="flex items-center gap-1.5 text-xs">
+                    <Checkbox
+                      checked={selectedTeams.includes(t.code)}
+                      onCheckedChange={(v) =>
+                        setSelectedTeams((prev) =>
+                          v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
+                        )
+                      }
+                    />
+                    {t.name}
+                  </label>
+                ))}
+                {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <label className="flex items-center gap-2 text-xs">
+                  <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
+                  <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
                 </label>
-              ))}
-              {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+                <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
+                  <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <label className="flex items-center gap-2 text-xs">
-                <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
-                <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
-              </label>
-              <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
-                <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
-              </Button>
-            </div>
-          </div>
+          )}
 
-          <FixtureEditorTable
-            fixtures={list}
-            teams={teams}
-            courts={courts ?? []}
-            onChange={setDraft}
-          />
-
-          <div className="flex justify-end gap-2">
-            {draft && (
-              <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard changes</Button>
-            )}
-            <Button size="sm" onClick={() => saveFixtures.mutate()} disabled={saveFixtures.isPending}>
-              {saveFixtures.isPending ? "Saving…" : "Save fixtures"}
-            </Button>
-          </div>
+          {isAdmin ? (
+            <>
+              <FixtureEditorTable
+                fixtures={list}
+                teams={teams}
+                courts={courts ?? []}
+                onChange={setDraft}
+              />
+              <div className="flex justify-end gap-2">
+                {draft && (
+                  <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard changes</Button>
+                )}
+                <Button size="sm" onClick={() => saveFixtures.mutate()} disabled={saveFixtures.isPending}>
+                  {saveFixtures.isPending ? "Saving…" : "Save fixtures"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} />
+          )}
         </div>
       )}
     </Card>
+  );
+}
+
+function ReadOnlyFixtures({
+  fixtures,
+  courts,
+  teams,
+}: {
+  fixtures: EditableFixture[];
+  courts: { id: number; name: string }[];
+  teams: { code: string; name: string }[];
+}) {
+  if (!fixtures.length) {
+    return (
+      <div className="rounded border p-4 text-center text-xs text-muted-foreground">
+        No fixtures published yet.
+      </div>
+    );
+  }
+  const teamName = (code: string) => teams.find((t) => t.code === code)?.name ?? code;
+  const courtName = (id: number | null) => (id ? courts.find((c) => c.id === id)?.name ?? `Court ${id}` : "—");
+  return (
+    <div className="rounded-md border overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/50">
+          <tr className="text-left">
+            <th className="p-2">Time</th>
+            <th className="p-2">Court</th>
+            <th className="p-2">Home</th>
+            <th className="p-2">Away</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fixtures.map((f, i) => (
+            <tr key={i} className="border-t">
+              <td className="p-2">{f.start_time?.slice(0, 5) ?? "—"}</td>
+              <td className="p-2">{courtName(f.court_id)}</td>
+              <td className="p-2">{teamName(f.home_team_code)}</td>
+              <td className="p-2">{teamName(f.away_team_code)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

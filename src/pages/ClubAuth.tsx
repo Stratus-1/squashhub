@@ -360,7 +360,7 @@ export default function ClubAuth() {
       } : undefined
     );
     if (signUpErr) {
-      toast.error(signUpErr.message);
+      handleSignupError(signUpErr, email);
       setLoading(false);
       return;
     }

@@ -174,6 +174,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     });
   };
 
+  const handleDeleteLeague = async (id: string) => {
     if (!confirm("Delete this league?")) return;
     const { error } = await fromExt("leagues").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }

@@ -119,23 +119,42 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   // Reset state when dialog re-opens
   useEffect(() => {
     if (open) {
-      setStep(1);
-      setAssociationId("");
-      setGender("men");
-      setLeagueNumber("1st");
-      setStartPosition(1);
-      setNumMembers(0);
-      setNumTeams(1);
-      setPerTeam(4);
-      setReserves(0);
-      setDistribution("snake");
-      setAllocatedIds(new Set());
-      setSessionSummary([]);
-      setSavedLastRound(false);
-      setTeamNames({});
-      setReservesName("");
+      if (editContext) {
+        // Edit mode: jump straight to step 4 with values pre-filled.
+        setStep(4);
+        setAssociationId(editContext.associationId);
+        setGender(editContext.gender);
+        setLeagueNumber(editContext.leagueNumber);
+        setStartPosition(1);
+        setNumTeams(editContext.numTeams);
+        setPerTeam(editContext.perTeam);
+        setReserves(editContext.reserves);
+        setNumMembers(editContext.numTeams * editContext.perTeam + editContext.reserves);
+        setDistribution("snake");
+        setAllocatedIds(new Set());
+        setSessionSummary([]);
+        setSavedLastRound(false);
+        setTeamNames(editContext.teamNames || {});
+        setReservesName(editContext.reservesName || "");
+      } else {
+        setStep(1);
+        setAssociationId("");
+        setGender("men");
+        setLeagueNumber("1st");
+        setStartPosition(1);
+        setNumMembers(0);
+        setNumTeams(1);
+        setPerTeam(4);
+        setReserves(0);
+        setDistribution("snake");
+        setAllocatedIds(new Set());
+        setSessionSummary([]);
+        setSavedLastRound(false);
+        setTeamNames({});
+        setReservesName("");
+      }
     }
-  }, [open]);
+  }, [open, editContext]);
 
   // Source of truth for who's "in" an association = active rows in
   // `member_association_affiliations` (mirrors what Edit Profile / Edit Member writes).

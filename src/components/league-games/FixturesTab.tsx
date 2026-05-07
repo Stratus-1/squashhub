@@ -81,6 +81,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         start_time: r.start_time,
         end_time: r.end_time,
         slot_minutes: r.slot_minutes,
+        play_dows: r.play_dows ?? [],
         notes: r.notes ?? null,
         auto_create_bookings: r.auto_create_bookings ?? false,
         created_by: activeMember?.id ?? null,
@@ -252,8 +253,9 @@ function RoundCard({
       round.slot_minutes,
       round.round_date,
       round.end_date,
+      (round as any).play_dows ?? [],
     );
-    console.log("[autoDistribute]", { selectedTeams, pairs, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], slots });
+    console.log("[autoDistribute]", { selectedTeams, pairs, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots });
     if (!slots.length) {
       toast.error("Couldn't generate fixtures — check the time window and slot length.");
       return;

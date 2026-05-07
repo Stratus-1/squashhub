@@ -2522,6 +2522,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          play_dows: number[]
           round_date: string
           round_number: number
           slot_minutes: number
@@ -2542,6 +2543,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          play_dows?: number[]
           round_date: string
           round_number: number
           slot_minutes?: number
@@ -2562,6 +2564,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          play_dows?: number[]
           round_date?: string
           round_number?: number
           slot_minutes?: number

@@ -21,9 +21,12 @@ export type RoundDraft = {
   start_time: string;
   end_time: string;
   slot_minutes: number;
+  play_dows: number[];      // 0=Sun..6=Sat; empty = any day
   notes?: string | null;
   auto_create_bookings?: boolean;
 };
+
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type Props = {
   open: boolean;
@@ -76,6 +79,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     start_time: initial?.start_time ?? "18:00",
     end_time: initial?.end_time ?? "22:00",
     slot_minutes: initial?.slot_minutes ?? 45,
+    play_dows: initial?.play_dows ?? [],
     notes: initial?.notes ?? "",
     auto_create_bookings: initial?.auto_create_bookings ?? true,
     id: initial?.id,
@@ -198,6 +202,38 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
                 onChange={(e) => setDraft({ ...draft, slot_minutes: Number(e.target.value) })}
               />
             </div>
+          </div>
+          <div>
+            <Label>Play days</Label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {DOW_LABELS.map((lbl, i) => {
+                const active = draft.play_dows.includes(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        play_dows: active
+                          ? d.play_dows.filter((x) => x !== i)
+                          : [...d.play_dows, i].sort((a, b) => a - b),
+                      }))
+                    }
+                    className={`px-2.5 py-1 rounded text-xs border transition ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted border-border"
+                    }`}
+                  >
+                    {lbl}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Select which weekdays fixtures may be scheduled on. Leave all unselected to allow any day.
+            </p>
           </div>
           <div>
             <Label>Courts</Label>

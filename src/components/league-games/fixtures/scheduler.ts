@@ -54,13 +54,16 @@ function normalizeTime(time: string): string {
   return String(time || "").slice(0, 5);
 }
 
-function eachDate(startDate: string, endDate: string): string[] {
+function eachDate(startDate: string, endDate: string, allowedDows?: number[]): string[] {
   const out: string[] = [];
   const s = parse(startDate, "yyyy-MM-dd", new Date());
   const e = parse(endDate || startDate, "yyyy-MM-dd", new Date());
+  const filter = allowedDows && allowedDows.length > 0 ? new Set(allowedDows) : null;
   let cur = s;
   while (cur <= e) {
-    out.push(format(cur, "yyyy-MM-dd"));
+    if (!filter || filter.has(cur.getDay())) {
+      out.push(format(cur, "yyyy-MM-dd"));
+    }
     cur = addMinutes(cur, 24 * 60);
   }
   return out;
@@ -79,6 +82,7 @@ export function allocateSlots(
   slotMinutes: number,
   startDate?: string,
   endDate?: string,
+  playDows?: number[],
 ): SlotAssignment[] {
   if (!courtIds.length || !pairings.length) return [];
   const start = parse(normalizeTime(startTime), "HH:mm", new Date());
@@ -92,7 +96,10 @@ export function allocateSlots(
   }
   if (!slotTimes.length) return [];
 
-  const dates = startDate ? eachDate(startDate, endDate || startDate) : [format(new Date(), "yyyy-MM-dd")];
+  const dates = startDate
+    ? eachDate(startDate, endDate || startDate, playDows)
+    : [format(new Date(), "yyyy-MM-dd")];
+  if (!dates.length) return [];
 
   // Build full slot grid (date × time)
   const grid: { date: string; time: string }[] = [];

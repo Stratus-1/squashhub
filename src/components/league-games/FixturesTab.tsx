@@ -153,6 +153,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         clubId={clubId}
+        associationId={associationId}
         initial={editingRound}
         onSave={async (r) => {
           await saveRound.mutateAsync(r);

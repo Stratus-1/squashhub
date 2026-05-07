@@ -34,7 +34,7 @@ export function AddReservesDialog({
   associationId: string | null;
   gender: Gender;
   /** All league rows (teams + existing reserves row) for this association+gender group */
-  groupLeagues: Array<{ id: string; name: string; code: string | null; association_id: string | null }>;
+  groupLeagues: Array<{ id: string; name: string; code?: string | null; association_id?: string | null }>;
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {

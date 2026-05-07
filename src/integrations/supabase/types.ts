@@ -2516,6 +2516,7 @@ export type Database = {
           court_ids: number[]
           created_at: string
           created_by: string | null
+          end_date: string | null
           end_time: string
           id: string
           name: string
@@ -2534,6 +2535,7 @@ export type Database = {
           court_ids?: number[]
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           end_time?: string
           id?: string
           name: string
@@ -2552,6 +2554,7 @@ export type Database = {
           court_ids?: number[]
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           end_time?: string
           id?: string
           name?: string

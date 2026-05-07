@@ -73,6 +73,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         round_number: r.round_number,
         name: r.name,
         round_date: r.round_date,
+        end_date: r.end_date,
         venue_name: r.venue_name,
         court_ids: r.court_ids,
         start_time: r.start_time,
@@ -152,6 +153,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         clubId={clubId}
+        associationId={associationId}
         initial={editingRound}
         onSave={async (r) => {
           await saveRound.mutateAsync(r);
@@ -301,7 +303,7 @@ function RoundCard({
           <div>
             <div className="font-medium text-sm">{round.name}</div>
             <div className="text-xs text-muted-foreground">
-              {format(parseISO(round.round_date), "EEE d MMM")} · {round.start_time}–{round.end_time} · {round.court_ids.length} court{round.court_ids.length === 1 ? "" : "s"}
+              {format(parseISO(round.round_date), "EEE d MMM")}{round.end_date && round.end_date !== round.round_date ? ` – ${format(parseISO(round.end_date), "EEE d MMM")}` : ""} · {round.start_time}–{round.end_time} · {round.court_ids.length} court{round.court_ids.length === 1 ? "" : "s"}
               {round.venue_name && ` · ${round.venue_name}`}
             </div>
           </div>

@@ -431,6 +431,9 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                 <span className="text-muted-foreground font-normal"> • {g.leagues.length}</span>
               </p>
               <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onEditSetup(g.assocId, g.leagues)} title="Edit Step-by-Step setup for this group">
+                  <Pencil className="w-3 h-3" />Edit setup
+                </Button>
                 <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
                   <Users className="w-3 h-3" />Allocate
                 </Button>

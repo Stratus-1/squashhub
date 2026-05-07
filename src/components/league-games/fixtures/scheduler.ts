@@ -50,6 +50,10 @@ export type SlotAssignment = {
   date: string;      // yyyy-MM-dd
 };
 
+function normalizeTime(time: string): string {
+  return String(time || "").slice(0, 5);
+}
+
 function eachDate(startDate: string, endDate: string): string[] {
   const out: string[] = [];
   const s = parse(startDate, "yyyy-MM-dd", new Date());
@@ -77,8 +81,9 @@ export function allocateSlots(
   endDate?: string,
 ): SlotAssignment[] {
   if (!courtIds.length || !pairings.length) return [];
-  const start = parse(startTime, "HH:mm", new Date());
-  const end = parse(endTime, "HH:mm", new Date());
+  const start = parse(normalizeTime(startTime), "HH:mm", new Date());
+  const end = parse(normalizeTime(endTime), "HH:mm", new Date());
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || slotMinutes <= 0) return [];
   const slotTimes: string[] = [];
   let cur = start;
   while (cur < end) {

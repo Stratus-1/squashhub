@@ -82,6 +82,7 @@ export function allocateSlots(
   slotMinutes: number,
   startDate?: string,
   endDate?: string,
+  playDows?: number[],
 ): SlotAssignment[] {
   if (!courtIds.length || !pairings.length) return [];
   const start = parse(normalizeTime(startTime), "HH:mm", new Date());
@@ -95,7 +96,10 @@ export function allocateSlots(
   }
   if (!slotTimes.length) return [];
 
-  const dates = startDate ? eachDate(startDate, endDate || startDate) : [format(new Date(), "yyyy-MM-dd")];
+  const dates = startDate
+    ? eachDate(startDate, endDate || startDate, playDows)
+    : [format(new Date(), "yyyy-MM-dd")];
+  if (!dates.length) return [];
 
   // Build full slot grid (date × time)
   const grid: { date: string; time: string }[] = [];

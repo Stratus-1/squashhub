@@ -688,11 +688,22 @@ export function MemberOnboardingWizard({
       }, 0);
       const bottomLadderPosition = groupMax + 1;
 
+      // Helper: detect unique-constraint collision on club_member_number
+      // (race when another member registered between auto-allocation and save)
+      const isMemberNumberConflict = (e: any) =>
+        e && (e.code === "23505" || /duplicate key/i.test(e.message || "")) &&
+        /club_member_number/i.test(e.message || e.details || "");
+
+      let finalMemberNumber = memberNumber;
+
       if (existingMember) {
         // Make sure the row is linked to this auth user.
         // Reset to bottom only if the imported row hadn't been claimed yet
         // (user_id was null) — preserves ladder history for re-logins.
-        const updatePayload: any = { ...memberData, user_id: user.id };
+        const buildUpdate = (num: string | null) => {
+          const p: any = { ...memberData, club_member_number: num || null, user_id: user.id };
+          return p;
+        };
         const { data: prior, error: priorErr } = await fromExt("club_members")
           .select("user_id")
           .eq("id", existingMember.id)
@@ -700,26 +711,44 @@ export function MemberOnboardingWizard({
         if (priorErr) {
           console.warn("[MemberOnboardingWizard] prior lookup error", priorErr);
         }
-        // If we cannot determine prior state, default to "unclaimed" so a
-        // first-time claimer always lands at the bottom of the ladder.
         const wasUnclaimed = !prior?.user_id;
-        if (wasUnclaimed) {
-          updatePayload.ladder_position = bottomLadderPosition;
+
+        let attempt = 0;
+        // up to 3 retries on number collision
+        while (true) {
+          const updatePayload = buildUpdate(finalMemberNumber);
+          if (wasUnclaimed) updatePayload.ladder_position = bottomLadderPosition;
+          const { error: memErr } = await fromExt("club_members")
+            .update(updatePayload)
+            .eq("id", existingMember.id);
+          if (!memErr) break;
+          if (isMemberNumberConflict(memErr) && attempt < 3) {
+            attempt++;
+            const { data: nextNum } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
+            if (nextNum) { finalMemberNumber = nextNum as string; setMemberNumber(finalMemberNumber); continue; }
+          }
+          throw memErr;
         }
-        const { error: memErr } = await fromExt("club_members")
-          .update(updatePayload)
-          .eq("id", existingMember.id);
-        if (memErr) throw memErr;
       } else {
-        const { error: memErr } = await fromExt("club_members")
-          .insert({
-            ...memberData,
-            club_id: clubId,
-            user_id: user.id,
-            role: "member",
-            ladder_position: bottomLadderPosition,
-          });
-        if (memErr) throw memErr;
+        let attempt = 0;
+        while (true) {
+          const { error: memErr } = await fromExt("club_members")
+            .insert({
+              ...memberData,
+              club_member_number: finalMemberNumber || null,
+              club_id: clubId,
+              user_id: user.id,
+              role: "member",
+              ladder_position: bottomLadderPosition,
+            });
+          if (!memErr) break;
+          if (isMemberNumberConflict(memErr) && attempt < 3) {
+            attempt++;
+            const { data: nextNum } = await supabase.rpc("get_next_member_number", { _club_id: clubId });
+            if (nextNum) { finalMemberNumber = nextNum as string; setMemberNumber(finalMemberNumber); continue; }
+          }
+          throw memErr;
+        }
       }
 
       // 2b. Upload face photo if captured

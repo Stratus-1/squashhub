@@ -1128,12 +1128,15 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         await fromExt("member_league_registrations").delete().eq("league_id", league.id);
         const players = leagueData[league.id] || [];
         if (players.length > 0) {
+          const targetIsReserves = /reserves?/i.test(league.name);
           const { error } = await fromExt("member_league_registrations").insert(
             players.map((p, i) => ({
               club_member_id: p.club_member_id,
               league_id: league.id,
               player_rank: i + 1,
-              is_captain: p.is_captain,
+              is_captain: targetIsReserves ? false : p.is_captain,
+              is_reserve: targetIsReserves,
+              reserve_order: targetIsReserves ? i + 1 : null,
               // Always derive from the permanent affiliation so this stays
               // in sync with the NSF/LS number on the player's profile.
               // Falls back to whatever was already on the row (legacy).

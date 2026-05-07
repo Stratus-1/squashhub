@@ -101,6 +101,16 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [editAssoc, setEditAssoc] = useState<LeagueAssociation | null>(null);
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
+  const [editSetup, setEditSetup] = useState<null | {
+    associationId: string;
+    gender: "men" | "ladies" | "mixed";
+    leagueNumber: string;
+    numTeams: number;
+    perTeam: number;
+    reserves: number;
+    teamNames: Record<number, string>;
+    reservesName: string;
+  }>(null);
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
@@ -110,6 +120,58 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     const { error } = await fromExt("league_associations").delete().eq("id", id);
     if (error) toast.error(error.message);
     else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
+  };
+
+  const openEditSetup = async (assocId: string | null, gender: "men" | "ladies" | "mixed", groupLeagues: League[]) => {
+    if (!assocId) { toast.error("Edit Setup requires an association"); return; }
+    if (groupLeagues.length === 0) return;
+    // Detect league number from first non-reserves league
+    const teamLeagues = groupLeagues.filter(l => !/reserves?/i.test(l.name));
+    const reservesLeague = groupLeagues.find(l => /reserves?/i.test(l.name));
+    const numTeams = teamLeagues.length || groupLeagues.length;
+    const ordMatch = teamLeagues[0]?.name.match(/(\d+(?:st|nd|rd|th))/i);
+    const leagueNumber = ordMatch ? ordMatch[1] : "1st";
+    // Pull team names (strip the "Men's 1st " prefix)
+    const teamNames: Record<number, string> = {};
+    const stripPrefix = (n: string) => n.replace(/^(Men's|Ladies|Mixed)\s+\d+(?:st|nd|rd|th)\s*/i, "");
+    teamLeagues.forEach((l, i) => {
+      const tail = stripPrefix(l.name).trim();
+      // Treat single-letter A/B/C as default — leave blank
+      if (tail && !/^[A-Z]$/.test(tail)) teamNames[i] = tail;
+    });
+    const reservesName = reservesLeague ? (() => {
+      const tail = stripPrefix(reservesLeague.name).trim();
+      return /^reserves?$/i.test(tail) ? "" : tail;
+    })() : "";
+    // perTeam: max regs across team leagues; reserves: regs in reserves league
+    let perTeam = (groupLeagues[0] as any)?.reserves_per_team != null ? 4 : 4;
+    let reservesCount = 0;
+    try {
+      const teamIds = teamLeagues.map(l => l.id);
+      if (teamIds.length > 0) {
+        const { data: regs } = await fromExt("member_league_registrations").select("league_id").in("league_id", teamIds);
+        const counts = new Map<string, number>();
+        (regs || []).forEach((r: any) => counts.set(r.league_id, (counts.get(r.league_id) || 0) + 1));
+        const max = Math.max(0, ...Array.from(counts.values()));
+        if (max > 0) perTeam = max;
+      }
+      if (reservesLeague) {
+        const { data: rRegs } = await fromExt("member_league_registrations").select("id").eq("league_id", reservesLeague.id);
+        reservesCount = (rRegs || []).length;
+      }
+    } catch (e: any) {
+      // non-fatal — fall back to defaults
+    }
+    setEditSetup({
+      associationId: assocId,
+      gender,
+      leagueNumber,
+      numTeams,
+      perTeam,
+      reserves: reservesCount,
+      teamNames,
+      reservesName,
+    });
   };
 
   const handleDeleteLeague = async (id: string) => {
@@ -242,6 +304,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "men", leagues: list })}
+            onEditSetup={(assocId, list) => openEditSetup(assocId, "men", list)}
           />
           <GenderColumn
             title="Ladies"
@@ -254,6 +317,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "ladies", leagues: list })}
+            onEditSetup={(assocId, list) => openEditSetup(assocId, "ladies", list)}
           />
           <GenderColumn
             title="Mixed"
@@ -266,6 +330,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+            onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
           />
         </div>
 
@@ -304,7 +369,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
 
-      <StepByStepLeagueSetup clubId={clubId} open={stepByStepOpen} onOpenChange={setStepByStepOpen} />
+      <StepByStepLeagueSetup
+        clubId={clubId}
+        open={stepByStepOpen || !!editSetup}
+        onOpenChange={(o) => { if (!o) { setStepByStepOpen(false); setEditSetup(null); } else setStepByStepOpen(true); }}
+        editContext={editSetup}
+      />
 
       {/* Edit Association Dialog */}
       {editAssoc && (
@@ -319,7 +389,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 }
 
 // ─── Gender Column: groups leagues by association, one Allocate button per association group ───
-function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate, onAddReserves }: {
+function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate, onAddReserves, onEditSetup }: {
   title: string;
   gender: "men" | "ladies" | "mixed";
   leagues: League[];
@@ -330,6 +400,7 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
   onDeleteGroup: (groupLeagues: League[], label: string) => void;
   onAllocate: (associationId: string | null, leagues: League[]) => void;
   onAddReserves: (associationId: string | null, leagues: League[]) => void;
+  onEditSetup: (associationId: string | null, leagues: League[]) => void;
 }) {
   // Group leagues by association_id
   const groups = useMemo(() => {
@@ -360,6 +431,9 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                 <span className="text-muted-foreground font-normal"> • {g.leagues.length}</span>
               </p>
               <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onEditSetup(g.assocId, g.leagues)} title="Edit Step-by-Step setup for this group">
+                  <Pencil className="w-3 h-3" />Edit setup
+                </Button>
                 <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
                   <Users className="w-3 h-3" />Allocate
                 </Button>
@@ -920,6 +994,31 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     dragOverItem.current = { leagueId, idx };
   };
 
+  // ── Reserve eligibility helpers ──
+  // League "tier" = numeric prefix from name/code. Lower = stronger league.
+  // A reserve from tier R can sub UP into team tier T only when T <= R.
+  // (Same league or higher league # / weaker division.) Never the reverse.
+  const isReservesLeague = (leagueId: string): boolean => {
+    const l = leagues.find(x => x.id === leagueId);
+    return !!l && /reserves?/i.test(l.name);
+  };
+  const tierOf = (leagueId: string): number => {
+    const l = leagues.find(x => x.id === leagueId);
+    if (!l) return 99;
+    const m = (l.code || "").match(/(\d+)/) || l.name.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : 99;
+  };
+  /** Returns null if allowed, else a human-readable reason string. */
+  const checkReserveMoveAllowed = (fromLeagueId: string, toLeagueId: string): string | null => {
+    if (!isReservesLeague(fromLeagueId)) return null;
+    if (isReservesLeague(toLeagueId)) return null; // reserves → reserves is fine
+    const reserveTier = tierOf(fromLeagueId);
+    const targetTier = tierOf(toLeagueId);
+    if (targetTier <= reserveTier) return null; // sub UP into stronger/same league: allowed
+    // target is weaker league than the reserve → block
+    return `Reserves from a stronger league (#${reserveTier}) can't be moved down into a weaker league (#${targetTier}).`;
+  };
+
   const handleDragEnd = () => {
     if (!dragItem.current || !dragOverItem.current) {
       dragItem.current = null;
@@ -940,13 +1039,34 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         return { ...prev, [from.leagueId]: items.map((p, i) => ({ ...p, player_rank: i + 1 })) };
       });
     } else {
-      // Move between leagues
+      // Cross-league move — enforce reserve eligibility
+      const reason = checkReserveMoveAllowed(from.leagueId, to.leagueId);
+      if (reason) {
+        toast.error(reason);
+        dragItem.current = null;
+        dragOverItem.current = null;
+        setDragFromPool(null);
+        return;
+      }
+      // Move between leagues (auto-swap when target slot is occupied — promotes a
+      // reserve into a team and demotes the displaced player into reserves).
       setLeagueData(prev => {
         const fromItems = [...(prev[from.leagueId] || [])];
         const toItems = [...(prev[to.leagueId] || [])];
         const dragged = fromItems.splice(from.idx, 1)[0];
-        dragged.league_id = to.leagueId;
-        toItems.splice(to.idx, 0, dragged);
+        // If dropping onto an occupied slot in a non-reserves league, swap that
+        // player back to the source (reserves) league.
+        const targetIsReserves = isReservesLeague(to.leagueId);
+        const sourceIsReserves = isReservesLeague(from.leagueId);
+        const occupant = toItems[to.idx];
+        if (occupant && sourceIsReserves && !targetIsReserves) {
+          // Promote dragged into team slot; demote occupant into reserves.
+          toItems[to.idx] = { ...dragged, league_id: to.leagueId, is_captain: occupant.is_captain };
+          fromItems.splice(from.idx, 0, { ...occupant, league_id: from.leagueId, is_captain: false });
+        } else {
+          dragged.league_id = to.leagueId;
+          toItems.splice(to.idx, 0, dragged);
+        }
         return {
           ...prev,
           [from.leagueId]: fromItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
@@ -1008,12 +1128,15 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         await fromExt("member_league_registrations").delete().eq("league_id", league.id);
         const players = leagueData[league.id] || [];
         if (players.length > 0) {
+          const targetIsReserves = /reserves?/i.test(league.name);
           const { error } = await fromExt("member_league_registrations").insert(
             players.map((p, i) => ({
               club_member_id: p.club_member_id,
               league_id: league.id,
               player_rank: i + 1,
-              is_captain: p.is_captain,
+              is_captain: targetIsReserves ? false : p.is_captain,
+              is_reserve: targetIsReserves,
+              reserve_order: targetIsReserves ? i + 1 : null,
               // Always derive from the permanent affiliation so this stays
               // in sync with the NSF/LS number on the player's profile.
               // Falls back to whatever was already on the row (legacy).
@@ -1078,7 +1201,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions</p>
+          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions • Drop a reserve onto a team slot to promote (the displaced player drops back to reserves). Reserves can only sub UP into stronger leagues, never down.</p>
         </DialogHeader>
 
         {!loaded ? (
@@ -1116,18 +1239,20 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             <div className="flex-1 overflow-y-auto space-y-3">
               {leagues.map(league => {
                 const players = leagueData[league.id] || [];
+                const isRes = /reserves?/i.test(league.name);
                 return (
                   <Card
                     key={league.id}
-                    className="p-3"
+                    className={`p-3 ${isRes ? "border-dashed bg-muted/30" : ""}`}
                     onDragOver={e => e.preventDefault()}
                     onDrop={() => handleDropOnLeague(league.id)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <div>
+                      <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold">{league.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{league.code || ""} • {players.length} player{players.length !== 1 ? "s" : ""} • League {getLeagueOrdinal(league)}</p>
+                        {isRes && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">Reserves</Badge>}
                       </div>
+                      <p className="text-[10px] text-muted-foreground">{league.code || ""} • {players.length} player{players.length !== 1 ? "s" : ""} • League {getLeagueOrdinal(league)}</p>
                     </div>
                     <div className="space-y-0.5 min-h-[32px] border border-dashed rounded-md p-1">
                       {players.length === 0 && (

@@ -70,10 +70,25 @@ function buildDraftOrder(numTeams: number, totalPicks: number, mode: Distributio
   return order;
 }
 
-export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
+export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext }: {
   clubId: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /**
+   * When set, the wizard opens pre-filled to edit an existing league group
+   * (one specific association+gender+leagueNumber). Saving overwrites the
+   * matching league rows.
+   */
+  editContext?: {
+    associationId: string;
+    gender: Gender;
+    leagueNumber: string;
+    numTeams: number;
+    perTeam: number;
+    reserves: number;
+    teamNames: Record<number, string>;
+    reservesName: string;
+  } | null;
 }) {
   const qc = useQueryClient();
   const { data: associations = [] } = useLeagueAssociations(clubId);
@@ -104,23 +119,42 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
   // Reset state when dialog re-opens
   useEffect(() => {
     if (open) {
-      setStep(1);
-      setAssociationId("");
-      setGender("men");
-      setLeagueNumber("1st");
-      setStartPosition(1);
-      setNumMembers(0);
-      setNumTeams(1);
-      setPerTeam(4);
-      setReserves(0);
-      setDistribution("snake");
-      setAllocatedIds(new Set());
-      setSessionSummary([]);
-      setSavedLastRound(false);
-      setTeamNames({});
-      setReservesName("");
+      if (editContext) {
+        // Edit mode: jump straight to step 4 with values pre-filled.
+        setStep(4);
+        setAssociationId(editContext.associationId);
+        setGender(editContext.gender);
+        setLeagueNumber(editContext.leagueNumber);
+        setStartPosition(1);
+        setNumTeams(editContext.numTeams);
+        setPerTeam(editContext.perTeam);
+        setReserves(editContext.reserves);
+        setNumMembers(editContext.numTeams * editContext.perTeam + editContext.reserves);
+        setDistribution("snake");
+        setAllocatedIds(new Set());
+        setSessionSummary([]);
+        setSavedLastRound(false);
+        setTeamNames(editContext.teamNames || {});
+        setReservesName(editContext.reservesName || "");
+      } else {
+        setStep(1);
+        setAssociationId("");
+        setGender("men");
+        setLeagueNumber("1st");
+        setStartPosition(1);
+        setNumMembers(0);
+        setNumTeams(1);
+        setPerTeam(4);
+        setReserves(0);
+        setDistribution("snake");
+        setAllocatedIds(new Set());
+        setSessionSummary([]);
+        setSavedLastRound(false);
+        setTeamNames({});
+        setReservesName("");
+      }
     }
-  }, [open]);
+  }, [open, editContext]);
 
   // Source of truth for who's "in" an association = active rows in
   // `member_association_affiliations` (mirrors what Edit Profile / Edit Member writes).
@@ -347,10 +381,11 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Step by Step League Setup</DialogTitle>
+          <DialogTitle>{editContext ? `Edit Setup — ${gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed"} ${leagueNumber}` : "Step by Step League Setup"}</DialogTitle>
           <DialogDescription>
-            Build one league number at a time — pick the association, gender, league number, then split players into teams.
-            Members allocated in this session are removed from the pool for later rounds.
+            {editContext
+              ? "Pre-filled from this league group. Adjust counts, team names or reserves; saving overwrites the group's registrations."
+              : "Build one league number at a time — pick the association, gender, league number, then split players into teams. Members allocated in this session are removed from the pool for later rounds."}
           </DialogDescription>
         </DialogHeader>
 

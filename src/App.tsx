@@ -341,7 +341,7 @@ function AppRoutes() {
       {user && !isAdminRoute && !isTvRoute && <MobileOnlyBottomNav />}
       {user && !isTvRoute && <OfflineBanner />}
       {user && !isTvRoute && <LiveSessionBanner />}
-      <InstallAppPrompt />
+      {/* <InstallAppPrompt /> disabled - iOS install issues */}
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
       {user && <NotificationActionModal />}

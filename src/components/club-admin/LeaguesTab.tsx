@@ -509,7 +509,13 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     if (error) { toast.error(error.message); return; }
     toast.success("Team renamed");
     setEditing(false);
+    // Invalidate every cache key that holds league rows so the new name shows
+    // up immediately in Fill-Up, Fixtures, Standings, club leagues lists, etc.
     qcRow.invalidateQueries({ queryKey: ["leagues"] });
+    qcRow.invalidateQueries({ queryKey: ["leagues-with-captain"] });
+    qcRow.invalidateQueries({ queryKey: ["club-leagues-codes-assoc"] });
+    qcRow.invalidateQueries({ queryKey: ["member-league-registrations"] });
+    qcRow.invalidateQueries({ queryKey: ["league-registrations", league.id] });
   };
 
   return (

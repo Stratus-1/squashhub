@@ -303,7 +303,7 @@ function RoundCard({
           <div>
             <div className="font-medium text-sm">{round.name}</div>
             <div className="text-xs text-muted-foreground">
-              {format(parseISO(round.round_date), "EEE d MMM")} · {round.start_time}–{round.end_time} · {round.court_ids.length} court{round.court_ids.length === 1 ? "" : "s"}
+              {format(parseISO(round.round_date), "EEE d MMM")}{round.end_date && round.end_date !== round.round_date ? ` – ${format(parseISO(round.end_date), "EEE d MMM")}` : ""} · {round.start_time}–{round.end_time} · {round.court_ids.length} court{round.court_ids.length === 1 ? "" : "s"}
               {round.venue_name && ` · ${round.venue_name}`}
             </div>
           </div>

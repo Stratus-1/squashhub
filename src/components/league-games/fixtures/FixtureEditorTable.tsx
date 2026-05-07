@@ -122,7 +122,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
           ))}
           {!fixtures.length && (
             <tr>
-              <td colSpan={5} className="p-3 text-center text-muted-foreground">
+              <td colSpan={6} className="p-3 text-center text-muted-foreground">
                 No fixtures yet — add manually or auto-distribute.
               </td>
             </tr>

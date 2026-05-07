@@ -522,6 +522,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
                 autoFocus
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={() => { if (!savingName) saveName(); }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") saveName();
                   if (e.key === "Escape") { setEditing(false); setNameDraft(league.name); }

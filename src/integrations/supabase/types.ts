@@ -4307,6 +4307,10 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_platform_association_for_league: {
+        Args: { _association_id: string }
+        Returns: string
+      }
       get_club_analytics: { Args: { days_back?: number }; Returns: Json }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
       get_head_to_head_by_member: {

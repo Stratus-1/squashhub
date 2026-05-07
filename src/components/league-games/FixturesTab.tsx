@@ -82,6 +82,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         end_time: r.end_time,
         slot_minutes: r.slot_minutes,
         notes: r.notes ?? null,
+        auto_create_bookings: r.auto_create_bookings ?? false,
         created_by: activeMember?.id ?? null,
       };
       if (r.id) {
@@ -188,7 +189,7 @@ function RoundCard({
   onDelete: () => void;
 }) {
   const qc = useQueryClient();
-  const [autoCreateBookings, setAutoCreateBookings] = useState(false);
+  const [autoCreateBookings, setAutoCreateBookings] = useState<boolean>(!!(round as any).auto_create_bookings);
 
   const { data: courts } = useQuery({
     queryKey: ["round-courts", clubId, round.court_ids],

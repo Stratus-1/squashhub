@@ -2512,6 +2512,7 @@ export type Database = {
       league_rounds: {
         Row: {
           association_id: string
+          auto_create_bookings: boolean
           club_id: string
           court_ids: number[]
           created_at: string
@@ -2531,6 +2532,7 @@ export type Database = {
         }
         Insert: {
           association_id: string
+          auto_create_bookings?: boolean
           club_id: string
           court_ids?: number[]
           created_at?: string
@@ -2550,6 +2552,7 @@ export type Database = {
         }
         Update: {
           association_id?: string
+          auto_create_bookings?: boolean
           club_id?: string
           court_ids?: number[]
           created_at?: string

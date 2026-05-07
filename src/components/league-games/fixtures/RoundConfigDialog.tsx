@@ -22,6 +22,7 @@ export type RoundDraft = {
   end_time: string;
   slot_minutes: number;
   notes?: string | null;
+  auto_create_bookings?: boolean;
 };
 
 type Props = {

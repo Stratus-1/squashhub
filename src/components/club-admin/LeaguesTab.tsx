@@ -241,6 +241,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
+            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "men", leagues: list })}
           />
           <GenderColumn
             title="Ladies"
@@ -252,6 +253,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
+            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "ladies", leagues: list })}
           />
           <GenderColumn
             title="Mixed"
@@ -263,6 +265,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
           />
         </div>
 

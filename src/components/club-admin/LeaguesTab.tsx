@@ -314,7 +314,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
 
-      <StepByStepLeagueSetup clubId={clubId} open={stepByStepOpen} onOpenChange={setStepByStepOpen} />
+      <StepByStepLeagueSetup
+        clubId={clubId}
+        open={stepByStepOpen || !!editSetup}
+        onOpenChange={(o) => { if (!o) { setStepByStepOpen(false); setEditSetup(null); } else setStepByStepOpen(true); }}
+        editContext={editSetup}
+      />
 
       {/* Edit Association Dialog */}
       {editAssoc && (

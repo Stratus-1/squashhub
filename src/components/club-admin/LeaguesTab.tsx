@@ -308,7 +308,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 }
 
 // ─── Gender Column: groups leagues by association, one Allocate button per association group ───
-function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate }: {
+function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate, onAddReserves }: {
   title: string;
   gender: "men" | "ladies" | "mixed";
   leagues: League[];
@@ -318,6 +318,7 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
   onDelete: (id: string) => void;
   onDeleteGroup: (groupLeagues: League[], label: string) => void;
   onAllocate: (associationId: string | null, leagues: League[]) => void;
+  onAddReserves: (associationId: string | null, leagues: League[]) => void;
 }) {
   // Group leagues by association_id
   const groups = useMemo(() => {

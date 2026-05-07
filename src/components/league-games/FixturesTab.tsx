@@ -14,6 +14,7 @@ import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
 import { allPairsOnce, allocateSlots } from "./fixtures/scheduler";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsClubAdmin } from "@/hooks/use-club";
 
 type Props = {
   clubId: string;

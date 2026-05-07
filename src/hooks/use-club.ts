@@ -217,6 +217,25 @@ export function useIsClubAdmin() {
   return isSuperAdmin || data?.membership?.role === "admin";
 }
 
+/** Check if user is a platform super-admin (or moderator) */
+export function useIsSuperAdmin() {
+  const { user } = useAuth();
+  const { data: superRoles } = useQuery({
+    queryKey: ["my-super-roles", user?.id],
+    queryFn: async () => {
+      if (!user) return [] as string[];
+      const { data: rows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      return (rows || []).map((r: any) => r.role as string);
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+  return (superRoles || []).includes("admin") || (superRoles || []).includes("moderator");
+}
+
 /** Get the current user's own club member record */
 export function useMyClubMember() {
   const { user } = useAuth();

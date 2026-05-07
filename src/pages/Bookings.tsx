@@ -52,7 +52,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useIsSuperAdmin } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -123,13 +123,14 @@ function getDateLabel(date: Date) {
   return format(date, "EEEE");
 }
 
-// Quick date chips for the next 7 days (+ admin can pick up to 30 days ahead)
-function DateChips({ selectedDate, onSelect, isAdmin }: { selectedDate: Date; onSelect: (d: Date) => void; isAdmin?: boolean }) {
+// Quick date chips for the next 7 days (+ admin: 30 days, super-admin: 365 days)
+function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selectedDate: Date; onSelect: (d: Date) => void; isAdmin?: boolean; isSuperAdmin?: boolean }) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const [pickerOpen, setPickerOpen] = useState(false);
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
-  const maxDate = addDays(todayMidnight, 30);
+  const maxDate = addDays(todayMidnight, isSuperAdmin ? 365 : 30);
+  const canPick = isAdmin || isSuperAdmin;
   const selectedBeyondStrip = selectedDate > addDays(todayMidnight, 6);
 
   return (
@@ -154,7 +155,7 @@ function DateChips({ selectedDate, onSelect, isAdmin }: { selectedDate: Date; on
           </button>
         );
       })}
-      {isAdmin && (
+      {canPick && (
         <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
           <PopoverTrigger asChild>
             <button
@@ -315,6 +316,7 @@ export default function Bookings() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeMember, isAdmin: isMemberAdmin } = useMemberContext();
+  const isSuperAdmin = useIsSuperAdmin();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
@@ -951,7 +953,7 @@ export default function Bookings() {
           </div>
         </div>
       )}
-      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} />
+      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} isSuperAdmin={isSuperAdmin} />
 
       {/* Court availability stats */}
 

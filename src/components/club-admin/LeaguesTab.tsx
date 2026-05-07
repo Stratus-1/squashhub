@@ -1201,7 +1201,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions</p>
+          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions • Drop a reserve onto a team slot to promote (the displaced player drops back to reserves). Reserves can only sub UP into stronger leagues, never down.</p>
         </DialogHeader>
 
         {!loaded ? (

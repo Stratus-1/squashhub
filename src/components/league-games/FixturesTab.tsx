@@ -231,6 +231,18 @@ function RoundCard({
   const list = draft ?? fixtures ?? [];
 
   const autoDistribute = () => {
+    if (selectedTeams.length < 2) {
+      toast.error("Select at least 2 teams to distribute.");
+      return;
+    }
+    if (!round.court_ids?.length) {
+      toast.error("No courts assigned to this round. Edit the round and pick at least one court.");
+      return;
+    }
+    if (!round.start_time || !round.end_time || !round.slot_minutes) {
+      toast.error("Round is missing start/end time or slot length.");
+      return;
+    }
     const pairs = allPairsOnce(selectedTeams);
     const slots = allocateSlots(
       pairs,
@@ -241,6 +253,11 @@ function RoundCard({
       round.round_date,
       round.end_date,
     );
+    console.log("[autoDistribute]", { selectedTeams, pairs, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], slots });
+    if (!slots.length) {
+      toast.error("Couldn't generate fixtures — check the time window and slot length.");
+      return;
+    }
     setDraft(
       slots.map((s) => ({
         home_team_code: s.home,

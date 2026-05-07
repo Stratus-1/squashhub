@@ -278,8 +278,21 @@ function RoundCard({
 
       if (!list.length) return;
 
+      // platform_league_fixtures.association_id FKs to platform_league_associations(id),
+      // not to our local league_associations(id). Map via platform_association_id.
+      const { data: assocRow, error: assocErr } = await supabase
+        .from("league_associations")
+        .select("platform_association_id")
+        .eq("id", round.association_id)
+        .maybeSingle();
+      if (assocErr) throw assocErr;
+      const platformAssocId = (assocRow as any)?.platform_association_id as string | null | undefined;
+      if (!platformAssocId) {
+        throw new Error("This league isn't linked to a platform association yet. Link it under League settings before saving fixtures.");
+      }
+
       const rows = list.map((f) => ({
-        association_id: round.association_id,
+        association_id: platformAssocId,
         round_id: round.id,
         fixture_date: f.fixture_date || round.round_date,
         venue_name: round.venue_name || "Home",

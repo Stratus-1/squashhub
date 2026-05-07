@@ -122,7 +122,58 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     else { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["league-associations"] }); qc.invalidateQueries({ queryKey: ["league-associations-linked"] }); }
   };
 
-  const handleDeleteLeague = async (id: string) => {
+  const openEditSetup = async (assocId: string | null, gender: "men" | "ladies" | "mixed", groupLeagues: League[]) => {
+    if (!assocId) { toast.error("Edit Setup requires an association"); return; }
+    if (groupLeagues.length === 0) return;
+    // Detect league number from first non-reserves league
+    const teamLeagues = groupLeagues.filter(l => !/reserves?/i.test(l.name));
+    const reservesLeague = groupLeagues.find(l => /reserves?/i.test(l.name));
+    const numTeams = teamLeagues.length || groupLeagues.length;
+    const ordMatch = teamLeagues[0]?.name.match(/(\d+(?:st|nd|rd|th))/i);
+    const leagueNumber = ordMatch ? ordMatch[1] : "1st";
+    // Pull team names (strip the "Men's 1st " prefix)
+    const teamNames: Record<number, string> = {};
+    const stripPrefix = (n: string) => n.replace(/^(Men's|Ladies|Mixed)\s+\d+(?:st|nd|rd|th)\s*/i, "");
+    teamLeagues.forEach((l, i) => {
+      const tail = stripPrefix(l.name).trim();
+      // Treat single-letter A/B/C as default — leave blank
+      if (tail && !/^[A-Z]$/.test(tail)) teamNames[i] = tail;
+    });
+    const reservesName = reservesLeague ? (() => {
+      const tail = stripPrefix(reservesLeague.name).trim();
+      return /^reserves?$/i.test(tail) ? "" : tail;
+    })() : "";
+    // perTeam: max regs across team leagues; reserves: regs in reserves league
+    let perTeam = (groupLeagues[0] as any)?.reserves_per_team != null ? 4 : 4;
+    let reservesCount = 0;
+    try {
+      const teamIds = teamLeagues.map(l => l.id);
+      if (teamIds.length > 0) {
+        const { data: regs } = await fromExt("member_league_registrations").select("league_id").in("league_id", teamIds);
+        const counts = new Map<string, number>();
+        (regs || []).forEach((r: any) => counts.set(r.league_id, (counts.get(r.league_id) || 0) + 1));
+        const max = Math.max(0, ...Array.from(counts.values()));
+        if (max > 0) perTeam = max;
+      }
+      if (reservesLeague) {
+        const { data: rRegs } = await fromExt("member_league_registrations").select("id").eq("league_id", reservesLeague.id);
+        reservesCount = (rRegs || []).length;
+      }
+    } catch (e: any) {
+      // non-fatal — fall back to defaults
+    }
+    setEditSetup({
+      associationId: assocId,
+      gender,
+      leagueNumber,
+      numTeams,
+      perTeam,
+      reserves: reservesCount,
+      teamNames,
+      reservesName,
+    });
+  };
+
     if (!confirm("Delete this league?")) return;
     const { error } = await fromExt("leagues").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }

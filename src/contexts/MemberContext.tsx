@@ -78,7 +78,8 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         if (ownErr) throw ownErr;
 
         const myMembership = (ownMembers || [])[0] as any;
-        const adminRole = myMembership?.role === "captain" || myMembership?.role === "admin";
+        // Captain is league-scoped only — only 'admin' grants full club admin rights.
+        const adminRole = myMembership?.role === "admin";
         setIsAdmin(adminRole);
 
         let linked: LinkedMember[] = [];

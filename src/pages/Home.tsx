@@ -681,10 +681,19 @@ interface TenantRowProps {
   tenant: TenantPublic;
   navigate: (path: string) => void;
   icon: React.ComponentType<{ className?: string }>;
+  /** When true, clicking the row routes to /league?club=<subdomain> instead of
+   *  the tenant subdomain. Used for NSA-seeded clubs that are not yet
+   *  administratively live on SquashHub. */
+  nsaMode?: boolean;
 }
 
-function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
+function TenantRow({ tenant, navigate, icon: Icon, nsaMode = false }: TenantRowProps) {
   const handleClick = () => {
+    if (nsaMode) {
+      const sub = tenant.subdomain ? `?club=${encodeURIComponent(tenant.subdomain)}` : "";
+      navigate(`/league${sub}`);
+      return;
+    }
     if (!tenant.subdomain) return;
     const isPreview = window.location.hostname.includes("lovable");
     if (isPreview) {
@@ -713,7 +722,11 @@ function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
       )}
       <div className="min-w-0 flex-1">
         <h4 className="font-semibold text-primary-foreground text-sm truncate">{tenant.name}</h4>
-        {tenant.subdomain && (
+        {nsaMode ? (
+          <p className="text-[11px] text-amber-300 truncate font-medium">
+            NSA players → register here
+          </p>
+        ) : tenant.subdomain && (
           <p className="text-xs font-mono text-[hsl(var(--accent))] truncate">
             {tenant.subdomain}.squashhub.co.za
           </p>

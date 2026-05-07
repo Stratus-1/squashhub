@@ -159,6 +159,7 @@ export default function Home() {
               <Button variant="ghost" size="sm" onClick={() => scrollTo("top")} className="text-white hover:bg-white/10 hover:text-white">Home</Button>
               <Button variant="ghost" size="sm" onClick={() => scrollTo("features")} className="text-white hover:bg-white/10 hover:text-white">Features</Button>
               <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
+              <Button variant="ghost" size="sm" onClick={() => scrollTo("contact")} className="text-white hover:bg-white/10 hover:text-white">Contact Us</Button>
             </nav>
 
             {/* Desktop actions */}
@@ -192,6 +193,7 @@ export default function Home() {
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("top"))}>Home</Button>
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("features"))}>Features</Button>
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("pricing"))}>Pricing</Button>
+                    <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("contact"))}>Contact Us</Button>
                     <div className="h-px bg-border my-3" />
                     <Button className="rounded-full w-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold" onClick={() => handleMobileNav(() => navigate("/league"))}>
                       <Trophy className="w-4 h-4 mr-1" /> NSA Player? Register Here

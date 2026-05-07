@@ -73,6 +73,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         round_number: r.round_number,
         name: r.name,
         round_date: r.round_date,
+        end_date: r.end_date,
         venue_name: r.venue_name,
         court_ids: r.court_ids,
         start_time: r.start_time,

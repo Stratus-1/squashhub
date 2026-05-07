@@ -21,9 +21,12 @@ export type RoundDraft = {
   start_time: string;
   end_time: string;
   slot_minutes: number;
+  play_dows: number[];      // 0=Sun..6=Sat; empty = any day
   notes?: string | null;
   auto_create_bookings?: boolean;
 };
+
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type Props = {
   open: boolean;

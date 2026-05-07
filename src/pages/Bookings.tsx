@@ -953,7 +953,7 @@ export default function Bookings() {
           </div>
         </div>
       )}
-      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} />
+      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} isSuperAdmin={isSuperAdmin} />
 
       {/* Court availability stats */}
 

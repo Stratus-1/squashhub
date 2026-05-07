@@ -114,20 +114,22 @@ export function FixturesTab({ clubId, associationId }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Rounds & fixtures</h3>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditingRound({ round_number: nextRoundNumber, name: `Round ${nextRoundNumber}` });
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-1" /> Add round
-        </Button>
+        {isAdmin && (
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingRound({ round_number: nextRoundNumber, name: `Round ${nextRoundNumber}` });
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" /> Add round
+          </Button>
+        )}
       </div>
 
       {!rounds?.length && (
         <Card className="p-6 text-center text-sm text-muted-foreground">
-          No rounds scheduled yet. Click <strong>Add round</strong> to get started.
+          {isAdmin ? <>No rounds scheduled yet. Click <strong>Add round</strong> to get started.</> : <>No rounds scheduled yet.</>}
         </Card>
       )}
 

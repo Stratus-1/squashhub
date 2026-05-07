@@ -353,6 +353,15 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                   <Users className="w-3 h-3" />Allocate
                 </Button>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[11px] gap-1 px-2"
+                  onClick={() => onAddReserves(g.assocId, g.leagues)}
+                  title="Add reserve players to this league group"
+                >
+                  <UserPlus className="w-3 h-3" />Add reserves
+                </Button>
+                <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 text-[11px] gap-1 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"

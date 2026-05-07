@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ClubProvider, useClubContext } from "@/contexts/ClubContext";
-import { DynamicPwaManifest } from "@/components/DynamicPwaManifest";
 import { MemberProvider } from "@/contexts/MemberContext";
 import { BottomNav } from "@/components/BottomNav";
 import { DesktopShell } from "@/components/DesktopShell";
@@ -16,11 +15,9 @@ import { NotificationListener } from "@/components/NotificationListener";
 import { NotificationActionModal } from "@/components/NotificationActionModal";
 import { NativePushListener } from "@/components/NativePushListener";
 import { NotificationDeepLinkHandler } from "@/components/NotificationDeepLinkHandler";
-import { InstallAppPrompt } from "@/components/InstallAppPrompt";
 import { RealtimeSync } from "@/components/RealtimeSync";
 import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
-import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { FeedbackFab } from "@/components/FeedbackFab";
 import { LiveSessionBanner } from "@/components/LiveSessionBanner";
 
@@ -341,7 +338,6 @@ function AppRoutes() {
       {user && !isAdminRoute && !isTvRoute && <MobileOnlyBottomNav />}
       {user && !isTvRoute && <OfflineBanner />}
       {user && !isTvRoute && <LiveSessionBanner />}
-      {/* <InstallAppPrompt /> disabled - iOS install issues */}
       {user && <PushNotificationPrompt />}
       {user && <NotificationListener />}
       {user && <NotificationActionModal />}
@@ -349,7 +345,6 @@ function AppRoutes() {
       {user && <NotificationDeepLinkHandler />}
       {user && <RealtimeSync />}
       {user && <OutboxSync />}
-      <PwaUpdatePrompt />
       <FeedbackFab />
       {/* Mobile-only floating Super-Admin shortcut (desktop has it in the header) */}
       {user && !isAdminRoute && !isTvRoute && (
@@ -370,7 +365,6 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <ClubProvider>
-            <DynamicPwaManifest />
             <MemberProvider>
               <AppRoutes />
             </MemberProvider>

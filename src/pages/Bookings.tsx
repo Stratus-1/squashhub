@@ -129,7 +129,7 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const [pickerOpen, setPickerOpen] = useState(false);
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
-  const maxDate = addDays(todayMidnight, isSuperAdmin ? 365 : 30);
+  const maxDate = addDays(todayMidnight, 365);
   const canPick = isAdmin || isSuperAdmin;
   const selectedBeyondStrip = selectedDate > addDays(todayMidnight, 6);
 

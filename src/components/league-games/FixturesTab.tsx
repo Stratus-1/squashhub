@@ -209,8 +209,9 @@ function RoundCard({
     queryKey: ["round-fixtures", round.id],
     queryFn: async () => {
       const { data, error } = await fromExt("platform_league_fixtures")
-        .select("id, home_team_code, away_team_code, court_id, start_time")
+        .select("id, home_team_code, away_team_code, court_id, start_time, fixture_date")
         .eq("round_id", round.id)
+        .order("fixture_date", { ascending: true })
         .order("start_time", { ascending: true });
       if (error) throw error;
       return (data ?? []) as EditableFixture[];
@@ -224,16 +225,25 @@ function RoundCard({
 
   const autoDistribute = () => {
     const pairs = allPairsOnce(selectedTeams);
-    const slots = allocateSlots(pairs, round.court_ids, round.start_time, round.end_time, round.slot_minutes);
+    const slots = allocateSlots(
+      pairs,
+      round.court_ids,
+      round.start_time,
+      round.end_time,
+      round.slot_minutes,
+      round.round_date,
+      round.end_date,
+    );
     setDraft(
       slots.map((s) => ({
         home_team_code: s.home,
         away_team_code: s.away,
         court_id: s.courtId,
         start_time: s.startTime,
+        fixture_date: s.date,
       })),
     );
-    toast.success(`Generated ${slots.length} fixtures`);
+    toast.success(`Generated ${slots.length} fixtures across ${new Set(slots.map(s => s.date)).size} day(s)`);
   };
 
   const saveFixtures = useMutation({
@@ -247,7 +257,7 @@ function RoundCard({
       const rows = list.map((f) => ({
         association_id: round.association_id,
         round_id: round.id,
-        fixture_date: round.round_date,
+        fixture_date: f.fixture_date || round.round_date,
         venue_name: round.venue_name || "Home",
         home_team_code: f.home_team_code,
         away_team_code: f.away_team_code,
@@ -256,7 +266,7 @@ function RoundCard({
         court_id: f.court_id,
         start_time: f.start_time,
       }));
-      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time");
+      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, fixture_date");
       if (error) throw error;
 
       if (autoCreateBookings && inserted) {
@@ -275,7 +285,7 @@ function RoundCard({
             .insert({
               court_id: f.court_id,
               user_id: user.id,
-              date: round.round_date,
+              date: (f as any).fixture_date || round.round_date,
               start_time: String(f.start_time).slice(0, 5),
               end_time: endTime,
               status: "active",
@@ -371,6 +381,9 @@ function RoundCard({
                 teams={teams}
                 courts={courts ?? []}
                 onChange={setDraft}
+                defaultDate={round.round_date}
+                minDate={round.round_date}
+                maxDate={round.end_date || round.round_date}
               />
               <div className="flex justify-end gap-2">
                 {draft && (
@@ -382,7 +395,7 @@ function RoundCard({
               </div>
             </>
           ) : (
-            <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} />
+            <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} fallbackDate={round.round_date} />
           )}
         </div>
       )}
@@ -394,10 +407,12 @@ function ReadOnlyFixtures({
   fixtures,
   courts,
   teams,
+  fallbackDate,
 }: {
   fixtures: EditableFixture[];
   courts: { id: number; name: string }[];
   teams: { code: string; name: string }[];
+  fallbackDate?: string;
 }) {
   if (!fixtures.length) {
     return (
@@ -408,11 +423,17 @@ function ReadOnlyFixtures({
   }
   const teamName = (code: string) => teams.find((t) => t.code === code)?.name ?? code;
   const courtName = (id: number | null) => (id ? courts.find((c) => c.id === id)?.name ?? `Court ${id}` : "—");
+  const fmtDate = (d?: string | null) => {
+    const v = d || fallbackDate;
+    if (!v) return "—";
+    try { return format(parseISO(v), "EEE d MMM"); } catch { return v; }
+  };
   return (
     <div className="rounded-md border overflow-x-auto">
       <table className="w-full text-xs">
         <thead className="bg-muted/50">
           <tr className="text-left">
+            <th className="p-2">Date</th>
             <th className="p-2">Time</th>
             <th className="p-2">Court</th>
             <th className="p-2">Home</th>
@@ -422,6 +443,7 @@ function ReadOnlyFixtures({
         <tbody>
           {fixtures.map((f, i) => (
             <tr key={i} className="border-t">
+              <td className="p-2">{fmtDate(f.fixture_date)}</td>
               <td className="p-2">{f.start_time?.slice(0, 5) ?? "—"}</td>
               <td className="p-2">{courtName(f.court_id)}</td>
               <td className="p-2">{teamName(f.home_team_code)}</td>

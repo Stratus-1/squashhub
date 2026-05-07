@@ -257,7 +257,7 @@ function RoundCard({
       const rows = list.map((f) => ({
         association_id: round.association_id,
         round_id: round.id,
-        fixture_date: round.round_date,
+        fixture_date: f.fixture_date || round.round_date,
         venue_name: round.venue_name || "Home",
         home_team_code: f.home_team_code,
         away_team_code: f.away_team_code,
@@ -266,7 +266,7 @@ function RoundCard({
         court_id: f.court_id,
         start_time: f.start_time,
       }));
-      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time");
+      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, fixture_date");
       if (error) throw error;
 
       if (autoCreateBookings && inserted) {

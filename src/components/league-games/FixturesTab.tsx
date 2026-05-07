@@ -170,6 +170,7 @@ function RoundCard({
   round,
   teams,
   clubId,
+  isAdmin,
   open,
   onToggle,
   onEdit,
@@ -178,6 +179,7 @@ function RoundCard({
   round: Round;
   teams: { code: string; name: string }[];
   clubId: string;
+  isAdmin: boolean;
   open: boolean;
   onToggle: () => void;
   onEdit: () => void;

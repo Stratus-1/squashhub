@@ -234,6 +234,7 @@ export function useIsSuperAdmin() {
     staleTime: 5 * 60 * 1000,
   });
   return (superRoles || []).includes("admin") || (superRoles || []).includes("moderator");
+}
 
 /** Get the current user's own club member record */
 export function useMyClubMember() {

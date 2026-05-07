@@ -504,9 +504,16 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     const trimmed = nameDraft.trim();
     if (!trimmed || trimmed === league.name) { setEditing(false); setNameDraft(league.name); return; }
     setSavingName(true);
-    const { error } = await fromExt("leagues").update({ name: trimmed }).eq("id", league.id);
+    const { data, error } = await fromExt("leagues")
+      .update({ name: trimmed })
+      .eq("id", league.id)
+      .select("id, name");
     setSavingName(false);
     if (error) { toast.error(error.message); return; }
+    if (!data || data.length === 0) {
+      toast.error("Couldn't rename — you don't have permission to edit this league.");
+      return;
+    }
     toast.success("Team renamed");
     setEditing(false);
     // Invalidate every cache key that holds league rows so the new name shows

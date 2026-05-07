@@ -18,6 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { StepByStepLeagueSetup } from "./StepByStepLeagueSetup";
+import { AddReservesDialog } from "./AddReservesDialog";
+import { UserPlus } from "lucide-react";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -100,6 +102,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [addLeagueOpen, setAddLeagueOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
+  const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
 
   const handleDeleteAssoc = async (id: string) => {
@@ -238,6 +241,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
+            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "men", leagues: list })}
           />
           <GenderColumn
             title="Ladies"
@@ -249,6 +253,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
+            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "ladies", leagues: list })}
           />
           <GenderColumn
             title="Mixed"
@@ -260,6 +265,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDelete={handleDeleteLeague}
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
           />
         </div>
 
@@ -287,6 +293,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
 
+      {reservesGroup && (
+        <AddReservesDialog
+          clubId={clubId}
+          associationId={reservesGroup.associationId}
+          gender={reservesGroup.gender}
+          groupLeagues={reservesGroup.leagues}
+          open={!!reservesGroup}
+          onOpenChange={(o) => !o && setReservesGroup(null)}
+        />
+      )}
+
       <StepByStepLeagueSetup clubId={clubId} open={stepByStepOpen} onOpenChange={setStepByStepOpen} />
 
       {/* Edit Association Dialog */}
@@ -302,7 +319,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 }
 
 // ─── Gender Column: groups leagues by association, one Allocate button per association group ───
-function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate }: {
+function GenderColumn({ title, gender, leagues, associations, members, sortLeagues, onDelete, onDeleteGroup, onAllocate, onAddReserves }: {
   title: string;
   gender: "men" | "ladies" | "mixed";
   leagues: League[];
@@ -312,6 +329,7 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
   onDelete: (id: string) => void;
   onDeleteGroup: (groupLeagues: League[], label: string) => void;
   onAllocate: (associationId: string | null, leagues: League[]) => void;
+  onAddReserves: (associationId: string | null, leagues: League[]) => void;
 }) {
   // Group leagues by association_id
   const groups = useMemo(() => {
@@ -344,6 +362,15 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
                   <Users className="w-3 h-3" />Allocate
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[11px] gap-1 px-2"
+                  onClick={() => onAddReserves(g.assocId, g.leagues)}
+                  title="Add reserve players to this league group"
+                >
+                  <UserPlus className="w-3 h-3" />Add reserves
                 </Button>
                 <Button
                   variant="ghost"

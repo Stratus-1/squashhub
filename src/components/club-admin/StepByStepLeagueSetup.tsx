@@ -238,7 +238,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
         } else {
           const code = `${codePrefix}${String(nextCode++).padStart(3, "0")}`;
           const { data, error } = await fromExt("leagues")
-            .insert({ club_id: clubId, association_id: associationId, name: teamName, code })
+            .insert({ club_id: clubId, association_id: associationId, name: teamName, code, reserves_per_team: reserves })
             .select("id")
             .single();
           if (error) throw error;
@@ -294,6 +294,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
             league_id: reservesLeagueId!,
             player_rank: posIdx + 1,
             is_captain: false,
+            is_reserve: true,
+            reserve_order: posIdx + 1,
           });
         });
       }

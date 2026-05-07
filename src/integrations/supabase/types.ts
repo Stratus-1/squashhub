@@ -2813,6 +2813,7 @@ export type Database = {
           name: string
           nsa_team_code: string | null
           nsa_team_id: string | null
+          reserves_per_team: number
           updated_at: string
         }
         Insert: {
@@ -2826,6 +2827,7 @@ export type Database = {
           name: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null
+          reserves_per_team?: number
           updated_at?: string
         }
         Update: {
@@ -2839,6 +2841,7 @@ export type Database = {
           name?: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null
+          reserves_per_team?: number
           updated_at?: string
         }
         Relationships: [
@@ -3341,9 +3344,11 @@ export type Database = {
           created_at: string
           id: string
           is_captain: boolean
+          is_reserve: boolean
           league_association_number: string | null
           league_id: string | null
           player_rank: number | null
+          reserve_order: number | null
           ssa_number: string | null
           updated_at: string
         }
@@ -3352,9 +3357,11 @@ export type Database = {
           created_at?: string
           id?: string
           is_captain?: boolean
+          is_reserve?: boolean
           league_association_number?: string | null
           league_id?: string | null
           player_rank?: number | null
+          reserve_order?: number | null
           ssa_number?: string | null
           updated_at?: string
         }
@@ -3363,9 +3370,11 @@ export type Database = {
           created_at?: string
           id?: string
           is_captain?: boolean
+          is_reserve?: boolean
           league_association_number?: string | null
           league_id?: string | null
           player_rank?: number | null
+          reserve_order?: number | null
           ssa_number?: string | null
           updated_at?: string
         }

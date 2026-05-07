@@ -381,6 +381,9 @@ function RoundCard({
                 teams={teams}
                 courts={courts ?? []}
                 onChange={setDraft}
+                defaultDate={round.round_date}
+                minDate={round.round_date}
+                maxDate={round.end_date || round.round_date}
               />
               <div className="flex justify-end gap-2">
                 {draft && (
@@ -392,7 +395,7 @@ function RoundCard({
               </div>
             </>
           ) : (
-            <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} />
+            <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} fallbackDate={round.round_date} />
           )}
         </div>
       )}

@@ -9,6 +9,7 @@ export type EditableFixture = {
   away_team_code: string;
   court_id: number | null;
   start_time: string | null; // HH:mm
+  fixture_date?: string | null; // yyyy-MM-dd
 };
 
 type Props = {

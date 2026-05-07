@@ -261,6 +261,9 @@ export default function Home() {
               <p className="text-xs text-white/80 drop-shadow">
                 Free until September 2026 · No credit card required
               </p>
+              <p className="text-xs text-amber-200/90 drop-shadow max-w-2xl">
+                Pretoria clubs already affiliated with NSA don't need to register — just request SquashHub to activate your full administrative functionality.
+              </p>
             </motion.div>
           </div>
         </div>

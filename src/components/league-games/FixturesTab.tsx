@@ -81,6 +81,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         start_time: r.start_time,
         end_time: r.end_time,
         slot_minutes: r.slot_minutes,
+        play_dows: r.play_dows ?? [],
         notes: r.notes ?? null,
         auto_create_bookings: r.auto_create_bookings ?? false,
         created_by: activeMember?.id ?? null,

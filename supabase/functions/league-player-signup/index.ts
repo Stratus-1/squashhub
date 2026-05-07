@@ -286,6 +286,6 @@ Deno.serve(async (req) => {
     club_subdomain: clubRow?.subdomain || null,
     club_name: clubRow?.name || null,
     captain_status: captainStatus,
-    email_verification_required: true,
+    email_verification_required: false,
   });
 });

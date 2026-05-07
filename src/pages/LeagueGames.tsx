@@ -205,6 +205,7 @@ export default function LeagueGames() {
                 platformAssocIds={platformAssocIds}
                 clubTeamCodes={clubTeamCodes}
                 myTeamCodes={myTeamCodes}
+                teamNameByCode={teamNameByCode}
                 weekStart={weekRange.start}
                 weekEnd={weekRange.end}
                 associationScope={selectedAssoc?.scope ?? "region"}

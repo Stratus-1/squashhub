@@ -17,9 +17,12 @@ type Props = {
   teams: { code: string; name: string }[];
   courts: { id: number; name: string }[];
   onChange: (next: EditableFixture[]) => void;
+  defaultDate?: string;
+  minDate?: string;
+  maxDate?: string;
 };
 
-export function FixtureEditorTable({ fixtures, teams, courts, onChange }: Props) {
+export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultDate, minDate, maxDate }: Props) {
   const update = (idx: number, patch: Partial<EditableFixture>) => {
     const next = [...fixtures];
     next[idx] = { ...next[idx], ...patch };
@@ -38,6 +41,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange }: Props)
         away_team_code: teams[1]?.code ?? teams[0]?.code ?? "",
         court_id: courts[0]?.id ?? null,
         start_time: "18:00",
+        fixture_date: defaultDate ?? null,
       },
     ]);
   };

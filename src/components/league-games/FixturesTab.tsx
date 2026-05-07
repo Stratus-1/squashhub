@@ -386,3 +386,47 @@ function RoundCard({
     </Card>
   );
 }
+
+function ReadOnlyFixtures({
+  fixtures,
+  courts,
+  teams,
+}: {
+  fixtures: EditableFixture[];
+  courts: { id: number; name: string }[];
+  teams: { code: string; name: string }[];
+}) {
+  if (!fixtures.length) {
+    return (
+      <div className="rounded border p-4 text-center text-xs text-muted-foreground">
+        No fixtures published yet.
+      </div>
+    );
+  }
+  const teamName = (code: string) => teams.find((t) => t.code === code)?.name ?? code;
+  const courtName = (id: number | null) => (id ? courts.find((c) => c.id === id)?.name ?? `Court ${id}` : "—");
+  return (
+    <div className="rounded-md border overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead className="bg-muted/50">
+          <tr className="text-left">
+            <th className="p-2">Time</th>
+            <th className="p-2">Court</th>
+            <th className="p-2">Home</th>
+            <th className="p-2">Away</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fixtures.map((f, i) => (
+            <tr key={i} className="border-t">
+              <td className="p-2">{f.start_time?.slice(0, 5) ?? "—"}</td>
+              <td className="p-2">{courtName(f.court_id)}</td>
+              <td className="p-2">{teamName(f.home_team_code)}</td>
+              <td className="p-2">{teamName(f.away_team_code)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

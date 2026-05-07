@@ -381,10 +381,11 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Step by Step League Setup</DialogTitle>
+          <DialogTitle>{editContext ? `Edit Setup — ${gender === "men" ? "Men's" : gender === "ladies" ? "Ladies" : "Mixed"} ${leagueNumber}` : "Step by Step League Setup"}</DialogTitle>
           <DialogDescription>
-            Build one league number at a time — pick the association, gender, league number, then split players into teams.
-            Members allocated in this session are removed from the pool for later rounds.
+            {editContext
+              ? "Pre-filled from this league group. Adjust counts, team names or reserves; saving overwrites the group's registrations."
+              : "Build one league number at a time — pick the association, gender, league number, then split players into teams. Members allocated in this session are removed from the pool for later rounds."}
           </DialogDescription>
         </DialogHeader>
 

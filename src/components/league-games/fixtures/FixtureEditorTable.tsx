@@ -51,6 +51,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
       <table className="w-full text-xs">
         <thead className="bg-muted/50">
           <tr className="text-left">
+            <th className="p-2">Date</th>
             <th className="p-2">Home</th>
             <th className="p-2">Away</th>
             <th className="p-2">Court</th>
@@ -61,6 +62,16 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
         <tbody>
           {fixtures.map((f, i) => (
             <tr key={i} className="border-t">
+              <td className="p-1">
+                <Input
+                  type="date"
+                  className="h-8"
+                  min={minDate}
+                  max={maxDate}
+                  value={f.fixture_date ?? defaultDate ?? ""}
+                  onChange={(e) => update(i, { fixture_date: e.target.value || null })}
+                />
+              </td>
               <td className="p-1">
                 <Select value={f.home_team_code} onValueChange={(v) => update(i, { home_team_code: v })}>
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>

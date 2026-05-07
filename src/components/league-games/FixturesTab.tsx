@@ -316,18 +316,21 @@ function RoundCard({
       if (linkErr) throw linkErr;
       if (!platformAssocId) throw new Error("Could not link league to platform association.");
 
-      const rows = list.map((f) => ({
-        association_id: platformAssocId,
-        round_id: round.id,
-        fixture_date: f.fixture_date || round.round_date,
-        venue_name: round.venue_name || "Home",
-        home_team_code: f.home_team_code,
-        away_team_code: f.away_team_code,
-        division: f.home_team_code,
-        status: "scheduled",
-        court_id: f.court_id,
-        start_time: f.start_time,
-      }));
+      const rows = list.map((f) => {
+        const isBye = f.away_team_code === "__BYE__";
+        return {
+          association_id: platformAssocId,
+          round_id: round.id,
+          fixture_date: f.fixture_date || round.round_date,
+          venue_name: round.venue_name || "Home",
+          home_team_code: f.home_team_code,
+          away_team_code: f.away_team_code,
+          division: f.home_team_code,
+          status: isBye ? "bye" : "scheduled",
+          court_id: isBye ? null : f.court_id,
+          start_time: isBye ? null : f.start_time,
+        };
+      });
       const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, fixture_date");
       if (error) throw error;
 

@@ -220,6 +220,13 @@ function RoundCard({
   });
 
   const [selectedTeams, setSelectedTeams] = useState<string[]>(teams.map((t) => t.code));
+  // Sync selection when teams load asynchronously after mount
+  useEffect(() => {
+    if (teams.length && !selectedTeams.length) {
+      setSelectedTeams(teams.map((t) => t.code));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teams.length]);
   const [draft, setDraft] = useState<EditableFixture[] | null>(null);
   const list = draft ?? fixtures ?? [];
 

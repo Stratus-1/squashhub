@@ -155,7 +155,7 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
           </button>
         );
       })}
-      {isAdmin && (
+      {canPick && (
         <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
           <PopoverTrigger asChild>
             <button

@@ -183,7 +183,7 @@ export default function LeagueSignup() {
               Sign up in 30 seconds
             </span>
           </h1>
-          <div className="text-sm text-muted-foreground max-w-sm mx-auto space-y-2">
+          <div className="text-base md:text-lg text-white max-w-2xl mx-auto space-y-2 leading-relaxed">
             <p>
               View your fixtures, set up league teams for the week ahead, and mark and post league games directly to the NSA site.
             </p>

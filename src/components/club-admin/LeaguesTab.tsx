@@ -304,6 +304,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "men", leagues: list })}
+            onEditSetup={(assocId, list) => openEditSetup(assocId, "men", list)}
           />
           <GenderColumn
             title="Ladies"
@@ -316,6 +317,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "ladies", leagues: list })}
+            onEditSetup={(assocId, list) => openEditSetup(assocId, "ladies", list)}
           />
           <GenderColumn
             title="Mixed"
@@ -328,6 +330,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             onDeleteGroup={handleDeleteGroup}
             onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
             onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
+            onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
           />
         </div>
 

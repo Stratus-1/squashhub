@@ -294,6 +294,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
             league_id: reservesLeagueId!,
             player_rank: posIdx + 1,
             is_captain: false,
+            is_reserve: true,
+            reserve_order: posIdx + 1,
           });
         });
       }

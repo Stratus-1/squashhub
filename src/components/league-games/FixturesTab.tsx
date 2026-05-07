@@ -260,16 +260,43 @@ function RoundCard({
       toast.error("Couldn't generate fixtures — check the time window and slot length.");
       return;
     }
-    setDraft(
-      slots.map((s) => ({
-        home_team_code: s.home,
-        away_team_code: s.away,
-        court_id: s.courtId,
-        start_time: s.startTime,
-        fixture_date: s.date,
-      })),
+    const generated: EditableFixture[] = slots.map((s) => ({
+      home_team_code: s.home,
+      away_team_code: s.away,
+      court_id: s.courtId,
+      start_time: s.startTime,
+      fixture_date: s.date,
+    }));
+
+    // Add BYE rows: for each play date, any team with no fixture that day gets a bye marker.
+    const byDate = new Map<string, Set<string>>();
+    for (const s of slots) {
+      if (!byDate.has(s.date)) byDate.set(s.date, new Set());
+      const set = byDate.get(s.date)!;
+      set.add(s.home);
+      set.add(s.away);
+    }
+    const byeRows: EditableFixture[] = [];
+    for (const [date, playing] of byDate.entries()) {
+      for (const code of selectedTeams) {
+        if (!playing.has(code)) {
+          byeRows.push({
+            home_team_code: code,
+            away_team_code: "__BYE__",
+            court_id: null,
+            start_time: null,
+            fixture_date: date,
+          });
+        }
+      }
+    }
+
+    setDraft([...generated, ...byeRows]);
+    const dayCount = byDate.size;
+    toast.success(
+      `Generated ${generated.length} fixtures across ${dayCount} day(s)` +
+        (byeRows.length ? ` · ${byeRows.length} bye(s)` : ""),
     );
-    toast.success(`Generated ${slots.length} fixtures across ${new Set(slots.map(s => s.date)).size} day(s)`);
   };
 
   const saveFixtures = useMutation({

@@ -47,11 +47,25 @@ export type SlotAssignment = {
   away: string;
   courtId: number;
   startTime: string; // HH:mm
+  date: string;      // yyyy-MM-dd
 };
 
+function eachDate(startDate: string, endDate: string): string[] {
+  const out: string[] = [];
+  const s = parse(startDate, "yyyy-MM-dd", new Date());
+  const e = parse(endDate || startDate, "yyyy-MM-dd", new Date());
+  let cur = s;
+  while (cur <= e) {
+    out.push(format(cur, "yyyy-MM-dd"));
+    cur = addMinutes(cur, 24 * 60);
+  }
+  return out;
+}
+
 /**
- * Allocate pairings across (courts × time slots), avoiding back-to-back conflicts
- * for any single team where possible.
+ * Allocate pairings across (dates × time slots × courts), avoiding back-to-back
+ * conflicts for any single team where possible. Spreads matches over the full
+ * date window of the round.
  */
 export function allocateSlots(
   pairings: Pairing[],
@@ -59,28 +73,34 @@ export function allocateSlots(
   startTime: string,
   endTime: string,
   slotMinutes: number,
+  startDate?: string,
+  endDate?: string,
 ): SlotAssignment[] {
   if (!courtIds.length || !pairings.length) return [];
   const start = parse(startTime, "HH:mm", new Date());
   const end = parse(endTime, "HH:mm", new Date());
-  const slots: string[] = [];
+  const slotTimes: string[] = [];
   let cur = start;
   while (cur < end) {
-    slots.push(format(cur, "HH:mm"));
+    slotTimes.push(format(cur, "HH:mm"));
     cur = addMinutes(cur, slotMinutes);
   }
-  if (!slots.length) return [];
+  if (!slotTimes.length) return [];
+
+  const dates = startDate ? eachDate(startDate, endDate || startDate) : [format(new Date(), "yyyy-MM-dd")];
+
+  // Build full slot grid (date × time)
+  const grid: { date: string; time: string }[] = [];
+  for (const d of dates) for (const t of slotTimes) grid.push({ date: d, time: t });
 
   const remaining = [...pairings];
   const out: SlotAssignment[] = [];
   const lastSlotByTeam = new Map<string, number>();
 
-  for (let s = 0; s < slots.length && remaining.length; s++) {
+  for (let s = 0; s < grid.length && remaining.length; s++) {
     const usedTeams = new Set<string>();
     for (const courtId of courtIds) {
       if (!remaining.length) break;
-      // prefer a pairing whose teams aren't already playing this slot
-      // and ideally weren't playing in the immediately previous slot
       let pickIdx = remaining.findIndex(
         (p) =>
           !usedTeams.has(p.home) &&
@@ -95,16 +115,17 @@ export function allocateSlots(
       }
       if (pickIdx === -1) break;
       const [pair] = remaining.splice(pickIdx, 1);
-      out.push({ ...pair, courtId, startTime: slots[s] });
+      out.push({ ...pair, courtId, startTime: grid[s].time, date: grid[s].date });
       usedTeams.add(pair.home);
       usedTeams.add(pair.away);
       lastSlotByTeam.set(pair.home, s);
       lastSlotByTeam.set(pair.away, s);
     }
   }
-  // overflow — append remaining unscheduled at last slot, first court (admin can edit)
+  // overflow → last slot
+  const lastCell = grid[grid.length - 1];
   for (const p of remaining) {
-    out.push({ ...p, courtId: courtIds[0], startTime: slots[slots.length - 1] });
+    out.push({ ...p, courtId: courtIds[0], startTime: lastCell.time, date: lastCell.date });
   }
   return out;
 }

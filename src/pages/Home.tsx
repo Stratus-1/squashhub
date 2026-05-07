@@ -40,6 +40,8 @@ interface TenantPublic {
   logo_url: string | null;
   address: string | null;
   tenant_type: string;
+  nsa_club_id: string | null;
+  chairman_member_id: string | null;
 }
 
 const PROBLEMS = [
@@ -92,7 +94,7 @@ export default function Home() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, logo_url, address, tenant_type")
+        .select("id, name, subdomain, logo_url, address, tenant_type, nsa_club_id, chairman_member_id")
         .not("subdomain", "is", null)
         .order("name");
       if (error) throw error;
@@ -101,7 +103,13 @@ export default function Home() {
     staleTime: 60_000,
   });
 
-  const clubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
+  // A club is "live" once an admin (chairman) is assigned. Until then, clicking
+  // a club routes NSA players to the /league self-signup flow instead of the
+  // tenant portal.
+  const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
+  const liveClubs = allClubs.filter((t) => !!t.chairman_member_id);
+  const nsaClubs = allClubs.filter((t) => !t.chairman_member_id);
+  const clubs = allClubs;
   const associations = tenants?.filter((t) => t.tenant_type === "association") ?? [];
 
   if (user) {
@@ -155,6 +163,9 @@ export default function Home() {
 
             {/* Desktop actions */}
             <div className="hidden md:flex items-center gap-2">
+              <Button size="sm" onClick={() => navigate("/league")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 border border-amber-300/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] font-semibold">
+                <Trophy className="w-3.5 h-3.5 mr-1" /> NSA Player? Register Here
+              </Button>
               <Button size="sm" onClick={() => scrollTo("clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
                 Find/Create My Association
               </Button>
@@ -185,6 +196,9 @@ export default function Home() {
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("features"))}>Features</Button>
                     <Button variant="ghost" className="justify-start text-base" onClick={() => handleMobileNav(() => scrollTo("pricing"))}>Pricing</Button>
                     <div className="h-px bg-border my-3" />
+                    <Button className="rounded-full w-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold" onClick={() => handleMobileNav(() => navigate("/league"))}>
+                      <Trophy className="w-4 h-4 mr-1" /> NSA Player? Register Here
+                    </Button>
                     <Button className="rounded-full w-full" onClick={() => handleMobileNav(() => scrollTo("clubs"))}>
                       Find/Create My Association
                     </Button>
@@ -381,30 +395,30 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid lg:grid-cols-2 gap-8">
-            {/* Clubs */}
+            {/* Live Clubs */}
             <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
                   <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
-                    Clubs
+                    Live Clubs
                   </h3>
                   <p className="text-sm text-white/60 mt-1">
-                    Find your club and sign in through their portal.
+                    Clubs fully set up on SquashHub. Sign in via their portal.
                   </p>
                 </div>
-                {clubs.length === 0 ? (
+                {liveClubs.length === 0 ? (
                   <div className="text-center py-8">
                     <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">No clubs registered yet.</p>
+                    <p className="text-sm text-muted-foreground">No clubs are fully live yet.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {clubs.slice(0, 3).map((t) => (
+                    {liveClubs.slice(0, 3).map((t) => (
                       <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
                     ))}
                   </div>
                 )}
-                {clubs.length > 3 && (
+                {liveClubs.length > 3 && (
                   <Button
                     className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
                     onClick={() => scrollTo("all-clubs")}
@@ -415,8 +429,51 @@ export default function Home() {
               </CardContent>
             </Card>
 
+            {/* NSA Clubs (not yet administratively live) */}
+            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-amber-400/40 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+              <CardContent className="p-6 sm:p-8 space-y-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
+                      NSA Clubs
+                    </h3>
+                    <p className="text-sm text-white/70 mt-1">
+                      NSA-affiliated clubs not yet fully set up. NSA players can register now with their NSF number.
+                    </p>
+                  </div>
+                  <Trophy className="w-6 h-6 text-amber-400 flex-shrink-0" />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/league")}
+                  className="w-full rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
+                >
+                  NSA Members Register Here
+                </Button>
+                {nsaClubs.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-white/60">No NSA clubs imported yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {nsaClubs.slice(0, 3).map((t) => (
+                      <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
+                    ))}
+                  </div>
+                )}
+                {nsaClubs.length > 3 && (
+                  <Button
+                    className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
+                    onClick={() => scrollTo("all-clubs")}
+                  >
+                    View All NSA Clubs
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Associations */}
-            <Card className="bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+            <Card className="lg:col-span-2 bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 rounded-2xl text-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
               <CardContent className="p-6 sm:p-8 space-y-5">
                 <div>
                   <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-white">
@@ -432,13 +489,13 @@ export default function Home() {
                     <p className="text-sm text-muted-foreground">No associations registered yet.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {associations.slice(0, 3).map((t) => (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {associations.slice(0, 6).map((t) => (
                       <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Landmark} />
                     ))}
                   </div>
                 )}
-                {associations.length > 3 && (
+                {associations.length > 6 && (
                   <Button
                     className="w-full rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]"
                     onClick={() => scrollTo("all-clubs")}
@@ -452,21 +509,45 @@ export default function Home() {
         )}
 
         {/* Full directory expanded */}
-        {(clubs.length > 3 || associations.length > 3) && (
+        {(liveClubs.length > 3 || nsaClubs.length > 3 || associations.length > 6) && (
           <div id="all-clubs" className="space-y-10 pt-6">
-            {clubs.length > 3 && (
+            {liveClubs.length > 3 && (
               <div>
                 <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
-                  All Clubs
+                  All Live Clubs
                 </h3>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {clubs.map((t) => (
+                  {liveClubs.map((t) => (
                     <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
                   ))}
                 </div>
               </div>
             )}
-            {associations.length > 3 && (
+            {nsaClubs.length > 3 && (
+              <div>
+                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                    All NSA Clubs
+                  </h3>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate("/league")}
+                    className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
+                  >
+                    <Trophy className="w-3.5 h-3.5 mr-1" /> NSA Members Register Here
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  These clubs are listed from NSA but not yet administratively live on SquashHub. Clicking a club will take you to the league self-signup page.
+                </p>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {nsaClubs.map((t) => (
+                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
+                  ))}
+                </div>
+              </div>
+            )}
+            {associations.length > 6 && (
               <div>
                 <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
                   All Leagues & Associations
@@ -667,10 +748,19 @@ interface TenantRowProps {
   tenant: TenantPublic;
   navigate: (path: string) => void;
   icon: React.ComponentType<{ className?: string }>;
+  /** When true, clicking the row routes to /league?club=<subdomain> instead of
+   *  the tenant subdomain. Used for NSA-seeded clubs that are not yet
+   *  administratively live on SquashHub. */
+  nsaMode?: boolean;
 }
 
-function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
+function TenantRow({ tenant, navigate, icon: Icon, nsaMode = false }: TenantRowProps) {
   const handleClick = () => {
+    if (nsaMode) {
+      const sub = tenant.subdomain ? `?club=${encodeURIComponent(tenant.subdomain)}` : "";
+      navigate(`/league${sub}`);
+      return;
+    }
     if (!tenant.subdomain) return;
     const isPreview = window.location.hostname.includes("lovable");
     if (isPreview) {
@@ -699,7 +789,11 @@ function TenantRow({ tenant, navigate, icon: Icon }: TenantRowProps) {
       )}
       <div className="min-w-0 flex-1">
         <h4 className="font-semibold text-primary-foreground text-sm truncate">{tenant.name}</h4>
-        {tenant.subdomain && (
+        {nsaMode ? (
+          <p className="text-[11px] text-amber-300 truncate font-medium">
+            NSA players → register here
+          </p>
+        ) : tenant.subdomain && (
           <p className="text-xs font-mono text-[hsl(var(--accent))] truncate">
             {tenant.subdomain}.squashhub.co.za
           </p>

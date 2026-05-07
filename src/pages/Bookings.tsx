@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { Zap, ZapOff, ArrowRightLeft, ChevronsUpDown, Check } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Dialog,
@@ -122,13 +123,17 @@ function getDateLabel(date: Date) {
   return format(date, "EEEE");
 }
 
-// Quick date chips for the next 7 days
-function DateChips({ selectedDate, onSelect }: { selectedDate: Date; onSelect: (d: Date) => void }) {
+// Quick date chips for the next 7 days (+ admin can pick up to 30 days ahead)
+function DateChips({ selectedDate, onSelect, isAdmin }: { selectedDate: Date; onSelect: (d: Date) => void; isAdmin?: boolean }) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+  const maxDate = addDays(todayMidnight, 30);
+  const selectedBeyondStrip = selectedDate > addDays(todayMidnight, 6);
 
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1 px-4 scrollbar-hide">
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 px-4 scrollbar-hide">
       {days.map((day) => {
         const isSelected = format(day, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd");
         return (
@@ -149,9 +154,40 @@ function DateChips({ selectedDate, onSelect }: { selectedDate: Date; onSelect: (
           </button>
         );
       })}
+      {isAdmin && (
+        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                "flex flex-col items-center justify-center min-w-[3.2rem] px-2 py-2 rounded-xl text-xs font-medium transition-all",
+                selectedBeyondStrip
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                  : "bg-card hover:bg-secondary border border-border/50 border-dashed"
+              )}
+              title="Pick a date (next 30 days) — admin only"
+            >
+              <CalendarIcon className="w-4 h-4" />
+              <span className="text-[10px] uppercase tracking-wider mt-0.5">
+                {selectedBeyondStrip ? format(selectedDate, "d MMM") : "Pick"}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(d) => { if (d) { onSelect(d); setPickerOpen(false); } }}
+              disabled={(d) => d < todayMidnight || d > maxDate}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }
+
 
 // Upcoming games card
 function UpcomingGamesSection() {
@@ -915,7 +951,7 @@ export default function Bookings() {
           </div>
         </div>
       )}
-      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} />
+      <DateChips selectedDate={selectedDate} onSelect={setSelectedDate} isAdmin={isMemberAdmin} />
 
       {/* Court availability stats */}
 

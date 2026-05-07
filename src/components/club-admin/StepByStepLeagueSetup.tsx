@@ -70,10 +70,25 @@ function buildDraftOrder(numTeams: number, totalPicks: number, mode: Distributio
   return order;
 }
 
-export function StepByStepLeagueSetup({ clubId, open, onOpenChange }: {
+export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext }: {
   clubId: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  /**
+   * When set, the wizard opens pre-filled to edit an existing league group
+   * (one specific association+gender+leagueNumber). Saving overwrites the
+   * matching league rows.
+   */
+  editContext?: {
+    associationId: string;
+    gender: Gender;
+    leagueNumber: string;
+    numTeams: number;
+    perTeam: number;
+    reserves: number;
+    teamNames: Record<number, string>;
+    reservesName: string;
+  } | null;
 }) {
   const qc = useQueryClient();
   const { data: associations = [] } = useLeagueAssociations(clubId);

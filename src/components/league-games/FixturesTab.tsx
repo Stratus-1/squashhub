@@ -407,10 +407,12 @@ function ReadOnlyFixtures({
   fixtures,
   courts,
   teams,
+  fallbackDate,
 }: {
   fixtures: EditableFixture[];
   courts: { id: number; name: string }[];
   teams: { code: string; name: string }[];
+  fallbackDate?: string;
 }) {
   if (!fixtures.length) {
     return (
@@ -421,11 +423,17 @@ function ReadOnlyFixtures({
   }
   const teamName = (code: string) => teams.find((t) => t.code === code)?.name ?? code;
   const courtName = (id: number | null) => (id ? courts.find((c) => c.id === id)?.name ?? `Court ${id}` : "—");
+  const fmtDate = (d?: string | null) => {
+    const v = d || fallbackDate;
+    if (!v) return "—";
+    try { return format(parseISO(v), "EEE d MMM"); } catch { return v; }
+  };
   return (
     <div className="rounded-md border overflow-x-auto">
       <table className="w-full text-xs">
         <thead className="bg-muted/50">
           <tr className="text-left">
+            <th className="p-2">Date</th>
             <th className="p-2">Time</th>
             <th className="p-2">Court</th>
             <th className="p-2">Home</th>
@@ -435,6 +443,7 @@ function ReadOnlyFixtures({
         <tbody>
           {fixtures.map((f, i) => (
             <tr key={i} className="border-t">
+              <td className="p-2">{fmtDate(f.fixture_date)}</td>
               <td className="p-2">{f.start_time?.slice(0, 5) ?? "—"}</td>
               <td className="p-2">{courtName(f.court_id)}</td>
               <td className="p-2">{teamName(f.home_team_code)}</td>

@@ -262,7 +262,7 @@ export default function Home() {
                 Free until September 2026 · No credit card required
               </p>
               <p className="text-xs text-amber-200/90 drop-shadow max-w-2xl">
-                Pretoria clubs already affiliated with NSA don't need to register — just request SquashHub to activate your full administrative functionality. SquashHub is fully integrated with NSA via API.
+                Pretoria clubs affiliated with NSA don't need to register — just request SquashHub to activate your full administrative functionality. SquashHub is fully integrated with NSA via API.
               </p>
             </motion.div>
           </div>

@@ -159,6 +159,7 @@ export default function Home() {
               <Button variant="ghost" size="sm" onClick={() => scrollTo("top")} className="text-white hover:bg-white/10 hover:text-white">Home</Button>
               <Button variant="ghost" size="sm" onClick={() => scrollTo("features")} className="text-white hover:bg-white/10 hover:text-white">Features</Button>
               <Button variant="ghost" size="sm" onClick={() => scrollTo("pricing")} className="text-white hover:bg-white/10 hover:text-white">Pricing</Button>
+              <Button variant="ghost" size="sm" onClick={() => scrollTo("contact")} className="text-white hover:bg-white/10 hover:text-white">Contact Us</Button>
             </nav>
 
             {/* Desktop actions */}

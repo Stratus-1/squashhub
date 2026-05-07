@@ -40,6 +40,8 @@ interface TenantPublic {
   logo_url: string | null;
   address: string | null;
   tenant_type: string;
+  nsa_club_id: string | null;
+  chairman_member_id: string | null;
 }
 
 const PROBLEMS = [

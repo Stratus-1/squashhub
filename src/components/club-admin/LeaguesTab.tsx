@@ -994,6 +994,31 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     dragOverItem.current = { leagueId, idx };
   };
 
+  // ── Reserve eligibility helpers ──
+  // League "tier" = numeric prefix from name/code. Lower = stronger league.
+  // A reserve from tier R can sub UP into team tier T only when T <= R.
+  // (Same league or higher league # / weaker division.) Never the reverse.
+  const isReservesLeague = (leagueId: string): boolean => {
+    const l = leagues.find(x => x.id === leagueId);
+    return !!l && /reserves?/i.test(l.name);
+  };
+  const tierOf = (leagueId: string): number => {
+    const l = leagues.find(x => x.id === leagueId);
+    if (!l) return 99;
+    const m = (l.code || "").match(/(\d+)/) || l.name.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : 99;
+  };
+  /** Returns null if allowed, else a human-readable reason string. */
+  const checkReserveMoveAllowed = (fromLeagueId: string, toLeagueId: string): string | null => {
+    if (!isReservesLeague(fromLeagueId)) return null;
+    if (isReservesLeague(toLeagueId)) return null; // reserves → reserves is fine
+    const reserveTier = tierOf(fromLeagueId);
+    const targetTier = tierOf(toLeagueId);
+    if (targetTier <= reserveTier) return null; // sub UP into stronger/same league: allowed
+    // target is weaker league than the reserve → block
+    return `Reserves from a stronger league (#${reserveTier}) can't be moved down into a weaker league (#${targetTier}).`;
+  };
+
   const handleDragEnd = () => {
     if (!dragItem.current || !dragOverItem.current) {
       dragItem.current = null;
@@ -1014,13 +1039,34 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         return { ...prev, [from.leagueId]: items.map((p, i) => ({ ...p, player_rank: i + 1 })) };
       });
     } else {
-      // Move between leagues
+      // Cross-league move — enforce reserve eligibility
+      const reason = checkReserveMoveAllowed(from.leagueId, to.leagueId);
+      if (reason) {
+        toast.error(reason);
+        dragItem.current = null;
+        dragOverItem.current = null;
+        setDragFromPool(null);
+        return;
+      }
+      // Move between leagues (auto-swap when target slot is occupied — promotes a
+      // reserve into a team and demotes the displaced player into reserves).
       setLeagueData(prev => {
         const fromItems = [...(prev[from.leagueId] || [])];
         const toItems = [...(prev[to.leagueId] || [])];
         const dragged = fromItems.splice(from.idx, 1)[0];
-        dragged.league_id = to.leagueId;
-        toItems.splice(to.idx, 0, dragged);
+        // If dropping onto an occupied slot in a non-reserves league, swap that
+        // player back to the source (reserves) league.
+        const targetIsReserves = isReservesLeague(to.leagueId);
+        const sourceIsReserves = isReservesLeague(from.leagueId);
+        const occupant = toItems[to.idx];
+        if (occupant && sourceIsReserves && !targetIsReserves) {
+          // Promote dragged into team slot; demote occupant into reserves.
+          toItems[to.idx] = { ...dragged, league_id: to.leagueId, is_captain: occupant.is_captain };
+          fromItems.splice(from.idx, 0, { ...occupant, league_id: from.leagueId, is_captain: false });
+        } else {
+          dragged.league_id = to.leagueId;
+          toItems.splice(to.idx, 0, dragged);
+        }
         return {
           ...prev,
           [from.leagueId]: fromItems.map((p, i) => ({ ...p, player_rank: i + 1 })),

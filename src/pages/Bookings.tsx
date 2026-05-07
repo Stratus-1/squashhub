@@ -1043,6 +1043,7 @@ export default function Bookings() {
                   // Check if this slot is in the past
                   const slotDateTime = new Date(`${dateStr}T${time}:00`);
                   const isPastSlot = slotDateTime < new Date();
+                  const isPeak = isPeakSlot(selectedDate, time, myClub);
 
                   return (
                     <Tooltip>
@@ -1050,7 +1051,7 @@ export default function Bookings() {
                         <motion.div
                           whileTap={isPastSlot && !booking ? undefined : { scale: 0.97 }}
                           className={cn(
-                            "h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
+                            "relative h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
                             isPastSlot && !booking
                               ? "bg-muted border-border/40 cursor-not-allowed opacity-60"
                               : booking
@@ -1070,6 +1071,14 @@ export default function Bookings() {
                             setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >
+                          {isPeak && (
+                            <span
+                              className="absolute top-0.5 right-1 text-[9px] font-bold leading-none px-1 py-0.5 rounded bg-amber-500/80 text-amber-950"
+                              title="Peak time"
+                            >
+                              P
+                            </span>
+                          )}
                           {booking ? (
                             <div className="px-1.5 min-w-0 text-center leading-tight">
                               <p className={cn(

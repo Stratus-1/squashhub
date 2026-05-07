@@ -2509,6 +2509,85 @@ export type Database = {
           },
         ]
       }
+      league_rounds: {
+        Row: {
+          association_id: string
+          club_id: string
+          court_ids: number[]
+          created_at: string
+          created_by: string | null
+          end_time: string
+          id: string
+          name: string
+          notes: string | null
+          round_date: string
+          round_number: number
+          slot_minutes: number
+          start_time: string
+          status: string
+          updated_at: string
+          venue_name: string
+        }
+        Insert: {
+          association_id: string
+          club_id: string
+          court_ids?: number[]
+          created_at?: string
+          created_by?: string | null
+          end_time?: string
+          id?: string
+          name: string
+          notes?: string | null
+          round_date: string
+          round_number: number
+          slot_minutes?: number
+          start_time?: string
+          status?: string
+          updated_at?: string
+          venue_name?: string
+        }
+        Update: {
+          association_id?: string
+          club_id?: string
+          court_ids?: number[]
+          created_at?: string
+          created_by?: string | null
+          end_time?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          round_date?: string
+          round_number?: number
+          slot_minutes?: number
+          start_time?: string
+          status?: string
+          updated_at?: string
+          venue_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_rounds_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "league_rounds_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_rounds_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_week_availability: {
         Row: {
           club_id: string
@@ -3512,6 +3591,8 @@ export type Database = {
         Row: {
           association_id: string
           away_team_code: string
+          booking_id: string | null
+          court_id: number | null
           created_at: string
           division: string
           external_id: string | null
@@ -3524,7 +3605,9 @@ export type Database = {
           nsa_submission_notes: string | null
           nsa_submitted_at: string | null
           nsa_submitted_by: string | null
+          round_id: string | null
           score: string | null
+          start_time: string | null
           status: string
           updated_at: string
           venue_name: string
@@ -3533,6 +3616,8 @@ export type Database = {
         Insert: {
           association_id: string
           away_team_code: string
+          booking_id?: string | null
+          court_id?: number | null
           created_at?: string
           division: string
           external_id?: string | null
@@ -3545,7 +3630,9 @@ export type Database = {
           nsa_submission_notes?: string | null
           nsa_submitted_at?: string | null
           nsa_submitted_by?: string | null
+          round_id?: string | null
           score?: string | null
+          start_time?: string | null
           status?: string
           updated_at?: string
           venue_name: string
@@ -3554,6 +3641,8 @@ export type Database = {
         Update: {
           association_id?: string
           away_team_code?: string
+          booking_id?: string | null
+          court_id?: number | null
           created_at?: string
           division?: string
           external_id?: string | null
@@ -3566,7 +3655,9 @@ export type Database = {
           nsa_submission_notes?: string | null
           nsa_submitted_at?: string | null
           nsa_submitted_by?: string | null
+          round_id?: string | null
           score?: string | null
+          start_time?: string | null
           status?: string
           updated_at?: string
           venue_name?: string
@@ -3581,6 +3672,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "platform_league_fixtures_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_league_fixtures_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "platform_league_fixtures_nsa_submitted_by_fkey"
             columns: ["nsa_submitted_by"]
             isOneToOne: false
@@ -3592,6 +3697,13 @@ export type Database = {
             columns: ["nsa_submitted_by"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_league_fixtures_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "league_rounds"
             referencedColumns: ["id"]
           },
         ]

@@ -11,6 +11,7 @@ import { useMyClub, useMyLeagueRegistration } from "@/hooks/use-club";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { FillUpLeaguesTab } from "@/components/league-games/FillUpLeaguesTab";
+import { FixturesTab } from "@/components/league-games/FixturesTab";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, startOfWeek, addDays } from "date-fns";
@@ -174,9 +175,12 @@ export default function LeagueGames() {
           </div>
         ) : (
           <Tabs defaultValue="fixtures" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsList className={`grid w-full ${selectedAssoc?.scope === "internal" ? "grid-cols-4" : "grid-cols-3"} h-auto`}>
               <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
               <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>
+              {selectedAssoc?.scope === "internal" && (
+                <TabsTrigger value="rounds" className="text-xs sm:text-sm py-2">Rounds</TabsTrigger>
+              )}
               <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
             </TabsList>
 
@@ -206,6 +210,14 @@ export default function LeagueGames() {
                 />
               )}
             </TabsContent>
+
+            {selectedAssoc?.scope === "internal" && (
+              <TabsContent value="rounds" className="mt-4">
+                {clubId && selectedAssocId && (
+                  <FixturesTab clubId={clubId} associationId={selectedAssocId} />
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="standings" className="mt-4">
               <StandingsTab

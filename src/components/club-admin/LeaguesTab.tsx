@@ -18,6 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { StepByStepLeagueSetup } from "./StepByStepLeagueSetup";
+import { AddReservesDialog } from "./AddReservesDialog";
+import { UserPlus } from "lucide-react";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 

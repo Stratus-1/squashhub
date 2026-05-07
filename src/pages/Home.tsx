@@ -509,21 +509,45 @@ export default function Home() {
         )}
 
         {/* Full directory expanded */}
-        {(clubs.length > 3 || associations.length > 3) && (
+        {(liveClubs.length > 3 || nsaClubs.length > 3 || associations.length > 6) && (
           <div id="all-clubs" className="space-y-10 pt-6">
-            {clubs.length > 3 && (
+            {liveClubs.length > 3 && (
               <div>
                 <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
-                  All Clubs
+                  All Live Clubs
                 </h3>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {clubs.map((t) => (
+                  {liveClubs.map((t) => (
                     <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
                   ))}
                 </div>
               </div>
             )}
-            {associations.length > 3 && (
+            {nsaClubs.length > 3 && (
+              <div>
+                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                    All NSA Clubs
+                  </h3>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate("/league")}
+                    className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
+                  >
+                    <Trophy className="w-3.5 h-3.5 mr-1" /> NSA Members Register Here
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  These clubs are listed from NSA but not yet administratively live on SquashHub. Clicking a club will take you to the league self-signup page.
+                </p>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {nsaClubs.map((t) => (
+                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
+                  ))}
+                </div>
+              </div>
+            )}
+            {associations.length > 6 && (
               <div>
                 <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight mb-4 text-foreground">
                   All Leagues & Associations

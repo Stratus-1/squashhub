@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { Zap, ZapOff, ArrowRightLeft, ChevronsUpDown, Check } from "lucide-react";
 import { ShareBookingDialog } from "@/components/ShareBookingDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Dialog,

@@ -330,50 +330,57 @@ function RoundCard({
 
       {open && (
         <div className="p-3 border-t space-y-3">
-          <div className="rounded border bg-muted/20 p-2 space-y-2">
-            <div className="text-xs font-medium">Teams in this round</div>
-            <div className="flex flex-wrap gap-2">
-              {teams.map((t) => (
-                <label key={t.code} className="flex items-center gap-1.5 text-xs">
-                  <Checkbox
-                    checked={selectedTeams.includes(t.code)}
-                    onCheckedChange={(v) =>
-                      setSelectedTeams((prev) =>
-                        v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
-                      )
-                    }
-                  />
-                  {t.name}
+          {isAdmin && (
+            <div className="rounded border bg-muted/20 p-2 space-y-2">
+              <div className="text-xs font-medium">Teams in this round</div>
+              <div className="flex flex-wrap gap-2">
+                {teams.map((t) => (
+                  <label key={t.code} className="flex items-center gap-1.5 text-xs">
+                    <Checkbox
+                      checked={selectedTeams.includes(t.code)}
+                      onCheckedChange={(v) =>
+                        setSelectedTeams((prev) =>
+                          v ? [...new Set([...prev, t.code])] : prev.filter((x) => x !== t.code),
+                        )
+                      }
+                    />
+                    {t.name}
+                  </label>
+                ))}
+                {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <label className="flex items-center gap-2 text-xs">
+                  <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
+                  <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
                 </label>
-              ))}
-              {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
+                <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
+                  <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <label className="flex items-center gap-2 text-xs">
-                <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
-                <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
-              </label>
-              <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
-                <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
-              </Button>
-            </div>
-          </div>
+          )}
 
-          <FixtureEditorTable
-            fixtures={list}
-            teams={teams}
-            courts={courts ?? []}
-            onChange={setDraft}
-          />
-
-          <div className="flex justify-end gap-2">
-            {draft && (
-              <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard changes</Button>
-            )}
-            <Button size="sm" onClick={() => saveFixtures.mutate()} disabled={saveFixtures.isPending}>
-              {saveFixtures.isPending ? "Saving…" : "Save fixtures"}
-            </Button>
-          </div>
+          {isAdmin ? (
+            <>
+              <FixtureEditorTable
+                fixtures={list}
+                teams={teams}
+                courts={courts ?? []}
+                onChange={setDraft}
+              />
+              <div className="flex justify-end gap-2">
+                {draft && (
+                  <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard changes</Button>
+                )}
+                <Button size="sm" onClick={() => saveFixtures.mutate()} disabled={saveFixtures.isPending}>
+                  {saveFixtures.isPending ? "Saving…" : "Save fixtures"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <ReadOnlyFixtures fixtures={fixtures ?? []} courts={courts ?? []} teams={teams} />
+          )}
         </div>
       )}
     </Card>

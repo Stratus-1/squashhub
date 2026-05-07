@@ -81,7 +81,7 @@ export function AppSidebar() {
 
   const activityItems: Item[] = isAssociation
     ? [
-        { title: "Regional Leagues", url: "/league-games", icon: Trophy },
+        { title: "Leagues", url: "/league-games", icon: Trophy },
         { title: "Tournaments", url: "/tournaments", icon: Trophy },
         { title: "Events", url: "/events", icon: CalendarDays },
         { title: "Feed", url: "/feed", icon: MessageCircle },
@@ -92,7 +92,7 @@ export function AppSidebar() {
         { title: "Enter Results", url: "/add-result", icon: ClipboardCheck },
         { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
         { title: "Challenges", url: "/challenges", icon: Swords },
-        ...(hasLeagues ? [{ title: "Regional Leagues", url: "/league-games", icon: Trophy }] : []),
+        ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []),
         { title: "Club Tournaments", url: "/tournaments", icon: Trophy },
         { title: "Events", url: "/events", icon: CalendarDays },
         ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),

@@ -44,7 +44,7 @@ const ADMIN_TABS: TabDef[] = [
   { value: "association", label: "Association", icon: Building2, permission: "club" },
   { value: "setup", label: "Setup", icon: Settings, permission: "settings" },
   { value: "affiliated", label: "Affiliated Clubs", icon: Network, permission: "club" },
-  { value: "leagues", label: "Regional Leagues", icon: Trophy, permission: "leagues" },
+  { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs" },
   { value: "members", label: "Members", icon: Users, permission: "members" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users" },
@@ -135,7 +135,7 @@ export default function AssociationDashboard() {
     },
     {
       to: "/league-games",
-      label: "Regional Leagues",
+      label: "Leagues",
       description: "Fixtures, standings & results",
       icon: Medal,
       color: "text-blue-500 bg-blue-500/10",

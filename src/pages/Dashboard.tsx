@@ -664,7 +664,7 @@ export default function Dashboard() {
           {hasLeagues && (
             <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-500/20" onClick={() => navigate("/league-games")}>
               <Trophy className="w-5 h-5" />
-              <span className="text-xs font-medium leading-tight text-center">Regional Leagues</span>
+              <span className="text-xs font-medium leading-tight text-center">Leagues</span>
             </Button>
           )}
           <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/20" onClick={() => navigate("/tournaments")}>

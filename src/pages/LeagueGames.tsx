@@ -129,6 +129,22 @@ export default function LeagueGames() {
     return leaguesInScope.map((l) => l.code).filter((c): c is string => typeof c === "string" && c.length > 0);
   }, [leaguesInScope]);
 
+  // Map of team code -> custom league name (only when admin renamed it from the
+  // auto-generated "Men's Nth League YYYY" / "Ladies Nth League YYYY" pattern).
+  // This lets fixtures + standings show fun team names like "Cobras vs Penguins".
+  const teamNameByCode = useMemo<Record<string, string>>(() => {
+    const isDefaultName = (n: string) =>
+      /^\s*(?:men'?s?|ladies|ladie|women|mixed)\b.*\bleague\b/i.test(n || "") ||
+      /reserves?/i.test(n || "");
+    const map: Record<string, string> = {};
+    for (const l of leaguesInScope) {
+      if (l.code && l.name && !isDefaultName(l.name)) {
+        map[l.code.toUpperCase()] = l.name;
+      }
+    }
+    return map;
+  }, [leaguesInScope]);
+
   const myTeamCodes = useMemo(() => {
     const assocId = (myPrimaryLeagueReg as any)?.association_id as string | undefined;
     const code = (myPrimaryLeagueReg as any)?.leagues?.code as string | undefined;

@@ -222,6 +222,18 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
               rows={2}
             />
           </div>
+          <label className="flex items-start gap-2 text-sm rounded border p-2 bg-muted/30 cursor-pointer">
+            <Checkbox
+              checked={!!draft.auto_create_bookings}
+              onCheckedChange={(v) => setDraft({ ...draft, auto_create_bookings: !!v })}
+            />
+            <span>
+              <span className="font-medium">Auto-create court bookings</span>
+              <span className="block text-xs text-muted-foreground">
+                When fixtures are saved for this round, automatically block off the selected courts at the scheduled times.
+              </span>
+            </span>
+          </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

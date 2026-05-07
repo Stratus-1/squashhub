@@ -278,18 +278,14 @@ function RoundCard({
 
       if (!list.length) return;
 
-      // platform_league_fixtures.association_id FKs to platform_league_associations(id),
-      // not to our local league_associations(id). Map via platform_association_id.
-      const { data: assocRow, error: assocErr } = await supabase
-        .from("league_associations")
-        .select("platform_association_id")
-        .eq("id", round.association_id)
-        .maybeSingle();
-      if (assocErr) throw assocErr;
-      const platformAssocId = (assocRow as any)?.platform_association_id as string | null | undefined;
-      if (!platformAssocId) {
-        throw new Error("This league isn't linked to a platform association yet. Link it under League settings before saving fixtures.");
-      }
+      // platform_league_fixtures.association_id FKs to platform_league_associations(id).
+      // Auto-create + link the platform association if needed.
+      const { data: platformAssocId, error: linkErr } = await supabase.rpc(
+        "ensure_platform_association_for_league" as any,
+        { _association_id: round.association_id },
+      );
+      if (linkErr) throw linkErr;
+      if (!platformAssocId) throw new Error("Could not link league to platform association.");
 
       const rows = list.map((f) => ({
         association_id: platformAssocId,

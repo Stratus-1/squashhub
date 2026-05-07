@@ -293,6 +293,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
 
+      {reservesGroup && (
+        <AddReservesDialog
+          clubId={clubId}
+          associationId={reservesGroup.associationId}
+          gender={reservesGroup.gender}
+          groupLeagues={reservesGroup.leagues}
+          open={!!reservesGroup}
+          onOpenChange={(o) => !o && setReservesGroup(null)}
+        />
+      )}
+
       <StepByStepLeagueSetup clubId={clubId} open={stepByStepOpen} onOpenChange={setStepByStepOpen} />
 
       {/* Edit Association Dialog */}

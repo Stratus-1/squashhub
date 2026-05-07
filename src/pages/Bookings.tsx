@@ -316,6 +316,7 @@ export default function Bookings() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeMember, isAdmin: isMemberAdmin } = useMemberContext();
+  const isSuperAdmin = useIsSuperAdmin();
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();

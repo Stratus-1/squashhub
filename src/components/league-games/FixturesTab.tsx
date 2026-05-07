@@ -315,12 +315,16 @@ function RoundCard({
         </div>
         <div className="flex items-center gap-1">
           <Badge variant="outline" className="text-[10px]">{round.status}</Badge>
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {isAdmin && (
+            <>
+              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
         </div>
       </button>
 

@@ -204,6 +204,38 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
             </div>
           </div>
           <div>
+            <Label>Play days</Label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {DOW_LABELS.map((lbl, i) => {
+                const active = draft.play_dows.includes(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        play_dows: active
+                          ? d.play_dows.filter((x) => x !== i)
+                          : [...d.play_dows, i].sort((a, b) => a - b),
+                      }))
+                    }
+                    className={`px-2.5 py-1 rounded text-xs border transition ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted border-border"
+                    }`}
+                  >
+                    {lbl}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Select which weekdays fixtures may be scheduled on. Leave all unselected to allow any day.
+            </p>
+          </div>
+          <div>
             <Label>Courts</Label>
             <div className="grid grid-cols-2 gap-2 mt-1 max-h-40 overflow-auto rounded border p-2">
               {(courts ?? []).map((c: any) => (

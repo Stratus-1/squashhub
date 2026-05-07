@@ -517,7 +517,7 @@ export default function ClubAuth() {
       } : undefined
     );
     if (error) {
-      toast.error(error.message);
+      handleSignupError(error, email);
     } else {
       setSignupDone(true);
     }

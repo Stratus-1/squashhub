@@ -337,8 +337,9 @@ export default function SuperAdminLeagues() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Fixtures</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{fixtures?.length ?? 0}</p>
+              <CardContent className="space-y-1">
+                <p className="text-2xl font-bold">{fixturesTotal}</p>
+                <p className="text-xs text-muted-foreground">{fixtures?.length ?? 0} loaded</p>
               </CardContent>
             </Card>
             <Card>

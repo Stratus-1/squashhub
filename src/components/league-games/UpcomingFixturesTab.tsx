@@ -426,10 +426,10 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                   key={f.id}
                   className={`p-3 ${
                     inLineup
-                      ? "border-2 border-primary bg-primary/10 shadow-sm"
+                      ? "border-2 border-primary border-l-[6px] bg-primary/20 dark:bg-primary/25 shadow-lg ring-1 ring-primary/40 backdrop-blur-sm"
                       : mine
-                      ? "border-primary/50 bg-primary/5"
-                      : ""
+                      ? "border border-primary/60 border-l-[6px] bg-card shadow-md ring-1 ring-primary/25"
+                      : "bg-card/80 backdrop-blur-sm"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">

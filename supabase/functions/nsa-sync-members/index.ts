@@ -183,7 +183,8 @@ Deno.serve(async (req) => {
   const { data: existingRows } = await supabase
     .from("platform_league_members")
     .select("user_code, surname, first_name, affiliation, club_name, user_state, league_matches")
-    .eq("association_id", associationId);
+    .eq("association_id", associationId)
+    .range(0, 49999);
   const existingByCode = new Map<string, any>();
   for (const r of existingRows ?? []) existingByCode.set(String(r.user_code).toUpperCase(), r);
 

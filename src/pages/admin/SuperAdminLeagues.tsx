@@ -175,9 +175,9 @@ export default function SuperAdminLeagues() {
         if (error) throw error;
         const rows = (data as any[]) || [];
         all.push(...rows);
-        if (rows.length < pageSize) return { rows: all, total: count ?? all.length };
+        if (rows.length < pageSize) return { rows: all, total: Math.max(count ?? 0, all.length) };
         from += pageSize;
-        if (from > 100000) return { rows: all, total: count ?? all.length };
+        if (from > 100000) return { rows: all, total: Math.max(count ?? 0, all.length) };
       }
     },
     enabled: !!activeAssociation,

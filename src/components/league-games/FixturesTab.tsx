@@ -348,7 +348,7 @@ function RoundCard({
               status: "active",
               is_friendly: false,
               club_id: clubId,
-              guest_name: `League: ${list[i].home_team_code} vs ${list[i].away_team_code}`,
+              guest_name: `${round.name} - ${teams.find((t) => t.code === list[i].home_team_code)?.name ?? list[i].home_team_code} vs ${teams.find((t) => t.code === list[i].away_team_code)?.name ?? list[i].away_team_code}`,
             })
             .select("id")
             .single();

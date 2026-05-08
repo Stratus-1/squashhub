@@ -111,23 +111,6 @@ export function PageHeader({
           <div className="ml-auto flex items-center gap-1.5">
             <TenantSwitcher />
             {showNotifications && <NotificationsDropdown />}
-            {showChallengesInbox ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="relative h-9 w-9"
-                onClick={() => navigate("/challenges")}
-                aria-label="Challenges inbox"
-              >
-                <Swords className="w-5 h-5" />
-                {(incomingCount ?? 0) > 0 ? (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold tabular-nums inline-flex items-center justify-center shadow-sm">
-                    {(incomingCount ?? 0) > 99 ? "99+" : incomingCount}
-                  </span>
-                ) : null}
-              </Button>
-            ) : null}
             <button
               type="button"
               className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5"

@@ -1,4 +1,4 @@
-import { Home, Calendar, MessageCircle, Wine, Trophy, CalendarDays, Wallet, User } from "lucide-react";
+import { Home, Calendar, Wine, Trophy, CalendarDays, Wallet, User } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -8,7 +8,6 @@ const baseNavItems = [
   { to: "/bookings", icon: Calendar, label: "Courts" },
   { to: "/my-account", icon: Wallet, label: "Account" },
   { to: "/profile", icon: User, label: "Profile" },
-  { to: "/feed", icon: MessageCircle, label: "Feed" },
 ];
 
 export function BottomNav() {

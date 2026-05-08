@@ -48,6 +48,13 @@ type PlayedLeagueRow = {
   league_id: string;
 };
 
+type PreviousMatchResultRow = {
+  fixture_id: string;
+  position: number;
+  home_player_code: string | null;
+  away_player_code: string | null;
+};
+
 function leagueOrder(name: string, code: string | null): number {
   const m = (code || name).match(/(\d+)/);
   return m ? parseInt(m[1]) : 99;

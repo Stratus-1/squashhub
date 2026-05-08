@@ -36,6 +36,7 @@ export default function SuperAdminLeagues() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", short_code: "", region: "", season_year: new Date().getFullYear(), status: "active" });
   const [syncing, setSyncing] = useState(false);
+  const [syncingMembers, setSyncingMembers] = useState(false);
 
   const activeAssociationObj = (a: any[] | undefined, id: string | null) =>
     (a ?? []).find((x) => x.id === id) || null;
@@ -55,6 +56,24 @@ export default function SuperAdminLeagues() {
       toast.error(e?.message || "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleSyncMembersFromNsa = async (assocId: string) => {
+    setSyncingMembers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("nsa-sync-members", {
+        body: { association_id: assocId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success((data as any)?.summary || "Members synced");
+      queryClient.invalidateQueries({ queryKey: ["admin-members", assocId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
+    } catch (e: any) {
+      toast.error(e?.message || "Member sync failed");
+    } finally {
+      setSyncingMembers(false);
     }
   };
 
@@ -335,6 +354,32 @@ export default function SuperAdminLeagues() {
 
             {/* Members Tab */}
             <TabsContent value="members" className="space-y-4">
+              {(() => {
+                const a = activeAssociationObj(associations as any[], activeAssociation);
+                if (!a?.external_source) return null;
+                return (
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-md border border-border bg-muted/30">
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground uppercase tracking-wide">{a.external_source}</span>
+                      {a.external_season ? <span className="ml-1">· season {a.external_season}</span> : null}
+                      {a.last_members_sync_at ? (
+                        <span className="ml-2">
+                          · last synced {formatDistanceToNow(new Date(a.last_members_sync_at), { addSuffix: true })}
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-amber-600">· never synced</span>
+                      )}
+                      {a.last_members_sync_summary ? (
+                        <div className="text-[11px] mt-0.5 opacity-75">{a.last_members_sync_summary}</div>
+                      ) : null}
+                    </div>
+                    <Button size="sm" onClick={() => handleSyncMembersFromNsa(a.id)} disabled={syncingMembers}>
+                      <RefreshCw className={`h-4 w-4 mr-2 ${syncingMembers ? "animate-spin" : ""}`} />
+                      {syncingMembers ? "Syncing…" : "Sync members from NSA"}
+                    </Button>
+                  </div>
+                );
+              })()}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

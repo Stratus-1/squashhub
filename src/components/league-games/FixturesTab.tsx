@@ -401,7 +401,15 @@ function RoundCard({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Badge variant="outline" className="text-[10px]">{round.status}</Badge>
+          {(fixtureCount ?? 0) > 0 ? (
+            <Badge variant="secondary" className="text-[10px]">
+              {fixtureCount} fixture{fixtureCount === 1 ? "" : "s"} · click to {open ? "hide" : "view"}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px]">
+              {isAdmin ? "Click to create fixtures" : "No fixtures yet"}
+            </Badge>
+          )}
           {isAdmin && (
             <>
               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -76,10 +77,20 @@ export default function LeagueGames() {
 
   // Selected association (segmented pills). Persisted per-user in localStorage.
   const storageKey = `league-games:selected-assoc:${clubId || "none"}`;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlAssoc = searchParams.get("assoc");
+  const urlTab = searchParams.get("tab");
   const [selectedAssocId, setSelectedAssocId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>(urlTab || "fixtures");
 
   useEffect(() => {
     if (!associations.length) return;
+    // 0. URL param wins
+    if (urlAssoc && associations.some((a) => a.id === urlAssoc)) {
+      setSelectedAssocId(urlAssoc);
+      if (typeof window !== "undefined") localStorage.setItem(storageKey, urlAssoc);
+      return;
+    }
     // 1. Restore last used if still valid
     const stored = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
     if (stored && associations.some((a) => a.id === stored)) {
@@ -90,11 +101,22 @@ export default function LeagueGames() {
     const myAssocId = (myPrimaryLeagueReg as any)?.association_id as string | undefined;
     const myAssoc = associations.find((a) => a.id === myAssocId);
     setSelectedAssocId((myAssoc || associations[0]).id);
-  }, [associations, myPrimaryLeagueReg, storageKey]);
+  }, [associations, myPrimaryLeagueReg, storageKey, urlAssoc]);
+
+  useEffect(() => {
+    if (urlTab) setActiveTab(urlTab);
+  }, [urlTab]);
 
   const handleSelect = (id: string) => {
     setSelectedAssocId(id);
     if (typeof window !== "undefined") localStorage.setItem(storageKey, id);
+  };
+
+  const handleTabChange = (v: string) => {
+    setActiveTab(v);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", v);
+    setSearchParams(next, { replace: true });
   };
 
   const selectedAssoc = useMemo(
@@ -190,7 +212,7 @@ export default function LeagueGames() {
             No league associations set up yet. An admin can add one in Club Admin → Leagues.
           </div>
         ) : (
-          <Tabs defaultValue="fixtures" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className={`grid w-full ${selectedAssoc?.scope === "internal" ? "grid-cols-4" : "grid-cols-3"} h-auto`}>
               <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
               <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>

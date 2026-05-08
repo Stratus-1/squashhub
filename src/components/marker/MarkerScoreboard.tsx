@@ -493,12 +493,12 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         {/* Player A */}
         <button
           type="button"
-          disabled={matchOver || resting}
+          disabled={matchOver || resting || !tossDecided}
           className={cn(
             "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
             "bg-primary text-primary-foreground",
             matchOver && matchWinner === "a" && "ring-4 ring-[hsl(var(--win))]",
-            (matchOver || resting) && "opacity-80 cursor-default"
+            (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("a")}
         >
@@ -525,12 +525,12 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         {/* Player B */}
         <button
           type="button"
-          disabled={matchOver || resting}
+          disabled={matchOver || resting || !tossDecided}
           className={cn(
             "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
             "bg-secondary text-secondary-foreground",
             matchOver && matchWinner === "b" && "ring-4 ring-[hsl(var(--win))]",
-            (matchOver || resting) && "opacity-80 cursor-default"
+            (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("b")}
         >

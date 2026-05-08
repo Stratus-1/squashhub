@@ -43,6 +43,18 @@ type Props = {
   weekStartDow?: number;
 };
 
+type PlayedLeagueRow = {
+  club_member_id: string;
+  league_id: string;
+};
+
+type PreviousMatchResultRow = {
+  fixture_id: string;
+  position: number;
+  home_player_code: string | null;
+  away_player_code: string | null;
+};
+
 function leagueOrder(name: string, code: string | null): number {
   const m = (code || name).match(/(\d+)/);
   return m ? parseInt(m[1]) : 99;
@@ -167,6 +179,36 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
   }, [weekStart]);
   const weekEnd = fixtureRange.end;
 
+  // Seed each new planning week from the previous week's actual lineups, so
+  // players who played up/down last week appear in that played league's pool
+  // for the next weekly fill-up instead of only their static registration team.
+  const previousWeekStart = useMemo(
+    () => format(addDays(new Date(weekStart), -7), "yyyy-MM-dd"),
+    [weekStart],
+  );
+
+  const previousFixtureRange = useMemo(() => {
+    const ws = new Date(previousWeekStart);
+    const day = ws.getDay();
+    const daysToMon = ((1 - day + 7) % 7) || 7;
+    const playMonday = addDays(ws, daysToMon);
+    const playSaturday = addDays(playMonday, 5);
+    return { start: format(playMonday, "yyyy-MM-dd"), end: format(playSaturday, "yyyy-MM-dd") };
+  }, [previousWeekStart]);
+
+  const { data: previousWeekLineups = [] } = useQuery<LineupRow[]>({
+    queryKey: ["lwl-previous", clubId, previousWeekStart],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("league_week_lineups")
+        .select("id, league_id, position, club_member_id")
+        .eq("club_id", clubId)
+        .eq("week_start_date", previousWeekStart);
+      if (error) throw error;
+      return (data as LineupRow[]) || [];
+    },
+  });
+
   const chosenWeekIndex = useMemo(() => Math.max(0, candidateWeeks.indexOf(weekStart)), [candidateWeeks, weekStart]);
 
   // Per-week completeness summary (used to badge tabs in the selector)
@@ -191,6 +233,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
 
   // Registrations
   const leagueIds = sortedLeagues.map(l => l.id);
+  const leagueCodes = useMemo(
+    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
+    [sortedLeagues],
+  );
+
   const { data: registrations = [] } = useQuery<RegRow[]>({
     queryKey: ["club-regs", leagueIds.join(",")],
     queryFn: async () => {
@@ -204,13 +251,76 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
     enabled: leagueIds.length > 0,
   });
 
+  const { data: previousFixtures = [] } = useQuery<FixtureLite[]>({
+    queryKey: ["previous-fixtures-by-code", leagueCodes.join(","), previousFixtureRange.start, previousFixtureRange.end],
+    queryFn: async () => {
+      if (leagueCodes.length === 0) return [];
+      const { data, error } = await fromExt("platform_league_fixtures")
+        .select("id, fixture_date, venue_name, home_team_code, away_team_code")
+        .gte("fixture_date", previousFixtureRange.start)
+        .lt("fixture_date", previousFixtureRange.end)
+        .or(leagueCodes.map(c => `home_team_code.eq.${c},away_team_code.eq.${c}`).join(","));
+      if (error) throw error;
+      return (data || []) as FixtureLite[];
+    },
+    enabled: leagueCodes.length > 0,
+  });
+
+  const previousFixtureIds = useMemo(() => previousFixtures.map(f => f.id), [previousFixtures]);
+
+  const { data: previousMatchResults = [] } = useQuery<PreviousMatchResultRow[]>({
+    queryKey: ["previous-match-results", previousFixtureIds.join(",")],
+    queryFn: async () => {
+      if (previousFixtureIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("league_match_results" as any)
+        .select("fixture_id, position, home_player_code, away_player_code")
+        .in("fixture_id", previousFixtureIds);
+      if (error) throw error;
+      return (data as unknown as PreviousMatchResultRow[]) || [];
+    },
+    enabled: previousFixtureIds.length > 0,
+  });
+
+  const previousPlayedRows = useMemo<PlayedLeagueRow[]>(() => {
+    if (previousFixtures.length === 0 || previousMatchResults.length === 0) return [];
+    const leagueByCode = new Map<string, string>();
+    for (const lg of sortedLeagues) {
+      if (lg.code) leagueByCode.set(lg.code.toUpperCase(), lg.id);
+    }
+    const memberByLeagueNumber = new Map<string, string>();
+    for (const r of registrations) {
+      const number = (r.league_association_number || r.ssa_number || "").toString().trim().toUpperCase();
+      if (number && !memberByLeagueNumber.has(number)) memberByLeagueNumber.set(number, r.club_member_id);
+    }
+    const fixtureById = new Map(previousFixtures.map(f => [f.id, f]));
+    const rows: PlayedLeagueRow[] = [];
+
+    for (const result of previousMatchResults) {
+      const fixture = fixtureById.get(result.fixture_id);
+      if (!fixture) continue;
+      const sides: Array<{ playerCode: string | null; teamCode: string }> = [
+        { playerCode: result.home_player_code, teamCode: fixture.home_team_code },
+        { playerCode: result.away_player_code, teamCode: fixture.away_team_code },
+      ];
+      for (const side of sides) {
+        const leagueId = leagueByCode.get((side.teamCode || "").toUpperCase());
+        const memberId = memberByLeagueNumber.get((side.playerCode || "").trim().toUpperCase());
+        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId });
+      }
+    }
+    return rows;
+  }, [previousFixtures, previousMatchResults, registrations, sortedLeagues]);
+
   // Members
   const memberIds = useMemo(() => {
     const ids = new Set<string>();
     registrations.forEach(r => ids.add(r.club_member_id));
+    previousWeekLineups.forEach(l => ids.add(l.club_member_id));
+    previousPlayedRows.forEach(r => ids.add(r.club_member_id));
     leagues.forEach(l => { if (l.captain_member_id) ids.add(l.captain_member_id); });
     return Array.from(ids);
-  }, [registrations, leagues]);
+  }, [registrations, previousWeekLineups, previousPlayedRows, leagues]);
 
   const { data: members = [] } = useQuery<(MemberLite & { club_member_number?: string | null })[]>({
     queryKey: ["fill-members", memberIds.join(",")],
@@ -336,11 +446,6 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
   const availableSet = useMemo(() => new Set(availableRows.map(r => r.club_member_id)), [availableRows]);
 
   // Next upcoming fixture per league code
-  const leagueCodes = useMemo(
-    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
-    [sortedLeagues],
-  );
-  
   const { data: fixtures = [] } = useQuery<FixtureLite[]>({
     queryKey: ["next-fixtures-by-code", leagueCodes.join(","), fixtureRange.start, fixtureRange.end],
     queryFn: async () => {
@@ -393,6 +498,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+      qc.invalidateQueries({ queryKey: ["lwl-previous", clubId] });
     },
     onError: (e: any) => toast.error(e.message || "Failed to assign position"),
   });
@@ -407,7 +513,10 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
         .eq("club_member_id", memberId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+      qc.invalidateQueries({ queryKey: ["lwl-previous", clubId] });
+    },
   });
 
   const setStatusMut = useMutation({
@@ -459,6 +568,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       qc.invalidateQueries({ queryKey: ["lwu", clubId, weekStart] });
       qc.invalidateQueries({ queryKey: ["lwa", clubId, weekStart] });
       qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+      qc.invalidateQueries({ queryKey: ["lwl-previous", clubId] });
     },
     onError: (e: any) => toast.error(e.message || "Failed to mark unavailable"),
   });
@@ -540,29 +650,75 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
     return m;
   }, [registrations, sortedLeagues]);
 
-  // Build bench for a league = registered players + cascaded-in - already-in-position - unavailable
+  const effectiveHomeLeagueByMember = useMemo(() => {
+    const m = new Map(homeLeagueByMember);
+    const leagueIdsInScope = new Set(sortedLeagues.map(l => l.id));
+    const orderById = new Map<string, number>();
+    for (const l of sortedLeagues) orderById.set(l.id, leagueOrder(l.name, l.code));
+    const played = new Map<string, { leagueId: string; order: number }>();
+
+    for (const row of previousWeekLineups) {
+      if (!leagueIdsInScope.has(row.league_id)) continue;
+      const ord = orderById.get(row.league_id) ?? 99;
+      const current = played.get(row.club_member_id);
+      // One weekly base team per player; if duplicate rows exist, prefer the
+      // strongest league they actually played in last week.
+      if (!current || ord < current.order) played.set(row.club_member_id, { leagueId: row.league_id, order: ord });
+    }
+
+    for (const row of previousPlayedRows) {
+      if (!leagueIdsInScope.has(row.league_id)) continue;
+      const ord = orderById.get(row.league_id) ?? 99;
+      const current = played.get(row.club_member_id);
+      if (!current || ord < current.order) played.set(row.club_member_id, { leagueId: row.league_id, order: ord });
+    }
+
+    for (const [memberId, playedLeague] of played) m.set(memberId, playedLeague.leagueId);
+    return m;
+  }, [homeLeagueByMember, previousWeekLineups, previousPlayedRows, sortedLeagues]);
+
+  // Build bench for a league = weekly base players + cascaded-in - already-in-position - unavailable
   const benchForLeague = (lg: LeagueRow, listForOrdering: LeagueRow[]) => {
     const idx = listForOrdering.findIndex(l => l.id === lg.id);
     const prevLeague = idx > 0 ? listForOrdering[idx - 1] : null;
 
-    // Only include players whose HOME league is this one. Players registered to a
-    // stronger team (e.g. CSI001) but whose home is a weaker team (e.g. CSI006) stay in
-    // the weaker team's pool by default — captains can still pull them up via cascade.
-    const baseRegs = registrations.filter(
-      r => r.league_id === lg.id && (homeLeagueByMember.get(r.club_member_id) ?? r.league_id) === lg.id,
-    );
-    const basePool = baseRegs.map(r => ({
-      memberId: r.club_member_id,
-      rank: r.player_rank,
+    // Only include players whose EFFECTIVE weekly home league is this one.
+    // Effective home is refreshed from last week's actual lineup first, then
+    // falls back to static registrations. This prevents duplicates while still
+    // carrying promoted/substitute players into the correct next-week pool.
+    const baseMemberIds = new Set<string>();
+    for (const r of registrations) {
+      if ((effectiveHomeLeagueByMember.get(r.club_member_id) ?? r.league_id) === lg.id) {
+        baseMemberIds.add(r.club_member_id);
+      }
+    }
+    for (const row of previousWeekLineups) {
+      if ((effectiveHomeLeagueByMember.get(row.club_member_id) ?? row.league_id) === lg.id) {
+        baseMemberIds.add(row.club_member_id);
+      }
+    }
+    for (const row of previousPlayedRows) {
+      if ((effectiveHomeLeagueByMember.get(row.club_member_id) ?? row.league_id) === lg.id) {
+        baseMemberIds.add(row.club_member_id);
+      }
+    }
+    const basePool = Array.from(baseMemberIds).map(memberId => {
+      const directReg = registrations.find(r => r.club_member_id === memberId && r.league_id === lg.id);
+      const homeReg = registrations.find(r => r.club_member_id === memberId && r.league_id === homeLeagueByMember.get(memberId));
+      const anyReg = registrations.find(r => r.club_member_id === memberId);
+      return {
+      memberId,
+      rank: directReg?.player_rank ?? homeReg?.player_rank ?? anyReg?.player_rank ?? null,
       isPulled: false,
       isCascaded: false,
       cascadedFromCode: null as string | null,
-    }));
+      };
+    });
 
     const cascaded = prevLeague
       ? statuses
           .filter(s => s.league_id === prevLeague.id && s.status === "excess")
-          .filter(s => !baseRegs.some(r => r.club_member_id === s.club_member_id))
+          .filter(s => !baseMemberIds.has(s.club_member_id))
           .map(s => ({
             memberId: s.club_member_id,
             rank: null,
@@ -580,7 +736,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
     const pulledLadies = isMensLeague(lg.name)
       ? statuses
           .filter(s => s.league_id === lg.id && ladiesPoolMemberIds.has(s.club_member_id))
-          .filter(s => !baseRegs.some(r => r.club_member_id === s.club_member_id))
+          .filter(s => !baseMemberIds.has(s.club_member_id))
           .map(s => ({
             memberId: s.club_member_id,
             rank: null,

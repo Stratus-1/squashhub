@@ -96,7 +96,7 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const REST_DURATION = 90; // seconds
+const REST_DURATION = 120; // seconds (90s warm-up + per-rules; using 2 minutes between games)
 
 interface Props {
   config: MarkerConfig;
@@ -129,6 +129,11 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const [history, setHistory] = useState<PointEvent[]>(persisted?.history ?? []);
   const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
+
+  // Toss: must be decided before first point. If we have any history/games, toss was already decided.
+  const [tossDecided, setTossDecided] = useState<boolean>(
+    !!persisted && (persisted.history.length > 0 || persisted.completedGames.length > 0 || persisted.scoreA > 0 || persisted.scoreB > 0)
+  );
 
   // Rest timer between games
   const [resting, setResting] = useState(false);
@@ -223,13 +228,13 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   }, []);
 
   const toggleServeSide = useCallback(() => {
-    if (matchOver || resting) return;
+    if (matchOver || resting || !tossDecided) return;
     setServeSide((s) => (s === "R" ? "L" : "R"));
-  }, [matchOver, resting]);
+  }, [matchOver, resting, tossDecided]);
 
   const awardPoint = useCallback(
     (scorer: "a" | "b") => {
-      if (matchOver || resting) return;
+      if (matchOver || resting || !tossDecided) return;
 
       // English scoring: only server can score
       if (isEnglish && scorer !== server) {
@@ -403,6 +408,54 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         onCourtChange={cast.setCourtNumber}
       />
 
+      {/* Toss overlay - must be set before the first point */}
+      {!tossDecided && !matchOver && (
+        <Card className="p-4 border-primary/30 bg-primary/5">
+          <p className="text-sm font-heading font-bold text-center mb-1">Who won the toss?</p>
+          <p className="text-xs text-center text-muted-foreground mb-3">
+            The toss winner chooses to serve and which box (Right or Left).
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <Button
+              size="sm"
+              variant={server === "a" ? "default" : "outline"}
+              onClick={() => setServer("a")}
+              className="truncate"
+            >
+              {playerAName} serves
+            </Button>
+            <Button
+              size="sm"
+              variant={server === "b" ? "default" : "outline"}
+              onClick={() => setServer("b")}
+              className="truncate"
+            >
+              {playerBName} serves
+            </Button>
+          </div>
+          <p className="text-xs text-center text-muted-foreground mb-2">Serve from which box?</p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <Button
+              size="sm"
+              variant={serveSide === "R" ? "default" : "outline"}
+              onClick={() => setServeSide("R")}
+            >
+              Right (R)
+            </Button>
+            <Button
+              size="sm"
+              variant={serveSide === "L" ? "default" : "outline"}
+              onClick={() => setServeSide("L")}
+            >
+              Left (L)
+            </Button>
+          </div>
+          <Button size="sm" className="w-full" onClick={() => setTossDecided(true)}>
+            Start match
+          </Button>
+        </Card>
+      )}
+
       {/* Rest timer overlay */}
       {resting && (
         <Card className="p-4 bg-accent/10 border-accent/30">
@@ -440,12 +493,12 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         {/* Player A */}
         <button
           type="button"
-          disabled={matchOver || resting}
+          disabled={matchOver || resting || !tossDecided}
           className={cn(
             "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
             "bg-primary text-primary-foreground",
             matchOver && matchWinner === "a" && "ring-4 ring-[hsl(var(--win))]",
-            (matchOver || resting) && "opacity-80 cursor-default"
+            (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("a")}
         >
@@ -472,12 +525,12 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         {/* Player B */}
         <button
           type="button"
-          disabled={matchOver || resting}
+          disabled={matchOver || resting || !tossDecided}
           className={cn(
             "rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all active:scale-95 min-h-[180px] select-none",
             "bg-secondary text-secondary-foreground",
             matchOver && matchWinner === "b" && "ring-4 ring-[hsl(var(--win))]",
-            (matchOver || resting) && "opacity-80 cursor-default"
+            (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("b")}
         >

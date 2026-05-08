@@ -57,7 +57,6 @@ export default function Dashboard() {
   const hasAnyAdminAccess = isClubAdmin || myPermissions.size > 0;
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
-  const { data: challenges } = useChallenges(effectiveUserId, { memberId: myMemberId });
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");

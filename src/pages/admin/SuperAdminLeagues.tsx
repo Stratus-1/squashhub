@@ -68,7 +68,7 @@ export default function SuperAdminLeagues() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success((data as any)?.summary || "Members synced");
-      queryClient.invalidateQueries({ queryKey: ["admin-league-members", assocId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-league-members-v2", assocId] });
       queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
     } catch (e: any) {
       toast.error(e?.message || "Member sync failed");
@@ -158,7 +158,7 @@ export default function SuperAdminLeagues() {
   });
 
   const { data: membersResult } = useQuery({
-    queryKey: ["admin-league-members", activeAssociation],
+    queryKey: ["admin-league-members-v2", activeAssociation],
     queryFn: async () => {
       const pageSize = 1000;
       let from = 0;
@@ -331,7 +331,7 @@ export default function SuperAdminLeagues() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-2xl font-bold">{membersTotal}</p>
-                <p className="text-xs text-muted-foreground">{uniqueClubs.length} clubs</p>
+                <p className="text-xs text-muted-foreground">{uniqueClubs.length} clubs · {members?.length ?? 0} loaded</p>
                 {activeAssociationDetails?.external_source ? (
                   <Button
                     size="sm"

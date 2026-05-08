@@ -221,14 +221,18 @@ function RoundCard({
   });
 
   const [selectedTeams, setSelectedTeams] = useState<string[]>(teams.map((t) => t.code));
-  // Sync selection when teams load asynchronously after mount
-  useEffect(() => {
-    if (teams.length && !selectedTeams.length) {
-      setSelectedTeams(teams.map((t) => t.code));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teams.length]);
   const [draft, setDraft] = useState<EditableFixture[] | null>(null);
+  // Keep the team checkboxes aligned with saved fixtures when viewing a round.
+  // If a team was unticked before saving, it must stay unticked on reopen.
+  useEffect(() => {
+    if (!open || !teams.length || draft || fixtures === undefined) return;
+    const savedCodes = new Set<string>();
+    for (const fixture of fixtures) {
+      if (fixture.home_team_code && fixture.home_team_code !== "__BYE__") savedCodes.add(fixture.home_team_code);
+      if (fixture.away_team_code && fixture.away_team_code !== "__BYE__") savedCodes.add(fixture.away_team_code);
+    }
+    setSelectedTeams(savedCodes.size ? teams.filter((t) => savedCodes.has(t.code)).map((t) => t.code) : teams.map((t) => t.code));
+  }, [open, fixtures, teams, draft]);
   const list = draft ?? fixtures ?? [];
 
   const autoDistribute = () => {

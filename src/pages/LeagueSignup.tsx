@@ -39,8 +39,13 @@ export default function LeagueSignup() {
   const presetClub = params.get("club") || null;
   const presetNsa = params.get("nsa") || "";
 
-  // Step 1 — find player
-  const [nsaInput, setNsaInput] = useState(presetNsa);
+  // Step 1 — find player. Always keep an "NSF" prefix so members only type their digits.
+  const ensureNsfPrefix = (v: string) => {
+    const cleaned = (v || "").toUpperCase().replace(/\s+/g, "");
+    const digits = cleaned.replace(/^NSF/, "").replace(/[^0-9]/g, "");
+    return `NSF${digits}`;
+  };
+  const [nsaInput, setNsaInput] = useState(ensureNsfPrefix(presetNsa));
   const [nameQuery, setNameQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);

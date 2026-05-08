@@ -1149,8 +1149,8 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           seen.add(p.club_member_id);
           return true;
         });
+        const targetIsReserves = /reserves?/i.test(league.name);
         if (uniquePlayers.length > 0) {
-          const targetIsReserves = /reserves?/i.test(league.name);
           const { error } = await fromExt("member_league_registrations").upsert(
             uniquePlayers.map((p, i) => ({
               club_member_id: p.club_member_id,
@@ -1167,6 +1167,14 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             { onConflict: "club_member_id,league_id", ignoreDuplicates: false }
           );
           if (error) throw error;
+        }
+        // Keep leagues.captain_member_id in sync with the saved roster so a
+        // former captain can't keep haunting the league as a phantom player.
+        if (!targetIsReserves) {
+          const newCaptain = uniquePlayers.find(p => p.is_captain)?.club_member_id || null;
+          await fromExt("leagues")
+            .update({ captain_member_id: newCaptain })
+            .eq("id", league.id);
         }
       }
       // Refresh snapshot so a second Save in the same session is a no-op.

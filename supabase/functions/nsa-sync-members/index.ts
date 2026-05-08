@@ -214,7 +214,146 @@ Deno.serve(async (req) => {
     if (error) errors.push({ chunk_start: i, error: error.message });
   }
 
-  const summary = `Synced ${allRows.length} players from ${teamRosters.size} teams · ${inserted} new · ${updated} updated · ${unchanged} unchanged${errors.length ? ` · ${errors.length} errors` : ""}`;
+  // 6. Mark previously-synced platform members not in this roster as INACTIVE.
+  const rosterCodes = new Set(rowsByCode.keys());
+  const staleCodes = [...existingByCode.keys()].filter(
+    (c) => !rosterCodes.has(c) && (existingByCode.get(c)?.user_state || "ACTIVE") !== "INACTIVE",
+  );
+  let platformDeactivated = 0;
+  if (staleCodes.length > 0) {
+    for (let i = 0; i < staleCodes.length; i += CHUNK) {
+      const chunk = staleCodes.slice(i, i + CHUNK);
+      const { error, count } = await supabase
+        .from("platform_league_members")
+        .update({ user_state: "INACTIVE", updated_at: new Date().toISOString() }, { count: "exact" })
+        .eq("association_id", associationId)
+        .in("user_code", chunk);
+      if (error) errors.push({ stage: "platform_inactive", error: error.message });
+      else platformDeactivated += count ?? chunk.length;
+    }
+  }
+
+  // 7. Find local club affiliations linked to this NSA association and
+  // diff them against the synced roster: activate matches, deactivate misses.
+  // Also auto-allocate matched club_members into local league teams.
+  const { data: linkedAssocs } = await supabase
+    .from("league_associations")
+    .select("id, club_id, external_club_id")
+    .eq("platform_association_id", associationId);
+
+  const localAssocIds = (linkedAssocs ?? []).map((r: any) => r.id);
+  const clubIdByLocalAssoc = new Map<string, string>();
+  const clubIdByNsaClubId = new Map<string, string>();
+  for (const r of linkedAssocs ?? []) {
+    clubIdByLocalAssoc.set(r.id, r.club_id);
+    if (r.external_club_id) clubIdByNsaClubId.set(String(r.external_club_id), r.club_id);
+  }
+
+  let affActivated = 0;
+  let affDeactivated = 0;
+  let allocated = 0;
+  let alreadyAllocated = 0;
+  let linkedMembers = 0;
+
+  if (localAssocIds.length > 0) {
+    const { data: affs } = await supabase
+      .from("member_association_affiliations")
+      .select("id, club_member_id, association_id, league_association_number, active")
+      .in("association_id", localAssocIds);
+
+    const affList = affs ?? [];
+    const toActivate: string[] = [];
+    const toDeactivate: string[] = [];
+    // user_code -> { club_member_id, club_id }
+    const matchedMembers = new Map<string, { club_member_id: string; club_id: string }>();
+
+    for (const a of affList) {
+      const num = String(a.league_association_number || "").trim().toUpperCase();
+      if (num && rosterCodes.has(num)) {
+        if (!a.active) toActivate.push(a.id);
+        const club_id = clubIdByLocalAssoc.get(a.association_id);
+        if (club_id) matchedMembers.set(num, { club_member_id: a.club_member_id, club_id });
+      } else if (a.active) {
+        toDeactivate.push(a.id);
+      }
+    }
+    linkedMembers = matchedMembers.size;
+
+    if (toActivate.length > 0) {
+      const { error, count } = await supabase
+        .from("member_association_affiliations")
+        .update({ active: true, deactivated_at: null, updated_at: new Date().toISOString() }, { count: "exact" })
+        .in("id", toActivate);
+      if (error) errors.push({ stage: "aff_activate", error: error.message });
+      else affActivated = count ?? toActivate.length;
+    }
+    if (toDeactivate.length > 0) {
+      const { error, count } = await supabase
+        .from("member_association_affiliations")
+        .update({ active: false, deactivated_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { count: "exact" })
+        .in("id", toDeactivate);
+      if (error) errors.push({ stage: "aff_deactivate", error: error.message });
+      else affDeactivated = count ?? toDeactivate.length;
+    }
+
+    // Auto-allocate matched members to local league teams (by nsa_team_id)
+    if (matchedMembers.size > 0) {
+      const allClubIds = [...new Set([...matchedMembers.values()].map((m) => m.club_id))];
+      const { data: leagueRows } = await supabase
+        .from("leagues")
+        .select("id, club_id, nsa_team_id")
+        .in("club_id", allClubIds)
+        .not("nsa_team_id", "is", null);
+      // key: club_id|nsa_team_id -> league_id
+      const leagueByKey = new Map<string, string>();
+      for (const l of leagueRows ?? []) {
+        if (l.nsa_team_id) leagueByKey.set(`${l.club_id}|${String(l.nsa_team_id)}`, l.id);
+      }
+
+      // Pre-load existing registrations to count new vs already-allocated
+      const memberIds = [...matchedMembers.values()].map((m) => m.club_member_id);
+      const { data: existingRegs } = await supabase
+        .from("member_league_registrations")
+        .select("club_member_id, league_id")
+        .in("club_member_id", memberIds);
+      const existingRegSet = new Set(
+        (existingRegs ?? []).map((r: any) => `${r.club_member_id}|${r.league_id}`),
+      );
+
+      const regsToInsert: any[] = [];
+      for (const [code, m] of matchedMembers) {
+        const tid = teamIdByCode.get(code);
+        if (!tid) continue;
+        const league_id = leagueByKey.get(`${m.club_id}|${tid}`);
+        if (!league_id) continue;
+        const key = `${m.club_member_id}|${league_id}`;
+        if (existingRegSet.has(key)) {
+          alreadyAllocated += 1;
+          continue;
+        }
+        regsToInsert.push({ club_member_id: m.club_member_id, league_id });
+        existingRegSet.add(key);
+      }
+      if (regsToInsert.length > 0) {
+        for (let i = 0; i < regsToInsert.length; i += CHUNK) {
+          const chunk = regsToInsert.slice(i, i + CHUNK);
+          const { error, count } = await supabase
+            .from("member_league_registrations")
+            .upsert(chunk, { onConflict: "club_member_id,league_id", ignoreDuplicates: true, count: "exact" });
+          if (error) errors.push({ stage: "allocate", error: error.message });
+          else allocated += count ?? chunk.length;
+        }
+      }
+    }
+  }
+
+  const summary =
+    `${allRows.length} players · ${teamRosters.size} teams · ` +
+    `${inserted} new · ${updated} updated · ${unchanged} unchanged · ` +
+    `${platformDeactivated} marked inactive · ` +
+    `${linkedMembers} linked to club members (${affActivated} re-activated, ${affDeactivated} deactivated) · ` +
+    `${allocated} allocated to teams${alreadyAllocated ? ` (${alreadyAllocated} already allocated)` : ""}` +
+    `${errors.length ? ` · ${errors.length} errors` : ""}`;
 
   await supabase
     .from("platform_league_associations")
@@ -233,6 +372,12 @@ Deno.serve(async (req) => {
     inserted,
     updated,
     unchanged,
+    platform_deactivated: platformDeactivated,
+    linked_members: linkedMembers,
+    aff_activated: affActivated,
+    aff_deactivated: affDeactivated,
+    allocated,
+    already_allocated: alreadyAllocated,
     errors,
     summary,
   });

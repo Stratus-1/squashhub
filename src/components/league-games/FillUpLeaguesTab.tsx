@@ -503,12 +503,54 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
 
   const canEditLeague = (lg: LeagueRow): boolean => isCaptainOfLeague(lg) || !!amIAdmin;
 
+  // For members registered in multiple leagues within the same gender group, pick a
+  // single "home" league = the WEAKEST team they're registered to (highest league number).
+  // Reserves can sub UP into stronger leagues, but they don't live there permanently —
+  // they only appear in the higher league's Available pool when explicitly cascaded/pulled in.
+  // This means re-marking a player available returns them to their home team (e.g. CSI006),
+  // not to whichever league happens to be first.
+  const homeLeagueByMember = useMemo(() => {
+    const m = new Map<string, string>(); // memberId -> leagueId
+    const orderById = new Map<string, number>();
+    for (const l of sortedLeagues) orderById.set(l.id, leagueOrder(l.name, l.code));
+    const groupOf = (lg: LeagueRow) =>
+      isMensLeague(lg.name) ? "m" : isLadiesLeague(lg.name) ? "f" : "x";
+    // memberId -> group -> { leagueId, order }
+    const best = new Map<string, Map<string, { leagueId: string; order: number }>>();
+    for (const r of registrations) {
+      const lg = sortedLeagues.find(l => l.id === r.league_id);
+      if (!lg) continue;
+      const g = groupOf(lg);
+      const ord = orderById.get(lg.id) ?? 99;
+      if (!best.has(r.club_member_id)) best.set(r.club_member_id, new Map());
+      const inner = best.get(r.club_member_id)!;
+      const cur = inner.get(g);
+      // Higher order number = weaker team = home
+      if (!cur || ord > cur.order) inner.set(g, { leagueId: lg.id, order: ord });
+    }
+    for (const [mid, inner] of best) {
+      // If multiple gender groups, pick any (members shouldn't normally span groups);
+      // home is the highest-order across all to be safe.
+      let chosen: { leagueId: string; order: number } | null = null;
+      for (const v of inner.values()) {
+        if (!chosen || v.order > chosen.order) chosen = v;
+      }
+      if (chosen) m.set(mid, chosen.leagueId);
+    }
+    return m;
+  }, [registrations, sortedLeagues]);
+
   // Build bench for a league = registered players + cascaded-in - already-in-position - unavailable
   const benchForLeague = (lg: LeagueRow, listForOrdering: LeagueRow[]) => {
     const idx = listForOrdering.findIndex(l => l.id === lg.id);
     const prevLeague = idx > 0 ? listForOrdering[idx - 1] : null;
 
-    const baseRegs = registrations.filter(r => r.league_id === lg.id);
+    // Only include players whose HOME league is this one. Players registered to a
+    // stronger team (e.g. CSI001) but whose home is a weaker team (e.g. CSI006) stay in
+    // the weaker team's pool by default — captains can still pull them up via cascade.
+    const baseRegs = registrations.filter(
+      r => r.league_id === lg.id && (homeLeagueByMember.get(r.club_member_id) ?? r.league_id) === lg.id,
+    );
     const basePool = baseRegs.map(r => ({
       memberId: r.club_member_id,
       rank: r.player_rank,

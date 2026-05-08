@@ -166,10 +166,11 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         sessionKey,
         scoreA, scoreB, gamesA, gamesB, completedGames,
         server, serveSide, history, matchOver, matchWinner, elapsed,
+        tossDecided,
       };
       localStorage.setItem(MARKER_STATE_KEY, JSON.stringify(snapshot));
     } catch {}
-  }, [scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide, history, matchOver, matchWinner, elapsed]);
+  }, [scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide, history, matchOver, matchWinner, elapsed, tossDecided]);
 
   // Pause match timer during rest
   const pauseMatchTimer = useCallback(() => {

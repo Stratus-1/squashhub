@@ -29,7 +29,7 @@ export default function SuperAdminUsers() {
   const { data: roles = [] } = useQuery({
     queryKey: ["sa-all-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("user_id, role");
+      const { data, error } = await supabase.from("user_roles").select("user_id, role").range(0, 49999);
       if (error) throw error;
       return data || [];
     },

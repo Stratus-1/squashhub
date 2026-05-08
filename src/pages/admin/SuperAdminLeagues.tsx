@@ -114,8 +114,12 @@ export default function SuperAdminLeagues() {
     },
   });
 
-  // Auto-select first association
-  const activeAssociation = selectedAssociation || associations?.[0]?.id || null;
+  // Auto-select first association — prefer one linked to an external source (e.g. NSA)
+  const activeAssociation =
+    selectedAssociation ||
+    associations?.find((a: any) => a.external_source)?.id ||
+    associations?.[0]?.id ||
+    null;
   const activeAssociationName = associations?.find((a) => a.id === activeAssociation)?.name || "";
 
   const { data: fixtures } = useQuery({

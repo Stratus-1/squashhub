@@ -157,20 +157,33 @@ export default function SuperAdminLeagues() {
     enabled: !!activeAssociation,
   });
 
-  const { data: members } = useQuery({
+  const { data: membersResult } = useQuery({
     queryKey: ["admin-league-members", activeAssociation],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("platform_league_members" as any)
-        .select("*")
-        .eq("association_id", activeAssociation!)
-        .order("surname")
-        .range(0, 49999);
-      if (error) throw error;
-      return data as any[];
+      const pageSize = 1000;
+      let from = 0;
+      const all: any[] = [];
+      // Paginate to bypass the 1000-row PostgREST cap
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error, count } = await supabase
+          .from("platform_league_members" as any)
+          .select("*", { count: "exact" })
+          .eq("association_id", activeAssociation!)
+          .order("surname")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const rows = (data as any[]) || [];
+        all.push(...rows);
+        if (rows.length < pageSize) return { rows: all, total: count ?? all.length };
+        from += pageSize;
+        if (from > 100000) return { rows: all, total: count ?? all.length };
+      }
     },
     enabled: !!activeAssociation,
   });
+  const members = membersResult?.rows;
+  const membersTotal = membersResult?.total ?? members?.length ?? 0;
 
   const filteredFixtures = (fixtures || []).filter((f) =>
     !fixtureSearch ||

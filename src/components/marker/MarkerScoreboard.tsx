@@ -96,7 +96,7 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const REST_DURATION = 90; // seconds
+const REST_DURATION = 120; // seconds (90s warm-up + per-rules; using 2 minutes between games)
 
 interface Props {
   config: MarkerConfig;

@@ -384,11 +384,6 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
   const availableSet = useMemo(() => new Set(availableRows.map(r => r.club_member_id)), [availableRows]);
 
   // Next upcoming fixture per league code
-  const leagueCodes = useMemo(
-    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
-    [sortedLeagues],
-  );
-  
   const { data: fixtures = [] } = useQuery<FixtureLite[]>({
     queryKey: ["next-fixtures-by-code", leagueCodes.join(","), fixtureRange.start, fixtureRange.end],
     queryFn: async () => {

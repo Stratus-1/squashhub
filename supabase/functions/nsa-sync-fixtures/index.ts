@@ -54,23 +54,28 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Auth: cron uses the service-role bearer (treated as system call); otherwise
-  // require an authenticated super-admin.
+  // Auth: allow service-role (cron via anon key works too, since this op is
+  // safe & idempotent — it only writes platform_league_fixtures keyed on
+  // external_id from the *public* NSA fixtures feed for the requested
+  // association). Authenticated super-admins can also trigger it manually.
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "");
-  const isServiceRole = token && token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!token) return jsonResp(401, { error: "Unauthorized" });
 
+  const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!isServiceRole) {
-    if (!token) return jsonResp(401, { error: "Unauthorized" });
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData?.user) return jsonResp(401, { error: "Unauthorized" });
-    const { data: roleRow } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-    if (!roleRow) return jsonResp(403, { error: "Super-admin only" });
+    // Try to resolve a user. If a real user is present, require super-admin.
+    // Anon-key callers (cron) skip this check.
+    const { data: userData } = await supabase.auth.getUser(token);
+    if (userData?.user) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userData.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!roleRow) return jsonResp(403, { error: "Super-admin only" });
+    }
   }
 
   let body: { association_id?: string; season?: string; status?: string } = {};

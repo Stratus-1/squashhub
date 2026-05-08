@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { toast } from "sonner";
 
 export type RoundDraft = {
   id?: string;
@@ -285,12 +286,19 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            disabled={saving || datesInvalid || !draft.name || !draft.round_date || !draft.end_date || !draft.court_ids.length}
+            disabled={saving}
             onClick={async () => {
+              if (datesInvalid) { toast.error("End date must be on or after start date."); return; }
+              if (!draft.name?.trim()) { toast.error("Please enter a round name."); return; }
+              if (!draft.round_date || !draft.end_date) { toast.error("Please pick start and end dates."); return; }
+              if (!draft.venue_name?.trim() || draft.venue_name === "__custom__") { toast.error("Please select a venue."); return; }
+              if (!draft.court_ids.length) { toast.error("Please select at least one court."); return; }
               setSaving(true);
               try {
                 await onSave(draft);
                 onOpenChange(false);
+              } catch (e: any) {
+                toast.error(e?.message ?? "Could not save round");
               } finally {
                 setSaving(false);
               }

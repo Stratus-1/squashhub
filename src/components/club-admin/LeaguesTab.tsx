@@ -1139,26 +1139,32 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       for (const league of changedLeagues) {
         // Only delete the rows we are about to replace — and only for leagues
         // that actually changed in this session.
-        await fromExt("member_league_registrations").delete().eq("league_id", league.id);
+        const { error: delErr } = await fromExt("member_league_registrations").delete().eq("league_id", league.id);
+        if (delErr) throw delErr;
         const players = leagueData[league.id] || [];
-        if (players.length > 0) {
+        // Dedupe by club_member_id — a member can only be registered once per league.
+        const seen = new Set<string>();
+        const uniquePlayers = players.filter(p => {
+          if (!p.club_member_id || seen.has(p.club_member_id)) return false;
+          seen.add(p.club_member_id);
+          return true;
+        });
+        if (uniquePlayers.length > 0) {
           const targetIsReserves = /reserves?/i.test(league.name);
-          const { error } = await fromExt("member_league_registrations").insert(
-            players.map((p, i) => ({
+          const { error } = await fromExt("member_league_registrations").upsert(
+            uniquePlayers.map((p, i) => ({
               club_member_id: p.club_member_id,
               league_id: league.id,
               player_rank: i + 1,
               is_captain: targetIsReserves ? false : p.is_captain,
               is_reserve: targetIsReserves,
               reserve_order: targetIsReserves ? i + 1 : null,
-              // Always derive from the permanent affiliation so this stays
-              // in sync with the NSF/LS number on the player's profile.
-              // Falls back to whatever was already on the row (legacy).
               league_association_number:
                 affiliationNumberByMember[p.club_member_id] ||
                 p.league_association_number ||
                 null,
-            }))
+            })),
+            { onConflict: "club_member_id,league_id", ignoreDuplicates: false }
           );
           if (error) throw error;
         }

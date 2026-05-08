@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { fromExt } from "@/lib/supabase-ext";
 
-import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
 import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
-import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
+import { Calendar, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";

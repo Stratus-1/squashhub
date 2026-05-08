@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
-import { useNsaFixtures, type NsaFixture } from "@/hooks/use-nsa";
+// NSA fixtures are now read from the DB (synced via nsa-sync-fixtures edge fn) — no live hook here.
 import { toast } from "sonner";
 
 type Props = {

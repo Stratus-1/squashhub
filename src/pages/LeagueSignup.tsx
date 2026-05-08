@@ -366,9 +366,74 @@ export default function LeagueSignup() {
 
           <div className="text-center text-xs text-muted-foreground pt-2 border-t">
             Already have an account?{" "}
-            <Link to={presetClub ? `/c/${presetClub}` : "/"} className="text-primary underline">Sign in</Link>
+            {presetClub ? (
+              <Link to={`/c/${presetClub}`} className="text-primary underline">Sign in</Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSignInOpen(true)}
+                className="text-primary underline"
+              >
+                Sign in
+              </button>
+            )}
           </div>
         </Card>
+
+        <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Pick your club to sign in</DialogTitle>
+              <DialogDescription>
+                Choose the NSA club you registered under. We'll take you to its sign-in page.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+              <Input
+                autoFocus
+                value={clubFilter}
+                onChange={(e) => setClubFilter(e.target.value)}
+                placeholder="Search club name…"
+                className="pl-10"
+              />
+            </div>
+            <div className="border rounded-md divide-y max-h-80 overflow-y-auto">
+              {loadingClubs && (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> Loading clubs…
+                </div>
+              )}
+              {!loadingClubs && filteredClubs.length === 0 && (
+                <div className="p-4 text-center text-sm text-muted-foreground">No clubs match.</div>
+              )}
+              {filteredClubs.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setSignInOpen(false);
+                    if (c.subdomain) navigate(`/c/${c.subdomain}`);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted text-left"
+                >
+                  {c.logo_url ? (
+                    <img src={c.logo_url} alt="" className="w-8 h-8 rounded object-cover bg-muted" />
+                  ) : (
+                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                      {c.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{c.name}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">/c/{c.subdomain}</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card className="p-6 md:p-8 text-center space-y-4 border-primary/30 bg-primary/5">
           <h2 className="text-2xl md:text-3xl font-bold font-heading text-primary">

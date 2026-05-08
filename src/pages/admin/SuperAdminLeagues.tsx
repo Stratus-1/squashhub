@@ -19,9 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Calendar, MapPin, Users, Trophy, List, Pencil, Trash2 } from "lucide-react";
+import { Search, Calendar, MapPin, Users, Trophy, List, Pencil, Trash2, AlertTriangle, ScrollText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
+import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
+import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
 
 export default function SuperAdminLeagues() {
   const queryClient = useQueryClient();
@@ -230,6 +232,12 @@ export default function SuperAdminLeagues() {
               <TabsTrigger value="members" className="gap-1.5">
                 <Users className="h-4 w-4" /> Members
               </TabsTrigger>
+              <TabsTrigger value="penalties" className="gap-1.5">
+                <AlertTriangle className="h-4 w-4" /> Penalties
+              </TabsTrigger>
+              <TabsTrigger value="rules" className="gap-1.5">
+                <ScrollText className="h-4 w-4" /> Rules
+              </TabsTrigger>
             </TabsList>
 
             {/* Fixtures Tab */}
@@ -323,6 +331,16 @@ export default function SuperAdminLeagues() {
               {filteredMembers.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">No members found</p>
               )}
+            </TabsContent>
+
+            {/* Penalties Tab */}
+            <TabsContent value="penalties" className="space-y-4">
+              {selectedAssociation && <AssociationPenaltiesTab associationId={selectedAssociation} />}
+            </TabsContent>
+
+            {/* Rules Tab */}
+            <TabsContent value="rules" className="space-y-4">
+              {selectedAssociation && <AssociationRulesTab associationId={selectedAssociation} />}
             </TabsContent>
           </Tabs>
         </>

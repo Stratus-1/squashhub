@@ -102,6 +102,67 @@ export default function AssociationRulesTab({ associationId }: Props) {
 
       <Card>
         <CardHeader className="pb-3">
+          <CardTitle className="text-base">Match points & tiebreak</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Tiebreak method</Label>
+            <Select
+              value={form.tiebreak_method ?? "games_then_points_then_share"}
+              onValueChange={(v) => set("tiebreak_method", v as LeagueRules["tiebreak_method"])}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="games_then_points_then_share">
+                  Games won → match points → share bonus if still tied
+                </SelectItem>
+                <SelectItem value="games_only">Games won only</SelectItem>
+                <SelectItem value="points_only">Total points only</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              How the winner of a tied team match is determined.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Bonus points</Label>
+            <Select
+              value={form.bonus_points_mode ?? "per_match"}
+              onValueChange={(v) => set("bonus_points_mode", v as LeagueRules["bonus_points_mode"])}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No bonus points</SelectItem>
+                <SelectItem value="per_match">Per match won</SelectItem>
+                <SelectItem value="per_game_won">Per game won</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Bonus points value</Label>
+            <Input
+              type="number" min={0} max={10}
+              value={form.bonus_points_value ?? 1}
+              onChange={(e) => set("bonus_points_value", Number(e.target.value))}
+              disabled={(form.bonus_points_mode ?? "per_match") === "none"}
+            />
+            <p className="text-xs text-muted-foreground">
+              Points awarded per {form.bonus_points_mode === "per_game_won" ? "game won" : "match won"}.
+            </p>
+          </div>
+          <div className="md:col-span-2">
+            <ToggleRow
+              label="Share bonus when tied"
+              hint="If tiebreaks can't separate teams, split bonus points evenly"
+              value={!!form.share_bonus_on_tie}
+              onChange={(v) => set("share_bonus_on_tie", v)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">Marker & officiating</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">

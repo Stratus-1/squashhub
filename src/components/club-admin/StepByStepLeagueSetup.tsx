@@ -181,30 +181,21 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     return filterByGender(opted, gender);
   }, [members, associationId, gender, allocatedIds, activeAffiliatedSet]);
 
-  // Load ladder positions for the eligible pool
-  const eligibleIds = eligiblePool.map(m => m.id);
-  const { data: laddered = [] } = useQuery({
-    queryKey: ["sbs-ladder", clubId, associationId, gender, eligibleIds.join(",")],
-    enabled: open && step >= 4 && eligibleIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await fromExt("club_members")
-        .select("id, name, gender, ladder_position")
-        .in("id", eligibleIds);
-      if (error) throw error;
-      return (data || []) as Array<{ id: string; name: string | null; gender: string | null; ladder_position: number | null }>;
-    },
-  });
-
-  // Sort eligible pool by ladder_position (nulls last), then name
+  // Sort eligible pool by ladder_position (nulls last), then name.
+  // ladder_position already comes from useClubMembers (`select *`), so we don't
+  // need a separate query — using a separate query introduced a race where the
+  // pool was briefly in role/joined_at order, causing top players to be missed
+  // when the admin proceeded to step 4 quickly.
   const sortedPool = useMemo(() => {
-    if (laddered.length === 0) return eligiblePool.map(m => ({ id: m.id, name: m.name, ladder_position: (m as any).ladder_position ?? null }));
-    return [...laddered].sort((a, b) => {
-      const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
-      const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
-      if (ap !== bp) return ap - bp;
-      return (a.name || "").localeCompare(b.name || "");
-    });
-  }, [laddered, eligiblePool]);
+    return eligiblePool
+      .map(m => ({ id: m.id, name: m.name, ladder_position: (m as any).ladder_position ?? null }))
+      .sort((a, b) => {
+        const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
+        const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
+        if (ap !== bp) return ap - bp;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+  }, [eligiblePool]);
 
   // Compute the proposed allocation
   const allocation = useMemo(() => {

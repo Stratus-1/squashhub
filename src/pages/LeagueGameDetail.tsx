@@ -372,25 +372,25 @@ export default function LeagueGameDetail() {
     }));
   }, [prefillLineup, existingMatches, fixture]);
 
-  // Load saved match format from existing result
+  // Apply association-level league rules — these are the authoritative format
+  // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence
+  // over any previously-saved match_format so updated rules are reflected immediately.
+  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
   useEffect(() => {
+    if (leagueRules) {
+      const ppg = leagueRules.points_per_game;
+      if (ppg === 15) setScoringFormat("par15");
+      else if (ppg === 11) setScoringFormat("par11");
+      if (leagueRules.games_format === "best_of_3") setBestOf(3);
+      else if (leagueRules.games_format === "best_of_5") setBestOf(5);
+      return;
+    }
+    // Fallback to saved per-fixture format only when no association rule exists
     if (existingResult?.match_format) {
       const fmt = existingResult.match_format as any;
       if (fmt.scoringFormat) setScoringFormat(fmt.scoringFormat);
       if (fmt.bestOf) setBestOf(fmt.bestOf);
     }
-  }, [existingResult]);
-
-  // Apply association-level league rules as defaults (only if no explicit saved match_format)
-  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
-  useEffect(() => {
-    if (!leagueRules) return;
-    if (existingResult?.match_format) return; // user-saved value wins
-    const ppg = leagueRules.points_per_game;
-    if (ppg === 15) setScoringFormat("par15");
-    else if (ppg === 11) setScoringFormat("par11");
-    if (leagueRules.games_format === "best_of_3") setBestOf(3);
-    else if (leagueRules.games_format === "best_of_5") setBestOf(5);
   }, [leagueRules, existingResult]);
 
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {

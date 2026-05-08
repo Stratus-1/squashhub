@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Trophy, Search, CheckCircle2, Loader2, Crown } from "lucide-react";
+import { Trophy, Search, CheckCircle2, Loader2, Crown, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import shLogo from "@/assets/shub-logo-full.png";
 

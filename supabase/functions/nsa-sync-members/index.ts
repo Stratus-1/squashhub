@@ -260,7 +260,8 @@ Deno.serve(async (req) => {
     const { data: affs } = await supabase
       .from("member_association_affiliations")
       .select("id, club_member_id, association_id, league_association_number, active")
-      .in("association_id", localAssocIds);
+      .in("association_id", localAssocIds)
+      .range(0, 49999);
 
     const affList = affs ?? [];
     const toActivate: string[] = [];

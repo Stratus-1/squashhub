@@ -232,38 +232,9 @@ export default function LeagueSignup() {
                 </div>
               </div>
 
-              {!hit && nsaInput.trim().length >= 3 && !lookingUp && (
+              {!hit && nsaInput.replace(/^NSF/, "").trim().length >= 1 && !lookingUp && (
                 <div className="text-xs text-muted-foreground">
-                  No match. Try searching by name instead:
-                  <div className="relative mt-2">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-                    <Input
-                      value={nameQuery}
-                      onChange={(e) => setNameQuery(e.target.value)}
-                      placeholder="Type your name…"
-                      className="pl-10"
-                    />
-                  </div>
-                  {searchHits.length > 0 && (
-                    <div className="mt-2 border rounded-md divide-y max-h-60 overflow-y-auto">
-                      {searchHits.map(s => (
-                        <button
-                          key={s.member_id}
-                          type="button"
-                          disabled={s.already_claimed}
-                          onClick={() => { setNsaInput(ensureNsfPrefix(s.nsa_number)); setNameQuery(""); setSearchHits([]); }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
-                        >
-                          <div>
-                            <div className="text-sm font-medium">{s.masked_name}</div>
-                            <div className="text-[11px] text-muted-foreground">{s.club_name} • NSA #{s.nsa_number}</div>
-                          </div>
-                          {s.already_claimed && <span className="text-[10px] text-muted-foreground">Already registered</span>}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {searching && <div className="mt-1 text-xs">Searching…</div>}
+                  No match for <span className="font-mono">{nsaInput}</span>. Double-check your NSA number — it's the 4–5 digits after <span className="font-mono">NSF</span>.
                 </div>
               )}
 

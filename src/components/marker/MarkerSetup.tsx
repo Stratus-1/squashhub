@@ -495,10 +495,24 @@ export function MarkerSetup({ onStart }: Props) {
 
       const myCodes = new Set(leagues.map((l: any) => (l.code || "").toUpperCase()).filter(Boolean));
 
+      // Map team code → custom league name (only when admin renamed it from
+      // the default "Men's Nth League / Ladies / Mixed / Reserves" pattern).
+      const isDefaultName = (n: string) =>
+        /^\s*(?:men'?s?|ladies|ladie|women|mixed)\b.*\bleague\b/i.test(n || "") ||
+        /reserves?/i.test(n || "");
+      const nameByCode: Record<string, string> = {};
+      for (const l of leagues as any[]) {
+        if (l.code && l.name && !isDefaultName(l.name)) {
+          nameByCode[l.code.toUpperCase()] = l.name;
+        }
+      }
+
       return regional.map((f: any) => ({
         ...f,
         inMyLineup: myLineupIds.has(f.id),
         isMyTeam: myCodes.has((f.home_team_code || "").toUpperCase()) || myCodes.has((f.away_team_code || "").toUpperCase()),
+        home_team_name: nameByCode[(f.home_team_code || "").toUpperCase()] || null,
+        away_team_name: nameByCode[(f.away_team_code || "").toUpperCase()] || null,
       }));
     },
     enabled: !!clubId,

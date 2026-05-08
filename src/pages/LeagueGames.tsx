@@ -212,7 +212,7 @@ export default function LeagueGames() {
             No league associations set up yet. An admin can add one in Club Admin → Leagues.
           </div>
         ) : (
-          <Tabs defaultValue="fixtures" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className={`grid w-full ${selectedAssoc?.scope === "internal" ? "grid-cols-4" : "grid-cols-3"} h-auto`}>
               <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
               <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>

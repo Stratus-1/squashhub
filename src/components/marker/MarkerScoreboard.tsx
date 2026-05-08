@@ -20,6 +20,7 @@ interface PersistedState {
   history: PointEvent[];
   matchOver: boolean; matchWinner: "a" | "b" | null;
   elapsed: number;
+  tossDecided?: boolean;
 }
 
 /**

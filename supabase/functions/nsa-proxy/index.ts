@@ -380,6 +380,31 @@ Deno.serve(async (req) => {
     if (sv) params[k] = sv;
   }
 
+  // ---------- fixture penalties ----------
+  if (endpoint === "fixture_penalties") {
+    const fixId = parseInt(params.fixture_id || "", 10);
+    if (!fixId) {
+      return new Response(JSON.stringify({ error: "fixture_id required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const key = cacheKey("fixture_penalties", { fixture_id: String(fixId) });
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      return new Response(JSON.stringify({ data: cached.data, cached: true, age_ms: Date.now() - cached.at }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    try {
+      const result = await fetchFixturePenalties(fixId);
+      cache.set(key, { at: Date.now(), data: result });
+      return new Response(JSON.stringify({ data: result, cached: false }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: `Fixture penalties fetch failed: ${(err as Error).message}` }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
   // ---------- standings ----------
   if (endpoint === "standings") {
     try {

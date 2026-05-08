@@ -110,6 +110,17 @@ export async function fetchNsaFixtures(opts: { league: string; club?: string }):
   return callProxy<NsaFixture[]>("fixtures", { league: opts.league, club: opts.club });
 }
 
+/** Fetch penalties applied by NSA on a specific fixture. Returns empty teams array if none. */
+export function useNsaFixturePenalties(fixtureId: number | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["nsa-fixture-penalties", fixtureId],
+    queryFn: () => callProxy<NsaFixturePenalties>("fixture_penalties", { fixture_id: fixtureId! }),
+    enabled: enabled && !!fixtureId,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+}
+
 /** Current NSA season — TODO: make this dynamic / configurable per association. */
 export const NSA_CURRENT_SEASON = "s79";
 

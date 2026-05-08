@@ -203,7 +203,8 @@ export default function SuperAdminLeagues() {
       const { data: affs } = await supabase
         .from("member_association_affiliations")
         .select("league_association_number")
-        .in("association_id", ids);
+        .in("association_id", ids)
+        .range(0, 49999);
       const set = new Set<string>();
       for (const a of affs ?? []) {
         if (a.league_association_number) set.add(String(a.league_association_number).toUpperCase());

@@ -269,6 +269,13 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                {a.scope === "internal" && (
+                  <Button asChild size="sm" variant="outline">
+                    <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
+                      <CalendarDays className="w-4 h-4 mr-1" />Create Rounds & Fixtures
+                    </Link>
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
                   <Trash2 className="w-4 h-4" />

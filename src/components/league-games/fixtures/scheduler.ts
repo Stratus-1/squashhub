@@ -50,8 +50,27 @@ export type SlotAssignment = {
   date: string;      // yyyy-MM-dd
 };
 
+export type RoundRobinAllocation = {
+  slots: SlotAssignment[];
+  byes: { team: string; date: string }[];
+  error?: string;
+};
+
 function normalizeTime(time: string): string {
   return String(time || "").slice(0, 5);
+}
+
+function buildSlotTimes(startTime: string, endTime: string, slotMinutes: number): string[] {
+  const start = parse(normalizeTime(startTime), "HH:mm", new Date());
+  const end = parse(normalizeTime(endTime), "HH:mm", new Date());
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || slotMinutes <= 0) return [];
+  const slotTimes: string[] = [];
+  let cur = start;
+  while (cur < end) {
+    slotTimes.push(format(cur, "HH:mm"));
+    cur = addMinutes(cur, slotMinutes);
+  }
+  return slotTimes;
 }
 
 function eachDate(startDate: string, endDate: string, allowedDows?: number[]): string[] {
@@ -85,15 +104,7 @@ export function allocateSlots(
   playDows?: number[],
 ): SlotAssignment[] {
   if (!courtIds.length || !pairings.length) return [];
-  const start = parse(normalizeTime(startTime), "HH:mm", new Date());
-  const end = parse(normalizeTime(endTime), "HH:mm", new Date());
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || slotMinutes <= 0) return [];
-  const slotTimes: string[] = [];
-  let cur = start;
-  while (cur < end) {
-    slotTimes.push(format(cur, "HH:mm"));
-    cur = addMinutes(cur, slotMinutes);
-  }
+  const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
   if (!slotTimes.length) return [];
 
   const dates = startDate
@@ -140,4 +151,63 @@ export function allocateSlots(
     out.push({ ...p, courtId: courtIds[0], startTime: lastCell.time, date: lastCell.date });
   }
   return out;
+}
+
+/**
+ * Allocate a true round-robin as one matchday per pairing round.
+ * This keeps excluded teams out of the plan, avoids accidental BYEs for even
+ * team counts, and prevents spillover from making one date carry extra games.
+ */
+export function allocateRoundRobinByDate(
+  teams: string[],
+  courtIds: number[],
+  startTime: string,
+  endTime: string,
+  slotMinutes: number,
+  startDate?: string,
+  endDate?: string,
+  playDows?: number[],
+): RoundRobinAllocation {
+  const cleanTeams = [...new Set(teams.filter(Boolean))];
+  if (cleanTeams.length < 2) return { slots: [], byes: [], error: "Select at least 2 teams to distribute." };
+  if (!courtIds.length) return { slots: [], byes: [], error: "No courts assigned to this round." };
+  const dates = startDate ? eachDate(startDate, endDate || startDate, playDows) : [format(new Date(), "yyyy-MM-dd")];
+  const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
+  if (!dates.length || !slotTimes.length) return { slots: [], byes: [], error: "Check the date range, time window, and slot length." };
+
+  const rounds = roundRobin(cleanTeams);
+  if (rounds.length > dates.length) {
+    return { slots: [], byes: [], error: `Need at least ${rounds.length} play date(s) for ${cleanTeams.length} teams.` };
+  }
+
+  const dayCapacity = courtIds.length * slotTimes.length;
+  const maxMatchesInDay = Math.max(...rounds.map((r) => r.length));
+  if (dayCapacity < maxMatchesInDay) {
+    return { slots: [], byes: [], error: `Need ${maxMatchesInDay} court slot(s) per play date for ${cleanTeams.length} teams.` };
+  }
+
+  const spacing = rounds.length > 1 ? Math.max(1, Math.floor((dates.length - 1) / (rounds.length - 1))) : 1;
+  const slots: SlotAssignment[] = [];
+  const byes: { team: string; date: string }[] = [];
+
+  rounds.forEach((pairings, roundIdx) => {
+    const date = dates[Math.min(roundIdx * spacing, dates.length - 1)];
+    pairings.forEach((pair, matchIdx) => {
+      slots.push({
+        home: pair.home,
+        away: pair.away,
+        courtId: courtIds[matchIdx % courtIds.length],
+        startTime: slotTimes[Math.floor(matchIdx / courtIds.length)],
+        date,
+      });
+    });
+
+    if (cleanTeams.length % 2 === 1) {
+      const playing = new Set(pairings.flatMap((p) => [p.home, p.away]));
+      const byeTeam = cleanTeams.find((team) => !playing.has(team));
+      if (byeTeam) byes.push({ team: byeTeam, date });
+    }
+  });
+
+  return { slots, byes };
 }

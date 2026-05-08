@@ -12,7 +12,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { RoundConfigDialog, type RoundDraft } from "./fixtures/RoundConfigDialog";
 import { FixtureEditorTable, type EditableFixture } from "./fixtures/FixtureEditorTable";
-import { allPairsOnce, allocateSlots } from "./fixtures/scheduler";
+import { allocateRoundRobinByDate } from "./fixtures/scheduler";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsClubAdmin } from "@/hooks/use-club";
 
@@ -221,14 +221,18 @@ function RoundCard({
   });
 
   const [selectedTeams, setSelectedTeams] = useState<string[]>(teams.map((t) => t.code));
-  // Sync selection when teams load asynchronously after mount
-  useEffect(() => {
-    if (teams.length && !selectedTeams.length) {
-      setSelectedTeams(teams.map((t) => t.code));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teams.length]);
   const [draft, setDraft] = useState<EditableFixture[] | null>(null);
+  // Keep the team checkboxes aligned with saved fixtures when viewing a round.
+  // If a team was unticked before saving, it must stay unticked on reopen.
+  useEffect(() => {
+    if (!open || !teams.length || draft || fixtures === undefined) return;
+    const savedCodes = new Set<string>();
+    for (const fixture of fixtures) {
+      if (fixture.home_team_code && fixture.home_team_code !== "__BYE__") savedCodes.add(fixture.home_team_code);
+      if (fixture.away_team_code && fixture.away_team_code !== "__BYE__") savedCodes.add(fixture.away_team_code);
+    }
+    setSelectedTeams(savedCodes.size ? teams.filter((t) => savedCodes.has(t.code)).map((t) => t.code) : teams.map((t) => t.code));
+  }, [open, fixtures, teams, draft]);
   const list = draft ?? fixtures ?? [];
 
   const autoDistribute = () => {
@@ -244,9 +248,8 @@ function RoundCard({
       toast.error("Round is missing start/end time or slot length.");
       return;
     }
-    const pairs = allPairsOnce(selectedTeams);
-    const slots = allocateSlots(
-      pairs,
+    const { slots, byes, error } = allocateRoundRobinByDate(
+      selectedTeams,
       round.court_ids,
       round.start_time,
       round.end_time,
@@ -255,7 +258,11 @@ function RoundCard({
       round.end_date,
       (round as any).play_dows ?? [],
     );
-    console.log("[autoDistribute]", { selectedTeams, pairs, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots });
+    console.log("[autoDistribute]", { selectedTeams, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots, byes });
+    if (error) {
+      toast.error(error);
+      return;
+    }
     if (!slots.length) {
       toast.error("Couldn't generate fixtures — check the time window and slot length.");
       return;
@@ -268,32 +275,13 @@ function RoundCard({
       fixture_date: s.date,
     }));
 
-    // Add BYE rows ONLY when team count is odd (true round-robin bye).
-    // With an even number of teams every team plays every other team, so no byes exist —
-    // a team simply doesn't play on every date when matches span multiple days.
-    const byeRows: EditableFixture[] = [];
-    if (selectedTeams.length % 2 === 1) {
-      const byDate = new Map<string, Set<string>>();
-      for (const s of slots) {
-        if (!byDate.has(s.date)) byDate.set(s.date, new Set());
-        const set = byDate.get(s.date)!;
-        set.add(s.home);
-        set.add(s.away);
-      }
-      for (const [date, playing] of byDate.entries()) {
-        for (const code of selectedTeams) {
-          if (!playing.has(code)) {
-            byeRows.push({
-              home_team_code: code,
-              away_team_code: "__BYE__",
-              court_id: null,
-              start_time: null,
-              fixture_date: date,
-            });
-          }
-        }
-      }
-    }
+    const byeRows: EditableFixture[] = byes.map((bye) => ({
+      home_team_code: bye.team,
+      away_team_code: "__BYE__",
+      court_id: null,
+      start_time: null,
+      fixture_date: bye.date,
+    }));
 
     setDraft([...generated, ...byeRows]);
     const dayCount = new Set(slots.map((s) => s.date)).size;

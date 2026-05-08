@@ -69,7 +69,8 @@ export default function LeagueSignup() {
   // Auto-lookup on NSA number change (debounced)
   useEffect(() => {
     const q = nsaInput.trim();
-    if (q.length < 3) { setHit(null); return; }
+    // Need at least one digit after the NSF prefix before hitting the RPC.
+    if (q.replace(/^NSF/, "").length < 1) { setHit(null); return; }
     const t = setTimeout(async () => {
       setLookingUp(true);
       const { data, error } = await supabase.rpc("lookup_league_player_by_nsa", {

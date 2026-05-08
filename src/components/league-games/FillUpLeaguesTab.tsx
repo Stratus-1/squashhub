@@ -43,6 +43,11 @@ type Props = {
   weekStartDow?: number;
 };
 
+type PlayedLeagueRow = {
+  club_member_id: string;
+  league_id: string;
+};
+
 function leagueOrder(name: string, code: string | null): number {
   const m = (code || name).match(/(\d+)/);
   return m ? parseInt(m[1]) : 99;

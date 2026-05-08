@@ -220,6 +220,19 @@ function RoundCard({
     enabled: open,
   });
 
+  // Lightweight count so the collapsed row can hint "click to create fixtures"
+  // vs. showing "X fixtures" when they already exist.
+  const { data: fixtureCount } = useQuery({
+    queryKey: ["round-fixture-count", round.id],
+    queryFn: async () => {
+      const { count, error } = await fromExt("platform_league_fixtures")
+        .select("id", { count: "exact", head: true })
+        .eq("round_id", round.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const [selectedTeams, setSelectedTeams] = useState<string[]>(teams.map((t) => t.code));
   const [draft, setDraft] = useState<EditableFixture[] | null>(null);
   // Keep the team checkboxes aligned with saved fixtures when viewing a round.

@@ -80,19 +80,15 @@ export function AppSidebar() {
         { title: "Leagues", url: "/league-games", icon: Trophy },
         { title: "Tournaments", url: "/tournaments", icon: Trophy },
         { title: "Events", url: "/events", icon: CalendarDays },
-        { title: "Feed", url: "/feed", icon: MessageCircle },
         { title: "My Account", url: "/my-account", icon: Wallet },
       ]
     : [
         { title: "Mark a Game", url: "/match-marker", icon: Crosshair },
-        { title: "Enter Results", url: "/add-result", icon: ClipboardCheck },
         { title: "Club Ladderboard", url: "/ladder", icon: Trophy },
-        { title: "Challenges", url: "/challenges", icon: Swords },
         ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []),
         { title: "Club Tournaments", url: "/tournaments", icon: Trophy },
         { title: "Events", url: "/events", icon: CalendarDays },
         ...(honestyBarEnabled ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine }] : []),
-        { title: "Feed", url: "/feed", icon: MessageCircle },
         { title: "My Account", url: "/my-account", icon: Wallet },
       ];
 

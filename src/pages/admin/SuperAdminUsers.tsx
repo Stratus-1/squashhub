@@ -19,7 +19,8 @@ export default function SuperAdminUsers() {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, name, email, phone, rank, matches_played, wins, losses, created_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(0, 49999);
       if (error) throw error;
       return data || [];
     },

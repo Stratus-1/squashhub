@@ -94,6 +94,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
 
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
+  // Per-association substitution rules (NSA: ±2 cap; NIL: lower-or-equal-only; etc.)
+  const { data: subRules } = useAssociationRules(associationId);
+
   // Leagues — optionally scoped to a single association
   const { data: leagues = [] } = useQuery<LeagueRow[]>({
     queryKey: ["leagues-with-captain", clubId, associationId || "all"],

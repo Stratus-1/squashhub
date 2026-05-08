@@ -332,6 +332,16 @@ export default function SuperAdminLeagues() {
                 <p className="text-center text-muted-foreground py-8">No members found</p>
               )}
             </TabsContent>
+
+            {/* Penalties Tab */}
+            <TabsContent value="penalties" className="space-y-4">
+              {selectedAssociation && <AssociationPenaltiesTab associationId={selectedAssociation} />}
+            </TabsContent>
+
+            {/* Rules Tab */}
+            <TabsContent value="rules" className="space-y-4">
+              {selectedAssociation && <AssociationRulesTab associationId={selectedAssociation} />}
+            </TabsContent>
           </Tabs>
         </>
       )}

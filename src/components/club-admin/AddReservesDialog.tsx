@@ -268,15 +268,26 @@ export function AddReservesDialog({
             )}
             {eligible.map((m: any) => {
               const checked = picked.has(m.id);
+              const blocked = m._blocked as string | null;
               return (
                 <label
                   key={m.id}
-                  className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer text-xs hover:bg-accent ${checked ? "bg-accent" : ""}`}
+                  title={blocked || undefined}
+                  className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${blocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-accent"} ${checked ? "bg-accent" : ""}`}
                 >
-                  <Checkbox checked={checked} onCheckedChange={() => toggle(m.id)} />
+                  <Checkbox
+                    checked={checked}
+                    disabled={!!blocked}
+                    onCheckedChange={() => { if (!blocked) toggle(m.id); }}
+                  />
                   <span className="flex-1 truncate">{m.name || "Unnamed"}</span>
                   {m.ladder_position != null && (
                     <Badge variant="outline" className="text-[10px] tabular-nums">#{m.ladder_position}</Badge>
+                  )}
+                  {blocked && (
+                    <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 shrink-0">
+                      blocked
+                    </Badge>
                   )}
                 </label>
               );

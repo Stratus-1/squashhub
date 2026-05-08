@@ -232,6 +232,12 @@ export default function SuperAdminLeagues() {
               <TabsTrigger value="members" className="gap-1.5">
                 <Users className="h-4 w-4" /> Members
               </TabsTrigger>
+              <TabsTrigger value="penalties" className="gap-1.5">
+                <AlertTriangle className="h-4 w-4" /> Penalties
+              </TabsTrigger>
+              <TabsTrigger value="rules" className="gap-1.5">
+                <ScrollText className="h-4 w-4" /> Rules
+              </TabsTrigger>
             </TabsList>
 
             {/* Fixtures Tab */}

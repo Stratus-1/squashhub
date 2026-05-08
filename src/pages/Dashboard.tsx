@@ -633,14 +633,6 @@ export default function Dashboard() {
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20" onClick={() => navigate("/add-result")}>
-            <ClipboardCheck className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Enter Result</span>
-          </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20" onClick={() => navigate("/challenges")}>
-            <Swords className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Challenges</span>
-          </Button>
           <Button
             variant="outline"
             className={cn(

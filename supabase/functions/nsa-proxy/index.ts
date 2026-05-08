@@ -18,7 +18,7 @@ const corsHeaders = {
 };
 
 const NSA_BASE = "https://admin.northerns.co.za/nsa";
-const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings"]);
+const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings", "fixture_penalties"]);
 const CACHE_TTL_MS = 60_000;
 const SEASON_MAP_TTL_MS = 24 * 60 * 60 * 1000;
 

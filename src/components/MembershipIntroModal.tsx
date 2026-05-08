@@ -13,7 +13,7 @@ const DEFAULT_STEPS = [
   {
     icon: IdCard,
     title: "Your membership number",
-    body: "The club will issue your unique membership number once your registration is processed.",
+    body: "A unique club membership number may be allocated to you once the club processes your registration.",
   },
   {
     icon: Trophy,

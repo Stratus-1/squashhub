@@ -16,6 +16,10 @@ export interface LeagueRules {
   marker_required: boolean;
   marker_must_be_qualified: boolean;
   forfeit_allowed: boolean;
+  tiebreak_method: "games_then_points_then_share" | "games_only" | "points_only";
+  bonus_points_mode: "none" | "per_match" | "per_game_won";
+  bonus_points_value: number;
+  share_bonus_on_tie: boolean;
   notes: string | null;
 }
 

@@ -23,6 +23,10 @@ const DEFAULTS: Partial<LeagueRules> = {
   marker_required: true,
   marker_must_be_qualified: true,
   forfeit_allowed: true,
+  tiebreak_method: "games_then_points_then_share",
+  bonus_points_mode: "per_match",
+  bonus_points_value: 1,
+  share_bonus_on_tie: true,
   notes: "",
 };
 

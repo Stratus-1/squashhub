@@ -666,9 +666,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       if (!current || ord < current.order) played.set(row.club_member_id, { leagueId: row.league_id, order: ord });
     }
 
+    for (const row of previousPlayedRows) {
+      if (!leagueIdsInScope.has(row.league_id)) continue;
+      const ord = orderById.get(row.league_id) ?? 99;
+      const current = played.get(row.club_member_id);
+      if (!current || ord < current.order) played.set(row.club_member_id, { leagueId: row.league_id, order: ord });
+    }
+
     for (const [memberId, playedLeague] of played) m.set(memberId, playedLeague.leagueId);
     return m;
-  }, [homeLeagueByMember, previousWeekLineups, sortedLeagues]);
+  }, [homeLeagueByMember, previousWeekLineups, previousPlayedRows, sortedLeagues]);
 
   // Build bench for a league = weekly base players + cascaded-in - already-in-position - unavailable
   const benchForLeague = (lg: LeagueRow, listForOrdering: LeagueRow[]) => {
@@ -686,6 +693,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       }
     }
     for (const row of previousWeekLineups) {
+      if ((effectiveHomeLeagueByMember.get(row.club_member_id) ?? row.league_id) === lg.id) {
+        baseMemberIds.add(row.club_member_id);
+      }
+    }
+    for (const row of previousPlayedRows) {
       if ((effectiveHomeLeagueByMember.get(row.club_member_id) ?? row.league_id) === lg.id) {
         baseMemberIds.add(row.club_member_id);
       }

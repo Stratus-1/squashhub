@@ -386,6 +386,74 @@ function RoundCard({
     onError: (e: any) => toast.error(e.message ?? "Save failed"),
   });
 
+  const buildAndExportPdf = async (mode: "download" | "share") => {
+    try {
+      const [{ data: fxRows, error: fxErr }, { data: courtRows }] = await Promise.all([
+        fromExt("platform_league_fixtures")
+          .select("home_team_code, away_team_code, court_id, start_time, fixture_date")
+          .eq("round_id", round.id)
+          .order("fixture_date", { ascending: true })
+          .order("start_time", { ascending: true }),
+        round.court_ids?.length
+          ? supabase.from("courts").select("id, name").in("id", round.court_ids)
+          : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      ]);
+      if (fxErr) throw fxErr;
+      const fx = (fxRows ?? []) as Array<{ home_team_code: string; away_team_code: string; court_id: string | null; start_time: string | null; fixture_date: string | null }>;
+      if (!fx.length) { toast.error("No fixtures to export."); return; }
+
+      const courtName = (id: string | null) => (courtRows ?? []).find((c: any) => c.id === id)?.name ?? "—";
+      const teamName = (code: string) => teams.find((t) => t.code === code)?.name ?? code;
+
+      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const dateLine =
+        format(parseISO(round.round_date), "EEE d MMM yyyy") +
+        (round.end_date && round.end_date !== round.round_date ? ` – ${format(parseISO(round.end_date), "EEE d MMM yyyy")}` : "");
+
+      doc.setFontSize(16);
+      doc.text(round.name, 40, 50);
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`${dateLine}  ·  ${round.start_time}–${round.end_time}${round.venue_name ? `  ·  ${round.venue_name}` : ""}`, 40, 68);
+      doc.setTextColor(0);
+
+      const rows = fx.map((f) => {
+        const isBye = f.away_team_code === "__BYE__";
+        return [
+          f.fixture_date ? format(parseISO(f.fixture_date), "EEE d MMM") : "—",
+          isBye ? "—" : (f.start_time ?? "").slice(0, 5),
+          isBye ? "—" : courtName(f.court_id),
+          teamName(f.home_team_code),
+          isBye ? "BYE" : "vs",
+          isBye ? "" : teamName(f.away_team_code),
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 90,
+        head: [["Date", "Time", "Court", "Home", "", "Away"]],
+        body: rows,
+        styles: { fontSize: 9, cellPadding: 5 },
+        headStyles: { fillColor: [30, 58, 95] },
+      });
+
+      const filename = `${round.name.replace(/[^a-z0-9]+/gi, "-")}-fixtures.pdf`;
+
+      if (mode === "share" && (navigator as any).canShare) {
+        const blob = doc.output("blob");
+        const file = new File([blob], filename, { type: "application/pdf" });
+        if ((navigator as any).canShare({ files: [file] })) {
+          await (navigator as any).share({ files: [file], title: round.name, text: `${round.name} fixtures` });
+          return;
+        }
+      }
+      doc.save(filename);
+      if (mode === "share") toast.message("Sharing not supported here — downloaded instead.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not export fixtures");
+    }
+  };
+
   return (
     <Card className="overflow-hidden">
       <button

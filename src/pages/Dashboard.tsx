@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { fromExt } from "@/lib/supabase-ext";
 
-import { IncomingChallengesCard } from "@/components/IncomingChallengesCard";
 import { CreateClubEvent } from "@/components/CreateClubEvent";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,12 +18,12 @@ import { CaptainInviteTeamCard } from "@/components/CaptainInviteTeamCard";
 import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
-import { Calendar, CalendarDays, Trophy, Swords, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, ClipboardCheck, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
+import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useChallenges, useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder, useMyRoles } from "@/hooks/use-data";
+import { useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadder, useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
@@ -58,7 +57,6 @@ export default function Dashboard() {
   const hasAnyAdminAccess = isClubAdmin || myPermissions.size > 0;
   const myMemberId = activeMember?.id || null;
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(myMemberId || undefined);
-  const { data: challenges } = useChallenges(effectiveUserId, { memberId: myMemberId });
   const clubId = effectiveClub?.id || clubData?.club?.id;
   const { data: ladder } = useLadder(clubId);
   const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -482,7 +480,7 @@ export default function Dashboard() {
 
     return (
       <div className="relative">
-        <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
+        <SEO title="Home" description="Your squash hub — stats and bookings." path="/" noIndex />
         <MembershipIntroModal
           open={showIntro}
           clubName={effectiveClub?.name}
@@ -544,7 +542,7 @@ export default function Dashboard() {
 
   return (
     <div className="bottom-nav-safe relative">
-      <SEO title="Home" description="Your squash hub — stats, bookings, and challenges." path="/" noIndex />
+      <SEO title="Home" description="Your squash hub — stats and bookings." path="/" noIndex />
 
       <MembershipIntroModal
         open={showIntro}
@@ -634,14 +632,6 @@ export default function Dashboard() {
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Club Ladder</span>
           </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20" onClick={() => navigate("/add-result")}>
-            <ClipboardCheck className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Enter Result</span>
-          </Button>
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20" onClick={() => navigate("/challenges")}>
-            <Swords className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">Challenges</span>
-          </Button>
           <Button
             variant="outline"
             className={cn(
@@ -708,15 +698,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {myLadderPosition != null && (
-        <div className="mx-4 mt-2 p-2.5 rounded-lg border bg-green-500/10 border-green-500/30 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
-          <p className="text-xs text-muted-foreground flex-1">Challenge players ranked above you on the ladder!</p>
-          <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-            #{myLadderPosition}
-          </Badge>
-        </div>
-      )}
 
       {/* My Upcoming League Games — dedicated section */}
       {hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (
@@ -964,15 +945,6 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      <div className="px-4 mt-3">
-        <IncomingChallengesCard
-          userId={user?.id}
-          memberId={activeMember?.id}
-          activeMemberUserId={activeMember?.user_id ?? null}
-          challenges={challenges}
-          onViewAll={() => navigate("/challenges")}
-        />
-      </div>
 
       {/* My Tournaments */}
       <div className="px-4 mt-4">

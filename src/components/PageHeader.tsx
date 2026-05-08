@@ -4,11 +4,11 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, LogOut, Swords } from "lucide-react";
+import { ChevronLeft, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getBackFallback } from "@/lib/breadcrumbs";
-import { useIncomingChallengesCount, useProfile } from "@/hooks/use-data";
+import { useProfile } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
@@ -62,7 +62,6 @@ export function PageHeader({
     },
     enabled: !!activeMemberId && activeMemberId !== myClubMember?.id,
   });
-  const { data: incomingCount } = useIncomingChallengesCount(activeMember?.id);
 
   const memberName = switchedMember?.name || myClubMember?.name || activeMember?.name || "";
   const avatarUrl = switchedMember?.avatar_url || myClubMember?.avatar_url || (profile as any)?.avatar_url || null;
@@ -111,23 +110,6 @@ export function PageHeader({
           <div className="ml-auto flex items-center gap-1.5">
             <TenantSwitcher />
             {showNotifications && <NotificationsDropdown />}
-            {showChallengesInbox ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="relative h-9 w-9"
-                onClick={() => navigate("/challenges")}
-                aria-label="Challenges inbox"
-              >
-                <Swords className="w-5 h-5" />
-                {(incomingCount ?? 0) > 0 ? (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold tabular-nums inline-flex items-center justify-center shadow-sm">
-                    {(incomingCount ?? 0) > 99 ? "99+" : incomingCount}
-                  </span>
-                ) : null}
-              </Button>
-            ) : null}
             <button
               type="button"
               className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center gap-1.5"

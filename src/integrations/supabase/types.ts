@@ -2373,6 +2373,60 @@ export type Database = {
           },
         ]
       }
+      league_fixture_penalties: {
+        Row: {
+          club_id: string | null
+          fixture_id: string
+          id: string
+          league_id: string | null
+          nsa_team_id: number | null
+          penalty_points: number
+          reasons: Json
+          scraped_at: string
+          team_name: string | null
+          team_side: string
+        }
+        Insert: {
+          club_id?: string | null
+          fixture_id: string
+          id?: string
+          league_id?: string | null
+          nsa_team_id?: number | null
+          penalty_points?: number
+          reasons?: Json
+          scraped_at?: string
+          team_name?: string | null
+          team_side: string
+        }
+        Update: {
+          club_id?: string | null
+          fixture_id?: string
+          id?: string
+          league_id?: string | null
+          nsa_team_id?: number | null
+          penalty_points?: number
+          reasons?: Json
+          scraped_at?: string
+          team_name?: string | null
+          team_side?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_fixture_penalties_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_fixture_penalties_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_fixture_results: {
         Row: {
           away_bonus_points: number
@@ -2593,6 +2647,75 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_rules: {
+        Row: {
+          club_id: string
+          created_at: string
+          forfeit_allowed: boolean
+          games_format: string
+          id: string
+          league_id: string
+          let_stroke_enabled: boolean
+          marker_must_be_qualified: boolean
+          marker_required: boolean
+          max_timeouts_per_player: number
+          notes: string | null
+          points_per_game: number
+          tiebreak_at: number | null
+          updated_at: string
+          win_by: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          forfeit_allowed?: boolean
+          games_format?: string
+          id?: string
+          league_id: string
+          let_stroke_enabled?: boolean
+          marker_must_be_qualified?: boolean
+          marker_required?: boolean
+          max_timeouts_per_player?: number
+          notes?: string | null
+          points_per_game?: number
+          tiebreak_at?: number | null
+          updated_at?: string
+          win_by?: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          forfeit_allowed?: boolean
+          games_format?: string
+          id?: string
+          league_id?: string
+          let_stroke_enabled?: boolean
+          marker_must_be_qualified?: boolean
+          marker_required?: boolean
+          max_timeouts_per_player?: number
+          notes?: string | null
+          points_per_game?: number
+          tiebreak_at?: number | null
+          updated_at?: string
+          win_by?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_rules_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_rules_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
         ]

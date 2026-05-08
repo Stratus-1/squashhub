@@ -3725,6 +3725,8 @@ export type Database = {
           id: string
           last_fixtures_sync_at: string | null
           last_fixtures_sync_summary: string | null
+          last_members_sync_at: string | null
+          last_members_sync_summary: string | null
           name: string
           region: string
           season_year: number
@@ -3739,6 +3741,8 @@ export type Database = {
           id?: string
           last_fixtures_sync_at?: string | null
           last_fixtures_sync_summary?: string | null
+          last_members_sync_at?: string | null
+          last_members_sync_summary?: string | null
           name: string
           region?: string
           season_year?: number
@@ -3753,6 +3757,8 @@ export type Database = {
           id?: string
           last_fixtures_sync_at?: string | null
           last_fixtures_sync_summary?: string | null
+          last_members_sync_at?: string | null
+          last_members_sync_summary?: string | null
           name?: string
           region?: string
           season_year?: number

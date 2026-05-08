@@ -437,43 +437,72 @@ export default function SuperAdminLeagues() {
                   className="pl-9"
                 />
               </div>
-              <div className="rounded-md border overflow-auto max-h-[600px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">NSF #</TableHead>
-                      <TableHead>Surname</TableHead>
-                      <TableHead>First Name</TableHead>
-                      <TableHead>Club</TableHead>
-                      <TableHead className="text-center w-[80px]">Matches</TableHead>
-                      <TableHead className="w-[80px]">Status</TableHead>
-                      <TableHead>Qualifications</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMembers.slice(0, 200).map((m: any) => (
-                      <TableRow key={m.id}>
-                        <TableCell className="font-mono text-xs">{m.user_code}</TableCell>
-                        <TableCell className="font-medium">{m.surname}</TableCell>
-                        <TableCell>{m.first_name}</TableCell>
-                        <TableCell className="text-sm">{m.club_name}</TableCell>
-                        <TableCell className="text-center">{m.league_matches || 0}</TableCell>
-                        <TableCell>
-                          <Badge variant={m.user_state === "ACTIVE" ? "default" : "secondary"} className="text-xs">
-                            {m.user_state}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{m.qualifications || "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="rounded-md border overflow-auto max-h-[600px] divide-y">
+                {groupedMembers.map((g) => {
+                  const totalActive = g.teams.reduce((s, t) => s + t.active, 0);
+                  const totalInactive = g.teams.reduce((s, t) => s + t.inactive, 0);
+                  return (
+                    <details key={g.club} className="group" open={memberSearch.length > 0}>
+                      <summary className="cursor-pointer select-none px-3 py-2 bg-muted/40 hover:bg-muted/60 flex items-center justify-between text-sm font-medium">
+                        <span>{g.club}</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {g.teams.length} team{g.teams.length === 1 ? "" : "s"} · {totalActive} active
+                          {totalInactive > 0 ? ` · ${totalInactive} inactive` : ""}
+                        </span>
+                      </summary>
+                      <div className="divide-y">
+                        {g.teams.map((t) => (
+                          <details key={t.team} className="group/team" open={memberSearch.length > 0 || g.teams.length <= 3}>
+                            <summary className="cursor-pointer select-none px-6 py-1.5 hover:bg-muted/30 flex items-center justify-between text-xs">
+                              <span className="font-mono font-semibold">{t.team}</span>
+                              <span className="text-muted-foreground">
+                                {t.active} active{t.inactive > 0 ? ` · ${t.inactive} inactive` : ""}
+                              </span>
+                            </summary>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[100px] pl-10">NSF #</TableHead>
+                                  <TableHead>Surname</TableHead>
+                                  <TableHead>First Name</TableHead>
+                                  <TableHead className="text-center w-[80px]">Matches</TableHead>
+                                  <TableHead className="w-[80px]">Status</TableHead>
+                                  <TableHead className="w-[100px]">Linked</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {t.players.map((m: any) => {
+                                  const isLinked = linkedCodes?.has(String(m.user_code).toUpperCase());
+                                  return (
+                                    <TableRow key={m.id}>
+                                      <TableCell className="font-mono text-xs pl-10">{m.user_code}</TableCell>
+                                      <TableCell className="font-medium">{m.surname}</TableCell>
+                                      <TableCell>{m.first_name}</TableCell>
+                                      <TableCell className="text-center">{m.league_matches || 0}</TableCell>
+                                      <TableCell>
+                                        <Badge variant={m.user_state === "ACTIVE" ? "default" : "secondary"} className="text-xs">
+                                          {m.user_state}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        {isLinked ? (
+                                          <Badge variant="outline" className="text-[10px]">linked</Badge>
+                                        ) : (
+                                          <span className="text-[10px] text-muted-foreground">—</span>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </details>
+                        ))}
+                      </div>
+                    </details>
+                  );
+                })}
               </div>
-              {filteredMembers.length > 200 && (
-                <p className="text-sm text-muted-foreground text-center">
-                  Showing 200 of {filteredMembers.length} members. Use search to narrow results.
-                </p>
-              )}
               {filteredMembers.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">No members found</p>
               )}

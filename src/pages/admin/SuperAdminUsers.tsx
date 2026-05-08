@@ -19,7 +19,8 @@ export default function SuperAdminUsers() {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, name, email, phone, rank, matches_played, wins, losses, created_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(0, 49999);
       if (error) throw error;
       return data || [];
     },
@@ -28,7 +29,7 @@ export default function SuperAdminUsers() {
   const { data: roles = [] } = useQuery({
     queryKey: ["sa-all-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("user_id, role");
+      const { data, error } = await supabase.from("user_roles").select("user_id, role").range(0, 49999);
       if (error) throw error;
       return data || [];
     },
@@ -40,7 +41,8 @@ export default function SuperAdminUsers() {
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
         .select("user_id, role, club_id")
-        .not("user_id", "is", null);
+        .not("user_id", "is", null)
+        .range(0, 49999);
       if (error) throw error;
       return data || [];
     },
@@ -50,7 +52,7 @@ export default function SuperAdminUsers() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, created_by");
+      const { data, error } = await supabase.from("clubs").select("id, name, created_by").range(0, 49999);
       if (error) throw error;
       return data || [];
     },

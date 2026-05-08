@@ -74,7 +74,8 @@ export default function SuperAdminSubscriptions() {
     queryFn: async () => {
       const { data, error } = await fromExt("club_subscriptions")
         .select("*, clubs(name, logo_url, subdomain), subscription_plans(name)")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(0, 49999);
       if (error) throw error;
       return (data || []) as ClubSub[];
     },
@@ -83,10 +84,10 @@ export default function SuperAdminSubscriptions() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-for-subs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain").order("name");
+      const { data, error } = await supabase.from("clubs").select("id, name, logo_url, subdomain").order("name").range(0, 49999);
       if (error) throw error;
       // Get member counts
-      const { data: members } = await supabase.from("club_members").select("club_id");
+      const { data: members } = await supabase.from("club_members").select("club_id").range(0, 99999);
       const countMap = new Map<string, number>();
       (members || []).forEach((m: any) => countMap.set(m.club_id, (countMap.get(m.club_id) || 0) + 1));
       return (data || []).map((c: any) => ({ ...c, member_count: countMap.get(c.id) || 0 }));

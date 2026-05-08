@@ -412,6 +412,26 @@ function RoundCard({
               {isAdmin ? "Click to create fixtures" : "No fixtures yet"}
             </Badge>
           )}
+          {(fixtureCount ?? 0) > 0 && (
+            <>
+              <Button
+                size="icon"
+                variant="ghost"
+                title="Download as PDF"
+                onClick={(e) => { e.stopPropagation(); void buildAndExportPdf("download"); }}
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                title="Share"
+                onClick={(e) => { e.stopPropagation(); void buildAndExportPdf("share"); }}
+              >
+                <Share2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
           {isAdmin && (
             <>
               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(); }}>

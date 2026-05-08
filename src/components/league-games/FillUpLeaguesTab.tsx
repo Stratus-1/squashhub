@@ -33,6 +33,8 @@ import {
   type MemberLite,
   type FixtureLite,
 } from "./fill-leagues/types";
+import { useAssociationRules } from "@/hooks/use-association-rules";
+import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
 
 type Props = {
   clubId: string;

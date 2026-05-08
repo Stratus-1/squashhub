@@ -469,3 +469,67 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
     </Dialog>
   );
 }
+
+// ---- Pre-submit warnings ----------------------------------------------------
+type PreSubmitMatch = {
+  home_nsf: string;
+  away_nsf: string;
+  games: Array<[number | null, number | null]>;
+  home_player_name?: string;
+  away_player_name?: string;
+  is_forfeit?: boolean;
+  forfeit_side?: "home" | "away" | null;
+  marker_nsf?: string | null;
+};
+
+function PreSubmitWarnings({ matches }: { matches: PreSubmitMatch[] }) {
+  const warnings: string[] = [];
+
+  matches.forEach((m, i) => {
+    const pos = i + 1;
+    if (m.is_forfeit) {
+      warnings.push(`Position ${pos}: forfeit — NSA may impose a points penalty.`);
+    }
+    if (!m.home_nsf && !m.is_forfeit) {
+      warnings.push(`Position ${pos}: missing home NSF number.`);
+    }
+    if (!m.away_nsf && !m.is_forfeit) {
+      warnings.push(`Position ${pos}: missing away NSF number.`);
+    }
+    m.games.forEach((g, gi) => {
+      const [a, b] = g;
+      if (a == null || b == null) return;
+      const max = Math.max(a, b);
+      const diff = Math.abs(a - b);
+      if (max < 11) {
+        warnings.push(`Position ${pos} game ${gi + 1} (${a}-${b}): no side reached 11.`);
+      } else if (max >= 11 && max < 15 && diff < 2) {
+        warnings.push(`Position ${pos} game ${gi + 1} (${a}-${b}): winner did not win by 2.`);
+      }
+    });
+  });
+
+  const hasAnyMarker = matches.some((m) => !!m.marker_nsf);
+  if (!hasAnyMarker) {
+    warnings.push("No marker NSF captured on any rubber — NSA penalty risk.");
+  }
+
+  if (warnings.length === 0) return null;
+
+  return (
+    <Alert>
+      <AlertTriangle className="w-4 h-4" />
+      <AlertDescription className="text-xs space-y-1">
+        <div className="font-medium">Heads-up before submitting</div>
+        <ul className="space-y-0.5 list-disc pl-4">
+          {warnings.map((w, i) => (
+            <li key={i}>{w}</li>
+          ))}
+        </ul>
+        <div className="text-[10px] text-muted-foreground">
+          You can still submit — these checks mirror common NSA deduction reasons.
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}

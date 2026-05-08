@@ -946,15 +946,6 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      <div className="px-4 mt-3">
-        <IncomingChallengesCard
-          userId={user?.id}
-          memberId={activeMember?.id}
-          activeMemberUserId={activeMember?.user_id ?? null}
-          challenges={challenges}
-          onViewAll={() => navigate("/challenges")}
-        />
-      </div>
 
       {/* My Tournaments */}
       <div className="px-4 mt-4">

@@ -36,6 +36,7 @@ export default function SuperAdminLeagues() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", short_code: "", region: "", season_year: new Date().getFullYear(), status: "active" });
   const [syncing, setSyncing] = useState(false);
+  const [syncingMembers, setSyncingMembers] = useState(false);
 
   const activeAssociationObj = (a: any[] | undefined, id: string | null) =>
     (a ?? []).find((x) => x.id === id) || null;
@@ -55,6 +56,24 @@ export default function SuperAdminLeagues() {
       toast.error(e?.message || "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleSyncMembersFromNsa = async (assocId: string) => {
+    setSyncingMembers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("nsa-sync-members", {
+        body: { association_id: assocId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success((data as any)?.summary || "Members synced");
+      queryClient.invalidateQueries({ queryKey: ["admin-members", assocId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
+    } catch (e: any) {
+      toast.error(e?.message || "Member sync failed");
+    } finally {
+      setSyncingMembers(false);
     }
   };
 

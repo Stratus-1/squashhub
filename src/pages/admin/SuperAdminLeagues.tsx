@@ -184,10 +184,58 @@ export default function SuperAdminLeagues() {
     m.user_code?.toLowerCase().includes(memberSearch.toLowerCase()) ||
     m.surname?.toLowerCase().includes(memberSearch.toLowerCase()) ||
     m.first_name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
-    m.club_name?.toLowerCase().includes(memberSearch.toLowerCase())
+    m.club_name?.toLowerCase().includes(memberSearch.toLowerCase()) ||
+    m.affiliation?.toLowerCase().includes(memberSearch.toLowerCase())
   );
 
   const uniqueClubs = [...new Set((members || []).map((m: any) => m.club_name).filter(Boolean))].sort();
+
+  // Which NSA user_codes are linked to a local club_member via affiliations?
+  const { data: linkedCodes } = useQuery({
+    queryKey: ["admin-league-members-linked", activeAssociation],
+    queryFn: async () => {
+      const { data: las } = await supabase
+        .from("league_associations")
+        .select("id")
+        .eq("platform_association_id", activeAssociation!);
+      const ids = (las ?? []).map((r: any) => r.id);
+      if (ids.length === 0) return new Set<string>();
+      const { data: affs } = await supabase
+        .from("member_association_affiliations")
+        .select("league_association_number")
+        .in("association_id", ids);
+      const set = new Set<string>();
+      for (const a of affs ?? []) {
+        if (a.league_association_number) set.add(String(a.league_association_number).toUpperCase());
+      }
+      return set;
+    },
+    enabled: !!activeAssociation,
+  });
+
+  // Group filtered members by club_name → team (affiliation)
+  const groupedMembers = (() => {
+    const byClub = new Map<string, Map<string, any[]>>();
+    for (const m of filteredMembers) {
+      const club = m.club_name || "— No club —";
+      const team = m.affiliation || "— No team —";
+      if (!byClub.has(club)) byClub.set(club, new Map());
+      const teamMap = byClub.get(club)!;
+      if (!teamMap.has(team)) teamMap.set(team, []);
+      teamMap.get(team)!.push(m);
+    }
+    return [...byClub.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([club, teams]) => ({
+        club,
+        teams: [...teams.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([team, players]) => {
+            const active = players.filter((p) => p.user_state === "ACTIVE").length;
+            return { team, players, active, inactive: players.length - active };
+          }),
+      }));
+  })();
 
   return (
     <div className="space-y-6">

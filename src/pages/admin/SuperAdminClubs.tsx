@@ -38,13 +38,15 @@ export default function SuperAdminClubs() {
       const { data, error } = await supabase
         .from("clubs")
         .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(0, 49999);
       if (error) throw error;
 
       // Get member counts
       const { data: members } = await supabase
         .from("club_members")
-        .select("club_id");
+        .select("club_id")
+        .range(0, 99999);
 
       const countMap = new Map<string, number>();
       (members || []).forEach((m: any) => {

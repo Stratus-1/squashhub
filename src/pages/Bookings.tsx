@@ -20,6 +20,8 @@ import {
   Users,
   Swords,
   Sparkles,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";

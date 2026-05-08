@@ -21,6 +21,7 @@ interface PersistedState {
   matchOver: boolean; matchWinner: "a" | "b" | null;
   elapsed: number;
   tossDecided?: boolean;
+  tossPromptVersion?: number;
 }
 
 /**
@@ -98,6 +99,12 @@ function formatDuration(seconds: number): string {
 }
 
 const REST_DURATION = 120; // seconds (90s warm-up + per-rules; using 2 minutes between games)
+const TOSS_PROMPT_VERSION = 1;
+
+function hasScoringStarted(state: PersistedState | null): boolean {
+  if (!state) return false;
+  return state.scoreA > 0 || state.scoreB > 0 || state.gamesA > 0 || state.gamesB > 0 || state.completedGames.length > 0 || state.history.length > 0;
+}
 
 interface Props {
   config: MarkerConfig;
@@ -131,9 +138,11 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
 
-  // Toss: must be explicitly decided before scoring starts. Always show prompt
-  // unless we have a persisted snapshot that already recorded the toss as decided.
-  const [tossDecided, setTossDecided] = useState<boolean>(persisted?.tossDecided === true);
+  // Toss: must be explicitly decided before scoring starts. Old 0-0 saved sessions
+  // did not include the prompt version, so force them to ask again instead of hiding it.
+  const [tossDecided, setTossDecided] = useState<boolean>(
+    hasScoringStarted(persisted) || (persisted?.tossDecided === true && persisted?.tossPromptVersion === TOSS_PROMPT_VERSION)
+  );
 
   // Rest timer between games
   const [resting, setResting] = useState(false);
@@ -167,6 +176,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         scoreA, scoreB, gamesA, gamesB, completedGames,
         server, serveSide, history, matchOver, matchWinner, elapsed,
         tossDecided,
+        tossPromptVersion: TOSS_PROMPT_VERSION,
       };
       localStorage.setItem(MARKER_STATE_KEY, JSON.stringify(snapshot));
     } catch {}

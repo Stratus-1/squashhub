@@ -19,9 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Calendar, MapPin, Users, Trophy, List, Pencil, Trash2 } from "lucide-react";
+import { Search, Calendar, MapPin, Users, Trophy, List, Pencil, Trash2, AlertTriangle, ScrollText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
+import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
+import AssociationPenaltiesTab from "@/components/super-admin/league/AssociationPenaltiesTab";
 
 export default function SuperAdminLeagues() {
   const queryClient = useQueryClient();

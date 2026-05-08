@@ -24,6 +24,8 @@ import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-ns
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
+import { useAssociationRules } from "@/hooks/use-association-rules";
+import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
 
 interface PositionEntry {
   homeCode: string;

@@ -68,7 +68,7 @@ export default function SuperAdminLeagues() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success((data as any)?.summary || "Members synced");
-      queryClient.invalidateQueries({ queryKey: ["admin-members", assocId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-league-members", assocId] });
       queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
     } catch (e: any) {
       toast.error(e?.message || "Member sync failed");
@@ -139,6 +139,7 @@ export default function SuperAdminLeagues() {
     associations?.find((a: any) => a.external_source)?.id ||
     associations?.[0]?.id ||
     null;
+  const activeAssociationDetails = activeAssociationObj(associations as any[] | undefined, activeAssociation);
   const activeAssociationName = associations?.find((a) => a.id === activeAssociation)?.name || "";
 
   const { data: fixtures } = useQuery({
@@ -311,9 +312,21 @@ export default function SuperAdminLeagues() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Members</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <p className="text-2xl font-bold">{members?.length ?? 0}</p>
                 <p className="text-xs text-muted-foreground">{uniqueClubs.length} clubs</p>
+                {activeAssociationDetails?.external_source ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSyncMembersFromNsa(activeAssociationDetails.id)}
+                    disabled={syncingMembers}
+                    className="h-8"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${syncingMembers ? "animate-spin" : ""}`} />
+                    {syncingMembers ? "Syncing…" : "Sync members from NSA"}
+                  </Button>
+                ) : null}
               </CardContent>
             </Card>
           </div>

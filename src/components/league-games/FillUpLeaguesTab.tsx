@@ -251,14 +251,76 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
     enabled: leagueIds.length > 0,
   });
 
+  const { data: previousFixtures = [] } = useQuery<FixtureLite[]>({
+    queryKey: ["previous-fixtures-by-code", leagueCodes.join(","), previousFixtureRange.start, previousFixtureRange.end],
+    queryFn: async () => {
+      if (leagueCodes.length === 0) return [];
+      const { data, error } = await fromExt("platform_league_fixtures")
+        .select("id, fixture_date, venue_name, home_team_code, away_team_code")
+        .gte("fixture_date", previousFixtureRange.start)
+        .lt("fixture_date", previousFixtureRange.end)
+        .or(leagueCodes.map(c => `home_team_code.eq.${c},away_team_code.eq.${c}`).join(","));
+      if (error) throw error;
+      return (data || []) as FixtureLite[];
+    },
+    enabled: leagueCodes.length > 0,
+  });
+
+  const previousFixtureIds = useMemo(() => previousFixtures.map(f => f.id), [previousFixtures]);
+
+  const { data: previousMatchResults = [] } = useQuery<PreviousMatchResultRow[]>({
+    queryKey: ["previous-match-results", previousFixtureIds.join(",")],
+    queryFn: async () => {
+      if (previousFixtureIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("league_match_results" as any)
+        .select("fixture_id, position, home_player_code, away_player_code")
+        .in("fixture_id", previousFixtureIds);
+      if (error) throw error;
+      return (data as unknown as PreviousMatchResultRow[]) || [];
+    },
+    enabled: previousFixtureIds.length > 0,
+  });
+
+  const previousPlayedRows = useMemo<PlayedLeagueRow[]>(() => {
+    if (previousFixtures.length === 0 || previousMatchResults.length === 0) return [];
+    const leagueByCode = new Map<string, string>();
+    for (const lg of sortedLeagues) {
+      if (lg.code) leagueByCode.set(lg.code.toUpperCase(), lg.id);
+    }
+    const memberByLeagueNumber = new Map<string, string>();
+    for (const r of registrations) {
+      const number = (r.league_association_number || r.ssa_number || "").toString().trim().toUpperCase();
+      if (number && !memberByLeagueNumber.has(number)) memberByLeagueNumber.set(number, r.club_member_id);
+    }
+    const fixtureById = new Map(previousFixtures.map(f => [f.id, f]));
+    const rows: PlayedLeagueRow[] = [];
+
+    for (const result of previousMatchResults) {
+      const fixture = fixtureById.get(result.fixture_id);
+      if (!fixture) continue;
+      const sides: Array<{ playerCode: string | null; teamCode: string }> = [
+        { playerCode: result.home_player_code, teamCode: fixture.home_team_code },
+        { playerCode: result.away_player_code, teamCode: fixture.away_team_code },
+      ];
+      for (const side of sides) {
+        const leagueId = leagueByCode.get((side.teamCode || "").toUpperCase());
+        const memberId = memberByLeagueNumber.get((side.playerCode || "").trim().toUpperCase());
+        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId });
+      }
+    }
+    return rows;
+  }, [previousFixtures, previousMatchResults, registrations, sortedLeagues]);
+
   // Members
   const memberIds = useMemo(() => {
     const ids = new Set<string>();
     registrations.forEach(r => ids.add(r.club_member_id));
     previousWeekLineups.forEach(l => ids.add(l.club_member_id));
+    previousPlayedRows.forEach(r => ids.add(r.club_member_id));
     leagues.forEach(l => { if (l.captain_member_id) ids.add(l.captain_member_id); });
     return Array.from(ids);
-  }, [registrations, previousWeekLineups, leagues]);
+  }, [registrations, previousWeekLineups, previousPlayedRows, leagues]);
 
   const { data: members = [] } = useQuery<(MemberLite & { club_member_number?: string | null })[]>({
     queryKey: ["fill-members", memberIds.join(",")],

@@ -949,11 +949,17 @@ export default function LeagueGameDetail() {
           <div className="grid grid-cols-2 border-b">
             <div className="p-1.5 border-r bg-primary/5">
               <span className="text-[10px] text-muted-foreground block">HOME TEAM</span>
-              <span className="font-bold text-sm">{homeCode}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-sm">{homeCode}</span>
+                <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="home" teamCode={homeCode} />
+              </div>
             </div>
             <div className="p-1.5 bg-secondary/30">
               <span className="text-[10px] text-muted-foreground block">VISITORS TEAM</span>
-              <span className="font-bold text-sm">{awayCode}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-sm">{awayCode}</span>
+                <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="away" teamCode={awayCode} />
+              </div>
             </div>
           </div>
           <div className="p-1.5 text-[10px] text-muted-foreground bg-muted/30 flex items-center justify-between">

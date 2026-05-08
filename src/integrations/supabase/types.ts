@@ -2654,6 +2654,8 @@ export type Database = {
       league_rules: {
         Row: {
           association_id: string | null
+          bonus_points_mode: string
+          bonus_points_value: number
           club_id: string | null
           created_at: string
           forfeit_allowed: boolean
@@ -2666,12 +2668,16 @@ export type Database = {
           max_timeouts_per_player: number
           notes: string | null
           points_per_game: number
+          share_bonus_on_tie: boolean
           tiebreak_at: number | null
+          tiebreak_method: string
           updated_at: string
           win_by: number
         }
         Insert: {
           association_id?: string | null
+          bonus_points_mode?: string
+          bonus_points_value?: number
           club_id?: string | null
           created_at?: string
           forfeit_allowed?: boolean
@@ -2684,12 +2690,16 @@ export type Database = {
           max_timeouts_per_player?: number
           notes?: string | null
           points_per_game?: number
+          share_bonus_on_tie?: boolean
           tiebreak_at?: number | null
+          tiebreak_method?: string
           updated_at?: string
           win_by?: number
         }
         Update: {
           association_id?: string | null
+          bonus_points_mode?: string
+          bonus_points_value?: number
           club_id?: string | null
           created_at?: string
           forfeit_allowed?: boolean
@@ -2702,7 +2712,9 @@ export type Database = {
           max_timeouts_per_player?: number
           notes?: string | null
           points_per_game?: number
+          share_bonus_on_tie?: boolean
           tiebreak_at?: number | null
+          tiebreak_method?: string
           updated_at?: string
           win_by?: number
         }
@@ -2711,14 +2723,7 @@ export type Database = {
             foreignKeyName: "league_rules_association_id_fkey"
             columns: ["association_id"]
             isOneToOne: false
-            referencedRelation: "association_member_affiliations_v"
-            referencedColumns: ["league_association_id"]
-          },
-          {
-            foreignKeyName: "league_rules_association_id_fkey"
-            columns: ["association_id"]
-            isOneToOne: false
-            referencedRelation: "league_associations"
+            referencedRelation: "platform_league_associations"
             referencedColumns: ["id"]
           },
           {

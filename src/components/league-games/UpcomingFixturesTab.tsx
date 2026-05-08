@@ -307,7 +307,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     </div>
   );
 
-  if (isLoading || (isNsaLive && nsaLoading && (!nsaFixtures || nsaFixtures.length === 0))) {
+  if (isLoading) {
     return (
       <div>
         {filterBar}

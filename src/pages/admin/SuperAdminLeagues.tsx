@@ -35,6 +35,28 @@ export default function SuperAdminLeagues() {
   const [deleting, setDeleting] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", short_code: "", region: "", season_year: new Date().getFullYear(), status: "active" });
+  const [syncing, setSyncing] = useState(false);
+
+  const activeAssociationObj = (a: any[] | undefined, id: string | null) =>
+    (a ?? []).find((x) => x.id === id) || null;
+
+  const handleSyncFromNsa = async (assocId: string) => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("nsa-sync-fixtures", {
+        body: { association_id: assocId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success((data as any)?.summary || "Fixtures synced");
+      queryClient.invalidateQueries({ queryKey: ["admin-fixtures", assocId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
+    } catch (e: any) {
+      toast.error(e?.message || "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const openEdit = (a: any) => {
     setForm({

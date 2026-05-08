@@ -20,6 +20,7 @@ interface PersistedState {
   history: PointEvent[];
   matchOver: boolean; matchWinner: "a" | "b" | null;
   elapsed: number;
+  tossDecided?: boolean;
 }
 
 /**
@@ -130,10 +131,9 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
 
-  // Toss: must be decided before first point. If we have any history/games, toss was already decided.
-  const [tossDecided, setTossDecided] = useState<boolean>(
-    !!persisted && (persisted.history.length > 0 || persisted.completedGames.length > 0 || persisted.scoreA > 0 || persisted.scoreB > 0)
-  );
+  // Toss: must be explicitly decided before scoring starts. Always show prompt
+  // unless we have a persisted snapshot that already recorded the toss as decided.
+  const [tossDecided, setTossDecided] = useState<boolean>(persisted?.tossDecided === true);
 
   // Rest timer between games
   const [resting, setResting] = useState(false);
@@ -166,10 +166,11 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         sessionKey,
         scoreA, scoreB, gamesA, gamesB, completedGames,
         server, serveSide, history, matchOver, matchWinner, elapsed,
+        tossDecided,
       };
       localStorage.setItem(MARKER_STATE_KEY, JSON.stringify(snapshot));
     } catch {}
-  }, [scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide, history, matchOver, matchWinner, elapsed]);
+  }, [scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide, history, matchOver, matchWinner, elapsed, tossDecided]);
 
   // Pause match timer during rest
   const pauseMatchTimer = useCallback(() => {

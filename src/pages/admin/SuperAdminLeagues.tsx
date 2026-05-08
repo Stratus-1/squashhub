@@ -326,7 +326,7 @@ export default function SuperAdminLeagues() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Members</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-2xl font-bold">{members?.length ?? 0}</p>
+                <p className="text-2xl font-bold">{membersTotal}</p>
                 <p className="text-xs text-muted-foreground">{uniqueClubs.length} clubs</p>
                 {activeAssociationDetails?.external_source ? (
                   <Button

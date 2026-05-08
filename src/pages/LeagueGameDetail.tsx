@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
+import { MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { RosterPanel } from "@/components/league-games/RosterPanel";
@@ -670,6 +671,7 @@ export default function LeagueGameDetail() {
   const startMarking = (posIdx: number) => {
     const pos = positions[posIdx];
     if (!pos.homeCode || !pos.awayCode) { toast.error("Both players required"); return; }
+    try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
     setActiveMarker(posIdx);
   };
 

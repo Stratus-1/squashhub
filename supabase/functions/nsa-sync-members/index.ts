@@ -317,7 +317,8 @@ Deno.serve(async (req) => {
       const { data: existingRegs } = await supabase
         .from("member_league_registrations")
         .select("club_member_id, league_id")
-        .in("club_member_id", memberIds);
+        .in("club_member_id", memberIds)
+        .range(0, 49999);
       const existingRegSet = new Set(
         (existingRegs ?? []).map((r: any) => `${r.club_member_id}|${r.league_id}`),
       );

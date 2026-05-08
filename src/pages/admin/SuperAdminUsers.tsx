@@ -52,7 +52,7 @@ export default function SuperAdminUsers() {
   const { data: clubs = [] } = useQuery({
     queryKey: ["sa-clubs-list"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name, created_by");
+      const { data, error } = await supabase.from("clubs").select("id, name, created_by").range(0, 49999);
       if (error) throw error;
       return data || [];
     },

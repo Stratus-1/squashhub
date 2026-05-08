@@ -699,15 +699,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {myLadderPosition != null && (
-        <div className="mx-4 mt-2 p-2.5 rounded-lg border bg-green-500/10 border-green-500/30 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 shrink-0 text-green-500" />
-          <p className="text-xs text-muted-foreground flex-1">Challenge players ranked above you on the ladder!</p>
-          <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-            #{myLadderPosition}
-          </Badge>
-        </div>
-      )}
 
       {/* My Upcoming League Games — dedicated section */}
       {hasLeagues && myLeagueFixtures && myLeagueFixtures.length > 0 && (

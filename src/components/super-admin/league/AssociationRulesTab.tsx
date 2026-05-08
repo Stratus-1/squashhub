@@ -256,6 +256,10 @@ export default function AssociationRulesTab({ associationId }: Props) {
       </Card>
 
       <div className="flex justify-end">
+        <Button
+          disabled={update.isPending}
+          onClick={() => update.mutate({ associationId, patch: form })}
+        >
           {update.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           Save rules
         </Button>

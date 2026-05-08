@@ -50,8 +50,27 @@ export type SlotAssignment = {
   date: string;      // yyyy-MM-dd
 };
 
+export type RoundRobinAllocation = {
+  slots: SlotAssignment[];
+  byes: { team: string; date: string }[];
+  error?: string;
+};
+
 function normalizeTime(time: string): string {
   return String(time || "").slice(0, 5);
+}
+
+function buildSlotTimes(startTime: string, endTime: string, slotMinutes: number): string[] {
+  const start = parse(normalizeTime(startTime), "HH:mm", new Date());
+  const end = parse(normalizeTime(endTime), "HH:mm", new Date());
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || slotMinutes <= 0) return [];
+  const slotTimes: string[] = [];
+  let cur = start;
+  while (cur < end) {
+    slotTimes.push(format(cur, "HH:mm"));
+    cur = addMinutes(cur, slotMinutes);
+  }
+  return slotTimes;
 }
 
 function eachDate(startDate: string, endDate: string, allowedDows?: number[]): string[] {
@@ -85,15 +104,7 @@ export function allocateSlots(
   playDows?: number[],
 ): SlotAssignment[] {
   if (!courtIds.length || !pairings.length) return [];
-  const start = parse(normalizeTime(startTime), "HH:mm", new Date());
-  const end = parse(normalizeTime(endTime), "HH:mm", new Date());
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || slotMinutes <= 0) return [];
-  const slotTimes: string[] = [];
-  let cur = start;
-  while (cur < end) {
-    slotTimes.push(format(cur, "HH:mm"));
-    cur = addMinutes(cur, slotMinutes);
-  }
+  const slotTimes = buildSlotTimes(startTime, endTime, slotMinutes);
   if (!slotTimes.length) return [];
 
   const dates = startDate

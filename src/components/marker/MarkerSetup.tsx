@@ -809,8 +809,15 @@ export function MarkerSetup({ onStart }: Props) {
                           )}
                         </div>
                         <p className="text-sm font-semibold">
-                          {f.home_team_code} <span className="text-muted-foreground text-xs">vs</span> {f.away_team_code}
+                          {f.home_team_name || f.home_team_code}{" "}
+                          <span className="text-muted-foreground text-xs">vs</span>{" "}
+                          {f.away_team_name || f.away_team_code}
                         </p>
+                        {(f.home_team_name || f.away_team_name) && (
+                          <p className="text-[10px] text-muted-foreground">
+                            {f.home_team_code} vs {f.away_team_code}
+                          </p>
+                        )}
                         <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
                           <span>{dateStr}{f.fixture_time ? ` · ${String(f.fixture_time).slice(0, 5)}` : ""}</span>
                           {f.venue_name && (

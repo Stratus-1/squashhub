@@ -228,13 +228,13 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   }, []);
 
   const toggleServeSide = useCallback(() => {
-    if (matchOver || resting) return;
+    if (matchOver || resting || !tossDecided) return;
     setServeSide((s) => (s === "R" ? "L" : "R"));
-  }, [matchOver, resting]);
+  }, [matchOver, resting, tossDecided]);
 
   const awardPoint = useCallback(
     (scorer: "a" | "b") => {
-      if (matchOver || resting) return;
+      if (matchOver || resting || !tossDecided) return;
 
       // English scoring: only server can score
       if (isEnglish && scorer !== server) {

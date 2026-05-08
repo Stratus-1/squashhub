@@ -62,7 +62,6 @@ export function PageHeader({
     },
     enabled: !!activeMemberId && activeMemberId !== myClubMember?.id,
   });
-  const { data: incomingCount } = useIncomingChallengesCount(activeMember?.id);
 
   const memberName = switchedMember?.name || myClubMember?.name || activeMember?.name || "";
   const avatarUrl = switchedMember?.avatar_url || myClubMember?.avatar_url || (profile as any)?.avatar_url || null;

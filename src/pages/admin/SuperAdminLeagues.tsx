@@ -163,21 +163,26 @@ export default function SuperAdminLeagues() {
       const pageSize = 1000;
       let from = 0;
       const all: any[] = [];
+      const { count: totalCount, error: countError } = await supabase
+        .from("platform_league_members" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("association_id", activeAssociation!);
+      if (countError) throw countError;
       // Paginate to bypass the 1000-row PostgREST cap
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from("platform_league_members" as any)
-          .select("*", { count: "exact" })
+          .select("*")
           .eq("association_id", activeAssociation!)
           .order("surname")
           .range(from, from + pageSize - 1);
         if (error) throw error;
         const rows = (data as any[]) || [];
         all.push(...rows);
-        if (rows.length < pageSize) return { rows: all, total: Math.max(count ?? 0, all.length) };
+        if (rows.length < pageSize) return { rows: all, total: totalCount ?? all.length };
         from += pageSize;
-        if (from > 100000) return { rows: all, total: Math.max(count ?? 0, all.length) };
+        if (from > 100000) return { rows: all, total: totalCount ?? all.length };
       }
     },
     enabled: !!activeAssociation,

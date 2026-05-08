@@ -50,7 +50,7 @@ export default function SuperAdminLeagues() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success((data as any)?.summary || "Fixtures synced");
-      queryClient.invalidateQueries({ queryKey: ["admin-fixtures", assocId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-fixtures-v2", assocId] });
       queryClient.invalidateQueries({ queryKey: ["admin-associations"] });
     } catch (e: any) {
       toast.error(e?.message || "Sync failed");
@@ -142,20 +142,36 @@ export default function SuperAdminLeagues() {
   const activeAssociationDetails = activeAssociationObj(associations as any[] | undefined, activeAssociation);
   const activeAssociationName = associations?.find((a) => a.id === activeAssociation)?.name || "";
 
-  const { data: fixtures } = useQuery({
-    queryKey: ["admin-fixtures", activeAssociation],
+  const { data: fixturesResult } = useQuery({
+    queryKey: ["admin-fixtures-v2", activeAssociation],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const pageSize = 1000;
+      let from = 0;
+      const all: any[] = [];
+      const { count: totalCount, error: countError } = await supabase
         .from("platform_league_fixtures")
-        .select("*")
-        .eq("association_id", activeAssociation!)
-        .order("fixture_date", { ascending: true })
-        .range(0, 49999);
-      if (error) throw error;
-      return data;
+        .select("id", { count: "exact", head: true })
+        .eq("association_id", activeAssociation!);
+      if (countError) throw countError;
+      while (true) {
+        const { data, error } = await supabase
+          .from("platform_league_fixtures")
+          .select("*")
+          .eq("association_id", activeAssociation!)
+          .order("fixture_date", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const rows = (data as any[]) || [];
+        all.push(...rows);
+        if (rows.length < pageSize) return { rows: all, total: totalCount ?? all.length };
+        from += pageSize;
+        if (from > 100000) return { rows: all, total: totalCount ?? all.length };
+      }
     },
     enabled: !!activeAssociation,
   });
+  const fixtures = fixturesResult?.rows;
+  const fixturesTotal = fixturesResult?.total ?? fixtures?.length ?? 0;
 
   const { data: membersResult } = useQuery({
     queryKey: ["admin-league-members-v2", activeAssociation],
@@ -321,8 +337,9 @@ export default function SuperAdminLeagues() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Fixtures</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{fixtures?.length ?? 0}</p>
+              <CardContent className="space-y-1">
+                <p className="text-2xl font-bold">{fixturesTotal}</p>
+                <p className="text-xs text-muted-foreground">{fixtures?.length ?? 0} loaded</p>
               </CardContent>
             </Card>
             <Card>

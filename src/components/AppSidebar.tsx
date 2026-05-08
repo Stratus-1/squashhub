@@ -73,7 +73,6 @@ export function AppSidebar() {
     : [
         { title: "Stats", url: "/analytics", icon: BarChart3 },
         { title: "Bookings", url: "/bookings", icon: Calendar },
-        { title: "Match Results", url: "/add-result", icon: ClipboardCheck },
       ];
 
   const activityItems: Item[] = isAssociation

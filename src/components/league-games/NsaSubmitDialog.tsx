@@ -390,6 +390,9 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
               ))}
             </div>
 
+            {/* Pre-submit warnings */}
+            <PreSubmitWarnings matches={matches} />
+
             {/* Validate / Commit step indicator */}
             <div className="flex items-center gap-2 text-[10px]">
               <span className={`px-1.5 py-0.5 rounded ${checkPassedAt ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" : "bg-muted text-muted-foreground"}`}>

@@ -28,6 +28,9 @@ interface NsaSubmitDialogProps {
     games: Array<[number | null, number | null]>;
     home_player_name?: string;
     away_player_name?: string;
+    is_forfeit?: boolean;
+    forfeit_side?: "home" | "away" | null;
+    marker_nsf?: string | null;
   }>;
 }
 

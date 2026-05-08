@@ -28,6 +28,10 @@ const DEFAULTS: Partial<LeagueRules> = {
   bonus_points_value: 1,
   share_bonus_on_tie: true,
   notes: "",
+  enforce_sub_rules: true,
+  max_position_movement_per_week: null,
+  sub_direction: "any",
+  cross_gender_subs_allowed: false,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {

@@ -41,7 +41,8 @@ export default function SuperAdminUsers() {
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
         .select("user_id, role, club_id")
-        .not("user_id", "is", null);
+        .not("user_id", "is", null)
+        .range(0, 49999);
       if (error) throw error;
       return data || [];
     },

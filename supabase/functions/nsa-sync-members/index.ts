@@ -183,7 +183,8 @@ Deno.serve(async (req) => {
   const { data: existingRows } = await supabase
     .from("platform_league_members")
     .select("user_code, surname, first_name, affiliation, club_name, user_state, league_matches")
-    .eq("association_id", associationId);
+    .eq("association_id", associationId)
+    .range(0, 49999);
   const existingByCode = new Map<string, any>();
   for (const r of existingRows ?? []) existingByCode.set(String(r.user_code).toUpperCase(), r);
 
@@ -259,7 +260,8 @@ Deno.serve(async (req) => {
     const { data: affs } = await supabase
       .from("member_association_affiliations")
       .select("id, club_member_id, association_id, league_association_number, active")
-      .in("association_id", localAssocIds);
+      .in("association_id", localAssocIds)
+      .range(0, 49999);
 
     const affList = affs ?? [];
     const toActivate: string[] = [];
@@ -315,7 +317,8 @@ Deno.serve(async (req) => {
       const { data: existingRegs } = await supabase
         .from("member_league_registrations")
         .select("club_member_id, league_id")
-        .in("club_member_id", memberIds);
+        .in("club_member_id", memberIds)
+        .range(0, 49999);
       const existingRegSet = new Set(
         (existingRegs ?? []).map((r: any) => `${r.club_member_id}|${r.league_id}`),
       );

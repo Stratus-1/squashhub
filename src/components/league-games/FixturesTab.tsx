@@ -268,25 +268,29 @@ function RoundCard({
       fixture_date: s.date,
     }));
 
-    // Add BYE rows: for each play date, any team with no fixture that day gets a bye marker.
-    const byDate = new Map<string, Set<string>>();
-    for (const s of slots) {
-      if (!byDate.has(s.date)) byDate.set(s.date, new Set());
-      const set = byDate.get(s.date)!;
-      set.add(s.home);
-      set.add(s.away);
-    }
+    // Add BYE rows ONLY when team count is odd (true round-robin bye).
+    // With an even number of teams every team plays every other team, so no byes exist —
+    // a team simply doesn't play on every date when matches span multiple days.
     const byeRows: EditableFixture[] = [];
-    for (const [date, playing] of byDate.entries()) {
-      for (const code of selectedTeams) {
-        if (!playing.has(code)) {
-          byeRows.push({
-            home_team_code: code,
-            away_team_code: "__BYE__",
-            court_id: null,
-            start_time: null,
-            fixture_date: date,
-          });
+    if (selectedTeams.length % 2 === 1) {
+      const byDate = new Map<string, Set<string>>();
+      for (const s of slots) {
+        if (!byDate.has(s.date)) byDate.set(s.date, new Set());
+        const set = byDate.get(s.date)!;
+        set.add(s.home);
+        set.add(s.away);
+      }
+      for (const [date, playing] of byDate.entries()) {
+        for (const code of selectedTeams) {
+          if (!playing.has(code)) {
+            byeRows.push({
+              home_team_code: code,
+              away_team_code: "__BYE__",
+              court_id: null,
+              start_time: null,
+              fixture_date: date,
+            });
+          }
         }
       }
     }

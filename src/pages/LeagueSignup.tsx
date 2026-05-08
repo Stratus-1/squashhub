@@ -39,8 +39,13 @@ export default function LeagueSignup() {
   const presetClub = params.get("club") || null;
   const presetNsa = params.get("nsa") || "";
 
-  // Step 1 — find player
-  const [nsaInput, setNsaInput] = useState(presetNsa);
+  // Step 1 — find player. Always keep an "NSF" prefix so members only type their digits.
+  const ensureNsfPrefix = (v: string) => {
+    const cleaned = (v || "").toUpperCase().replace(/\s+/g, "");
+    const digits = cleaned.replace(/^NSF/, "").replace(/[^0-9]/g, "");
+    return `NSF${digits}`;
+  };
+  const [nsaInput, setNsaInput] = useState(ensureNsfPrefix(presetNsa));
   const [nameQuery, setNameQuery] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searching, setSearching] = useState(false);
@@ -208,10 +213,20 @@ export default function LeagueSignup() {
                   <Input
                     id="nsa"
                     value={nsaInput}
-                    onChange={(e) => setNsaInput(e.target.value.toUpperCase())}
-                    placeholder="e.g. 12345"
+                    onChange={(e) => setNsaInput(ensureNsfPrefix(e.target.value))}
+                    onFocus={(e) => {
+                      // Park caret after the NSF prefix so users type digits directly.
+                      const el = e.currentTarget;
+                      requestAnimationFrame(() => {
+                        const pos = el.value.length;
+                        el.setSelectionRange(Math.max(3, pos), pos);
+                      });
+                    }}
+                    placeholder="NSF12345"
                     className="pr-10 uppercase"
                     style={{ textTransform: "uppercase" }}
+                    inputMode="text"
+                    autoCapitalize="characters"
                   />
                   {lookingUp && <Loader2 className="w-4 h-4 absolute right-3 top-3 animate-spin text-muted-foreground" />}
                 </div>
@@ -236,7 +251,7 @@ export default function LeagueSignup() {
                           key={s.member_id}
                           type="button"
                           disabled={s.already_claimed}
-                          onClick={() => { setNsaInput(s.nsa_number); setNameQuery(""); setSearchHits([]); }}
+                          onClick={() => { setNsaInput(ensureNsfPrefix(s.nsa_number)); setNameQuery(""); setSearchHits([]); }}
                           className="w-full text-left px-3 py-2 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
                         >
                           <div>

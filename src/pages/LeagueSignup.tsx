@@ -251,7 +251,7 @@ export default function LeagueSignup() {
                           key={s.member_id}
                           type="button"
                           disabled={s.already_claimed}
-                          onClick={() => { setNsaInput(s.nsa_number); setNameQuery(""); setSearchHits([]); }}
+                          onClick={() => { setNsaInput(ensureNsfPrefix(s.nsa_number)); setNameQuery(""); setSearchHits([]); }}
                           className="w-full text-left px-3 py-2 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
                         >
                           <div>

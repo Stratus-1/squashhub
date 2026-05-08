@@ -3720,7 +3720,11 @@ export type Database = {
       platform_league_associations: {
         Row: {
           created_at: string
+          external_season: string | null
+          external_source: string | null
           id: string
+          last_fixtures_sync_at: string | null
+          last_fixtures_sync_summary: string | null
           name: string
           region: string
           season_year: number
@@ -3730,7 +3734,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          external_season?: string | null
+          external_source?: string | null
           id?: string
+          last_fixtures_sync_at?: string | null
+          last_fixtures_sync_summary?: string | null
           name: string
           region?: string
           season_year?: number
@@ -3740,7 +3748,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          external_season?: string | null
+          external_source?: string | null
           id?: string
+          last_fixtures_sync_at?: string | null
+          last_fixtures_sync_summary?: string | null
           name?: string
           region?: string
           season_year?: number

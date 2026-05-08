@@ -28,6 +28,10 @@ const DEFAULTS: Partial<LeagueRules> = {
   bonus_points_value: 1,
   share_bonus_on_tie: true,
   notes: "",
+  enforce_sub_rules: true,
+  max_position_movement_per_week: null,
+  sub_direction: "any",
+  cross_gender_subs_allowed: false,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {
@@ -186,6 +190,68 @@ export default function AssociationRulesTab({ associationId }: Props) {
             placeholder="Free-text shown to the marker as an info banner"
             value={form.notes ?? ""}
             onChange={(e) => set("notes", e.target.value)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Player substitution rules</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ToggleRow
+            label="Enforce substitution rules"
+            hint="Master switch — when off, no rules below are applied."
+            value={!!form.enforce_sub_rules}
+            onChange={(v) => set("enforce_sub_rules", v)}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Max league movement per week</Label>
+              <Input
+                type="number" min={0} max={20}
+                value={form.max_position_movement_per_week ?? ""}
+                placeholder="Unlimited"
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  set("max_position_movement_per_week", v === "" ? null : Number(v));
+                }}
+                disabled={!form.enforce_sub_rules}
+              />
+              <p className="text-xs text-muted-foreground">
+                NSA-style cap measured in <strong>overall slots</strong> (league × 4 + position).
+                e.g. <em>2</em> means a player can move from L2#3 → L3#1 (Δ=2) but not L2#3 → L4#1 (Δ=6).
+                Leave blank for unlimited.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sub direction</Label>
+              <Select
+                value={form.sub_direction ?? "any"}
+                onValueChange={(v) => set("sub_direction", v as LeagueRules["sub_direction"])}
+                disabled={!form.enforce_sub_rules}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any direction</SelectItem>
+                  <SelectItem value="lower_or_equal_only">
+                    Lower or equal only (NIL — no subs from stronger leagues)
+                  </SelectItem>
+                  <SelectItem value="higher_or_equal_only">
+                    Higher or equal only (subs must come from stronger leagues)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Restricts which leagues a sub may be pulled from, relative to the target team's league.
+              </p>
+            </div>
+          </div>
+          <ToggleRow
+            label="Allow cross-gender subs"
+            hint="When off, men cannot sub into a Ladies team and vice versa (unless the target league is Mixed)."
+            value={!!form.cross_gender_subs_allowed}
+            onChange={(v) => set("cross_gender_subs_allowed", v)}
+          />
         </CardContent>
       </Card>
 

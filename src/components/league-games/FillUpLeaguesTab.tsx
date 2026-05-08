@@ -33,6 +33,8 @@ import {
   type MemberLite,
   type FixtureLite,
 } from "./fill-leagues/types";
+import { useAssociationRules } from "@/hooks/use-association-rules";
+import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
 
 type Props = {
   clubId: string;
@@ -91,6 +93,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
   });
 
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
+
+  // Per-association substitution rules (NSA: ±2 cap; NIL: lower-or-equal-only; etc.)
+  const { data: subRules } = useAssociationRules(associationId);
 
   // Leagues — optionally scoped to a single association
   const { data: leagues = [] } = useQuery<LeagueRow[]>({
@@ -801,6 +806,41 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
         toast.error("Only that league's captain or a club admin can edit positions");
         return;
       }
+
+      // Substitution rules check (per-association config)
+      if (subRules) {
+        const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
+        if (targetLeagueNumber != null) {
+          const homeLeagueId = effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
+          const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
+          const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;
+          // Last-played position in home league (from previous week's lineup, if any)
+          const lastLineup = previousWeekLineups.find(
+            r => r.club_member_id === memberId && r.league_id === homeLeagueId,
+          );
+          const homePosition = lastLineup?.position ?? null;
+          const targetGender = isMensLeague(targetLeague.name)
+            ? "men"
+            : isLadiesLeague(targetLeague.name)
+            ? "ladies"
+            : "mixed";
+          const playerGender = memberMap.get(memberId)?.gender ?? null;
+
+          const result = checkSubEligibility(
+            subRules,
+            { homeLeagueNumber, homePosition, gender: playerGender as any },
+            { leagueNumber: targetLeagueNumber, position: drop.position, gender: targetGender },
+          );
+          if (!result.ok) {
+            toast.error(result.reason || "Substitution rule violation");
+            return;
+          }
+          if (result.warn && result.reason) {
+            toast.warning(result.reason);
+          }
+        }
+      }
+
       // If from NA, lift the unavailability so they can play
       if (origin === "na") clearUnavailable.mutate(memberId);
       upsertLineup.mutate({

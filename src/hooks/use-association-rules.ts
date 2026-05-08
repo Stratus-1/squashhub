@@ -21,6 +21,11 @@ export interface LeagueRules {
   bonus_points_value: number;
   share_bonus_on_tie: boolean;
   notes: string | null;
+  // Substitution rules (added 2026-05-08)
+  enforce_sub_rules: boolean;
+  max_position_movement_per_week: number | null;
+  sub_direction: "any" | "lower_or_equal_only" | "higher_or_equal_only";
+  cross_gender_subs_allowed: boolean;
 }
 
 export function useAssociationRules(associationId: string | null | undefined) {

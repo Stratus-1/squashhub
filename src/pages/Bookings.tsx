@@ -20,6 +20,8 @@ import {
   Users,
   Swords,
   Sparkles,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -915,28 +917,62 @@ export default function Bookings() {
       {/* External booking deep-link banner (GoBook, Court Manager, etc.) */}
       {usesExternalBooking && (
         <div className="px-4 mt-3">
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                <CalendarCheck className="w-5 h-5 text-primary" />
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">{(myClub as any)?.name || "Your club"} uses {externalLabel}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Court bookings are managed on {externalLabel}. Log in there with your existing credentials.
+                <p className="text-sm font-semibold">
+                  {(myClub as any)?.name || "Your club"} uses {externalLabel} for court bookings
                 </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  You can't book a court directly in this app. All bookings must be made on{" "}
+                  <span className="font-medium text-foreground">{externalLabel}</span> using your existing
+                  credentials, and{" "}
+                  <span className="font-medium text-foreground">
+                    bookings made there will not appear on the schedule below
+                  </span>
+                  . The grid is only used for matches and lighting tracked through {(myClub as any)?.name || "the club"}.
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => openExternalUrl(externalUrl!)}
+                >
+                  Open {externalLabel}
+                </Button>
               </div>
-              <Button
-                size="sm"
-                onClick={() => openExternalUrl(externalUrl!)}
-                className="shrink-0"
-              >
-                Open {externalLabel}
-              </Button>
             </CardContent>
           </Card>
         </div>
       )}
+
+      {/* No courts configured yet */}
+      {!usesExternalBooking && courts.length === 0 && (
+        <div className="px-4 mt-3">
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <Info className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Court bookings aren't activated yet</p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  {(myClub as any)?.name || "Your club"} hasn't set up courts in the app yet. This usually
+                  means the club either uses an{" "}
+                  <span className="font-medium text-foreground">external booking system</span> (like
+                  Court Manager or GoBook), or the{" "}
+                  <span className="font-medium text-foreground">smart lighting / court integration</span>{" "}
+                  hasn't been switched on. Please book your court through your club's usual channel for now —
+                  ask a club admin if you're not sure where to book.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
 
       {/* Upcoming games first */}
       <div className="mt-2">

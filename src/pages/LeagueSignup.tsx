@@ -68,6 +68,29 @@ export default function LeagueSignup() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ captain_status: string; club_subdomain: string | null } | null>(null);
 
+  // Sign-in club picker
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [clubFilter, setClubFilter] = useState("");
+  const { data: allClubs, isLoading: loadingClubs } = useQuery({
+    queryKey: ["league-signup-clubs"],
+    enabled: signInOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("id, name, subdomain, logo_url, tenant_type")
+        .not("subdomain", "is", null)
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string; subdomain: string | null; logo_url: string | null; tenant_type: string | null }>;
+    },
+  });
+  const filteredClubs = useMemo(() => {
+    const q = clubFilter.trim().toLowerCase();
+    const list = (allClubs || []).filter((c) => c.tenant_type !== "association");
+    if (!q) return list;
+    return list.filter((c) => c.name.toLowerCase().includes(q) || (c.subdomain || "").toLowerCase().includes(q));
+  }, [allClubs, clubFilter]);
+
   // Auto-lookup on NSA number change (debounced)
   useEffect(() => {
     const q = nsaInput.trim();

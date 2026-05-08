@@ -795,9 +795,9 @@ export function MarkerSetup({ onStart }: Props) {
                               <UserCheck className="w-3 h-3" /> You're playing
                             </Badge>
                           )}
-                          {!f.inMyLineup && f.isMyTeam && (
+                          {leagueScope === "all" && !f.inMyLineup && f.isMyTeam && (
                             <Badge className="bg-primary/15 text-primary text-[10px] gap-1">
-                              <Star className="w-3 h-3" /> Your league
+                              <Star className="w-3 h-3" /> Your club
                             </Badge>
                           )}
                           {f.division && (

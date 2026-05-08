@@ -50,8 +50,22 @@ export type NsaTeam = {
   players: NsaTeamPlayer[];
 };
 
+export type NsaFixturePenaltyReason = { label: string; points: number };
+export type NsaFixturePenaltyTeam = {
+  team_code: string;
+  total_points: number;
+  reasons: NsaFixturePenaltyReason[];
+};
+export type NsaFixturePenalties = {
+  nsa_fixture_id: number;
+  title: string | null;
+  home_team_code: string | null;
+  away_team_code: string | null;
+  teams: NsaFixturePenaltyTeam[];
+};
+
 async function callProxy<T>(
-  endpoint: "fixtures" | "team",
+  endpoint: "fixtures" | "team" | "fixture_penalties",
   params: Record<string, string | number | undefined>
 ): Promise<T> {
   const cleanParams: Record<string, string> = {};

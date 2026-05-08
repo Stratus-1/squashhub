@@ -169,7 +169,6 @@ export default function SuperAdminLeagues() {
         .eq("association_id", activeAssociation!);
       if (countError) throw countError;
       // Paginate to bypass the 1000-row PostgREST cap
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data, error } = await supabase
           .from("platform_league_members" as any)

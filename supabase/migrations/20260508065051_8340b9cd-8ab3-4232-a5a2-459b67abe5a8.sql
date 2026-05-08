@@ -1,0 +1,1 @@
+UPDATE leagues SET code='NIL008' WHERE id='231cfea3-6aa9-474f-8bc0-3880e2b74745' AND code IS NULL;

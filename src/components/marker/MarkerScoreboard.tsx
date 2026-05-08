@@ -569,8 +569,16 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
       {/* Server indicator */}
       <p className="text-center text-xs text-muted-foreground">
         {isEnglish ? "Hand-in/Hand-out · " : ""}Serving: <span className="font-semibold">{server === "a" ? playerAName : playerBName}</span> ({serveSide})
-        {" · "}Tap {serveSide} to switch
       </p>
+      <button
+        type="button"
+        onClick={toggleServeSide}
+        disabled={!tossDecided || matchOver || resting}
+        className="mx-auto flex items-center gap-1.5 rounded-full border-2 border-destructive bg-destructive/10 px-3 py-1.5 text-sm font-bold text-destructive shadow-sm transition hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50 animate-pulse"
+        aria-label={`Switch serve to ${serveSide === "R" ? "Left" : "Right"} side`}
+      >
+        ⇄ Tap to switch to {serveSide === "R" ? "LEFT" : "RIGHT"} side
+      </button>
 
       {/* Controls */}
       <div className="flex items-center gap-2">

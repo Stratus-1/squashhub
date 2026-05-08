@@ -692,13 +692,21 @@ export default function LeagueGameDetail() {
   const markerConfig = useMemo((): MarkerConfig | null => {
     if (activeMarker === null) return null;
     const pos = positions[activeMarker];
+    // Always derive from association rules when present so Super Admin's
+    // configured format wins over any stale local state.
+    const effectiveFormat = leagueRules?.points_per_game === 15 ? "par15"
+      : leagueRules?.points_per_game === 11 ? "par11"
+      : scoringFormat;
+    const effectiveBestOf = leagueRules?.games_format === "best_of_5" ? 5
+      : leagueRules?.games_format === "best_of_3" ? 3
+      : bestOf;
     return {
       playerA: { name: pos.homeName || pos.homeCode, number: pos.homeCode, club: fixture?.home_team_code || "" },
       playerB: { name: pos.awayName || pos.awayCode, number: pos.awayCode, club: fixture?.away_team_code || "" },
-      isDoubles: false, matchType: "league", scoringFormat, bestOf, deuceRule: "win_by_2",
+      isDoubles: false, matchType: "league", scoringFormat: effectiveFormat, bestOf: effectiveBestOf, deuceRule: "win_by_2",
       source: "league", sourceId: fixtureId,
     };
-  }, [activeMarker, positions, fixture, fixtureId, scoringFormat, bestOf]);
+  }, [activeMarker, positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
 
   const handleMarkerComplete = useCallback((result: { games: GameScore[]; winnerId: "a" | "b"; durationSeconds: number }) => {
     if (activeMarker === null) return;

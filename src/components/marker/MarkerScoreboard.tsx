@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Undo2, RotateCcw, Flag, Clock, Pause, Play, Cast } from "lucide-react";
+import { Undo2, RotateCcw, Flag, Clock, Pause, Play, Cast, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { MarkerConfig, ScoringFormat, DeuceRule } from "./MarkerSetup";
 import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
 import { CastDialog } from "./CastDialog";
@@ -123,6 +126,8 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
   const { club } = useClubContext();
   const cast = useMarkerCast(club?.id);
   const [castDialogOpen, setCastDialogOpen] = useState(false);
+  const [scratchOpen, setScratchOpen] = useState(false);
+  const [scratchConfirmText, setScratchConfirmText] = useState("");
 
   const sessionKey = getSessionKey(config);
   const persisted = useRef<PersistedState | null>(loadPersisted(sessionKey)).current;
@@ -595,6 +600,15 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         <Button
           variant="outline"
           size="sm"
+          className="flex-1 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          onClick={() => { setScratchConfirmText(""); setScratchOpen(true); }}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Scratch
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           className="flex-1 gap-1.5"
           onClick={onReset}
         >
@@ -602,6 +616,50 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
           New Match
         </Button>
       </div>
+
+      {/* Scratch confirmation dialog */}
+      <Dialog open={scratchOpen} onOpenChange={(o) => { setScratchOpen(o); if (!o) setScratchConfirmText(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="w-4 h-4" /> Scratch this match?
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete all marking for this match — every point, game, the toss, and the timer. You'll start from scratch. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="scratch-confirm" className="text-xs">
+              Type <span className="font-bold text-destructive">SCRATCH</span> to confirm
+            </Label>
+            <Input
+              id="scratch-confirm"
+              value={scratchConfirmText}
+              onChange={(e) => setScratchConfirmText(e.target.value)}
+              placeholder="SCRATCH"
+              autoComplete="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setScratchOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={scratchConfirmText.trim().toUpperCase() !== "SCRATCH"}
+              onClick={() => {
+                try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
+                setScratchOpen(false);
+                setScratchConfirmText("");
+                toast.success("Match marking scratched. Starting fresh.");
+                onReset();
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete marking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Match over banner */}
       {matchOver && matchWinner && (

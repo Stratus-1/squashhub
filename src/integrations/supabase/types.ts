@@ -2658,6 +2658,8 @@ export type Database = {
           bonus_points_value: number
           club_id: string | null
           created_at: string
+          cross_gender_subs_allowed: boolean
+          enforce_sub_rules: boolean
           forfeit_allowed: boolean
           games_format: string
           id: string
@@ -2665,10 +2667,12 @@ export type Database = {
           let_stroke_enabled: boolean
           marker_must_be_qualified: boolean
           marker_required: boolean
+          max_position_movement_per_week: number | null
           max_timeouts_per_player: number
           notes: string | null
           points_per_game: number
           share_bonus_on_tie: boolean
+          sub_direction: string
           tiebreak_at: number | null
           tiebreak_method: string
           updated_at: string
@@ -2680,6 +2684,8 @@ export type Database = {
           bonus_points_value?: number
           club_id?: string | null
           created_at?: string
+          cross_gender_subs_allowed?: boolean
+          enforce_sub_rules?: boolean
           forfeit_allowed?: boolean
           games_format?: string
           id?: string
@@ -2687,10 +2693,12 @@ export type Database = {
           let_stroke_enabled?: boolean
           marker_must_be_qualified?: boolean
           marker_required?: boolean
+          max_position_movement_per_week?: number | null
           max_timeouts_per_player?: number
           notes?: string | null
           points_per_game?: number
           share_bonus_on_tie?: boolean
+          sub_direction?: string
           tiebreak_at?: number | null
           tiebreak_method?: string
           updated_at?: string
@@ -2702,6 +2710,8 @@ export type Database = {
           bonus_points_value?: number
           club_id?: string | null
           created_at?: string
+          cross_gender_subs_allowed?: boolean
+          enforce_sub_rules?: boolean
           forfeit_allowed?: boolean
           games_format?: string
           id?: string
@@ -2709,10 +2719,12 @@ export type Database = {
           let_stroke_enabled?: boolean
           marker_must_be_qualified?: boolean
           marker_required?: boolean
+          max_position_movement_per_week?: number | null
           max_timeouts_per_player?: number
           notes?: string | null
           points_per_game?: number
           share_bonus_on_tie?: boolean
+          sub_direction?: string
           tiebreak_at?: number | null
           tiebreak_method?: string
           updated_at?: string

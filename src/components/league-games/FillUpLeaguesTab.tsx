@@ -430,7 +430,10 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
         .eq("club_member_id", memberId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+      qc.invalidateQueries({ queryKey: ["lwl-previous", clubId] });
+    },
   });
 
   const setStatusMut = useMutation({
@@ -482,6 +485,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
       qc.invalidateQueries({ queryKey: ["lwu", clubId, weekStart] });
       qc.invalidateQueries({ queryKey: ["lwa", clubId, weekStart] });
       qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+      qc.invalidateQueries({ queryKey: ["lwl-previous", clubId] });
     },
     onError: (e: any) => toast.error(e.message || "Failed to mark unavailable"),
   });

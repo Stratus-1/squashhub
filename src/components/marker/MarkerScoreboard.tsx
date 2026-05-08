@@ -408,6 +408,54 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         onCourtChange={cast.setCourtNumber}
       />
 
+      {/* Toss overlay - must be set before the first point */}
+      {!tossDecided && !matchOver && (
+        <Card className="p-4 border-primary/30 bg-primary/5">
+          <p className="text-sm font-heading font-bold text-center mb-1">Who won the toss?</p>
+          <p className="text-xs text-center text-muted-foreground mb-3">
+            The toss winner chooses to serve and which box (Right or Left).
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <Button
+              size="sm"
+              variant={server === "a" ? "default" : "outline"}
+              onClick={() => setServer("a")}
+              className="truncate"
+            >
+              {playerAName} serves
+            </Button>
+            <Button
+              size="sm"
+              variant={server === "b" ? "default" : "outline"}
+              onClick={() => setServer("b")}
+              className="truncate"
+            >
+              {playerBName} serves
+            </Button>
+          </div>
+          <p className="text-xs text-center text-muted-foreground mb-2">Serve from which box?</p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <Button
+              size="sm"
+              variant={serveSide === "R" ? "default" : "outline"}
+              onClick={() => setServeSide("R")}
+            >
+              Right (R)
+            </Button>
+            <Button
+              size="sm"
+              variant={serveSide === "L" ? "default" : "outline"}
+              onClick={() => setServeSide("L")}
+            >
+              Left (L)
+            </Button>
+          </div>
+          <Button size="sm" className="w-full" onClick={() => setTossDecided(true)}>
+            Start match
+          </Button>
+        </Card>
+      )}
+
       {/* Rest timer overlay */}
       {resting && (
         <Card className="p-4 bg-accent/10 border-accent/30">

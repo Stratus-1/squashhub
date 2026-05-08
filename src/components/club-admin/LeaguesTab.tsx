@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useLeagueAssociations, useLeagues, useClubMembers, LeagueAssociation, League, ClubMember, SKILL_LEVELS, getSkillOrder, getSkillLabel } from "@/hooks/use-club";
 import { useLadder } from "@/hooks/use-data";
 import { fromExt } from "@/lib/supabase-ext";

@@ -337,6 +337,10 @@ function RoundCard({
           const startMin = h * 60 + m;
           const endMin = startMin + round.slot_minutes;
           const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+          const homeName = teams.find((t) => t.code === list[i].home_team_code)?.name?.trim();
+          const awayName = teams.find((t) => t.code === list[i].away_team_code)?.name?.trim();
+          const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
+          const guestName = matchup ? `${round.name} - ${matchup}` : round.name;
           const { data: booking, error: bErr } = await supabase
             .from("bookings")
             .insert({
@@ -348,7 +352,7 @@ function RoundCard({
               status: "active",
               is_friendly: false,
               club_id: clubId,
-              guest_name: `${round.name} - ${teams.find((t) => t.code === list[i].home_team_code)?.name ?? list[i].home_team_code} vs ${teams.find((t) => t.code === list[i].away_team_code)?.name ?? list[i].away_team_code}`,
+              guest_name: guestName,
             })
             .select("id")
             .single();

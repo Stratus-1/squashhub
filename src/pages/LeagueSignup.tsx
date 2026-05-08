@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Trophy, Search, CheckCircle2, Loader2, Crown } from "lucide-react";
+import { Trophy, Search, CheckCircle2, Loader2, Crown, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import shLogo from "@/assets/shub-logo-full.png";
 
@@ -65,6 +67,29 @@ export default function LeagueSignup() {
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ captain_status: string; club_subdomain: string | null } | null>(null);
+
+  // Sign-in club picker
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [clubFilter, setClubFilter] = useState("");
+  const { data: allClubs, isLoading: loadingClubs } = useQuery({
+    queryKey: ["league-signup-clubs"],
+    enabled: signInOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("id, name, subdomain, logo_url, tenant_type")
+        .not("subdomain", "is", null)
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string; subdomain: string | null; logo_url: string | null; tenant_type: string | null }>;
+    },
+  });
+  const filteredClubs = useMemo(() => {
+    const q = clubFilter.trim().toLowerCase();
+    const list = (allClubs || []).filter((c) => c.tenant_type !== "association");
+    if (!q) return list;
+    return list.filter((c) => c.name.toLowerCase().includes(q) || (c.subdomain || "").toLowerCase().includes(q));
+  }, [allClubs, clubFilter]);
 
   // Auto-lookup on NSA number change (debounced)
   useEffect(() => {
@@ -341,9 +366,74 @@ export default function LeagueSignup() {
 
           <div className="text-center text-xs text-muted-foreground pt-2 border-t">
             Already have an account?{" "}
-            <Link to={presetClub ? `/c/${presetClub}` : "/"} className="text-primary underline">Sign in</Link>
+            {presetClub ? (
+              <Link to={`/c/${presetClub}`} className="text-primary underline">Sign in</Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSignInOpen(true)}
+                className="text-primary underline"
+              >
+                Sign in
+              </button>
+            )}
           </div>
         </Card>
+
+        <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Pick your club to sign in</DialogTitle>
+              <DialogDescription>
+                Choose the NSA club you registered under. We'll take you to its sign-in page.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+              <Input
+                autoFocus
+                value={clubFilter}
+                onChange={(e) => setClubFilter(e.target.value)}
+                placeholder="Search club name…"
+                className="pl-10"
+              />
+            </div>
+            <div className="border rounded-md divide-y max-h-80 overflow-y-auto">
+              {loadingClubs && (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> Loading clubs…
+                </div>
+              )}
+              {!loadingClubs && filteredClubs.length === 0 && (
+                <div className="p-4 text-center text-sm text-muted-foreground">No clubs match.</div>
+              )}
+              {filteredClubs.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setSignInOpen(false);
+                    if (c.subdomain) navigate(`/c/${c.subdomain}`);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted text-left"
+                >
+                  {c.logo_url ? (
+                    <img src={c.logo_url} alt="" className="w-8 h-8 rounded object-cover bg-muted" />
+                  ) : (
+                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                      {c.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{c.name}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">/c/{c.subdomain}</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card className="p-6 md:p-8 text-center space-y-4 border-primary/30 bg-primary/5">
           <h2 className="text-2xl md:text-3xl font-bold font-heading text-primary">

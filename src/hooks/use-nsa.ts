@@ -50,8 +50,22 @@ export type NsaTeam = {
   players: NsaTeamPlayer[];
 };
 
+export type NsaFixturePenaltyReason = { label: string; points: number };
+export type NsaFixturePenaltyTeam = {
+  team_code: string;
+  total_points: number;
+  reasons: NsaFixturePenaltyReason[];
+};
+export type NsaFixturePenalties = {
+  nsa_fixture_id: number;
+  title: string | null;
+  home_team_code: string | null;
+  away_team_code: string | null;
+  teams: NsaFixturePenaltyTeam[];
+};
+
 async function callProxy<T>(
-  endpoint: "fixtures" | "team",
+  endpoint: "fixtures" | "team" | "fixture_penalties",
   params: Record<string, string | number | undefined>
 ): Promise<T> {
   const cleanParams: Record<string, string> = {};
@@ -94,6 +108,17 @@ export function useNsaTeam(teamId: string | null | undefined, enabled = true) {
 /** Imperative fetch for one-off lookups. */
 export async function fetchNsaFixtures(opts: { league: string; club?: string }): Promise<NsaFixture[]> {
   return callProxy<NsaFixture[]>("fixtures", { league: opts.league, club: opts.club });
+}
+
+/** Fetch penalties applied by NSA on a specific fixture. Returns empty teams array if none. */
+export function useNsaFixturePenalties(fixtureId: number | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["nsa-fixture-penalties", fixtureId],
+    queryFn: () => callProxy<NsaFixturePenalties>("fixture_penalties", { fixture_id: fixtureId! }),
+    enabled: enabled && !!fixtureId,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
 }
 
 /** Current NSA season — TODO: make this dynamic / configurable per association. */

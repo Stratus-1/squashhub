@@ -18,7 +18,7 @@ const corsHeaders = {
 };
 
 const NSA_BASE = "https://admin.northerns.co.za/nsa";
-const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings"]);
+const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings", "fixture_penalties"]);
 const CACHE_TTL_MS = 60_000;
 const SEASON_MAP_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -182,6 +182,139 @@ async function fetchStandings(seasonId: string, divisionId: string, map: SeasonM
   };
 }
 
+// ---------- fixture penalties parsing ----------
+//
+// NSA's public fixture-result page lives at /nsa/fixtureresults.php?fixture=ID.
+// Penalties surface in two places we care about:
+//   1) A "Penalty Points" row in the score table (signed integer per team).
+//   2) One or more `Penalties for <TEAM_CODE>` blocks listing reason + points.
+// We return one entry per affected team with both the total and the reasons.
+
+type FixturePenaltyReason = { label: string; points: number };
+type FixturePenaltyTeam = {
+  team_code: string;
+  total_points: number; // signed; usually negative
+  reasons: FixturePenaltyReason[];
+};
+type FixturePenaltiesResult = {
+  nsa_fixture_id: number;
+  title: string | null;
+  home_team_code: string | null;
+  away_team_code: string | null;
+  teams: FixturePenaltyTeam[];
+};
+
+function stripTags(s: string): string {
+  return s.replace(/<[^>]+>/g, "").replace(/&nbsp;?/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function fetchFixturePenalties(fixtureId: number): Promise<FixturePenaltiesResult> {
+  const url = `${NSA_BASE}/fixtureresults.php?fixture=${fixtureId}`;
+  const res = await fetch(url, { headers: { "User-Agent": "SquashHub-Proxy/1.0" } });
+  if (!res.ok) throw new Error(`NSA HTTP ${res.status}`);
+  const html = await res.text();
+
+  // Title: "Fixture Results: Mens 7th - PHS006 vs CSI006"
+  const titleMatch = html.match(/Fixture\s+Results:\s*([^<\n]+)/i);
+  const title = titleMatch ? stripTags(titleMatch[1]).trim() : null;
+  let home_team_code: string | null = null;
+  let away_team_code: string | null = null;
+  const codePair = title?.match(/([A-Z]{2,5}\d{2,4})\s+vs\s+([A-Z]{2,5}\d{2,4})/i);
+  if (codePair) {
+    home_team_code = codePair[1].toUpperCase();
+    away_team_code = codePair[2].toUpperCase();
+  }
+
+  const byTeam = new Map<string, FixturePenaltyTeam>();
+  const ensure = (code: string): FixturePenaltyTeam => {
+    const k = code.toUpperCase();
+    let t = byTeam.get(k);
+    if (!t) {
+      t = { team_code: k, total_points: 0, reasons: [] };
+      byTeam.set(k, t);
+    }
+    return t;
+  };
+
+  // -------- Penalty Points row in the score table --------
+  // Shape (numeric cells appear under each team's points column):
+  //   <tr>...Penalty Points...<td>-2</td>...<td>&nbsp;</td>...</tr>
+  // We parse all numeric cells in the row and pair them with home/away (in order).
+  const ppRow = html.match(/<tr[^>]*>[\s\S]*?Penalty\s+Points[\s\S]*?<\/tr>/i);
+  if (ppRow && (home_team_code || away_team_code)) {
+    const cells = [...ppRow[0].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((m) => stripTags(m[1]));
+    // First numeric value goes to home, second to away (order on page).
+    const numerics = cells
+      .map((c) => (/^-?\d+$/.test(c) ? parseInt(c, 10) : null))
+      .filter((n): n is number => n !== null && n !== 0);
+    // The row's first cell is the label; numbers after it are per-column.
+    // We want the first two non-zero numbers to map to home/away in document order.
+    if (numerics.length >= 1 && home_team_code) {
+      // Find numeric cells positionally — left numeric => home, right numeric => away.
+      // Walk cells in order: any numeric cell BEFORE the midpoint is "home".
+      let homePts = 0;
+      let awayPts = 0;
+      const idxs: Array<{ i: number; v: number }> = [];
+      cells.forEach((c, i) => {
+        if (/^-?\d+$/.test(c)) idxs.push({ i, v: parseInt(c, 10) });
+      });
+      if (idxs.length === 1) {
+        // Only one team penalised — assume left half = home, right half = away.
+        const mid = cells.length / 2;
+        if (idxs[0].i < mid && home_team_code) homePts = idxs[0].v;
+        else if (away_team_code) awayPts = idxs[0].v;
+      } else if (idxs.length >= 2) {
+        if (home_team_code) homePts = idxs[0].v;
+        if (away_team_code) awayPts = idxs[idxs.length - 1].v;
+      }
+      if (homePts !== 0 && home_team_code) ensure(home_team_code).total_points = homePts;
+      if (awayPts !== 0 && away_team_code) ensure(away_team_code).total_points = awayPts;
+    }
+  }
+
+  // -------- "Penalties for <CODE>" blocks --------
+  // Each block is bounded by <tr ... Penalties for CODE ...> ... <tr ...tcEmptyLast...>.
+  const blockRe = /Penalties\s+for\s+([A-Z]{2,5}\d{2,4})[\s\S]*?(?=Penalties\s+for\s+[A-Z]|tcEmptyLast|<\/table>)/gi;
+  for (const m of html.matchAll(blockRe)) {
+    const code = m[1].toUpperCase();
+    const team = ensure(code);
+    // Each reason row: <td colspan="13"...>Label</td><td...>Points</td>
+    const reasonRows = [...m[0].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+    for (const rr of reasonRows) {
+      const cells = [...rr[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((c) => stripTags(c[1]));
+      // Look for: at least one cell that's a non-empty label and a numeric cell.
+      const numericIdx = cells.findIndex((c) => /^-?\d+$/.test(c));
+      if (numericIdx === -1) continue;
+      // Label = the previous non-empty, non-numeric cell.
+      let label = "";
+      for (let i = numericIdx - 1; i >= 0; i--) {
+        if (cells[i] && !/^-?\d+$/.test(cells[i])) {
+          label = cells[i];
+          break;
+        }
+      }
+      if (!label || /penalties\s+for/i.test(label)) continue;
+      const points = parseInt(cells[numericIdx], 10);
+      if (isNaN(points)) continue;
+      team.reasons.push({ label, points });
+    }
+    // If we didn't pick up a total from the score row, derive it from reasons.
+    // NSA reasons are typically positive numbers representing the deduction.
+    if (team.total_points === 0 && team.reasons.length > 0) {
+      const sum = team.reasons.reduce((a, r) => a + r.points, 0);
+      team.total_points = -Math.abs(sum);
+    }
+  }
+
+  return {
+    nsa_fixture_id: fixtureId,
+    title,
+    home_team_code,
+    away_team_code,
+    teams: [...byTeam.values()],
+  };
+}
+
 // ---------- main handler ----------
 
 Deno.serve(async (req) => {
@@ -245,6 +378,31 @@ Deno.serve(async (req) => {
     // Allow letters, digits, underscore, hyphen, space (for "Mens"/"Ladies")
     if (!/^[a-zA-Z0-9_\- ]*$/.test(sv)) continue;
     if (sv) params[k] = sv;
+  }
+
+  // ---------- fixture penalties ----------
+  if (endpoint === "fixture_penalties") {
+    const fixId = parseInt(params.fixture_id || "", 10);
+    if (!fixId) {
+      return new Response(JSON.stringify({ error: "fixture_id required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const key = cacheKey("fixture_penalties", { fixture_id: String(fixId) });
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      return new Response(JSON.stringify({ data: cached.data, cached: true, age_ms: Date.now() - cached.at }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    try {
+      const result = await fetchFixturePenalties(fixId);
+      cache.set(key, { at: Date.now(), data: result });
+      return new Response(JSON.stringify({ data: result, cached: false }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: `Fixture penalties fetch failed: ${(err as Error).message}` }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
   }
 
   // ---------- standings ----------

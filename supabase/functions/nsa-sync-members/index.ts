@@ -137,8 +137,9 @@ Deno.serve(async (req) => {
     }));
   }
 
-  // 3. Build a deduped set of player rows. A player can appear on multiple
-  // teams across the season — keep the row with the most matches played.
+  // 3. Build a deduped set of player rows. Track NSA team id per player too
+  // (transient; not persisted on platform_league_members) so we can allocate
+  // matched club_members into local league teams.
   type Row = {
     association_id: string;
     user_code: string;
@@ -150,8 +151,10 @@ Deno.serve(async (req) => {
     league_matches: number;
   };
   const rowsByCode = new Map<string, Row>();
+  const teamIdByCode = new Map<string, string>(); // user_code -> NSA team id (best/most-played)
+  const nsaClubIdByCode = new Map<string, string>(); // user_code -> NSA club id
   let fetchedPlayers = 0;
-  for (const { teamRef, players } of teamRosters.values()) {
+  for (const [tid, { teamRef, players }] of teamRosters.entries()) {
     for (const p of players) {
       const code = String(p.code || "").trim().toUpperCase();
       if (!code) continue;
@@ -170,6 +173,8 @@ Deno.serve(async (req) => {
       };
       if (!existing || candidate.league_matches > existing.league_matches) {
         rowsByCode.set(code, candidate);
+        teamIdByCode.set(code, tid);
+        if (teamRef.club_id) nsaClubIdByCode.set(code, String(teamRef.club_id));
       }
     }
   }

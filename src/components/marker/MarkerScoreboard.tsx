@@ -466,7 +466,11 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
               Left (L)
             </Button>
           </div>
-          <Button size="sm" className="w-full" onClick={() => setTossDecided(true)}>
+          <Button
+            size="sm"
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold"
+            onClick={() => setTossDecided(true)}
+          >
             Start match
           </Button>
         </Card>

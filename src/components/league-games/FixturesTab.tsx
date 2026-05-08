@@ -296,7 +296,7 @@ function RoundCard({
     }
 
     setDraft([...generated, ...byeRows]);
-    const dayCount = byDate.size;
+    const dayCount = new Set(slots.map((s) => s.date)).size;
     toast.success(
       `Generated ${generated.length} fixtures across ${dayCount} day(s)` +
         (byeRows.length ? ` · ${byeRows.length} bye(s)` : ""),

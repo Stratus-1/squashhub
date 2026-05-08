@@ -379,6 +379,18 @@ export default function LeagueGameDetail() {
     }
   }, [existingResult]);
 
+  // Apply association-level league rules as defaults (only if no explicit saved match_format)
+  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+  useEffect(() => {
+    if (!leagueRules) return;
+    if (existingResult?.match_format) return; // user-saved value wins
+    const ppg = leagueRules.points_per_game;
+    if (ppg === 15) setScoringFormat("par15");
+    else if (ppg === 11) setScoringFormat("par11");
+    if (leagueRules.games_format === "best_of_3") setBestOf(3);
+    else if (leagueRules.games_format === "best_of_5") setBestOf(5);
+  }, [leagueRules, existingResult]);
+
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {
     if (!code || code.length < 3) return "";
     const upper = code.toUpperCase();

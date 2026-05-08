@@ -118,7 +118,7 @@ export default function SuperAdminLeagues() {
         .select("*")
         .eq("association_id", activeAssociation!)
         .order("surname")
-        .limit(3000);
+        .range(0, 49999);
       if (error) throw error;
       return data as any[];
     },

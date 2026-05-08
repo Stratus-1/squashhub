@@ -24,6 +24,8 @@ import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-ns
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
+import { useAssociationRules } from "@/hooks/use-association-rules";
+import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
 
 interface PositionEntry {
   homeCode: string;
@@ -378,6 +380,18 @@ export default function LeagueGameDetail() {
       if (fmt.bestOf) setBestOf(fmt.bestOf);
     }
   }, [existingResult]);
+
+  // Apply association-level league rules as defaults (only if no explicit saved match_format)
+  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+  useEffect(() => {
+    if (!leagueRules) return;
+    if (existingResult?.match_format) return; // user-saved value wins
+    const ppg = leagueRules.points_per_game;
+    if (ppg === 15) setScoringFormat("par15");
+    else if (ppg === 11) setScoringFormat("par11");
+    if (leagueRules.games_format === "best_of_3") setBestOf(3);
+    else if (leagueRules.games_format === "best_of_5") setBestOf(5);
+  }, [leagueRules, existingResult]);
 
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {
     if (!code || code.length < 3) return "";
@@ -935,11 +949,17 @@ export default function LeagueGameDetail() {
           <div className="grid grid-cols-2 border-b">
             <div className="p-1.5 border-r bg-primary/5">
               <span className="text-[10px] text-muted-foreground block">HOME TEAM</span>
-              <span className="font-bold text-sm">{homeCode}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-sm">{homeCode}</span>
+                <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="home" teamCode={homeCode} />
+              </div>
             </div>
             <div className="p-1.5 bg-secondary/30">
               <span className="text-[10px] text-muted-foreground block">VISITORS TEAM</span>
-              <span className="font-bold text-sm">{awayCode}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-sm">{awayCode}</span>
+                <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="away" teamCode={awayCode} />
+              </div>
             </div>
           </div>
           <div className="p-1.5 text-[10px] text-muted-foreground bg-muted/30 flex items-center justify-between">

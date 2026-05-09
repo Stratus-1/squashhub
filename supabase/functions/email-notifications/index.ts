@@ -136,23 +136,36 @@ async function handleTestEmail(payload: Record<string, unknown>, authHeader: str
     }
 
     const clubId = String(payload?.clubId || "");
-    if (clubId) {
-      const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", {
-        _user_id: user.id,
-        _club_id: clubId,
+    if (!clubId) {
+      return new Response(JSON.stringify({ error: "clubId is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Only club admins can send test emails" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    }
+    const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", {
+      _user_id: user.id,
+      _club_id: clubId,
+    });
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: "Only club admins can send test emails" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const smtpHost = String(payload?.smtp_host || "").trim();
     const smtpPort = Number(payload?.smtp_port) || 587;
     const smtpUser = String(payload?.smtp_user || "").trim();
     const smtpPass = String(payload?.smtp_pass || "").trim();
+
+    // Restrict SMTP ports to standard submission/SMTP ports to limit SSRF surface
+    const ALLOWED_SMTP_PORTS = new Set([25, 465, 587, 2525]);
+    if (!ALLOWED_SMTP_PORTS.has(smtpPort)) {
+      return new Response(JSON.stringify({ ok: false, reason: `SMTP port ${smtpPort} is not allowed. Use 25, 465, 587, or 2525.` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!smtpHost || !smtpUser || !smtpPass) {
       return new Response(JSON.stringify({ ok: false, reason: "Missing SMTP settings (host, user, or password)" }), {

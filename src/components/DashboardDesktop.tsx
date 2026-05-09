@@ -461,32 +461,32 @@ function TileGroup({
           {label}
         </span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
         {tiles.map((t) => {
-          const s = TILE_STYLES[t.color] ?? TILE_STYLES.blue;
+          const s = TILE_STYLES.red ?? TILE_STYLES.blue;
           return (
             <button
               key={t.title + t.url}
               onClick={() => navigate(t.url)}
               className={cn(
                 "group relative overflow-hidden rounded-xl border border-white/10 bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md",
-                "px-4 py-4 text-left transition-all duration-200",
+                "px-5 py-5 text-left transition-all duration-200",
                 "hover:-translate-y-0.5 hover:shadow-lg",
                 s.hoverBorder, s.glow,
               )}
             >
               {/* color glow corner */}
-              <div className={cn("pointer-events-none absolute -top-10 -right-10 w-28 h-28 rounded-full bg-gradient-to-br blur-2xl opacity-70", s.ring)} />
+              <div className={cn("pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br blur-2xl opacity-70", s.ring)} />
               <div className="relative flex items-center gap-3">
-                <div className={cn("h-9 w-9 rounded-lg grid place-items-center bg-white/[0.06] border border-white/10", s.icon)}>
-                  <t.icon className="w-4 h-4" />
+                <div className={cn("h-10 w-10 rounded-lg grid place-items-center bg-white/[0.06] border border-white/10", s.icon)}>
+                  <t.icon className="w-[18px] h-[18px]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] uppercase tracking-[0.16em] font-heading font-bold text-white truncate">
+                  <p className="text-[12px] uppercase tracking-[0.16em] font-heading font-bold text-white truncate">
                     {t.title}
                   </p>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" />
+                <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/80 transition-colors" />
               </div>
             </button>
           );

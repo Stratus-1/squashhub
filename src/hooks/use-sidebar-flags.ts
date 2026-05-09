@@ -32,8 +32,30 @@ export function useSidebarFlags() {
     enabled: !!clubId,
   });
 
+  // Also surface "Leagues" when any club member has an external association affiliation
+  // (e.g. Riverside players affiliated to NSA via member_association_affiliations).
+  const { data: externalAffiliationCount } = useQuery({
+    queryKey: ["club-external-affiliations", clubId],
+    queryFn: async () => {
+      if (!clubId) return 0;
+      const { data: members, error: mErr } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId!);
+      if (mErr) throw mErr;
+      const ids = (members || []).map((m: any) => m.id);
+      if (ids.length === 0) return 0;
+      const { count, error } = await fromExt("member_association_affiliations")
+        .select("id", { count: "exact", head: true })
+        .in("club_member_id", ids)
+        .eq("active", true);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!clubId,
+  });
+
   return {
-    hasLeagues: (clubLeagueAssociations || []).length > 0,
+    hasLeagues: (clubLeagueAssociations || []).length > 0 || (externalAffiliationCount || 0) > 0,
     honestyBarEnabled: !!(effectiveClub as any)?.honesty_bar_enabled,
     hasAnyAdminAccess: isClubAdmin || myPermissions.size > 0,
     isAssociation: (effectiveClub as any)?.tenant_type === "association",

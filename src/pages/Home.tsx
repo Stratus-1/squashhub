@@ -25,6 +25,7 @@ import heroBg from "@/assets/hero-court.jpg";
 import featureImg from "@/assets/feature-woman-phone.png";
 import playerRacketImg from "@/assets/player-racket.jpg";
 import playersMatchImg from "@/assets/players-match.jpg";
+import shellyImg from "@/assets/shelly-pro-4pm.jpg";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import featuresCourtBg from "@/assets/features-court-bg.jpg";
 
@@ -601,6 +602,41 @@ export default function Home() {
               perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Free until September 2026"]}
               onGetStarted={() => navigate("/auth")}
             />
+          </div>
+
+          {/* Lights integration teaser */}
+          <div className="max-w-4xl mx-auto mt-8">
+            <button
+              onClick={() => navigate("/lights")}
+              className="group w-full text-left rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent backdrop-blur-md p-5 sm:p-6 hover:border-amber-400/60 hover:from-amber-500/15 transition-all"
+            >
+              <div className="flex flex-col sm:flex-row items-center gap-5">
+                <div className="relative shrink-0">
+                  <div className="absolute inset-0 bg-amber-500/30 blur-2xl rounded-full" />
+                  <img
+                    src={shellyImg}
+                    alt="Shelly Pro 4PM smart relay"
+                    className="relative w-28 h-28 sm:w-32 sm:h-32 object-contain rounded-xl bg-white p-2 border border-white/10"
+                  />
+                </div>
+                <div className="flex-1 space-y-2 text-center sm:text-left">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold">
+                    <Zap className="w-3 h-3" /> Shelly Ready
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-heading uppercase tracking-tight text-foreground">
+                    Smart court lights — included
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    SquashHub may integrate with your existing relay hardware, or pair with the affordable
+                    <strong className="text-foreground"> Shelly Pro 4PM</strong> system. Bookings <em>and</em> lights
+                    in one place — no separate booking system required.
+                  </p>
+                  <div className="inline-flex items-center gap-1 text-amber-400 text-sm font-semibold pt-1 group-hover:gap-2 transition-all">
+                    Learn more <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       </section>

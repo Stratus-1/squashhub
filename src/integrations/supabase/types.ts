@@ -4645,6 +4645,7 @@ export type Database = {
         Returns: boolean
       }
       is_member_owner: { Args: { _member_id: string }; Returns: boolean }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       lookup_existing_member_for_signup: {
         Args: {
           _club_id: string

@@ -104,7 +104,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary" className="text-[10px]">
-                    {fee.basis === "per_member" ? "Per member" : "Per club"}
+                    {fee.basis === "per_member" ? "Per member" : fee.basis === "per_team" ? "Per team" : "Per club"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">R {Number(fee.amount).toFixed(2)}</TableCell>

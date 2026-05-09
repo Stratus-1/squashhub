@@ -647,6 +647,27 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const canEditLeague = (lg: LeagueRow): boolean => isCaptainOfLeague(lg) || !!amIAdmin;
 
+  const evaluatePlacement = (memberId: string, targetLeague: LeagueRow, targetPosition: number) => {
+    if (!subRules) return null;
+    const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
+    if (targetLeagueNumber == null) return null;
+
+    const lastPlayed = latestPlayedByMember.get(memberId);
+    const homeLeagueId = lastPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
+    const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
+    const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;
+    const lastLineup = previousWeekLineups.find(r => r.club_member_id === memberId && r.league_id === homeLeagueId);
+    const homePosition = lastPlayed?.position ?? lastLineup?.position ?? null;
+    const targetGender = isMensLeague(targetLeague.name) ? "men" : isLadiesLeague(targetLeague.name) ? "ladies" : "mixed";
+    const playerGender = memberMap.get(memberId)?.gender ?? null;
+
+    return checkSubEligibility(
+      subRules,
+      { homeLeagueNumber, homePosition, gender: playerGender as any },
+      { leagueNumber: targetLeagueNumber, position: targetPosition, gender: targetGender },
+    );
+  };
+
   // For members registered in multiple leagues within the same gender group, pick a
   // single "home" league = the WEAKEST team they're registered to (highest league number).
   // Reserves can sub UP into stronger leagues, but they don't live there permanently —

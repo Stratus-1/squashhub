@@ -71,7 +71,7 @@ export function useUpdateAssociationRules() {
       }
     },
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["association-rules", vars.associationId] });
+      qc.invalidateQueries({ queryKey: ["association-rules", "direct", vars.associationId] });
       toast.success("Rules saved");
     },
     onError: (e: any) => toast.error(e.message ?? "Failed to save rules"),

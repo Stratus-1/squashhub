@@ -256,13 +256,24 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
               <TableRow>
                 <TableHead>Member</TableHead>
                 <TableHead>Club Role</TableHead>
-                <TableHead>Delegate Position</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Permissions</TableHead>
+                <TableHead className="w-[60px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {adminMembers.map((m) => {
                 const delegate = delegateLabel(m.id);
+                const granted = isGrantedFullAdmin(m.id);
+                const source = delegate
+                  ? delegate
+                  : m.role === "admin"
+                  ? "Admin role"
+                  : m.role === "captain"
+                  ? "Captain role"
+                  : granted
+                  ? "Granted by admin"
+                  : "—";
                 return (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name || "Unnamed"}</TableCell>
@@ -270,14 +281,37 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                       <Badge variant="outline" className="text-[10px] capitalize">{m.role}</Badge>
                     </TableCell>
                     <TableCell>
-                      {delegate ? (
-                        <Badge variant="secondary" className="text-[10px]">{delegate}</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      <Badge variant="secondary" className="text-[10px]">{source}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {granted && !delegate && m.role === "member" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          title="Revoke full admin"
+                          onClick={async () => {
+                            if (!confirm(`Revoke full admin from ${m.name}?`)) return;
+                            const existing = permMap.get(m.id);
+                            try {
+                              await upsert.mutateAsync({
+                                club_member_id: m.id,
+                                permission_role_id: existing?.permission_role_id ?? null,
+                                custom_permissions: existing?.custom_permissions ?? [],
+                                is_full_admin: false,
+                              });
+                              toast.success("Full admin revoked");
+                            } catch (err: any) {
+                              toast.error(err.message);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

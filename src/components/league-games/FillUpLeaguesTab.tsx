@@ -35,6 +35,9 @@ import {
 } from "./fill-leagues/types";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsSuperAdmin } from "@/hooks/use-club";
+import { useMemberPermission } from "@/hooks/use-club-permissions";
 
 type Props = {
   clubId: string;
@@ -83,18 +86,28 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     },
   });
 
-  // Detect club admin role for active member
-  const { data: amIAdmin } = useQuery({
+  // Detect club admin rights for active member.
+  // Full edit rights are granted to: platform super-admins, members with role='admin',
+  // delegate roles flagged isAdmin (chairman/secretary/club captain), or anyone whose
+  // permission record / assigned permission role has is_full_admin=true.
+  const isSuperAdmin = useIsSuperAdmin();
+  const { isAdmin: isDelegateAdmin } = useMemberContext();
+  const { data: myPerm } = useMemberPermission(activeMemberId || undefined);
+  const { data: roleRow } = useQuery({
     queryKey: ["am-i-admin", clubId, activeMemberId],
     queryFn: async () => {
-      if (!activeMemberId) return false;
-      const { data, error } = await supabase.from("club_members").select("role").eq("id", activeMemberId).maybeSingle();
-      if (error) return false;
-      // 'captain' role is league-scoped; only true club admins get global Fill-up edit rights.
-      return data?.role === "admin";
+      if (!activeMemberId) return null;
+      const { data } = await supabase.from("club_members").select("role").eq("id", activeMemberId).maybeSingle();
+      return data as { role: string } | null;
     },
     enabled: !!activeMemberId,
   });
+  const amIAdmin =
+    isSuperAdmin ||
+    isDelegateAdmin ||
+    roleRow?.role === "admin" ||
+    !!myPerm?.is_full_admin ||
+    !!(myPerm as any)?.club_permission_roles?.is_full_admin;
 
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 

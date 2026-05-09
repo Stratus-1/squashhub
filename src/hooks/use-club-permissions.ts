@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsSuperAdmin } from "@/hooks/use-club";
 
 /** All available permission slugs */
 export const PERMISSION_SLUGS = [

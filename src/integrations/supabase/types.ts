@@ -1342,6 +1342,7 @@ export type Database = {
           created_at: string
           custom_permissions: string[]
           id: string
+          is_full_admin: boolean
           permission_role_id: string | null
           updated_at: string
         }
@@ -1350,6 +1351,7 @@ export type Database = {
           created_at?: string
           custom_permissions?: string[]
           id?: string
+          is_full_admin?: boolean
           permission_role_id?: string | null
           updated_at?: string
         }
@@ -1358,6 +1360,7 @@ export type Database = {
           created_at?: string
           custom_permissions?: string[]
           id?: string
+          is_full_admin?: boolean
           permission_role_id?: string | null
           updated_at?: string
         }

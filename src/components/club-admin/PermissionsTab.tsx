@@ -216,13 +216,15 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     return null;
   };
 
+  const isGrantedFullAdmin = (memberId: string) => !!permMap.get(memberId)?.is_full_admin;
+
   const adminMembers = members.filter(
-    (m) => m.role === "admin" || m.role === "captain" || !!delegateLabel(m.id)
+    (m) => m.role === "admin" || m.role === "captain" || !!delegateLabel(m.id) || isGrantedFullAdmin(m.id)
   );
 
-  // Only show non-admin / non-delegate members in the editable table
+  // Only show non-admin / non-delegate / non-granted members in the editable table
   const assignableMembers = members.filter(
-    (m) => m.role === "member" && !delegateLabel(m.id)
+    (m) => m.role === "member" && !delegateLabel(m.id) && !isGrantedFullAdmin(m.id)
   );
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {
@@ -254,13 +256,24 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
               <TableRow>
                 <TableHead>Member</TableHead>
                 <TableHead>Club Role</TableHead>
-                <TableHead>Delegate Position</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Permissions</TableHead>
+                <TableHead className="w-[60px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {adminMembers.map((m) => {
                 const delegate = delegateLabel(m.id);
+                const granted = isGrantedFullAdmin(m.id);
+                const source = delegate
+                  ? delegate
+                  : m.role === "admin"
+                  ? "Admin role"
+                  : m.role === "captain"
+                  ? "Captain role"
+                  : granted
+                  ? "Granted by admin"
+                  : "—";
                 return (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name || "Unnamed"}</TableCell>
@@ -268,14 +281,37 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                       <Badge variant="outline" className="text-[10px] capitalize">{m.role}</Badge>
                     </TableCell>
                     <TableCell>
-                      {delegate ? (
-                        <Badge variant="secondary" className="text-[10px]">{delegate}</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      <Badge variant="secondary" className="text-[10px]">{source}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {granted && !delegate && m.role === "member" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          title="Revoke full admin"
+                          onClick={async () => {
+                            if (!confirm(`Revoke full admin from ${m.name}?`)) return;
+                            const existing = permMap.get(m.id);
+                            try {
+                              await upsert.mutateAsync({
+                                club_member_id: m.id,
+                                permission_role_id: existing?.permission_role_id ?? null,
+                                custom_permissions: existing?.custom_permissions ?? [],
+                                is_full_admin: false,
+                              });
+                              toast.success("Full admin revoked");
+                            } catch (err: any) {
+                              toast.error(err.message);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -372,6 +408,7 @@ function MemberPermDialog({
 }) {
   const [roleId, setRoleId] = useState<string>(existing?.permission_role_id || "none");
   const [customPerms, setCustomPerms] = useState<Set<string>>(new Set(existing?.custom_permissions ?? []));
+  const [isFullAdmin, setIsFullAdmin] = useState<boolean>(!!existing?.is_full_admin);
   const upsert = useUpsertMemberPermission();
 
   const toggle = (slug: string) => {
@@ -388,6 +425,7 @@ function MemberPermDialog({
         club_member_id: memberId,
         permission_role_id: roleId === "none" ? null : roleId,
         custom_permissions: [...customPerms],
+        is_full_admin: isFullAdmin,
       });
       toast.success("Permissions updated");
       onOpenChange(false);
@@ -403,7 +441,23 @@ function MemberPermDialog({
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Permissions — {memberName}</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1">
+          <label className="flex items-start gap-3 p-3 rounded-md border bg-muted/30 cursor-pointer">
+            <Checkbox
+              checked={isFullAdmin}
+              onCheckedChange={(v) => setIsFullAdmin(!!v)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" /> Grant Full Admin
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Gives this member every admin permission (same as a Captain or Chairman). Use for trusted helpers like the IT person.
+              </p>
+            </div>
+          </label>
+
+          <div className={`space-y-1 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
             <Label>Permission Role</Label>
             <Select value={roleId} onValueChange={setRoleId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -423,7 +477,7 @@ function MemberPermDialog({
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className={`space-y-2 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
             <Label>Additional Custom Permissions</Label>
             <p className="text-[10px] text-muted-foreground">Grant extra permissions beyond the assigned role</p>
             <div className="grid grid-cols-2 gap-2">

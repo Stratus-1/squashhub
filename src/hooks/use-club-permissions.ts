@@ -34,6 +34,7 @@ export interface MemberPermission {
   club_member_id: string;
   permission_role_id: string | null;
   custom_permissions: string[];
+  is_full_admin?: boolean;
 }
 
 /** Fetch permission roles for a club */
@@ -89,11 +90,12 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   const memberRole = memberRow?.role;
   // 'captain' = team captain only (league-scoped). Full admin = 'admin' role
   // OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
-  const isFullAccess = memberRole === "admin" || isAdmin;
+  const isRoleFullAccess = memberRole === "admin" || isAdmin;
 
-  const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
+  const { data: perm } = useMemberPermission(memberId);
 
-  if (isFullAccess) return true;
+  if (isRoleFullAccess) return true;
+  if (perm?.is_full_admin) return true;
   if (!perm) return false;
 
   if (perm.custom_permissions?.includes(permission)) return true;
@@ -119,10 +121,11 @@ export function useMyPermissions(): Set<string> {
   });
 
   const memberRole = memberRow?.role;
-  const isFullAccess = memberRole === "admin" || isAdmin;
-  const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
+  const isRoleFullAccess = memberRole === "admin" || isAdmin;
+  const { data: perm } = useMemberPermission(memberId);
 
-  if (isFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  if (perm?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
 
   const perms = new Set<string>();
   if (perm?.custom_permissions) perm.custom_permissions.forEach(p => perms.add(p));
@@ -138,6 +141,7 @@ export function useUpsertMemberPermission() {
       club_member_id: string;
       permission_role_id?: string | null;
       custom_permissions?: string[];
+      is_full_admin?: boolean;
     }) => {
       const { data, error } = await fromExt("club_member_permissions")
         .upsert(
@@ -145,6 +149,7 @@ export function useUpsertMemberPermission() {
             club_member_id: params.club_member_id,
             permission_role_id: params.permission_role_id ?? null,
             custom_permissions: params.custom_permissions ?? [],
+            is_full_admin: params.is_full_admin ?? false,
           },
           { onConflict: "club_member_id" }
         )

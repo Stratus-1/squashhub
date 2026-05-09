@@ -4533,6 +4533,10 @@ export type Database = {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
       }
+      assign_role_to_member: {
+        Args: { _club_id: string; _member_id: string; _role_name: string }
+        Returns: undefined
+      }
       captain_list_unclaimed_teammates: {
         Args: { _club_member_id: string }
         Returns: {

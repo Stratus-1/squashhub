@@ -1538,13 +1538,25 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
               >
                 Regional
               </Button>
+              <Button
+                type="button"
+                variant={scope === "national" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setScope("national")}
+                className="flex-1"
+                disabled={isPlatformLinked}
+              >
+                National
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlatformLinked
                 ? "Platform-linked associations are always regional."
                 : scope === "internal"
                   ? "Internal: only your club's members participate. No external integration."
-                  : "Regional: external/regional league involving other clubs."}
+                  : scope === "national"
+                    ? "National: country-wide governing body (e.g. Squash South Africa) — applies to all clubs."
+                    : "Regional: external/regional league involving other clubs."}
             </p>
           </div>
 

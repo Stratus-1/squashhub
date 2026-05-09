@@ -751,13 +751,18 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
           }))
       : [];
 
-    const positionedThisLeague = new Set<string>();
-    const lp = lineupByLeague.get(lg.id);
-    if (lp) for (const mid of lp.values()) positionedThisLeague.add(mid);
+    // Hide any player already positioned in ANY league this week — a player
+    // can only be in one team's lineup at a time, so duplicates from historical
+    // participation in multiple leagues vanish from other Available pools once
+    // they're placed.
+    const positionedAnywhere = new Set<string>();
+    for (const lp of lineupByLeague.values()) {
+      for (const mid of lp.values()) positionedAnywhere.add(mid);
+    }
 
     return [...basePool, ...cascaded, ...pulledLadies]
       .filter(p => !unavailableSet.has(p.memberId))
-      .filter(p => !positionedThisLeague.has(p.memberId))
+      .filter(p => !positionedAnywhere.has(p.memberId))
       .sort((a, b) => {
         // Primary: club ladder position (lower = stronger, nulls last)
         const la = memberMap.get(a.memberId)?.ladder_position ?? Number.POSITIVE_INFINITY;

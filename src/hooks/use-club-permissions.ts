@@ -73,7 +73,7 @@ export function useMemberPermission(memberId: string | undefined) {
  * Captain/Admin roles always return true.
  */
 export function useHasPermission(permission: PermissionSlug): boolean {
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const memberId = activeMember?.id;
 
   // Fetch member's club role
@@ -87,8 +87,9 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   });
 
   const memberRole = memberRow?.role;
-  // 'captain' = team captain only (league-scoped). Full admin = 'admin' role.
-  const isFullAccess = memberRole === "admin";
+  // 'captain' = team captain only (league-scoped). Full admin = 'admin' role
+  // OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
+  const isFullAccess = memberRole === "admin" || isAdmin;
 
   const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
 

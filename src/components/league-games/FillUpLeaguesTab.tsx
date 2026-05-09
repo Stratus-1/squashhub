@@ -51,6 +51,7 @@ type PlayedLeagueRow = {
   club_member_id: string;
   league_id: string;
   position: number | null;
+  fixture_date: string;
 };
 
 type PreviousMatchResultRow = {
@@ -196,13 +197,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   );
 
   const previousFixtureRange = useMemo(() => {
-    const ws = new Date(previousWeekStart);
-    const day = ws.getDay();
-    const daysToMon = ((1 - day + 7) % 7) || 7;
-    const playMonday = addDays(ws, daysToMon);
-    const playSaturday = addDays(playMonday, 5);
-    return { start: format(playMonday, "yyyy-MM-dd"), end: format(playSaturday, "yyyy-MM-dd") };
-  }, [previousWeekStart]);
+    const tomorrow = addDays(new Date(), 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const targetFixtureStart = new Date(fixtureRange.start);
+    targetFixtureStart.setHours(0, 0, 0, 0);
+    const cutoff = targetFixtureStart < tomorrow ? targetFixtureStart : tomorrow;
+    return {
+      start: format(addDays(cutoff, -84), "yyyy-MM-dd"),
+      end: format(cutoff, "yyyy-MM-dd"),
+    };
+  }, [fixtureRange.start]);
 
   const { data: previousWeekLineups = [] } = useQuery<LineupRow[]>({
     queryKey: ["lwl-previous", clubId, previousWeekStart],

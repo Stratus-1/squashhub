@@ -463,17 +463,37 @@ export function MembersTab({ clubId }: { clubId: string }) {
     // When unticking (paid -> unpaid): accrue fee (Dt Debtors, Ct Fee Income/Creditors)
     // When ticking (unpaid -> paid): reverse the accrual
     if (!paid) {
-      // Fee now unpaid = accrue it
       await createJournalEntries(fee.club_member_id, feeId, fee.amount, fee.fee_type, fee.fee_label, true);
     } else {
-      // Fee now paid = reverse accrual
       await createJournalEntries(fee.club_member_id, feeId, fee.amount, fee.fee_type, fee.fee_label, false);
+    }
+
+    // Cascade: if a member-receivable NSA/SSA fee is toggled, also toggle the
+    // matching "fees payable by the club" row — the fee simply does not apply.
+    const cascadeMap: Record<string, string> = {
+      association: "club_payable_assoc",
+      national: "club_payable_national",
+      national_body: "club_payable_national",
+    };
+    const cascadeType = cascadeMap[fee.fee_type];
+    if (cascadeType) {
+      const linked = feePayments.filter(
+        p => p.club_member_id === fee.club_member_id && p.fee_type === cascadeType
+      );
+      for (const lp of linked) {
+        if (lp.paid === paid) continue;
+        await fromExt("club_member_fee_payments")
+          .update({ paid, paid_at: paid ? new Date().toISOString() : null })
+          .eq("id", lp.id);
+        // Club-payable side has no debtor accrual — skip GL entries.
+      }
     }
 
     toast.success(paid ? "Marked as paid" : "Marked as unpaid");
     refetchPayments();
     qc.invalidateQueries({ queryKey: ["club-journal-entries"] });
   };
+
 
   /** Create a member fee record and immediately mark as paid (no GL entries needed — paid from start) */
   const handleCreateFee = async (fee: ExpectedFee, clubMemberId: string) => {

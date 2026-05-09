@@ -245,6 +245,7 @@ export default function LeagueGames() {
                   clubId={clubId}
                   activeMemberId={activeMember?.id}
                   associationId={selectedAssocId}
+                  rulesAssociationId={selectedAssoc?.platform_association_id ?? selectedAssocId}
                   weekStartDow={selectedAssoc?.week_start_dow ?? clubWeekDow ?? 3}
                 />
               )}

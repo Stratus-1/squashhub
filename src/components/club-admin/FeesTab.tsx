@@ -454,29 +454,13 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </>
           )}
 
-          {/* Classification + Pro-rate */}
-          <div className="grid grid-cols-2 gap-3 items-end">
-            <div className="space-y-1">
-              <Label>Classification</Label>
-              <Select value={feeClass} onValueChange={v => setFeeClass(v as "club_income" | "pass_through")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="club_income">{feeType === "league_affiliation" ? "Association Income" : "Club Income"}</SelectItem>
-                  <SelectItem value="pass_through">Pass-through</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Pro-rate */}
+          {feeType !== "registration" && (
+            <div className="flex items-center gap-2 h-10">
+              <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
+              <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
             </div>
-            {feeType !== "registration" && (
-              <div className="flex items-center gap-2 h-10">
-                <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
-                <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
-              </div>
-            )}
-          </div>
-
-          <p className="text-[10px] text-muted-foreground">
-            {feeClass === "pass_through" ? "Pass-through: Club collects on behalf of external body → Credits Creditors GL" : (feeType === "league_affiliation" ? "Association Income: Revenue for the association → Credits Fee Income GL" : "Club Income: Revenue for the club → Credits Fee Income GL")}
-          </p>
+          )}
 
           <Button onClick={handleSave} className="w-full">{isEdit ? "Update" : "Save"}</Button>
         </div>

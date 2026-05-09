@@ -73,7 +73,7 @@ export function useMemberPermission(memberId: string | undefined) {
  * Captain/Admin roles always return true.
  */
 export function useHasPermission(permission: PermissionSlug): boolean {
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const memberId = activeMember?.id;
 
   // Fetch member's club role
@@ -87,8 +87,9 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   });
 
   const memberRole = memberRow?.role;
-  // 'captain' = team captain only (league-scoped). Full admin = 'admin' role.
-  const isFullAccess = memberRole === "admin";
+  // 'captain' = team captain only (league-scoped). Full admin = 'admin' role
+  // OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
+  const isFullAccess = memberRole === "admin" || isAdmin;
 
   const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
 
@@ -105,7 +106,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
  * Get all effective permissions for the current member.
  */
 export function useMyPermissions(): Set<string> {
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const memberId = activeMember?.id;
 
   const { data: memberRow } = useQuery({
@@ -118,7 +119,7 @@ export function useMyPermissions(): Set<string> {
   });
 
   const memberRole = memberRow?.role;
-  const isFullAccess = memberRole === "admin";
+  const isFullAccess = memberRole === "admin" || isAdmin;
   const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
 
   if (isFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));

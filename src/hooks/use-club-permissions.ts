@@ -131,6 +131,7 @@ export function useMyPermissions(): Set<string> {
 
   if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
   if (perm?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  if ((perm as any)?.club_permission_roles?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
 
   const perms = new Set<string>();
   if (perm?.custom_permissions) perm.custom_permissions.forEach(p => perms.add(p));

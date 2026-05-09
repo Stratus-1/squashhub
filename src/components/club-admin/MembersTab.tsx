@@ -796,6 +796,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     key={m.id}
                     member={m}
                     fees={getFeesForMember(m)}
+                    payableFees={computeClubPayableFees(m, feePayments)}
                     delegateTitle={getDelegateTitle(m.id)}
                     affiliations={affiliationsByMember.get(m.id) || []}
                     onEdit={() => setEditMember(m)}

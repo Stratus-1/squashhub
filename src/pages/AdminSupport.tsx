@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAdminSupportThreads, useSupportMessages, useSendSupportMessage, useUpdateSupportThread } from "@/hooks/use-support";
+import { useAdminSupportThreads, useSupportMessages, useSendSupportMessage, useUpdateSupportThread, getSupportAttachmentUrl } from "@/hooks/use-support";
 import { openExternalUrl } from "@/lib/google-calendar";
 import { useQuery } from "@tanstack/react-query";
 import { PlayerAvatar } from "@/components/PlayerAvatar";

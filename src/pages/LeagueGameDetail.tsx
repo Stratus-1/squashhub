@@ -1316,13 +1316,25 @@ export default function LeagueGameDetail() {
                                 <>
                                   {hasPlayers && (
                                     <>
-                                      <button
-                                        onClick={() => startMarking(idx)}
-                                        className="bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80"
-                                        title="Mark game live"
-                                      >
-                                        <Play className="w-3.5 h-3.5" />
-                                      </button>
+                                      <Tooltip open={isFirstPlayable ? true : undefined}>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => startMarking(idx)}
+                                            className={cn(
+                                              "bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80",
+                                              isFirstPlayable && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
+                                            )}
+                                            title="Mark game live"
+                                          >
+                                            <Play className="w-3.5 h-3.5" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="left" className="max-w-[220px]">
+                                          {isFirstPlayable
+                                            ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
+                                            : "Mark game live"}
+                                        </TooltipContent>
+                                      </Tooltip>
                                       <button
                                         onClick={() => {
                                           // Determine games needed to win the match

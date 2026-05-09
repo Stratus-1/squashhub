@@ -1074,7 +1074,29 @@ export default function Bookings() {
                   const rawGuestName = (booking as any)?.guest_name ? String((booking as any).guest_name) : "";
                   const isLeagueBooking = /\bleague\b|\bround\s*\d/i.test(rawGuestName);
                   const isEventBooking = (!!(booking as any)?.is_club_booking && !!rawGuestName) || isLeagueBooking;
-                  const eventLabel = isEventBooking ? rawGuestName : null;
+                  // Normalise league fixture titles to a consistent compact format:
+                  //   "<League ordinal> R<round> · Team A vs Team B"
+                  // Source guest_names vary: "League - A vs B", "2nd League round 1 - A vs B", etc.
+                  const formatLeagueLabel = (raw: string): string => {
+                    const dashIdx = raw.indexOf(" - ");
+                    const head = (dashIdx >= 0 ? raw.slice(0, dashIdx) : raw).trim();
+                    const matchup = dashIdx >= 0 ? raw.slice(dashIdx + 3).trim() : "";
+                    // Extract league ordinal (1st/2nd/3rd/Nth or numeric); default to 1st
+                    const ordMatch = head.match(/(\d+)(?:st|nd|rd|th)?/i);
+                    const leagueNum = ordMatch ? parseInt(ordMatch[1], 10) : 1;
+                    const ord = (n: number) => {
+                      const s = ["th", "st", "nd", "rd"];
+                      const v = n % 100;
+                      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+                    };
+                    const roundMatch = head.match(/round\s*(\d+)/i);
+                    const roundPart = roundMatch ? ` R${roundMatch[1]}` : "";
+                    const prefix = `${ord(leagueNum)} League${roundPart}`;
+                    return matchup ? `${prefix} · ${matchup}` : prefix;
+                  };
+                  const eventLabel = isEventBooking
+                    ? (isLeagueBooking ? formatLeagueLabel(rawGuestName) : rawGuestName)
+                    : null;
                   const a = (booking as any)?.player_name ? toInitialSurname(String((booking as any).player_name)) : null;
                   const b = !isEventBooking && (booking as any)?.opponent_name ? toInitialSurname(String((booking as any).opponent_name)) : null;
                   const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);

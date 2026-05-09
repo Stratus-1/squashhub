@@ -27,6 +27,38 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
+import { DndContext, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+
+/** Droppable wrapper for an H/V slot row. */
+function DroppableSlot({ side, idx, hasPlayer, children }: { side: "home" | "away"; idx: number; hasPlayer: boolean; children: React.ReactNode }) {
+  const { setNodeRef, isOver, active } = useDroppable({
+    id: `slot:${side}:${idx}`,
+    data: { kind: "slot", side, idx },
+  });
+  const dragSide = (active?.data.current as any)?.side as "home" | "away" | undefined;
+  const matches = dragSide === side;
+  const wrong = !!dragSide && dragSide !== side;
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "contents",
+        // Visual ring is applied via a sibling indicator below; "contents" keeps grid layout intact.
+      )}
+      data-over={isOver || undefined}
+      data-match={matches || undefined}
+      data-wrong={wrong || undefined}
+    >
+      {children}
+      {isOver && matches && (
+        <span className="absolute inset-0 pointer-events-none ring-2 ring-primary rounded-sm bg-primary/5" />
+      )}
+      {isOver && wrong && (
+        <span className="absolute inset-0 pointer-events-none ring-2 ring-destructive rounded-sm bg-destructive/5" />
+      )}
+    </div>
+  );
+}
 
 interface PositionEntry {
   homeCode: string;

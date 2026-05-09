@@ -228,12 +228,23 @@ export default function LeagueGameDetail() {
       const leagueIds = leagues.map((l: any) => l.id);
       const clubIds = [...new Set(leagues.map((l: any) => l.club_id).filter(Boolean))];
 
-      // Compute squash week_start_date from fixture_date using the club's league_week_start_dow
+      // Compute squash week_start_date from fixture_date.
+      // Priority: fixture's association week_start_dow > club's league_week_start_dow > Wed default.
+      // This MUST match the dow used by FillUpLeaguesTab when saving league_week_lineups,
+      // otherwise the captain's lineup won't be picked up here.
       let weekStartDate: string | null = null;
       if (fixture.fixture_date && clubIds.length > 0) {
-        const { data: clubRow } = await (supabase as any)
-          .from("clubs").select("league_week_start_dow").eq("id", clubIds[0]).maybeSingle();
-        const startDow = clubRow?.league_week_start_dow ?? 3; // default Wed
+        let startDow: number | null = null;
+        if (fixture.association_id) {
+          const { data: assocRow } = await (supabase as any)
+            .from("league_associations").select("week_start_dow").eq("id", fixture.association_id).maybeSingle();
+          if (assocRow?.week_start_dow != null) startDow = assocRow.week_start_dow;
+        }
+        if (startDow == null) {
+          const { data: clubRow } = await (supabase as any)
+            .from("clubs").select("league_week_start_dow").eq("id", clubIds[0]).maybeSingle();
+          startDow = clubRow?.league_week_start_dow ?? 3; // default Wed
+        }
         const fxDate = parseISO(fixture.fixture_date);
         const fxDow = fxDate.getDay();
         const diff = (fxDow - startDow + 7) % 7;

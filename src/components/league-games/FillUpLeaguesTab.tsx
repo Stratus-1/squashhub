@@ -50,6 +50,7 @@ type Props = {
 type PlayedLeagueRow = {
   club_member_id: string;
   league_id: string;
+  position: number | null;
 };
 
 type PreviousMatchResultRow = {
@@ -313,7 +314,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       for (const side of sides) {
         const leagueId = leagueByCode.get((side.teamCode || "").toUpperCase());
         const memberId = memberByLeagueNumber.get((side.playerCode || "").trim().toUpperCase());
-        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId });
+        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId, position: result.position ?? null });
       }
     }
     return rows;

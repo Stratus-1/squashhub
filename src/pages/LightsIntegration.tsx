@@ -89,6 +89,19 @@ export default function LightsIntegration() {
             When the session ends, actual minutes × your hourly rate is added to the player's tab. Done.
           </StepCard>
         </div>
+
+        {/* More smart features */}
+        <div className="grid md:grid-cols-2 gap-4 mt-4">
+          <StepCard step="+" icon={Users} title="Split fees between players">
+            One player taps Play, but the cost is shared. SquashHub splits the light bill evenly across
+            everyone in the booking — singles, doubles, or coaching groups — exactly as the booker requests.
+          </StepCard>
+          <StepCard step="+" icon={CalendarClock} title="Plan & book league night lights">
+            Admins schedule a whole league evening in one click. Lights for every court turn on at the
+            fixture's start time, off at the end — no manual switching, no lights left burning after the
+            last match.
+          </StepCard>
+        </div>
       </section>
 
       {/* Costs */}

@@ -77,6 +77,7 @@ import { useMyRoles } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import LightsIntegration from "./pages/LightsIntegration";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 

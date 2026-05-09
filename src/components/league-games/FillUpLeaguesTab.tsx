@@ -331,6 +331,21 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     return rows;
   }, [previousFixtures, previousMatchResults, registrations, sortedLeagues]);
 
+  const latestPlayedByMember = useMemo(() => {
+    const m = new Map<string, PlayedLeagueRow>();
+    const sortedRows = [...previousPlayedRows].sort((a, b) => {
+      const dateDiff = new Date(b.fixture_date).getTime() - new Date(a.fixture_date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      const aLeague = sortedLeagues.find(l => l.id === a.league_id);
+      const bLeague = sortedLeagues.find(l => l.id === b.league_id);
+      return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);
+    });
+    for (const row of sortedRows) {
+      if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
+    }
+    return m;
+  }, [previousPlayedRows, sortedLeagues]);
+
   // Members
   const memberIds = useMemo(() => {
     const ids = new Set<string>();

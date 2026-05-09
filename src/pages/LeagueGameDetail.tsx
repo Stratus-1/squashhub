@@ -1285,12 +1285,15 @@ export default function LeagueGameDetail() {
                             </span>
                           </>
                         )}
-                      </div>
+                      </DroppableSlotRow>
                       {/* Away row */}
-                      <div className={cn(
-                        "grid items-center",
-                        pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
-                      )}
+                      <DroppableSlotRow
+                        side="away"
+                        idx={idx}
+                        className={cn(
+                          "grid items-center",
+                          pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
+                        )}
                         style={setupDone
                           ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 32px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }

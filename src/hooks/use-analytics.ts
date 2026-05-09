@@ -41,18 +41,21 @@ export type PersonalAnalytics = {
 
 export function usePersonalAnalytics(daysBack = 90) {
   const { user } = useAuth();
+  const { club } = useClubContext();
+  const clubId = club?.id ?? null;
   return useQuery({
-    queryKey: ["personal-analytics", user?.id, daysBack],
+    queryKey: ["personal-analytics", user?.id, clubId, daysBack],
     queryFn: async () => {
       if (!user) return null;
       const { data, error } = await rpc("get_personal_analytics", {
         target_user_id: user.id,
         days_back: daysBack,
+        p_club_id: clubId,
       });
       if (error) throw error;
       return data as unknown as PersonalAnalytics;
     },
-    enabled: !!user,
+    enabled: !!user && !!clubId,
   });
 }
 

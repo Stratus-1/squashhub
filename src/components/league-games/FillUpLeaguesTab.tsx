@@ -51,6 +51,7 @@ type PlayedLeagueRow = {
   club_member_id: string;
   league_id: string;
   position: number | null;
+  fixture_date: string;
 };
 
 type PreviousMatchResultRow = {
@@ -196,13 +197,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   );
 
   const previousFixtureRange = useMemo(() => {
-    const ws = new Date(previousWeekStart);
-    const day = ws.getDay();
-    const daysToMon = ((1 - day + 7) % 7) || 7;
-    const playMonday = addDays(ws, daysToMon);
-    const playSaturday = addDays(playMonday, 5);
-    return { start: format(playMonday, "yyyy-MM-dd"), end: format(playSaturday, "yyyy-MM-dd") };
-  }, [previousWeekStart]);
+    const tomorrow = addDays(new Date(), 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const targetFixtureStart = new Date(fixtureRange.start);
+    targetFixtureStart.setHours(0, 0, 0, 0);
+    const cutoff = targetFixtureStart < tomorrow ? targetFixtureStart : tomorrow;
+    return {
+      start: format(addDays(cutoff, -84), "yyyy-MM-dd"),
+      end: format(cutoff, "yyyy-MM-dd"),
+    };
+  }, [fixtureRange.start]);
 
   const { data: previousWeekLineups = [] } = useQuery<LineupRow[]>({
     queryKey: ["lwl-previous", clubId, previousWeekStart],
@@ -314,7 +318,14 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       for (const side of sides) {
         const leagueId = leagueByCode.get((side.teamCode || "").toUpperCase());
         const memberId = memberByLeagueNumber.get((side.playerCode || "").trim().toUpperCase());
-        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId, position: result.position ?? null });
+        if (leagueId && memberId) {
+          rows.push({
+            league_id: leagueId,
+            club_member_id: memberId,
+            position: result.position ?? null,
+            fixture_date: fixture.fixture_date,
+          });
+        }
       }
     }
     return rows;
@@ -824,6 +835,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
           const previousPlayed = previousPlayedRows
             .filter(r => r.club_member_id === memberId)
             .sort((a, b) => {
+              const dateDiff = new Date(b.fixture_date).getTime() - new Date(a.fixture_date).getTime();
+              if (dateDiff !== 0) return dateDiff;
               const aLeague = sortedLeagues.find(l => l.id === a.league_id);
               const bLeague = sortedLeagues.find(l => l.id === b.league_id);
               return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);

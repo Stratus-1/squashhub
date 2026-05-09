@@ -532,35 +532,27 @@ export function LadderTab({ clubId }: { clubId: string }) {
     [members]
   );
 
-  const sortByLadder = useCallback(
-    (a: LadderMember, b: LadderMember) => {
-      // Primary sort: league strength (1st League first, then 2nd, etc.)
-      const ar = (leagueRankByMember as Map<string, number>).get(a.id) ?? 9999;
-      const br = (leagueRankByMember as Map<string, number>).get(b.id) ?? 9999;
-      if (ar !== br) return ar - br;
-      // Secondary: existing ladder_position (nulls last)
-      if (a.ladder_position != null && b.ladder_position != null)
-        return a.ladder_position - b.ladder_position;
-      if (a.ladder_position != null) return -1;
-      if (b.ladder_position != null) return 1;
-      return a.name.localeCompare(b.name);
-    },
-    [leagueRankByMember]
-  );
+  const sortByLadder = (a: LadderMember, b: LadderMember) => {
+    if (a.ladder_position != null && b.ladder_position != null)
+      return a.ladder_position - b.ladder_position;
+    if (a.ladder_position != null) return -1;
+    if (b.ladder_position != null) return 1;
+    return a.name.localeCompare(b.name);
+  };
 
   const menMembers = useMemo(
     () => allMembers.filter((m) => !isLadiesGender(m.gender)).sort(sortByLadder),
-    [allMembers, sortByLadder]
+    [allMembers]
   );
 
   const ladiesMembers = useMemo(
     () => allMembers.filter((m) => isLadiesGender(m.gender)).sort(sortByLadder),
-    [allMembers, sortByLadder]
+    [allMembers]
   );
 
   const mixedMembersList = useMemo(
     () => [...allMembers].sort(sortByLadder),
-    [allMembers, sortByLadder]
+    [allMembers]
   );
 
   useEffect(() => {

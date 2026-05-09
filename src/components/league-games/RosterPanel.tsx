@@ -125,15 +125,15 @@ function TeamColumn({
   return (
     <div className="flex-1 min-w-0 space-y-1">
       <div className={cn(
-        "flex items-center justify-between px-3 py-2 rounded-md shadow-sm",
+        "flex items-center justify-between px-3 py-2 rounded-md shadow-sm border-2",
         side === "home"
-          ? "bg-primary text-primary-foreground"
-          : "bg-amber-500 text-white"
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-accent text-accent-foreground border-accent"
       )}>
-        <span className="text-base font-black uppercase tracking-widest">
+        <span className="text-lg font-black uppercase tracking-widest">
           {label}
         </span>
-        <span className="text-sm font-mono font-bold bg-black/20 px-2 py-0.5 rounded">
+        <span className="text-sm font-mono font-black bg-background/25 px-2 py-0.5 rounded border border-background/30">
           {teamCode || "—"}
         </span>
       </div>
@@ -174,11 +174,11 @@ export function RosterPanel({
   const hasAny = (homePlayers && homePlayers.length) || (awayPlayers && awayPlayers.length);
   if (!hasAny && !loading) return null;
   return (
-    <div className="border border-emerald-200 bg-emerald-50/40 rounded-lg p-2 space-y-2">
-      <div className="flex items-center gap-2 text-[11px] text-emerald-800">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+    <div className="border border-border bg-card rounded-lg p-2 space-y-2">
+      <div className="flex items-center gap-2 text-[11px] text-card-foreground">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
         <span className="font-semibold">NSA Squad</span>
-        <span className="text-emerald-700/80">— drag a player onto an H/V slot, or click to fill the next open spot.</span>
+        <span className="text-muted-foreground">— drag a player onto an H/V slot, or click to fill the next open spot.</span>
       </div>
       <div className="flex gap-2">
         <TeamColumn

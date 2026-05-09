@@ -207,7 +207,6 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
 
   const permMap = new Map(memberPerms.map((p: any) => [p.club_member_id, p]));
 
-  // Members with automatic admin access (role-based or delegate)
   const delegateLabel = (memberId: string): string | null => {
     if (!club) return null;
     if (club.chairman_member_id === memberId) return "Chairman";
@@ -218,13 +217,12 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
 
   const isGrantedFullAdmin = (memberId: string) => !!permMap.get(memberId)?.is_full_admin;
 
-  const adminMembers = members.filter(
-    (m) => m.role === "admin" || m.role === "captain" || !!delegateLabel(m.id) || isGrantedFullAdmin(m.id)
-  );
+  // Only club role 'admin' is automatic full-access. Officer delegates get auto-assigned
+  // a matching role (which can be revoked) and are listed in the editable section below.
+  const adminMembers = members.filter((m) => m.role === "admin" || isGrantedFullAdmin(m.id));
 
-  // Only show non-admin / non-delegate / non-granted members in the editable table
   const assignableMembers = members.filter(
-    (m) => m.role === "member" && !delegateLabel(m.id) && !isGrantedFullAdmin(m.id)
+    (m) => m.role !== "admin" && !isGrantedFullAdmin(m.id)
   );
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {
@@ -245,7 +243,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     <Card className="p-6 space-y-4">
       <div>
         <h3 className="font-semibold flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Member Permissions</h3>
-        <p className="text-xs text-muted-foreground">Assign roles or custom permissions to individual members. Captain, Admin, and delegates have full access automatically.</p>
+        <p className="text-xs text-muted-foreground">Officers (Chairman, Secretary, Club Captain) are auto-assigned a matching role with full access — change or clear the role below to override.</p>
       </div>
 
       {adminMembers.length > 0 && (
@@ -263,17 +261,8 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
             </TableHeader>
             <TableBody>
               {adminMembers.map((m) => {
-                const delegate = delegateLabel(m.id);
                 const granted = isGrantedFullAdmin(m.id);
-                const source = delegate
-                  ? delegate
-                  : m.role === "admin"
-                  ? "Admin role"
-                  : m.role === "captain"
-                  ? "Captain role"
-                  : granted
-                  ? "Granted by admin"
-                  : "—";
+                const source = m.role === "admin" ? "Admin role" : granted ? "Granted by admin" : "—";
                 return (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name || "Unnamed"}</TableCell>
@@ -287,7 +276,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                       <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
                     </TableCell>
                     <TableCell>
-                      {granted && !delegate && m.role === "member" && (
+                      {granted && m.role !== "admin" && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -326,6 +315,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
           <TableRow>
             <TableHead>Member</TableHead>
             <TableHead>Club Role</TableHead>
+            <TableHead>Officer</TableHead>
             <TableHead>Permission Role</TableHead>
             <TableHead>Custom</TableHead>
             <TableHead className="w-[60px]" />
@@ -334,7 +324,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
         <TableBody>
           {assignableMembers.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+              <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                 All members are admins — no additional permissions needed.
               </TableCell>
             </TableRow>

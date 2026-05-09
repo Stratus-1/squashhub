@@ -1,13 +1,17 @@
 /**
  * RosterPanel — Side-by-side list of both teams' NSA-registered players
  * for a fixture. Click a player to drop them into the next empty position
- * on their side of the scorecard.
+ * on their side of the scorecard, OR drag them onto a specific H / V slot.
  */
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NsaTeamPlayer } from "@/hooks/use-nsa";
-import { UserPlus, Check } from "lucide-react";
+import { UserPlus, Check, GripVertical } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
+
+/** Stable drag id format used by the lineup DnD context. */
+export const rosterDragId = (side: "home" | "away", code: string) =>
+  `roster:${side}:${(code || "").toUpperCase()}`;
 
 export interface RosterPanelProps {
   homeCode?: string | null;
@@ -23,10 +27,12 @@ export interface RosterPanelProps {
 
 function PlayerRow({
   player,
+  side,
   assigned,
   onClick,
 }: {
   player: NsaTeamPlayer;
+  side: "home" | "away";
   assigned: boolean;
   onClick: () => void;
 }) {
@@ -34,38 +40,68 @@ function PlayerRow({
   const lost = Number(player.result_summary?.lost ?? 0) || 0;
   const played = Number(player.result_summary?.played ?? 0) || 0;
   const fullName = `${player.name || ""} ${player.surname || ""}`.trim() || "—";
+  const code = (player.code || "").toUpperCase();
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: rosterDragId(side, code),
+    disabled: assigned || !code,
+    data: { kind: "roster", side, code, name: fullName, player },
+  });
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
+    : undefined;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={assigned}
+    <div
+      ref={setNodeRef}
+      style={style}
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-1 rounded text-left text-[11px] border transition-colors",
+        "w-full flex items-center gap-1.5 px-2 py-1 rounded text-left text-[11px] border transition-colors select-none",
         assigned
-          ? "bg-muted/40 border-muted text-muted-foreground cursor-not-allowed"
-          : "bg-background border-border hover:bg-primary/5 hover:border-primary/40"
+          ? "bg-muted/40 border-muted text-muted-foreground"
+          : "bg-background border-border hover:bg-primary/5 hover:border-primary/40",
+        isDragging && "opacity-30",
       )}
-      title={assigned ? "Already in lineup" : `Add ${fullName} to next open position`}
+      title={assigned ? "Already in lineup" : `Drag onto an H/V slot, or click to fill the next open position`}
     >
-      <span className="font-mono text-[10px] w-14 shrink-0 text-muted-foreground">
-        {player.code}
-      </span>
-      <span className="flex-1 truncate font-medium">{fullName}</span>
-      {played > 0 && (
-        <Badge
-          variant="outline"
-          className="text-[9px] px-1 py-0 h-4 font-mono border-emerald-300 text-emerald-700 shrink-0"
-          title={`${played} played this season`}
+      {!assigned && (
+        <button
+          type="button"
+          {...listeners}
+          {...attributes}
+          className="shrink-0 cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
+          aria-label={`Drag ${fullName}`}
         >
-          {won}W–{lost}L
-        </Badge>
+          <GripVertical className="w-3 h-3" />
+        </button>
       )}
-      {assigned ? (
-        <Check className="w-3 h-3 text-emerald-600 shrink-0" />
-      ) : (
-        <UserPlus className="w-3 h-3 text-primary/60 shrink-0" />
-      )}
-    </button>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={assigned}
+        className="flex-1 flex items-center gap-2 min-w-0 disabled:cursor-not-allowed text-left"
+      >
+        <span className="font-mono text-[10px] w-14 shrink-0 text-muted-foreground">
+          {player.code}
+        </span>
+        <span className="flex-1 truncate font-medium">{fullName}</span>
+        {played > 0 && (
+          <Badge
+            variant="outline"
+            className="text-[9px] px-1 py-0 h-4 font-mono border-emerald-300 text-emerald-700 shrink-0"
+            title={`${played} played this season`}
+          >
+            {won}W–{lost}L
+          </Badge>
+        )}
+        {assigned ? (
+          <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+        ) : (
+          <UserPlus className="w-3 h-3 text-primary/60 shrink-0" />
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -109,6 +145,7 @@ function TeamColumn({
           <PlayerRow
             key={p.code}
             player={p}
+            side={side}
             assigned={assignedCodes.has((p.code || "").toUpperCase())}
             onClick={() => onAssign(side, p)}
           />

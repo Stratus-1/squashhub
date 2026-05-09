@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,40 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
+import { DndContext, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+
+/** Droppable wrapper that BECOMES the grid row. Adds drop highlight ring. */
+function DroppableSlotRow({
+  side, idx, className, style, children,
+}: {
+  side: "home" | "away";
+  idx: number;
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver, active } = useDroppable({
+    id: `slot:${side}:${idx}`,
+    data: { kind: "slot", side, idx },
+  });
+  const dragSide = (active?.data.current as any)?.side as "home" | "away" | undefined;
+  const matches = dragSide === side;
+  const wrong = !!dragSide && dragSide !== side;
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "relative",
+        className,
+        isOver && matches && "ring-2 ring-primary ring-inset bg-primary/10",
+        isOver && wrong && "ring-2 ring-destructive ring-inset bg-destructive/10",
+      )}
+      style={style}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface PositionEntry {
   homeCode: string;
@@ -513,6 +547,47 @@ export default function LeagueGameDetail() {
       return next;
     });
   }, [assignedCodes]);
+
+  // Drag a roster player onto a specific H/V slot. If the slot is occupied,
+  // the new player overwrites it (the displaced player simply returns to the
+  // squad pool — same semantics as the Replace dialog).
+  const handleRosterDrop = useCallback((side: "home" | "away", idx: number, code: string, name: string) => {
+    const codeUpper = (code || "").toUpperCase();
+    if (!codeUpper) return;
+    const codeKey = side === "home" ? "homeCode" : "awayCode";
+    const nameKey = side === "home" ? "homeName" : "awayName";
+    setPositions((prev) => {
+      // Already in the lineup somewhere? Move them (swap with target).
+      const existingIdx = prev.findIndex((p) => (p[codeKey] || "").toUpperCase() === codeUpper);
+      const next = prev.map((p) => ({ ...p }));
+      const targetOldCode = next[idx][codeKey];
+      const targetOldName = next[idx][nameKey];
+      next[idx] = { ...next[idx], [codeKey]: codeUpper, [nameKey]: name };
+      if (existingIdx >= 0 && existingIdx !== idx) {
+        next[existingIdx] = { ...next[existingIdx], [codeKey]: targetOldCode, [nameKey]: targetOldName };
+        toast.success(`${name} → position ${idx + 1} (swapped)`);
+      } else {
+        toast.success(`${name} → position ${idx + 1}`);
+      }
+      return next;
+    });
+  }, []);
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
+
+  const handleDragEnd = useCallback((e: DragEndEvent) => {
+    const a = e.active?.data.current as any;
+    const o = e.over?.data.current as any;
+    if (!a || !o || a.kind !== "roster" || o.kind !== "slot") return;
+    if (a.side !== o.side) {
+      toast.error(`${a.side === "home" ? "Home" : "Visitor"} player can't go on the ${o.side === "home" ? "home" : "visitor"} side`);
+      return;
+    }
+    handleRosterDrop(o.side, o.idx, a.code, a.name);
+  }, [handleRosterDrop]);
 
   const handleSwap = useCallback(async (c: SwapCandidate) => {
     if (!swapTarget) return;
@@ -1058,7 +1133,8 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {/* NSA Squad roster — click to assign players to lineup */}
+        <DndContext sensors={dndSensors} onDragEnd={handleDragEnd}>
+        {/* NSA Squad roster — click OR drag players onto H/V slots */}
         {nsaLive && !setupDone && !isSubmitted && (
           <RosterPanel
             homeCode={fixture?.home_team_code}
@@ -1109,10 +1185,13 @@ export default function LeagueGameDetail() {
                   <tr key={idx} className={cn("border-t", pos.isForfeit && "bg-destructive/10")}>
                     <td className="p-0" colSpan={bestOf + 6}>
                       {/* Home row */}
-                      <div className={cn(
-                        "grid items-center border-b",
-                        pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
-                      )}
+                      <DroppableSlotRow
+                        side="home"
+                        idx={idx}
+                        className={cn(
+                          "grid items-center border-b",
+                          pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
+                        )}
                         style={setupDone
                           ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 32px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
@@ -1248,12 +1327,15 @@ export default function LeagueGameDetail() {
                             </span>
                           </>
                         )}
-                      </div>
+                      </DroppableSlotRow>
                       {/* Away row */}
-                      <div className={cn(
-                        "grid items-center",
-                        pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
-                      )}
+                      <DroppableSlotRow
+                        side="away"
+                        idx={idx}
+                        className={cn(
+                          "grid items-center",
+                          pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
+                        )}
                         style={setupDone
                           ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 32px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
@@ -1440,7 +1522,7 @@ export default function LeagueGameDetail() {
                             </span>
                           </>
                         )}
-                      </div>
+                      </DroppableSlotRow>
                     </td>
                   </tr>
                 );
@@ -1496,6 +1578,7 @@ export default function LeagueGameDetail() {
             </tbody>
           </table>
         </div>
+        </DndContext>
 
         {/* Winner badge */}
         {setupDone && summary.winner !== "draw" && positions.some(p => p.completed) && (

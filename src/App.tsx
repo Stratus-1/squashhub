@@ -80,7 +80,26 @@ import Privacy from "./pages/Privacy";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: (error: any) => {
+      const fe = friendlyError(error);
+      // Only auto-toast permission errors globally; let individual mutations
+      // continue to handle their own non-permission errors as before.
+      if (fe.isPermission) {
+        toast.error(fe.title, {
+          description: fe.description,
+          action: {
+            label: "Open Support",
+            onClick: () => {
+              if (typeof window !== "undefined") window.location.href = "/support";
+            },
+          },
+        });
+      }
+    },
+  }),
+});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();

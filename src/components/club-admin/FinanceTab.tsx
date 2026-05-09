@@ -276,6 +276,74 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     Expense: "text-destructive",
   };
 
+  /**
+   * Resync the GL from the current paid/unpaid state of every member fee.
+   * Wipes prior auto-generated fee entries (rows with a fee_payment_id) and
+   * rebuilds them using the same gross-up rules as MembersTab.
+   */
+  const handleResyncFeesGL = async () => {
+    if (!confirm("Recalculate the general ledger from the current state of all member fees? Manual transactions are preserved.")) return;
+    try {
+      const { data: fees, error: feeErr } = await fromExt("club_member_fee_payments")
+        .select("id, club_member_id, fee_type, fee_label, amount, paid")
+        .eq("club_id", clubId);
+      if (feeErr) throw feeErr;
+
+      const { error: delErr } = await fromExt("club_journal_entries")
+        .delete()
+        .eq("club_id", clubId)
+        .not("fee_payment_id", "is", null);
+      if (delErr) throw delErr;
+
+      const accountsForFee = (feeType: string) => {
+        switch (feeType) {
+          case "club":
+          case "membership":            return { side: "receivable" as const, income: "membership_income" };
+          case "association":
+          case "league_affiliation":    return { side: "receivable" as const, income: "league_fees_income" };
+          case "national":
+          case "national_body":         return { side: "receivable" as const, income: "national_body_income" };
+          case "club_payable_assoc":    return { side: "payable" as const, expense: "league_fees_expense" };
+          case "club_payable_national": return { side: "payable" as const, expense: "national_body_expense" };
+          default:                      return { side: "receivable" as const, income: "fee_income" };
+        }
+      };
+
+      const memberName = (id: string) => {
+        const m = (members as any[] | undefined)?.find(mm => mm.id === id);
+        return m?.name || m?.profiles?.name || "Member";
+      };
+
+      const rows: any[] = [];
+      for (const f of fees || []) {
+        if (!f.amount || f.amount <= 0) continue;
+        const acct = accountsForFee(f.fee_type);
+        const desc = `${f.paid ? "Fee paid" : "Fee accrued"}: ${f.fee_label} — ${memberName(f.club_member_id)}`;
+        const journal_ref = crypto.randomUUID();
+        const base = { club_id: clubId, journal_ref, description: desc, club_member_id: f.club_member_id, fee_payment_id: f.id };
+        if (acct.side === "receivable") {
+          const debit = f.paid ? "bank_current" : "debtors";
+          rows.push({ ...base, account: debit, debit: f.amount, credit: 0 });
+          rows.push({ ...base, account: acct.income, debit: 0, credit: f.amount });
+        } else {
+          const credit = f.paid ? "bank_current" : "creditors";
+          rows.push({ ...base, account: acct.expense, debit: f.amount, credit: 0 });
+          rows.push({ ...base, account: credit, debit: 0, credit: f.amount });
+        }
+      }
+
+      for (let i = 0; i < rows.length; i += 500) {
+        const { error: insErr } = await fromExt("club_journal_entries").insert(rows.slice(i, i + 500));
+        if (insErr) throw insErr;
+      }
+
+      toast.success(`Resynced ${(fees || []).length} fees → ${rows.length} ledger entries`);
+      queryClient.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
+    } catch (e: any) {
+      toast.error(e.message || "Resync failed");
+    }
+  };
+
   return (
     <div className="space-y-6 mt-4">
       {/* Summary Cards */}

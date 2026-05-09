@@ -50,6 +50,7 @@ type Props = {
 type PlayedLeagueRow = {
   club_member_id: string;
   league_id: string;
+  position: number | null;
 };
 
 type PreviousMatchResultRow = {
@@ -313,7 +314,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       for (const side of sides) {
         const leagueId = leagueByCode.get((side.teamCode || "").toUpperCase());
         const memberId = memberByLeagueNumber.get((side.playerCode || "").trim().toUpperCase());
-        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId });
+        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId, position: result.position ?? null });
       }
     }
     return rows;
@@ -818,14 +819,22 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       if (subRules) {
         const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
         if (targetLeagueNumber != null) {
-          const homeLeagueId = effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
+          const currentSource = memberCurrentLineup.get(memberId);
+          const previousPlayed = previousPlayedRows
+            .filter(r => r.club_member_id === memberId)
+            .sort((a, b) => {
+              const aLeague = sortedLeagues.find(l => l.id === a.league_id);
+              const bLeague = sortedLeagues.find(l => l.id === b.league_id);
+              return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);
+            })[0];
+          const homeLeagueId = currentSource?.leagueId ?? previousPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
           const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
           const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;
           // Last-played position in home league (from previous week's lineup, if any)
           const lastLineup = previousWeekLineups.find(
             r => r.club_member_id === memberId && r.league_id === homeLeagueId,
           );
-          const homePosition = lastLineup?.position ?? null;
+          const homePosition = currentSource?.position ?? previousPlayed?.position ?? lastLineup?.position ?? null;
           const targetGender = isMensLeague(targetLeague.name)
             ? "men"
             : isLadiesLeague(targetLeague.name)

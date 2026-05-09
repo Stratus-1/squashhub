@@ -1143,10 +1143,13 @@ export default function LeagueGameDetail() {
                   <tr key={idx} className={cn("border-t", pos.isForfeit && "bg-destructive/10")}>
                     <td className="p-0" colSpan={bestOf + 6}>
                       {/* Home row */}
-                      <div className={cn(
-                        "grid items-center border-b",
-                        pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
-                      )}
+                      <DroppableSlotRow
+                        side="home"
+                        idx={idx}
+                        className={cn(
+                          "grid items-center border-b",
+                          pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
+                        )}
                         style={setupDone
                           ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 32px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }

@@ -331,6 +331,21 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     return rows;
   }, [previousFixtures, previousMatchResults, registrations, sortedLeagues]);
 
+  const latestPlayedByMember = useMemo(() => {
+    const m = new Map<string, PlayedLeagueRow>();
+    const sortedRows = [...previousPlayedRows].sort((a, b) => {
+      const dateDiff = new Date(b.fixture_date).getTime() - new Date(a.fixture_date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      const aLeague = sortedLeagues.find(l => l.id === a.league_id);
+      const bLeague = sortedLeagues.find(l => l.id === b.league_id);
+      return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);
+    });
+    for (const row of sortedRows) {
+      if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
+    }
+    return m;
+  }, [previousPlayedRows, sortedLeagues]);
+
   // Members
   const memberIds = useMemo(() => {
     const ids = new Set<string>();
@@ -795,6 +810,35 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     }));
   };
 
+  const evaluatePlacement = (memberId: string, targetLeague: LeagueRow, targetPosition: number) => {
+    if (!subRules) return null;
+    const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
+    if (targetLeagueNumber == null) return null;
+    const lastPlayed = latestPlayedByMember.get(memberId);
+    const homeLeagueId = lastPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
+    const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
+    const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;
+    const lastLineup = previousWeekLineups.find(r => r.club_member_id === memberId && r.league_id === homeLeagueId);
+    const homePosition = lastPlayed?.position ?? lastLineup?.position ?? null;
+    const targetGender = isMensLeague(targetLeague.name) ? "men" : isLadiesLeague(targetLeague.name) ? "ladies" : "mixed";
+    return checkSubEligibility(
+      subRules,
+      { homeLeagueNumber, homePosition, gender: memberMap.get(memberId)?.gender as any },
+      { leagueNumber: targetLeagueNumber, position: targetPosition, gender: targetGender },
+    );
+  };
+
+  const placementAlerts = useMemo(() => {
+    const alerts = new Map<string, string>();
+    for (const row of lineups) {
+      const targetLeague = sortedLeagues.find(l => l.id === row.league_id);
+      if (!targetLeague) continue;
+      const result = evaluatePlacement(row.club_member_id, targetLeague, row.position);
+      if (result?.reason && (!result.ok || result.warn)) alerts.set(row.club_member_id, result.reason);
+    }
+    return alerts;
+  }, [lineups, sortedLeagues, subRules, latestPlayedByMember, effectiveHomeLeagueByMember, homeLeagueByMember, previousWeekLineups, memberMap]);
+
   // ---------- DnD handlers ----------
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -826,48 +870,13 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
         return;
       }
 
-      // Substitution rules check (per-association config)
-      if (subRules) {
-        const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
-        if (targetLeagueNumber != null) {
-          // Always compare drop target to the player's LAST PLAYED league/position
-          // (from match results), not the current drag origin in the lineup.
-          const previousPlayed = previousPlayedRows
-            .filter(r => r.club_member_id === memberId)
-            .sort((a, b) => {
-              const dateDiff = new Date(b.fixture_date).getTime() - new Date(a.fixture_date).getTime();
-              if (dateDiff !== 0) return dateDiff;
-              const aLeague = sortedLeagues.find(l => l.id === a.league_id);
-              const bLeague = sortedLeagues.find(l => l.id === b.league_id);
-              return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);
-            })[0];
-          const homeLeagueId = previousPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
-          const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
-          const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;
-          const lastLineup = previousWeekLineups.find(
-            r => r.club_member_id === memberId && r.league_id === homeLeagueId,
-          );
-          const homePosition = previousPlayed?.position ?? lastLineup?.position ?? null;
-          const targetGender = isMensLeague(targetLeague.name)
-            ? "men"
-            : isLadiesLeague(targetLeague.name)
-            ? "ladies"
-            : "mixed";
-          const playerGender = memberMap.get(memberId)?.gender ?? null;
-
-          const result = checkSubEligibility(
-            subRules,
-            { homeLeagueNumber, homePosition, gender: playerGender as any },
-            { leagueNumber: targetLeagueNumber, position: drop.position, gender: targetGender },
-          );
-          if (!result.ok) {
-            toast.error(result.reason || "Substitution rule violation");
-            return;
-          }
-          if (result.warn && result.reason) {
-            toast.warning(result.reason);
-          }
-        }
+      const result = evaluatePlacement(memberId, targetLeague, drop.position);
+      if (result && !result.ok) {
+        toast.error(result.reason || "Substitution rule violation", { duration: 10000 });
+        return;
+      }
+      if (result?.warn && result.reason) {
+        toast.warning(result.reason, { duration: 10000 });
       }
 
       // If from NA, lift the unavailability so they can play
@@ -992,6 +1001,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
       availableSet={availableSet}
+      placementAlerts={placementAlerts}
       onMarkUnavailable={(mid) => markUnavailable.mutate(mid)}
     />
   );

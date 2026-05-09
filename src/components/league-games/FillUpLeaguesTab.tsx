@@ -835,6 +835,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
           const previousPlayed = previousPlayedRows
             .filter(r => r.club_member_id === memberId)
             .sort((a, b) => {
+              const dateDiff = new Date(b.fixture_date).getTime() - new Date(a.fixture_date).getTime();
+              if (dateDiff !== 0) return dateDiff;
               const aLeague = sortedLeagues.find(l => l.id === a.league_id);
               const bLeague = sortedLeagues.find(l => l.id === b.league_id);
               return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);

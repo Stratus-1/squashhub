@@ -4567,7 +4567,9 @@ export type Database = {
         Args: { _association_id: string }
         Returns: string
       }
-      get_club_analytics: { Args: { days_back?: number }; Returns: Json }
+      get_club_analytics:
+        | { Args: { days_back?: number }; Returns: Json }
+        | { Args: { days_back?: number; p_club_id?: string }; Returns: Json }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
       get_head_to_head_by_member: {
         Args: { limit_count?: number; target_member_id: string }
@@ -4586,29 +4588,57 @@ export type Database = {
           wins: number
         }[]
       }
-      get_match_of_the_week: {
-        Args: never
-        Returns: {
-          closeness_score: number
-          game_scores: string
-          match_date: string
-          match_id: string
-          player_a: string
-          player_a_member_id: string
-          player_a_name: string
-          player_b: string
-          player_b_member_id: string
-          player_b_name: string
-          score: string
-          winner_id: string
-          winner_member_id: string
-        }[]
-      }
+      get_match_of_the_week:
+        | {
+            Args: never
+            Returns: {
+              closeness_score: number
+              game_scores: string
+              match_date: string
+              match_id: string
+              player_a: string
+              player_a_member_id: string
+              player_a_name: string
+              player_b: string
+              player_b_member_id: string
+              player_b_name: string
+              score: string
+              winner_id: string
+              winner_member_id: string
+            }[]
+          }
+        | {
+            Args: { p_club_id?: string }
+            Returns: {
+              closeness_score: number
+              game_scores: string
+              match_date: string
+              match_id: string
+              player_a: string
+              player_a_member_id: string
+              player_a_name: string
+              player_b: string
+              player_b_member_id: string
+              player_b_name: string
+              score: string
+              winner_id: string
+              winner_member_id: string
+            }[]
+          }
       get_next_member_number: { Args: { _club_id: string }; Returns: string }
-      get_personal_analytics: {
-        Args: { days_back?: number; target_user_id: string }
-        Returns: Json
-      }
+      get_personal_analytics:
+        | {
+            Args: { days_back?: number; target_user_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              days_back?: number
+              p_club_id?: string
+              target_user_id: string
+            }
+            Returns: Json
+          }
       get_squash_totals_by_member: {
         Args: { target_member_id: string }
         Returns: Json

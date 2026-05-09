@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClubContext } from "@/contexts/ClubContext";
 
 const rpc: any = supabase.rpc.bind(supabase);
 
@@ -16,14 +17,16 @@ export type ClubAnalytics = {
 
 export function useClubAnalytics(daysBack = 30) {
   const { user } = useAuth();
+  const { club } = useClubContext();
+  const clubId = club?.id ?? null;
   return useQuery({
-    queryKey: ["club-analytics", daysBack],
+    queryKey: ["club-analytics", clubId, daysBack],
     queryFn: async () => {
-      const { data, error } = await rpc("get_club_analytics", { days_back: daysBack });
+      const { data, error } = await rpc("get_club_analytics", { days_back: daysBack, p_club_id: clubId });
       if (error) throw error;
       return data as unknown as ClubAnalytics;
     },
-    enabled: !!user,
+    enabled: !!user && !!clubId,
   });
 }
 
@@ -38,18 +41,21 @@ export type PersonalAnalytics = {
 
 export function usePersonalAnalytics(daysBack = 90) {
   const { user } = useAuth();
+  const { club } = useClubContext();
+  const clubId = club?.id ?? null;
   return useQuery({
-    queryKey: ["personal-analytics", user?.id, daysBack],
+    queryKey: ["personal-analytics", user?.id, clubId, daysBack],
     queryFn: async () => {
       if (!user) return null;
       const { data, error } = await rpc("get_personal_analytics", {
         target_user_id: user.id,
         days_back: daysBack,
+        p_club_id: clubId,
       });
       if (error) throw error;
       return data as unknown as PersonalAnalytics;
     },
-    enabled: !!user,
+    enabled: !!user && !!clubId,
   });
 }
 
@@ -71,15 +77,17 @@ export type MatchOfTheWeek = {
 
 export function useMatchOfTheWeek() {
   const { user } = useAuth();
+  const { club } = useClubContext();
+  const clubId = club?.id ?? null;
   return useQuery({
-    queryKey: ["match-of-the-week"],
+    queryKey: ["match-of-the-week", clubId],
     queryFn: async () => {
-      const { data, error } = await rpc("get_match_of_the_week");
+      const { data, error } = await rpc("get_match_of_the_week", { p_club_id: clubId });
       if (error) throw error;
       const rows = data as unknown as MatchOfTheWeek[];
       return rows && rows.length > 0 ? rows[0] : null;
     },
-    enabled: !!user,
+    enabled: !!user && !!clubId,
   });
 }
 

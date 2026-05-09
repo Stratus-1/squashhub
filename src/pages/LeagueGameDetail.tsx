@@ -1064,17 +1064,17 @@ export default function LeagueGameDetail() {
             </div>
           </div>
           <div className="grid grid-cols-2 border-b">
-            <div className="p-1.5 border-r bg-primary/5">
-              <span className="text-[10px] text-muted-foreground block">HOME TEAM</span>
+            <div className="p-2 border-r bg-primary text-primary-foreground">
+              <span className="text-xs font-black uppercase tracking-widest block">HOME TEAM</span>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-sm">{homeCode}</span>
+                <span className="font-mono font-black text-lg">{homeCode}</span>
                 <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="home" teamCode={homeCode} />
               </div>
             </div>
-            <div className="p-1.5 bg-secondary/30">
-              <span className="text-[10px] text-muted-foreground block">VISITORS TEAM</span>
+            <div className="p-2 bg-accent text-accent-foreground">
+              <span className="text-xs font-black uppercase tracking-widest block">VISITORS TEAM</span>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-sm">{awayCode}</span>
+                <span className="font-mono font-black text-lg">{awayCode}</span>
                 <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="away" teamCode={awayCode} />
               </div>
             </div>
@@ -1197,7 +1197,7 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
-                        <span className="text-[10px] font-semibold text-center bg-primary/10 py-1">H</span>
+                        <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1">H</span>
                         {!setupDone ? (
                           <>
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
@@ -1341,7 +1341,7 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                         }>
                         <span></span>
-                        <span className="text-[10px] font-semibold text-center bg-secondary/30 py-1">V</span>
+                        <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1">V</span>
                         {!setupDone ? (
                           <>
                             <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}

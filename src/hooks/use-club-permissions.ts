@@ -111,6 +111,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
  */
 export function useMyPermissions(): Set<string> {
   const { activeMember, isAdmin } = useMemberContext();
+  const isSuperAdmin = useIsSuperAdmin();
   const memberId = activeMember?.id;
 
   const { data: memberRow } = useQuery({
@@ -123,7 +124,7 @@ export function useMyPermissions(): Set<string> {
   });
 
   const memberRole = memberRow?.role;
-  const isRoleFullAccess = memberRole === "admin" || isAdmin;
+  const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
   const { data: perm } = useMemberPermission(memberId);
 
   if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));

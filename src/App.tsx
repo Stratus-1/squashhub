@@ -295,6 +295,7 @@ function AppRoutes() {
         <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/lights" element={<LightsIntegration />} />
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />

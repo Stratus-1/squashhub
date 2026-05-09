@@ -125,15 +125,17 @@ function TeamColumn({
   return (
     <div className="flex-1 min-w-0 space-y-1">
       <div className={cn(
-        "flex items-center justify-between px-2 py-1 rounded border-l-4",
+        "flex items-center justify-between px-3 py-2 rounded-md shadow-sm",
         side === "home"
-          ? "bg-primary/10 border-primary text-primary"
-          : "bg-secondary border-secondary-foreground/40 text-secondary-foreground"
+          ? "bg-primary text-primary-foreground"
+          : "bg-amber-500 text-white"
       )}>
-        <span className="text-sm font-extrabold uppercase tracking-wider">
+        <span className="text-base font-black uppercase tracking-widest">
           {label}
         </span>
-        <span className="text-xs font-mono font-bold">{teamCode || "—"}</span>
+        <span className="text-sm font-mono font-bold bg-black/20 px-2 py-0.5 rounded">
+          {teamCode || "—"}
+        </span>
       </div>
       <div className="space-y-0.5 max-h-[260px] overflow-y-auto pr-1">
         {loading && (

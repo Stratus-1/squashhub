@@ -138,6 +138,9 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     if (error) { toast.error(error.message); return; }
     toast.success("Deleted");
     qc.invalidateQueries({ queryKey: [fee.source === "member_fee_categories" ? "fee-categories" : fee.source === "league_associations" ? "league-associations" : "national-body-fees"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fees"] });
   };
 
   return (

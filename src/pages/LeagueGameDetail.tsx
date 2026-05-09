@@ -36,8 +36,8 @@ function DroppableSlotRow({
   side: "home" | "away";
   idx: number;
   className?: string;
-  style?: React.CSSProperties;
-  children: React.ReactNode;
+  style?: CSSProperties;
+  children: ReactNode;
 }) {
   const { setNodeRef, isOver, active } = useDroppable({
     id: `slot:${side}:${idx}`,

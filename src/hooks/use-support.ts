@@ -234,3 +234,11 @@ export function useUpdateSupportThread() {
     },
   });
 }
+
+export async function getSupportAttachmentUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage
+    .from("support-attachments")
+    .createSignedUrl(path, 60 * 60); // 1 hour
+  return data?.signedUrl || null;
+}
+

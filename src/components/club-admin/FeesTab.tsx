@@ -129,6 +129,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     const key = fee.source === "member_fee_categories" ? "fee-categories" : fee.source === "league_associations" ? "league-associations" : "national-body-fees";
     qc.invalidateQueries({ queryKey: [key] });
     qc.invalidateQueries({ queryKey: ["club-member-fees"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
     toast.success(`Fee ${newActive ? "activated" : "deactivated"}`);
   };
 

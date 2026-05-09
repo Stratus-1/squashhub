@@ -1567,6 +1567,7 @@ export type Database = {
           club_id: string
           created_at: string
           id: string
+          is_full_admin: boolean
           permissions: string[]
           role_name: string
           updated_at: string
@@ -1575,6 +1576,7 @@ export type Database = {
           club_id: string
           created_at?: string
           id?: string
+          is_full_admin?: boolean
           permissions?: string[]
           role_name: string
           updated_at?: string
@@ -1583,6 +1585,7 @@ export type Database = {
           club_id?: string
           created_at?: string
           id?: string
+          is_full_admin?: boolean
           permissions?: string[]
           role_name?: string
           updated_at?: string

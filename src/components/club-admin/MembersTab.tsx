@@ -91,7 +91,8 @@ function computeExpectedFees(
       if (assoc.active === false) continue;
       const existing = memberPayments.find(p => p.fee_type === "association");
       if (existing) {
-        fees.push({ fee_type: "association", fee_label: assoc.abbreviation || assoc.name, amount: existing.amount, existing });
+        const label = existing.fee_label || assoc.abbreviation || assoc.name || "League";
+        fees.push({ fee_type: "association", fee_label: label, amount: existing.amount, existing });
       }
     }
   }
@@ -104,13 +105,15 @@ function computeExpectedFees(
       if (nat.fee_type === "league_affiliation") {
         const existing = memberPayments.find(p => p.fee_type === "league_affiliation");
         if (existing) {
-          fees.push({ fee_type: "league_affiliation", fee_label: nat.abbreviation || nat.body_name, amount: existing.amount, existing });
+          const label = existing.fee_label || nat.abbreviation || nat.body_name || "League Affiliation";
+          fees.push({ fee_type: "league_affiliation", fee_label: label, amount: existing.amount, existing });
         }
         continue;
       }
       const existing = memberPayments.find(p => p.fee_type === "national" || p.fee_type === "national_body");
       if (existing) {
-        fees.push({ fee_type: "national", fee_label: nat.abbreviation || nat.body_name, amount: existing.amount, existing });
+        const label = existing.fee_label || nat.abbreviation || nat.body_name || "National";
+        fees.push({ fee_type: "national", fee_label: label, amount: existing.amount, existing });
       }
     }
   }

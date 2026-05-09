@@ -145,6 +145,7 @@ function TeamColumn({
           <PlayerRow
             key={p.code}
             player={p}
+            side={side}
             assigned={assignedCodes.has((p.code || "").toUpperCase())}
             onClick={() => onAssign(side, p)}
           />

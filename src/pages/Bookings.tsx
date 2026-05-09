@@ -603,17 +603,30 @@ export default function Bookings() {
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 
-    // Enforce peak-hour cap
+    // Enforce peak-hour cap (per-player, also counting opponent slots)
     if (isPeakSlot(selectedDate, bookingDialog.time, myClub)) {
-      const myExistingPeakCount = (bookings || []).filter((b: any) => {
-        const mine = (b.user_id && b.user_id === user?.id)
-          || (activeMember?.id && b.club_member_id === activeMember.id);
-        if (!mine) return false;
-        if (b.status && b.status !== "active") return false;
-        return isPeakSlot(selectedDate, String(b.start_time || ""), myClub);
-      }).length;
-      if (myExistingPeakCount >= maxPeakPerDay) {
+      const isLeagueGuest = (s: any) =>
+        typeof s === "string" && /\bleague\b|\bround\s*\d/i.test(s);
+      const peakCountFor = (memberId?: string | null, userId?: string | null) =>
+        (bookings || []).filter((b: any) => {
+          if (b.status && b.status !== "active") return false;
+          if (isLeagueGuest(b.guest_name)) return false;
+          const involves =
+            (memberId && (b.club_member_id === memberId || b.opponent_member_id === memberId)) ||
+            (userId && (b.user_id === userId || b.opponent_id === userId));
+          if (!involves) return false;
+          return isPeakSlot(selectedDate, String(b.start_time || ""), myClub);
+        }).length;
+
+      if (peakCountFor(activeMember?.id, user?.id) >= maxPeakPerDay) {
         toast.error(`Peak-hour limit reached (max ${maxPeakPerDay} per day).`);
+        return;
+      }
+      const opp = bookingDialog.opponentId
+        ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)
+        : null;
+      if (opp && peakCountFor((opp as any).memberId, (opp as any).id) >= maxPeakPerDay) {
+        toast.error(`${(opp as any).name || "Your opponent"} has already reached the peak-hour limit (max ${maxPeakPerDay} per day).`);
         return;
       }
     }

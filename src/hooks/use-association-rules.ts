@@ -30,35 +30,18 @@ export interface LeagueRules {
 
 export function useAssociationRules(associationId: string | null | undefined) {
   return useQuery({
-    queryKey: ["association-rules", associationId],
+    queryKey: ["association-rules", "direct", associationId],
     enabled: !!associationId,
     queryFn: async () => {
-      // 1. Try the tenant-scoped association first
-      const { data: tenantRules, error } = await supabase
+      // Association rules are authored once in Super Admin against the platform
+      // association. Callers must pass that association id directly.
+      const { data, error } = await supabase
         .from("league_rules")
         .select("*")
         .eq("association_id", associationId!)
         .maybeSingle();
       if (error) throw error;
-      if (tenantRules) return tenantRules as LeagueRules;
-
-      // 2. Fall back to the platform-level association this tenant copy points to
-      //    (Super Admin seeds NSA/NIL rules against the platform association.)
-      const { data: assocRow } = await supabase
-        .from("league_associations")
-        .select("platform_association_id")
-        .eq("id", associationId!)
-        .maybeSingle();
-      const platformId = (assocRow as any)?.platform_association_id;
-      if (!platformId) return null;
-
-      const { data: platformRules, error: pErr } = await supabase
-        .from("league_rules")
-        .select("*")
-        .eq("association_id", platformId)
-        .maybeSingle();
-      if (pErr) throw pErr;
-      return (platformRules as LeagueRules | null) ?? null;
+      return (data as LeagueRules | null) ?? null;
     },
   });
 }

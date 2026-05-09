@@ -819,6 +819,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       if (subRules) {
         const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
         if (targetLeagueNumber != null) {
+          const currentSource = memberCurrentLineup.get(memberId);
           const previousPlayed = previousPlayedRows
             .filter(r => r.club_member_id === memberId)
             .sort((a, b) => {
@@ -826,14 +827,14 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
               const bLeague = sortedLeagues.find(l => l.id === b.league_id);
               return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);
             })[0];
-          const homeLeagueId = previousPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
+          const homeLeagueId = currentSource?.leagueId ?? previousPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
           const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
           const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;
           // Last-played position in home league (from previous week's lineup, if any)
           const lastLineup = previousWeekLineups.find(
             r => r.club_member_id === memberId && r.league_id === homeLeagueId,
           );
-          const homePosition = previousPlayed?.position ?? lastLineup?.position ?? null;
+          const homePosition = currentSource?.position ?? previousPlayed?.position ?? lastLineup?.position ?? null;
           const targetGender = isMensLeague(targetLeague.name)
             ? "men"
             : isLadiesLeague(targetLeague.name)

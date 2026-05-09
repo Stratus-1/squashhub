@@ -33,13 +33,32 @@ export function useAssociationRules(associationId: string | null | undefined) {
     queryKey: ["association-rules", associationId],
     enabled: !!associationId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1. Try the tenant-scoped association first
+      const { data: tenantRules, error } = await supabase
         .from("league_rules")
         .select("*")
         .eq("association_id", associationId!)
         .maybeSingle();
       if (error) throw error;
-      return data as LeagueRules | null;
+      if (tenantRules) return tenantRules as LeagueRules;
+
+      // 2. Fall back to the platform-level association this tenant copy points to
+      //    (Super Admin seeds NSA/NIL rules against the platform association.)
+      const { data: assocRow } = await supabase
+        .from("league_associations")
+        .select("platform_association_id")
+        .eq("id", associationId!)
+        .maybeSingle();
+      const platformId = (assocRow as any)?.platform_association_id;
+      if (!platformId) return null;
+
+      const { data: platformRules, error: pErr } = await supabase
+        .from("league_rules")
+        .select("*")
+        .eq("association_id", platformId)
+        .maybeSingle();
+      if (pErr) throw pErr;
+      return (platformRules as LeagueRules | null) ?? null;
     },
   });
 }

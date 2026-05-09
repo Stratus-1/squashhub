@@ -4713,6 +4713,10 @@ export type Database = {
           nsa_number: string
         }[]
       }
+      seed_member_default_fees: {
+        Args: { p_club_member_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

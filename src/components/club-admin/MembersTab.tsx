@@ -298,15 +298,18 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
       {/* Row 3: Fees receivable from member */}
       {fees.length > 0 && (
         <div className="border-t border-border pt-1">
-          <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees payable by the member:</span>
+            <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+          </div>
         </div>
       )}
 
-      {/* Row 4: Fees paid in respect of (club's per-member payable to NSA/SSA) */}
+      {/* Row 4: Fees payable by the club (per-member to NSA/SSA) */}
       {payableFees.length > 0 && (
         <div className="border-t border-dashed border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees paid in respect of:</span>
+            <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees payable by the club:</span>
             <MemberPaymentStatus fees={payableFees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
           </div>
         </div>

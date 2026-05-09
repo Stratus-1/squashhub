@@ -124,6 +124,19 @@ function computeExpectedFees(
   return fees;
 }
 
+/** Build "Fees paid in respect of" list — what the club pays per member to NSA/SSA.
+ *  Sourced from existing club_member_fee_payments rows seeded from club_fees_payable
+ *  (basis='per_member'). Default state = paid; admin can untick to mark still owing. */
+function computeClubPayableFees(
+  member: ClubMember,
+  existingPayments: FeePaymentRow[]
+): ExpectedFee[] {
+  return existingPayments
+    .filter(p => p.club_member_id === member.id)
+    .filter(p => p.fee_type === "club_payable_assoc" || p.fee_type === "club_payable_national")
+    .map(p => ({ fee_type: p.fee_type, fee_label: p.fee_label, amount: p.amount, existing: p }));
+}
+
 function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   fees: ExpectedFee[];
   onToggle: (feeId: string, paid: boolean) => void;

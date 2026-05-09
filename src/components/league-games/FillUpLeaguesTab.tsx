@@ -41,6 +41,8 @@ type Props = {
   activeMemberId?: string | null;
   /** When set, only show leagues belonging to this association. */
   associationId?: string;
+  /** Super Admin/platform association id that owns substitution rules. */
+  rulesAssociationId?: string | null;
   /** Optional per-association week start day; falls back to club-level setting if not provided. */
   weekStartDow?: number;
 };
@@ -64,7 +66,7 @@ function leagueOrder(name: string, code: string | null): number {
 const isLadiesLeague = (n: string) => /ladies|women/i.test(n);
 const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
 
-export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekStartDow }: Props) {
+export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesAssociationId, weekStartDow }: Props) {
   const qc = useQueryClient();
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [selectedWeekOverride, setSelectedWeekOverride] = useState<string | null>(null);
@@ -95,7 +97,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, weekSt
   const meMember = useMemo(() => (activeMemberId ? { id: activeMemberId } : null), [activeMemberId]);
 
   // Per-association substitution rules (NSA: ±2 cap; NIL: lower-or-equal-only; etc.)
-  const { data: subRules } = useAssociationRules(associationId);
+  const { data: subRules } = useAssociationRules(rulesAssociationId ?? associationId);
 
   // Leagues — optionally scoped to a single association
   const { data: leagues = [] } = useQuery<LeagueRow[]>({

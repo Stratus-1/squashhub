@@ -459,45 +459,6 @@ export function LadderTab({ clubId }: { clubId: string }) {
     return map;
   }, [affiliations]);
 
-  // ---- Fetch league registrations so we can sort by league strength ----
-  // Lower league number = stronger (1st League beats 2nd League, etc.).
-  // Members not registered in any league sort to the bottom.
-  const { data: leagueRankByMember = new Map<string, number>() } = useQuery({
-    queryKey: ["club-member-league-rank", clubId, memberIds.length],
-    queryFn: async () => {
-      const map = new Map<string, number>();
-      if (memberIds.length === 0) return map;
-      // Fetch leagues for the club to map id -> rank-number parsed from name
-      const { data: lgs } = await supabase
-        .from("leagues")
-        .select("id, name")
-        .eq("club_id", clubId);
-      const leagueRank = new Map<string, number>();
-      ((lgs || []) as Array<{ id: string; name: string }>).forEach((l) => {
-        const m = (l.name || "").match(/(\d+)/);
-        leagueRank.set(l.id, m ? parseInt(m[1], 10) : 999);
-      });
-      const leagueIds = Array.from(leagueRank.keys());
-      if (leagueIds.length === 0) return map;
-      const { data: regs } = await supabase
-        .from("member_league_registrations")
-        .select("club_member_id, league_id")
-        .in("club_member_id", memberIds)
-        .in("league_id", leagueIds);
-      ((regs || []) as Array<{ club_member_id: string; league_id: string }>).forEach((r) => {
-        const rank = leagueRank.get(r.league_id) ?? 999;
-        const prev = map.get(r.club_member_id);
-        if (prev === undefined || rank < prev) map.set(r.club_member_id, rank);
-      });
-      return map;
-    },
-    enabled: !!clubId && memberIds.length > 0,
-  });
-
-  const handleAllocated = useCallback(() => {
-    refetchAffiliations();
-    queryClient.invalidateQueries({ queryKey: ["club-members"] });
-  }, [refetchAffiliations, queryClient]);
 
 
   const toggleMixed = async (next: boolean) => {

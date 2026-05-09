@@ -216,13 +216,15 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     return null;
   };
 
+  const isGrantedFullAdmin = (memberId: string) => !!permMap.get(memberId)?.is_full_admin;
+
   const adminMembers = members.filter(
-    (m) => m.role === "admin" || m.role === "captain" || !!delegateLabel(m.id)
+    (m) => m.role === "admin" || m.role === "captain" || !!delegateLabel(m.id) || isGrantedFullAdmin(m.id)
   );
 
-  // Only show non-admin / non-delegate members in the editable table
+  // Only show non-admin / non-delegate / non-granted members in the editable table
   const assignableMembers = members.filter(
-    (m) => m.role === "member" && !delegateLabel(m.id)
+    (m) => m.role === "member" && !delegateLabel(m.id) && !isGrantedFullAdmin(m.id)
   );
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {

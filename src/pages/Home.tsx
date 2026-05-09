@@ -13,7 +13,7 @@ import {
 import { SEO } from "@/components/SEO";
 import {
   Building2, ChevronRight, Landmark, Check,
-  AlertCircle, Calendar, Trophy, Users, BarChart3, Mail, Menu,
+  AlertCircle, Calendar, Trophy, Users, BarChart3, Mail, Menu, Zap,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";

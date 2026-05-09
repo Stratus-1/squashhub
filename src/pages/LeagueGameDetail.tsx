@@ -19,6 +19,7 @@ import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";

@@ -28,6 +28,7 @@ export interface PermissionRole {
   club_id: string;
   role_name: string;
   permissions: string[];
+  is_full_admin?: boolean;
 }
 
 export interface MemberPermission {

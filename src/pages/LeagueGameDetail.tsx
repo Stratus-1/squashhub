@@ -1133,7 +1133,8 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {/* NSA Squad roster — click to assign players to lineup */}
+        <DndContext sensors={dndSensors} onDragEnd={handleDragEnd}>
+        {/* NSA Squad roster — click OR drag players onto H/V slots */}
         {nsaLive && !setupDone && !isSubmitted && (
           <RosterPanel
             homeCode={fixture?.home_team_code}

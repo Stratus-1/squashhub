@@ -300,3 +300,50 @@ export default function Support() {
     </div>
   );
 }
+
+function FilePreviewList({ files, onRemove }: { files: File[]; onRemove: (i: number) => void }) {
+  if (files.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {files.map((f, i) => {
+        const isImage = f.type.startsWith("image/");
+        const url = isImage ? URL.createObjectURL(f) : null;
+        return (
+          <div key={i} className="relative group border border-border rounded-lg p-1.5 bg-muted/30 flex items-center gap-2 text-xs max-w-[200px]">
+            {url ? (
+              <img src={url} alt={f.name} className="w-10 h-10 object-cover rounded" />
+            ) : (
+              <div className="w-10 h-10 rounded bg-background flex items-center justify-center"><FileText className="w-4 h-4 text-muted-foreground" /></div>
+            )}
+            <span className="truncate flex-1">{f.name}</span>
+            <button type="button" onClick={() => onRemove(i)} className="rounded-full bg-background hover:bg-destructive hover:text-destructive-foreground p-0.5">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AttachmentItem({ att, mine }: { att: SupportAttachment; mine: boolean }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let alive = true; getSupportAttachmentUrl(att.path).then(u => { if (alive) setUrl(u); }); return () => { alive = false; }; }, [att.path]);
+  const isImage = att.mime?.startsWith("image/");
+  if (isImage && url) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="block">
+        <img src={url} alt={att.name} className="max-w-full max-h-64 rounded-lg border border-border/40" />
+      </a>
+    );
+  }
+  return (
+    <a href={url || "#"} target="_blank" rel="noreferrer" className={cn(
+      "inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs underline",
+      mine ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-foreground"
+    )}>
+      {isImage ? <ImageIcon className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+      {att.name}
+    </a>
+  );
+}

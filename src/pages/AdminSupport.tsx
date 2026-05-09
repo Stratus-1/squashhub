@@ -595,3 +595,16 @@ export default function AdminSupport() {
     </div>
   );
 }
+
+function AdminAttachmentItem({ path, name, isImage, mine }: { path: string; name: string; isImage: boolean; mine: boolean }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let alive = true; getSupportAttachmentUrl(path).then(u => { if (alive) setUrl(u); }); return () => { alive = false; }; }, [path]);
+  if (isImage && url) {
+    return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={name} className="max-w-full max-h-64 rounded-lg border border-border/40" /></a>;
+  }
+  return (
+    <a href={url || "#"} target="_blank" rel="noreferrer" className={cn("inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs underline", mine ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-foreground")}>
+      📎 {name}
+    </a>
+  );
+}

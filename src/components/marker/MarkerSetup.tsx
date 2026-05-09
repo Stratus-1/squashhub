@@ -636,18 +636,24 @@ export function MarkerSetup({ onStart }: Props) {
           <p className="text-sm font-semibold font-heading">Match Source</p>
           <div className="grid grid-cols-2 gap-2">
             <Button
-              variant={source === "manual" ? "default" : "outline"}
               size="sm"
-              className="text-xs"
+              className={`text-xs border transition-all ${
+                source === "manual"
+                  ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-transparent shadow-md shadow-blue-500/30 hover:from-blue-500 hover:to-indigo-600"
+                  : "bg-blue-500/10 text-blue-300 border-blue-500/30 hover:bg-blue-500/20 hover:text-blue-200"
+              }`}
               onClick={() => setSource("manual")}
             >
               <Users className="w-3.5 h-3.5 mr-1" />
               Manual
             </Button>
             <Button
-              variant={source === "league" ? "default" : "outline"}
               size="sm"
-              className="text-xs"
+              className={`text-xs border transition-all ${
+                source === "league"
+                  ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-transparent shadow-md shadow-emerald-500/30 hover:from-emerald-500 hover:to-teal-600"
+                  : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-200"
+              }`}
               onClick={() => setSource("league")}
               disabled={!leagueAvailable}
               title={!leagueAvailable ? "No upcoming league fixtures in the next 3 weeks" : undefined}
@@ -656,9 +662,12 @@ export function MarkerSetup({ onStart }: Props) {
               League
             </Button>
             <Button
-              variant={source === "tournament" ? "default" : "outline"}
               size="sm"
-              className="text-xs"
+              className={`text-xs border transition-all ${
+                source === "tournament"
+                  ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white border-transparent shadow-md shadow-amber-500/30 hover:from-amber-500 hover:to-orange-600"
+                  : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-200"
+              }`}
               onClick={() => setSource("tournament")}
               disabled={tournamentMatches.length === 0}
             >
@@ -666,9 +675,12 @@ export function MarkerSetup({ onStart }: Props) {
               Tournament
             </Button>
             <Button
-              variant={source === "booking" ? "default" : "outline"}
               size="sm"
-              className="text-xs"
+              className={`text-xs border transition-all ${
+                source === "booking"
+                  ? "bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md shadow-fuchsia-500/30 hover:from-fuchsia-500 hover:to-pink-600"
+                  : "bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/30 hover:bg-fuchsia-500/20 hover:text-fuchsia-200"
+              }`}
               onClick={() => setSource("booking")}
               disabled={todayBookings.length === 0}
             >

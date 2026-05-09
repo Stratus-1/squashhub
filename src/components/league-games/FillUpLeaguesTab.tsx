@@ -318,7 +318,14 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       for (const side of sides) {
         const leagueId = leagueByCode.get((side.teamCode || "").toUpperCase());
         const memberId = memberByLeagueNumber.get((side.playerCode || "").trim().toUpperCase());
-        if (leagueId && memberId) rows.push({ league_id: leagueId, club_member_id: memberId, position: result.position ?? null });
+        if (leagueId && memberId) {
+          rows.push({
+            league_id: leagueId,
+            club_member_id: memberId,
+            position: result.position ?? null,
+            fixture_date: fixture.fixture_date,
+          });
+        }
       }
     }
     return rows;

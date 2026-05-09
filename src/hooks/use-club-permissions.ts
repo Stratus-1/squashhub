@@ -90,11 +90,12 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   const memberRole = memberRow?.role;
   // 'captain' = team captain only (league-scoped). Full admin = 'admin' role
   // OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
-  const isFullAccess = memberRole === "admin" || isAdmin;
+  const isRoleFullAccess = memberRole === "admin" || isAdmin;
 
-  const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
+  const { data: perm } = useMemberPermission(memberId);
 
-  if (isFullAccess) return true;
+  if (isRoleFullAccess) return true;
+  if (perm?.is_full_admin) return true;
   if (!perm) return false;
 
   if (perm.custom_permissions?.includes(permission)) return true;

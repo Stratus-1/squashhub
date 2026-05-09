@@ -75,13 +75,17 @@ function RolesSection({ clubId }: { clubId: string }) {
               <TableRow key={role.id}>
                 <TableCell className="font-medium">{role.role_name}</TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {role.permissions.map(p => (
-                      <Badge key={p} variant="outline" className="text-[10px]">
-                        {PERMISSION_SLUGS.find(s => s.value === p)?.label || p}
-                      </Badge>
-                    ))}
-                  </div>
+                  {role.is_full_admin ? (
+                    <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {role.permissions.map(p => (
+                        <Badge key={p} variant="outline" className="text-[10px]">
+                          {PERMISSION_SLUGS.find(s => s.value === p)?.label || p}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1 justify-end">
@@ -106,6 +110,7 @@ function RolesSection({ clubId }: { clubId: string }) {
 function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void; existing?: PermissionRole }) {
   const [name, setName] = useState(existing?.role_name ?? "");
   const [perms, setPerms] = useState<Set<string>>(new Set(existing?.permissions ?? []));
+  const [isFullAdmin, setIsFullAdmin] = useState<boolean>(!!existing?.is_full_admin);
   const save = useSavePermissionRole();
 
   const toggle = (slug: string) => {
@@ -119,7 +124,13 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
   const handleSave = async () => {
     if (!name.trim()) { toast.error("Role name required"); return; }
     try {
-      await save.mutateAsync({ id: existing?.id, club_id: clubId, role_name: name.trim(), permissions: [...perms] });
+      await save.mutateAsync({
+        id: existing?.id,
+        club_id: clubId,
+        role_name: name.trim(),
+        permissions: isFullAdmin ? PERMISSION_SLUGS.map(s => s.value) : [...perms],
+        is_full_admin: isFullAdmin,
+      });
       toast.success(existing ? "Updated" : "Created");
       onOpenChange(false);
     } catch (err: any) {
@@ -136,20 +147,27 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
             <Label>Role Name</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Treasurer, Committee" />
           </div>
-          <div className="space-y-2">
-            <Label>Permissions</Label>
-            <div className="grid grid-cols-2 gap-2">
+          <label className="flex items-start gap-2 text-sm cursor-pointer rounded-md border border-primary/40 bg-primary/5 p-3">
+            <Checkbox checked={isFullAdmin} onCheckedChange={(v) => setIsFullAdmin(!!v)} className="mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-medium flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Grant full admin rights</div>
+              <p className="text-xs text-muted-foreground">Members with this role get unrestricted access to every section, now and in the future.</p>
+            </div>
+          </label>
+          <div className="space-y-2" aria-disabled={isFullAdmin}>
+            <Label className={isFullAdmin ? "text-muted-foreground" : ""}>Permissions</Label>
+            <div className={`grid grid-cols-2 gap-2 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
               {PERMISSION_SLUGS.map(s => (
                 <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Checkbox checked={perms.has(s.value)} onCheckedChange={() => toggle(s.value)} />
+                  <Checkbox checked={isFullAdmin || perms.has(s.value)} onCheckedChange={() => toggle(s.value)} disabled={isFullAdmin} />
                   {s.label}
                 </label>
               ))}
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => { setPerms(new Set(PERMISSION_SLUGS.map(s => s.value))); }} variant="outline" size="sm">Select All</Button>
-            <Button onClick={() => setPerms(new Set())} variant="outline" size="sm">Clear</Button>
+            <Button onClick={() => { setPerms(new Set(PERMISSION_SLUGS.map(s => s.value))); }} variant="outline" size="sm" disabled={isFullAdmin}>Select All</Button>
+            <Button onClick={() => setPerms(new Set())} variant="outline" size="sm" disabled={isFullAdmin}>Clear</Button>
           </div>
           <Button onClick={handleSave} className="w-full" disabled={save.isPending}>
             {save.isPending ? "Saving..." : existing ? "Update Role" : "Create Role"}

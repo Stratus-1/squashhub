@@ -1,0 +1,1 @@
+ALTER TABLE public.club_permission_roles ADD COLUMN IF NOT EXISTS is_full_admin boolean NOT NULL DEFAULT false;

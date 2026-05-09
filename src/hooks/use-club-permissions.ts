@@ -28,6 +28,7 @@ export interface PermissionRole {
   club_id: string;
   role_name: string;
   permissions: string[];
+  is_full_admin?: boolean;
 }
 
 export interface MemberPermission {
@@ -98,6 +99,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
 
   if (isRoleFullAccess) return true;
   if (perm?.is_full_admin) return true;
+  if ((perm as any)?.club_permission_roles?.is_full_admin) return true;
   if (!perm) return false;
 
   if (perm.custom_permissions?.includes(permission)) return true;
@@ -129,6 +131,7 @@ export function useMyPermissions(): Set<string> {
 
   if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
   if (perm?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  if ((perm as any)?.club_permission_roles?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
 
   const perms = new Set<string>();
   if (perm?.custom_permissions) perm.custom_permissions.forEach(p => perms.add(p));
@@ -171,15 +174,15 @@ export function useUpsertMemberPermission() {
 export function useSavePermissionRole() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { id?: string; club_id: string; role_name: string; permissions: string[] }) => {
+    mutationFn: async (params: { id?: string; club_id: string; role_name: string; permissions: string[]; is_full_admin?: boolean }) => {
       if (params.id) {
         const { error } = await fromExt("club_permission_roles")
-          .update({ role_name: params.role_name, permissions: params.permissions })
+          .update({ role_name: params.role_name, permissions: params.permissions, is_full_admin: params.is_full_admin ?? false })
           .eq("id", params.id);
         if (error) throw error;
       } else {
         const { error } = await fromExt("club_permission_roles")
-          .insert({ club_id: params.club_id, role_name: params.role_name, permissions: params.permissions });
+          .insert({ club_id: params.club_id, role_name: params.role_name, permissions: params.permissions, is_full_admin: params.is_full_admin ?? false });
         if (error) throw error;
       }
     },

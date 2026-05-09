@@ -98,6 +98,16 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
           </div>
         </div>
 
+      {/* QUICK ACCESS TILES — categorised like the sidebar */}
+      <div className="px-8 pb-2">
+        <QuickAccess
+          hasLeagues={props.hasLeagues}
+          honestyBarEnabled={!!props.honestyBarEnabled}
+          hasAnyAdminAccess={!!props.hasAnyAdminAccess}
+          navigate={navigate}
+        />
+      </div>
+
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
         {/* STATS card */}
         <div className="col-span-12 xl:col-span-7">

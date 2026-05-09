@@ -393,11 +393,23 @@ export function MarkerSetup({ onStart }: Props) {
         .eq("status", "active")
         .order("date")
         .order("start_time");
-      if (error) throw error;
+       if (error) throw error;
+
+      // Exclude league-night group bookings (auto-created when fixtures are scheduled).
+      // Players should pick league matches via the "League" source, not "Booking".
+      const bookingIds = (data || []).map((b) => b.id);
+      let leagueBookingIds = new Set<string>();
+      if (bookingIds.length > 0) {
+        const { data: lf } = await fromExt("platform_league_fixtures")
+          .select("booking_id")
+          .in("booking_id", bookingIds);
+        leagueBookingIds = new Set(((lf || []) as any[]).map((r) => r.booking_id).filter(Boolean));
+      }
+      const filtered = (data || []).filter((b) => !leagueBookingIds.has(b.id));
 
       // Collect member IDs
       const memberIds = new Set<string>();
-      (data || []).forEach((b) => {
+      filtered.forEach((b) => {
         if (b.club_member_id) memberIds.add(b.club_member_id);
         if (b.opponent_member_id) memberIds.add(b.opponent_member_id);
       });

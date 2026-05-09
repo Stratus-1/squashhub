@@ -4690,6 +4690,7 @@ export type Database = {
         Args: { _dow: number; _from: string }
         Returns: string
       }
+      renumber_club_ladder: { Args: { p_club_id: string }; Returns: undefined }
       respond_league_week_availability: {
         Args: {
           _club_member_id: string

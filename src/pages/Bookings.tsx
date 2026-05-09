@@ -1072,7 +1072,7 @@ export default function Bookings() {
                   // Event bookings are club bookings with a guest_name acting as event title.
                   // League fixture bookings also use guest_name as the title (e.g. "Round 1 - Baobabs vs Cobras").
                   const rawGuestName = (booking as any)?.guest_name ? String((booking as any).guest_name) : "";
-                  const isLeagueBooking = /^(league\b|round\s*\d)/i.test(rawGuestName);
+                  const isLeagueBooking = /\bleague\b|\bround\s*\d/i.test(rawGuestName);
                   const isEventBooking = (!!(booking as any)?.is_club_booking && !!rawGuestName) || isLeagueBooking;
                   const eventLabel = isEventBooking ? rawGuestName : null;
                   const a = (booking as any)?.player_name ? toInitialSurname(String((booking as any).player_name)) : null;

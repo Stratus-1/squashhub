@@ -24,6 +24,36 @@ export default function Support() {
   const [newSubject, setNewSubject] = useState("");
   const [newFirstMessage, setNewFirstMessage] = useState("");
   const [messageBody, setMessageBody] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const newFileInputRef = useRef<HTMLInputElement>(null);
+  const [dropping, setDropping] = useState(false);
+
+  const addFiles = (files: FileList | File[] | null, target: "new" | "existing") => {
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 10).filter(f => f.size <= 20 * 1024 * 1024);
+    if (arr.length === 0) return;
+    if (target === "new") setNewFiles(p => [...p, ...arr].slice(0, 10));
+    else setPendingFiles(p => [...p, ...arr].slice(0, 10));
+  };
+
+  const handlePaste = (e: React.ClipboardEvent, target: "new" | "existing") => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      addFiles(files, target);
+    }
+  };
 
   const effectiveThreadId = useMemo(() => {
     if (selectedThreadId) return selectedThreadId;

@@ -831,6 +831,17 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     }));
   };
 
+  const placementAlerts = useMemo(() => {
+    const alerts = new Map<string, string>();
+    for (const row of lineups) {
+      const targetLeague = sortedLeagues.find(l => l.id === row.league_id);
+      if (!targetLeague) continue;
+      const result = evaluatePlacement(row.club_member_id, targetLeague, row.position);
+      if (result?.reason && (!result.ok || result.warn)) alerts.set(row.club_member_id, result.reason);
+    }
+    return alerts;
+  }, [lineups, sortedLeagues, subRules, latestPlayedByMember, effectiveHomeLeagueByMember, homeLeagueByMember, previousWeekLineups, memberMap]);
+
   // ---------- DnD handlers ----------
 
   const handleDragEnd = (e: DragEndEvent) => {

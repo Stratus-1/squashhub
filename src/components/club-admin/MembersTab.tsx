@@ -124,6 +124,19 @@ function computeExpectedFees(
   return fees;
 }
 
+/** Build "Fees paid in respect of" list — what the club pays per member to NSA/SSA.
+ *  Sourced from existing club_member_fee_payments rows seeded from club_fees_payable
+ *  (basis='per_member'). Default state = paid; admin can untick to mark still owing. */
+function computeClubPayableFees(
+  member: ClubMember,
+  existingPayments: FeePaymentRow[]
+): ExpectedFee[] {
+  return existingPayments
+    .filter(p => p.club_member_id === member.id)
+    .filter(p => p.fee_type === "club_payable_assoc" || p.fee_type === "club_payable_national")
+    .map(p => ({ fee_type: p.fee_type, fee_label: p.fee_label, amount: p.amount, existing: p }));
+}
+
 function MemberPaymentStatus({ fees, onToggle, onCreateFee }: {
   fees: ExpectedFee[];
   onToggle: (feeId: string, paid: boolean) => void;
@@ -177,9 +190,10 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
+  payableFees: ExpectedFee[];
   delegateTitle?: string | null;
   affiliations: AffiliationBadgeInfo[];
   onEdit: () => void;
@@ -278,10 +292,20 @@ function MemberCard({ member: m, fees, delegateTitle, affiliations, onEdit, onDe
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
       </div>
 
-      {/* Row 3: Fees — horizontal compact */}
+      {/* Row 3: Fees receivable from member */}
       {fees.length > 0 && (
         <div className="border-t border-border pt-1">
           <MemberPaymentStatus fees={fees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+        </div>
+      )}
+
+      {/* Row 4: Fees paid in respect of (club's per-member payable to NSA/SSA) */}
+      {payableFees.length > 0 && (
+        <div className="border-t border-dashed border-border pt-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees paid in respect of:</span>
+            <MemberPaymentStatus fees={payableFees} onToggle={onTogglePaid} onCreateFee={(f) => onCreateFee(f, m.id)} />
+          </div>
         </div>
       )}
     </Card>
@@ -772,6 +796,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     key={m.id}
                     member={m}
                     fees={getFeesForMember(m)}
+                    payableFees={computeClubPayableFees(m, feePayments)}
                     delegateTitle={getDelegateTitle(m.id)}
                     affiliations={affiliationsByMember.get(m.id) || []}
                     onEdit={() => setEditMember(m)}

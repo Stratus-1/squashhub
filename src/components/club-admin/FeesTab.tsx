@@ -346,6 +346,9 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
 
     toast.success(isEdit ? "Updated" : "Added");
     qc.invalidateQueries({ queryKey: [invalidateKey] });
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fees"] });
     onOpenChange(false);
   };
 

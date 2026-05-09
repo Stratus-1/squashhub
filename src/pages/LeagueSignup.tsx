@@ -325,10 +325,10 @@ export default function LeagueSignup() {
                     <div className="flex-1">
                       <Label htmlFor="captain" className="cursor-pointer flex items-center gap-1.5">
                         <Crown className="w-3.5 h-3.5 text-amber-500" />
-                        I'm the team captain
+                        I'm a team captain or can post results on the NSA site
                       </Label>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Captains submit scorecards to NSA. Enter your NSA admin login to verify.
+                        Enter your NSA admin login (NSF number + password) so scorecards can be submitted on your team's behalf.
                       </p>
                     </div>
                   </div>

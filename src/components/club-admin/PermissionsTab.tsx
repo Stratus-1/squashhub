@@ -75,13 +75,17 @@ function RolesSection({ clubId }: { clubId: string }) {
               <TableRow key={role.id}>
                 <TableCell className="font-medium">{role.role_name}</TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {role.permissions.map(p => (
-                      <Badge key={p} variant="outline" className="text-[10px]">
-                        {PERMISSION_SLUGS.find(s => s.value === p)?.label || p}
-                      </Badge>
-                    ))}
-                  </div>
+                  {role.is_full_admin ? (
+                    <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {role.permissions.map(p => (
+                        <Badge key={p} variant="outline" className="text-[10px]">
+                          {PERMISSION_SLUGS.find(s => s.value === p)?.label || p}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1 justify-end">

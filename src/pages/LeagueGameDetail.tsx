@@ -29,8 +29,16 @@ import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
 import { DndContext, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 
-/** Droppable wrapper for an H/V slot row. */
-function DroppableSlot({ side, idx, hasPlayer, children }: { side: "home" | "away"; idx: number; hasPlayer: boolean; children: React.ReactNode }) {
+/** Droppable wrapper that BECOMES the grid row. Adds drop highlight ring. */
+function DroppableSlotRow({
+  side, idx, className, style, children,
+}: {
+  side: "home" | "away";
+  idx: number;
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
   const { setNodeRef, isOver, active } = useDroppable({
     id: `slot:${side}:${idx}`,
     data: { kind: "slot", side, idx },
@@ -42,20 +50,14 @@ function DroppableSlot({ side, idx, hasPlayer, children }: { side: "home" | "awa
     <div
       ref={setNodeRef}
       className={cn(
-        "contents",
-        // Visual ring is applied via a sibling indicator below; "contents" keeps grid layout intact.
+        "relative",
+        className,
+        isOver && matches && "ring-2 ring-primary ring-inset bg-primary/10",
+        isOver && wrong && "ring-2 ring-destructive ring-inset bg-destructive/10",
       )}
-      data-over={isOver || undefined}
-      data-match={matches || undefined}
-      data-wrong={wrong || undefined}
+      style={style}
     >
       {children}
-      {isOver && matches && (
-        <span className="absolute inset-0 pointer-events-none ring-2 ring-primary rounded-sm bg-primary/5" />
-      )}
-      {isOver && wrong && (
-        <span className="absolute inset-0 pointer-events-none ring-2 ring-destructive rounded-sm bg-destructive/5" />
-      )}
     </div>
   );
 }

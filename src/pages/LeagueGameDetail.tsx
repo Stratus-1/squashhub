@@ -1480,7 +1480,7 @@ export default function LeagueGameDetail() {
                             </span>
                           </>
                         )}
-                      </div>
+                      </DroppableSlotRow>
                     </td>
                   </tr>
                 );

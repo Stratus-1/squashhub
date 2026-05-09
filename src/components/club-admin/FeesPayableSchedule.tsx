@@ -23,7 +23,7 @@ interface PayableFee {
   payee_type: "league_association" | "national_body";
   payee_name: string;
   payee_ref_id: string | null;
-  basis: "per_member" | "per_club";
+  basis: "per_member" | "per_club" | "per_team";
   amount: number;
   due_month: number;
   due_day: number;
@@ -104,7 +104,7 @@ export function FeesPayableSchedule({ clubId }: { clubId: string }) {
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary" className="text-[10px]">
-                    {fee.basis === "per_member" ? "Per member" : "Per club"}
+                    {fee.basis === "per_member" ? "Per member" : fee.basis === "per_team" ? "Per team" : "Per club"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right tabular-nums">R {Number(fee.amount).toFixed(2)}</TableCell>
@@ -145,7 +145,7 @@ function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: st
   const [payeeType, setPayeeType] = useState<"league_association" | "national_body">(existing?.payee_type ?? "league_association");
   const [payeeRefId, setPayeeRefId] = useState<string>(existing?.payee_ref_id ?? "");
   const [payeeName, setPayeeName] = useState(existing?.payee_name ?? "");
-  const [basis, setBasis] = useState<"per_member" | "per_club">(existing?.basis ?? "per_member");
+  const [basis, setBasis] = useState<"per_member" | "per_club" | "per_team">(existing?.basis ?? "per_member");
   const [amount, setAmount] = useState(Number(existing?.amount ?? 0));
   const [dueMonth, setDueMonth] = useState(existing?.due_month ?? 1);
   const [dueDay, setDueDay] = useState(existing?.due_day ?? 1);
@@ -227,6 +227,7 @@ function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: st
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="per_member">Per member</SelectItem>
+                <SelectItem value="per_team">Per team</SelectItem>
                 <SelectItem value="per_club">Per club (fixed)</SelectItem>
               </SelectContent>
             </Select>

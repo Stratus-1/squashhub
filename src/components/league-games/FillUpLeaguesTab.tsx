@@ -1004,6 +1004,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
       availableSet={availableSet}
+      placementAlerts={placementAlerts}
       onMarkUnavailable={(mid) => markUnavailable.mutate(mid)}
     />
   );

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
+import { FeesPayableSchedule } from "./FeesPayableSchedule";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];

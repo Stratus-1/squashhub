@@ -79,8 +79,9 @@ export default function LightsIntegration() {
           How it works
         </h2>
         <div className="grid md:grid-cols-3 gap-4">
-          <StepCard step="1" icon={Lightbulb} title="Member taps Play">
-            From their phone, in the live SquashHub session banner. No PIN pads, no key cards.
+          <StepCard step="1" icon={Lightbulb} title="Member taps Play (or auto-on)">
+            From their phone, in the live SquashHub session banner. No PIN pads, no key cards — or set a
+            preset to switch the lights on automatically at the booking start time.
           </StepCard>
           <StepCard step="2" icon={Zap} title="Lights snap on">
             SquashHub fires the relay over WiFi in under a second. Transfers between courts mid-session work too.

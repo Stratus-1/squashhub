@@ -145,7 +145,7 @@ function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: st
   const [payeeType, setPayeeType] = useState<"league_association" | "national_body">(existing?.payee_type ?? "league_association");
   const [payeeRefId, setPayeeRefId] = useState<string>(existing?.payee_ref_id ?? "");
   const [payeeName, setPayeeName] = useState(existing?.payee_name ?? "");
-  const [basis, setBasis] = useState<"per_member" | "per_club">(existing?.basis ?? "per_member");
+  const [basis, setBasis] = useState<"per_member" | "per_club" | "per_team">(existing?.basis ?? "per_member");
   const [amount, setAmount] = useState(Number(existing?.amount ?? 0));
   const [dueMonth, setDueMonth] = useState(existing?.due_month ?? 1);
   const [dueDay, setDueDay] = useState(existing?.due_day ?? 1);

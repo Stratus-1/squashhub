@@ -1,13 +1,17 @@
 /**
  * RosterPanel — Side-by-side list of both teams' NSA-registered players
  * for a fixture. Click a player to drop them into the next empty position
- * on their side of the scorecard.
+ * on their side of the scorecard, OR drag them onto a specific H / V slot.
  */
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NsaTeamPlayer } from "@/hooks/use-nsa";
-import { UserPlus, Check } from "lucide-react";
+import { UserPlus, Check, GripVertical } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
+
+/** Stable drag id format used by the lineup DnD context. */
+export const rosterDragId = (side: "home" | "away", code: string) =>
+  `roster:${side}:${(code || "").toUpperCase()}`;
 
 export interface RosterPanelProps {
   homeCode?: string | null;

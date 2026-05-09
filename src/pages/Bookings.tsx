@@ -1129,12 +1129,12 @@ export default function Bookings() {
                           className={cn(
                             "relative h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
                             isPastSlot && !booking
-                              ? "bg-muted border-border/40 cursor-not-allowed opacity-60"
+                              ? "bg-muted/40 border-border/30 cursor-not-allowed opacity-50"
                               : booking
                                 ? isMine
-                                  ? "bg-primary/15 border-primary/50 hover:bg-primary/20 cursor-pointer shadow-sm"
-                                  : "bg-secondary border-border/60 hover:bg-secondary/90 cursor-pointer shadow-sm"
-                                : "border-emerald-400/60 bg-emerald-400/25 hover:bg-emerald-400/40 hover:border-emerald-400 text-emerald-50 border-dashed cursor-pointer"
+                                  ? "bg-primary/20 border-primary/60 hover:bg-primary/30 text-primary-foreground cursor-pointer shadow-sm shadow-primary/20"
+                                  : "bg-card/80 border-border/50 hover:bg-card hover:border-border cursor-pointer"
+                                : "border-emerald-500/30 bg-emerald-500/[0.06] hover:bg-emerald-500/15 hover:border-emerald-400/60 text-emerald-200/90 cursor-pointer"
                           )}
                           onClick={() => {
                             if (isPastSlot && !booking) return;

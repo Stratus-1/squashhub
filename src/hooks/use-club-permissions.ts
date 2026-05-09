@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsSuperAdmin } from "@/hooks/use-club";
 
 /** All available permission slugs */
 export const PERMISSION_SLUGS = [
@@ -75,6 +76,7 @@ export function useMemberPermission(memberId: string | undefined) {
  */
 export function useHasPermission(permission: PermissionSlug): boolean {
   const { activeMember, isAdmin } = useMemberContext();
+  const isSuperAdmin = useIsSuperAdmin();
   const memberId = activeMember?.id;
 
   // Fetch member's club role
@@ -88,9 +90,9 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   });
 
   const memberRole = memberRow?.role;
-  // 'captain' = team captain only (league-scoped). Full admin = 'admin' role
-  // OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
-  const isRoleFullAccess = memberRole === "admin" || isAdmin;
+  // Platform super-admins always have full access. 'captain' = team captain only (league-scoped).
+  // Full admin = 'admin' role OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
+  const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
 
   const { data: perm } = useMemberPermission(memberId);
 
@@ -109,6 +111,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
  */
 export function useMyPermissions(): Set<string> {
   const { activeMember, isAdmin } = useMemberContext();
+  const isSuperAdmin = useIsSuperAdmin();
   const memberId = activeMember?.id;
 
   const { data: memberRow } = useQuery({
@@ -121,7 +124,7 @@ export function useMyPermissions(): Set<string> {
   });
 
   const memberRole = memberRow?.role;
-  const isRoleFullAccess = memberRole === "admin" || isAdmin;
+  const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
   const { data: perm } = useMemberPermission(memberId);
 
   if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));

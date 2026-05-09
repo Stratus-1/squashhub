@@ -77,15 +77,17 @@ export type MatchOfTheWeek = {
 
 export function useMatchOfTheWeek() {
   const { user } = useAuth();
+  const { club } = useClubContext();
+  const clubId = club?.id ?? null;
   return useQuery({
-    queryKey: ["match-of-the-week"],
+    queryKey: ["match-of-the-week", clubId],
     queryFn: async () => {
-      const { data, error } = await rpc("get_match_of_the_week");
+      const { data, error } = await rpc("get_match_of_the_week", { p_club_id: clubId });
       if (error) throw error;
       const rows = data as unknown as MatchOfTheWeek[];
       return rows && rows.length > 0 ? rows[0] : null;
     },
-    enabled: !!user,
+    enabled: !!user && !!clubId,
   });
 }
 

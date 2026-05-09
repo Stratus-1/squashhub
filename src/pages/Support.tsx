@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { MessageCircle, Plus, Send } from "lucide-react";
+import { MessageCircle, Plus, Send, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { SEO } from "@/components/SEO";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCreateSupportThread, useMySupportThreads, useSendSupportMessage, useSupportMessages } from "@/hooks/use-support";
+import { useCreateSupportThread, useMySupportThreads, useSendSupportMessage, useSupportMessages, getSupportAttachmentUrl, type SupportAttachment } from "@/hooks/use-support";
 
 export default function Support() {
   const { user } = useAuth();

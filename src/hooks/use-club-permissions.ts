@@ -76,6 +76,7 @@ export function useMemberPermission(memberId: string | undefined) {
  */
 export function useHasPermission(permission: PermissionSlug): boolean {
   const { activeMember, isAdmin } = useMemberContext();
+  const isSuperAdmin = useIsSuperAdmin();
   const memberId = activeMember?.id;
 
   // Fetch member's club role
@@ -89,9 +90,9 @@ export function useHasPermission(permission: PermissionSlug): boolean {
   });
 
   const memberRole = memberRow?.role;
-  // 'captain' = team captain only (league-scoped). Full admin = 'admin' role
-  // OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
-  const isRoleFullAccess = memberRole === "admin" || isAdmin;
+  // Platform super-admins always have full access. 'captain' = team captain only (league-scoped).
+  // Full admin = 'admin' role OR a club delegate (chairman/secretary/club_captain), tracked via MemberContext.isAdmin.
+  const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
 
   const { data: perm } = useMemberPermission(memberId);
 

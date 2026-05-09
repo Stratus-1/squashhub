@@ -145,6 +145,44 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     qc.invalidateQueries({ queryKey: ["club-member-fees"] });
   };
 
+  const handleResyncMemberFees = async () => {
+    if (!confirm("Resync unpaid Club fees for all members to current category amounts?\n\nThis updates only UNPAID rows and creates missing rows. Paid fees are never modified.")) return;
+    const year = new Date().getFullYear();
+    const { data: cats } = await fromExt("member_fee_categories").select("id, name, annual_fee").eq("club_id", clubId);
+    if (!cats?.length) { toast.error("No fee categories"); return; }
+    const { data: members } = await fromExt("club_members").select("id, fee_category_id").eq("club_id", clubId);
+    if (!members?.length) { toast.error("No members"); return; }
+    const memberIds = members.map((m: any) => m.id);
+    const { data: existingRows } = await fromExt("club_member_fee_payments")
+      .select("id, club_member_id, paid, amount")
+      .in("club_member_id", memberIds)
+      .in("fee_type", ["club", "membership"]);
+    const existingByMember = new Map<string, any>();
+    (existingRows || []).forEach((r: any) => existingByMember.set(r.club_member_id, r));
+
+    let updated = 0, created = 0, skippedPaid = 0;
+    for (const m of members as any[]) {
+      const cat = cats.find((c: any) => c.id === m.fee_category_id) || cats[0];
+      const amount = Number(cat.annual_fee || 0);
+      const label = `Club – ${cat.name}`;
+      const existing = existingByMember.get(m.id);
+      if (existing) {
+        if (existing.paid) { skippedPaid++; continue; }
+        if (Number(existing.amount) === amount) continue;
+        const { error } = await fromExt("club_member_fee_payments").update({ amount, fee_label: label }).eq("id", existing.id);
+        if (!error) updated++;
+      } else {
+        const { error } = await fromExt("club_member_fee_payments").insert({
+          club_member_id: m.id, fee_type: "club", fee_label: label, amount, paid: false, season_year: year,
+        });
+        if (!error) created++;
+      }
+    }
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    toast.success(`Resynced: ${updated} updated, ${created} created, ${skippedPaid} skipped (already paid)`);
+  };
+
   return (
     <div className="space-y-6 mt-4">
 
@@ -155,7 +193,12 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <h3 className="font-semibold">Fees Receivable Schedule</h3>
             <p className="text-xs text-muted-foreground">Fees the club charges to members — all treated as club income</p>
           </div>
-          <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handleResyncMemberFees} title="Update unpaid member fees to match current category amounts">
+              Resync Member Fees
+            </Button>
+            <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
+          </div>
         </div>
 
         {/* Info: league association fees paid directly to the association */}

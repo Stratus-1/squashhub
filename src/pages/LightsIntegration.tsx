@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
-import { ArrowLeft, Zap, Lightbulb, Wifi, Gauge, ShieldCheck, Wrench, Receipt, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Zap, Lightbulb, Wifi, Gauge, ShieldCheck, Wrench, Receipt, CheckCircle2, Users, CalendarClock } from "lucide-react";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
 
 export default function LightsIntegration() {

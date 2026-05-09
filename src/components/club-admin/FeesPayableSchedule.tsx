@@ -23,7 +23,7 @@ interface PayableFee {
   payee_type: "league_association" | "national_body";
   payee_name: string;
   payee_ref_id: string | null;
-  basis: "per_member" | "per_club";
+  basis: "per_member" | "per_club" | "per_team";
   amount: number;
   due_month: number;
   due_day: number;

@@ -361,18 +361,40 @@ export default function LeagueGameDetail() {
     staleTime: 60 * 1000,
   });
 
-  // Apply prefill ONLY when there are no existing match rows yet (fresh setup)
+  // Apply prefill from the captain's Fill-Up Leagues lineup.
+  //  - If real play has been recorded (any scores or forfeit), do nothing.
+  //  - If saved rows exist but no scores yet, treat them as stale placeholders
+  //    and let the latest captain Fill-Up overwrite them.
+  //  - Otherwise (fresh setup), fill empty slots only.
   useEffect(() => {
     if (!prefillLineup || !fixture) return;
-    if (existingMatches && existingMatches.length > 0) return; // don't overwrite saved setup
+    const hasRecordedPlay =
+      Array.isArray(existingMatches) &&
+      existingMatches.some(
+        (m: any) => (Array.isArray(m.game_scores) && m.game_scores.length > 0) || !!m.is_forfeit,
+      );
+    if (hasRecordedPlay) return;
+
     const homeSlots = prefillLineup[fixture.home_team_code] || [];
     const awaySlots = prefillLineup[fixture.away_team_code] || [];
     const hasAny = [...homeSlots, ...awaySlots].some((s) => s.code || s.name);
     if (!hasAny) return;
+
+    const stalePlaceholdersExist =
+      Array.isArray(existingMatches) && existingMatches.length > 0;
+
     setPositions((prev) => prev.map((p, i) => {
-      // Don't overwrite values the user has already typed
       const home = homeSlots[i] || { code: "", name: "" };
       const away = awaySlots[i] || { code: "", name: "" };
+      if (stalePlaceholdersExist) {
+        return {
+          ...p,
+          homeCode: home.code || p.homeCode,
+          homeName: home.name || p.homeName,
+          awayCode: away.code || p.awayCode,
+          awayName: away.name || p.awayName,
+        };
+      }
       return {
         ...p,
         homeCode: p.homeCode || home.code,

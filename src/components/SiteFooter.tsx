@@ -43,7 +43,7 @@ export function SiteFooter({ compact = false, withBottomNav = false }: { compact
             <Link to="/terms" className="text-muted-foreground hover:text-foreground underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
               Terms of Use
             </Link>
-            <Link to="/support" className="text-muted-foreground hover:text-foreground underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+            <Link to="/#contact" className="text-muted-foreground hover:text-foreground underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
               Support
             </Link>
             {email ? (

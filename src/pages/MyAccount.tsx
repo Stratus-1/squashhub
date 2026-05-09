@@ -88,6 +88,9 @@ export default function MyAccount() {
       const { data, error } = await fromExt("club_member_fee_payments")
         .select("*")
         .eq("club_member_id", clubMemberId!)
+        // Exclude "fees payable by the club" — those are the club's onward
+        // obligations to NSA/SSA, not the member's own dues.
+        .not("fee_type", "in", "(club_payable_assoc,club_payable_national)")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data || [];

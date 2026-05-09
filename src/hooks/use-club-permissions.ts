@@ -141,6 +141,7 @@ export function useUpsertMemberPermission() {
       club_member_id: string;
       permission_role_id?: string | null;
       custom_permissions?: string[];
+      is_full_admin?: boolean;
     }) => {
       const { data, error } = await fromExt("club_member_permissions")
         .upsert(
@@ -148,6 +149,7 @@ export function useUpsertMemberPermission() {
             club_member_id: params.club_member_id,
             permission_role_id: params.permission_role_id ?? null,
             custom_permissions: params.custom_permissions ?? [],
+            is_full_admin: params.is_full_admin ?? false,
           },
           { onConflict: "club_member_id" }
         )

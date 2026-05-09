@@ -257,6 +257,12 @@ export default function Auth() {
             <TabsTrigger value="association" className="flex-1 text-xs sm:text-sm">Register Association</TabsTrigger>
           </TabsList>
 
+          <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 leading-relaxed">
+            <strong className="text-amber-100">NSA clubs:</strong> do <strong>not</strong> register here.
+            Your club is provisioned automatically by SquashHub from the NSA roster — just sign in with the
+            email on file. Contact support if you need access.
+          </div>
+
           <TabsContent value="login">
             <Card className="p-6">
               <form onSubmit={handleLogin} className="space-y-4">

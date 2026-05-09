@@ -18,12 +18,20 @@ export type SupportThreadRow = {
   updated_at: string;
 };
 
+export type SupportAttachment = {
+  path: string;
+  name: string;
+  size: number;
+  mime: string;
+};
+
 export type SupportMessageRow = {
   id: string;
   thread_id: string;
   sender_id: string;
   body: string;
   created_at: string;
+  attachments?: SupportAttachment[];
 };
 
 export function useMySupportThreads() {

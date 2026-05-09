@@ -336,6 +336,11 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                 <TableCell className="font-medium">{m.name || "Unnamed"}</TableCell>
                 <TableCell><Badge variant="outline" className="text-[10px] capitalize">{m.role}</Badge></TableCell>
                 <TableCell>
+                  {delegateLabel(m.id)
+                    ? <Badge variant="secondary" className="text-[10px]">{delegateLabel(m.id)}</Badge>
+                    : <span className="text-xs text-muted-foreground">—</span>}
+                </TableCell>
+                <TableCell>
                   <Select
                     value={perm?.permission_role_id || "none"}
                     onValueChange={v => handleAssignRole(m.id, v === "none" ? null : v)}

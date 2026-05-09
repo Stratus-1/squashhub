@@ -424,13 +424,13 @@ export function MarkerSetup({ onStart }: Props) {
       const memberMap = new Map((members || []).map((m) => [m.id, m]));
 
       // Fetch court names
-      const courtIds = [...new Set((data || []).map((b) => b.court_id))];
+      const courtIds = [...new Set(filtered.map((b) => b.court_id))];
       const { data: courts } = courtIds.length > 0
         ? await supabase.from("courts").select("id, name").in("id", courtIds)
         : { data: [] };
       const courtMap = new Map((courts || []).map((c) => [c.id, c.name]));
 
-      return (data || []).map((b) => {
+      return filtered.map((b) => {
         const booker = b.club_member_id ? memberMap.get(b.club_member_id) : null;
         const opponent = b.opponent_member_id ? memberMap.get(b.opponent_member_id) : null;
         return {

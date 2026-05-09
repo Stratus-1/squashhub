@@ -408,6 +408,7 @@ function MemberPermDialog({
 }) {
   const [roleId, setRoleId] = useState<string>(existing?.permission_role_id || "none");
   const [customPerms, setCustomPerms] = useState<Set<string>>(new Set(existing?.custom_permissions ?? []));
+  const [isFullAdmin, setIsFullAdmin] = useState<boolean>(!!existing?.is_full_admin);
   const upsert = useUpsertMemberPermission();
 
   const toggle = (slug: string) => {
@@ -424,6 +425,7 @@ function MemberPermDialog({
         club_member_id: memberId,
         permission_role_id: roleId === "none" ? null : roleId,
         custom_permissions: [...customPerms],
+        is_full_admin: isFullAdmin,
       });
       toast.success("Permissions updated");
       onOpenChange(false);
@@ -439,7 +441,23 @@ function MemberPermDialog({
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Permissions — {memberName}</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1">
+          <label className="flex items-start gap-3 p-3 rounded-md border bg-muted/30 cursor-pointer">
+            <Checkbox
+              checked={isFullAdmin}
+              onCheckedChange={(v) => setIsFullAdmin(!!v)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" /> Grant Full Admin
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Gives this member every admin permission (same as a Captain or Chairman). Use for trusted helpers like the IT person.
+              </p>
+            </div>
+          </label>
+
+          <div className={`space-y-1 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
             <Label>Permission Role</Label>
             <Select value={roleId} onValueChange={setRoleId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -459,7 +477,7 @@ function MemberPermDialog({
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className={`space-y-2 ${isFullAdmin ? "opacity-50 pointer-events-none" : ""}`}>
             <Label>Additional Custom Permissions</Label>
             <p className="text-[10px] text-muted-foreground">Grant extra permissions beyond the assigned role</p>
             <div className="grid grid-cols-2 gap-2">

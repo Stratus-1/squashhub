@@ -1578,6 +1578,7 @@ export default function LeagueGameDetail() {
             </tbody>
           </table>
         </div>
+        </DndContext>
 
         {/* Winner badge */}
         {setupDone && summary.winner !== "draw" && positions.some(p => p.completed) && (

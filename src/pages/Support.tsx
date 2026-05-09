@@ -83,9 +83,10 @@ export default function Support() {
       const thread = await createThread.mutateAsync({ subject: newSubject });
       setSelectedThreadId(thread.id);
       setNewSubject("");
-      if (newFirstMessage.trim()) {
-        await send.mutateAsync({ threadId: thread.id, body: newFirstMessage });
+      if (newFirstMessage.trim() || newFiles.length > 0) {
+        await send.mutateAsync({ threadId: thread.id, body: newFirstMessage, files: newFiles });
         setNewFirstMessage("");
+        setNewFiles([]);
       }
       toast.success("Support chat started");
     } catch (e: any) {
@@ -96,8 +97,9 @@ export default function Support() {
   const sendMessage = async () => {
     if (!effectiveThreadId) return;
     try {
-      await send.mutateAsync({ threadId: effectiveThreadId, body: messageBody });
+      await send.mutateAsync({ threadId: effectiveThreadId, body: messageBody, files: pendingFiles });
       setMessageBody("");
+      setPendingFiles([]);
     } catch (e: any) {
       toast.error(e?.message || "Could not send message");
     }

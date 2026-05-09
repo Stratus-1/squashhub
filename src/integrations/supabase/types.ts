@@ -1191,6 +1191,62 @@ export type Database = {
           },
         ]
       }
+      club_fees_payable: {
+        Row: {
+          active: boolean
+          amount: number
+          basis: string
+          club_id: string
+          created_at: string
+          due_day: number
+          due_month: number
+          id: string
+          notes: string | null
+          payee_name: string
+          payee_ref_id: string | null
+          payee_type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          basis?: string
+          club_id: string
+          created_at?: string
+          due_day?: number
+          due_month?: number
+          id?: string
+          notes?: string | null
+          payee_name: string
+          payee_ref_id?: string | null
+          payee_type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          basis?: string
+          club_id?: string
+          created_at?: string
+          due_day?: number
+          due_month?: number
+          id?: string
+          notes?: string | null
+          payee_name?: string
+          payee_ref_id?: string | null
+          payee_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_fees_payable_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_journal_entries: {
         Row: {
           account: Database["public"]["Enums"]["gl_account"]

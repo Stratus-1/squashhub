@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
+import { FeesPayableSchedule } from "./FeesPayableSchedule";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -140,12 +141,12 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   return (
     <div className="space-y-6 mt-4">
 
-      {/* Unified fees table */}
+      {/* Fees Receivable Schedule */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="font-semibold">Fee Schedule</h3>
-            <p className="text-xs text-muted-foreground">All fees charged to members — membership, league, national body, registration, and other</p>
+            <h3 className="font-semibold">Fees Receivable Schedule</h3>
+            <p className="text-xs text-muted-foreground">Fees the club charges to members — all treated as club income</p>
           </div>
           <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
         </div>
@@ -167,7 +168,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Amount (R)</TableHead>
                 <TableHead>Due</TableHead>
-                <TableHead>Classification</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
                 <TableHead className="text-center">Active</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
@@ -176,7 +176,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
@@ -189,11 +189,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   </TableCell>
                   <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
                   <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
-                  <TableCell>
-                    <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
-                      {fee.feeClass === "pass_through" ? "Pass-through" : (fee.type === "league_affiliation" ? "Association Income" : "Club Income")}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">
                     <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
@@ -210,6 +205,9 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
           </Table>
         </Card>
       </div>
+
+      {/* Fees Payable Schedule */}
+      <FeesPayableSchedule clubId={clubId} />
 
       {editFee && (
         <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} />
@@ -456,29 +454,13 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </>
           )}
 
-          {/* Classification + Pro-rate */}
-          <div className="grid grid-cols-2 gap-3 items-end">
-            <div className="space-y-1">
-              <Label>Classification</Label>
-              <Select value={feeClass} onValueChange={v => setFeeClass(v as "club_income" | "pass_through")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="club_income">{feeType === "league_affiliation" ? "Association Income" : "Club Income"}</SelectItem>
-                  <SelectItem value="pass_through">Pass-through</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Pro-rate */}
+          {feeType !== "registration" && (
+            <div className="flex items-center gap-2 h-10">
+              <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
+              <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
             </div>
-            {feeType !== "registration" && (
-              <div className="flex items-center gap-2 h-10">
-                <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
-                <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
-              </div>
-            )}
-          </div>
-
-          <p className="text-[10px] text-muted-foreground">
-            {feeClass === "pass_through" ? "Pass-through: Club collects on behalf of external body → Credits Creditors GL" : (feeType === "league_affiliation" ? "Association Income: Revenue for the association → Credits Fee Income GL" : "Club Income: Revenue for the club → Credits Fee Income GL")}
-          </p>
+          )}
 
           <Button onClick={handleSave} className="w-full">{isEdit ? "Update" : "Save"}</Button>
         </div>

@@ -245,7 +245,14 @@ export default function Support() {
                                 "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
                                 mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                               )}>
-                                <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                                {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                                {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {m.attachments.map((a, i) => (
+                                      <AttachmentItem key={i} att={a} mine={mine} />
+                                    ))}
+                                  </div>
+                                )}
                                 <p className={cn("text-[10px] mt-1 opacity-80", mine ? "text-primary-foreground/80" : "text-muted-foreground")}>
                                   {when}
                                 </p>
@@ -257,16 +264,32 @@ export default function Support() {
                     )}
                   </div>
 
-                  <div className="flex items-end gap-2">
-                    <Textarea
-                      value={messageBody}
-                      onChange={(e) => setMessageBody(e.target.value)}
-                      placeholder="Type your message…"
-                      className="min-h-[44px] max-h-[120px]"
-                    />
-                    <Button onClick={sendMessage} disabled={send.isPending || !messageBody.trim() || !effectiveThreadId} className="h-11 px-4">
-                      <Send className="w-4 h-4" />
-                    </Button>
+                  <div
+                    className={cn(
+                      "rounded-md transition-colors",
+                      dropping && "ring-2 ring-primary/40 bg-primary/5"
+                    )}
+                    onDragOver={(e) => { e.preventDefault(); setDropping(true); }}
+                    onDragLeave={() => setDropping(false)}
+                    onDrop={(e) => { e.preventDefault(); setDropping(false); addFiles(e.dataTransfer.files, "existing"); }}
+                  >
+                    <FilePreviewList files={pendingFiles} onRemove={(i) => setPendingFiles(p => p.filter((_, idx) => idx !== i))} />
+                    <div className="flex items-end gap-2 mt-2">
+                      <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => fileInputRef.current?.click()} title="Attach file">
+                        <Paperclip className="w-4 h-4" />
+                      </Button>
+                      <Textarea
+                        value={messageBody}
+                        onChange={(e) => setMessageBody(e.target.value)}
+                        onPaste={(e) => handlePaste(e, "existing")}
+                        placeholder="Type your message… (paste or drop screenshots here)"
+                        className="min-h-[44px] max-h-[120px]"
+                      />
+                      <Button onClick={sendMessage} disabled={send.isPending || (!messageBody.trim() && pendingFiles.length === 0) || !effectiveThreadId} className="h-11 px-4">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <input ref={fileInputRef} type="file" className="hidden" multiple accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx" onChange={(e) => { addFiles(e.target.files, "existing"); e.target.value = ""; }} />
                   </div>
                 </CardContent>
               </Card>

@@ -136,15 +136,38 @@ export default function Support() {
                 <p className="text-xs font-medium text-muted-foreground">Subject</p>
                 <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="e.g. Booking issue / Ladder question" />
               </div>
-              <div className="space-y-1.5">
+              <div
+                className={cn(
+                  "space-y-1.5 rounded-md transition-colors",
+                  dropping && "ring-2 ring-primary/40 bg-primary/5"
+                )}
+                onDragOver={(e) => { e.preventDefault(); setDropping(true); }}
+                onDragLeave={() => setDropping(false)}
+                onDrop={(e) => { e.preventDefault(); setDropping(false); addFiles(e.dataTransfer.files, "new"); }}
+              >
                 <p className="text-xs font-medium text-muted-foreground">Message</p>
-                <Textarea value={newFirstMessage} onChange={(e) => setNewFirstMessage(e.target.value)} className="min-h-[120px]" placeholder="Tell us what happened…" />
+                <Textarea
+                  value={newFirstMessage}
+                  onChange={(e) => setNewFirstMessage(e.target.value)}
+                  onPaste={(e) => handlePaste(e, "new")}
+                  className="min-h-[120px]"
+                  placeholder="Tell us what happened… (paste or drop screenshots here)"
+                />
               </div>
 
-              <Button className="w-full" onClick={startChat} disabled={createThread.isPending || !user?.id}>
-                <Plus className="w-4 h-4 mr-2" />
-                {createThread.isPending ? "Starting…" : "Start chat"}
-              </Button>
+              <FilePreviewList files={newFiles} onRemove={(i) => setNewFiles(p => p.filter((_, idx) => idx !== i))} />
+
+              <input ref={newFileInputRef} type="file" className="hidden" multiple accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx" onChange={(e) => { addFiles(e.target.files, "new"); e.target.value = ""; }} />
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => newFileInputRef.current?.click()}>
+                  <Paperclip className="w-4 h-4 mr-1" /> Attach files
+                </Button>
+                <Button className="flex-1" onClick={startChat} disabled={createThread.isPending || !user?.id}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {createThread.isPending ? "Starting…" : "Start chat"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (

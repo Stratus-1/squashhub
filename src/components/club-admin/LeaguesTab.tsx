@@ -1486,7 +1486,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
   const qc = useQueryClient();
   const [name, setName] = useState(association.name);
   const [abbreviation, setAbbreviation] = useState(association.abbreviation || "");
-  const [scope, setScope] = useState<"internal" | "region">((association.scope as any) || "region");
+  const [scope, setScope] = useState<"internal" | "region" | "national">((association.scope as any) || "region");
   const [membersPayDirectly, setMembersPayDirectly] = useState<boolean>(!!(association as any).members_pay_directly);
 
   const isPlatformLinked = !!association.platform_association_id;

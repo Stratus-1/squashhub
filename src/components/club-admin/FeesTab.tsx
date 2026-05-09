@@ -140,12 +140,12 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
   return (
     <div className="space-y-6 mt-4">
 
-      {/* Unified fees table */}
+      {/* Fees Receivable Schedule */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="font-semibold">Fee Schedule</h3>
-            <p className="text-xs text-muted-foreground">All fees charged to members — membership, league, national body, registration, and other</p>
+            <h3 className="font-semibold">Fees Receivable Schedule</h3>
+            <p className="text-xs text-muted-foreground">Fees the club charges to members — all treated as club income</p>
           </div>
           <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-1" />Add Fee</Button>
         </div>
@@ -167,7 +167,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Amount (R)</TableHead>
                 <TableHead>Due</TableHead>
-                <TableHead>Classification</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
                 <TableHead className="text-center">Active</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
@@ -176,7 +175,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
@@ -189,11 +188,6 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   </TableCell>
                   <TableCell className="text-right tabular-nums">R {fee.amount.toFixed(2)}</TableCell>
                   <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
-                  <TableCell>
-                    <Badge variant={fee.feeClass === "pass_through" ? "outline" : "secondary"} className="text-[10px]">
-                      {fee.feeClass === "pass_through" ? "Pass-through" : (fee.type === "league_affiliation" ? "Association Income" : "Club Income")}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">
                     <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
@@ -210,6 +204,9 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
           </Table>
         </Card>
       </div>
+
+      {/* Fees Payable Schedule */}
+      <FeesPayableSchedule clubId={clubId} />
 
       {editFee && (
         <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} />

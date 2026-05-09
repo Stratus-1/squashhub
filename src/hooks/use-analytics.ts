@@ -17,14 +17,16 @@ export type ClubAnalytics = {
 
 export function useClubAnalytics(daysBack = 30) {
   const { user } = useAuth();
+  const { club } = useClubContext();
+  const clubId = club?.id ?? null;
   return useQuery({
-    queryKey: ["club-analytics", daysBack],
+    queryKey: ["club-analytics", clubId, daysBack],
     queryFn: async () => {
-      const { data, error } = await rpc("get_club_analytics", { days_back: daysBack });
+      const { data, error } = await rpc("get_club_analytics", { days_back: daysBack, p_club_id: clubId });
       if (error) throw error;
       return data as unknown as ClubAnalytics;
     },
-    enabled: !!user,
+    enabled: !!user && !!clubId,
   });
 }
 

@@ -1096,8 +1096,11 @@ export default function LeagueGameDetail() {
               </tr>
             </thead>
             <tbody>
+              {(() => { return null; })()}
               {positions.map((pos, idx) => {
                 const hasPlayers = pos.homeCode && pos.awayCode;
+                const noGamesMarkedYet = !isSubmitted && positions.every(p => !p.completed && (!p.scores || p.scores.length === 0));
+                const isFirstPlayable = noGamesMarkedYet && positions.findIndex(p => p.homeCode && p.awayCode && !p.completed) === idx;
                 const pr = summary.posResults[idx];
                 // Total points = sum of all individual game scores
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);

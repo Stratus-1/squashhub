@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2 } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1160,9 +1160,18 @@ export default function LeagueGameDetail() {
                                 <button
                                   onClick={() => setSwapTarget({ idx, side: "home" })}
                                   className="text-muted-foreground hover:text-primary"
-                                  title="Pick from squad / reserves"
+                                  title="Replace player (pick from squad / reserves)"
                                 >
                                   <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                              {!isSubmitted && pos.homeCode && (
+                                <button
+                                  onClick={() => handleClearSlot(idx, "home")}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  title="Remove player from this slot"
+                                >
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               )}
                             </span>
@@ -1292,9 +1301,18 @@ export default function LeagueGameDetail() {
                                 <button
                                   onClick={() => setSwapTarget({ idx, side: "away" })}
                                   className="text-muted-foreground hover:text-primary"
-                                  title="Pick from squad / reserves"
+                                  title="Replace player (pick from squad / reserves)"
                                 >
                                   <ArrowLeftRight className="w-3 h-3" />
+                                </button>
+                              )}
+                              {!isSubmitted && pos.awayCode && (
+                                <button
+                                  onClick={() => handleClearSlot(idx, "away")}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  title="Remove player from this slot"
+                                >
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               )}
                             </span>

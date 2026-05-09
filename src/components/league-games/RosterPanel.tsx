@@ -173,17 +173,10 @@ export function RosterPanel({
   if (!hasAny && !loading) return null;
   return (
     <div className="border border-emerald-200 bg-emerald-50/40 rounded-lg p-2 space-y-2">
-      <div className="flex items-start gap-2 text-[11px]">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
-        <div className="space-y-0.5">
-          <div className="font-semibold text-emerald-800">NSA Squad — how to fill the lineup</div>
-          <ol className="list-decimal pl-4 text-emerald-700/90 space-y-0.5">
-            <li><b>Click a HOME player</b> on the left → drops into the next empty <b>H</b> slot (positions 1 → 4).</li>
-            <li><b>Click a VISITOR player</b> on the right → drops into the next empty <b>V</b> slot.</li>
-            <li>Need to change a slot? Use <b>⇄ Replace</b> (pick another player) or <b>✕ Remove</b> (clear the slot) on that row.</li>
-            <li>Or type an NSF code directly in the NSF# box — the name will auto-fill.</li>
-          </ol>
-        </div>
+      <div className="flex items-center gap-2 text-[11px] text-emerald-800">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        <span className="font-semibold">NSA Squad</span>
+        <span className="text-emerald-700/80">— drag a player onto an H/V slot, or click to fill the next open spot.</span>
       </div>
       <div className="flex gap-2">
         <TeamColumn

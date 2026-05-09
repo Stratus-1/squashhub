@@ -129,6 +129,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     const key = fee.source === "member_fee_categories" ? "fee-categories" : fee.source === "league_associations" ? "league-associations" : "national-body-fees";
     qc.invalidateQueries({ queryKey: [key] });
     qc.invalidateQueries({ queryKey: ["club-member-fees"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
     toast.success(`Fee ${newActive ? "activated" : "deactivated"}`);
   };
 
@@ -138,6 +140,9 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     if (error) { toast.error(error.message); return; }
     toast.success("Deleted");
     qc.invalidateQueries({ queryKey: [fee.source === "member_fee_categories" ? "fee-categories" : fee.source === "league_associations" ? "league-associations" : "national-body-fees"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fees"] });
   };
 
   return (
@@ -346,6 +351,9 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
 
     toast.success(isEdit ? "Updated" : "Added");
     qc.invalidateQueries({ queryKey: [invalidateKey] });
+    qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    qc.invalidateQueries({ queryKey: ["club-members"] });
+    qc.invalidateQueries({ queryKey: ["club-member-fees"] });
     onOpenChange(false);
   };
 

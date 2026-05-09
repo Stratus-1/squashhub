@@ -64,18 +64,16 @@ Deno.serve(async (req) => {
 
   const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!isServiceRole) {
-    // Try to resolve a user. If a real user is present, require super-admin.
-    // Anon-key callers (cron) skip this check.
+    // Require an authenticated super-admin user. Anon-key callers are denied.
     const { data: userData } = await supabase.auth.getUser(token);
-    if (userData?.user) {
-      const { data: roleRow } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userData.user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      if (!roleRow) return jsonResp(403, { error: "Super-admin only" });
-    }
+    if (!userData?.user) return jsonResp(401, { error: "Unauthorized" });
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) return jsonResp(403, { error: "Super-admin only" });
   }
 
   let body: { association_id?: string; season?: string; status?: string } = {};

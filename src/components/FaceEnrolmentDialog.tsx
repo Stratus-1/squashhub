@@ -96,10 +96,13 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
         .upload(filePath, blob, { contentType: "image/jpeg", upsert: true });
       if (uploadErr) throw uploadErr;
 
-      const { data: urlData } = supabase.storage.from("member-faces").getPublicUrl(filePath);
-      if (urlData?.publicUrl) {
+      // Bucket is private — use a long-lived signed URL (1 year).
+      const { data: urlData } = await supabase.storage
+        .from("member-faces")
+        .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+      if (urlData?.signedUrl) {
         await fromExt("club_members")
-          .update({ avatar_url: urlData.publicUrl })
+          .update({ avatar_url: urlData.signedUrl })
           .eq("club_id", clubId)
           .eq("user_id", user.id);
       }

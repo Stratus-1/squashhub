@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 Deno.serve(async (req) => {
@@ -13,9 +13,23 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Require an internal secret OR the service-role bearer token.
+  const internalSecret =
+    Deno.env.get("NOTIFY_INTERNAL_SECRET") || Deno.env.get("PUSH_INTERNAL_SECRET");
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const headerSecret = req.headers.get("x-internal-secret") || "";
+  const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  const authorized =
+    (internalSecret && headerSecret === internalSecret) || bearer === serviceRole;
+  if (!authorized) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+  const supabase = createClient(SUPABASE_URL, serviceRole);
 
   try {
     // Compute the upcoming week_start_date for each club based on its league_week_start_dow.

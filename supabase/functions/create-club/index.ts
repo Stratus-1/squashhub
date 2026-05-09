@@ -16,7 +16,27 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { userId, clubName, subdomain, userName, userEmail, tenantType } = await req.json();
+    // Verify caller's JWT — only the authenticated user can create a club for themselves.
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const authedUserId = userData.user.id;
+
+    const { clubName, subdomain, userName, userEmail, tenantType } = await req.json();
+    // Force userId from the verified token — ignore any client-supplied value.
+    const userId = authedUserId;
     const normalizedSubdomain = String(subdomain || "").trim().toLowerCase();
     const normalizedClubName = String(clubName || "").trim();
     const normalizedUserName = String(userName || "").trim();

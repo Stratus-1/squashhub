@@ -19,6 +19,7 @@ import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { MARKER_STATE_KEY } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
@@ -1095,8 +1096,11 @@ export default function LeagueGameDetail() {
               </tr>
             </thead>
             <tbody>
+              {(() => { return null; })()}
               {positions.map((pos, idx) => {
                 const hasPlayers = pos.homeCode && pos.awayCode;
+                const noGamesMarkedYet = !isSubmitted && positions.every(p => !p.completed && (!p.scores || p.scores.length === 0));
+                const isFirstPlayable = noGamesMarkedYet && positions.findIndex(p => p.homeCode && p.awayCode && !p.completed) === idx;
                 const pr = summary.posResults[idx];
                 // Total points = sum of all individual game scores
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
@@ -1312,13 +1316,25 @@ export default function LeagueGameDetail() {
                                 <>
                                   {hasPlayers && (
                                     <>
-                                      <button
-                                        onClick={() => startMarking(idx)}
-                                        className="bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80"
-                                        title="Mark game live"
-                                      >
-                                        <Play className="w-3.5 h-3.5" />
-                                      </button>
+                                      <Tooltip open={isFirstPlayable ? true : undefined}>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            onClick={() => startMarking(idx)}
+                                            className={cn(
+                                              "bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80",
+                                              isFirstPlayable && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
+                                            )}
+                                            title="Mark game live"
+                                          >
+                                            <Play className="w-3.5 h-3.5" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="left" className="max-w-[220px]">
+                                          {isFirstPlayable
+                                            ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
+                                            : "Mark game live"}
+                                        </TooltipContent>
+                                      </Tooltip>
                                       <button
                                         onClick={() => {
                                           // Determine games needed to win the match

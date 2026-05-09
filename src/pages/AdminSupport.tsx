@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAdminSupportThreads, useSupportMessages, useSendSupportMessage, useUpdateSupportThread } from "@/hooks/use-support";
+import { useAdminSupportThreads, useSupportMessages, useSendSupportMessage, useUpdateSupportThread, getSupportAttachmentUrl } from "@/hooks/use-support";
 import { openExternalUrl } from "@/lib/google-calendar";
 import { useQuery } from "@tanstack/react-query";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
@@ -500,7 +500,17 @@ export default function AdminSupport() {
                               "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
                               mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                             )}>
-                              <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                              {Array.isArray((m as any).attachments) && (m as any).attachments.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {(m as any).attachments.map((a: any, i: number) => {
+                                    const isImage = a.mime?.startsWith("image/");
+                                    return (
+                                      <AdminAttachmentItem key={i} path={a.path} name={a.name} isImage={!!isImage} mine={mine} />
+                                    );
+                                  })}
+                                </div>
+                              )}
                               <p className={cn("text-[10px] mt-1 opacity-80", mine ? "text-primary-foreground/80" : "text-muted-foreground")}>
                                 {when}
                               </p>
@@ -583,5 +593,18 @@ export default function AdminSupport() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function AdminAttachmentItem({ path, name, isImage, mine }: { path: string; name: string; isImage: boolean; mine: boolean }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let alive = true; getSupportAttachmentUrl(path).then(u => { if (alive) setUrl(u); }); return () => { alive = false; }; }, [path]);
+  if (isImage && url) {
+    return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={name} className="max-w-full max-h-64 rounded-lg border border-border/40" /></a>;
+  }
+  return (
+    <a href={url || "#"} target="_blank" rel="noreferrer" className={cn("inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs underline", mine ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-foreground")}>
+      📎 {name}
+    </a>
   );
 }

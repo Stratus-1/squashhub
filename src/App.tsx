@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { friendlyError } from "@/lib/friendly-error";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ClubProvider, useClubContext } from "@/contexts/ClubContext";
@@ -78,7 +80,26 @@ import Privacy from "./pages/Privacy";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: (error: any) => {
+      const fe = friendlyError(error);
+      // Only auto-toast permission errors globally; let individual mutations
+      // continue to handle their own non-permission errors as before.
+      if (fe.isPermission) {
+        toast.error(fe.title, {
+          description: fe.description,
+          action: {
+            label: "Open Support",
+            onClick: () => {
+              if (typeof window !== "undefined") window.location.href = "/support";
+            },
+          },
+        });
+      }
+    },
+  }),
+});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();

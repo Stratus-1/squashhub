@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { MessageCircle, Plus, Send } from "lucide-react";
+import { MessageCircle, Plus, Send, Paperclip, X, Image as ImageIcon, FileText } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { SEO } from "@/components/SEO";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCreateSupportThread, useMySupportThreads, useSendSupportMessage, useSupportMessages } from "@/hooks/use-support";
+import { useCreateSupportThread, useMySupportThreads, useSendSupportMessage, useSupportMessages, getSupportAttachmentUrl, type SupportAttachment } from "@/hooks/use-support";
 
 export default function Support() {
   const { user } = useAuth();
@@ -24,6 +24,36 @@ export default function Support() {
   const [newSubject, setNewSubject] = useState("");
   const [newFirstMessage, setNewFirstMessage] = useState("");
   const [messageBody, setMessageBody] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const newFileInputRef = useRef<HTMLInputElement>(null);
+  const [dropping, setDropping] = useState(false);
+
+  const addFiles = (files: FileList | File[] | null, target: "new" | "existing") => {
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 10).filter(f => f.size <= 20 * 1024 * 1024);
+    if (arr.length === 0) return;
+    if (target === "new") setNewFiles(p => [...p, ...arr].slice(0, 10));
+    else setPendingFiles(p => [...p, ...arr].slice(0, 10));
+  };
+
+  const handlePaste = (e: React.ClipboardEvent, target: "new" | "existing") => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      addFiles(files, target);
+    }
+  };
 
   const effectiveThreadId = useMemo(() => {
     if (selectedThreadId) return selectedThreadId;
@@ -53,9 +83,10 @@ export default function Support() {
       const thread = await createThread.mutateAsync({ subject: newSubject });
       setSelectedThreadId(thread.id);
       setNewSubject("");
-      if (newFirstMessage.trim()) {
-        await send.mutateAsync({ threadId: thread.id, body: newFirstMessage });
+      if (newFirstMessage.trim() || newFiles.length > 0) {
+        await send.mutateAsync({ threadId: thread.id, body: newFirstMessage, files: newFiles });
         setNewFirstMessage("");
+        setNewFiles([]);
       }
       toast.success("Support chat started");
     } catch (e: any) {
@@ -66,8 +97,9 @@ export default function Support() {
   const sendMessage = async () => {
     if (!effectiveThreadId) return;
     try {
-      await send.mutateAsync({ threadId: effectiveThreadId, body: messageBody });
+      await send.mutateAsync({ threadId: effectiveThreadId, body: messageBody, files: pendingFiles });
       setMessageBody("");
+      setPendingFiles([]);
     } catch (e: any) {
       toast.error(e?.message || "Could not send message");
     }
@@ -104,15 +136,38 @@ export default function Support() {
                 <p className="text-xs font-medium text-muted-foreground">Subject</p>
                 <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="e.g. Booking issue / Ladder question" />
               </div>
-              <div className="space-y-1.5">
+              <div
+                className={cn(
+                  "space-y-1.5 rounded-md transition-colors",
+                  dropping && "ring-2 ring-primary/40 bg-primary/5"
+                )}
+                onDragOver={(e) => { e.preventDefault(); setDropping(true); }}
+                onDragLeave={() => setDropping(false)}
+                onDrop={(e) => { e.preventDefault(); setDropping(false); addFiles(e.dataTransfer.files, "new"); }}
+              >
                 <p className="text-xs font-medium text-muted-foreground">Message</p>
-                <Textarea value={newFirstMessage} onChange={(e) => setNewFirstMessage(e.target.value)} className="min-h-[120px]" placeholder="Tell us what happened…" />
+                <Textarea
+                  value={newFirstMessage}
+                  onChange={(e) => setNewFirstMessage(e.target.value)}
+                  onPaste={(e) => handlePaste(e, "new")}
+                  className="min-h-[120px]"
+                  placeholder="Tell us what happened… (paste or drop screenshots here)"
+                />
               </div>
 
-              <Button className="w-full" onClick={startChat} disabled={createThread.isPending || !user?.id}>
-                <Plus className="w-4 h-4 mr-2" />
-                {createThread.isPending ? "Starting…" : "Start chat"}
-              </Button>
+              <FilePreviewList files={newFiles} onRemove={(i) => setNewFiles(p => p.filter((_, idx) => idx !== i))} />
+
+              <input ref={newFileInputRef} type="file" className="hidden" multiple accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx" onChange={(e) => { addFiles(e.target.files, "new"); e.target.value = ""; }} />
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => newFileInputRef.current?.click()}>
+                  <Paperclip className="w-4 h-4 mr-1" /> Attach files
+                </Button>
+                <Button className="flex-1" onClick={startChat} disabled={createThread.isPending || !user?.id}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {createThread.isPending ? "Starting…" : "Start chat"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -190,7 +245,14 @@ export default function Support() {
                                 "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
                                 mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                               )}>
-                                <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                                {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                                {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {m.attachments.map((a, i) => (
+                                      <AttachmentItem key={i} att={a} mine={mine} />
+                                    ))}
+                                  </div>
+                                )}
                                 <p className={cn("text-[10px] mt-1 opacity-80", mine ? "text-primary-foreground/80" : "text-muted-foreground")}>
                                   {when}
                                 </p>
@@ -202,16 +264,32 @@ export default function Support() {
                     )}
                   </div>
 
-                  <div className="flex items-end gap-2">
-                    <Textarea
-                      value={messageBody}
-                      onChange={(e) => setMessageBody(e.target.value)}
-                      placeholder="Type your message…"
-                      className="min-h-[44px] max-h-[120px]"
-                    />
-                    <Button onClick={sendMessage} disabled={send.isPending || !messageBody.trim() || !effectiveThreadId} className="h-11 px-4">
-                      <Send className="w-4 h-4" />
-                    </Button>
+                  <div
+                    className={cn(
+                      "rounded-md transition-colors",
+                      dropping && "ring-2 ring-primary/40 bg-primary/5"
+                    )}
+                    onDragOver={(e) => { e.preventDefault(); setDropping(true); }}
+                    onDragLeave={() => setDropping(false)}
+                    onDrop={(e) => { e.preventDefault(); setDropping(false); addFiles(e.dataTransfer.files, "existing"); }}
+                  >
+                    <FilePreviewList files={pendingFiles} onRemove={(i) => setPendingFiles(p => p.filter((_, idx) => idx !== i))} />
+                    <div className="flex items-end gap-2 mt-2">
+                      <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => fileInputRef.current?.click()} title="Attach file">
+                        <Paperclip className="w-4 h-4" />
+                      </Button>
+                      <Textarea
+                        value={messageBody}
+                        onChange={(e) => setMessageBody(e.target.value)}
+                        onPaste={(e) => handlePaste(e, "existing")}
+                        placeholder="Type your message… (paste or drop screenshots here)"
+                        className="min-h-[44px] max-h-[120px]"
+                      />
+                      <Button onClick={sendMessage} disabled={send.isPending || (!messageBody.trim() && pendingFiles.length === 0) || !effectiveThreadId} className="h-11 px-4">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <input ref={fileInputRef} type="file" className="hidden" multiple accept="image/*,application/pdf,text/*,.doc,.docx,.xls,.xlsx" onChange={(e) => { addFiles(e.target.files, "existing"); e.target.value = ""; }} />
                   </div>
                 </CardContent>
               </Card>
@@ -220,5 +298,52 @@ export default function Support() {
         )}
       </div>
     </div>
+  );
+}
+
+function FilePreviewList({ files, onRemove }: { files: File[]; onRemove: (i: number) => void }) {
+  if (files.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {files.map((f, i) => {
+        const isImage = f.type.startsWith("image/");
+        const url = isImage ? URL.createObjectURL(f) : null;
+        return (
+          <div key={i} className="relative group border border-border rounded-lg p-1.5 bg-muted/30 flex items-center gap-2 text-xs max-w-[200px]">
+            {url ? (
+              <img src={url} alt={f.name} className="w-10 h-10 object-cover rounded" />
+            ) : (
+              <div className="w-10 h-10 rounded bg-background flex items-center justify-center"><FileText className="w-4 h-4 text-muted-foreground" /></div>
+            )}
+            <span className="truncate flex-1">{f.name}</span>
+            <button type="button" onClick={() => onRemove(i)} className="rounded-full bg-background hover:bg-destructive hover:text-destructive-foreground p-0.5">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AttachmentItem({ att, mine }: { att: SupportAttachment; mine: boolean }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let alive = true; getSupportAttachmentUrl(att.path).then(u => { if (alive) setUrl(u); }); return () => { alive = false; }; }, [att.path]);
+  const isImage = att.mime?.startsWith("image/");
+  if (isImage && url) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="block">
+        <img src={url} alt={att.name} className="max-w-full max-h-64 rounded-lg border border-border/40" />
+      </a>
+    );
+  }
+  return (
+    <a href={url || "#"} target="_blank" rel="noreferrer" className={cn(
+      "inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs underline",
+      mine ? "bg-primary-foreground/10 text-primary-foreground" : "bg-background text-foreground"
+    )}>
+      {isImage ? <ImageIcon className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+      {att.name}
+    </a>
   );
 }

@@ -18,12 +18,20 @@ export type SupportThreadRow = {
   updated_at: string;
 };
 
+export type SupportAttachment = {
+  path: string;
+  name: string;
+  size: number;
+  mime: string;
+};
+
 export type SupportMessageRow = {
   id: string;
   thread_id: string;
   sender_id: string;
   body: string;
   created_at: string;
+  attachments?: SupportAttachment[];
 };
 
 export function useMySupportThreads() {
@@ -169,15 +177,30 @@ export function useSendSupportMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ threadId, body }: { threadId: string; body: string }) => {
+    mutationFn: async ({ threadId, body, files }: { threadId: string; body: string; files?: File[] }) => {
       if (!user?.id) throw new Error("Not logged in");
       const clean = body.trim();
-      if (!clean) throw new Error("Message cannot be empty");
+      const fileList = files || [];
+      if (!clean && fileList.length === 0) throw new Error("Message cannot be empty");
+
+      // Upload attachments first
+      const attachments: SupportAttachment[] = [];
+      for (const file of fileList) {
+        const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${threadId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+        const { error: upErr } = await supabase.storage
+          .from("support-attachments")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upErr) throw upErr;
+        attachments.push({ path, name: file.name, size: file.size, mime: file.type });
+      }
+
       const { data, error } = await fromAny("support_messages")
         .insert({
           thread_id: threadId,
           sender_id: user.id,
-          body: clean,
+          body: clean || (attachments.length ? `(${attachments.length} attachment${attachments.length > 1 ? "s" : ""})` : ""),
+          attachments,
         })
         .select("*")
         .single();
@@ -211,3 +234,11 @@ export function useUpdateSupportThread() {
     },
   });
 }
+
+export async function getSupportAttachmentUrl(path: string): Promise<string | null> {
+  const { data } = await supabase.storage
+    .from("support-attachments")
+    .createSignedUrl(path, 60 * 60); // 1 hour
+  return data?.signedUrl || null;
+}
+

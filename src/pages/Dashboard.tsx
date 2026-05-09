@@ -998,15 +998,21 @@ export default function Dashboard() {
         )}
       </motion.div>
 
-      {/* Support — bottom of page */}
+      {/* Support Tickets — bottom of page */}
       <div className="px-4 mt-5 mb-4">
-        <Button variant="outline" className="w-full justify-between h-11 px-3" onClick={() => navigate("/support")}>
-          <span className="inline-flex items-center gap-2">
+        <Button className="w-full justify-between h-12 px-3" onClick={() => navigate("/support")}>
+          <span className="inline-flex items-center gap-2 font-semibold">
             <LifeBuoy className="w-4 h-4" />
-            Support
+            Support Tickets
           </span>
-          <ChevronRight className="w-4 h-4 opacity-70" />
+          <span className="inline-flex items-center gap-1 text-xs opacity-90">
+            New ticket
+            <ChevronRight className="w-4 h-4" />
+          </span>
         </Button>
+        <p className="text-[11px] text-muted-foreground text-center mt-1.5">
+          Stuck or got a permission issue? Open a ticket — attach a screenshot and we'll respond in-app.
+        </p>
       </div>
       <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
     </div>

@@ -459,6 +459,10 @@ export function LadderTab({ clubId }: { clubId: string }) {
     return map;
   }, [affiliations]);
 
+  const handleAllocated = useCallback(() => {
+    refetchAffiliations();
+    queryClient.invalidateQueries({ queryKey: ["club-members"] });
+  }, [refetchAffiliations, queryClient]);
 
 
   const toggleMixed = async (next: boolean) => {

@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 Deno.serve(async (req) => {
@@ -14,7 +14,8 @@ Deno.serve(async (req) => {
   }
 
   // Require an internal secret OR the service-role bearer token.
-  const internalSecret = Deno.env.get("NOTIFY_INTERNAL_SECRET");
+  const internalSecret =
+    Deno.env.get("NOTIFY_INTERNAL_SECRET") || Deno.env.get("PUSH_INTERNAL_SECRET");
   const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const headerSecret = req.headers.get("x-internal-secret") || "";
   const bearer = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");

@@ -1350,7 +1350,7 @@ const LEAGUE_OPTIONS = Array.from({ length: 14 }, (_, i) => {
 function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [form, setForm] = useState({ name: "", abbreviation: "" });
   const [mode, setMode] = useState<"select" | "create">("select");
-  const [scope, setScope] = useState<"internal" | "region" | "national">("region");
+  const [scope, setScope] = useState<"internal" | "region">("region");
   const [selectedPlatformId, setSelectedPlatformId] = useState("");
   const qc = useQueryClient();
 
@@ -1460,15 +1460,13 @@ function AssociationDialog({ clubId, open, onOpenChange }: { clubId: string; ope
                 <div className="flex gap-2">
                   <Button type="button" variant={scope === "internal" ? "default" : "outline"} size="sm" onClick={() => setScope("internal")} className="flex-1">Internal</Button>
                   <Button type="button" variant={scope === "region" ? "default" : "outline"} size="sm" onClick={() => setScope("region")} className="flex-1">Regional</Button>
-                  <Button type="button" variant={scope === "national" ? "default" : "outline"} size="sm" onClick={() => setScope("national")} className="flex-1">National</Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {scope === "internal"
                     ? "Internal: only your club's members participate. No external integration."
-                    : scope === "national"
-                      ? "National: country-wide governing body (e.g. Squash South Africa) — applies to all clubs."
-                      : "Regional: external/regional league involving other clubs."}
+                    : "Regional: external/regional league involving other clubs."}
                 </p>
+                <p className="text-[11px] text-muted-foreground italic">National bodies (e.g. SSA) are not leagues — they auto-seed as fees on every club.</p>
               </div>
             </>
           )}
@@ -1486,7 +1484,7 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
   const qc = useQueryClient();
   const [name, setName] = useState(association.name);
   const [abbreviation, setAbbreviation] = useState(association.abbreviation || "");
-  const [scope, setScope] = useState<"internal" | "region" | "national">((association.scope as any) || "region");
+  const [scope, setScope] = useState<"internal" | "region">(((association.scope as any) === "national" ? "region" : (association.scope as any)) || "region");
   const [membersPayDirectly, setMembersPayDirectly] = useState<boolean>(!!(association as any).members_pay_directly);
 
   const isPlatformLinked = !!association.platform_association_id;
@@ -1538,25 +1536,13 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
               >
                 Regional
               </Button>
-              <Button
-                type="button"
-                variant={scope === "national" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setScope("national")}
-                className="flex-1"
-                disabled={isPlatformLinked}
-              >
-                National
-              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlatformLinked
                 ? "Platform-linked associations are always regional."
                 : scope === "internal"
                   ? "Internal: only your club's members participate. No external integration."
-                  : scope === "national"
-                    ? "National: country-wide governing body (e.g. Squash South Africa) — applies to all clubs."
-                    : "Regional: external/regional league involving other clubs."}
+                  : "Regional: external/regional league involving other clubs."}
             </p>
           </div>
 

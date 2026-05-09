@@ -106,7 +106,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
  * Get all effective permissions for the current member.
  */
 export function useMyPermissions(): Set<string> {
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const memberId = activeMember?.id;
 
   const { data: memberRow } = useQuery({
@@ -119,7 +119,7 @@ export function useMyPermissions(): Set<string> {
   });
 
   const memberRole = memberRow?.role;
-  const isFullAccess = memberRole === "admin";
+  const isFullAccess = memberRole === "admin" || isAdmin;
   const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
 
   if (isFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));

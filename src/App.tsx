@@ -77,6 +77,7 @@ import { useMyRoles } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import LightsIntegration from "./pages/LightsIntegration";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
@@ -294,6 +295,7 @@ function AppRoutes() {
         <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/lights" element={<LightsIntegration />} />
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/reset-password" element={<ResetPassword />} />

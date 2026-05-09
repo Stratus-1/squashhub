@@ -44,6 +44,15 @@ export default function LightsIntegration() {
               Lights switch on the moment a member taps "Play", off the second they finish — and every cent
               is billed to the right player automatically.
             </p>
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <p className="text-sm text-white/85 leading-relaxed">
+                <strong className="text-amber-300">One app does it all.</strong> SquashHub is your booking
+                system <em>and</em> your court-lights controller. No separate hardware app, no third-party
+                booking tool — members book, the lights come on, and the cost is charged
+                <strong className="text-white"> per your club's own rules</strong> (per minute, per hour,
+                peak / off-peak, member vs visitor).
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2 pt-2">
               <FeatureChip icon={Wifi} label="No app for the player" />
               <FeatureChip icon={Gauge} label="Per-minute billing" />

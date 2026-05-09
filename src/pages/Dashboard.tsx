@@ -534,6 +534,8 @@ export default function Dashboard() {
           myMemberId={myMemberId}
           myLeagueFixtures={myLeagueFixtures || []}
           hasLeagues={hasLeagues}
+          honestyBarEnabled={!!(effectiveClub as any)?.honesty_bar_enabled}
+          hasAnyAdminAccess={hasAnyAdminAccess}
           eventsSlot={<CreateClubEvent />}
         />
       </div>

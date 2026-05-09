@@ -4,7 +4,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Calendar, ChevronRight, Trophy, History, CalendarDays, Plus, Users, Timer, Activity } from "lucide-react";
+import {
+  Calendar, ChevronRight, Trophy, History, CalendarDays, Plus, Users, Timer, Activity,
+  Home, BarChart3, LayoutGrid, Crosshair, Wine, Wallet, ShieldCheck,
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
@@ -31,11 +34,23 @@ interface DashboardDesktopProps {
   myMemberId: string | null;
   myLeagueFixtures: any[];
   hasLeagues: boolean;
+  // sidebar-equivalent flags for Quick Access tiles
+  honestyBarEnabled?: boolean;
+  hasAnyAdminAccess?: boolean;
   // children for slot-in components (events list, etc.)
   eventsSlot?: React.ReactNode;
 }
 
 type StatsScope = "me" | "club";
+
+type Tile = {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** tailwind color stem, e.g. "blue", "emerald" */
+  color: string;
+};
+
 
 export function DashboardDesktop(props: DashboardDesktopProps) {
   const navigate = useNavigate();

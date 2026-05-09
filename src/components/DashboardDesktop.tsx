@@ -382,3 +382,117 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 function clubLabel(name: string) {
   return name?.toUpperCase() || "MY CLUB";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Quick Access tiles                                                         */
+/* -------------------------------------------------------------------------- */
+
+interface QuickAccessProps {
+  hasLeagues: boolean;
+  honestyBarEnabled: boolean;
+  hasAnyAdminAccess: boolean;
+  navigate: (path: string) => void;
+}
+
+/**
+ * IMPORTANT: every Tailwind class used in tiles is written as a literal
+ * string here so the JIT compiler keeps them in the bundle.
+ */
+const TILE_STYLES: Record<string, { ring: string; icon: string; glow: string; hoverBorder: string }> = {
+  blue:    { ring: "from-blue-500/25 to-blue-500/5",       icon: "text-blue-300",     glow: "shadow-blue-500/20",     hoverBorder: "hover:border-blue-400/60" },
+  sky:     { ring: "from-sky-500/25 to-sky-500/5",         icon: "text-sky-300",      glow: "shadow-sky-500/20",      hoverBorder: "hover:border-sky-400/60" },
+  cyan:    { ring: "from-cyan-500/25 to-cyan-500/5",       icon: "text-cyan-300",     glow: "shadow-cyan-500/20",     hoverBorder: "hover:border-cyan-400/60" },
+  emerald: { ring: "from-emerald-500/25 to-emerald-500/5", icon: "text-emerald-300",  glow: "shadow-emerald-500/20",  hoverBorder: "hover:border-emerald-400/60" },
+  amber:   { ring: "from-amber-500/25 to-amber-500/5",     icon: "text-amber-300",    glow: "shadow-amber-500/20",    hoverBorder: "hover:border-amber-400/60" },
+  orange:  { ring: "from-orange-500/25 to-orange-500/5",   icon: "text-orange-300",   glow: "shadow-orange-500/20",   hoverBorder: "hover:border-orange-400/60" },
+  fuchsia: { ring: "from-fuchsia-500/25 to-fuchsia-500/5", icon: "text-fuchsia-300",  glow: "shadow-fuchsia-500/20",  hoverBorder: "hover:border-fuchsia-400/60" },
+  violet:  { ring: "from-violet-500/25 to-violet-500/5",   icon: "text-violet-300",   glow: "shadow-violet-500/20",   hoverBorder: "hover:border-violet-400/60" },
+  rose:    { ring: "from-rose-500/25 to-rose-500/5",       icon: "text-rose-300",     glow: "shadow-rose-500/20",     hoverBorder: "hover:border-rose-400/60" },
+  red:     { ring: "from-red-500/25 to-red-500/5",         icon: "text-red-300",      glow: "shadow-red-500/20",      hoverBorder: "hover:border-red-400/60" },
+  teal:    { ring: "from-teal-500/25 to-teal-500/5",       icon: "text-teal-300",     glow: "shadow-teal-500/20",     hoverBorder: "hover:border-teal-400/60" },
+  lime:    { ring: "from-lime-500/25 to-lime-500/5",       icon: "text-lime-300",     glow: "shadow-lime-500/20",     hoverBorder: "hover:border-lime-400/60" },
+};
+
+function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigate }: QuickAccessProps) {
+  const home: Tile[] = [
+    { title: "Stats",    url: "/analytics", icon: BarChart3,  color: "sky" },
+    { title: "Bookings", url: "/bookings",  icon: Calendar,   color: "blue" },
+    { title: "Courts",   url: "/bookings",  icon: LayoutGrid, color: "cyan" },
+  ];
+
+  const activities: Tile[] = [
+    { title: "Mark a Game",       url: "/match-marker", icon: Crosshair,   color: "emerald" },
+    { title: "Club Ladderboard",  url: "/ladder",       icon: Trophy,      color: "amber" },
+    ...(hasLeagues
+      ? [{ title: "Leagues", url: "/league-games", icon: Trophy, color: "orange" } as Tile]
+      : []),
+    { title: "Club Tournaments",  url: "/tournaments",  icon: Trophy,      color: "fuchsia" },
+    { title: "Events",            url: "/events",       icon: CalendarDays, color: "violet" },
+    ...(honestyBarEnabled
+      ? [{ title: "Honesty Bar", url: "/honesty-bar", icon: Wine, color: "rose" } as Tile]
+      : []),
+    { title: "My Account",        url: "/my-account",   icon: Wallet,      color: "teal" },
+  ];
+
+  const admin: Tile[] = hasAnyAdminAccess
+    ? [{ title: "Club Admin", url: "/club-admin", icon: ShieldCheck, color: "red" }]
+    : [];
+
+  return (
+    <div className="space-y-4">
+      <TileGroup label="Home"       icon={Home}       tiles={home}       navigate={navigate} />
+      <TileGroup label="Activities" icon={Activity}   tiles={activities} navigate={navigate} />
+      {admin.length > 0 && (
+        <TileGroup label="Club Admin" icon={ShieldCheck} tiles={admin} navigate={navigate} />
+      )}
+    </div>
+  );
+}
+
+function TileGroup({
+  label, icon: Icon, tiles, navigate,
+}: { label: string; icon: React.ComponentType<{ className?: string }>; tiles: Tile[]; navigate: (p: string) => void }) {
+  if (tiles.length === 0) return null;
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-2.5 pb-1.5 border-b border-[hsl(var(--accent))]/40">
+        <Icon className="w-3.5 h-3.5 text-[hsl(var(--accent))]" />
+        <span className="uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-white/85">
+          {label}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        {tiles.map((t) => {
+          const s = TILE_STYLES[t.color] ?? TILE_STYLES.blue;
+          return (
+            <button
+              key={t.title + t.url}
+              onClick={() => navigate(t.url)}
+              className={cn(
+                "group relative overflow-hidden rounded-xl border border-white/10 bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md",
+                "px-4 py-4 text-left transition-all duration-200",
+                "hover:-translate-y-0.5 hover:shadow-lg",
+                s.hoverBorder, s.glow,
+              )}
+            >
+              {/* color glow corner */}
+              <div className={cn("pointer-events-none absolute -top-10 -right-10 w-28 h-28 rounded-full bg-gradient-to-br blur-2xl opacity-70", s.ring)} />
+              <div className="relative flex items-center gap-3">
+                <div className={cn("h-9 w-9 rounded-lg grid place-items-center bg-white/[0.06] border border-white/10", s.icon)}>
+                  <t.icon className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] uppercase tracking-[0.16em] font-heading font-bold text-white truncate">
+                    {t.title}
+                  </p>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+

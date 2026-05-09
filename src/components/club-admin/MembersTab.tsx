@@ -404,55 +404,78 @@ export function MembersTab({ clubId }: { clubId: string }) {
     return computeExpectedFees(member, feeCategories, associations, nationalFees, feeDueMonth, feePayments);
   };
 
-  /** Create paired GL journal entries for a fee toggle */
-  const createJournalEntries = async (
+  /**
+   * Resolve the income / expense account for a given fee_type.
+   * Member-receivable rows produce income; club-payable rows produce expense.
+   */
+  const accountsForFee = (feeType: string): { side: "receivable" | "payable"; income?: string; expense?: string } => {
+    switch (feeType) {
+      case "club":
+      case "membership":
+        return { side: "receivable", income: "membership_income" };
+      case "association":
+      case "league_affiliation":
+        return { side: "receivable", income: "league_fees_income" };
+      case "national":
+      case "national_body":
+        return { side: "receivable", income: "national_body_income" };
+      case "club_payable_assoc":
+        return { side: "payable", expense: "league_fees_expense" };
+      case "club_payable_national":
+        return { side: "payable", expense: "national_body_expense" };
+      default:
+        return { side: "receivable", income: "fee_income" };
+    }
+  };
+
+  /**
+   * Sync GL state for a single fee row. Wipes prior auto-generated entries
+   * for this fee_payment_id and re-posts based on current paid/unpaid state.
+   *
+   * Gross-up model:
+   *   Member receivable + paid   → Dr Bank,    Cr Income
+   *   Member receivable + unpaid → Dr Debtors, Cr Income
+   *   Club payable     + paid    → Dr Expense, Cr Bank
+   *   Club payable     + unpaid  → Dr Expense, Cr Creditors
+   */
+  const syncFeeJournalEntries = async (
     memberId: string,
     feeId: string,
     amount: number,
     feeType: string,
     feeLabel: string,
-    isAccrual: boolean // true = fee being charged (unticked), false = fee being reversed (ticked back)
+    paid: boolean,
   ) => {
-    const journalRef = crypto.randomUUID();
-    const isPassThrough = feeType === "association" || feeType === "national" || feeType === "national_body";
-    const creditAccount = isPassThrough ? "creditors" : "fee_income";
-    const desc = isAccrual
-      ? `Fee accrued: ${feeLabel}`
-      : `Fee reversed: ${feeLabel}`;
+    // Wipe any prior auto entries for this fee
+    await fromExt("club_journal_entries").delete().eq("fee_payment_id", feeId);
 
-    // Get member name for description
+    if (!amount || amount <= 0) return;
+
+    const acct = accountsForFee(feeType);
     const member = members.find(m => m.id === memberId);
     const memberName = member?.profiles?.name || member?.name || "Member";
-    const fullDesc = `${desc} — ${memberName}`;
+    const desc = `${paid ? "Fee paid" : "Fee accrued"}: ${feeLabel} — ${memberName}`;
+    const journalRef = crypto.randomUUID();
+    const base = { club_id: clubId, journal_ref: journalRef, description: desc, club_member_id: memberId, fee_payment_id: feeId };
 
-    const entries = isAccrual
-      ? [
-          { club_id: clubId, journal_ref: journalRef, account: "debtors", debit: amount, credit: 0, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
-          { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: 0, credit: amount, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
-        ]
-      : [
-          // Reverse: Dt Fee Income/Creditors, Ct Debtors
-          { club_id: clubId, journal_ref: journalRef, account: creditAccount, debit: amount, credit: 0, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
-          { club_id: clubId, journal_ref: journalRef, account: "debtors", debit: 0, credit: amount, description: fullDesc, club_member_id: memberId, fee_payment_id: feeId },
-        ];
-
+    let entries: any[] = [];
+    if (acct.side === "receivable") {
+      const debit = paid ? "bank_current" : "debtors";
+      entries = [
+        { ...base, account: debit, debit: amount, credit: 0 },
+        { ...base, account: acct.income!, debit: 0, credit: amount },
+      ];
+    } else {
+      const credit = paid ? "bank_current" : "creditors";
+      entries = [
+        { ...base, account: acct.expense!, debit: amount, credit: 0 },
+        { ...base, account: credit, debit: 0, credit: amount },
+      ];
+    }
     await fromExt("club_journal_entries").insert(entries);
-
-    // Also create member credit transaction for their statement
-    await fromExt("member_credit_transactions").insert({
-      club_id: clubId,
-      club_member_id: memberId,
-      amount: isAccrual ? amount : -amount,
-      type: isAccrual ? "credit" : "refund",
-      method: "system",
-      description: isAccrual ? `Fee charged: ${feeLabel}` : `Fee reversed: ${feeLabel}`,
-      status: "confirmed",
-      reference: feeId,
-    });
   };
 
   const handleTogglePaid = async (feeId: string, paid: boolean) => {
-    // Find the fee details
     const fee = feePayments.find(f => f.id === feeId);
     if (!fee) return;
 
@@ -460,16 +483,9 @@ export function MembersTab({ clubId }: { clubId: string }) {
     const { error } = await fromExt("club_member_fee_payments").update(updates).eq("id", feeId);
     if (error) { toast.error(error.message); return; }
 
-    // When unticking (paid -> unpaid): accrue fee (Dt Debtors, Ct Fee Income/Creditors)
-    // When ticking (unpaid -> paid): reverse the accrual
-    if (!paid) {
-      await createJournalEntries(fee.club_member_id, feeId, fee.amount, fee.fee_type, fee.fee_label, true);
-    } else {
-      await createJournalEntries(fee.club_member_id, feeId, fee.amount, fee.fee_type, fee.fee_label, false);
-    }
+    await syncFeeJournalEntries(fee.club_member_id, feeId, fee.amount, fee.fee_type, fee.fee_label, paid);
 
-    // Cascade: if a member-receivable NSA/SSA fee is toggled, also toggle the
-    // matching "fees payable by the club" row — the fee simply does not apply.
+    // Cascade: NSA/SSA member fee → matching "fees payable by the club" row
     const cascadeMap: Record<string, string> = {
       association: "club_payable_assoc",
       national: "club_payable_national",
@@ -481,11 +497,13 @@ export function MembersTab({ clubId }: { clubId: string }) {
         p => p.club_member_id === fee.club_member_id && p.fee_type === cascadeType
       );
       for (const lp of linked) {
-        if (lp.paid === paid) continue;
-        await fromExt("club_member_fee_payments")
-          .update({ paid, paid_at: paid ? new Date().toISOString() : null })
-          .eq("id", lp.id);
-        // Club-payable side has no debtor accrual — skip GL entries.
+        if (lp.paid !== paid) {
+          await fromExt("club_member_fee_payments")
+            .update({ paid, paid_at: paid ? new Date().toISOString() : null })
+            .eq("id", lp.id);
+        }
+        // Always resync GL for the club-payable row so expense reflects state
+        await syncFeeJournalEntries(lp.club_member_id, lp.id, lp.amount, lp.fee_type, lp.fee_label, paid);
       }
     }
 

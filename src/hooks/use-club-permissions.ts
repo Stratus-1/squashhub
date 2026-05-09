@@ -34,6 +34,7 @@ export interface MemberPermission {
   club_member_id: string;
   permission_role_id: string | null;
   custom_permissions: string[];
+  is_full_admin?: boolean;
 }
 
 /** Fetch permission roles for a club */

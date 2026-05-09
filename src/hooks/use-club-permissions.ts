@@ -99,6 +99,7 @@ export function useHasPermission(permission: PermissionSlug): boolean {
 
   if (isRoleFullAccess) return true;
   if (perm?.is_full_admin) return true;
+  if ((perm as any)?.club_permission_roles?.is_full_admin) return true;
   if (!perm) return false;
 
   if (perm.custom_permissions?.includes(permission)) return true;

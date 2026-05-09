@@ -121,10 +121,11 @@ export function useMyPermissions(): Set<string> {
   });
 
   const memberRole = memberRow?.role;
-  const isFullAccess = memberRole === "admin" || isAdmin;
-  const { data: perm } = useMemberPermission(isFullAccess ? undefined : memberId);
+  const isRoleFullAccess = memberRole === "admin" || isAdmin;
+  const { data: perm } = useMemberPermission(memberId);
 
-  if (isFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  if (isRoleFullAccess) return new Set(PERMISSION_SLUGS.map(s => s.value));
+  if (perm?.is_full_admin) return new Set(PERMISSION_SLUGS.map(s => s.value));
 
   const perms = new Set<string>();
   if (perm?.custom_permissions) perm.custom_permissions.forEach(p => perms.add(p));

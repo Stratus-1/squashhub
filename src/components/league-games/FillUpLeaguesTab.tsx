@@ -819,7 +819,13 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       if (subRules) {
         const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
         if (targetLeagueNumber != null) {
-          const previousPlayed = previousPlayedRows.find(r => r.club_member_id === memberId);
+          const previousPlayed = previousPlayedRows
+            .filter(r => r.club_member_id === memberId)
+            .sort((a, b) => {
+              const aLeague = sortedLeagues.find(l => l.id === a.league_id);
+              const bLeague = sortedLeagues.find(l => l.id === b.league_id);
+              return leagueOrder(aLeague?.name ?? "", aLeague?.code ?? null) - leagueOrder(bLeague?.name ?? "", bLeague?.code ?? null);
+            })[0];
           const homeLeagueId = previousPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
           const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
           const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;

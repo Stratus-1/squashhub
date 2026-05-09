@@ -227,6 +227,7 @@ function PayableFeeDialog({ clubId, existing, open, onOpenChange }: { clubId: st
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="per_member">Per member</SelectItem>
+                <SelectItem value="per_team">Per team</SelectItem>
                 <SelectItem value="per_club">Per club (fixed)</SelectItem>
               </SelectContent>
             </Select>

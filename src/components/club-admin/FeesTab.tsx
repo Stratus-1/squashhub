@@ -68,8 +68,9 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     associations.forEach(a => {
       // Skip associations where members pay the league directly — these don't belong in the club's fee schedule.
       if ((a as any).members_pay_directly) return;
+      const baseName = a.name || a.abbreviation || "League";
       list.push({
-        id: a.id, name: a.name + (a.abbreviation ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
+        id: a.id, name: baseName + (a.abbreviation && a.name ? ` (${a.abbreviation})` : ""), type: "league", typeLabel: "League",
         amount: a.fee_annual ?? 0, feeClass: a.fee_class, proRate: (a as any).pro_rate ?? false,
         active: (a as any).active ?? true, dueMonth: a.fee_due_month ?? 1, dueDay: (a as any).due_day ?? 1,
         source: "league_associations", raw: a,
@@ -82,8 +83,9 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       if (ft === "other") { type = "other"; typeLabel = "Other"; }
       else if (ft === "registration") { type = "registration"; typeLabel = "Registration"; }
       else if (ft === "league_affiliation") { type = "league_affiliation"; typeLabel = "League Affiliation"; }
+      const baseName = f.body_name || f.abbreviation || "National";
       list.push({
-        id: f.id, name: f.body_name + (f.abbreviation ? ` (${f.abbreviation})` : ""), 
+        id: f.id, name: baseName + (f.abbreviation && f.body_name ? ` (${f.abbreviation})` : ""),
         type, typeLabel,
         amount: f.fee_annual ?? 0, feeClass: f.fee_class, proRate: (f as any).pro_rate ?? false,
         active: (f as any).active ?? true, dueMonth: f.fee_due_month ?? 1, dueDay: (f as any).due_day ?? 1,

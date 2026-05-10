@@ -793,6 +793,50 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
           }))
       : [];
 
+    // Bye-league pull: when an earlier league in the same gender group has NO
+    // fixture this week (a bye), surface its base players in this league's
+    // Available pool so captains can sub them in. They appear with a "↓ bye"
+    // badge and vanish from other pools once placed (positionedAnywhere filter).
+    const byePool: Array<{ memberId: string; rank: number | null; isPulled: boolean; isCascaded: boolean; cascadedFromCode: string | null }> = [];
+    const seenMembers = new Set<string>([
+      ...basePool.map(p => p.memberId),
+      ...cascaded.map(p => p.memberId),
+      ...pulledLadies.map(p => p.memberId),
+    ]);
+    const thisIdx = listForOrdering.findIndex(l => l.id === lg.id);
+    for (let i = 0; i < thisIdx; i++) {
+      const earlier = listForOrdering[i];
+      const earlierHasFixture = earlier.code ? nextFixtureByCode.has(earlier.code) : false;
+      if (earlierHasFixture) continue;
+      const earlierBase = new Set<string>();
+      for (const r of registrations) {
+        if ((effectiveHomeLeagueByMember.get(r.club_member_id) ?? r.league_id) === earlier.id) {
+          earlierBase.add(r.club_member_id);
+        }
+      }
+      for (const row of previousWeekLineups) {
+        if ((effectiveHomeLeagueByMember.get(row.club_member_id) ?? row.league_id) === earlier.id) {
+          earlierBase.add(row.club_member_id);
+        }
+      }
+      for (const row of previousPlayedRows) {
+        if ((effectiveHomeLeagueByMember.get(row.club_member_id) ?? row.league_id) === earlier.id) {
+          earlierBase.add(row.club_member_id);
+        }
+      }
+      for (const memberId of earlierBase) {
+        if (seenMembers.has(memberId)) continue;
+        seenMembers.add(memberId);
+        byePool.push({
+          memberId,
+          rank: null,
+          isPulled: false,
+          isCascaded: true,
+          cascadedFromCode: `bye ${earlier.code || earlier.name}`,
+        });
+      }
+    }
+
     // Hide any player already positioned in ANY league this week — a player
     // can only be in one team's lineup at a time, so duplicates from historical
     // participation in multiple leagues vanish from other Available pools once
@@ -802,7 +846,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       for (const mid of lp.values()) positionedAnywhere.add(mid);
     }
 
-    return [...basePool, ...cascaded, ...pulledLadies]
+    return [...basePool, ...cascaded, ...pulledLadies, ...byePool]
       .filter(p => !unavailableSet.has(p.memberId))
       .filter(p => !positionedAnywhere.has(p.memberId))
       .sort((a, b) => {

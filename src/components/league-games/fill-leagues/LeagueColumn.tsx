@@ -90,46 +90,52 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
         )}
       </div>
 
-      {/* Positions 1-4 */}
-      <div className="space-y-1">
-        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Lineup</div>
-        {positions.map((slot) => {
-          const mem = slot.memberId ? memberMap.get(slot.memberId) : null;
-          const placementAlert = mem ? placementAlerts?.get(mem.id) : null;
-          return (
-            <div key={slot.position} className="flex items-center gap-1.5">
-              <Badge variant="secondary" className="w-6 h-5 justify-center text-[10px] shrink-0">#{slot.position}</Badge>
-              <DroppableZone
-                id={posDropId(league.id, slot.position)}
-                variant="slot"
-                isEmpty={!mem}
-                emptyHint={canEdit ? "Drop player here" : "—"}
-                className="flex-1"
-              >
-                {mem && (
-                  <div className="space-y-1">
-                    <DraggablePlayer
-                      memberId={mem.id}
-                      origin={league.id}
-                      name={mem.name || "Unknown"}
-                      leagueNumber={leagueNumberByMember?.get(mem.id) || null}
-                      disabled={!canEdit}
-                      available={availableSet?.has(mem.id)}
-                      onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(mem.id) : undefined}
-                      badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}
-                    />
-                    {placementAlert && (
-                      <div className="rounded border border-destructive/60 bg-destructive/10 px-2 py-1 text-[10px] font-semibold leading-snug text-destructive">
-                        {placementAlert}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </DroppableZone>
-            </div>
-          );
-        })}
-      </div>
+      {/* Positions 1-4 — hidden when this league has a bye (no fixture) */}
+      {fixture ? (
+        <div className="space-y-1">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Lineup</div>
+          {positions.map((slot) => {
+            const mem = slot.memberId ? memberMap.get(slot.memberId) : null;
+            const placementAlert = mem ? placementAlerts?.get(mem.id) : null;
+            return (
+              <div key={slot.position} className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="w-6 h-5 justify-center text-[10px] shrink-0">#{slot.position}</Badge>
+                <DroppableZone
+                  id={posDropId(league.id, slot.position)}
+                  variant="slot"
+                  isEmpty={!mem}
+                  emptyHint={canEdit ? "Drop player here" : "—"}
+                  className="flex-1"
+                >
+                  {mem && (
+                    <div className="space-y-1">
+                      <DraggablePlayer
+                        memberId={mem.id}
+                        origin={league.id}
+                        name={mem.name || "Unknown"}
+                        leagueNumber={leagueNumberByMember?.get(mem.id) || null}
+                        disabled={!canEdit}
+                        available={availableSet?.has(mem.id)}
+                        onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(mem.id) : undefined}
+                        badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}
+                      />
+                      {placementAlert && (
+                        <div className="rounded border border-destructive/60 bg-destructive/10 px-2 py-1 text-[10px] font-semibold leading-snug text-destructive">
+                          {placementAlert}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </DroppableZone>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded border border-dashed border-muted-foreground/30 px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground italic text-center">
+          Bye week — players below are available to sub for other leagues
+        </div>
+      )}
 
       {/* Bench / available pool */}
       <div className="space-y-1">

@@ -2,9 +2,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useMyClub } from "@/hooks/use-club";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { SuperAdminMenu } from "@/components/SuperAdminMenu";
+import { Button } from "@/components/ui/button";
+import { Home } from "lucide-react";
 
 /**
  * Wraps authenticated app routes with a left sidebar on desktop (>= md).
@@ -26,15 +28,17 @@ export function DesktopShell({
   const { data: clubData } = useMyClub();
   const clubLogoUrl = (clubData?.club as any)?.logo_url as string | undefined;
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   // Routes where the layered background should NOT apply (keep original look)
   const skipBg = pathname.startsWith("/bookings");
+  const isHome = pathname === "/" || pathname === "/dashboard";
 
   if (!enabled || isMobile) {
     return <>{children}</>;
   }
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0 relative isolate">
@@ -65,8 +69,21 @@ export function DesktopShell({
               />
             </>
           )}
-          <header className="relative z-10 h-10 flex items-center border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">
-            <SidebarTrigger className="ml-2" />
+          <header className="relative z-10 h-10 flex items-center gap-1 border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">
+            <SidebarTrigger className="ml-2" aria-label="Toggle menu" />
+            {!isHome && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 gap-1.5 text-xs"
+                onClick={() => navigate("/")}
+                aria-label="Home"
+              >
+                <Home className="w-4 h-4" />
+                <span className="hidden sm:inline">Home</span>
+              </Button>
+            )}
             <div className="ml-auto mr-2 flex items-center gap-1">
               <SuperAdminMenu />
             </div>

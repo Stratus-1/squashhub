@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
     .eq("id", member.club_id)
     .maybeSingle();
 
-  // ---------- 3. Create auth user ----------
+  // ---------- 3. Create auth user (or reuse existing if email already in use) ----------
   const fullName = member.name || email.split("@")[0];
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
@@ -183,15 +183,41 @@ Deno.serve(async (req) => {
     },
   });
 
+  let userId: string;
+  let reusedExistingAccount = false;
+
   if (createErr || !created?.user) {
     const msg = createErr?.message || "Failed to create user";
-    if (msg.toLowerCase().includes("already")) {
-      return json({ error: "An account with this email already exists. Please sign in." }, 409);
-    }
-    return json({ error: msg }, 400);
-  }
+    const isDuplicate =
+      msg.toLowerCase().includes("already") ||
+      (createErr as any)?.code === "email_exists";
 
-  const userId = created.user.id;
+    if (!isDuplicate) {
+      return json({ error: msg }, 400);
+    }
+
+    // Email already exists — verify the supplied password belongs to that
+    // account, then link this NSA shell to the existing user instead of
+    // creating a duplicate. Uses the anon client so we go through the
+    // normal password check.
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const anonClient = createClient(supaUrl, anonKey, { auth: { persistSession: false } });
+    const { data: signIn, error: signInErr } = await anonClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInErr || !signIn?.user) {
+      return json({
+        error:
+          "An account with this email already exists, but the password is wrong. Please use your existing password, or reset it and try again.",
+        already_claimed: true,
+      }, 409);
+    }
+    userId = signIn.user.id;
+    reusedExistingAccount = true;
+  } else {
+    userId = created.user.id;
+  }
 
   // ---------- 3. Upsert profile ----------
   await admin.from("profiles").upsert({
@@ -215,8 +241,10 @@ Deno.serve(async (req) => {
     .eq("id", member.id);
 
   if (linkErr) {
-    // Rollback auth user if member link fails
-    await admin.auth.admin.deleteUser(userId);
+    // Only roll back the auth user if WE created it in this request.
+    if (!reusedExistingAccount) {
+      await admin.auth.admin.deleteUser(userId);
+    }
     return json({ error: "Failed to link membership: " + linkErr.message }, 500);
   }
 

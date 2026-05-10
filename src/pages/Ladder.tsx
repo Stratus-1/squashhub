@@ -123,22 +123,45 @@ export default function Ladder() {
       const leagueRows = (leagues || []) as Array<{ id: string; name: string; code: string | null }>;
       if (leagueRows.length === 0) return { leagues: [] as LeagueChip[], memberLeagueMap: new Map<string, LeagueChip[]>() };
 
-      // Sort leagues by numeric suffix in name (e.g. "League 1", "League 2")
-      const sorted = [...leagueRows].sort((a, b) => {
-        const na = parseInt(a.name.match(/\d+/)?.[0] || "999", 10);
-        const nb = parseInt(b.name.match(/\d+/)?.[0] || "999", 10);
-        if (na !== nb) return na - nb;
-        return a.name.localeCompare(b.name);
-      });
+      // Derive a "division" label per league row.
+      // For NSC-style clubs the `leagues` table actually stores TEAMS (one row per team)
+      // with a code like "NIL002". The real division is implicit in the code's number range,
+      // bounded by the reserves rows (e.g. "1st L Reserves" NIL007 → all teams with code < 007 are L1).
+      const codeNum = (c: string | null) => {
+        if (!c) return Number.NaN;
+        const m = c.match(/(\d+)/);
+        return m ? parseInt(m[1], 10) : Number.NaN;
+      };
+      const isReserve = (n: string) => /reserve/i.test(n);
+
+      // Find reserve rows sorted by code number — they mark division boundaries
+      const reserves = leagueRows
+        .filter((l) => isReserve(l.name) && Number.isFinite(codeNum(l.code)))
+        .sort((a, b) => codeNum(a.code) - codeNum(b.code));
+
+      // Map team code → division index (1-based). Returns "L{n}" or "L{n}R" for reserves.
+      const divisionLabelFor = (l: { code: string | null; name: string }) => {
+        const n = codeNum(l.code);
+        if (!Number.isFinite(n) || reserves.length === 0) {
+          // Fallback: parse a number from the name
+          const fromName = parseInt(l.name.match(/\d+/)?.[0] || "", 10);
+          return Number.isFinite(fromName) ? `L${fromName}` : null;
+        }
+        for (let i = 0; i < reserves.length; i++) {
+          const rNum = codeNum(reserves[i].code);
+          if (n < rNum) return `L${i + 1}`;
+          if (n === rNum) return `L${i + 1}R`;
+        }
+        return `L${reserves.length + 1}`;
+      };
 
       const chipById = new Map<string, LeagueChip>();
-      sorted.forEach((l, idx) => {
-        const num = parseInt(l.name.match(/\d+/)?.[0] || "", 10);
-        const shortLabel = Number.isFinite(num) ? `L${num}` : `L${idx + 1}`;
+      leagueRows.forEach((l) => {
+        const shortLabel = divisionLabelFor(l) || l.name;
         chipById.set(l.id, { id: l.id, name: l.name, code: l.code, shortLabel });
       });
 
-      const leagueIds = sorted.map((l) => l.id);
+      const leagueIds = leagueRows.map((l) => l.id);
       const { data: regs } = await fromExt("member_league_registrations")
         .select("club_member_id, league_id")
         .in("league_id", leagueIds);
@@ -148,7 +171,8 @@ export default function Ladder() {
         const chip = chipById.get(r.league_id);
         if (!chip) return;
         const existing = memberLeagueMap.get(r.club_member_id) || [];
-        if (!existing.find((c) => c.id === chip.id)) existing.push(chip);
+        // De-dupe by shortLabel so a player in multiple teams of the same division shows only one chip
+        if (!existing.find((c) => c.shortLabel === chip.shortLabel)) existing.push(chip);
         memberLeagueMap.set(r.club_member_id, existing);
       });
       memberLeagueMap.forEach((chips) => {

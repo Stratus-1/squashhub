@@ -5,7 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, Users2 } from "lucide-react";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -442,17 +442,30 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         )}
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant={inLineup || mine ? "default" : "outline"}
-                      className="shrink-0"
-                      disabled={f._isLive && !f._hasSnapshot}
-                      title={f._isLive && !f._hasSnapshot ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring." : undefined}
-                      onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
-                    >
-                      <Pencil className="w-3 h-3 mr-1" />
-                      {f.isTournament ? "Tournament" : "Set up & Score"}
-                    </Button>
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      {mine && !f.isTournament && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => navigate(`/league-games?tab=leagues`)}
+                          title="Set this week's lineup for your league"
+                        >
+                          <Users2 className="w-3 h-3" />
+                          Fill Up Team
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={inLineup || mine ? "default" : "outline"}
+                        disabled={f._isLive && !f._hasSnapshot}
+                        title={f._isLive && !f._hasSnapshot ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring." : undefined}
+                        onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        {f.isTournament ? "Tournament" : "Mark Game"}
+                      </Button>
+                    </div>
                   </div>
                   {showAvailability && fxWeek && (
                     <div className="mt-2 pt-2 border-t border-border/50 flex items-center gap-2 flex-wrap">

@@ -5,7 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, Users2 } from "lucide-react";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";

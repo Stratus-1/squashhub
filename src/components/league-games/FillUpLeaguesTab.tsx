@@ -846,7 +846,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       for (const mid of lp.values()) positionedAnywhere.add(mid);
     }
 
-    return [...basePool, ...cascaded, ...pulledLadies]
+    return [...basePool, ...cascaded, ...pulledLadies, ...byePool]
       .filter(p => !unavailableSet.has(p.memberId))
       .filter(p => !positionedAnywhere.has(p.memberId))
       .sort((a, b) => {

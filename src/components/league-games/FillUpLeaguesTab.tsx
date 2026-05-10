@@ -804,7 +804,10 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       ...pulledLadies.map(p => p.memberId),
     ]);
     const thisIdx = listForOrdering.findIndex(l => l.id === lg.id);
-    for (let i = 0; i < thisIdx; i++) {
+    // Bye players are only eligible to sub into the league directly above
+    // (one stronger) or directly below (one weaker) within the same gender group.
+    const adjacentIdxs = [thisIdx - 1, thisIdx + 1].filter(i => i >= 0 && i < listForOrdering.length);
+    for (const i of adjacentIdxs) {
       const earlier = listForOrdering[i];
       const earlierHasFixture = earlier.code ? nextFixtureByCode.has(earlier.code) : false;
       if (earlierHasFixture) continue;

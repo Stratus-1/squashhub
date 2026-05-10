@@ -241,8 +241,10 @@ Deno.serve(async (req) => {
     .eq("id", member.id);
 
   if (linkErr) {
-    // Rollback auth user if member link fails
-    await admin.auth.admin.deleteUser(userId);
+    // Only roll back the auth user if WE created it in this request.
+    if (!reusedExistingAccount) {
+      await admin.auth.admin.deleteUser(userId);
+    }
     return json({ error: "Failed to link membership: " + linkErr.message }, 500);
   }
 

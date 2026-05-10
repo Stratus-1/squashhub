@@ -3669,6 +3669,63 @@ export type Database = {
           },
         ]
       }
+      member_league_registrations_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          changed_at: string
+          club_id: string | null
+          club_member_id: string | null
+          id: string
+          league_id: string | null
+          new_is_captain: boolean | null
+          new_is_reserve: boolean | null
+          new_league_association_number: string | null
+          new_player_rank: number | null
+          old_is_captain: boolean | null
+          old_is_reserve: boolean | null
+          old_league_association_number: string | null
+          old_player_rank: number | null
+          registration_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          changed_at?: string
+          club_id?: string | null
+          club_member_id?: string | null
+          id?: string
+          league_id?: string | null
+          new_is_captain?: boolean | null
+          new_is_reserve?: boolean | null
+          new_league_association_number?: string | null
+          new_player_rank?: number | null
+          old_is_captain?: boolean | null
+          old_is_reserve?: boolean | null
+          old_league_association_number?: string | null
+          old_player_rank?: number | null
+          registration_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          changed_at?: string
+          club_id?: string | null
+          club_member_id?: string | null
+          id?: string
+          league_id?: string | null
+          new_is_captain?: boolean | null
+          new_is_reserve?: boolean | null
+          new_league_association_number?: string | null
+          new_player_rank?: number | null
+          old_is_captain?: boolean | null
+          old_is_reserve?: boolean | null
+          old_league_association_number?: string | null
+          old_player_rank?: number | null
+          registration_id?: string | null
+        }
+        Relationships: []
+      }
       member_nsa_credentials: {
         Row: {
           club_member_id: string

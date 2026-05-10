@@ -1392,6 +1392,54 @@ export type Database = {
           },
         ]
       }
+      club_member_ladder_history: {
+        Row: {
+          change_source: string
+          changed_by: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          new_position: number | null
+          old_position: number | null
+        }
+        Insert: {
+          change_source?: string
+          changed_by?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          new_position?: number | null
+          old_position?: number | null
+        }
+        Update: {
+          change_source?: string
+          changed_by?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          new_position?: number | null
+          old_position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_member_ladder_history_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_member_ladder_history_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_member_permissions: {
         Row: {
           club_member_id: string
@@ -4720,7 +4768,6 @@ export type Database = {
         Args: { _dow: number; _from: string }
         Returns: string
       }
-      renumber_club_ladder: { Args: { p_club_id: string }; Returns: undefined }
       respond_league_week_availability: {
         Args: {
           _club_member_id: string

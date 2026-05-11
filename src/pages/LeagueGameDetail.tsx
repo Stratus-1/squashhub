@@ -1611,8 +1611,12 @@ export default function LeagueGameDetail() {
         )}
 
         {setupDone && !isSubmitted && (
-          <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setSetupDone(false)}>
-            <ArrowLeft className="w-3 h-3 mr-1" /> Edit Players
+          <Button
+            size="sm"
+            className="w-full text-xs font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-md hover:shadow-lg hover:opacity-95 transition-all"
+            onClick={() => setSetupDone(false)}
+          >
+            <Users className="w-3.5 h-3.5 mr-1.5" /> Edit Players
           </Button>
         )}
 

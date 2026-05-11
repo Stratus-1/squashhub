@@ -120,12 +120,23 @@ export function checkSubEligibility(
     }
   }
 
-  // 3. Movement cap (overall slots)
+  // 3. Movement cap (overall slots) — measured in the club's ACTUAL league sequence,
+  // not by raw league number. CSIR runs L7, L10, L13 → ordinals [1,2,3], so 7th#4 → 10th#2
+  // is only 2 slots apart, not 11.
   const cap = rules.max_position_movement_per_week;
   if (cap != null && cap >= 0) {
     const homePos = player.homePosition ?? 4; // assume bottom of league if unknown position
-    const fromSlot = slotIndex(player.homeLeagueNumber, homePos);
-    const toSlot = slotIndex(target.leagueNumber, target.position);
+    const order = rules.league_number_order && rules.league_number_order.length > 0
+      ? rules.league_number_order
+      : null;
+    const ordinalOf = (n: number): number => {
+      if (!order) return n;
+      const idx = order.indexOf(n);
+      // Unknown league → fall back to its raw number scaled into the order's range
+      return idx >= 0 ? idx + 1 : n;
+    };
+    const fromSlot = ordinalOf(player.homeLeagueNumber) * 4 + homePos;
+    const toSlot = ordinalOf(target.leagueNumber) * 4 + target.position;
     const delta = Math.abs(toSlot - fromSlot);
     if (delta > cap) {
       return {

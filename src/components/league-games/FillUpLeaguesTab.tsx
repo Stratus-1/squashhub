@@ -881,8 +881,19 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const lastLineup = previousWeekLineups.find(r => r.club_member_id === memberId && r.league_id === homeLeagueId);
     const homePosition = lastPlayed?.position ?? lastLineup?.position ?? null;
     const targetGender = isMensLeague(targetLeague.name) ? "men" : isLadiesLeague(targetLeague.name) ? "ladies" : "mixed";
+    // Build the club's actual league-number sequence FOR THIS GENDER bucket so the slot
+    // cap counts gaps in real terms (e.g. CSIR Men's [7,10,13] → ordinals 1,2,3).
+    const sameGender = (lg: LeagueRow) =>
+      targetGender === "men" ? isMensLeague(lg.name)
+      : targetGender === "ladies" ? isLadiesLeague(lg.name)
+      : !isMensLeague(lg.name) && !isLadiesLeague(lg.name);
+    const leagueNumberOrder = Array.from(new Set(
+      sortedLeagues.filter(sameGender)
+        .map(l => parseLeagueNumber(l.name, l.code))
+        .filter((n): n is number => n != null)
+    )).sort((a, b) => a - b);
     return checkSubEligibility(
-      subRules,
+      { ...subRules, league_number_order: leagueNumberOrder },
       { homeLeagueNumber, homePosition, gender: memberMap.get(memberId)?.gender as any },
       { leagueNumber: targetLeagueNumber, position: targetPosition, gender: targetGender },
     );

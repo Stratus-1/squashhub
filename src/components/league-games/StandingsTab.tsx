@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InternalStandingsTab } from "./InternalStandingsTab";
 
 type ClubLeague = {
   id: string;
@@ -21,6 +22,8 @@ type Props = {
   myLeagueCode?: string | null;
   associationScope?: "internal" | "region";
   externalSource?: string | null;
+  clubId?: string | null;
+  associationId?: string | null;
 };
 
 type StandingRow = {

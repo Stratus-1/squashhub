@@ -62,6 +62,22 @@ type PreviousMatchResultRow = {
   position: number;
   home_player_code: string | null;
   away_player_code: string | null;
+  home_games_won: number | null;
+  away_games_won: number | null;
+  winner: string | null;
+  is_forfeit: boolean | null;
+  game_scores: unknown | null;
+};
+
+const hasRecordedScore = (result: PreviousMatchResultRow): boolean => {
+  const gameScores = Array.isArray(result.game_scores) ? result.game_scores : [];
+  return (
+    result.is_forfeit === true ||
+    !!result.winner ||
+    (result.home_games_won ?? 0) > 0 ||
+    (result.away_games_won ?? 0) > 0 ||
+    gameScores.length > 0
+  );
 };
 
 function leagueOrder(name: string, code: string | null): number {
@@ -299,7 +315,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       if (previousFixtureIds.length === 0) return [];
       const { data, error } = await supabase
         .from("league_match_results" as any)
-        .select("fixture_id, position, home_player_code, away_player_code")
+        .select("fixture_id, position, home_player_code, away_player_code, home_games_won, away_games_won, winner, is_forfeit, game_scores")
         .in("fixture_id", previousFixtureIds);
       if (error) throw error;
       return (data as unknown as PreviousMatchResultRow[]) || [];
@@ -322,6 +338,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const rows: PlayedLeagueRow[] = [];
 
     for (const result of previousMatchResults) {
+      if (!hasRecordedScore(result)) continue;
       const fixture = fixtureById.get(result.fixture_id);
       if (!fixture) continue;
       const sides: Array<{ playerCode: string | null; teamCode: string }> = [

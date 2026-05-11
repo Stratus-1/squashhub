@@ -62,6 +62,22 @@ type PreviousMatchResultRow = {
   position: number;
   home_player_code: string | null;
   away_player_code: string | null;
+  home_games_won: number | null;
+  away_games_won: number | null;
+  winner: string | null;
+  is_forfeit: boolean | null;
+  game_scores: unknown | null;
+};
+
+const hasRecordedScore = (result: PreviousMatchResultRow): boolean => {
+  const gameScores = Array.isArray(result.game_scores) ? result.game_scores : [];
+  return (
+    result.is_forfeit === true ||
+    !!result.winner ||
+    (result.home_games_won ?? 0) > 0 ||
+    (result.away_games_won ?? 0) > 0 ||
+    gameScores.length > 0
+  );
 };
 
 function leagueOrder(name: string, code: string | null): number {

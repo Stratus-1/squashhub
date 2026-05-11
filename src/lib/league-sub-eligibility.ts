@@ -21,6 +21,14 @@ export interface SubRules {
   max_position_movement_per_week?: number | null;
   sub_direction?: SubDirection | null;
   cross_gender_subs_allowed?: boolean | null;
+  /**
+   * Optional: ordered list of league numbers the club ACTUALLY runs in the relevant
+   * gender bucket (e.g. CSIR runs Men's 7th, 10th, 13th → [7,10,13]).
+   * When provided, slot index uses the ordinal POSITION of the league in this list
+   * instead of the raw league number. So 7th #4 → 10th #2 = |6-4| = 2 slots ✓.
+   * Falls back to raw league numbers when omitted.
+   */
+  league_number_order?: number[] | null;
 }
 
 export interface PlayerCtx {

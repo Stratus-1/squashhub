@@ -1266,26 +1266,32 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? homeTotalPts : ""}</span>
                             <span className="flex items-center justify-center gap-0.5">
                               {!isSubmitted && !pos.completed && (
-                                <>
-                                  <button
-                                    onClick={() => setSwapTarget({ idx, side: "home" })}
-                                    className="text-muted-foreground hover:text-primary"
-                                    title="Swap player"
-                                  >
-                                    <ArrowLeftRight className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm(`Mark home player at position ${idx + 1} as a forfeit?\n\nAway team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and home team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                        markForfeit(idx, "home");
-                                      }
-                                    }}
-                                    className="text-destructive hover:bg-destructive/10 rounded p-0.5"
-                                    title="Forfeit home player (no-show)"
-                                  >
-                                    <UserX className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
+                                      title="Actions"
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "home" })}>
+                                      <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        if (window.confirm(`Mark home player at position ${idx + 1} as a forfeit?\n\nAway team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and home team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                          markForfeit(idx, "home");
+                                        }
+                                      }}
+                                    >
+                                      <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>

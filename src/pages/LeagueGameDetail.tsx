@@ -1190,8 +1190,8 @@ export default function LeagueGameDetail() {
                           pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
                         )}
                         style={setupDone
-                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 32px` }
-                          : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
+                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 88px` }
+                          : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
                         <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1">H</span>
@@ -1334,8 +1334,8 @@ export default function LeagueGameDetail() {
                           pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
                         )}
                         style={setupDone
-                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 32px` }
-                          : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
+                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 88px` }
+                          : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span></span>
                         <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1">V</span>

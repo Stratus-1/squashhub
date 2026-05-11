@@ -1419,73 +1419,76 @@ export default function LeagueGameDetail() {
                               {!isSubmitted && !pos.completed && (
                                 <>
                                   {hasPlayers && (
-                                    <>
-                                      <Tooltip open={isFirstPlayable ? true : undefined}>
-                                        <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => startMarking(idx)}
-                                            className={cn(
-                                              "bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80",
-                                              isFirstPlayable && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
-                                            )}
-                                            title="Mark game live"
-                                          >
-                                            <Play className="w-3.5 h-3.5" />
-                                          </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left" className="max-w-[220px]">
-                                          {isFirstPlayable
-                                            ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
-                                            : "Mark game live"}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <button
-                                        onClick={() => {
-                                          // Determine games needed to win the match
-                                          const gamesToWin = bestOf === 5 ? 3 : 2;
-                                          let hw = 0, aw = 0;
-                                          for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
-                                          const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
-                                          // Last entered game still in progress (no clear winner yet)
-                                          const last = pos.scores[pos.scores.length - 1];
-                                          const lastInProgress = last && last.home === last.away; // 0-0 or tied
-                                          // Auto-prepare a fresh empty row for the next game so the user
-                                          // doesn't accidentally overwrite a completed game's score.
-                                          if (pos.scores.length === 0) {
-                                            addGame(idx);
-                                          } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
-                                            addGame(idx);
-                                          }
-                                          setManualEntry(idx);
-                                        }}
-                                        className="text-muted-foreground hover:text-foreground"
-                                        title="Enter scores manually"
-                                      >
-                                        <Edit3 className="w-3 h-3" />
-                                      </button>
-                                    </>
+                                    <Tooltip open={isFirstPlayable ? true : undefined}>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          onClick={() => startMarking(idx)}
+                                          className={cn(
+                                            "bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80",
+                                            isFirstPlayable && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
+                                          )}
+                                          title="Mark game live"
+                                        >
+                                          <Play className="w-3.5 h-3.5" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="max-w-[220px]">
+                                        {isFirstPlayable
+                                          ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
+                                          : "Mark game live"}
+                                      </TooltipContent>
+                                    </Tooltip>
                                   )}
-                                  <button
-                                    onClick={() => setSwapTarget({ idx, side: "away" })}
-                                    className="text-muted-foreground hover:text-primary"
-                                    title="Swap / pick away player"
-                                  >
-                                    <ArrowLeftRight className="w-3 h-3" />
-                                  </button>
-                                  {/* Forfeit always available — even when both player slots are empty,
-                                      captain can mark this position as a no-show for either side. */}
-                                  <button
-                                    onClick={() => {
-                                      const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
-                                      if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                        markForfeit(idx, "away");
-                                      }
-                                    }}
-                                    className="text-destructive hover:bg-destructive/10 rounded p-0.5"
-                                    title="Forfeit away player (no-show)"
-                                  >
-                                    <UserX className="w-3.5 h-3.5" />
-                                  </button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
+                                        title="More actions"
+                                      >
+                                        <MoreVertical className="w-4 h-4" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      {hasPlayers && (
+                                        <>
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              const gamesToWin = bestOf === 5 ? 3 : 2;
+                                              let hw = 0, aw = 0;
+                                              for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+                                              const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+                                              const last = pos.scores[pos.scores.length - 1];
+                                              const lastInProgress = last && last.home === last.away;
+                                              if (pos.scores.length === 0) {
+                                                addGame(idx);
+                                              } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
+                                                addGame(idx);
+                                              }
+                                              setManualEntry(idx);
+                                            }}
+                                          >
+                                            <Edit3 className="w-3.5 h-3.5 mr-2" /> Enter scores manually
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                        </>
+                                      )}
+                                      <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "away" })}>
+                                        <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => {
+                                          const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
+                                          if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                            markForfeit(idx, "away");
+                                          }
+                                        }}
+                                      >
+                                        <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (

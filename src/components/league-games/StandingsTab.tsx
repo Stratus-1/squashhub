@@ -151,13 +151,21 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
   });
 
   if (associationScope === "internal") {
+    if (!clubId || !associationId) {
+      return (
+        <Card className="p-8 text-center">
+          <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground text-sm">Select an association to view standings.</p>
+        </Card>
+      );
+    }
     return (
-      <Card className="p-8 text-center">
-        <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <p className="text-muted-foreground text-sm">
-          Internal league standings will appear here once weekly results are captured.
-        </p>
-      </Card>
+      <InternalStandingsTab
+        clubId={clubId}
+        associationId={associationId}
+        clubLeagues={clubLeagues}
+        myLeagueCode={myLeagueCode}
+      />
     );
   }
 

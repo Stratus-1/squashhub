@@ -315,7 +315,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       if (previousFixtureIds.length === 0) return [];
       const { data, error } = await supabase
         .from("league_match_results" as any)
-        .select("fixture_id, position, home_player_code, away_player_code")
+        .select("fixture_id, position, home_player_code, away_player_code, home_games_won, away_games_won, winner, is_forfeit, game_scores")
         .in("fixture_id", previousFixtureIds);
       if (error) throw error;
       return (data as unknown as PreviousMatchResultRow[]) || [];
@@ -338,6 +338,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const rows: PlayedLeagueRow[] = [];
 
     for (const result of previousMatchResults) {
+      if (!hasRecordedScore(result)) continue;
       const fixture = fixtureById.get(result.fixture_id);
       if (!fixture) continue;
       const sides: Array<{ playerCode: string | null; teamCode: string }> = [

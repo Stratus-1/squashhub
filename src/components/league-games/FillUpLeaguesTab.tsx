@@ -874,12 +874,13 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     if (!subRules) return null;
     const targetLeagueNumber = parseLeagueNumber(targetLeague.name, targetLeague.code);
     if (targetLeagueNumber == null) return null;
+    // Movement cap only applies to players with actual PLAY HISTORY (a recorded result).
+    // Without history we have no honest "home" — let admin place them anywhere.
     const lastPlayed = latestPlayedByMember.get(memberId);
-    const homeLeagueId = lastPlayed?.league_id ?? effectiveHomeLeagueByMember.get(memberId) ?? homeLeagueByMember.get(memberId);
+    const homeLeagueId = lastPlayed?.league_id ?? null;
     const homeLeague = homeLeagueId ? sortedLeagues.find(l => l.id === homeLeagueId) : null;
     const homeLeagueNumber = homeLeague ? parseLeagueNumber(homeLeague.name, homeLeague.code) : null;
-    const lastLineup = previousWeekLineups.find(r => r.club_member_id === memberId && r.league_id === homeLeagueId);
-    const homePosition = lastPlayed?.position ?? lastLineup?.position ?? null;
+    const homePosition = lastPlayed?.position ?? null;
     const targetGender = isMensLeague(targetLeague.name) ? "men" : isLadiesLeague(targetLeague.name) ? "ladies" : "mixed";
     // Build the club's actual league-number sequence FOR THIS GENDER bucket so the slot
     // cap counts gaps in real terms (e.g. CSIR Men's [7,10,13] → ordinals 1,2,3).

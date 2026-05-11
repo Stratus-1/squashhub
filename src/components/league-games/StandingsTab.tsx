@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InternalStandingsTab } from "./InternalStandingsTab";
 
 type ClubLeague = {
   id: string;
@@ -21,6 +22,8 @@ type Props = {
   myLeagueCode?: string | null;
   associationScope?: "internal" | "region";
   externalSource?: string | null;
+  clubId?: string | null;
+  associationId?: string | null;
 };
 
 type StandingRow = {
@@ -56,7 +59,7 @@ function parseLeagueName(name: string): { category: string; number: number; year
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "region", externalSource }: Props) {
+export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "region", externalSource, clubId, associationId }: Props) {
   // Build the dropdown of club leagues + parsed metadata
   const leagueOptions = useMemo(() => {
     return clubLeagues
@@ -148,13 +151,21 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
   });
 
   if (associationScope === "internal") {
+    if (!clubId || !associationId) {
+      return (
+        <Card className="p-8 text-center">
+          <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground text-sm">Select an association to view standings.</p>
+        </Card>
+      );
+    }
     return (
-      <Card className="p-8 text-center">
-        <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-        <p className="text-muted-foreground text-sm">
-          Internal league standings will appear here once weekly results are captured.
-        </p>
-      </Card>
+      <InternalStandingsTab
+        clubId={clubId}
+        associationId={associationId}
+        clubLeagues={clubLeagues}
+        myLeagueCode={myLeagueCode}
+      />
     );
   }
 

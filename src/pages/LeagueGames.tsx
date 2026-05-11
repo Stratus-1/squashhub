@@ -265,6 +265,8 @@ export default function LeagueGames() {
                 myLeagueCode={(myPrimaryLeagueReg as any)?.leagues?.code ?? null}
                 associationScope={selectedAssoc?.scope ?? "region"}
                 externalSource={selectedAssoc?.external_source ?? null}
+                clubId={clubId}
+                associationId={selectedAssocId}
               />
             </TabsContent>
           </Tabs>

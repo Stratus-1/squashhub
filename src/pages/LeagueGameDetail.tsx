@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2, X, MoreVertical, Users } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1151,7 +1152,7 @@ export default function LeagueGameDetail() {
                 <th className="p-0" colSpan={bestOf + 6}>
                   <div className="grid items-center"
                     style={setupDone
-                      ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 32px` }
+                      ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 48px` }
                       : { gridTemplateColumns: '28px 24px 72px 1fr 32px' }
                     }>
                     <span className="p-1 text-left">#</span>
@@ -1190,7 +1191,7 @@ export default function LeagueGameDetail() {
                           pos.isForfeit && pos.forfeitSide === "home" && "bg-destructive/20 text-destructive line-through"
                         )}
                         style={setupDone
-                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 88px` }
+                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 48px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
@@ -1265,26 +1266,32 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? homeTotalPts : ""}</span>
                             <span className="flex items-center justify-center gap-0.5">
                               {!isSubmitted && !pos.completed && (
-                                <>
-                                  <button
-                                    onClick={() => setSwapTarget({ idx, side: "home" })}
-                                    className="text-muted-foreground hover:text-primary"
-                                    title="Swap player"
-                                  >
-                                    <ArrowLeftRight className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm(`Mark home player at position ${idx + 1} as a forfeit?\n\nAway team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and home team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                        markForfeit(idx, "home");
-                                      }
-                                    }}
-                                    className="text-destructive hover:bg-destructive/10 rounded p-0.5"
-                                    title="Forfeit home player (no-show)"
-                                  >
-                                    <UserX className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
+                                      title="Actions"
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "home" })}>
+                                      <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        if (window.confirm(`Mark home player at position ${idx + 1} as a forfeit?\n\nAway team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and home team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                          markForfeit(idx, "home");
+                                        }
+                                      }}
+                                    >
+                                      <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>
@@ -1334,7 +1341,7 @@ export default function LeagueGameDetail() {
                           pos.isForfeit && pos.forfeitSide === "away" && "bg-destructive/20 text-destructive line-through"
                         )}
                         style={setupDone
-                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 88px` }
+                          ? { gridTemplateColumns: `24px 20px 48px minmax(0,1fr) ${Array(bestOf).fill('22px').join(' ')} 22px 28px 48px` }
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span></span>
@@ -1412,73 +1419,76 @@ export default function LeagueGameDetail() {
                               {!isSubmitted && !pos.completed && (
                                 <>
                                   {hasPlayers && (
-                                    <>
-                                      <Tooltip open={isFirstPlayable ? true : undefined}>
-                                        <TooltipTrigger asChild>
-                                          <button
-                                            onClick={() => startMarking(idx)}
-                                            className={cn(
-                                              "bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80",
-                                              isFirstPlayable && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
-                                            )}
-                                            title="Mark game live"
-                                          >
-                                            <Play className="w-3.5 h-3.5" />
-                                          </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left" className="max-w-[220px]">
-                                          {isFirstPlayable
-                                            ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
-                                            : "Mark game live"}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <button
-                                        onClick={() => {
-                                          // Determine games needed to win the match
-                                          const gamesToWin = bestOf === 5 ? 3 : 2;
-                                          let hw = 0, aw = 0;
-                                          for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
-                                          const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
-                                          // Last entered game still in progress (no clear winner yet)
-                                          const last = pos.scores[pos.scores.length - 1];
-                                          const lastInProgress = last && last.home === last.away; // 0-0 or tied
-                                          // Auto-prepare a fresh empty row for the next game so the user
-                                          // doesn't accidentally overwrite a completed game's score.
-                                          if (pos.scores.length === 0) {
-                                            addGame(idx);
-                                          } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
-                                            addGame(idx);
-                                          }
-                                          setManualEntry(idx);
-                                        }}
-                                        className="text-muted-foreground hover:text-foreground"
-                                        title="Enter scores manually"
-                                      >
-                                        <Edit3 className="w-3 h-3" />
-                                      </button>
-                                    </>
+                                    <Tooltip open={isFirstPlayable ? true : undefined}>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          onClick={() => startMarking(idx)}
+                                          className={cn(
+                                            "bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80",
+                                            isFirstPlayable && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
+                                          )}
+                                          title="Mark game live"
+                                        >
+                                          <Play className="w-3.5 h-3.5" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="max-w-[220px]">
+                                        {isFirstPlayable
+                                          ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
+                                          : "Mark game live"}
+                                      </TooltipContent>
+                                    </Tooltip>
                                   )}
-                                  <button
-                                    onClick={() => setSwapTarget({ idx, side: "away" })}
-                                    className="text-muted-foreground hover:text-primary"
-                                    title="Swap / pick away player"
-                                  >
-                                    <ArrowLeftRight className="w-3 h-3" />
-                                  </button>
-                                  {/* Forfeit always available — even when both player slots are empty,
-                                      captain can mark this position as a no-show for either side. */}
-                                  <button
-                                    onClick={() => {
-                                      const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
-                                      if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                        markForfeit(idx, "away");
-                                      }
-                                    }}
-                                    className="text-destructive hover:bg-destructive/10 rounded p-0.5"
-                                    title="Forfeit away player (no-show)"
-                                  >
-                                    <UserX className="w-3.5 h-3.5" />
-                                  </button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
+                                        title="More actions"
+                                      >
+                                        <MoreVertical className="w-4 h-4" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      {hasPlayers && (
+                                        <>
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              const gamesToWin = bestOf === 5 ? 3 : 2;
+                                              let hw = 0, aw = 0;
+                                              for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+                                              const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+                                              const last = pos.scores[pos.scores.length - 1];
+                                              const lastInProgress = last && last.home === last.away;
+                                              if (pos.scores.length === 0) {
+                                                addGame(idx);
+                                              } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
+                                                addGame(idx);
+                                              }
+                                              setManualEntry(idx);
+                                            }}
+                                          >
+                                            <Edit3 className="w-3.5 h-3.5 mr-2" /> Enter scores manually
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                        </>
+                                      )}
+                                      <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "away" })}>
+                                        <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => {
+                                          const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
+                                          if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                            markForfeit(idx, "away");
+                                          }
+                                        }}
+                                      >
+                                        <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (
@@ -1601,8 +1611,12 @@ export default function LeagueGameDetail() {
         )}
 
         {setupDone && !isSubmitted && (
-          <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setSetupDone(false)}>
-            <ArrowLeft className="w-3 h-3 mr-1" /> Edit Players
+          <Button
+            size="sm"
+            className="w-full text-xs font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-md hover:shadow-lg hover:opacity-95 transition-all"
+            onClick={() => setSetupDone(false)}
+          >
+            <Users className="w-3.5 h-3.5 mr-1.5" /> Edit Players
           </Button>
         )}
 

@@ -338,7 +338,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const rows: PlayedLeagueRow[] = [];
 
     for (const result of previousMatchResults) {
-      if (!hasRecordedScore(result)) continue;
+      // Any row in league_match_results means the captain assigned the player
+      // to that scorecard slot — that counts as "play history" for placement,
+      // even if the score hasn't been entered yet.
       const fixture = fixtureById.get(result.fixture_id);
       if (!fixture) continue;
       const sides: Array<{ playerCode: string | null; teamCode: string }> = [

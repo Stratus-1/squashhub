@@ -59,7 +59,7 @@ function parseLeagueName(name: string): { category: string; number: number; year
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "region", externalSource }: Props) {
+export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "region", externalSource, clubId, associationId }: Props) {
   // Build the dropdown of club leagues + parsed metadata
   const leagueOptions = useMemo(() => {
     return clubLeagues

@@ -150,8 +150,8 @@ export function LeagueWeekAvailabilityCard() {
             <Button
               size="sm"
               variant={status === "available" ? "default" : "outline"}
-              className="h-8 text-xs flex-1"
-              disabled={respond.isPending}
+              className="h-8 text-xs flex-1 disabled:opacity-50"
+              disabled={respond.isPending || status === "available"}
               onClick={() => respond.mutate("available")}
             >
               <ThumbsUp className="w-3.5 h-3.5 mr-1.5" />
@@ -160,8 +160,8 @@ export function LeagueWeekAvailabilityCard() {
             <Button
               size="sm"
               variant={status === "unavailable" ? "default" : "outline"}
-              className="h-8 text-xs flex-1"
-              disabled={respond.isPending}
+              className="h-8 text-xs flex-1 disabled:opacity-50"
+              disabled={respond.isPending || status === "unavailable"}
               onClick={() => respond.mutate("unavailable")}
             >
               <ThumbsDown className="w-3.5 h-3.5 mr-1.5" />

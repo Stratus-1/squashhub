@@ -962,12 +962,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       }
 
       const result = evaluatePlacement(memberId, targetLeague, drop.position);
-      if (result && !result.ok) {
-        toast.error(result.reason || "Substitution rule violation", { duration: 10000 });
-        return;
-      }
-      if (result?.warn && result.reason) {
-        toast.warning(result.reason, { duration: 10000 });
+      if (result?.reason && (!result.ok || result.warn)) {
+        toast.error(result.reason, { duration: 10000 });
       }
 
       // If from NA, lift the unavailability so they can play

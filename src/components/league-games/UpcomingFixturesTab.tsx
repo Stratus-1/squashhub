@@ -265,6 +265,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           <SelectItem value="this-week">This week</SelectItem>
           <SelectItem value="next-week">Next week</SelectItem>
           <SelectItem value="next-two-weeks">Next two weeks</SelectItem>
+          <SelectItem value="past-due">Past unscored (admin)</SelectItem>
           <SelectItem value="custom">Custom date range</SelectItem>
         </SelectContent>
       </Select>

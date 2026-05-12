@@ -178,6 +178,36 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return new Set((myLineupRows || []).map((r: any) => r.fixture_id as string));
   }, [myLineupRows]);
 
+  // Captain check: which team codes (leagues) is the active member captain of?
+  const isClubAdmin = useIsClubAdmin();
+  const isSuperAdmin = useIsSuperAdmin();
+  const { data: myCaptainCodes } = useQuery({
+    queryKey: ["my-captain-team-codes", activeMember?.id],
+    queryFn: async () => {
+      if (!activeMember?.id) return new Set<string>();
+      const { data, error } = await supabase
+        .from("member_league_registrations")
+        .select("is_captain, leagues!inner(code)")
+        .eq("club_member_id", activeMember.id)
+        .eq("active", true)
+        .eq("is_captain", true);
+      if (error) throw error;
+      const codes = new Set<string>();
+      for (const r of (data || []) as any[]) {
+        const c = (r?.leagues?.code || "").toString().toUpperCase();
+        if (c) codes.add(c);
+      }
+      return codes;
+    },
+    enabled: !!activeMember?.id,
+  });
+  const isCaptainOfFixture = (f: any) => {
+    if (!myCaptainCodes) return false;
+    const home = (f.home_team_code || "").toUpperCase();
+    const away = (f.away_team_code || "").toUpperCase();
+    return myCaptainCodes.has(home) || myCaptainCodes.has(away);
+  };
+
   // ---------- Availability (per squash week) ----------
   const dow = (typeof weekStartDow === "number" ? weekStartDow : 3); // default Wed
   const fixtureWeekStart = (fixtureDate: string): string =>

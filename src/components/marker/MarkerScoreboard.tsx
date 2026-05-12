@@ -12,7 +12,7 @@ import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
 import { CastDialog } from "./CastDialog";
 import { useClubContext } from "@/contexts/ClubContext";
 import { toast } from "sonner";
-import { MARKER_STATE_KEY } from "@/lib/marker-storage";
+import { getMarkerSessionKey, MARKER_STATE_KEY } from "@/lib/marker-storage";
 
 interface PersistedState {
   sessionKey: string;
@@ -31,14 +31,6 @@ interface PersistedState {
  * Derive a unique key for this scoring session so that persisted state
  * for a different rubber/match never bleeds into a new one.
  */
-function getSessionKey(config: MarkerConfig): string {
-  const a = config.playerA.clubMemberId || config.playerA.name || "?";
-  const b = config.playerB.clubMemberId || config.playerB.name || "?";
-  const pa = config.partnerA?.clubMemberId || config.partnerA?.name || "";
-  const pb = config.partnerB?.clubMemberId || config.partnerB?.name || "";
-  return [config.source, config.sourceId || "", a, b, pa, pb, config.scoringFormat, config.bestOf].join("|");
-}
-
 function loadPersisted(expectedKey: string): PersistedState | null {
   try {
     const raw = localStorage.getItem(MARKER_STATE_KEY);
@@ -135,7 +127,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress,
   const [scratchOpen, setScratchOpen] = useState(false);
   const [scratchConfirmText, setScratchConfirmText] = useState("");
 
-  const sessionKey = getSessionKey(config);
+  const sessionKey = getMarkerSessionKey(config);
   const persisted = useRef<PersistedState | null>(loadPersisted(sessionKey)).current;
 
   const [scoreA, setScoreA] = useState(persisted?.scoreA ?? 0);

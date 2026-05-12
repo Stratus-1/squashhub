@@ -876,6 +876,49 @@ export default function LeagueGameDetail() {
   }, [positions, persistPositionScores]);
 
 
+  // ---- Reset to default league players (clears Edit Players overrides) ----
+  const handleResetToDefault = async () => {
+    if (!fixtureId || !fixture) return;
+    const hasRecordedPlay =
+      Array.isArray(existingMatches) &&
+      existingMatches.some((m: any) => (Array.isArray(m.game_scores) && m.game_scores.length > 0) || !!m.is_forfeit);
+    if (hasRecordedPlay) {
+      toast.error("Cannot reset — scores have already been recorded.");
+      return;
+    }
+    if (!window.confirm("Reset both teams to the default league allocation? This will discard any reserve swaps for this fixture.")) return;
+    try {
+      // 1) Wipe per-fixture lineup overrides so prefill rebuilds from week/regs.
+      await (supabase as any).from("league_fixture_lineups").delete().eq("fixture_id", fixtureId);
+      // 2) Wipe any saved setup placeholders so reserves don't re-load.
+      await (supabase as any).from("league_match_results").delete().eq("fixture_id", fixtureId);
+      // 3) Reset snapshot so it rebuilds from the fresh defaults.
+      setOriginalLineupSnapshot(null);
+      // 4) Apply originals immediately from cached prefill.
+      const originalsMap = (prefillLineup as any)?.originals || {};
+      const homeOrig = originalsMap[fixture.home_team_code] || [];
+      const awayOrig = originalsMap[fixture.away_team_code] || [];
+      setPositions((prev) => prev.map((p, i) => ({
+        ...p,
+        homeCode: (homeOrig[i]?.code || "").toString().toUpperCase(),
+        homeName: homeOrig[i]?.name || "",
+        awayCode: (awayOrig[i]?.code || "").toString().toUpperCase(),
+        awayName: awayOrig[i]?.name || "",
+        scores: [],
+        completed: false,
+        isForfeit: false,
+        forfeitSide: null,
+      })));
+      // 5) Refetch authoritative lineup data.
+      await queryClient.invalidateQueries({ queryKey: ["league-fixture-prefill", fixtureId] });
+      await queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+      await queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+      toast.success("Reset to default league players");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to reset");
+    }
+  };
+
   // ---- Save Setup (persist player data without submitting results) ----
   const handleSaveSetup = async () => {
     if (!fixtureId || !user) return;

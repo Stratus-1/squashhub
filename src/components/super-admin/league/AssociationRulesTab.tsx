@@ -34,6 +34,8 @@ const DEFAULTS: Partial<LeagueRules> = {
   cross_gender_subs_allowed: false,
   original_player_bonus_enabled: false,
   original_player_bonus_value: 1,
+  team_win_bonus_enabled: false,
+  team_win_bonus_value: 2,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {

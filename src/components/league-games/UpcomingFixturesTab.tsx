@@ -46,7 +46,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "custom";
+  type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "past-due" | "custom";
   const [rangeMode, setRangeMode] = useState<RangeMode>("this-week");
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
@@ -66,6 +66,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     if (rangeMode === "next-two-weeks") {
       const end = addDays(baseStart, 13);
       return { rangeStart: defaultStart, rangeEnd: format(end, "yyyy-MM-dd") };
+    }
+    if (rangeMode === "past-due") {
+      const today = new Date();
+      const start = addDays(today, -90);
+      const end = addDays(today, -1);
+      return { rangeStart: format(start, "yyyy-MM-dd"), rangeEnd: format(end, "yyyy-MM-dd") };
     }
     // custom
     if (customRange?.from) {

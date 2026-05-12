@@ -29,6 +29,9 @@ export interface LeagueRules {
   // Original-player bonus (NIL): +N points per originally-allocated player who actually plays
   original_player_bonus_enabled: boolean;
   original_player_bonus_value: number;
+  // Team-win bonus: +N points to the team that wins the overall fixture for the night
+  team_win_bonus_enabled: boolean;
+  team_win_bonus_value: number;
 }
 
 export function useAssociationRules(associationId: string | null | undefined) {

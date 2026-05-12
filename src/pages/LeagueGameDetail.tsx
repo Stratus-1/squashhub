@@ -82,8 +82,11 @@ interface OriginalLineupSnapshot {
 // Penalty points deducted from a team when one of their players forfeits a position
 const FORFEIT_PENALTY_POINTS = 2;
 
-function emptyPositions(): PositionEntry[] {
-  return [1, 2, 3, 4].map(() => ({
+// Maximum supported positions per team (NIL allows up to 5; NSA standard is 4).
+const MAX_POSITIONS = 5;
+const DEFAULT_POSITIONS = 4;
+function emptyPositions(count: number = DEFAULT_POSITIONS): PositionEntry[] {
+  return Array.from({ length: count }, () => ({
     homeCode: "", homeName: "", awayCode: "", awayName: "",
     scores: [], completed: false, isForfeit: false, forfeitSide: null,
   }));
@@ -300,9 +303,41 @@ export default function LeagueGameDetail() {
   const nsaLive = !!(nsaHomeTeam || nsaAwayTeam);
 
 
+  // How many positions this fixture needs (4 default, grows to 5 when both teams have a 5th player).
+  // Updated by an effect below once prefill / saved matches are available.
+  const [positionCount, setPositionCount] = useState<number>(DEFAULT_POSITIONS);
+
+
+  // Resize positions state when positionCount changes (preserves existing entries).
+  useEffect(() => {
+    setPositions((prev) => {
+      if (prev.length === positionCount) return prev;
+      if (prev.length < positionCount) {
+        return [
+          ...prev,
+          ...Array.from({ length: positionCount - prev.length }, () => ({
+            homeCode: "", homeName: "", awayCode: "", awayName: "",
+            scores: [] as { home: number; away: number }[], completed: false, isForfeit: false, forfeitSide: null as "home" | "away" | null,
+          })),
+        ];
+      }
+      // Shrinking: only drop trailing slots that are still empty AND have no scores.
+      const next = [...prev];
+      while (next.length > positionCount) {
+        const last = next[next.length - 1];
+        const isEmpty = !last.homeCode && !last.awayCode && (!last.scores || last.scores.length === 0) && !last.isForfeit;
+        if (!isEmpty) break;
+        next.pop();
+      }
+      return next;
+    });
+  }, [positionCount]);
+
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
-      const loaded = [1, 2, 3, 4].map((pos) => {
+      const targetCount = Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
+      const loaded = Array.from({ length: targetCount }, (_, i) => {
+        const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
         if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
         return {
@@ -316,7 +351,7 @@ export default function LeagueGameDetail() {
       setPositions((prev) => {
         // Don't clobber the position the user is actively marking/editing locally —
         // realtime refresh would otherwise overwrite in-progress scores.
-        return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? prev[i] : p));
+        return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? (prev[i] ?? p) : p));
       });
       const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
       if (existingResultFetched && !hasOriginalSnapshot(savedSnapshot ?? null) && !hasOriginalSnapshot(originalLineupSnapshot)) {
@@ -324,7 +359,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
@@ -430,12 +465,8 @@ export default function LeagueGameDetail() {
       const result: Record<string, Array<{ code: string; name: string }>> = {};
       const originals: Record<string, Array<{ code: string; name: string }>> = {};
       for (const code of codes) {
-        const slots: Array<{ code: string; name: string }> = [
-          { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" },
-        ];
-        const origSlots: Array<{ code: string; name: string }> = [
-          { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" },
-        ];
+        const slots: Array<{ code: string; name: string }> = Array.from({ length: MAX_POSITIONS }, () => ({ code: "", name: "" }));
+        const origSlots: Array<{ code: string; name: string }> = Array.from({ length: MAX_POSITIONS }, () => ({ code: "", name: "" }));
         const matchingLeagues = leagues.filter((l: any) => l.code === code).map((l: any) => l.id);
 
         const regByMember = new Map<string, any>();
@@ -454,7 +485,7 @@ export default function LeagueGameDetail() {
         };
 
         const fillSlot = (target: Array<{ code: string; name: string }>, pos: number, memberId: string) => {
-          if (pos < 1 || pos > 4) return;
+          if (pos < 1 || pos > MAX_POSITIONS) return;
           if (target[pos - 1].code || target[pos - 1].name) return;
           target[pos - 1] = buildSlot(memberId);
         };
@@ -477,7 +508,7 @@ export default function LeagueGameDetail() {
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
         let regIdx = 0;
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < MAX_POSITIONS; i++) {
           if (slots[i].code || slots[i].name) continue;
           while (regIdx < teamRegs.length) {
             const r = teamRegs[regIdx++];
@@ -501,7 +532,19 @@ export default function LeagueGameDetail() {
     refetchOnMount: "always",
   });
 
-  // Auto-refresh lineup data when the tab/window becomes visible again
+  // Decide between 4-player and 5-player scorecard.
+  // Grow to 5 if BOTH teams have a 5th allocation OR a saved row at position 5 already exists.
+  useEffect(() => {
+    const homeCode = fixture?.home_team_code;
+    const awayCode = fixture?.away_team_code;
+    const lineup = (prefillLineup as any)?.lineup || {};
+    const homeFifth = !!(homeCode && (lineup[homeCode]?.[4]?.code || lineup[homeCode]?.[4]?.name));
+    const awayFifth = !!(awayCode && (lineup[awayCode]?.[4]?.code || lineup[awayCode]?.[4]?.name));
+    const savedHasFifth = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === 5);
+    const next = savedHasFifth || (homeFifth && awayFifth) ? 5 : DEFAULT_POSITIONS;
+    setPositionCount((prev) => (prev === next ? prev : next));
+  }, [fixture, prefillLineup, existingMatches]);
+
   // (e.g. user returns from Edit Players in another tab/route).
   useEffect(() => {
     const onVisible = () => {
@@ -759,7 +802,7 @@ export default function LeagueGameDetail() {
       try {
         // Re-derive the updated positions snapshot (state hasn't flushed yet, so recompute manually)
         setTimeout(async () => {
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < positions.length; i++) {
             const p = positions[i];
             if (!p.homeCode && !p.awayCode) continue;
             await supabase.from("league_match_results" as any).upsert({
@@ -928,7 +971,7 @@ export default function LeagueGameDetail() {
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);
       if (!hasOriginalSnapshot(originalLineupSnapshot)) setOriginalLineupSnapshot(setupOriginalSnapshot);
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
         const { error } = await supabase.from("league_match_results" as any).upsert({
@@ -1103,7 +1146,7 @@ export default function LeagueGameDetail() {
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
         let hw = 0, aw = 0;

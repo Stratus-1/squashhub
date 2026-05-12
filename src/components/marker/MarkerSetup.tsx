@@ -643,7 +643,7 @@ export function MarkerSetup({ onStart }: Props) {
   return (
     <div className="space-y-4">
       {/* Source selector */}
-      {clubId && (
+      {(
         <Card className="p-4 space-y-3">
           <p className="text-sm font-semibold font-heading">Match Source</p>
           <div className="grid grid-cols-2 gap-2">

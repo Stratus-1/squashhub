@@ -895,32 +895,89 @@ export default function LeagueGameDetail() {
     let homeTotalGames = 0, awayTotalGames = 0;
     let homeMatchWins = 0, awayMatchWins = 0;
     let homePenaltyPoints = 0, awayPenaltyPoints = 0;
+    let homeAllPoints = 0, awayAllPoints = 0;
     const posResults: { homeWins: number; awayWins: number }[] = [];
     for (const pos of positions) {
       let hw = 0, aw = 0;
-      for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+      for (const s of pos.scores) {
+        if (s.home > s.away) hw++; else if (s.away > s.home) aw++;
+        homeAllPoints += s.home; awayAllPoints += s.away;
+      }
       homeTotalGames += hw; awayTotalGames += aw;
       if (hw > aw) homeMatchWins++; else if (aw > hw) awayMatchWins++;
       posResults.push({ homeWins: hw, awayWins: aw });
-      // Forfeit penalty: deduct points from the side whose player did not show up
       if (pos.isForfeit && pos.forfeitSide === "home") homePenaltyPoints += FORFEIT_PENALTY_POINTS;
       if (pos.isForfeit && pos.forfeitSide === "away") awayPenaltyPoints += FORFEIT_PENALTY_POINTS;
     }
-    // Bonus points: only the overall fixture winner gets them (= their match wins count)
-    const homeGamesOnly = homeTotalGames;
-    const awayGamesOnly = awayTotalGames;
-    // Determine fixture winner based on total games + match wins first
-    const homeRaw = homeGamesOnly + homeMatchWins;
-    const awayRaw = awayGamesOnly + awayMatchWins;
-    const fixtureWinner = homeRaw > awayRaw ? "home" : awayRaw > homeRaw ? "away" : (homeMatchWins > awayMatchWins ? "home" : awayMatchWins > homeMatchWins ? "away" : "draw");
-    // Only the winner gets bonus points
-    const homeBonusPoints = fixtureWinner === "home" ? homeMatchWins : 0;
-    const awayBonusPoints = fixtureWinner === "away" ? awayMatchWins : 0;
+
+    // Determine fixture winner: match wins → games → total points (NIL/NSA tiebreak)
+    let fixtureWinner: "home" | "away" | "draw";
+    if (homeMatchWins > awayMatchWins) fixtureWinner = "home";
+    else if (awayMatchWins > homeMatchWins) fixtureWinner = "away";
+    else if (homeTotalGames > awayTotalGames) fixtureWinner = "home";
+    else if (awayTotalGames > homeTotalGames) fixtureWinner = "away";
+    else if (homeAllPoints > awayAllPoints) fixtureWinner = "home";
+    else if (awayAllPoints > homeAllPoints) fixtureWinner = "away";
+    else fixtureWinner = "draw";
+
+    // Match-result bonus (per association rules; defaults: per_match, value 1, no share)
+    const mode = leagueRules?.bonus_points_mode ?? "per_match";
+    const bonusValue = leagueRules?.bonus_points_value ?? 1;
+    const shareOnTie = !!leagueRules?.share_bonus_on_tie;
+    let homeMatchBonus = 0, awayMatchBonus = 0;
+    if (mode === "per_match") {
+      if (fixtureWinner === "home") homeMatchBonus = bonusValue;
+      else if (fixtureWinner === "away") awayMatchBonus = bonusValue;
+      else if (shareOnTie) { homeMatchBonus = bonusValue / 2; awayMatchBonus = bonusValue / 2; }
+    } else if (mode === "per_game_won") {
+      homeMatchBonus = homeMatchWins * bonusValue;
+      awayMatchBonus = awayMatchWins * bonusValue;
+    }
+
+    // Original-player bonus (NIL): +N points per originally-allocated player who actually plays.
+    // "Original" = NSF code is in the captain's pre-allocated lineup (prefillLineup) for that team.
+    const opbEnabled = !!leagueRules?.original_player_bonus_enabled;
+    const opbValue = leagueRules?.original_player_bonus_value ?? 0;
+    const homeTeamCode = fixture?.home_team_code || "";
+    const awayTeamCode = fixture?.away_team_code || "";
+    const homeOriginals = new Set(
+      ((prefillLineup as any)?.[homeTeamCode] || [])
+        .map((s: any) => (s.code || "").toUpperCase())
+        .filter(Boolean),
+    );
+    const awayOriginals = new Set(
+      ((prefillLineup as any)?.[awayTeamCode] || [])
+        .map((s: any) => (s.code || "").toUpperCase())
+        .filter(Boolean),
+    );
+    let homeOriginalCount = 0, awayOriginalCount = 0;
+    for (const pos of positions) {
+      if (pos.isForfeit) continue;
+      if (pos.homeCode && homeOriginals.has(pos.homeCode.toUpperCase())) homeOriginalCount++;
+      if (pos.awayCode && awayOriginals.has(pos.awayCode.toUpperCase())) awayOriginalCount++;
+    }
+    const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
+    const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
+
+    const homeBonusPoints = homeMatchBonus + homeOriginalBonus;
+    const awayBonusPoints = awayMatchBonus + awayOriginalBonus;
     const homeTotal = homeTotalGames + homeBonusPoints - homePenaltyPoints;
     const awayTotal = awayTotalGames + awayBonusPoints - awayPenaltyPoints;
-    const winner = fixtureWinner;
-    return { homeTotalGames, awayTotalGames, homeBonusPoints, awayBonusPoints, homePenaltyPoints, awayPenaltyPoints, homeTotal, awayTotal, winner, posResults };
-  }, [positions]);
+
+    return {
+      homeTotalGames, awayTotalGames,
+      homeBonusPoints, awayBonusPoints,
+      homeMatchBonus, awayMatchBonus,
+      homeOriginalBonus, awayOriginalBonus,
+      homeOriginalCount, awayOriginalCount,
+      homePenaltyPoints, awayPenaltyPoints,
+      homeAllPoints, awayAllPoints,
+      homeTotal, awayTotal,
+      winner: fixtureWinner,
+      posResults,
+      opbEnabled, opbValue,
+    };
+  }, [positions, leagueRules, prefillLineup, fixture]);
 
   // ---- Submit ----
   const handleSubmit = async () => {

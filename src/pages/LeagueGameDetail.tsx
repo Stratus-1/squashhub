@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
-import { MARKER_STATE_KEY } from "@/lib/marker-storage";
+import { clearMarkerStateForSession, getMarkerSessionKey } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -164,6 +164,7 @@ export default function LeagueGameDetail() {
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  const [resumableMarker, setResumableMarker] = useState<number | null>(null);
   const liveScoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [manualEntry, setManualEntry] = useState<number | null>(null);
   // Indices of completed games (within the current manualEntry rubber) that the

@@ -9,6 +9,7 @@ import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, 
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -176,6 +177,36 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const myLineupFixtureIds = useMemo(() => {
     return new Set((myLineupRows || []).map((r: any) => r.fixture_id as string));
   }, [myLineupRows]);
+
+  // Captain check: which team codes (leagues) is the active member captain of?
+  const isClubAdmin = useIsClubAdmin();
+  const isSuperAdmin = useIsSuperAdmin();
+  const { data: myCaptainCodes } = useQuery({
+    queryKey: ["my-captain-team-codes", activeMember?.id],
+    queryFn: async () => {
+      if (!activeMember?.id) return new Set<string>();
+      const { data, error } = await (supabase as any)
+        .from("member_league_registrations")
+        .select("is_captain, leagues:league_id (code)")
+        .eq("club_member_id", activeMember.id)
+        .eq("active", true)
+        .eq("is_captain", true);
+      if (error) throw error;
+      const codes = new Set<string>();
+      for (const r of (data || []) as any[]) {
+        const c = (r?.leagues?.code || "").toString().toUpperCase();
+        if (c) codes.add(c);
+      }
+      return codes;
+    },
+    enabled: !!activeMember?.id,
+  });
+  const isCaptainOfFixture = (f: any) => {
+    if (!myCaptainCodes) return false;
+    const home = (f.home_team_code || "").toUpperCase();
+    const away = (f.away_team_code || "").toUpperCase();
+    return myCaptainCodes.has(home) || myCaptainCodes.has(away);
+  };
 
   // ---------- Availability (per squash week) ----------
   const dow = (typeof weekStartDow === "number" ? weekStartDow : 3); // default Wed
@@ -450,7 +481,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
                         {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
                         {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
-                        {!result && f.fixture_date && f.fixture_date < todayStr && (
+                        {(!result || (result.status !== "submitted" && result.status !== "confirmed")) && f.fixture_date && f.fixture_date < todayStr && (
                           <Badge variant="destructive" className="text-[10px]">Overdue</Badge>
                         )}
                         {f._isLive && !f._hasSnapshot && (
@@ -471,16 +502,36 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                           Fill Up Team
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant={inLineup || mine ? "default" : "outline"}
-                        disabled={f._isLive && !f._hasSnapshot}
-                        title={f._isLive && !f._hasSnapshot ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring." : undefined}
-                        onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
-                      >
-                        <Pencil className="w-3 h-3 mr-1" />
-                        {f.isTournament ? "Tournament" : "Mark Game"}
-                      </Button>
+                      {(() => {
+                        const submitted = result?.status === "submitted" || result?.status === "confirmed";
+                        const isPast = !!(f.fixture_date && f.fixture_date < todayStr);
+                        const needsAdminMode = !f.isTournament && (isPast || submitted);
+                        const canEnter = isClubAdmin || isSuperAdmin || isCaptainOfFixture(f);
+                        const blocked = needsAdminMode && !canEnter;
+                        const label = f.isTournament
+                          ? "Tournament"
+                          : needsAdminMode
+                            ? (submitted ? "Edit Results" : "Enter Results")
+                            : "Mark Game";
+                        return (
+                          <Button
+                            size="sm"
+                            variant={inLineup || mine ? "default" : "outline"}
+                            disabled={(f._isLive && !f._hasSnapshot) || blocked}
+                            title={
+                              (f._isLive && !f._hasSnapshot)
+                                ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
+                                : blocked
+                                  ? "Only the team captain or a club/super admin can enter or edit results for past matches."
+                                  : undefined
+                            }
+                            onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
+                          >
+                            <Pencil className="w-3 h-3 mr-1" />
+                            {label}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </div>
                   {showAvailability && fxWeek && (

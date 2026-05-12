@@ -978,32 +978,25 @@ export default function LeagueGameDetail() {
       awayMatchBonus = awayMatchWins * bonusValue;
     }
 
-    // Original-player bonus (NIL): +N points per originally-allocated player who actually plays.
-    // "Original" = NSF code is in the captain's pre-allocated lineup (prefillLineup) for that team.
+    // Original-player bonus (NIL): +N points per player from the saved setup lineup.
+    // The setup snapshot is captured before replacements, so reserve swaps recalculate immediately.
     const opbEnabled = !!leagueRules?.original_player_bonus_enabled;
     const opbValue = leagueRules?.original_player_bonus_value ?? 0;
     const homeTeamCode = fixture?.home_team_code || "";
     const awayTeamCode = fixture?.away_team_code || "";
-    // "Original" = NSF code is in the captain's pre-allocated lineup ONLY (not per-fixture overrides).
     const originalsMap = (prefillLineup as any)?.originals || {};
+    const fallbackOriginalCodes = (teamCode: string) =>
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean);
     const homeOriginals = new Set(
-      (originalsMap[homeTeamCode] || [])
-        .map((s: any) => (s.code || "").toUpperCase())
-        .filter(Boolean),
+      hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.home.filter(Boolean) : fallbackOriginalCodes(homeTeamCode),
     );
     const awayOriginals = new Set(
-      (originalsMap[awayTeamCode] || [])
-        .map((s: any) => (s.code || "").toUpperCase())
-        .filter(Boolean),
+      hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.away.filter(Boolean) : fallbackOriginalCodes(awayTeamCode),
     );
-    // Count originals based on the allocated lineup, regardless of forfeit/no-show.
-    // Per NIL rule: a player who was originally allocated still earns the bonus
-    // even if they didn't actually take the court (forfeit).
-    let homeOriginalCount = 0, awayOriginalCount = 0;
-    for (const pos of positions) {
-      if (pos.homeCode && homeOriginals.has(pos.homeCode.toUpperCase())) homeOriginalCount++;
-      if (pos.awayCode && awayOriginals.has(pos.awayCode.toUpperCase())) awayOriginalCount++;
-    }
+    const currentHomeCodes = new Set(positions.map((p) => normalizePlayerCode(p.homeCode)).filter(Boolean));
+    const currentAwayCodes = new Set(positions.map((p) => normalizePlayerCode(p.awayCode)).filter(Boolean));
+    const homeOriginalCount = [...homeOriginals].filter((code) => currentHomeCodes.has(code)).length;
+    const awayOriginalCount = [...awayOriginals].filter((code) => currentAwayCodes.has(code)).length;
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 
@@ -1026,7 +1019,7 @@ export default function LeagueGameDetail() {
       opbEnabled, opbValue,
       bonusMode: mode,
     };
-  }, [positions, leagueRules, prefillLineup, fixture]);
+  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot]);
 
   // ---- Submit ----
   const handleSubmit = async () => {

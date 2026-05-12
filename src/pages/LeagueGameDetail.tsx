@@ -317,6 +317,12 @@ export default function LeagueGameDetail() {
     }
   }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot]);
 
+  useEffect(() => {
+    const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
+    if (hasOriginalSnapshot(originalLineupSnapshot) || !hasOriginalSnapshot(savedSnapshot ?? null)) return;
+    setOriginalLineupSnapshot(savedSnapshot!);
+  }, [existingResult, originalLineupSnapshot]);
+
   // ---- Prefill lineup from Fill-Up Leagues / registrations for known club teams ----
   const { data: prefillLineup } = useQuery({
     queryKey: ["league-fixture-prefill", fixtureId, fixture?.home_team_code, fixture?.away_team_code, fixture?.fixture_date],

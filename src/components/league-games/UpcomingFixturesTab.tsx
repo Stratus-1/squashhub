@@ -9,6 +9,7 @@ import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, 
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";

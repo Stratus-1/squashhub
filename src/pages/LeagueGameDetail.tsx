@@ -1325,15 +1325,25 @@ export default function LeagueGameDetail() {
               >
                 <span className="text-xs font-semibold w-16">Game {gi + 1}{locked && <span className="ml-1 text-[10px] text-muted-foreground">✓</span>}</span>
                 <Input
-                  type="number" min={0} value={s.home}
-                  onChange={(e) => updateScore(manualEntry, gi, "home", parseInt(e.target.value) || 0)}
+                  type="number" min={0} inputMode="numeric" value={s.home === 0 ? "" : s.home}
+                  placeholder="0"
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateScore(manualEntry, gi, "home", v === "" ? 0 : parseInt(v) || 0);
+                  }}
                   className={cn("w-16 text-center text-sm", locked && "opacity-60 cursor-not-allowed")}
                   disabled={locked}
                 />
                 <span className="text-xs text-muted-foreground">-</span>
                 <Input
-                  type="number" min={0} value={s.away}
-                  onChange={(e) => updateScore(manualEntry, gi, "away", parseInt(e.target.value) || 0)}
+                  type="number" min={0} inputMode="numeric" value={s.away === 0 ? "" : s.away}
+                  placeholder="0"
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateScore(manualEntry, gi, "away", v === "" ? 0 : parseInt(v) || 0);
+                  }}
                   className={cn("w-16 text-center text-sm", locked && "opacity-60 cursor-not-allowed")}
                   disabled={locked}
                 />

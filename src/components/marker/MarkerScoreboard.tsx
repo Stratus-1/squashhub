@@ -12,7 +12,7 @@ import { useMarkerCast, type MarkerCastState } from "@/hooks/use-marker-cast";
 import { CastDialog } from "./CastDialog";
 import { useClubContext } from "@/contexts/ClubContext";
 import { toast } from "sonner";
-import { getMarkerSessionKey, MARKER_STATE_KEY } from "@/lib/marker-storage";
+import { getMarkerSessionKey, getMarkerSessionKeys, MARKER_STATE_KEY } from "@/lib/marker-storage";
 
 interface PersistedState {
   sessionKey: string;
@@ -31,13 +31,13 @@ interface PersistedState {
  * Derive a unique key for this scoring session so that persisted state
  * for a different rubber/match never bleeds into a new one.
  */
-function loadPersisted(expectedKey: string): PersistedState | null {
+function loadPersisted(expectedKeys: string[]): PersistedState | null {
   try {
     const raw = localStorage.getItem(MARKER_STATE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedState;
     // Discard stale state from a previous match/rubber
-    if (parsed.sessionKey !== expectedKey) {
+    if (!expectedKeys.includes(parsed.sessionKey)) {
       localStorage.removeItem(MARKER_STATE_KEY);
       return null;
     }
@@ -158,7 +158,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [scratchConfirmText, setScratchConfirmText] = useState("");
 
   const sessionKey = getMarkerSessionKey(config);
-  const persisted = useRef<PersistedState | null>(loadPersisted(sessionKey)).current;
+  const persisted = useRef<PersistedState | null>(loadPersisted(getMarkerSessionKeys(config))).current;
   const savedState = persisted ? null : buildStateFromSavedScores(config, initialScores);
 
   const [scoreA, setScoreA] = useState(persisted?.scoreA ?? savedState?.scoreA ?? 0);

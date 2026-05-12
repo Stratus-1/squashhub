@@ -138,6 +138,7 @@ export default function LeagueGameDetail() {
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  const liveScoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [manualEntry, setManualEntry] = useState<number | null>(null);
   // Indices of completed games (within the current manualEntry rubber) that the
   // user has explicitly chosen to edit. All other completed games are locked.
@@ -994,9 +995,22 @@ export default function LeagueGameDetail() {
               const current = positions[activeMarker];
               if (!current) return;
               // Persist game-by-game so other viewers see live progress.
-              // Keep `completed: false` until the match is fully decided.
               const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })) };
               persistPositionScores(activeMarker, updated);
+            }}
+            onLiveScore={(games, cur) => {
+              if (activeMarker === null) return;
+              const current = positions[activeMarker];
+              if (!current) return;
+              // Append the in-progress game (only when there are points scored).
+              const inProgress = (cur.a > 0 || cur.b > 0) ? [{ home: cur.a, away: cur.b }] : [];
+              const scores = [...games.map((g) => ({ home: g.a, away: g.b })), ...inProgress];
+              const updated = { ...current, scores, completed: false };
+              // Debounce DB writes to ~600ms to avoid hammering on rapid points
+              if (liveScoreTimerRef.current) clearTimeout(liveScoreTimerRef.current);
+              liveScoreTimerRef.current = setTimeout(() => {
+                persistPositionScores(activeMarker, updated);
+              }, 600);
             }}
           />
         </div>

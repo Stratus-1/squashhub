@@ -46,7 +46,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "custom";
+  type RangeMode = "this-week" | "next-week" | "next-two-weeks" | "past-due" | "custom";
   const [rangeMode, setRangeMode] = useState<RangeMode>("this-week");
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
 
@@ -66,6 +66,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     if (rangeMode === "next-two-weeks") {
       const end = addDays(baseStart, 13);
       return { rangeStart: defaultStart, rangeEnd: format(end, "yyyy-MM-dd") };
+    }
+    if (rangeMode === "past-due") {
+      const today = new Date();
+      const start = addDays(today, -90);
+      const end = addDays(today, -1);
+      return { rangeStart: format(start, "yyyy-MM-dd"), rangeEnd: format(end, "yyyy-MM-dd") };
     }
     // custom
     if (customRange?.from) {
@@ -236,15 +242,21 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
 
   // NOTE: Tournament/championship matches intentionally excluded here — they live on the dedicated /tournaments page.
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const fixturesByDate = useMemo(() => {
     const groups = new Map<string, any[]>();
     for (const f of (displayFixtures || []) as any[]) {
       const date = f.fixture_date;
+      // In past-due mode, hide fixtures that already have a submitted/confirmed result.
+      if (rangeMode === "past-due") {
+        const r = resultMap.get(f.id);
+        if (r && (r.status === "submitted" || r.status === "confirmed")) continue;
+      }
       if (!groups.has(date)) groups.set(date, []);
       groups.get(date)!.push(f);
     }
     return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  }, [displayFixtures]);
+  }, [displayFixtures, rangeMode, resultMap]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
@@ -259,6 +271,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
           <SelectItem value="this-week">This week</SelectItem>
           <SelectItem value="next-week">Next week</SelectItem>
           <SelectItem value="next-two-weeks">Next two weeks</SelectItem>
+          <SelectItem value="past-due">Past unscored (admin)</SelectItem>
           <SelectItem value="custom">Custom date range</SelectItem>
         </SelectContent>
       </Select>
@@ -437,6 +450,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
                         {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
                         {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
+                        {!result && f.fixture_date && f.fixture_date < todayStr && (
+                          <Badge variant="destructive" className="text-[10px]">Overdue</Badge>
+                        )}
                         {f._isLive && !f._hasSnapshot && (
                           <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700">Not yet imported</Badge>
                         )}

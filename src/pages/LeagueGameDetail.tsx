@@ -163,6 +163,7 @@ export default function LeagueGameDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [savingSetup, setSavingSetup] = useState(false);
   const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away" } | null>(null);
+  const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
 
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");
@@ -309,9 +310,12 @@ export default function LeagueGameDetail() {
         // realtime refresh would otherwise overwrite in-progress scores.
         return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? prev[i] : p));
       });
+      if (!hasOriginalSnapshot(originalLineupSnapshot)) {
+        setOriginalLineupSnapshot(buildOriginalSnapshot(loaded));
+      }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot]);
 
   // ---- Prefill lineup from Fill-Up Leagues / registrations for known club teams ----
   const { data: prefillLineup } = useQuery({
@@ -503,7 +507,8 @@ export default function LeagueGameDetail() {
     const stalePlaceholdersExist =
       Array.isArray(existingMatches) && existingMatches.length > 0;
 
-    setPositions((prev) => prev.map((p, i) => {
+    setPositions((prev) => {
+      const next = prev.map((p, i) => {
       const home = homeSlots[i] || { code: "", name: "" };
       const away = awaySlots[i] || { code: "", name: "" };
       if (stalePlaceholdersExist) {
@@ -522,8 +527,13 @@ export default function LeagueGameDetail() {
         awayCode: p.awayCode || away.code,
         awayName: p.awayName || away.name,
       };
-    }));
-  }, [prefillLineup, existingMatches, fixture]);
+      });
+      if (!hasOriginalSnapshot(originalLineupSnapshot)) {
+        setOriginalLineupSnapshot(buildOriginalSnapshot(next));
+      }
+      return next;
+    });
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot]);
 
   // Apply association-level league rules — these are the authoritative format
   // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence

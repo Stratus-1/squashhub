@@ -175,7 +175,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   // Toss: must be explicitly decided before scoring starts. Old 0-0 saved sessions
   // did not include the prompt version, so force them to ask again instead of hiding it.
   const [tossDecided, setTossDecided] = useState<boolean>(
-    hasScoringStarted(persisted) || (persisted?.tossDecided === true && persisted?.tossPromptVersion === TOSS_PROMPT_VERSION)
+    hasScoringStarted(persisted) || !!savedState || (persisted?.tossDecided === true && persisted?.tossPromptVersion === TOSS_PROMPT_VERSION)
   );
 
   // Rest timer between games

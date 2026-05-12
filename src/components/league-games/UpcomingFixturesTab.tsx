@@ -502,16 +502,36 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                           Fill Up Team
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant={inLineup || mine ? "default" : "outline"}
-                        disabled={f._isLive && !f._hasSnapshot}
-                        title={f._isLive && !f._hasSnapshot ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring." : undefined}
-                        onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
-                      >
-                        <Pencil className="w-3 h-3 mr-1" />
-                        {f.isTournament ? "Tournament" : "Mark Game"}
-                      </Button>
+                      {(() => {
+                        const submitted = result?.status === "submitted" || result?.status === "confirmed";
+                        const isPast = !!(f.fixture_date && f.fixture_date < todayStr);
+                        const needsAdminMode = !f.isTournament && (isPast || submitted);
+                        const canEnter = isClubAdmin || isSuperAdmin || isCaptainOfFixture(f);
+                        const blocked = needsAdminMode && !canEnter;
+                        const label = f.isTournament
+                          ? "Tournament"
+                          : needsAdminMode
+                            ? (submitted ? "Edit Results" : "Enter Results")
+                            : "Mark Game";
+                        return (
+                          <Button
+                            size="sm"
+                            variant={inLineup || mine ? "default" : "outline"}
+                            disabled={(f._isLive && !f._hasSnapshot) || blocked}
+                            title={
+                              (f._isLive && !f._hasSnapshot)
+                                ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
+                                : blocked
+                                  ? "Only the team captain or a club/super admin can enter or edit results for past matches."
+                                  : undefined
+                            }
+                            onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
+                          >
+                            <Pencil className="w-3 h-3 mr-1" />
+                            {label}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </div>
                   {showAvailability && fxWeek && (

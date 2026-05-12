@@ -1037,6 +1037,23 @@ export default function LeagueGameDetail() {
     };
   }, [activeMarker, positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
 
+  const buildMarkerConfigForPosition = useCallback((posIdx: number): MarkerConfig | null => {
+    const pos = positions[posIdx];
+    if (!pos || !fixtureId) return null;
+    const effectiveFormat = leagueRules?.points_per_game === 15 ? "par15"
+      : leagueRules?.points_per_game === 11 ? "par11"
+      : scoringFormat;
+    const effectiveBestOf = leagueRules?.games_format === "best_of_5" ? 5
+      : leagueRules?.games_format === "best_of_3" ? 3
+      : bestOf;
+    return {
+      playerA: { name: pos.homeName || pos.homeCode, number: pos.homeCode, club: fixture?.home_team_code || "" },
+      playerB: { name: pos.awayName || pos.awayCode, number: pos.awayCode, club: fixture?.away_team_code || "" },
+      isDoubles: false, matchType: "league", scoringFormat: effectiveFormat, bestOf: effectiveBestOf, deuceRule: "win_by_2",
+      source: "league", sourceId: fixtureId,
+    };
+  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
+
   const handleMarkerComplete = useCallback((result: { games: GameScore[]; winnerId: "a" | "b"; durationSeconds: number }) => {
     if (activeMarker === null) return;
     const scores = result.games.map((g) => ({ home: g.a, away: g.b }));

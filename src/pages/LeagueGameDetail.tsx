@@ -200,7 +200,7 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId && !tournamentMatchId,
   });
 
-  const { data: existingResult } = useQuery({
+  const { data: existingResult, isFetched: existingResultFetched } = useQuery({
     queryKey: ["league-fixture-result", fixtureId],
     queryFn: async () => {
       const { data, error } = await supabase.from("league_fixture_results" as any).select("*").eq("fixture_id", fixtureId!).maybeSingle();
@@ -310,12 +310,13 @@ export default function LeagueGameDetail() {
         // realtime refresh would otherwise overwrite in-progress scores.
         return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? prev[i] : p));
       });
-      if (!hasOriginalSnapshot(originalLineupSnapshot)) {
+      const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
+      if (existingResultFetched && !hasOriginalSnapshot(savedSnapshot ?? null) && !hasOriginalSnapshot(originalLineupSnapshot)) {
         setOriginalLineupSnapshot(buildOriginalSnapshot(loaded));
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;

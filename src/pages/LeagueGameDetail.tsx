@@ -82,8 +82,11 @@ interface OriginalLineupSnapshot {
 // Penalty points deducted from a team when one of their players forfeits a position
 const FORFEIT_PENALTY_POINTS = 2;
 
-function emptyPositions(): PositionEntry[] {
-  return [1, 2, 3, 4].map(() => ({
+// Maximum supported positions per team (NIL allows up to 5; NSA standard is 4).
+const MAX_POSITIONS = 5;
+const DEFAULT_POSITIONS = 4;
+function emptyPositions(count: number = DEFAULT_POSITIONS): PositionEntry[] {
+  return Array.from({ length: count }, () => ({
     homeCode: "", homeName: "", awayCode: "", awayName: "",
     scores: [], completed: false, isForfeit: false, forfeitSide: null,
   }));

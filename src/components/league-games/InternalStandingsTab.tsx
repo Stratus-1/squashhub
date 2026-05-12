@@ -201,15 +201,15 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
             const fx = fxs.find(
               (f) => f.fixture_date === d && (f.home_team_code === tc || f.away_team_code === tc)
             );
-            if (!fx) return { date: d, value: "" };
+            if (!fx) return { date: d, value: "", fixture_id: null, status: null };
             const r = resByFixture.get(fx.id);
             if (!r || (r.home_total_points == null && r.away_total_points == null)) {
-              return { date: d, value: "" };
+              return { date: d, value: "", fixture_id: fx.id, status: r?.status ?? null };
             }
             const isHome = fx.home_team_code === tc;
             const own = isHome ? r.home_total_points ?? 0 : r.away_total_points ?? 0;
             const opp = isHome ? r.away_total_points ?? 0 : r.home_total_points ?? 0;
-            return { date: d, value: `${own}-${opp}` };
+            return { date: d, value: `${own}-${opp}`, fixture_id: fx.id, status: r.status };
           });
           const total = weeks.reduce((s, w) => {
             if (!w.value) return s;

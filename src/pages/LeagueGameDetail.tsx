@@ -1237,6 +1237,7 @@ export default function LeagueGameDetail() {
           </div>
           <MarkerScoreboard
             config={markerConfig}
+            initialScores={(positions[activeMarker]?.scores || []).map((s) => ({ a: s.home, b: s.away }))}
             onMatchComplete={handleMarkerComplete}
             onReset={() => setActiveMarker(null)}
             onProgress={(games) => {
@@ -1245,6 +1246,7 @@ export default function LeagueGameDetail() {
               if (!current) return;
               // Persist game-by-game so other viewers see live progress.
               const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })) };
+              setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });
               persistPositionScores(activeMarker, updated);
             }}
             onLiveScore={(games, cur) => {
@@ -1255,6 +1257,7 @@ export default function LeagueGameDetail() {
               const inProgress = (cur.a > 0 || cur.b > 0) ? [{ home: cur.a, away: cur.b }] : [];
               const scores = [...games.map((g) => ({ home: g.a, away: g.b })), ...inProgress];
               const updated = { ...current, scores, completed: false };
+              setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });
               // Debounce DB writes to ~600ms to avoid hammering on rapid points
               if (liveScoreTimerRef.current) clearTimeout(liveScoreTimerRef.current);
               liveScoreTimerRef.current = setTimeout(() => {

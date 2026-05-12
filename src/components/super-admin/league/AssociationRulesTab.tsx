@@ -133,7 +133,7 @@ export default function AssociationRulesTab({ associationId }: Props) {
             </p>
           </div>
           <div className="space-y-1.5">
-            <Label>Bonus points</Label>
+            <Label>Bonus points to winning team</Label>
             <Select
               value={form.bonus_points_mode ?? "per_match"}
               onValueChange={(v) => set("bonus_points_mode", v as LeagueRules["bonus_points_mode"])}
@@ -142,10 +142,13 @@ export default function AssociationRulesTab({ associationId }: Props) {
               <SelectContent>
                 <SelectItem value="none">No bonus points</SelectItem>
                 <SelectItem value="fixed_winner">Fixed bonus to winning team (NIL)</SelectItem>
-                <SelectItem value="per_match">Per match won</SelectItem>
+                <SelectItem value="per_match">Per match won — winning team only (NSA)</SelectItem>
                 <SelectItem value="per_game_won">Per game won</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Bonuses are only awarded to the team that wins the overall fixture.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label>Bonus points value</Label>
@@ -157,10 +160,10 @@ export default function AssociationRulesTab({ associationId }: Props) {
             />
             <p className="text-xs text-muted-foreground">
               {form.bonus_points_mode === "per_game_won"
-                ? "Points awarded per game won."
+                ? "Points added to the winning team for each game they won."
                 : form.bonus_points_mode === "fixed_winner"
-                ? "Fixed points awarded to the team that wins the overall fixture."
-                : "Points awarded per match won."}
+                ? "Flat points awarded to the team that wins the overall fixture."
+                : "Points added to the winning team for each individual match (rubber) they won. Losing team gets 0 bonus."}
             </p>
           </div>
           <div className="md:col-span-2">

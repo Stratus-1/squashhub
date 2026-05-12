@@ -5,9 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, RefreshCw } from "lucide-react";
+import { BarChart3, RefreshCw, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ClubLeague = {
   id: string;
@@ -45,7 +49,7 @@ type StandingRow = {
   team_code: string;
   total: number;
   played: number;
-  weeks: Array<{ date: string; value: string }>;
+  weeks: Array<{ date: string; value: string; fixture_id: string | null; status: string | null }>;
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -60,6 +64,36 @@ function tierFromRoundName(name: string): string {
 
 export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLeagueCode }: Props) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const isClubAdmin = useIsClubAdmin();
+  const isSuperAdmin = useIsSuperAdmin();
+  const { activeMember } = useMemberContext();
+
+  const { data: myCaptainCodes } = useQuery({
+    queryKey: ["my-captain-team-codes-standings", activeMember?.id],
+    enabled: !!activeMember?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("member_league_registrations")
+        .select("is_captain, leagues:league_id (code)")
+        .eq("club_member_id", activeMember!.id)
+        .eq("active", true)
+        .eq("is_captain", true);
+      if (error) throw error;
+      const codes = new Set<string>();
+      for (const r of (data || []) as any[]) {
+        const c = (r?.leagues?.code || "").toString().toUpperCase();
+        if (c) codes.add(c);
+      }
+      return codes;
+    },
+  });
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const canEditCell = (teamCode: string, dateStr: string) => {
+    if (dateStr > todayStr) return false;
+    if (isClubAdmin || isSuperAdmin) return true;
+    return !!myCaptainCodes?.has((teamCode || "").toUpperCase());
+  };
 
   // Resolve the platform association id (fixtures live under platform_association_id,
   // not the tenant league_associations.id)
@@ -197,15 +231,15 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
             const fx = fxs.find(
               (f) => f.fixture_date === d && (f.home_team_code === tc || f.away_team_code === tc)
             );
-            if (!fx) return { date: d, value: "" };
+            if (!fx) return { date: d, value: "", fixture_id: null, status: null };
             const r = resByFixture.get(fx.id);
             if (!r || (r.home_total_points == null && r.away_total_points == null)) {
-              return { date: d, value: "" };
+              return { date: d, value: "", fixture_id: fx.id, status: r?.status ?? null };
             }
             const isHome = fx.home_team_code === tc;
             const own = isHome ? r.home_total_points ?? 0 : r.away_total_points ?? 0;
             const opp = isHome ? r.away_total_points ?? 0 : r.home_total_points ?? 0;
-            return { date: d, value: `${own}-${opp}` };
+            return { date: d, value: `${own}-${opp}`, fixture_id: fx.id, status: r.status };
           });
           const total = weeks.reduce((s, w) => {
             if (!w.value) return s;
@@ -380,15 +414,49 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {s.played}
                             </TableCell>
-                            {s.weeks.map((w, j) => (
-                              <TableCell key={j} className="text-center text-xs">
-                                {w.value ? (
-                                  w.value
-                                ) : (
-                                  <span className="text-muted-foreground/40">·</span>
-                                )}
-                              </TableCell>
-                            ))}
+                            {s.weeks.map((w, j) => {
+                              const editable = !!w.fixture_id && canEditCell(s.team_code, w.date);
+                              const isPast = w.date <= todayStr;
+                              const missing = !w.value && isPast && !!w.fixture_id;
+                              const tip = !w.fixture_id
+                                ? "No fixture"
+                                : !isPast
+                                ? "Future fixture"
+                                : editable
+                                ? (w.value ? "Edit results" : "Enter results")
+                                : "Only the team captain or a club/super admin can enter or edit results.";
+                              const cell = (
+                                <button
+                                  type="button"
+                                  disabled={!editable}
+                                  onClick={() => editable && navigate(`/league-games/${w.fixture_id}`)}
+                                  className={`w-full h-full px-1 py-0.5 rounded inline-flex items-center justify-center gap-1 ${
+                                    editable
+                                      ? "hover:bg-primary/10 cursor-pointer"
+                                      : "cursor-default"
+                                  } ${missing ? "text-destructive font-semibold" : ""}`}
+                                >
+                                  {w.value ? (
+                                    <span>{w.value}</span>
+                                  ) : missing ? (
+                                    <span>—</span>
+                                  ) : (
+                                    <span className="text-muted-foreground/40">·</span>
+                                  )}
+                                  {editable && <Pencil className="w-3 h-3 opacity-60" />}
+                                </button>
+                              );
+                              return (
+                                <TableCell key={j} className="text-center text-xs p-1">
+                                  <TooltipProvider delayDuration={200}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>{cell}</TooltipTrigger>
+                                      <TooltipContent className="text-[11px]">{tip}</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </TableCell>
+                              );
+                            })}
                           </TableRow>
                         );
                       })}

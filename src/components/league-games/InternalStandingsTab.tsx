@@ -194,16 +194,16 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "platform_league_fixtures", filter: `association_id=eq.${associationId}` },
+        { event: "*", schema: "public", table: "platform_league_fixtures", filter: platformAssocId ? `association_id=eq.${platformAssocId}` : `association_id=eq.${associationId}` },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["internal-standings", associationId] });
+          queryClient.invalidateQueries({ queryKey: ["internal-standings", platformAssocId] });
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [associationId, queryClient]);
+  }, [associationId, platformAssocId, queryClient]);
 
   if (leagueOptions.length === 0) {
     return (

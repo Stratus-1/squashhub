@@ -450,6 +450,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
                         {result?.status === "submitted" && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}
                         {result?.status === "confirmed" && <Badge className="bg-green-500/15 text-green-700 text-[10px]">Confirmed</Badge>}
+                        {!result && f.fixture_date && f.fixture_date < todayStr && (
+                          <Badge variant="destructive" className="text-[10px]">Overdue</Badge>
+                        )}
                         {f._isLive && !f._hasSnapshot && (
                           <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700">Not yet imported</Badge>
                         )}

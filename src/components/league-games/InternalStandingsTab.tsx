@@ -72,6 +72,24 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   }, [myLeague, selection]);
 
   const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
+
+  // Resolve the platform association id (fixtures live under platform_association_id,
+  // not the tenant league_associations.id)
+  const { data: platformAssocId } = useQuery({
+    queryKey: ["league-assoc-platform-id", associationId],
+    enabled: !!associationId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("league_associations")
+        .select("platform_association_id")
+        .eq("id", associationId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.platform_association_id as string | null) ?? associationId;
+    },
+  });
+
   const isAllMode = selection === "ALL";
   const leaguesToShow = useMemo(() => {
     if (isAllMode) return leagueOptions;
@@ -83,8 +101,8 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
 
   // Fetch fixtures + results for the selected division(s)
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["internal-standings", associationId, seasonYear, divisionCodes.join(",")],
-    enabled: divisionCodes.length > 0,
+    queryKey: ["internal-standings", platformAssocId, seasonYear, divisionCodes.join(",")],
+    enabled: divisionCodes.length > 0 && !!platformAssocId,
     staleTime: 30 * 1000,
     queryFn: async () => {
       const yearStart = `${seasonYear}-01-01`;
@@ -93,7 +111,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
       const { data: fixtures, error: fxErr } = await supabase
         .from("platform_league_fixtures")
         .select("id, fixture_date, division, home_team_code, away_team_code, status")
-        .eq("association_id", associationId)
+        .eq("association_id", platformAssocId!)
         .in("division", divisionCodes)
         .gte("fixture_date", yearStart)
         .lte("fixture_date", yearEnd)
@@ -171,21 +189,21 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         "postgres_changes",
         { event: "*", schema: "public", table: "league_fixture_results" },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["internal-standings", associationId] });
+          queryClient.invalidateQueries({ queryKey: ["internal-standings", platformAssocId] });
         }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "platform_league_fixtures", filter: `association_id=eq.${associationId}` },
+        { event: "*", schema: "public", table: "platform_league_fixtures", filter: platformAssocId ? `association_id=eq.${platformAssocId}` : `association_id=eq.${associationId}` },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["internal-standings", associationId] });
+          queryClient.invalidateQueries({ queryKey: ["internal-standings", platformAssocId] });
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [associationId, queryClient]);
+  }, [associationId, platformAssocId, queryClient]);
 
   if (leagueOptions.length === 0) {
     return (

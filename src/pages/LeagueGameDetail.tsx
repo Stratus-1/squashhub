@@ -1233,7 +1233,21 @@ export default function LeagueGameDetail() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
-  const isSubmitted = existingResult?.status === "submitted" || existingResult?.status === "confirmed";
+  const isSubmittedRaw = existingResult?.status === "submitted" || existingResult?.status === "confirmed";
+  const isSubmitted = isSubmittedRaw && !adminOverride;
+  const fixtureDateStr: string | undefined = (fixture as any)?.fixture_date;
+  const fixtureStartTime: string | undefined = (fixture as any)?.start_time;
+  const isFixturePast = (() => {
+    if (!fixtureDateStr) return false;
+    const today = format(new Date(), "yyyy-MM-dd");
+    if (fixtureDateStr < today) return true;
+    if (fixtureDateStr === today && fixtureStartTime) {
+      const now = new Date();
+      const hhmm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+      return fixtureStartTime <= hhmm;
+    }
+    return false;
+  })();
 
   // ---- Active marker fullscreen ----
   if (activeMarker !== null && markerConfig) {

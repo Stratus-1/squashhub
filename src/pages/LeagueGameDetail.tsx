@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
-import { clearMarkerStateForSession, getMarkerSessionKey, getMarkerSessionKeys, hasMarkerStateForSession } from "@/lib/marker-storage";
+import { clearMarkerStateForSession, getMarkerSessionKeys, hasMarkerStateForSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";

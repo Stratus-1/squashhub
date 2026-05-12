@@ -32,6 +32,8 @@ const DEFAULTS: Partial<LeagueRules> = {
   max_position_movement_per_week: null,
   sub_direction: "any",
   cross_gender_subs_allowed: false,
+  original_player_bonus_enabled: false,
+  original_player_bonus_value: 1,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {

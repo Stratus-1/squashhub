@@ -117,9 +117,12 @@ interface Props {
     durationSeconds: number;
   }) => void;
   onReset: () => void;
+  /** Fired whenever a game completes (live progress). Receives the running
+   *  list of completed games so followers can see scores update game-by-game. */
+  onProgress?: (games: GameScore[]) => void;
 }
 
-export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
+export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress }: Props) {
   const pointsToWin = getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";

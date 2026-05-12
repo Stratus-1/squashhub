@@ -99,6 +99,14 @@ const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot =>
 const hasOriginalSnapshot = (snapshot: OriginalLineupSnapshot | null) =>
   !!snapshot && [...snapshot.home, ...snapshot.away].some(Boolean);
 
+const countOriginalsStillInTheirSetupSlot = (rows: PositionEntry[], originalCodes: string[], side: "home" | "away") => {
+  const key = side === "home" ? "homeCode" : "awayCode";
+  return rows.reduce((count, row, idx) => {
+    const originalCode = normalizePlayerCode(originalCodes[idx]);
+    return originalCode && normalizePlayerCode(row[key]) === originalCode ? count + 1 : count;
+  }, 0);
+};
+
 /* ---- Compact Signature ---- */
 function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -998,16 +1006,14 @@ export default function LeagueGameDetail() {
     const originalsMap = (prefillLineup as any)?.originals || {};
     const fallbackOriginalCodes = (teamCode: string) =>
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean);
-    const homeOriginals = new Set<string>(
-      hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.home.filter(Boolean) : fallbackOriginalCodes(homeTeamCode),
-    );
-    const awayOriginals = new Set<string>(
-      hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.away.filter(Boolean) : fallbackOriginalCodes(awayTeamCode),
-    );
-    const currentHomeCodes = new Set(positions.map((p) => normalizePlayerCode(p.homeCode)).filter(Boolean));
-    const currentAwayCodes = new Set(positions.map((p) => normalizePlayerCode(p.awayCode)).filter(Boolean));
-    const homeOriginalCount = [...homeOriginals].filter((code) => currentHomeCodes.has(code)).length;
-    const awayOriginalCount = [...awayOriginals].filter((code) => currentAwayCodes.has(code)).length;
+    const homeOriginalCodes = hasOriginalSnapshot(originalLineupSnapshot)
+      ? originalLineupSnapshot!.home
+      : fallbackOriginalCodes(homeTeamCode);
+    const awayOriginalCodes = hasOriginalSnapshot(originalLineupSnapshot)
+      ? originalLineupSnapshot!.away
+      : fallbackOriginalCodes(awayTeamCode);
+    const homeOriginalCount = countOriginalsStillInTheirSetupSlot(positions, homeOriginalCodes, "home");
+    const awayOriginalCount = countOriginalsStillInTheirSetupSlot(positions, awayOriginalCodes, "away");
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 

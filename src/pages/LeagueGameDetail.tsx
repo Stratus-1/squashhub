@@ -178,7 +178,7 @@ export default function LeagueGameDetail() {
   const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away" } | null>(null);
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
-  const isClubAdmin = !!useIsClubAdmin();
+  const isClubAdmin = useIsClubAdmin();
 
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");

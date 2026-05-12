@@ -303,9 +303,49 @@ export default function LeagueGameDetail() {
   const nsaLive = !!(nsaHomeTeam || nsaAwayTeam);
 
 
+  // Compute how many positions this fixture needs.
+  // Default 4 (NSA standard); grows to 5 only if BOTH teams have a 5th allocation,
+  // OR if a saved match row at position 5 already exists.
+  const positionCount = useMemo(() => {
+    const homeCode = fixture?.home_team_code;
+    const awayCode = fixture?.away_team_code;
+    const lineup = (prefillLineup as any)?.lineup || {};
+    const homeFifth = !!(homeCode && (lineup[homeCode]?.[4]?.code || lineup[homeCode]?.[4]?.name));
+    const awayFifth = !!(awayCode && (lineup[awayCode]?.[4]?.code || lineup[awayCode]?.[4]?.name));
+    const savedHasFifth = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === 5);
+    return savedHasFifth || (homeFifth && awayFifth) ? 5 : DEFAULT_POSITIONS;
+  }, [fixture, prefillLineup, existingMatches]);
+
+  // Resize positions state when positionCount changes (preserves existing entries).
+  useEffect(() => {
+    setPositions((prev) => {
+      if (prev.length === positionCount) return prev;
+      if (prev.length < positionCount) {
+        return [
+          ...prev,
+          ...Array.from({ length: positionCount - prev.length }, () => ({
+            homeCode: "", homeName: "", awayCode: "", awayName: "",
+            scores: [] as { home: number; away: number }[], completed: false, isForfeit: false, forfeitSide: null as "home" | "away" | null,
+          })),
+        ];
+      }
+      // Shrinking: only drop trailing slots that are still empty AND have no scores.
+      const next = [...prev];
+      while (next.length > positionCount) {
+        const last = next[next.length - 1];
+        const isEmpty = !last.homeCode && !last.awayCode && (!last.scores || last.scores.length === 0) && !last.isForfeit;
+        if (!isEmpty) break;
+        next.pop();
+      }
+      return next;
+    });
+  }, [positionCount]);
+
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
-      const loaded = [1, 2, 3, 4].map((pos) => {
+      const targetCount = Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
+      const loaded = Array.from({ length: targetCount }, (_, i) => {
+        const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
         if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
         return {
@@ -319,7 +359,7 @@ export default function LeagueGameDetail() {
       setPositions((prev) => {
         // Don't clobber the position the user is actively marking/editing locally —
         // realtime refresh would otherwise overwrite in-progress scores.
-        return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? prev[i] : p));
+        return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? (prev[i] ?? p) : p));
       });
       const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
       if (existingResultFetched && !hasOriginalSnapshot(savedSnapshot ?? null) && !hasOriginalSnapshot(originalLineupSnapshot)) {
@@ -327,7 +367,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;

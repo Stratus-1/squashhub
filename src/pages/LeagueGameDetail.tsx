@@ -433,12 +433,8 @@ export default function LeagueGameDetail() {
       const result: Record<string, Array<{ code: string; name: string }>> = {};
       const originals: Record<string, Array<{ code: string; name: string }>> = {};
       for (const code of codes) {
-        const slots: Array<{ code: string; name: string }> = [
-          { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" },
-        ];
-        const origSlots: Array<{ code: string; name: string }> = [
-          { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" },
-        ];
+        const slots: Array<{ code: string; name: string }> = Array.from({ length: MAX_POSITIONS }, () => ({ code: "", name: "" }));
+        const origSlots: Array<{ code: string; name: string }> = Array.from({ length: MAX_POSITIONS }, () => ({ code: "", name: "" }));
         const matchingLeagues = leagues.filter((l: any) => l.code === code).map((l: any) => l.id);
 
         const regByMember = new Map<string, any>();
@@ -457,7 +453,7 @@ export default function LeagueGameDetail() {
         };
 
         const fillSlot = (target: Array<{ code: string; name: string }>, pos: number, memberId: string) => {
-          if (pos < 1 || pos > 4) return;
+          if (pos < 1 || pos > MAX_POSITIONS) return;
           if (target[pos - 1].code || target[pos - 1].name) return;
           target[pos - 1] = buildSlot(memberId);
         };
@@ -480,7 +476,7 @@ export default function LeagueGameDetail() {
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
         let regIdx = 0;
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < MAX_POSITIONS; i++) {
           if (slots[i].code || slots[i].name) continue;
           while (regIdx < teamRegs.length) {
             const r = teamRegs[regIdx++];

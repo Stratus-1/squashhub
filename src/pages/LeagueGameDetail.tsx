@@ -74,6 +74,11 @@ interface PositionEntry {
   forfeitSide?: "home" | "away" | null;
 }
 
+interface OriginalLineupSnapshot {
+  home: string[];
+  away: string[];
+}
+
 // Penalty points deducted from a team when one of their players forfeits a position
 const FORFEIT_PENALTY_POINTS = 2;
 
@@ -83,6 +88,16 @@ function emptyPositions(): PositionEntry[] {
     scores: [], completed: false, isForfeit: false, forfeitSide: null,
   }));
 }
+
+const normalizePlayerCode = (code: string | null | undefined) => (code || "").trim().toUpperCase();
+
+const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot => ({
+  home: rows.map((p) => normalizePlayerCode(p.homeCode)),
+  away: rows.map((p) => normalizePlayerCode(p.awayCode)),
+});
+
+const hasOriginalSnapshot = (snapshot: OriginalLineupSnapshot | null) =>
+  !!snapshot && [...snapshot.home, ...snapshot.away].some(Boolean);
 
 /* ---- Compact Signature ---- */
 function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label: string }) {

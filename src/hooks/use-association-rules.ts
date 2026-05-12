@@ -26,6 +26,9 @@ export interface LeagueRules {
   max_position_movement_per_week: number | null;
   sub_direction: "any" | "lower_or_equal_only" | "higher_or_equal_only";
   cross_gender_subs_allowed: boolean;
+  // Original-player bonus (NIL): +N points per originally-allocated player who actually plays
+  original_player_bonus_enabled: boolean;
+  original_player_bonus_value: number;
 }
 
 export function useAssociationRules(associationId: string | null | undefined) {

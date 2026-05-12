@@ -802,7 +802,7 @@ export default function LeagueGameDetail() {
       try {
         // Re-derive the updated positions snapshot (state hasn't flushed yet, so recompute manually)
         setTimeout(async () => {
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < positions.length; i++) {
             const p = positions[i];
             if (!p.homeCode && !p.awayCode) continue;
             await supabase.from("league_match_results" as any).upsert({
@@ -971,7 +971,7 @@ export default function LeagueGameDetail() {
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);
       if (!hasOriginalSnapshot(originalLineupSnapshot)) setOriginalLineupSnapshot(setupOriginalSnapshot);
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
         const { error } = await supabase.from("league_match_results" as any).upsert({
@@ -1146,7 +1146,7 @@ export default function LeagueGameDetail() {
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
         let hw = 0, aw = 0;

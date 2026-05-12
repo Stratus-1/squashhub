@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
-import { clearMarkerStateForSession, getMarkerSessionKey, hasMarkerStateForSession } from "@/lib/marker-storage";
+import { clearMarkerStateForSession, getMarkerSessionKey, getMarkerSessionKeys, hasMarkerStateForSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -1027,6 +1027,7 @@ export default function LeagueGameDetail() {
       playerB: { name: pos.awayName || pos.awayCode, number: pos.awayCode, club: fixture?.away_team_code || "" },
       isDoubles: false, matchType: "league", scoringFormat: effectiveFormat, bestOf: effectiveBestOf, deuceRule: "win_by_2",
       source: "league", sourceId: fixtureId,
+      sourcePosition: posIdx + 1,
     };
   }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
 
@@ -1034,7 +1035,7 @@ export default function LeagueGameDetail() {
     const pos = positions[posIdx];
     if (!pos.homeCode || !pos.awayCode) { toast.error("Both players required"); return; }
     const config = buildMarkerConfigForPosition(posIdx);
-    if (config) clearMarkerStateForSession(getMarkerSessionKey(config));
+    if (config) clearMarkerStateForSession(getMarkerSessionKeys(config));
     setResumableMarker(null);
     setActiveMarker(posIdx);
   };
@@ -1049,7 +1050,7 @@ export default function LeagueGameDetail() {
     const idx = positions.findIndex((pos, posIdx) => {
       if (pos.completed || !pos.homeCode || !pos.awayCode) return false;
       const config = buildMarkerConfigForPosition(posIdx);
-      return !!config && hasMarkerStateForSession(getMarkerSessionKey(config));
+      return !!config && hasMarkerStateForSession(getMarkerSessionKeys(config));
     });
     setResumableMarker(idx >= 0 ? idx : null);
   }, [setupDone, activeMarker, positions, buildMarkerConfigForPosition]);

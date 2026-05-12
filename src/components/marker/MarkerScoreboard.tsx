@@ -117,9 +117,12 @@ interface Props {
     durationSeconds: number;
   }) => void;
   onReset: () => void;
+  /** Fired whenever a game completes (live progress). Receives the running
+   *  list of completed games so followers can see scores update game-by-game. */
+  onProgress?: (games: GameScore[]) => void;
 }
 
-export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
+export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress }: Props) {
   const pointsToWin = getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";
@@ -300,6 +303,9 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         setServer(gameWinner === "a" ? "b" : "a");
         setServeSide("R");
 
+        // Live progress broadcast (game-by-game)
+        try { onProgress?.(newCompleted); } catch {}
+
         // Check match won
         if (newGamesA >= gamesToWin || newGamesB >= gamesToWin) {
           const winner = newGamesA >= gamesToWin ? "a" : "b";
@@ -313,7 +319,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset }: Props) {
         }
       }
     },
-    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, resting, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete, startRestTimer]
+    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, resting, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete, onProgress, startRestTimer]
   );
 
   const undo = useCallback(() => {

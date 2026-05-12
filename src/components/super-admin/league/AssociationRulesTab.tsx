@@ -169,6 +169,27 @@ export default function AssociationRulesTab({ associationId }: Props) {
 
           <div className="md:col-span-2 border-t pt-3 mt-1">
             <ToggleRow
+              label="Team-win bonus (overall fixture)"
+              hint="When on, the team that wins the overall fixture for the night earns extra bonus points (in addition to per-match / per-game bonuses)."
+              value={!!form.team_win_bonus_enabled}
+              onChange={(v) => set("team_win_bonus_enabled", v)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Team-win bonus value</Label>
+            <Input
+              type="number" min={0} max={10}
+              value={form.team_win_bonus_value ?? 2}
+              onChange={(e) => set("team_win_bonus_value", Number(e.target.value))}
+              disabled={!form.team_win_bonus_enabled}
+            />
+            <p className="text-xs text-muted-foreground">
+              Points awarded to the overall winner of the fixture (e.g. NIL: 2).
+            </p>
+          </div>
+
+          <div className="md:col-span-2 border-t pt-3 mt-1">
+            <ToggleRow
               label="Original-player bonus (NIL rule)"
               hint="When on, the team earns extra points for each originally-allocated player who actually plays. Reserves/subs do NOT earn this bonus."
               value={!!form.original_player_bonus_enabled}

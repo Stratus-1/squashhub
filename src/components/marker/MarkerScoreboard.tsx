@@ -303,6 +303,9 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress 
         setServer(gameWinner === "a" ? "b" : "a");
         setServeSide("R");
 
+        // Live progress broadcast (game-by-game)
+        try { onProgress?.(newCompleted); } catch {}
+
         // Check match won
         if (newGamesA >= gamesToWin || newGamesB >= gamesToWin) {
           const winner = newGamesA >= gamesToWin ? "a" : "b";
@@ -316,7 +319,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress 
         }
       }
     },
-    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, resting, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete, startRestTimer]
+    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, resting, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete, onProgress, startRestTimer]
   );
 
   const undo = useCallback(() => {

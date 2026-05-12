@@ -185,9 +185,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     queryKey: ["my-captain-team-codes", activeMember?.id],
     queryFn: async () => {
       if (!activeMember?.id) return new Set<string>();
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("member_league_registrations")
-        .select("is_captain, leagues!inner(code)")
+        .select("is_captain, leagues:league_id (code)")
         .eq("club_member_id", activeMember.id)
         .eq("active", true)
         .eq("is_captain", true);

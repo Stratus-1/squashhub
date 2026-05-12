@@ -1902,14 +1902,24 @@ export default function LeagueGameDetail() {
 
         {/* Setup / scoring buttons */}
         {!setupDone && !isSubmitted && (
-          <div className="flex gap-2">
-            <Button className="flex-1" size="sm" variant="outline" onClick={handleSaveSetup} disabled={!setupValid || savingSetup}>
-              {savingSetup ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-              Save Setup
+          <div className="space-y-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-full text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleResetToDefault}
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reset to default league players
             </Button>
-            <Button className="flex-1" size="sm" onClick={() => { if (!setupValid) { toast.error("Enter at least one complete position"); return; } handleSaveSetup(); }} disabled={!setupValid || savingSetup}>
-              <Check className="w-4 h-4 mr-1" /> Complete Setup
-            </Button>
+            <div className="flex gap-2">
+              <Button className="flex-1" size="sm" variant="outline" onClick={handleSaveSetup} disabled={!setupValid || savingSetup}>
+                {savingSetup ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                Save Setup
+              </Button>
+              <Button className="flex-1" size="sm" onClick={() => { if (!setupValid) { toast.error("Enter at least one complete position"); return; } handleSaveSetup(); }} disabled={!setupValid || savingSetup}>
+                <Check className="w-4 h-4 mr-1" /> Complete Setup
+              </Button>
+            </div>
           </div>
         )}
 

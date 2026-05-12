@@ -544,9 +544,11 @@ export default function LeagueGameDetail() {
 
     setPositions((prev) => {
       const next = prev.map((p, i) => {
-      const home = homeSlots[i] || { code: "", name: "" };
-      const away = awaySlots[i] || { code: "", name: "" };
-      if (stalePlaceholdersExist) {
+        const home = homeSlots[i] || { code: "", name: "" };
+        const away = awaySlots[i] || { code: "", name: "" };
+        // When no scores have been recorded yet, the latest captain/admin lineup
+        // (incl. per-fixture overrides from Edit Players) is authoritative —
+        // overwrite existing slot data so reserve swaps reflect immediately.
         return {
           ...p,
           homeCode: home.code || p.homeCode,
@@ -554,14 +556,6 @@ export default function LeagueGameDetail() {
           awayCode: away.code || p.awayCode,
           awayName: away.name || p.awayName,
         };
-      }
-      return {
-        ...p,
-        homeCode: p.homeCode || home.code,
-        homeName: p.homeName || home.name,
-        awayCode: p.awayCode || away.code,
-        awayName: p.awayName || away.name,
-      };
       });
       if (!hasOriginalSnapshot(originalLineupSnapshot)) {
         setOriginalLineupSnapshot(buildOriginalSnapshot(next));

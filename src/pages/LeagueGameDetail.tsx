@@ -231,6 +231,26 @@ export default function LeagueGameDetail() {
   const { data: nsaHomeTeam } = useNsaTeamByCode(fixture?.home_team_code, !!fixture);
   const { data: nsaAwayTeam } = useNsaTeamByCode(fixture?.away_team_code, !!fixture);
 
+  // Resolve team codes (e.g. "NIL002") to friendly league/team names from the
+  // `leagues` table. Hook lives here (above early returns) to obey Rules of Hooks.
+  const { data: teamNamesByCode } = useQuery({
+    queryKey: ["league-team-names", fixture?.home_team_code, fixture?.away_team_code],
+    enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
+    queryFn: async () => {
+      const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
+      if (codes.length === 0) return {} as Record<string, string>;
+      const { data } = await (supabase as any)
+        .from("leagues")
+        .select("code, name")
+        .in("code", codes);
+      const map: Record<string, string> = {};
+      for (const l of (data || []) as any[]) {
+        if (l.code && l.name) map[String(l.code).toUpperCase()] = l.name;
+      }
+      return map;
+    },
+  });
+
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {
     const map = new Map<string, { name: string; won: number; lost: number; played: number; side: "home" | "away" }>();

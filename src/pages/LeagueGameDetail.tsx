@@ -201,6 +201,31 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId,
   });
 
+  // ---- Live follow: subscribe to realtime score updates for this fixture ----
+  // Anyone viewing the same game sees scores update game-by-game without refresh.
+  // We do NOT overwrite local marker state for the position currently being marked.
+  useEffect(() => {
+    if (!fixtureId) return;
+    const ch = supabase
+      .channel(`league-fixture:${fixtureId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "league_match_results", filter: `fixture_id=eq.${fixtureId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+          queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "league_fixture_results", filter: `fixture_id=eq.${fixtureId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [fixtureId, queryClient]);
   // ---- NSA live roster: resolved by team code, no DB mapping needed ----
   // Codes are the contract — the club assigns "CSI006" and gives the same to NSA.
   const { data: nsaHomeTeam } = useNsaTeamByCode(fixture?.home_team_code, !!fixture);

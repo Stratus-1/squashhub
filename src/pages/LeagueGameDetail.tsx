@@ -987,10 +987,10 @@ export default function LeagueGameDetail() {
     const originalsMap = (prefillLineup as any)?.originals || {};
     const fallbackOriginalCodes = (teamCode: string) =>
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean);
-    const homeOriginals = new Set(
+    const homeOriginals = new Set<string>(
       hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.home.filter(Boolean) : fallbackOriginalCodes(homeTeamCode),
     );
-    const awayOriginals = new Set(
+    const awayOriginals = new Set<string>(
       hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.away.filter(Boolean) : fallbackOriginalCodes(awayTeamCode),
     );
     const currentHomeCodes = new Set(positions.map((p) => normalizePlayerCode(p.homeCode)).filter(Boolean));

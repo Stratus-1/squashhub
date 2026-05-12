@@ -1088,6 +1088,28 @@ export default function LeagueGameDetail() {
   const homeCode = fixture.home_team_code || "";
   const awayCode = fixture.away_team_code || "";
 
+  // Resolve team codes (e.g. "NIL002") to friendly league/team names from the
+  // `leagues` table (e.g. "Men's 2nd League"). Falls back gracefully if missing.
+  const { data: teamNamesByCode } = useQuery({
+    queryKey: ["league-team-names", homeCode, awayCode],
+    enabled: !!(homeCode || awayCode),
+    queryFn: async () => {
+      const codes = [homeCode, awayCode].filter(Boolean);
+      if (codes.length === 0) return {} as Record<string, string>;
+      const { data } = await (supabase as any)
+        .from("leagues")
+        .select("code, name")
+        .in("code", codes);
+      const map: Record<string, string> = {};
+      for (const l of (data || []) as any[]) {
+        if (l.code && l.name) map[String(l.code).toUpperCase()] = l.name;
+      }
+      return map;
+    },
+  });
+  const homeTeamName = teamNamesByCode?.[homeCode.toUpperCase()] || null;
+  const awayTeamName = teamNamesByCode?.[awayCode.toUpperCase()] || null;
+
   return (
     <div className="bottom-nav-safe">
       <SEO title="League Scorecard" description="League fixture scorecard" path={`/league-games/${fixtureId}`} noIndex />

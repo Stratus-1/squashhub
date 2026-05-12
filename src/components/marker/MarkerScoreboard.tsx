@@ -324,7 +324,7 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress,
         }
       }
     },
-    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, resting, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete, onProgress, startRestTimer]
+    [scoreA, scoreB, gamesA, gamesB, server, serveSide, matchOver, resting, completedGames, pointsToWin, gamesToWin, isEnglish, elapsed, onMatchComplete, onProgress, onLiveScore, startRestTimer]
   );
 
   const undo = useCallback(() => {

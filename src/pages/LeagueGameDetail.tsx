@@ -496,8 +496,28 @@ export default function LeagueGameDetail() {
       return { lineup: result, originals };
     },
     enabled: !!fixture && !!fixtureId,
-    staleTime: 60 * 1000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
+
+  // Auto-refresh lineup data when the tab/window becomes visible again
+  // (e.g. user returns from Edit Players in another tab/route).
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && fixtureId) {
+        queryClient.invalidateQueries({ queryKey: ["league-fixture-prefill", fixtureId] });
+        queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+        queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [fixtureId, queryClient]);
 
   // Apply prefill from the captain's Fill-Up Leagues lineup.
   //  - If real play has been recorded (any scores or forfeit), do nothing.

@@ -388,9 +388,18 @@ export default function LeagueGameDetail() {
       const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
 
       // Build per-team-code positions [1..4]
+      // We build TWO maps:
+      //   - result: prefill for the scorecard (week → fixture override → regs)
+      //   - originals: snapshot of captain's ORIGINAL allocation (week → regs only,
+      //     ignoring per-fixture overrides). Used to award the original-player bonus
+      //     so swapping in a reserve via Edit Players never re-classifies them as original.
       const result: Record<string, Array<{ code: string; name: string }>> = {};
+      const originals: Record<string, Array<{ code: string; name: string }>> = {};
       for (const code of codes) {
         const slots: Array<{ code: string; name: string }> = [
+          { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" },
+        ];
+        const origSlots: Array<{ code: string; name: string }> = [
           { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" }, { code: "", name: "" },
         ];
         const matchingLeagues = leagues.filter((l: any) => l.code === code).map((l: any) => l.id);
@@ -400,29 +409,36 @@ export default function LeagueGameDetail() {
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .forEach((r: any) => regByMember.set(r.club_member_id, r));
 
-        const fillSlot = (pos: number, memberId: string) => {
-          if (pos < 1 || pos > 4) return;
-          if (slots[pos - 1].code || slots[pos - 1].name) return; // don't overwrite higher-priority entry
+        const buildSlot = (memberId: string) => {
           const m = memberMap.get(memberId) as any;
           const reg = regByMember.get(memberId);
           const code =
             (reg?.league_association_number || reg?.ssa_number || nsfByMember.get(memberId) || m?.club_member_number || "")
               .toString()
               .toUpperCase();
-          slots[pos - 1] = { code, name: m?.name || "" };
+          return { code, name: m?.name || "" };
         };
 
-        // Priority 1: Fill-Up Leagues week lineup
+        const fillSlot = (target: Array<{ code: string; name: string }>, pos: number, memberId: string) => {
+          if (pos < 1 || pos > 4) return;
+          if (target[pos - 1].code || target[pos - 1].name) return;
+          target[pos - 1] = buildSlot(memberId);
+        };
+
+        // Priority 1: Fill-Up Leagues week lineup → goes into BOTH (originals and prefill)
         weekLineups
           .filter((l: any) => matchingLeagues.includes(l.league_id))
-          .forEach((l: any) => fillSlot(l.position, l.club_member_id));
+          .forEach((l: any) => {
+            fillSlot(slots, l.position, l.club_member_id);
+            fillSlot(origSlots, l.position, l.club_member_id);
+          });
 
-        // Priority 2: explicit per-fixture lineup
+        // Priority 2: explicit per-fixture lineup → ONLY into prefill (not originals)
         (fixtureLineups || [])
           .filter((l: any) => matchingLeagues.includes(l.league_id))
-          .forEach((l: any) => fillSlot(l.position, l.club_member_id));
+          .forEach((l: any) => fillSlot(slots, l.position, l.club_member_id));
 
-        // Priority 3: registrations by player_rank for any unfilled positions
+        // Priority 3: registrations by player_rank for any unfilled positions → BOTH
         const teamRegs = (regs || [])
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
@@ -436,12 +452,14 @@ export default function LeagueGameDetail() {
             const name = m?.name || "";
             if (!code && !name) continue;
             slots[i] = { code, name };
+            if (!origSlots[i].code && !origSlots[i].name) origSlots[i] = { code, name };
             break;
           }
         }
         result[code] = slots;
+        originals[code] = origSlots;
       }
-      return result;
+      return { lineup: result, originals };
     },
     enabled: !!fixture && !!fixtureId,
     staleTime: 60 * 1000,
@@ -461,8 +479,9 @@ export default function LeagueGameDetail() {
       );
     if (hasRecordedPlay) return;
 
-    const homeSlots = prefillLineup[fixture.home_team_code] || [];
-    const awaySlots = prefillLineup[fixture.away_team_code] || [];
+    const lineup = (prefillLineup as any)?.lineup || {};
+    const homeSlots = lineup[fixture.home_team_code] || [];
+    const awaySlots = lineup[fixture.away_team_code] || [];
     const hasAny = [...homeSlots, ...awaySlots].some((s) => s.code || s.name);
     if (!hasAny) return;
 
@@ -940,13 +959,15 @@ export default function LeagueGameDetail() {
     const opbValue = leagueRules?.original_player_bonus_value ?? 0;
     const homeTeamCode = fixture?.home_team_code || "";
     const awayTeamCode = fixture?.away_team_code || "";
+    // "Original" = NSF code is in the captain's pre-allocated lineup ONLY (not per-fixture overrides).
+    const originalsMap = (prefillLineup as any)?.originals || {};
     const homeOriginals = new Set(
-      ((prefillLineup as any)?.[homeTeamCode] || [])
+      (originalsMap[homeTeamCode] || [])
         .map((s: any) => (s.code || "").toUpperCase())
         .filter(Boolean),
     );
     const awayOriginals = new Set(
-      ((prefillLineup as any)?.[awayTeamCode] || [])
+      (originalsMap[awayTeamCode] || [])
         .map((s: any) => (s.code || "").toUpperCase())
         .filter(Boolean),
     );

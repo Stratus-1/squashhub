@@ -971,9 +971,11 @@ export default function LeagueGameDetail() {
         .map((s: any) => (s.code || "").toUpperCase())
         .filter(Boolean),
     );
+    // Count originals based on the allocated lineup, regardless of forfeit/no-show.
+    // Per NIL rule: a player who was originally allocated still earns the bonus
+    // even if they didn't actually take the court (forfeit).
     let homeOriginalCount = 0, awayOriginalCount = 0;
     for (const pos of positions) {
-      if (pos.isForfeit) continue;
       if (pos.homeCode && homeOriginals.has(pos.homeCode.toUpperCase())) homeOriginalCount++;
       if (pos.awayCode && awayOriginals.has(pos.awayCode.toUpperCase())) awayOriginalCount++;
     }

@@ -925,7 +925,7 @@ export default function LeagueGameDetail() {
     const bonusValue = leagueRules?.bonus_points_value ?? 1;
     const shareOnTie = !!leagueRules?.share_bonus_on_tie;
     let homeMatchBonus = 0, awayMatchBonus = 0;
-    if (mode === "per_match") {
+    if (mode === "per_match" || mode === "fixed_winner") {
       if (fixtureWinner === "home") homeMatchBonus = bonusValue;
       else if (fixtureWinner === "away") awayMatchBonus = bonusValue;
       else if (shareOnTie) { homeMatchBonus = bonusValue / 2; awayMatchBonus = bonusValue / 2; }

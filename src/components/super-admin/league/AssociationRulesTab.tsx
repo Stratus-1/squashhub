@@ -141,6 +141,7 @@ export default function AssociationRulesTab({ associationId }: Props) {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No bonus points</SelectItem>
+                <SelectItem value="fixed_winner">Fixed bonus to winning team (NIL)</SelectItem>
                 <SelectItem value="per_match">Per match won</SelectItem>
                 <SelectItem value="per_game_won">Per game won</SelectItem>
               </SelectContent>
@@ -155,7 +156,11 @@ export default function AssociationRulesTab({ associationId }: Props) {
               disabled={(form.bonus_points_mode ?? "per_match") === "none"}
             />
             <p className="text-xs text-muted-foreground">
-              Points awarded per {form.bonus_points_mode === "per_game_won" ? "game won" : "match won"}.
+              {form.bonus_points_mode === "per_game_won"
+                ? "Points awarded per game won."
+                : form.bonus_points_mode === "fixed_winner"
+                ? "Fixed points awarded to the team that wins the overall fixture."
+                : "Points awarded per match won."}
             </p>
           </div>
           <div className="md:col-span-2">
@@ -165,27 +170,6 @@ export default function AssociationRulesTab({ associationId }: Props) {
               value={!!form.share_bonus_on_tie}
               onChange={(v) => set("share_bonus_on_tie", v)}
             />
-          </div>
-
-          <div className="md:col-span-2 border-t pt-3 mt-1">
-            <ToggleRow
-              label="Team-win bonus (overall fixture)"
-              hint="When on, the team that wins the overall fixture for the night earns extra bonus points (in addition to per-match / per-game bonuses)."
-              value={!!form.team_win_bonus_enabled}
-              onChange={(v) => set("team_win_bonus_enabled", v)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Team-win bonus value</Label>
-            <Input
-              type="number" min={0} max={10}
-              value={form.team_win_bonus_value ?? 2}
-              onChange={(e) => set("team_win_bonus_value", Number(e.target.value))}
-              disabled={!form.team_win_bonus_enabled}
-            />
-            <p className="text-xs text-muted-foreground">
-              Points awarded to the overall winner of the fixture (e.g. NIL: 2).
-            </p>
           </div>
 
           <div className="md:col-span-2 border-t pt-3 mt-1">

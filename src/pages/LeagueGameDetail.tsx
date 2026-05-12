@@ -925,7 +925,7 @@ export default function LeagueGameDetail() {
     const bonusValue = leagueRules?.bonus_points_value ?? 1;
     const shareOnTie = !!leagueRules?.share_bonus_on_tie;
     let homeMatchBonus = 0, awayMatchBonus = 0;
-    if (mode === "per_match") {
+    if (mode === "per_match" || mode === "fixed_winner") {
       if (fixtureWinner === "home") homeMatchBonus = bonusValue;
       else if (fixtureWinner === "away") awayMatchBonus = bonusValue;
       else if (shareOnTie) { homeMatchBonus = bonusValue / 2; awayMatchBonus = bonusValue / 2; }
@@ -959,18 +959,8 @@ export default function LeagueGameDetail() {
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 
-    // Team-win bonus (NIL): +N to the overall fixture winner for the night.
-    const twbEnabled = !!leagueRules?.team_win_bonus_enabled;
-    const twbValue = leagueRules?.team_win_bonus_value ?? 0;
-    let homeTeamWinBonus = 0, awayTeamWinBonus = 0;
-    if (twbEnabled) {
-      if (fixtureWinner === "home") homeTeamWinBonus = twbValue;
-      else if (fixtureWinner === "away") awayTeamWinBonus = twbValue;
-      else if (shareOnTie) { homeTeamWinBonus = twbValue / 2; awayTeamWinBonus = twbValue / 2; }
-    }
-
-    const homeBonusPoints = homeMatchBonus + homeOriginalBonus + homeTeamWinBonus;
-    const awayBonusPoints = awayMatchBonus + awayOriginalBonus + awayTeamWinBonus;
+    const homeBonusPoints = homeMatchBonus + homeOriginalBonus;
+    const awayBonusPoints = awayMatchBonus + awayOriginalBonus;
     const homeTotal = homeTotalGames + homeBonusPoints - homePenaltyPoints;
     const awayTotal = awayTotalGames + awayBonusPoints - awayPenaltyPoints;
 
@@ -980,14 +970,13 @@ export default function LeagueGameDetail() {
       homeMatchBonus, awayMatchBonus,
       homeOriginalBonus, awayOriginalBonus,
       homeOriginalCount, awayOriginalCount,
-      homeTeamWinBonus, awayTeamWinBonus,
       homePenaltyPoints, awayPenaltyPoints,
       homeAllPoints, awayAllPoints,
       homeTotal, awayTotal,
       winner: fixtureWinner,
       posResults,
       opbEnabled, opbValue,
-      twbEnabled, twbValue,
+      bonusMode: mode,
     };
   }, [positions, leagueRules, prefillLineup, fixture]);
 
@@ -1748,16 +1737,6 @@ export default function LeagueGameDetail() {
                       <td colSpan={bestOf} />
                       <td className="text-center p-1">{summary.homeOriginalCount} = {summary.homeOriginalBonus}</td>
                       <td className="text-center p-1">{summary.awayOriginalCount} = {summary.awayOriginalBonus}</td>
-                    </tr>
-                  )}
-                  {summary.twbEnabled && (
-                    <tr className="bg-muted/40 font-semibold text-xs">
-                      <td colSpan={2} className="p-1 text-right">
-                        TEAM WIN BONUS (+{summary.twbValue})
-                      </td>
-                      <td colSpan={bestOf} />
-                      <td className="text-center p-1">{summary.homeTeamWinBonus}</td>
-                      <td className="text-center p-1">{summary.awayTeamWinBonus}</td>
                     </tr>
                   )}
                   <tr className="bg-muted/40 font-semibold text-xs">

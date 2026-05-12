@@ -1133,6 +1133,9 @@ export default function LeagueGameDetail() {
               <span className="text-xs font-black uppercase tracking-widest block">HOME TEAM</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-mono font-black text-lg">{homeCode}</span>
+                {homeTeamName && (
+                  <span className="text-xs font-semibold opacity-90 truncate">{homeTeamName}</span>
+                )}
                 <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="home" teamCode={homeCode} />
               </div>
             </div>
@@ -1140,6 +1143,9 @@ export default function LeagueGameDetail() {
               <span className="text-xs font-black uppercase tracking-widest block">VISITORS TEAM</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-mono font-black text-lg">{awayCode}</span>
+                {awayTeamName && (
+                  <span className="text-xs font-semibold opacity-90 truncate">{awayTeamName}</span>
+                )}
                 <NsaPenaltyBadge fixtureId={fixture.nsa_fixture_id} teamSide="away" teamCode={awayCode} />
               </div>
             </div>

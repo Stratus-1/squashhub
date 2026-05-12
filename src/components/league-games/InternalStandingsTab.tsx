@@ -189,7 +189,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         "postgres_changes",
         { event: "*", schema: "public", table: "league_fixture_results" },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["internal-standings", associationId] });
+          queryClient.invalidateQueries({ queryKey: ["internal-standings", platformAssocId] });
         }
       )
       .on(

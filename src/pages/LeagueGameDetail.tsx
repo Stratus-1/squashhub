@@ -1706,10 +1706,7 @@ export default function LeagueGameDetail() {
               })}
 
               {/* Totals rows */}
-              {setupDone && (() => {
-                const homeAllPts = positions.reduce((sum, p) => sum + p.scores.reduce((s, g) => s + g.home, 0), 0);
-                const awayAllPts = positions.reduce((sum, p) => sum + p.scores.reduce((s, g) => s + g.away, 0), 0);
-                return (
+              {setupDone && (
                 <>
                   <tr className="border-t bg-muted/60 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <td colSpan={2} className="p-1 text-right"></td>
@@ -1723,6 +1720,24 @@ export default function LeagueGameDetail() {
                     <td className="text-center p-1">{summary.homeTotalGames}</td>
                     <td className="text-center p-1">{summary.awayTotalGames}</td>
                   </tr>
+                  <tr className="bg-muted/40 font-semibold text-xs">
+                    <td colSpan={2} className="p-1 text-right">
+                      BONUS (WIN)
+                    </td>
+                    <td colSpan={bestOf} />
+                    <td className="text-center p-1">{summary.homeMatchBonus}</td>
+                    <td className="text-center p-1">{summary.awayMatchBonus}</td>
+                  </tr>
+                  {summary.opbEnabled && (
+                    <tr className="bg-muted/40 font-semibold text-xs">
+                      <td colSpan={2} className="p-1 text-right">
+                        ORIGINAL PLAYERS (×{summary.opbValue})
+                      </td>
+                      <td colSpan={bestOf} />
+                      <td className="text-center p-1">{summary.homeOriginalCount} = {summary.homeOriginalBonus}</td>
+                      <td className="text-center p-1">{summary.awayOriginalCount} = {summary.awayOriginalBonus}</td>
+                    </tr>
+                  )}
                   <tr className="bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
                     <td colSpan={bestOf} />
@@ -1746,12 +1761,11 @@ export default function LeagueGameDetail() {
                   <tr className="bg-primary/10 font-bold text-sm border-t-2 border-primary/30">
                     <td colSpan={2} className="p-1 text-right text-primary">TOTAL POINTS (P)</td>
                     <td colSpan={bestOf} />
-                    <td className="text-center p-1 text-primary">{homeAllPts}</td>
-                    <td className="text-center p-1 text-primary">{awayAllPts}</td>
+                    <td className="text-center p-1 text-primary">{summary.homeAllPoints}</td>
+                    <td className="text-center p-1 text-primary">{summary.awayAllPoints}</td>
                   </tr>
                 </>
-                );
-              })()}
+              )}
             </tbody>
           </table>
         </div>

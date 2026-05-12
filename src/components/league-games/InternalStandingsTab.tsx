@@ -99,6 +99,26 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
 
   const divisionCodes = leaguesToShow.map((l) => l.code!).filter(Boolean);
 
+  // Map team_code -> team name (from leagues table). Includes ALL leagues in this association
+  // so that other clubs' teams (when applicable) can resolve too.
+  const { data: teamNameByCode } = useQuery({
+    queryKey: ["team-names-by-code", associationId],
+    enabled: !!associationId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leagues")
+        .select("code, name")
+        .eq("association_id", associationId);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      (data || []).forEach((l: any) => {
+        if (l.code) map.set(l.code, l.name || l.code);
+      });
+      return map;
+    },
+  });
+
   // Fetch fixtures + results for the selected division(s)
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["internal-standings", platformAssocId, seasonYear, divisionCodes.join(",")],
@@ -323,7 +343,16 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {i + 1}
                             </TableCell>
-                            <TableCell className="font-mono text-xs">{s.team_code}</TableCell>
+                            <TableCell className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {teamNameByCode?.get(s.team_code) || s.team_code}
+                                </span>
+                                <span className="font-mono text-[10px] text-muted-foreground">
+                                  {s.team_code}
+                                </span>
+                              </div>
+                            </TableCell>
                             <TableCell className="text-center font-bold">{s.total}</TableCell>
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {s.played}

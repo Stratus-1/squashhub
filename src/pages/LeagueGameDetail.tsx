@@ -1265,7 +1265,7 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? homeTotalPts : ""}</span>
                             <span className="flex items-center justify-center gap-0.5">
-                              {!isSubmitted && !pos.completed && (
+                              {!isSubmitted && !pos.isForfeit && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <button
@@ -1279,7 +1279,6 @@ export default function LeagueGameDetail() {
                                     <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "home" })}>
                                       <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       className="text-destructive focus:text-destructive"
                                       onClick={() => {
@@ -1290,6 +1289,20 @@ export default function LeagueGameDetail() {
                                     >
                                       <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
                                     </DropdownMenuItem>
+                                    {pos.completed && (
+                                      <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-destructive focus:text-destructive"
+                                          onClick={() => {
+                                            if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
+                                            clearScores(idx);
+                                          }}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Scratch / clear scores
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               )}
@@ -1310,23 +1323,6 @@ export default function LeagueGameDetail() {
                                     </button>
                                   )}
                                 </>
-                              )}
-                              {!isSubmitted && pos.completed && !pos.isForfeit && (
-                                <button
-                                  onClick={() => {
-                                    if (!window.confirm(`Delete the recorded score for position ${idx + 1}?\n\nThis cannot be undone — you will need to re-enter or re-mark the game.`)) return;
-                                    const typed = window.prompt(`To confirm, type DELETE (in capitals) to clear position ${idx + 1} scores:`);
-                                    if (typed === "DELETE") {
-                                      clearScores(idx);
-                                    } else if (typed !== null) {
-                                      toast.error("Deletion cancelled — text did not match");
-                                    }
-                                  }}
-                                  className="text-destructive hover:bg-destructive/10 rounded p-0.5 border border-destructive/40"
-                                  title="Delete recorded scores"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
                               )}
                             </span>
                           </>
@@ -1475,7 +1471,6 @@ export default function LeagueGameDetail() {
                                       <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "away" })}>
                                         <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
                                       </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
                                       <DropdownMenuItem
                                         className="text-destructive focus:text-destructive"
                                         onClick={() => {
@@ -1487,9 +1482,60 @@ export default function LeagueGameDetail() {
                                       >
                                         <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
                                       </DropdownMenuItem>
+                                      {pos.completed && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onClick={() => {
+                                              if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
+                                              clearScores(idx);
+                                            }}
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Scratch / clear scores
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </>
+                              )}
+                              {!isSubmitted && pos.completed && !pos.isForfeit && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
+                                      title="Actions"
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "away" })}>
+                                      <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        if (window.confirm(`Mark away player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                          markForfeit(idx, "away");
+                                        }
+                                      }}
+                                    >
+                                      <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
+                                        clearScores(idx);
+                                      }}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Scratch / clear scores
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (
                                 <>
@@ -1508,23 +1554,6 @@ export default function LeagueGameDetail() {
                                     </button>
                                   )}
                                 </>
-                              )}
-                              {!isSubmitted && pos.completed && !pos.isForfeit && (
-                                <button
-                                  onClick={() => {
-                                    if (!window.confirm(`Delete the recorded score for position ${idx + 1}?\n\nThis cannot be undone — you will need to re-enter or re-mark the game.`)) return;
-                                    const typed = window.prompt(`To confirm, type DELETE (in capitals) to clear position ${idx + 1} scores:`);
-                                    if (typed === "DELETE") {
-                                      clearScores(idx);
-                                    } else if (typed !== null) {
-                                      toast.error("Deletion cancelled — text did not match");
-                                    }
-                                  }}
-                                  className="text-destructive hover:bg-destructive/10 rounded p-0.5 border border-destructive/40"
-                                  title="Delete recorded scores"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
                               )}
                             </span>
                           </>

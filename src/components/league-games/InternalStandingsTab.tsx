@@ -99,6 +99,26 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
 
   const divisionCodes = leaguesToShow.map((l) => l.code!).filter(Boolean);
 
+  // Map team_code -> team name (from leagues table). Includes ALL leagues in this association
+  // so that other clubs' teams (when applicable) can resolve too.
+  const { data: teamNameByCode } = useQuery({
+    queryKey: ["team-names-by-code", associationId],
+    enabled: !!associationId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leagues")
+        .select("code, name")
+        .eq("association_id", associationId);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      (data || []).forEach((l: any) => {
+        if (l.code) map.set(l.code, l.name || l.code);
+      });
+      return map;
+    },
+  });
+
   // Fetch fixtures + results for the selected division(s)
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["internal-standings", platformAssocId, seasonYear, divisionCodes.join(",")],

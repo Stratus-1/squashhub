@@ -138,6 +138,7 @@ export default function LeagueGameDetail() {
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  const liveScoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [manualEntry, setManualEntry] = useState<number | null>(null);
   // Indices of completed games (within the current manualEntry rubber) that the
   // user has explicitly chosen to edit. All other completed games are locked.

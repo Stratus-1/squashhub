@@ -1739,16 +1739,6 @@ export default function LeagueGameDetail() {
                       <td className="text-center p-1">{summary.awayOriginalCount} = {summary.awayOriginalBonus}</td>
                     </tr>
                   )}
-                  {summary.twbEnabled && (
-                    <tr className="bg-muted/40 font-semibold text-xs">
-                      <td colSpan={2} className="p-1 text-right">
-                        TEAM WIN BONUS (+{summary.twbValue})
-                      </td>
-                      <td colSpan={bestOf} />
-                      <td className="text-center p-1">{summary.homeTeamWinBonus}</td>
-                      <td className="text-center p-1">{summary.awayTeamWinBonus}</td>
-                    </tr>
-                  )}
                   <tr className="bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
                     <td colSpan={bestOf} />

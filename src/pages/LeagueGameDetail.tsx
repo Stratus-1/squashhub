@@ -1702,7 +1702,7 @@ export default function LeagueGameDetail() {
         />
       )}
 
-      {activeMember?.id && (
+      {activeMember?.id && nsaLive && (
         <NsaSubmitDialog
           open={nsaDialogOpen}
           onOpenChange={setNsaDialogOpen}

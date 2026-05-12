@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
-import { MARKER_STATE_KEY } from "@/lib/marker-storage";
+import { clearMarkerStateForSession, getMarkerSessionKey, hasMarkerStateForSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -164,6 +164,7 @@ export default function LeagueGameDetail() {
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  const [resumableMarker, setResumableMarker] = useState<number | null>(null);
   const liveScoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [manualEntry, setManualEntry] = useState<number | null>(null);
   // Indices of completed games (within the current manualEntry rubber) that the
@@ -1010,16 +1011,9 @@ export default function LeagueGameDetail() {
   };
 
   // ---- Marker ----
-  const startMarking = (posIdx: number) => {
+  const buildMarkerConfigForPosition = useCallback((posIdx: number): MarkerConfig | null => {
     const pos = positions[posIdx];
-    if (!pos.homeCode || !pos.awayCode) { toast.error("Both players required"); return; }
-    try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
-    setActiveMarker(posIdx);
-  };
-
-  const markerConfig = useMemo((): MarkerConfig | null => {
-    if (activeMarker === null) return null;
-    const pos = positions[activeMarker];
+    if (!pos || !fixtureId) return null;
     // Always derive from association rules when present so Super Admin's
     // configured format wins over any stale local state.
     const effectiveFormat = leagueRules?.points_per_game === 15 ? "par15"
@@ -1034,7 +1028,31 @@ export default function LeagueGameDetail() {
       isDoubles: false, matchType: "league", scoringFormat: effectiveFormat, bestOf: effectiveBestOf, deuceRule: "win_by_2",
       source: "league", sourceId: fixtureId,
     };
-  }, [activeMarker, positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
+  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
+
+  const startMarking = (posIdx: number) => {
+    const pos = positions[posIdx];
+    if (!pos.homeCode || !pos.awayCode) { toast.error("Both players required"); return; }
+    const config = buildMarkerConfigForPosition(posIdx);
+    if (config) clearMarkerStateForSession(getMarkerSessionKey(config));
+    setResumableMarker(null);
+    setActiveMarker(posIdx);
+  };
+
+  const markerConfig = useMemo((): MarkerConfig | null => {
+    if (activeMarker === null) return null;
+    return buildMarkerConfigForPosition(activeMarker);
+  }, [activeMarker, buildMarkerConfigForPosition]);
+
+  useEffect(() => {
+    if (!setupDone || activeMarker !== null) return;
+    const idx = positions.findIndex((pos, posIdx) => {
+      if (pos.completed || !pos.homeCode || !pos.awayCode) return false;
+      const config = buildMarkerConfigForPosition(posIdx);
+      return !!config && hasMarkerStateForSession(getMarkerSessionKey(config));
+    });
+    setResumableMarker(idx >= 0 ? idx : null);
+  }, [setupDone, activeMarker, positions, buildMarkerConfigForPosition]);
 
   const handleMarkerComplete = useCallback((result: { games: GameScore[]; winnerId: "a" | "b"; durationSeconds: number }) => {
     if (activeMarker === null) return;
@@ -1219,6 +1237,7 @@ export default function LeagueGameDetail() {
           </div>
           <MarkerScoreboard
             config={markerConfig}
+            initialScores={(positions[activeMarker]?.scores || []).map((s) => ({ a: s.home, b: s.away }))}
             onMatchComplete={handleMarkerComplete}
             onReset={() => setActiveMarker(null)}
             onProgress={(games) => {
@@ -1227,6 +1246,7 @@ export default function LeagueGameDetail() {
               if (!current) return;
               // Persist game-by-game so other viewers see live progress.
               const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })) };
+              setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });
               persistPositionScores(activeMarker, updated);
             }}
             onLiveScore={(games, cur) => {
@@ -1237,6 +1257,7 @@ export default function LeagueGameDetail() {
               const inProgress = (cur.a > 0 || cur.b > 0) ? [{ home: cur.a, away: cur.b }] : [];
               const scores = [...games.map((g) => ({ home: g.a, away: g.b })), ...inProgress];
               const updated = { ...current, scores, completed: false };
+              setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });
               // Debounce DB writes to ~600ms to avoid hammering on rapid points
               if (liveScoreTimerRef.current) clearTimeout(liveScoreTimerRef.current);
               liveScoreTimerRef.current = setTimeout(() => {
@@ -1490,6 +1511,7 @@ export default function LeagueGameDetail() {
                 const hasPlayers = pos.homeCode && pos.awayCode;
                 const noGamesMarkedYet = !isSubmitted && positions.every(p => !p.completed && (!p.scores || p.scores.length === 0));
                 const isFirstPlayable = noGamesMarkedYet && positions.findIndex(p => p.homeCode && p.awayCode && !p.completed) === idx;
+                const hasResumableMarker = resumableMarker === idx;
                 const pr = summary.posResults[idx];
                 // Total points = sum of all individual game scores
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
@@ -1730,21 +1752,29 @@ export default function LeagueGameDetail() {
                               {!isSubmitted && !pos.completed && (
                                 <>
                                   {hasPlayers && (
-                                    <Tooltip open={isFirstPlayable ? true : undefined}>
+                                    <Tooltip open={isFirstPlayable || hasResumableMarker ? true : undefined}>
                                       <TooltipTrigger asChild>
                                         <button
-                                          onClick={() => startMarking(idx)}
+                                          onClick={() => {
+                                            if (hasResumableMarker) {
+                                              setActiveMarker(idx);
+                                              return;
+                                            }
+                                            startMarking(idx);
+                                          }}
                                           className={cn(
                                             "bg-primary text-primary-foreground rounded p-0.5 hover:bg-primary/80",
-                                            isFirstPlayable && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
+                                            (isFirstPlayable || hasResumableMarker) && "animate-pulse ring-2 ring-accent ring-offset-1 ring-offset-background shadow-lg shadow-accent/40"
                                           )}
-                                          title="Mark game live"
+                                          title={hasResumableMarker ? "Resume live game" : "Mark game live"}
                                         >
                                           <Play className="w-3.5 h-3.5" />
                                         </button>
                                       </TooltipTrigger>
                                       <TooltipContent side="left" className="max-w-[220px]">
-                                        {isFirstPlayable
+                                        {hasResumableMarker
+                                          ? "Resume the in-progress live score for this position."
+                                          : isFirstPlayable
                                           ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
                                           : "Mark game live"}
                                       </TooltipContent>

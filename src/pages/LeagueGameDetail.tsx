@@ -1044,6 +1044,16 @@ export default function LeagueGameDetail() {
     return buildMarkerConfigForPosition(activeMarker);
   }, [activeMarker, buildMarkerConfigForPosition]);
 
+  useEffect(() => {
+    if (!setupDone || activeMarker !== null) return;
+    const idx = positions.findIndex((pos, posIdx) => {
+      if (pos.completed || !pos.homeCode || !pos.awayCode) return false;
+      const config = buildMarkerConfigForPosition(posIdx);
+      return !!config && hasMarkerStateForSession(getMarkerSessionKey(config));
+    });
+    setResumableMarker(idx >= 0 ? idx : null);
+  }, [setupDone, activeMarker, positions, buildMarkerConfigForPosition]);
+
   const handleMarkerComplete = useCallback((result: { games: GameScore[]; winnerId: "a" | "b"; durationSeconds: number }) => {
     if (activeMarker === null) return;
     const scores = result.games.map((g) => ({ home: g.a, away: g.b }));

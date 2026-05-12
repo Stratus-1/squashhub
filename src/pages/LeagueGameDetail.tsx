@@ -1106,12 +1106,19 @@ export default function LeagueGameDetail() {
     const originalsMap = (prefillLineup as any)?.originals || {};
     const fallbackOriginalCodes = (teamCode: string) =>
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean);
-    const homeOriginalCodes = hasOriginalSnapshot(originalLineupSnapshot)
-      ? originalLineupSnapshot!.home
-      : fallbackOriginalCodes(homeTeamCode);
-    const awayOriginalCodes = hasOriginalSnapshot(originalLineupSnapshot)
-      ? originalLineupSnapshot!.away
-      : fallbackOriginalCodes(awayTeamCode);
+    // Merge: use saved snapshot for slots it covers, fall back to prefill originals for any
+    // additional slots (e.g. snapshot saved as 4-player, fixture later expanded to 5-player).
+    const mergeOriginals = (snapshotCodes: string[] | null, fallbackCodes: string[]): string[] => {
+      const out: string[] = [];
+      for (let i = 0; i < positions.length; i++) {
+        const fromSnap = snapshotCodes?.[i];
+        out.push(fromSnap && fromSnap.length > 0 ? fromSnap : (fallbackCodes[i] || ""));
+      }
+      return out;
+    };
+    const snap = hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot! : null;
+    const homeOriginalCodes = mergeOriginals(snap?.home ?? null, fallbackOriginalCodes(homeTeamCode));
+    const awayOriginalCodes = mergeOriginals(snap?.away ?? null, fallbackOriginalCodes(awayTeamCode));
     const homeOriginalCount = countOriginalsStillInTheirSetupSlot(positions, homeOriginalCodes, "home");
     const awayOriginalCount = countOriginalsStillInTheirSetupSlot(positions, awayOriginalCodes, "away");
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;

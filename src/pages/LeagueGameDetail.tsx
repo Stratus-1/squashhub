@@ -1108,14 +1108,24 @@ export default function LeagueGameDetail() {
     else fixtureWinner = "draw";
 
     // Match-result bonus (per association rules; defaults: per_match, value 1, no share)
+    // - fixed_winner : flat bonusValue to fixture winner only
+    // - per_match    : winning team gets bonusValue × rubbers they won (NSA rule); loser 0
+    // - per_game_won : each side gets bonusValue × games they won
     const mode = leagueRules?.bonus_points_mode ?? "per_match";
     const bonusValue = leagueRules?.bonus_points_value ?? 1;
     const shareOnTie = !!leagueRules?.share_bonus_on_tie;
     let homeMatchBonus = 0, awayMatchBonus = 0;
-    if (mode === "per_match" || mode === "fixed_winner") {
+    if (mode === "fixed_winner") {
       if (fixtureWinner === "home") homeMatchBonus = bonusValue;
       else if (fixtureWinner === "away") awayMatchBonus = bonusValue;
       else if (shareOnTie) { homeMatchBonus = bonusValue / 2; awayMatchBonus = bonusValue / 2; }
+    } else if (mode === "per_match") {
+      if (fixtureWinner === "home") homeMatchBonus = homeMatchWins * bonusValue;
+      else if (fixtureWinner === "away") awayMatchBonus = awayMatchWins * bonusValue;
+      else if (shareOnTie) {
+        homeMatchBonus = (homeMatchWins * bonusValue) / 2;
+        awayMatchBonus = (awayMatchWins * bonusValue) / 2;
+      }
     } else if (mode === "per_game_won") {
       homeMatchBonus = homeMatchWins * bonusValue;
       awayMatchBonus = awayMatchWins * bonusValue;

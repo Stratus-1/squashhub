@@ -101,8 +101,8 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
 
   // Fetch fixtures + results for the selected division(s)
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["internal-standings", associationId, seasonYear, divisionCodes.join(",")],
-    enabled: divisionCodes.length > 0,
+    queryKey: ["internal-standings", platformAssocId, seasonYear, divisionCodes.join(",")],
+    enabled: divisionCodes.length > 0 && !!platformAssocId,
     staleTime: 30 * 1000,
     queryFn: async () => {
       const yearStart = `${seasonYear}-01-01`;
@@ -111,7 +111,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
       const { data: fixtures, error: fxErr } = await supabase
         .from("platform_league_fixtures")
         .select("id, fixture_date, division, home_team_code, away_team_code, status")
-        .eq("association_id", associationId)
+        .eq("association_id", platformAssocId!)
         .in("division", divisionCodes)
         .gte("fixture_date", yearStart)
         .lte("fixture_date", yearEnd)

@@ -1289,7 +1289,7 @@ export default function LeagueGameDetail() {
                                     >
                                       <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
                                     </DropdownMenuItem>
-                                    {pos.completed && (
+                                    {(pos.completed || pos.scores.length > 0) && (
                                       <>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem

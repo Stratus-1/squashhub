@@ -37,7 +37,7 @@ function loadPersisted(expectedKeys: string[]): PersistedState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedState;
     // Discard stale state from a previous match/rubber
-    if (!expectedKeys.includes(parsed.sessionKey)) {
+    if (!parsed.sessionKey || !expectedKeys.includes(parsed.sessionKey)) {
       localStorage.removeItem(MARKER_STATE_KEY);
       return null;
     }

@@ -274,6 +274,8 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress,
 
       setScoreA(newA);
       setScoreB(newB);
+      // Live point-by-point broadcast (current in-progress game)
+      try { onLiveScore?.(completedGames, { a: newA, b: newB }); } catch {}
 
       if (scorer === server) {
         setServeSide((s) => (s === "R" ? "L" : "R"));

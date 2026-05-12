@@ -340,10 +340,15 @@ export default function LeagueGameDetail() {
         const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
         if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
+        const scores = (m.game_scores as any[]) || [];
+        const gamesToWin = bestOf === 5 ? 3 : 2;
+        let hw = 0, aw = 0;
+        for (const s of scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+        const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
         return {
           homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
           awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
-          scores: (m.game_scores as any[]) || [], completed: (m.game_scores as any[])?.length > 0 || !!m.is_forfeit,
+          scores, completed: matchDecided || !!m.is_forfeit,
           isForfeit: !!m.is_forfeit,
           forfeitSide: (m.forfeit_side as "home" | "away" | null) ?? null,
         };

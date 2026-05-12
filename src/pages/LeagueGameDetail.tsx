@@ -936,7 +936,20 @@ export default function LeagueGameDetail() {
               Pos {activeMarker + 1} · {fixture.home_team_code} vs {fixture.away_team_code}
             </Badge>
           </div>
-          <MarkerScoreboard config={markerConfig} onMatchComplete={handleMarkerComplete} onReset={() => setActiveMarker(null)} />
+          <MarkerScoreboard
+            config={markerConfig}
+            onMatchComplete={handleMarkerComplete}
+            onReset={() => setActiveMarker(null)}
+            onProgress={(games) => {
+              if (activeMarker === null) return;
+              const current = positions[activeMarker];
+              if (!current) return;
+              // Persist game-by-game so other viewers see live progress.
+              // Keep `completed: false` until the match is fully decided.
+              const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })) };
+              persistPositionScores(activeMarker, updated);
+            }}
+          />
         </div>
       </div>
     );

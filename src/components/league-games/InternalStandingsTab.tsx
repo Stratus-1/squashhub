@@ -414,15 +414,49 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {s.played}
                             </TableCell>
-                            {s.weeks.map((w, j) => (
-                              <TableCell key={j} className="text-center text-xs">
-                                {w.value ? (
-                                  w.value
-                                ) : (
-                                  <span className="text-muted-foreground/40">·</span>
-                                )}
-                              </TableCell>
-                            ))}
+                            {s.weeks.map((w, j) => {
+                              const editable = !!w.fixture_id && canEditCell(s.team_code, w.date);
+                              const isPast = w.date <= todayStr;
+                              const missing = !w.value && isPast && !!w.fixture_id;
+                              const tip = !w.fixture_id
+                                ? "No fixture"
+                                : !isPast
+                                ? "Future fixture"
+                                : editable
+                                ? (w.value ? "Edit results" : "Enter results")
+                                : "Only the team captain or a club/super admin can enter or edit results.";
+                              const cell = (
+                                <button
+                                  type="button"
+                                  disabled={!editable}
+                                  onClick={() => editable && navigate(`/league-games/${w.fixture_id}`)}
+                                  className={`w-full h-full px-1 py-0.5 rounded inline-flex items-center justify-center gap-1 ${
+                                    editable
+                                      ? "hover:bg-primary/10 cursor-pointer"
+                                      : "cursor-default"
+                                  } ${missing ? "text-destructive font-semibold" : ""}`}
+                                >
+                                  {w.value ? (
+                                    <span>{w.value}</span>
+                                  ) : missing ? (
+                                    <span>—</span>
+                                  ) : (
+                                    <span className="text-muted-foreground/40">·</span>
+                                  )}
+                                  {editable && <Pencil className="w-3 h-3 opacity-60" />}
+                                </button>
+                              );
+                              return (
+                                <TableCell key={j} className="text-center text-xs p-1">
+                                  <TooltipProvider delayDuration={200}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>{cell}</TooltipTrigger>
+                                      <TooltipContent className="text-[11px]">{tip}</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </TableCell>
+                              );
+                            })}
                           </TableRow>
                         );
                       })}

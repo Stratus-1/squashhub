@@ -858,6 +858,10 @@ export default function LeagueGameDetail() {
     if (!fixtureId || !user) return;
     setSavingSetup(true);
     try {
+      const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
+        ? originalLineupSnapshot!
+        : buildOriginalSnapshot(positions);
+      if (!hasOriginalSnapshot(originalLineupSnapshot)) setOriginalLineupSnapshot(setupOriginalSnapshot);
       for (let i = 0; i < 4; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
@@ -877,7 +881,7 @@ export default function LeagueGameDetail() {
         home_total_points: 0, away_total_points: 0,
         winner: null, status: "setup",
         submitted_by: user.id,
-        match_format: { scoringFormat, bestOf },
+        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot },
       } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });

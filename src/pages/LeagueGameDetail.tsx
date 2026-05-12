@@ -303,18 +303,10 @@ export default function LeagueGameDetail() {
   const nsaLive = !!(nsaHomeTeam || nsaAwayTeam);
 
 
-  // Compute how many positions this fixture needs.
-  // Default 4 (NSA standard); grows to 5 only if BOTH teams have a 5th allocation,
-  // OR if a saved match row at position 5 already exists.
-  const positionCount = useMemo(() => {
-    const homeCode = fixture?.home_team_code;
-    const awayCode = fixture?.away_team_code;
-    const lineup = (prefillLineup as any)?.lineup || {};
-    const homeFifth = !!(homeCode && (lineup[homeCode]?.[4]?.code || lineup[homeCode]?.[4]?.name));
-    const awayFifth = !!(awayCode && (lineup[awayCode]?.[4]?.code || lineup[awayCode]?.[4]?.name));
-    const savedHasFifth = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === 5);
-    return savedHasFifth || (homeFifth && awayFifth) ? 5 : DEFAULT_POSITIONS;
-  }, [fixture, prefillLineup, existingMatches]);
+  // How many positions this fixture needs (4 default, grows to 5 when both teams have a 5th player).
+  // Updated by an effect below once prefill / saved matches are available.
+  const [positionCount, setPositionCount] = useState<number>(DEFAULT_POSITIONS);
+
 
   // Resize positions state when positionCount changes (preserves existing entries).
   useEffect(() => {

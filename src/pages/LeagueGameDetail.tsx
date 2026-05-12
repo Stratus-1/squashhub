@@ -532,7 +532,19 @@ export default function LeagueGameDetail() {
     refetchOnMount: "always",
   });
 
-  // Auto-refresh lineup data when the tab/window becomes visible again
+  // Decide between 4-player and 5-player scorecard.
+  // Grow to 5 if BOTH teams have a 5th allocation OR a saved row at position 5 already exists.
+  useEffect(() => {
+    const homeCode = fixture?.home_team_code;
+    const awayCode = fixture?.away_team_code;
+    const lineup = (prefillLineup as any)?.lineup || {};
+    const homeFifth = !!(homeCode && (lineup[homeCode]?.[4]?.code || lineup[homeCode]?.[4]?.name));
+    const awayFifth = !!(awayCode && (lineup[awayCode]?.[4]?.code || lineup[awayCode]?.[4]?.name));
+    const savedHasFifth = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === 5);
+    const next = savedHasFifth || (homeFifth && awayFifth) ? 5 : DEFAULT_POSITIONS;
+    setPositionCount((prev) => (prev === next ? prev : next));
+  }, [fixture, prefillLineup, existingMatches]);
+
   // (e.g. user returns from Edit Players in another tab/route).
   useEffect(() => {
     const onVisible = () => {

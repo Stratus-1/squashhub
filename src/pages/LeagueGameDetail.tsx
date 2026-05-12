@@ -2049,10 +2049,28 @@ export default function LeagueGameDetail() {
 
         {/* Submit */}
         {setupDone && !isSubmitted && (
-          <Button className="w-full" size="sm" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
-            Submit Results
-          </Button>
+          <>
+            {positions.some(p => (p.scores?.length ?? 0) > 0 || p.completed || p.isForfeit) && (
+              <div className="rounded-md border-2 border-amber-500/60 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+                <div className="font-bold mb-1 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  Scores entered but NOT yet on the standings
+                </div>
+                <p className="leading-snug">
+                  These results are saved as a <b>draft</b> only. They will not appear on the league standings until both captains sign and you press <b>Submit Results</b> below.
+                </p>
+              </div>
+            )}
+            <Button
+              className="w-full font-semibold shadow-lg ring-2 ring-primary/30"
+              size="sm"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+              Submit Results to Standings
+            </Button>
+          </>
         )}
 
         {/* NSA Post — only for fixtures linked to NSA (team codes resolve in NSA roster) */}

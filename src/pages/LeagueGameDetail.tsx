@@ -1665,8 +1665,8 @@ export default function LeagueGameDetail() {
           </Button>
         )}
 
-        {/* NSA Post — visible once setup is done so captains can validate/submit upstream */}
-        {setupDone && activeMember?.id && (
+        {/* NSA Post — only for fixtures linked to NSA (team codes resolve in NSA roster) */}
+        {setupDone && activeMember?.id && nsaLive && (
           <Button variant="outline" className="w-full border-amber-500/50 text-amber-700 hover:bg-amber-500/10" size="sm" onClick={() => setNsaDialogOpen(true)}>
             <Send className="w-4 h-4 mr-1" /> Post to NSA
           </Button>

@@ -29,6 +29,17 @@ export function clearMarkerStateForSession(sessionKey: string) {
   } catch {}
 }
 
+export function hasMarkerStateForSession(sessionKey: string): boolean {
+  try {
+    const raw = localStorage.getItem(MARKER_STATE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { sessionKey?: string };
+    return parsed.sessionKey === sessionKey;
+  } catch {
+    return false;
+  }
+}
+
 export function clearMarkerSession() {
   try {
     localStorage.removeItem(MARKER_CONFIG_KEY);

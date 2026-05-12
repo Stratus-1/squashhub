@@ -242,15 +242,21 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
 
   // NOTE: Tournament/championship matches intentionally excluded here — they live on the dedicated /tournaments page.
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const fixturesByDate = useMemo(() => {
     const groups = new Map<string, any[]>();
     for (const f of (displayFixtures || []) as any[]) {
       const date = f.fixture_date;
+      // In past-due mode, hide fixtures that already have a submitted/confirmed result.
+      if (rangeMode === "past-due") {
+        const r = resultMap.get(f.id);
+        if (r && (r.status === "submitted" || r.status === "confirmed")) continue;
+      }
       if (!groups.has(date)) groups.set(date, []);
       groups.get(date)!.push(f);
     }
     return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  }, [displayFixtures]);
+  }, [displayFixtures, rangeMode, resultMap]);
 
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);

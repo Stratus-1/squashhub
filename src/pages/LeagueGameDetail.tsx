@@ -1037,6 +1037,9 @@ export default function LeagueGameDetail() {
     if (!fixtureId || !user) return;
     setSubmitting(true);
     try {
+      const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
+        ? originalLineupSnapshot!
+        : buildOriginalSnapshot(positions);
       for (let i = 0; i < 4; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
@@ -1062,7 +1065,7 @@ export default function LeagueGameDetail() {
         winner: summary.winner, status: homeSig && awaySig ? "submitted" : "draft",
         home_captain_signature: homeSig || null, away_captain_signature: awaySig || null,
         submitted_by: user.id, submitted_at: new Date().toISOString(),
-        match_format: { scoringFormat, bestOf },
+        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot },
       } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
       toast.success("League results submitted!");

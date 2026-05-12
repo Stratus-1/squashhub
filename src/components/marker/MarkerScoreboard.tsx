@@ -101,8 +101,38 @@ function hasScoringStarted(state: PersistedState | null): boolean {
   return state.scoreA > 0 || state.scoreB > 0 || state.gamesA > 0 || state.gamesB > 0 || state.completedGames.length > 0 || state.history.length > 0;
 }
 
+function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a: number; b: number }> = []): Pick<PersistedState, "scoreA" | "scoreB" | "gamesA" | "gamesB" | "completedGames" | "server" | "serveSide"> | null {
+  if (savedScores.length === 0) return null;
+  const completedGames: GameScore[] = [];
+  let scoreA = 0;
+  let scoreB = 0;
+  let gamesA = 0;
+  let gamesB = 0;
+  let server: "a" | "b" = "a";
+  const pointsToWin = getPointsToWin(config.scoringFormat);
+
+  for (const score of savedScores) {
+    const a = Number(score.a) || 0;
+    const b = Number(score.b) || 0;
+    if (a === 0 && b === 0) continue;
+    const winnerId = isGameWon(a, b, pointsToWin, config.deuceRule);
+    if (!winnerId) {
+      scoreA = a;
+      scoreB = b;
+      break;
+    }
+    completedGames.push({ a, b, winnerId });
+    if (winnerId === "a") gamesA += 1;
+    else gamesB += 1;
+    server = winnerId === "a" ? "b" : "a";
+  }
+
+  return { scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide: "R" };
+}
+
 interface Props {
   config: MarkerConfig;
+  initialScores?: Array<{ a: number; b: number }>;
   onMatchComplete: (result: {
     games: GameScore[];
     winnerId: "a" | "b";
@@ -117,7 +147,7 @@ interface Props {
   onLiveScore?: (games: GameScore[], current: { a: number; b: number }) => void;
 }
 
-export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress, onLiveScore }: Props) {
+export function MarkerScoreboard({ config, initialScores, onMatchComplete, onReset, onProgress, onLiveScore }: Props) {
   const pointsToWin = getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";
@@ -129,14 +159,15 @@ export function MarkerScoreboard({ config, onMatchComplete, onReset, onProgress,
 
   const sessionKey = getMarkerSessionKey(config);
   const persisted = useRef<PersistedState | null>(loadPersisted(sessionKey)).current;
+  const savedState = persisted ? null : buildStateFromSavedScores(config, initialScores);
 
-  const [scoreA, setScoreA] = useState(persisted?.scoreA ?? 0);
-  const [scoreB, setScoreB] = useState(persisted?.scoreB ?? 0);
-  const [gamesA, setGamesA] = useState(persisted?.gamesA ?? 0);
-  const [gamesB, setGamesB] = useState(persisted?.gamesB ?? 0);
-  const [completedGames, setCompletedGames] = useState<GameScore[]>(persisted?.completedGames ?? []);
-  const [server, setServer] = useState<"a" | "b">(persisted?.server ?? "a");
-  const [serveSide, setServeSide] = useState<ServeSide>(persisted?.serveSide ?? "R");
+  const [scoreA, setScoreA] = useState(persisted?.scoreA ?? savedState?.scoreA ?? 0);
+  const [scoreB, setScoreB] = useState(persisted?.scoreB ?? savedState?.scoreB ?? 0);
+  const [gamesA, setGamesA] = useState(persisted?.gamesA ?? savedState?.gamesA ?? 0);
+  const [gamesB, setGamesB] = useState(persisted?.gamesB ?? savedState?.gamesB ?? 0);
+  const [completedGames, setCompletedGames] = useState<GameScore[]>(persisted?.completedGames ?? savedState?.completedGames ?? []);
+  const [server, setServer] = useState<"a" | "b">(persisted?.server ?? savedState?.server ?? "a");
+  const [serveSide, setServeSide] = useState<ServeSide>(persisted?.serveSide ?? savedState?.serveSide ?? "R");
   const [history, setHistory] = useState<PointEvent[]>(persisted?.history ?? []);
   const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
   const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);

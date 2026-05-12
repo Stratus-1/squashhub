@@ -496,8 +496,28 @@ export default function LeagueGameDetail() {
       return { lineup: result, originals };
     },
     enabled: !!fixture && !!fixtureId,
-    staleTime: 60 * 1000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
+
+  // Auto-refresh lineup data when the tab/window becomes visible again
+  // (e.g. user returns from Edit Players in another tab/route).
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && fixtureId) {
+        queryClient.invalidateQueries({ queryKey: ["league-fixture-prefill", fixtureId] });
+        queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+        queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [fixtureId, queryClient]);
 
   // Apply prefill from the captain's Fill-Up Leagues lineup.
   //  - If real play has been recorded (any scores or forfeit), do nothing.
@@ -524,9 +544,11 @@ export default function LeagueGameDetail() {
 
     setPositions((prev) => {
       const next = prev.map((p, i) => {
-      const home = homeSlots[i] || { code: "", name: "" };
-      const away = awaySlots[i] || { code: "", name: "" };
-      if (stalePlaceholdersExist) {
+        const home = homeSlots[i] || { code: "", name: "" };
+        const away = awaySlots[i] || { code: "", name: "" };
+        // When no scores have been recorded yet, the latest captain/admin lineup
+        // (incl. per-fixture overrides from Edit Players) is authoritative —
+        // overwrite existing slot data so reserve swaps reflect immediately.
         return {
           ...p,
           homeCode: home.code || p.homeCode,
@@ -534,14 +556,6 @@ export default function LeagueGameDetail() {
           awayCode: away.code || p.awayCode,
           awayName: away.name || p.awayName,
         };
-      }
-      return {
-        ...p,
-        homeCode: p.homeCode || home.code,
-        homeName: p.homeName || home.name,
-        awayCode: p.awayCode || away.code,
-        awayName: p.awayName || away.name,
-      };
       });
       if (!hasOriginalSnapshot(originalLineupSnapshot)) {
         setOriginalLineupSnapshot(buildOriginalSnapshot(next));

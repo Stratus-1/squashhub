@@ -268,10 +268,14 @@ export default function LeagueGameDetail() {
           forfeitSide: (m.forfeit_side as "home" | "away" | null) ?? null,
         };
       });
-      setPositions(loaded);
+      setPositions((prev) => {
+        // Don't clobber the position the user is actively marking/editing locally —
+        // realtime refresh would otherwise overwrite in-progress scores.
+        return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? prev[i] : p));
+      });
       setSetupDone(true);
     }
-  }, [existingMatches]);
+  }, [existingMatches, activeMarker, manualEntry]);
 
   // ---- Prefill lineup from Fill-Up Leagues / registrations for known club teams ----
   const { data: prefillLineup } = useQuery({

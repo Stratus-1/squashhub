@@ -479,8 +479,9 @@ export default function LeagueGameDetail() {
       );
     if (hasRecordedPlay) return;
 
-    const homeSlots = prefillLineup[fixture.home_team_code] || [];
-    const awaySlots = prefillLineup[fixture.away_team_code] || [];
+    const lineup = (prefillLineup as any)?.lineup || {};
+    const homeSlots = lineup[fixture.home_team_code] || [];
+    const awaySlots = lineup[fixture.away_team_code] || [];
     const hasAny = [...homeSlots, ...awaySlots].some((s) => s.code || s.name);
     if (!hasAny) return;
 

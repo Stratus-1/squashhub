@@ -2097,13 +2097,35 @@ export default function LeagueGameDetail() {
           </Button>
         )}
 
-        {isSubmitted && (
-          <div className="text-center py-2">
+        {isSubmittedRaw && !adminOverride && (
+          <div className="text-center py-2 space-y-2">
             <Badge className="bg-green-500/15 text-green-700 text-sm px-4 py-1">
               <Check className="w-4 h-4 mr-1" /> Results Submitted
             </Badge>
+            {isClubAdmin && (
+              <div>
+                <Button size="sm" variant="outline" onClick={() => { setAdminOverride(true); toast.info("Admin edit mode — change scores then press Submit again."); }}>
+                  <Edit3 className="w-4 h-4 mr-1" /> Admin: Edit Submitted Scores
+                </Button>
+              </div>
+            )}
           </div>
         )}
+
+        {isSubmittedRaw && adminOverride && (
+          <div className="rounded-md border-2 border-destructive/60 bg-destructive/10 p-3 text-xs">
+            <div className="font-bold mb-1">Admin override active</div>
+            <p className="leading-snug">You're editing previously submitted results. Press <b>Submit Results</b> below to overwrite the standings.</p>
+          </div>
+        )}
+
+        {!isSubmittedRaw && isFixturePast && isClubAdmin && (
+          <div className="rounded-md border-2 border-amber-500/60 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+            <div className="font-bold mb-1">Overdue fixture — admin entry</div>
+            <p className="leading-snug">This match date has passed and no results were submitted. As an admin, you can enter scores below and submit on behalf of the captains.</p>
+          </div>
+        )}
+
 
         <p className="text-[10px] text-muted-foreground text-center">
           Bonus points follow league rules: {leagueRules?.bonus_points_mode === "per_game_won" ? `+${leagueRules?.bonus_points_value ?? 1} per game won (both teams)` : leagueRules?.bonus_points_mode === "fixed_winner" ? `+${leagueRules?.bonus_points_value ?? 1} flat to fixture winner` : `+${leagueRules?.bonus_points_value ?? 1} to winning team for each rubber they won`}{summary.opbEnabled ? `, plus +${summary.opbValue} per original (non-reserve) player who plays` : ""}. Forfeit: opponent gets a clean sweep and the absent side loses {FORFEIT_PENALTY_POINTS} points.

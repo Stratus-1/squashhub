@@ -32,6 +32,8 @@ const DEFAULTS: Partial<LeagueRules> = {
   max_position_movement_per_week: null,
   sub_direction: "any",
   cross_gender_subs_allowed: false,
+  original_player_bonus_enabled: false,
+  original_player_bonus_value: 1,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {
@@ -161,6 +163,27 @@ export default function AssociationRulesTab({ associationId }: Props) {
               value={!!form.share_bonus_on_tie}
               onChange={(v) => set("share_bonus_on_tie", v)}
             />
+          </div>
+
+          <div className="md:col-span-2 border-t pt-3 mt-1">
+            <ToggleRow
+              label="Original-player bonus (NIL rule)"
+              hint="When on, the team earns extra points for each originally-allocated player who actually plays. Reserves/subs do NOT earn this bonus."
+              value={!!form.original_player_bonus_enabled}
+              onChange={(v) => set("original_player_bonus_enabled", v)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Original-player bonus value</Label>
+            <Input
+              type="number" min={0} max={10}
+              value={form.original_player_bonus_value ?? 1}
+              onChange={(e) => set("original_player_bonus_value", Number(e.target.value))}
+              disabled={!form.original_player_bonus_enabled}
+            />
+            <p className="text-xs text-muted-foreground">
+              Points added to the team total per original player who appears in the lineup.
+            </p>
           </div>
         </CardContent>
       </Card>

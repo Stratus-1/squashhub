@@ -2780,6 +2780,8 @@ export type Database = {
           max_position_movement_per_week: number | null
           max_timeouts_per_player: number
           notes: string | null
+          original_player_bonus_enabled: boolean
+          original_player_bonus_value: number
           points_per_game: number
           share_bonus_on_tie: boolean
           sub_direction: string
@@ -2806,6 +2808,8 @@ export type Database = {
           max_position_movement_per_week?: number | null
           max_timeouts_per_player?: number
           notes?: string | null
+          original_player_bonus_enabled?: boolean
+          original_player_bonus_value?: number
           points_per_game?: number
           share_bonus_on_tie?: boolean
           sub_direction?: string
@@ -2832,6 +2836,8 @@ export type Database = {
           max_position_movement_per_week?: number | null
           max_timeouts_per_player?: number
           notes?: string | null
+          original_player_bonus_enabled?: boolean
+          original_player_bonus_value?: number
           points_per_game?: number
           share_bonus_on_tie?: boolean
           sub_direction?: string

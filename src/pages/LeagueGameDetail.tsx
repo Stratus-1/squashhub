@@ -959,13 +959,15 @@ export default function LeagueGameDetail() {
     const opbValue = leagueRules?.original_player_bonus_value ?? 0;
     const homeTeamCode = fixture?.home_team_code || "";
     const awayTeamCode = fixture?.away_team_code || "";
+    // "Original" = NSF code is in the captain's pre-allocated lineup ONLY (not per-fixture overrides).
+    const originalsMap = (prefillLineup as any)?.originals || {};
     const homeOriginals = new Set(
-      ((prefillLineup as any)?.[homeTeamCode] || [])
+      (originalsMap[homeTeamCode] || [])
         .map((s: any) => (s.code || "").toUpperCase())
         .filter(Boolean),
     );
     const awayOriginals = new Set(
-      ((prefillLineup as any)?.[awayTeamCode] || [])
+      (originalsMap[awayTeamCode] || [])
         .map((s: any) => (s.code || "").toUpperCase())
         .filter(Boolean),
     );

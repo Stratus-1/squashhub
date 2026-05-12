@@ -99,6 +99,14 @@ const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot =>
 const hasOriginalSnapshot = (snapshot: OriginalLineupSnapshot | null) =>
   !!snapshot && [...snapshot.home, ...snapshot.away].some(Boolean);
 
+const countOriginalsStillInTheirSetupSlot = (rows: PositionEntry[], originalCodes: string[], side: "home" | "away") => {
+  const key = side === "home" ? "homeCode" : "awayCode";
+  return rows.reduce((count, row, idx) => {
+    const originalCode = normalizePlayerCode(originalCodes[idx]);
+    return originalCode && normalizePlayerCode(row[key]) === originalCode ? count + 1 : count;
+  }, 0);
+};
+
 /* ---- Compact Signature ---- */
 function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

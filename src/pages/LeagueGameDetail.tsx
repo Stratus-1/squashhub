@@ -15,6 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsClubAdmin } from "@/hooks/use-club";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { clearMarkerStateForSession, getMarkerSessionKeys, hasMarkerStateForSession } from "@/lib/marker-storage";

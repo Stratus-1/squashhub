@@ -344,10 +344,27 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
         {otherLeagues.length > 0 && (
           <div className="mt-4">
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Other ({otherLeagues.length})</h4>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h4 className="text-sm font-semibold text-muted-foreground">Other ({otherLeagues.length})</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => setAllocateGroup({ associationId: null, gender: "mixed", leagues: sortLeagues(otherLeagues) })}
+              >
+                <Users className="w-3.5 h-3.5" />Allocate
+              </Button>
+            </div>
             <div className="space-y-2">
               {sortLeagues(otherLeagues).map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={handleDeleteLeague} members={members} />
+                <LeagueCard
+                  key={l.id}
+                  league={l}
+                  associations={associations}
+                  onDelete={handleDeleteLeague}
+                  members={members}
+                  onAllocate={() => setAllocateGroup({ associationId: l.association_id ?? null, gender: "mixed", leagues: [l] })}
+                />
               ))}
             </div>
           </div>

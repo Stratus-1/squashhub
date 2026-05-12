@@ -74,6 +74,11 @@ interface PositionEntry {
   forfeitSide?: "home" | "away" | null;
 }
 
+interface OriginalLineupSnapshot {
+  home: string[];
+  away: string[];
+}
+
 // Penalty points deducted from a team when one of their players forfeits a position
 const FORFEIT_PENALTY_POINTS = 2;
 
@@ -83,6 +88,16 @@ function emptyPositions(): PositionEntry[] {
     scores: [], completed: false, isForfeit: false, forfeitSide: null,
   }));
 }
+
+const normalizePlayerCode = (code: string | null | undefined) => (code || "").trim().toUpperCase();
+
+const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot => ({
+  home: rows.map((p) => normalizePlayerCode(p.homeCode)),
+  away: rows.map((p) => normalizePlayerCode(p.awayCode)),
+});
+
+const hasOriginalSnapshot = (snapshot: OriginalLineupSnapshot | null) =>
+  !!snapshot && [...snapshot.home, ...snapshot.away].some(Boolean);
 
 /* ---- Compact Signature ---- */
 function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label: string }) {
@@ -148,6 +163,7 @@ export default function LeagueGameDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [savingSetup, setSavingSetup] = useState(false);
   const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away" } | null>(null);
+  const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
 
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");
@@ -184,7 +200,7 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId && !tournamentMatchId,
   });
 
-  const { data: existingResult } = useQuery({
+  const { data: existingResult, isFetched: existingResultFetched } = useQuery({
     queryKey: ["league-fixture-result", fixtureId],
     queryFn: async () => {
       const { data, error } = await supabase.from("league_fixture_results" as any).select("*").eq("fixture_id", fixtureId!).maybeSingle();
@@ -294,9 +310,19 @@ export default function LeagueGameDetail() {
         // realtime refresh would otherwise overwrite in-progress scores.
         return loaded.map((p, i) => (i === activeMarker || i === manualEntry ? prev[i] : p));
       });
+      const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
+      if (existingResultFetched && !hasOriginalSnapshot(savedSnapshot ?? null) && !hasOriginalSnapshot(originalLineupSnapshot)) {
+        setOriginalLineupSnapshot(buildOriginalSnapshot(loaded));
+      }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched]);
+
+  useEffect(() => {
+    const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
+    if (hasOriginalSnapshot(originalLineupSnapshot) || !hasOriginalSnapshot(savedSnapshot ?? null)) return;
+    setOriginalLineupSnapshot(savedSnapshot!);
+  }, [existingResult, originalLineupSnapshot]);
 
   // ---- Prefill lineup from Fill-Up Leagues / registrations for known club teams ----
   const { data: prefillLineup } = useQuery({
@@ -488,7 +514,8 @@ export default function LeagueGameDetail() {
     const stalePlaceholdersExist =
       Array.isArray(existingMatches) && existingMatches.length > 0;
 
-    setPositions((prev) => prev.map((p, i) => {
+    setPositions((prev) => {
+      const next = prev.map((p, i) => {
       const home = homeSlots[i] || { code: "", name: "" };
       const away = awaySlots[i] || { code: "", name: "" };
       if (stalePlaceholdersExist) {
@@ -507,8 +534,13 @@ export default function LeagueGameDetail() {
         awayCode: p.awayCode || away.code,
         awayName: p.awayName || away.name,
       };
-    }));
-  }, [prefillLineup, existingMatches, fixture]);
+      });
+      if (!hasOriginalSnapshot(originalLineupSnapshot)) {
+        setOriginalLineupSnapshot(buildOriginalSnapshot(next));
+      }
+      return next;
+    });
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot]);
 
   // Apply association-level league rules — these are the authoritative format
   // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence
@@ -827,6 +859,10 @@ export default function LeagueGameDetail() {
     if (!fixtureId || !user) return;
     setSavingSetup(true);
     try {
+      const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
+        ? originalLineupSnapshot!
+        : buildOriginalSnapshot(positions);
+      if (!hasOriginalSnapshot(originalLineupSnapshot)) setOriginalLineupSnapshot(setupOriginalSnapshot);
       for (let i = 0; i < 4; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
@@ -846,7 +882,7 @@ export default function LeagueGameDetail() {
         home_total_points: 0, away_total_points: 0,
         winner: null, status: "setup",
         submitted_by: user.id,
-        match_format: { scoringFormat, bestOf },
+        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot },
       } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
@@ -953,32 +989,25 @@ export default function LeagueGameDetail() {
       awayMatchBonus = awayMatchWins * bonusValue;
     }
 
-    // Original-player bonus (NIL): +N points per originally-allocated player who actually plays.
-    // "Original" = NSF code is in the captain's pre-allocated lineup (prefillLineup) for that team.
+    // Original-player bonus (NIL): +N points per player from the saved setup lineup.
+    // The setup snapshot is captured before replacements, so reserve swaps recalculate immediately.
     const opbEnabled = !!leagueRules?.original_player_bonus_enabled;
     const opbValue = leagueRules?.original_player_bonus_value ?? 0;
     const homeTeamCode = fixture?.home_team_code || "";
     const awayTeamCode = fixture?.away_team_code || "";
-    // "Original" = NSF code is in the captain's pre-allocated lineup ONLY (not per-fixture overrides).
     const originalsMap = (prefillLineup as any)?.originals || {};
-    const homeOriginals = new Set(
-      (originalsMap[homeTeamCode] || [])
-        .map((s: any) => (s.code || "").toUpperCase())
-        .filter(Boolean),
+    const fallbackOriginalCodes = (teamCode: string) =>
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean);
+    const homeOriginals = new Set<string>(
+      hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.home.filter(Boolean) : fallbackOriginalCodes(homeTeamCode),
     );
-    const awayOriginals = new Set(
-      (originalsMap[awayTeamCode] || [])
-        .map((s: any) => (s.code || "").toUpperCase())
-        .filter(Boolean),
+    const awayOriginals = new Set<string>(
+      hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot!.away.filter(Boolean) : fallbackOriginalCodes(awayTeamCode),
     );
-    // Count originals based on the allocated lineup, regardless of forfeit/no-show.
-    // Per NIL rule: a player who was originally allocated still earns the bonus
-    // even if they didn't actually take the court (forfeit).
-    let homeOriginalCount = 0, awayOriginalCount = 0;
-    for (const pos of positions) {
-      if (pos.homeCode && homeOriginals.has(pos.homeCode.toUpperCase())) homeOriginalCount++;
-      if (pos.awayCode && awayOriginals.has(pos.awayCode.toUpperCase())) awayOriginalCount++;
-    }
+    const currentHomeCodes = new Set(positions.map((p) => normalizePlayerCode(p.homeCode)).filter(Boolean));
+    const currentAwayCodes = new Set(positions.map((p) => normalizePlayerCode(p.awayCode)).filter(Boolean));
+    const homeOriginalCount = [...homeOriginals].filter((code) => currentHomeCodes.has(code)).length;
+    const awayOriginalCount = [...awayOriginals].filter((code) => currentAwayCodes.has(code)).length;
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 
@@ -1001,13 +1030,16 @@ export default function LeagueGameDetail() {
       opbEnabled, opbValue,
       bonusMode: mode,
     };
-  }, [positions, leagueRules, prefillLineup, fixture]);
+  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot]);
 
   // ---- Submit ----
   const handleSubmit = async () => {
     if (!fixtureId || !user) return;
     setSubmitting(true);
     try {
+      const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
+        ? originalLineupSnapshot!
+        : buildOriginalSnapshot(positions);
       for (let i = 0; i < 4; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;
@@ -1033,7 +1065,7 @@ export default function LeagueGameDetail() {
         winner: summary.winner, status: homeSig && awaySig ? "submitted" : "draft",
         home_captain_signature: homeSig || null, away_captain_signature: awaySig || null,
         submitted_by: user.id, submitted_at: new Date().toISOString(),
-        match_format: { scoringFormat, bestOf },
+        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot },
       } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
       toast.success("League results submitted!");

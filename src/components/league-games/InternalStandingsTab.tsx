@@ -31,6 +31,7 @@ type FixtureRow = {
   home_team_code: string | null;
   away_team_code: string | null;
   status: string | null;
+  round_id: string | null;
 };
 
 type ResultRow = {
@@ -44,34 +45,21 @@ type StandingRow = {
   team_code: string;
   total: number;
   played: number;
-  weeks: Array<{ date: string; value: string; mine?: boolean }>;
+  weeks: Array<{ date: string; value: string }>;
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+// Strip " round N" / " week N" suffix to get the tier label, e.g.
+// "1st League round 1" -> "1st League"
+function tierFromRoundName(name: string): string {
+  return name
+    .replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, "")
+    .trim() || name.trim();
+}
+
 export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLeagueCode }: Props) {
   const queryClient = useQueryClient();
-
-  // Filter to leagues belonging to this association, sorted by code
-  const leagueOptions = useMemo(
-    () =>
-      clubLeagues
-        .filter((l) => l.association_id === associationId && !!l.code)
-        .sort((a, b) => (a.code || "").localeCompare(b.code || "")),
-    [clubLeagues, associationId]
-  );
-
-  const myLeague = useMemo(
-    () => leagueOptions.find((l) => l.code === myLeagueCode) ?? leagueOptions[0] ?? null,
-    [leagueOptions, myLeagueCode]
-  );
-
-  const [selection, setSelection] = useState<string>("");
-  useEffect(() => {
-    if (!selection && myLeague) setSelection(myLeague.id);
-  }, [myLeague, selection]);
-
-  const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
 
   // Resolve the platform association id (fixtures live under platform_association_id,
   // not the tenant league_associations.id)
@@ -90,17 +78,39 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  const isAllMode = selection === "ALL";
-  const leaguesToShow = useMemo(() => {
-    if (isAllMode) return leagueOptions;
-    const one = leagueOptions.find((l) => l.id === selection);
-    return one ? [one] : [];
-  }, [leagueOptions, selection, isAllMode]);
+  const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
 
-  const divisionCodes = leaguesToShow.map((l) => l.code!).filter(Boolean);
+  // Fetch all rounds for this tenant association → derive tiers
+  const { data: tiers = [] } = useQuery({
+    queryKey: ["internal-standings-tiers", associationId, seasonYear],
+    enabled: !!associationId,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const yearStart = `${seasonYear}-01-01`;
+      const yearEnd = `${seasonYear}-12-31`;
+      const { data, error } = await supabase
+        .from("league_rounds")
+        .select("id, name, round_number, round_date")
+        .eq("association_id", associationId)
+        .gte("round_date", yearStart)
+        .lte("round_date", yearEnd)
+        .order("round_number", { ascending: true });
+      if (error) throw error;
+      const grouped = new Map<string, { tier: string; roundIds: string[]; firstNumber: number }>();
+      (data || []).forEach((r: any) => {
+        const tier = tierFromRoundName(r.name || `Round ${r.round_number}`);
+        const ex = grouped.get(tier);
+        if (ex) {
+          ex.roundIds.push(r.id);
+        } else {
+          grouped.set(tier, { tier, roundIds: [r.id], firstNumber: r.round_number ?? 0 });
+        }
+      });
+      return Array.from(grouped.values()).sort((a, b) => a.firstNumber - b.firstNumber);
+    },
+  });
 
-  // Map team_code -> team name (from leagues table). Includes ALL leagues in this association
-  // so that other clubs' teams (when applicable) can resolve too.
+  // Map team_code -> team display name (from leagues table for this association)
   const { data: teamNameByCode } = useQuery({
     queryKey: ["team-names-by-code", associationId],
     enabled: !!associationId,
@@ -119,22 +129,34 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  // Fetch fixtures + results for the selected division(s)
+  // Selection: a tier label or "ALL"
+  const [selection, setSelection] = useState<string>("");
+  useEffect(() => {
+    if (!selection && tiers.length > 0) setSelection(tiers[0].tier);
+  }, [tiers, selection]);
+
+  const isAllMode = selection === "ALL";
+  const tiersToShow = useMemo(
+    () => (isAllMode ? tiers : tiers.filter((t) => t.tier === selection)),
+    [tiers, selection, isAllMode]
+  );
+
+  const allRoundIds = useMemo(
+    () => tiersToShow.flatMap((t) => t.roundIds),
+    [tiersToShow]
+  );
+
+  // Fetch fixtures + results for the selected tier(s)
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["internal-standings", platformAssocId, seasonYear, divisionCodes.join(",")],
-    enabled: divisionCodes.length > 0 && !!platformAssocId,
+    queryKey: ["internal-standings", platformAssocId, seasonYear, allRoundIds.join(",")],
+    enabled: allRoundIds.length > 0 && !!platformAssocId,
     staleTime: 30 * 1000,
     queryFn: async () => {
-      const yearStart = `${seasonYear}-01-01`;
-      const yearEnd = `${seasonYear}-12-31`;
-
       const { data: fixtures, error: fxErr } = await supabase
         .from("platform_league_fixtures")
-        .select("id, fixture_date, division, home_team_code, away_team_code, status")
+        .select("id, fixture_date, division, home_team_code, away_team_code, status, round_id")
         .eq("association_id", platformAssocId!)
-        .in("division", divisionCodes)
-        .gte("fixture_date", yearStart)
-        .lte("fixture_date", yearEnd)
+        .in("round_id", allRoundIds)
         .order("fixture_date", { ascending: true });
       if (fxErr) throw fxErr;
 
@@ -148,22 +170,22 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         if (resErr) throw resErr;
         results = (res || []) as any;
       }
-
       const resByFixture = new Map<string, ResultRow>();
       results.forEach((r) => resByFixture.set(r.fixture_id, r));
 
-      // Group fixtures by division
-      const byDivision = new Map<string, FixtureRow[]>();
-      (fixtures || []).forEach((f) => {
-        const list = byDivision.get(f.division) || [];
-        list.push(f as any);
-        byDivision.set(f.division, list);
+      // Group fixtures by tier
+      const byTier = new Map<string, FixtureRow[]>();
+      (fixtures || []).forEach((f: any) => {
+        const tier =
+          tiersToShow.find((t) => t.roundIds.includes(f.round_id))?.tier || "Other";
+        const list = byTier.get(tier) || [];
+        list.push(f as FixtureRow);
+        byTier.set(tier, list);
       });
 
-      // Build standings per division
-      const out: Array<{ division: string; weeks: string[]; rows: StandingRow[] }> = [];
-      for (const code of divisionCodes) {
-        const fxs = byDivision.get(code) || [];
+      const out: Array<{ tier: string; weeks: string[]; rows: StandingRow[] }> = [];
+      for (const t of tiersToShow) {
+        const fxs = byTier.get(t.tier) || [];
         const weekDates = Array.from(new Set(fxs.map((f) => f.fixture_date))).sort();
         const teams = Array.from(
           new Set(
@@ -194,13 +216,13 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
           return { team_code: tc, total, played, weeks };
         });
         rows.sort((a, b) => b.total - a.total || a.team_code.localeCompare(b.team_code));
-        out.push({ division: code, weeks: weekDates, rows });
+        out.push({ tier: t.tier, weeks: weekDates, rows });
       }
       return out;
     },
   });
 
-  // Realtime: refresh standings whenever results are added/updated for this association
+  // Realtime: refresh standings whenever results / fixtures change
   useEffect(() => {
     if (!associationId) return;
     const ch = supabase
@@ -214,7 +236,14 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "platform_league_fixtures", filter: platformAssocId ? `association_id=eq.${platformAssocId}` : `association_id=eq.${associationId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "platform_league_fixtures",
+          filter: platformAssocId
+            ? `association_id=eq.${platformAssocId}`
+            : `association_id=eq.${associationId}`,
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: ["internal-standings", platformAssocId] });
         }
@@ -225,12 +254,12 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     };
   }, [associationId, platformAssocId, queryClient]);
 
-  if (leagueOptions.length === 0) {
+  if (tiers.length === 0) {
     return (
       <Card className="p-8 text-center">
         <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
         <p className="text-muted-foreground text-sm">
-          No internal leagues found yet. Allocate teams in Fill Up Leagues first.
+          No league rounds set up yet for {seasonYear}. Create rounds in the Rounds tab first.
         </p>
       </Card>
     );
@@ -246,16 +275,13 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
             <SelectValue placeholder="Select league" />
           </SelectTrigger>
           <SelectContent>
-            {myLeague && (
-              <SelectItem value={myLeague.id}>
-                ⭐ My League — {myLeague.code}
-              </SelectItem>
-            )}
-            <SelectItem value="ALL">All Internal Leagues (stacked)</SelectItem>
-            <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground tracking-wide">All</div>
-            {leagueOptions.map((l) => (
-              <SelectItem key={l.id} value={l.id}>
-                {l.code} {l.name && l.name !== l.code ? `· ${l.name}` : ""}
+            <SelectItem value="ALL">All Leagues (stacked)</SelectItem>
+            <div className="px-2 py-1 text-[10px] uppercase text-muted-foreground tracking-wide">
+              Leagues
+            </div>
+            {tiers.map((t) => (
+              <SelectItem key={t.tier} value={t.tier}>
+                {t.tier}
               </SelectItem>
             ))}
           </SelectContent>
@@ -297,21 +323,18 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
       )}
 
       {!isLoading &&
-        (data || []).map(({ division, weeks, rows }) => {
-          const league = leagueOptions.find((l) => l.code === division);
+        (data || []).map(({ tier, weeks, rows }) => {
+          const mineHere = rows.some((r) => myCodes.has(r.team_code));
           return (
-            <div key={division}>
+            <div key={tier}>
               <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                {division}
-                {league?.name && league.name !== division && (
-                  <span className="font-normal text-xs text-muted-foreground">{league.name}</span>
-                )}
-                {league?.id === myLeague?.id && <Badge className="text-[10px]">My League</Badge>}
+                {tier}
+                {mineHere && <Badge className="text-[10px]">My League</Badge>}
               </h2>
 
               {rows.length === 0 ? (
                 <Card className="p-4 text-xs text-muted-foreground">
-                  No teams in this league yet.
+                  No teams have played in this league yet.
                 </Card>
               ) : (
                 <Card className="overflow-x-auto">

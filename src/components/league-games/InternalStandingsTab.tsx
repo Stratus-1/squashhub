@@ -343,7 +343,16 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {i + 1}
                             </TableCell>
-                            <TableCell className="font-mono text-xs">{s.team_code}</TableCell>
+                            <TableCell className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {teamNameByCode?.get(s.team_code) || s.team_code}
+                                </span>
+                                <span className="font-mono text-[10px] text-muted-foreground">
+                                  {s.team_code}
+                                </span>
+                              </div>
+                            </TableCell>
                             <TableCell className="text-center font-bold">{s.total}</TableCell>
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {s.played}

@@ -506,7 +506,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         const submitted = result?.status === "submitted" || result?.status === "confirmed";
                         const isPast = !!(f.fixture_date && f.fixture_date < todayStr);
                         const needsAdminMode = !f.isTournament && (isPast || submitted);
-                        const canEnter = isClubAdmin || isSuperAdmin || isCaptainOfFixture(f);
+                        const canEnter = isClubAdmin || isSuperAdmin;
                         const blocked = needsAdminMode && !canEnter;
                         const label = f.isTournament
                           ? "Tournament"
@@ -522,7 +522,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               (f._isLive && !f._hasSnapshot)
                                 ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
                                 : blocked
-                                  ? "Only the team captain or a club/super admin can enter or edit results for past matches."
+                                  ? "Only a club or super admin can enter or edit results for past matches."
                                   : undefined
                             }
                             onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}

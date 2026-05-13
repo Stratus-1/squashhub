@@ -490,7 +490,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     },
   });
 
-  // Persisted lineups (positions 1-4 per league per week)
+  // Persisted lineups (positions 1-5 per league per week where applicable)
   const { data: lineups = [] } = useQuery<LineupRow[]>({
     queryKey: ["lwl", clubId, weekStart],
     queryFn: async () => {
@@ -904,12 +904,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const positionsForLeague = (lg: LeagueRow) => {
     const lp = lineupByLeague.get(lg.id);
-    // Dynamic team size mirrors the scorecard: default 4, expand to 5 only when
-    // this league actually has a 5th player allocated (registration or saved
-    // lineup at position 5). 4-player teams show 4 slots, 5-player teams show 5.
-    const regCount = registrations.filter(r => r.league_id === lg.id).length;
+    // Dynamic team size mirrors the scorecard: default 4, expand to 5 when this
+    // league has 5+ registered/allocated players or a saved lineup at position 5.
     const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
-    const size = Math.min(5, Math.max(4, regCount, maxLineupPos));
+    const registeredSize = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
+    const size = boundedFillTeamSize(registeredSize, maxLineupPos);
     return Array.from({ length: size }, (_, i) => ({
       position: i + 1,
       memberId: lp?.get(i + 1) ?? null,
@@ -1181,7 +1180,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
               Planning {chosenWeekIndex === 0 ? "this week (in progress)" : chosenWeekIndex === 1 ? "next week" : `${chosenWeekIndex} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
             </strong> —
             Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the
-            <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.
+            <em> Available </em> pool into the numbered positions, or onto another league's pool to push them down.
             Drag onto the red zone below to mark <strong>unavailable for the whole week</strong>.
           </p>
           <DroppableZone id={naDropId} variant="na" isEmpty={unavailable.length === 0} emptyHint="Drop a player here to mark them unavailable for the entire week (Wed → Tue)">

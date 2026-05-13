@@ -177,6 +177,15 @@ export default function LeagueGames() {
 
   const showSwitcher = associations.length > 1;
 
+  // Hide Fill-Up Leagues for internal/local associations like NIL — captains
+  // place players directly when marking a game (Edit Players on the scorecard).
+  const hideFillUp = (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";
+
+  // If the active tab is Fill-Up but it's hidden for this association, fall back.
+  useEffect(() => {
+    if (hideFillUp && activeTab === "leagues") setActiveTab("fixtures");
+  }, [hideFillUp, activeTab]);
+
   return (
     <div className="bottom-nav-safe">
       <SEO title="League Games" description="Upcoming league fixtures, lineups & standings" path="/league-games" noIndex />
@@ -213,9 +222,16 @@ export default function LeagueGames() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className={`grid w-full ${selectedAssoc?.scope === "internal" ? "grid-cols-4" : "grid-cols-3"} h-auto`}>
+            <TabsList className={`grid w-full ${
+              selectedAssoc?.scope === "internal" && !hideFillUp ? "grid-cols-4"
+              : (selectedAssoc?.scope === "internal" && hideFillUp) ? "grid-cols-3"
+              : hideFillUp ? "grid-cols-2"
+              : "grid-cols-3"
+            } h-auto`}>
               <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
-              <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>
+              {!hideFillUp && (
+                <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>
+              )}
               {selectedAssoc?.scope === "internal" && (
                 <TabsTrigger value="rounds" className="text-xs sm:text-sm py-2">Rounds</TabsTrigger>
               )}
@@ -239,17 +255,19 @@ export default function LeagueGames() {
               />
             </TabsContent>
 
-            <TabsContent value="leagues" className="mt-4">
-              {clubId && selectedAssocId && (
-                <FillUpLeaguesTab
-                  clubId={clubId}
-                  activeMemberId={activeMember?.id}
-                  associationId={selectedAssocId}
-                  rulesAssociationId={selectedAssoc?.platform_association_id ?? selectedAssocId}
-                  weekStartDow={selectedAssoc?.week_start_dow ?? clubWeekDow ?? 3}
-                />
-              )}
-            </TabsContent>
+            {!hideFillUp && (
+              <TabsContent value="leagues" className="mt-4">
+                {clubId && selectedAssocId && (
+                  <FillUpLeaguesTab
+                    clubId={clubId}
+                    activeMemberId={activeMember?.id}
+                    associationId={selectedAssocId}
+                    rulesAssociationId={selectedAssoc?.platform_association_id ?? selectedAssocId}
+                    weekStartDow={selectedAssoc?.week_start_dow ?? clubWeekDow ?? 3}
+                  />
+                )}
+              </TabsContent>
+            )}
 
             {selectedAssoc?.scope === "internal" && (
               <TabsContent value="rounds" className="mt-4">

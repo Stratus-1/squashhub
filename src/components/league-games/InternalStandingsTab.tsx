@@ -213,7 +213,8 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
             );
             if (!fx) return { date: d, value: "", fixture_id: null, status: null };
             const r = resByFixture.get(fx.id);
-            if (!r || (r.home_total_points == null && r.away_total_points == null)) {
+            const isFinal = r?.status === "submitted" || r?.status === "confirmed";
+            if (!r || !isFinal || (r.home_total_points == null && r.away_total_points == null)) {
               return { date: d, value: "", fixture_id: fx.id, status: r?.status ?? null };
             }
             const isHome = fx.home_team_code === tc;

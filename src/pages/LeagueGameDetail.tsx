@@ -572,19 +572,13 @@ export default function LeagueGameDetail() {
   }, [fixtureId, queryClient]);
 
   // Apply prefill from the captain's Fill-Up Leagues lineup.
-  //  - If real play has been recorded (any scores or forfeit), do nothing.
-  //  - If saved rows exist but no scores yet, treat them as stale placeholders
-  //    and let the latest captain Fill-Up overwrite them.
-  //  - Otherwise (fresh setup), fill empty slots only.
+  //  - For each position, if real play has been recorded for THAT slot
+  //    (scores or forfeit), keep it as-is.
+  //  - Otherwise, populate from the captain's latest Fill-Up lineup so
+  //    additional slots (e.g. a 5th player added after positions 1-2 were
+  //    already scored) appear immediately.
   useEffect(() => {
     if (!prefillLineup || !fixture) return;
-    const hasRecordedPlay =
-      Array.isArray(existingMatches) &&
-      existingMatches.some(
-        (m: any) => (Array.isArray(m.game_scores) && m.game_scores.length > 0) || !!m.is_forfeit,
-      );
-    if (hasRecordedPlay) return;
-
     const lineup = (prefillLineup as any)?.lineup || {};
     const homeSlots = lineup[fixture.home_team_code] || [];
     const awaySlots = lineup[fixture.away_team_code] || [];
@@ -596,11 +590,8 @@ export default function LeagueGameDetail() {
       const next = prev.map((p, i) => {
         const home = homeSlots[i] || { code: "", name: "" };
         const away = awaySlots[i] || { code: "", name: "" };
-        // When no scores have been recorded yet, the latest captain/admin
-        // Fill-Up lineup (plus any per-fixture Edit Players overrides) is
-        // authoritative for the WHOLE team — replace every slot, including
-        // ones now empty, so reserve swaps and removals reflect immediately
-        // regardless of which entry path opened the scorecard.
+        const slotHasPlay = (Array.isArray(p.scores) && p.scores.length > 0) || !!p.isForfeit;
+        if (slotHasPlay) return p;
         return {
           ...p,
           homeCode: homeHasAny ? (home.code || "") : p.homeCode,

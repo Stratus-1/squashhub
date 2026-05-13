@@ -883,9 +883,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const positionsForLeague = (lg: LeagueRow) => {
     const lp = lineupByLeague.get(lg.id);
-    return [1, 2, 3, 4].map(position => ({
-      position,
-      memberId: lp?.get(position) ?? null,
+    // Dynamic team size: default 4, but expand to 5 when this league has a 5th
+    // allocated player (registration) or a 5th position already saved in the
+    // weekly lineup. Mirrors the auto-detect rule used by the scorecard so that
+    // NIL leagues with 5 allocated players show 5 slots here too.
+    const regCount = registrations.filter(r => r.league_id === lg.id).length;
+    const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
+    const size = Math.min(5, Math.max(4, regCount, maxLineupPos));
+    return Array.from({ length: size }, (_, i) => ({
+      position: i + 1,
+      memberId: lp?.get(i + 1) ?? null,
     }));
   };
 

@@ -33,8 +33,9 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
       : fixture.home_team_code
     : null;
   const isHome = fixture ? fixture.home_team_code === league.code : false;
+  const teamSize = positions.length || 4;
   const filledCount = positions.filter(p => p.memberId).length;
-  const isComplete = filledCount === 4;
+  const isComplete = filledCount === teamSize;
 
   return (
     <Card
@@ -53,7 +54,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
               <CheckCircle2 className="w-3 h-3" /> Team set
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-[10px]">{filledCount}/4 filled</Badge>
+            <Badge variant="outline" className="text-[10px]">{filledCount}/{teamSize} filled</Badge>
           )}
         </div>
         <div className="flex items-center gap-1.5 text-xs">

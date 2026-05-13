@@ -609,12 +609,15 @@ export default function LeagueGameDetail() {
           awayName: awayHasAny ? (away.name || "") : p.awayName,
         };
       });
-      if (!hasOriginalSnapshot(originalLineupSnapshot)) {
+      if (
+        !hasOriginalSnapshot(originalLineupSnapshot) ||
+        next.length > Math.max(originalLineupSnapshot?.home.length ?? 0, originalLineupSnapshot?.away.length ?? 0)
+      ) {
         setOriginalLineupSnapshot(buildOriginalSnapshot(next));
       }
       return next;
     });
-  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot]);
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount]);
 
   // Apply association-level league rules — these are the authoritative format
   // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence

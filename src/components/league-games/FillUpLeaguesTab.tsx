@@ -889,7 +889,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     // NIL leagues with 5 allocated players show 5 slots here too.
     const regCount = registrations.filter(r => r.league_id === lg.id).length;
     const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
-    const size = Math.min(5, Math.max(4, regCount, maxLineupPos));
+    // NIL leagues run a 5-player format — always expose the 5th slot so admin
+    // can allocate a 5th player here even before any registration/lineup at #5.
+    const isNil = (lg.code || "").toUpperCase().startsWith("NIL");
+    const baseline = isNil ? 5 : 4;
+    const size = Math.min(5, Math.max(baseline, regCount, maxLineupPos));
     return Array.from({ length: size }, (_, i) => ({
       position: i + 1,
       memberId: lp?.get(i + 1) ?? null,

@@ -935,8 +935,8 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
       toast.error("Please enter a valid email address");
       return;
     }
-    if (idNumber.trim() && (!/^\d+$/.test(idNumber.trim()) || idNumber.trim().length !== 13)) {
-      toast.error("SA ID number must be exactly 13 digits");
+    if (idNumber.trim() && !/^\d+$/.test(idNumber.trim())) {
+      toast.error("ID number must contain digits only");
       return;
     }
     if (phone && phone !== "+27" && !/^\+\d{7,15}$/.test(phone.replace(/\s/g, ""))) {
@@ -1329,8 +1329,8 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       toast.error("Please enter a valid email address");
       return;
     }
-    if (form.id_number.trim() && (!/^\d+$/.test(form.id_number.trim()) || form.id_number.trim().length !== 13)) {
-      toast.error("SA ID number must be exactly 13 digits");
+    if (form.id_number.trim() && !/^\d+$/.test(form.id_number.trim())) {
+      toast.error("ID number must contain digits only");
       return;
     }
     if (form.phone && form.phone !== "+27" && !/^\+\d{7,15}$/.test(form.phone.replace(/\s/g, ""))) {

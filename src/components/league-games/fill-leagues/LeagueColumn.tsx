@@ -33,8 +33,9 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
       : fixture.home_team_code
     : null;
   const isHome = fixture ? fixture.home_team_code === league.code : false;
+  const teamSize = positions.length || 4;
   const filledCount = positions.filter(p => p.memberId).length;
-  const isComplete = filledCount === 4;
+  const isComplete = filledCount === teamSize;
 
   return (
     <Card

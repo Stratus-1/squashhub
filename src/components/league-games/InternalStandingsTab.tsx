@@ -69,30 +69,10 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   const isSuperAdmin = useIsSuperAdmin();
   const { activeMember } = useMemberContext();
 
-  const { data: myCaptainCodes } = useQuery({
-    queryKey: ["my-captain-team-codes-standings", activeMember?.id],
-    enabled: !!activeMember?.id,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("member_league_registrations")
-        .select("is_captain, leagues:league_id (code)")
-        .eq("club_member_id", activeMember!.id)
-        .eq("active", true)
-        .eq("is_captain", true);
-      if (error) throw error;
-      const codes = new Set<string>();
-      for (const r of (data || []) as any[]) {
-        const c = (r?.leagues?.code || "").toString().toUpperCase();
-        if (c) codes.add(c);
-      }
-      return codes;
-    },
-  });
   const todayStr = format(new Date(), "yyyy-MM-dd");
-  const canEditCell = (teamCode: string, dateStr: string) => {
+  const canEditCell = (_teamCode: string, dateStr: string) => {
     if (dateStr > todayStr) return false;
-    if (isClubAdmin || isSuperAdmin) return true;
-    return !!myCaptainCodes?.has((teamCode || "").toUpperCase());
+    return isClubAdmin || isSuperAdmin;
   };
 
   // Resolve the platform association id (fixtures live under platform_association_id,

@@ -257,6 +257,34 @@ function AppRoutes() {
 
   const isTvRoute = (routeLocation.pathname || "/").startsWith("/tv");
 
+  // Marketing / public-facing routes keep the dark navy+amber brand theme.
+  // The in-app (authenticated) experience defaults to LIGHT for readability.
+  // Users can still flip globally via the theme toggle in Settings.
+  useEffect(() => {
+    const p = routeLocation.pathname || "/";
+    const isMarketingRoute =
+      (!user && p === "/") ||
+      p === "/auth" ||
+      p === "/auth/callback" ||
+      p === "/reset-password" ||
+      p === "/league" ||
+      p === "/terms" ||
+      p === "/privacy" ||
+      p === "/lights" ||
+      p.startsWith("/c/") ||
+      p.startsWith("/tv");
+
+    const root = document.documentElement;
+    const userPref = localStorage.getItem("theme"); // "dark" | "light" | null
+    if (isMarketingRoute) {
+      root.classList.add("dark");
+    } else if (userPref === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [routeLocation.pathname, user]);
+
   const associationSettingsRedirect = (() => {
     const params = new URLSearchParams(location.search);
     params.set("tab", "settings");

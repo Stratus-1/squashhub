@@ -50,7 +50,7 @@ export type FixtureLite = {
  * DnD identifier conventions
  *  - draggable id: `player:{memberId}:{originLeagueId|na|pool}`
  *  - droppable id:
- *      - `pos:{leagueId}:{1..4}`     — position slot
+ *      - `pos:{leagueId}:{1..5}`     — position slot
  *      - `bench:{leagueId}`          — league bench (cascade target)
  *      - `na`                        — week-wide not-available zone
  */

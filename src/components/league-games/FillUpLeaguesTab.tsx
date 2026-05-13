@@ -86,6 +86,10 @@ function leagueOrder(name: string, code: string | null): number {
 }
 const isLadiesLeague = (n: string) => /ladies|women/i.test(n);
 const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
+const DEFAULT_FILL_POSITIONS = 4;
+const MAX_FILL_POSITIONS = 5;
+const boundedFillTeamSize = (...counts: number[]) =>
+  Math.min(MAX_FILL_POSITIONS, Math.max(DEFAULT_FILL_POSITIONS, ...counts.filter(Number.isFinite)));
 
 export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesAssociationId, weekStartDow }: Props) {
   const qc = useQueryClient();
@@ -148,6 +152,35 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     () => [...leagues].sort((a, b) => leagueOrder(a.name, a.code) - leagueOrder(b.name, b.code)),
     [leagues],
   );
+
+  // Registrations — these drive the intended weekly team size. Leagues with 5+
+  // allocated players must show 5 lineup slots in Fill Up, not stop at 4.
+  const leagueIds = useMemo(() => sortedLeagues.map(l => l.id), [sortedLeagues]);
+  const leagueCodes = useMemo(
+    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
+    [sortedLeagues],
+  );
+
+  const { data: registrations = [] } = useQuery<RegRow[]>({
+    queryKey: ["club-regs", leagueIds.join(",")],
+    queryFn: async () => {
+      if (leagueIds.length === 0) return [];
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("id, club_member_id, league_id, player_rank, is_captain, league_association_number, ssa_number")
+        .in("league_id", leagueIds);
+      if (error) throw error;
+      return (data as RegRow[]) || [];
+    },
+    enabled: leagueIds.length > 0,
+  });
+
+  const registeredTeamSizeByLeague = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of registrations) counts.set(r.league_id, (counts.get(r.league_id) ?? 0) + 1);
+    const sizes = new Map<string, number>();
+    for (const lg of sortedLeagues) sizes.set(lg.id, boundedFillTeamSize(counts.get(lg.id) ?? 0));
+    return sizes;
+  }, [registrations, sortedLeagues]);
 
   // Build a list of candidate planning weeks.
   // Always start with the CURRENT squash week (the one containing today) so an

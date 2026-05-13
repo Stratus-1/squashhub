@@ -5,10 +5,11 @@ import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
 
 // Initialize theme from localStorage before render.
-// Default to dark mode (the site is designed dark-first) unless the user
-// has explicitly opted into light mode via the in-app theme toggle.
+// Default to LIGHT mode for the in-app experience (white background, dark text
+// — easier to read). Marketing/landing routes force dark via AppRoutes below.
+// Users can still flip to dark globally via the theme toggle in Settings.
 const savedTheme = localStorage.getItem("theme");
-if (savedTheme !== "light") {
+if (savedTheme === "dark") {
   document.documentElement.classList.add("dark");
 }
 

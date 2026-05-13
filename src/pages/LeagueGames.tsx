@@ -177,6 +177,15 @@ export default function LeagueGames() {
 
   const showSwitcher = associations.length > 1;
 
+  // Hide Fill-Up Leagues for internal/local associations like NIL — captains
+  // place players directly when marking a game (Edit Players on the scorecard).
+  const hideFillUp = (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";
+
+  // If the active tab is Fill-Up but it's hidden for this association, fall back.
+  useEffect(() => {
+    if (hideFillUp && activeTab === "leagues") setActiveTab("fixtures");
+  }, [hideFillUp, activeTab]);
+
   return (
     <div className="bottom-nav-safe">
       <SEO title="League Games" description="Upcoming league fixtures, lineups & standings" path="/league-games" noIndex />

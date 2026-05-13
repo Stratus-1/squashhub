@@ -13,7 +13,7 @@ import { useMyClub } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, addDays } from "date-fns";
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";

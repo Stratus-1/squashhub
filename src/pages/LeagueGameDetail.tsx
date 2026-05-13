@@ -1515,8 +1515,8 @@ export default function LeagueGameDetail() {
         )}
 
 
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-xs">
+        <div className="border rounded-lg overflow-hidden bg-card text-card-foreground">
+          <table className="w-full text-xs bg-card text-card-foreground">
             <thead>
               <tr className="bg-muted/70 text-[10px] font-semibold">
                 <th className="p-0" colSpan={bestOf + 6}>

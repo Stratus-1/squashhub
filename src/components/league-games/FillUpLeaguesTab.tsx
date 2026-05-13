@@ -86,6 +86,10 @@ function leagueOrder(name: string, code: string | null): number {
 }
 const isLadiesLeague = (n: string) => /ladies|women/i.test(n);
 const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
+const DEFAULT_FILL_POSITIONS = 4;
+const MAX_FILL_POSITIONS = 5;
+const boundedFillTeamSize = (...counts: number[]) =>
+  Math.min(MAX_FILL_POSITIONS, Math.max(DEFAULT_FILL_POSITIONS, ...counts.filter(Number.isFinite)));
 
 export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesAssociationId, weekStartDow }: Props) {
   const qc = useQueryClient();
@@ -149,6 +153,35 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     [leagues],
   );
 
+  // Registrations — these drive the intended weekly team size. Leagues with 5+
+  // allocated players must show 5 lineup slots in Fill Up, not stop at 4.
+  const leagueIds = useMemo(() => sortedLeagues.map(l => l.id), [sortedLeagues]);
+  const leagueCodes = useMemo(
+    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
+    [sortedLeagues],
+  );
+
+  const { data: registrations = [] } = useQuery<RegRow[]>({
+    queryKey: ["club-regs", leagueIds.join(",")],
+    queryFn: async () => {
+      if (leagueIds.length === 0) return [];
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("id, club_member_id, league_id, player_rank, is_captain, league_association_number, ssa_number")
+        .in("league_id", leagueIds);
+      if (error) throw error;
+      return (data as RegRow[]) || [];
+    },
+    enabled: leagueIds.length > 0,
+  });
+
+  const registeredTeamSizeByLeague = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of registrations) counts.set(r.league_id, (counts.get(r.league_id) ?? 0) + 1);
+    const sizes = new Map<string, number>();
+    for (const lg of sortedLeagues) sizes.set(lg.id, boundedFillTeamSize(counts.get(lg.id) ?? 0));
+    return sizes;
+  }, [registrations, sortedLeagues]);
+
   // Build a list of candidate planning weeks.
   // Always start with the CURRENT squash week (the one containing today) so an
   // in-progress week whose fixtures haven't been played yet (e.g. a Tue fixture when
@@ -192,11 +225,14 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     }
     for (const wk of candidateWeeks) {
       const lm = counts.get(wk);
-      const allComplete = sortedLeagues.every(lg => (lm?.get(lg.id)?.size ?? 0) >= 4);
+      const allComplete = sortedLeagues.every(lg => {
+        const needed = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
+        return (lm?.get(lg.id)?.size ?? 0) >= needed;
+      });
       if (!allComplete) return wk;
     }
     return candidateWeeks[candidateWeeks.length - 1];
-  }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
+  }, [candidateWeeks, lookaheadLineups, registeredTeamSizeByLeague, sortedLeagues]);
 
   // User can override via selector; otherwise show auto-picked week
   const weekStart = useMemo(
@@ -266,31 +302,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     for (const wk of candidateWeeks) {
       const lm = counts.get(wk);
       let filled = 0;
-      for (const lg of sortedLeagues) filled += Math.min(4, lm?.get(lg.id)?.size ?? 0);
-      result.set(wk, { filled, total: sortedLeagues.length * 4 });
+      let total = 0;
+      for (const lg of sortedLeagues) {
+        const needed = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
+        filled += Math.min(needed, lm?.get(lg.id)?.size ?? 0);
+        total += needed;
+      }
+      result.set(wk, { filled, total });
     }
     return result;
-  }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
-
-  // Registrations
-  const leagueIds = sortedLeagues.map(l => l.id);
-  const leagueCodes = useMemo(
-    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
-    [sortedLeagues],
-  );
-
-  const { data: registrations = [] } = useQuery<RegRow[]>({
-    queryKey: ["club-regs", leagueIds.join(",")],
-    queryFn: async () => {
-      if (leagueIds.length === 0) return [];
-      const { data, error } = await fromExt("member_league_registrations")
-        .select("id, club_member_id, league_id, player_rank, is_captain, league_association_number, ssa_number")
-        .in("league_id", leagueIds);
-      if (error) throw error;
-      return (data as RegRow[]) || [];
-    },
-    enabled: leagueIds.length > 0,
-  });
+  }, [candidateWeeks, lookaheadLineups, registeredTeamSizeByLeague, sortedLeagues]);
 
   const { data: previousFixtures = [] } = useQuery<FixtureLite[]>({
     queryKey: ["previous-fixtures-by-code", leagueCodes.join(","), previousFixtureRange.start, previousFixtureRange.end],
@@ -469,7 +490,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     },
   });
 
-  // Persisted lineups (positions 1-4 per league per week)
+  // Persisted lineups (positions 1-5 per league per week where applicable)
   const { data: lineups = [] } = useQuery<LineupRow[]>({
     queryKey: ["lwl", clubId, weekStart],
     queryFn: async () => {
@@ -883,12 +904,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const positionsForLeague = (lg: LeagueRow) => {
     const lp = lineupByLeague.get(lg.id);
-    // Dynamic team size mirrors the scorecard: default 4, expand to 5 only when
-    // this league actually has a 5th player allocated (registration or saved
-    // lineup at position 5). 4-player teams show 4 slots, 5-player teams show 5.
-    const regCount = registrations.filter(r => r.league_id === lg.id).length;
+    // Dynamic team size mirrors the scorecard: default 4, expand to 5 when this
+    // league has 5+ registered/allocated players or a saved lineup at position 5.
     const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
-    const size = Math.min(5, Math.max(4, regCount, maxLineupPos));
+    const registeredSize = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
+    const size = boundedFillTeamSize(registeredSize, maxLineupPos);
     return Array.from({ length: size }, (_, i) => ({
       position: i + 1,
       memberId: lp?.get(i + 1) ?? null,
@@ -1160,7 +1180,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
               Planning {chosenWeekIndex === 0 ? "this week (in progress)" : chosenWeekIndex === 1 ? "next week" : `${chosenWeekIndex} weeks ahead`}: {format(new Date(weekStart), "EEE dd MMM")} – {format(addDays(new Date(weekStart), 6), "EEE dd MMM")}
             </strong> —
             Lower leagues can start picking teams now so cascaded players land correctly. Drag players from the
-            <em> Available </em> pool into <strong>positions 1–4</strong>, or onto another league's pool to push them down.
+            <em> Available </em> pool into the numbered positions, or onto another league's pool to push them down.
             Drag onto the red zone below to mark <strong>unavailable for the whole week</strong>.
           </p>
           <DroppableZone id={naDropId} variant="na" isEmpty={unavailable.length === 0} emptyHint="Drop a player here to mark them unavailable for the entire week (Wed → Tue)">

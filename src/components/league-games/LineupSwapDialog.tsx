@@ -22,7 +22,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   teamCode: string;        // e.g. "CSI001"
   side: "home" | "away";
-  position: number;        // 1..4
+  position: number;        // 1..5
   currentName: string;
   currentCode: string;
   /** Codes already assigned in this fixture, so we can mark "in use" */

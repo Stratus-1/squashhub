@@ -465,7 +465,7 @@ export default function LeagueGameDetail() {
         .in("id", [...memberIds]);
       const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
 
-      // Build per-team-code positions [1..4]
+      // Build per-team-code positions [1..5]
       // We build TWO maps:
       //   - result: prefill for the scorecard (week → fixture override → regs)
       //   - originals: snapshot of captain's ORIGINAL allocation (week → regs only,
@@ -542,7 +542,7 @@ export default function LeagueGameDetail() {
   });
 
   // Decide between 4-player and 5-player scorecard.
-  // Grow to 5 if BOTH teams have a 5th allocation OR a saved row at position 5 already exists.
+  // Grow to 5 if either team has a 5th allocation OR a saved row at position 5 already exists.
   useEffect(() => {
     const homeCode = fixture?.home_team_code;
     const awayCode = fixture?.away_team_code;
@@ -550,7 +550,7 @@ export default function LeagueGameDetail() {
     const homeFifth = !!(homeCode && (lineup[homeCode]?.[4]?.code || lineup[homeCode]?.[4]?.name));
     const awayFifth = !!(awayCode && (lineup[awayCode]?.[4]?.code || lineup[awayCode]?.[4]?.name));
     const savedHasFifth = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === 5);
-    const next = savedHasFifth || (homeFifth && awayFifth) ? 5 : DEFAULT_POSITIONS;
+    const next = savedHasFifth || homeFifth || awayFifth ? 5 : DEFAULT_POSITIONS;
     setPositionCount((prev) => (prev === next ? prev : next));
   }, [fixture, prefillLineup, existingMatches]);
 
@@ -609,12 +609,15 @@ export default function LeagueGameDetail() {
           awayName: awayHasAny ? (away.name || "") : p.awayName,
         };
       });
-      if (!hasOriginalSnapshot(originalLineupSnapshot)) {
+      if (
+        !hasOriginalSnapshot(originalLineupSnapshot) ||
+        next.length > Math.max(originalLineupSnapshot?.home.length ?? 0, originalLineupSnapshot?.away.length ?? 0)
+      ) {
         setOriginalLineupSnapshot(buildOriginalSnapshot(next));
       }
       return next;
     });
-  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot]);
+  }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount]);
 
   // Apply association-level league rules — these are the authoritative format
   // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence

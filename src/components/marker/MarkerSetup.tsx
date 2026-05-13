@@ -13,7 +13,7 @@ import { useMyClub } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, addDays } from "date-fns";
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
@@ -277,6 +277,7 @@ export function MarkerSetup({ onStart }: Props) {
   const { data: myClubData } = useMyClub();
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const resolvedClub = hostClub || myClubData?.club || null;
   const clubId = resolvedClub?.id;
@@ -805,7 +806,15 @@ export function MarkerSetup({ onStart }: Props) {
                       <button
                         key={f.id}
                         type="button"
-                        onClick={() => navigate(`/league-games/${f.id}`)}
+                        onClick={() => {
+                          // Force the destination scorecard to refetch its
+                          // captain Fill-Up lineup so the latest changes show
+                          // up no matter which entry path was taken.
+                          queryClient.invalidateQueries({ queryKey: ["league-fixture-prefill", f.id] });
+                          queryClient.invalidateQueries({ queryKey: ["league-match-results", f.id] });
+                          queryClient.invalidateQueries({ queryKey: ["league-fixture-result", f.id] });
+                          navigate(`/league-games/${f.id}`);
+                        }}
                         className={`w-full text-left rounded-lg border p-3 transition-colors hover:bg-muted/40 ${
                           f.inMyLineup
                             ? "border-primary bg-primary/10"

@@ -588,25 +588,25 @@ export default function LeagueGameDetail() {
     const lineup = (prefillLineup as any)?.lineup || {};
     const homeSlots = lineup[fixture.home_team_code] || [];
     const awaySlots = lineup[fixture.away_team_code] || [];
-    const hasAny = [...homeSlots, ...awaySlots].some((s) => s.code || s.name);
-    if (!hasAny) return;
-
-    const stalePlaceholdersExist =
-      Array.isArray(existingMatches) && existingMatches.length > 0;
+    const homeHasAny = homeSlots.some((s: any) => s?.code || s?.name);
+    const awayHasAny = awaySlots.some((s: any) => s?.code || s?.name);
+    if (!homeHasAny && !awayHasAny) return;
 
     setPositions((prev) => {
       const next = prev.map((p, i) => {
         const home = homeSlots[i] || { code: "", name: "" };
         const away = awaySlots[i] || { code: "", name: "" };
-        // When no scores have been recorded yet, the latest captain/admin lineup
-        // (incl. per-fixture overrides from Edit Players) is authoritative —
-        // overwrite existing slot data so reserve swaps reflect immediately.
+        // When no scores have been recorded yet, the latest captain/admin
+        // Fill-Up lineup (plus any per-fixture Edit Players overrides) is
+        // authoritative for the WHOLE team — replace every slot, including
+        // ones now empty, so reserve swaps and removals reflect immediately
+        // regardless of which entry path opened the scorecard.
         return {
           ...p,
-          homeCode: home.code || p.homeCode,
-          homeName: home.name || p.homeName,
-          awayCode: away.code || p.awayCode,
-          awayName: away.name || p.awayName,
+          homeCode: homeHasAny ? (home.code || "") : p.homeCode,
+          homeName: homeHasAny ? (home.name || "") : p.homeName,
+          awayCode: awayHasAny ? (away.code || "") : p.awayCode,
+          awayName: awayHasAny ? (away.name || "") : p.awayName,
         };
       });
       if (!hasOriginalSnapshot(originalLineupSnapshot)) {

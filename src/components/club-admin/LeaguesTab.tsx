@@ -1212,7 +1212,9 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       changedLeagues.forEach(l => qc.invalidateQueries({ queryKey: ["league-registrations", l.id] }));
       onOpenChange(false);
     } catch (err: any) {
-      toast.error(err.message || "Failed to save");
+      console.error("[AllocateLeagues] save failed", err);
+      const detail = err?.details || err?.hint || err?.code || "";
+      toast.error(`${err?.message || "Failed to save"}${detail ? ` — ${detail}` : ""}`);
     } finally {
       setSaving(false);
     }

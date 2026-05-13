@@ -1071,7 +1071,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
           <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Auto-generated" /></div>
           <div className="space-y-1">
             <Label>ID Number</Label>
-            <Input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="SA ID number (13 digits)" maxLength={13} />
+            <Input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="First 6 digits of ID or full ID" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
           <div className="space-y-1">
@@ -1624,7 +1624,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           )}
           <div className="space-y-1">
             <Label>ID Number</Label>
-            <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value.replace(/\D/g, "").slice(0, 13) }))} placeholder="SA ID number (13 digits)" maxLength={13} />
+            <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value.replace(/\D/g, "").slice(0, 13) }))} placeholder="First 6 digits of ID or full ID" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
           <div className="space-y-1">

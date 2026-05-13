@@ -569,7 +569,7 @@ export default function Profile() {
             </div>
             <div className="space-y-1.5">
               <Label>ID Number</Label>
-              <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="SA ID number (13 digits)" />
+              <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="First 6 digits of ID or full ID" maxLength={13} />
               {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
             </div>
             <div className="space-y-1.5">

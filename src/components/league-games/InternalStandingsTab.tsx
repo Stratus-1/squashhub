@@ -405,7 +405,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                                 ? "Future fixture"
                                 : editable
                                 ? (w.value ? "Edit results" : "Enter results")
-                                : "Only the team captain or a club/super admin can enter or edit results.";
+                                : "Only a club or super admin can enter or edit results.";
                               const cell = (
                                 <button
                                   type="button"

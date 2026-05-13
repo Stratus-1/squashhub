@@ -225,11 +225,14 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     }
     for (const wk of candidateWeeks) {
       const lm = counts.get(wk);
-      const allComplete = sortedLeagues.every(lg => (lm?.get(lg.id)?.size ?? 0) >= 4);
+      const allComplete = sortedLeagues.every(lg => {
+        const needed = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
+        return (lm?.get(lg.id)?.size ?? 0) >= needed;
+      });
       if (!allComplete) return wk;
     }
     return candidateWeeks[candidateWeeks.length - 1];
-  }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
+  }, [candidateWeeks, lookaheadLineups, registeredTeamSizeByLeague, sortedLeagues]);
 
   // User can override via selector; otherwise show auto-picked week
   const weekStart = useMemo(
@@ -299,31 +302,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     for (const wk of candidateWeeks) {
       const lm = counts.get(wk);
       let filled = 0;
-      for (const lg of sortedLeagues) filled += Math.min(4, lm?.get(lg.id)?.size ?? 0);
-      result.set(wk, { filled, total: sortedLeagues.length * 4 });
+      let total = 0;
+      for (const lg of sortedLeagues) {
+        const needed = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
+        filled += Math.min(needed, lm?.get(lg.id)?.size ?? 0);
+        total += needed;
+      }
+      result.set(wk, { filled, total });
     }
     return result;
-  }, [candidateWeeks, lookaheadLineups, sortedLeagues]);
-
-  // Registrations
-  const leagueIds = sortedLeagues.map(l => l.id);
-  const leagueCodes = useMemo(
-    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
-    [sortedLeagues],
-  );
-
-  const { data: registrations = [] } = useQuery<RegRow[]>({
-    queryKey: ["club-regs", leagueIds.join(",")],
-    queryFn: async () => {
-      if (leagueIds.length === 0) return [];
-      const { data, error } = await fromExt("member_league_registrations")
-        .select("id, club_member_id, league_id, player_rank, is_captain, league_association_number, ssa_number")
-        .in("league_id", leagueIds);
-      if (error) throw error;
-      return (data as RegRow[]) || [];
-    },
-    enabled: leagueIds.length > 0,
-  });
+  }, [candidateWeeks, lookaheadLineups, registeredTeamSizeByLeague, sortedLeagues]);
 
   const { data: previousFixtures = [] } = useQuery<FixtureLite[]>({
     queryKey: ["previous-fixtures-by-code", leagueCodes.join(","), previousFixtureRange.start, previousFixtureRange.end],

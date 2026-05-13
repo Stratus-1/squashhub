@@ -277,6 +277,7 @@ export function MarkerSetup({ onStart }: Props) {
   const { data: myClubData } = useMyClub();
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const resolvedClub = hostClub || myClubData?.club || null;
   const clubId = resolvedClub?.id;

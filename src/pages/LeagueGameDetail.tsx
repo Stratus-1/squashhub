@@ -1417,7 +1417,7 @@ export default function LeagueGameDetail() {
 
       <div className="px-3 space-y-3 pb-8">
         {/* Header row */}
-        <div className="border rounded-lg overflow-hidden text-xs">
+        <div className="border rounded-lg overflow-hidden text-xs bg-card text-card-foreground">
           <div className="grid grid-cols-2 border-b bg-muted/50">
             <div className="p-1.5 border-r">
               <span className="text-muted-foreground">League:</span>{" "}

@@ -1911,14 +1911,14 @@ export default function LeagueGameDetail() {
               {setupDone && (
                 <>
                   <tr className="border-t bg-muted/60 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <td colSpan={2 + bestOf} className="p-2 align-middle">
+                    <td colSpan={2 + bestOf} className="p-3 align-middle">
                       {!isSubmitted && (
                         <Button
-                          size="sm"
-                          className="text-xs font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-md hover:shadow-lg hover:opacity-95 transition-all h-8 px-3"
+                          size="lg"
+                          className="text-sm font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:opacity-95 transition-all h-14 px-6 mx-auto flex"
                           onClick={() => setSetupDone(false)}
                         >
-                          <Users className="w-3.5 h-3.5 mr-1.5" /> Edit Players
+                          <Users className="w-5 h-5 mr-2" /> Edit Players
                         </Button>
                       )}
                     </td>

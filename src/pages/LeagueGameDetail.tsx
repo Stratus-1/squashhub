@@ -1633,6 +1633,12 @@ export default function LeagueGameDetail() {
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700 flex items-center gap-1">
                               <span className="truncate">{pos.homeName}</span>
+                              {isCaptainCode(pos.homeCode, "home") && (
+                                <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold" title="Team captain">C</Badge>
+                              )}
+                              {isSubstituted(pos.homeCode, idx, "home") && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold" title="Substitute (replaced original player)">SUB</Badge>
+                              )}
                               {(() => {
                                 const r = pos.homeCode ? nsaRosterMap.get(pos.homeCode.toUpperCase()) : null;
                                 if (!r || r.played === 0) return null;

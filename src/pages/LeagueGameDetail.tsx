@@ -2080,8 +2080,8 @@ export default function LeagueGameDetail() {
         {/* Signatures */}
         {setupDone && !isSubmitted && (
           <div className="flex gap-2">
-            <SignaturePad label={`Home Captain`} onSave={setHomeSig} />
-            <SignaturePad label={`Away Captain`} onSave={setAwaySig} />
+            <SignaturePad label={homeSigLabel} onSave={setHomeSig} />
+            <SignaturePad label={awaySigLabel} onSave={setAwaySig} />
           </div>
         )}
 

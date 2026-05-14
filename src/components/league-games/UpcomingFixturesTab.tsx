@@ -277,6 +277,8 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const fixturesByDate = useMemo(() => {
     const groups = new Map<string, any[]>();
     for (const f of (displayFixtures || []) as any[]) {
+      // Skip byes — they don't need scoring or scheduling
+      if (f.away_team_code === "__BYE__" || f.home_team_code === "__BYE__" || f.status === "bye") continue;
       const date = f.fixture_date;
       // In past-due mode, hide fixtures that already have a submitted/confirmed result.
       if (rangeMode === "past-due") {

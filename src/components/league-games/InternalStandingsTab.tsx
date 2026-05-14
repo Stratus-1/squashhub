@@ -49,8 +49,10 @@ type StandingRow = {
   team_code: string;
   total: number;
   played: number;
-  weeks: Array<{ date: string; value: string; fixture_id: string | null; status: string | null }>;
+  weeks: Array<{ date: string; value: string; fixture_id: string | null; status: string | null; isBye?: boolean }>;
 };
+
+const BYE_CODE = "__BYE__";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -203,7 +205,9 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         const weekDates = Array.from(new Set(fxs.map((f) => f.fixture_date))).sort();
         const teams = Array.from(
           new Set(
-            fxs.flatMap((f) => [f.home_team_code, f.away_team_code]).filter((c): c is string => !!c)
+            fxs
+              .flatMap((f) => [f.home_team_code, f.away_team_code])
+              .filter((c): c is string => !!c && c !== BYE_CODE)
           )
         );
         const rows: StandingRow[] = teams.map((tc) => {
@@ -212,6 +216,10 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
               (f) => f.fixture_date === d && (f.home_team_code === tc || f.away_team_code === tc)
             );
             if (!fx) return { date: d, value: "", fixture_id: null, status: null };
+            const opp = fx.home_team_code === tc ? fx.away_team_code : fx.home_team_code;
+            if (opp === BYE_CODE) {
+              return { date: d, value: "", fixture_id: null, status: "bye", isBye: true };
+            }
             const r = resByFixture.get(fx.id);
             const isFinal = r?.status === "submitted" || r?.status === "confirmed";
             if (!r || !isFinal || (r.home_total_points == null && r.away_total_points == null)) {
@@ -219,8 +227,8 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
             }
             const isHome = fx.home_team_code === tc;
             const own = isHome ? r.home_total_points ?? 0 : r.away_total_points ?? 0;
-            const opp = isHome ? r.away_total_points ?? 0 : r.home_total_points ?? 0;
-            return { date: d, value: `${own}-${opp}`, fixture_id: fx.id, status: r.status };
+            const oppPts = isHome ? r.away_total_points ?? 0 : r.home_total_points ?? 0;
+            return { date: d, value: `${own}-${oppPts}`, fixture_id: fx.id, status: r.status };
           });
           const total = weeks.reduce((s, w) => {
             if (!w.value) return s;
@@ -396,6 +404,13 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                               {s.played}
                             </TableCell>
                             {s.weeks.map((w, j) => {
+                              if (w.isBye) {
+                                return (
+                                  <TableCell key={j} className="text-center text-xs p-1 text-muted-foreground/60">
+                                    BYE
+                                  </TableCell>
+                                );
+                              }
                               const editable = !!w.fixture_id && canEditCell(s.team_code, w.date);
                               const isPast = w.date <= todayStr;
                               const missing = !w.value && isPast && !!w.fixture_id;

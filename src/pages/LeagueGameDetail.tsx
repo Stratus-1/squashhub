@@ -1911,8 +1911,17 @@ export default function LeagueGameDetail() {
               {setupDone && (
                 <>
                   <tr className="border-t bg-muted/60 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <td colSpan={2} className="p-1 text-right"></td>
-                    <td colSpan={bestOf} />
+                    <td colSpan={2 + bestOf} className="p-2 align-middle">
+                      {!isSubmitted && (
+                        <Button
+                          size="sm"
+                          className="text-xs font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-md hover:shadow-lg hover:opacity-95 transition-all h-8 px-3"
+                          onClick={() => setSetupDone(false)}
+                        >
+                          <Users className="w-3.5 h-3.5 mr-1.5" /> Edit Players
+                        </Button>
+                      )}
+                    </td>
                     <td className="text-center p-1 text-primary">H</td>
                     <td className="text-center p-1 text-secondary-foreground">V</td>
                   </tr>
@@ -2004,16 +2013,6 @@ export default function LeagueGameDetail() {
               </Button>
             </div>
           </div>
-        )}
-
-        {setupDone && !isSubmitted && (
-          <Button
-            size="sm"
-            className="w-full text-xs font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-md hover:shadow-lg hover:opacity-95 transition-all"
-            onClick={() => setSetupDone(false)}
-          >
-            <Users className="w-3.5 h-3.5 mr-1.5" /> Edit Players
-          </Button>
         )}
 
         {/* Signatures */}

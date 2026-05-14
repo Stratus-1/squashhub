@@ -1754,6 +1754,30 @@ export default function LeagueGameDetail() {
                                   <ArrowLeftRight className="w-3 h-3" />
                                 </button>
                               )}
+                              {!isSubmitted && !pos.isForfeit && (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Mark away player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
+                                      markForfeit(idx, "away");
+                                    }
+                                  }}
+                                  className="text-muted-foreground hover:text-destructive"
+                                  title="Forfeit player"
+                                >
+                                  <UserX className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {!isSubmitted && pos.isForfeit && pos.forfeitSide === "away" && (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Undo forfeit for position ${idx + 1}?`)) undoForfeit(idx);
+                                  }}
+                                  className="text-primary hover:bg-primary/10 rounded p-0.5 border border-primary/40"
+                                  title="Undo forfeit"
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                </button>
+                              )}
                               {!isSubmitted && pos.awayCode && (
                                 <button
                                   onClick={() => handleClearSlot(idx, "away")}

@@ -1870,41 +1870,16 @@ export default function LeagueGameDetail() {
                                 </>
                               )}
                               {!isSubmitted && pos.completed && !pos.isForfeit && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button
-                                      className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
-                                      title="Actions"
-                                    >
-                                      <MoreVertical className="w-4 h-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "away" })}>
-                                      <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive"
-                                      onClick={() => {
-                                        if (window.confirm(`Mark away player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                          markForfeit(idx, "away");
-                                        }
-                                      }}
-                                    >
-                                      <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive"
-                                      onClick={() => {
-                                        if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
-                                        clearScores(idx);
-                                      }}
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Scratch / clear scores
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <button
+                                  onClick={() => {
+                                    if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
+                                    clearScores(idx);
+                                  }}
+                                  className="text-muted-foreground hover:text-destructive hover:bg-accent rounded p-0.5"
+                                  title="Scratch / clear scores"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (
                                 <>

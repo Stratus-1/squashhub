@@ -1833,69 +1833,40 @@ export default function LeagueGameDetail() {
                                       </TooltipContent>
                                     </Tooltip>
                                   )}
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <button
-                                        className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
-                                        title="More actions"
-                                      >
-                                        <MoreVertical className="w-4 h-4" />
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
-                                      {hasPlayers && (
-                                        <>
-                                          <DropdownMenuItem
-                                            onClick={() => {
-                                              const gamesToWin = bestOf === 5 ? 3 : 2;
-                                              let hw = 0, aw = 0;
-                                              for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
-                                              const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
-                                              const last = pos.scores[pos.scores.length - 1];
-                                              const lastInProgress = last && last.home === last.away;
-                                              if (pos.scores.length === 0) {
-                                                addGame(idx);
-                                              } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
-                                                addGame(idx);
-                                              }
-                                              setManualEntry(idx);
-                                            }}
-                                          >
-                                            <Edit3 className="w-3.5 h-3.5 mr-2" /> Enter scores manually
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator />
-                                        </>
-                                      )}
-                                      <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "away" })}>
-                                        <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onClick={() => {
-                                          const sideLabel = pos.awayCode ? "away" : "away (no player listed)";
-                                          if (window.confirm(`Mark ${sideLabel} player at position ${idx + 1} as a forfeit?\n\nHome team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and away team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                            markForfeit(idx, "away");
-                                          }
-                                        }}
-                                      >
-                                        <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
-                                      </DropdownMenuItem>
-                                      {(pos.completed || pos.scores.length > 0) && (
-                                        <>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem
-                                            className="text-destructive focus:text-destructive"
-                                            onClick={() => {
-                                              if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
-                                              clearScores(idx);
-                                            }}
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Scratch / clear scores
-                                          </DropdownMenuItem>
-                                        </>
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                  {hasPlayers && (
+                                    <button
+                                      onClick={() => {
+                                        const gamesToWin = bestOf === 5 ? 3 : 2;
+                                        let hw = 0, aw = 0;
+                                        for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+                                        const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+                                        const last = pos.scores[pos.scores.length - 1];
+                                        const lastInProgress = last && last.home === last.away;
+                                        if (pos.scores.length === 0) {
+                                          addGame(idx);
+                                        } else if (!matchDecided && !lastInProgress && pos.scores.length < bestOf) {
+                                          addGame(idx);
+                                        }
+                                        setManualEntry(idx);
+                                      }}
+                                      className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
+                                      title="Enter scores manually"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  {(pos.completed || pos.scores.length > 0) && (
+                                    <button
+                                      onClick={() => {
+                                        if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
+                                        clearScores(idx);
+                                      }}
+                                      className="text-muted-foreground hover:text-destructive hover:bg-accent rounded p-0.5"
+                                      title="Scratch / clear scores"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                               {!isSubmitted && pos.completed && !pos.isForfeit && (

@@ -1910,45 +1910,47 @@ export default function LeagueGameDetail() {
               {/* Totals rows */}
               {setupDone && (
                 <>
-                  <tr className="border-t bg-muted/60 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <td colSpan={2 + bestOf} className="p-3 align-middle">
-                      {!isSubmitted && (
-                        <Button
-                          size="lg"
-                          className="text-sm font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:opacity-95 transition-all h-14 px-6 mx-auto flex"
-                          onClick={() => setSetupDone(false)}
-                        >
-                          <Users className="w-5 h-5 mr-2" /> Edit Players
-                        </Button>
-                      )}
-                    </td>
-                    <td className="text-center p-1 text-primary">H</td>
-                    <td className="text-center p-1 text-secondary-foreground">V</td>
-                  </tr>
-                  <tr className="bg-muted/40 font-semibold text-xs">
-                    <td colSpan={2} className="p-1 text-right">SUB TOTALS (G)</td>
-                    <td colSpan={bestOf} />
-                    <td className="text-center p-1">{summary.homeTotalGames}</td>
-                    <td className="text-center p-1">{summary.awayTotalGames}</td>
-                  </tr>
-                  <tr className="bg-muted/40 font-semibold text-xs">
-                    <td colSpan={2} className="p-1 text-right">
-                      BONUS (WIN)
-                    </td>
-                    <td colSpan={bestOf} />
-                    <td className="text-center p-1">{summary.homeMatchBonus}</td>
-                    <td className="text-center p-1">{summary.awayMatchBonus}</td>
-                  </tr>
-                  {summary.opbEnabled && (
-                    <tr className="bg-muted/40 font-semibold text-xs">
-                      <td colSpan={2} className="p-1 text-right">
-                        ORIGINAL PLAYERS (×{summary.opbValue})
-                      </td>
-                      <td colSpan={bestOf} />
-                      <td className="text-center p-1">{summary.homeOriginalCount} = {summary.homeOriginalBonus}</td>
-                      <td className="text-center p-1">{summary.awayOriginalCount} = {summary.awayOriginalBonus}</td>
-                    </tr>
-                  )}
+                  {(() => {
+                    const buttonRowSpan = summary.opbEnabled ? 3 : 2;
+                    return (
+                      <>
+                        <tr className="bg-muted/40 font-semibold text-xs border-t">
+                          <td
+                            rowSpan={buttonRowSpan}
+                            colSpan={2}
+                            className="p-2 text-center align-middle"
+                          >
+                            {!isSubmitted && (
+                              <Button
+                                size="lg"
+                                className="text-sm font-semibold bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg hover:shadow-xl hover:opacity-95 transition-all h-12 px-5 mx-auto flex"
+                                onClick={() => setSetupDone(false)}
+                              >
+                                <Users className="w-4 h-4 mr-2" /> Edit Players
+                              </Button>
+                            )}
+                          </td>
+                          <td colSpan={bestOf} className="p-1 text-right">SUB TOTALS (G)</td>
+                          <td className="text-center p-1">{summary.homeTotalGames}</td>
+                          <td className="text-center p-1">{summary.awayTotalGames}</td>
+                        </tr>
+                        <tr className="bg-muted/40 font-semibold text-xs">
+                          <td colSpan={bestOf} className="p-1 text-right">BONUS (WIN)</td>
+                          <td className="text-center p-1">{summary.homeMatchBonus}</td>
+                          <td className="text-center p-1">{summary.awayMatchBonus}</td>
+                        </tr>
+                        {summary.opbEnabled && (
+                          <tr className="bg-muted/40 font-semibold text-xs">
+                            <td colSpan={bestOf} className="p-1 text-right">
+                              ORIGINAL PLAYERS (×{summary.opbValue})
+                            </td>
+                            <td className="text-center p-1">{summary.homeOriginalCount} = {summary.homeOriginalBonus}</td>
+                            <td className="text-center p-1">{summary.awayOriginalCount} = {summary.awayOriginalBonus}</td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })()}
                   <tr className="bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
                     <td colSpan={bestOf} />

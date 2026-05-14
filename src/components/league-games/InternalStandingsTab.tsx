@@ -404,6 +404,13 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                               {s.played}
                             </TableCell>
                             {s.weeks.map((w, j) => {
+                              if (w.isBye) {
+                                return (
+                                  <TableCell key={j} className="text-center text-xs p-1 text-muted-foreground/60">
+                                    BYE
+                                  </TableCell>
+                                );
+                              }
                               const editable = !!w.fixture_id && canEditCell(s.team_code, w.date);
                               const isPast = w.date <= todayStr;
                               const missing = !w.value && isPast && !!w.fixture_id;

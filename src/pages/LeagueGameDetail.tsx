@@ -264,23 +264,66 @@ export default function LeagueGameDetail() {
 
   // Resolve team codes (e.g. "NIL002") to friendly league/team names from the
   // `leagues` table. Hook lives here (above early returns) to obey Rules of Hooks.
-  const { data: teamNamesByCode } = useQuery({
-    queryKey: ["league-team-names", fixture?.home_team_code, fixture?.away_team_code],
+  const { data: teamMeta } = useQuery({
+    queryKey: ["league-team-meta", fixture?.home_team_code, fixture?.away_team_code],
     enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
     queryFn: async () => {
+      const empty = { nameByCode: {} as Record<string, string>, clubIdByCode: {} as Record<string, string>, captainCodeByCode: {} as Record<string, string> };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
-      if (codes.length === 0) return {} as Record<string, string>;
-      const { data } = await (supabase as any)
-        .from("leagues")
-        .select("code, name")
-        .in("code", codes);
-      const map: Record<string, string> = {};
-      for (const l of (data || []) as any[]) {
-        if (l.code && l.name) map[String(l.code).toUpperCase()] = l.name;
+      if (codes.length === 0) return empty;
+      const { data: leagues } = await (supabase as any)
+        .from("leagues").select("id, code, name, club_id, captain_member_id").in("code", codes);
+      const nameByCode: Record<string, string> = {};
+      const clubIdByCode: Record<string, string> = {};
+      const leagueIdToCode: Record<string, string> = {};
+      const captainMemberIdByCode: Record<string, string> = {};
+      for (const l of (leagues || []) as any[]) {
+        const k = String(l.code || "").toUpperCase();
+        if (l.name) nameByCode[k] = l.name;
+        if (l.club_id) clubIdByCode[k] = l.club_id;
+        leagueIdToCode[l.id] = k;
+        if (l.captain_member_id) captainMemberIdByCode[k] = l.captain_member_id;
       }
-      return map;
+      const leagueIds = (leagues || []).map((l: any) => l.id);
+      if (leagueIds.length) {
+        const { data: caps } = await (supabase as any)
+          .from("member_league_registrations")
+          .select("league_id, club_member_id, is_captain")
+          .in("league_id", leagueIds)
+          .eq("is_captain", true);
+        for (const c of (caps || []) as any[]) {
+          const k = leagueIdToCode[c.league_id];
+          if (k) captainMemberIdByCode[k] = c.club_member_id;
+        }
+      }
+      const captainCodeByCode: Record<string, string> = {};
+      const captainIds = Array.from(new Set(Object.values(captainMemberIdByCode)));
+      if (captainIds.length) {
+        const { data: regs } = await (supabase as any)
+          .from("member_league_registrations")
+          .select("club_member_id, league_association_number, ssa_number")
+          .in("club_member_id", captainIds);
+        const codeByMember = new Map<string, string>();
+        for (const r of (regs || []) as any[]) {
+          const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
+          if (code && !codeByMember.has(r.club_member_id)) codeByMember.set(r.club_member_id, code);
+        }
+        const missing = captainIds.filter(id => !codeByMember.has(id));
+        if (missing.length) {
+          const { data: members } = await supabase.from("club_members").select("id, club_member_number").in("id", missing);
+          for (const m of (members || []) as any[]) {
+            if (m.club_member_number) codeByMember.set(m.id, String(m.club_member_number).toUpperCase());
+          }
+        }
+        for (const [k, mid] of Object.entries(captainMemberIdByCode)) {
+          const c = codeByMember.get(mid);
+          if (c) captainCodeByCode[k] = c;
+        }
+      }
+      return { nameByCode, clubIdByCode, captainCodeByCode };
     },
   });
+  const teamNamesByCode = teamMeta?.nameByCode;
 
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {

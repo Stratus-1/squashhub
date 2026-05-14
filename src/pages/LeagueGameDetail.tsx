@@ -1451,6 +1451,23 @@ export default function LeagueGameDetail() {
   const awayCode = fixture.away_team_code || "";
   const homeTeamName = teamNamesByCode?.[homeCode.toUpperCase()] || null;
   const awayTeamName = teamNamesByCode?.[awayCode.toUpperCase()] || null;
+  const homeCaptainCode = (teamMeta?.captainCodeByCode?.[homeCode.toUpperCase()] || "").toUpperCase();
+  const awayCaptainCode = (teamMeta?.captainCodeByCode?.[awayCode.toUpperCase()] || "").toUpperCase();
+  const homeClubId = teamMeta?.clubIdByCode?.[homeCode.toUpperCase()];
+  const awayClubId = teamMeta?.clubIdByCode?.[awayCode.toUpperCase()];
+  const isInternalLeague = !!(homeClubId && awayClubId && homeClubId === awayClubId);
+  const homeSigLabel = isInternalLeague ? `${homeTeamName || homeCode} Captain` : "Home Captain";
+  const awaySigLabel = isInternalLeague ? `${awayTeamName || awayCode} Captain` : "Away Captain";
+  const isCaptainCode = (code: string | null | undefined, side: "home" | "away") => {
+    const c = (code || "").toUpperCase();
+    if (!c) return false;
+    return side === "home" ? c === homeCaptainCode : c === awayCaptainCode;
+  };
+  const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
+    const orig = normalizePlayerCode(side === "home" ? originalLineupSnapshot?.home?.[idx] : originalLineupSnapshot?.away?.[idx]);
+    const cur = normalizePlayerCode(code);
+    return !!orig && !!cur && orig !== cur;
+  };
 
   return (
     <div className="bottom-nav-safe">

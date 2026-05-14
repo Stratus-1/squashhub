@@ -1716,7 +1716,15 @@ export default function LeagueGameDetail() {
                         ) : (
                           <>
                             <span className="text-[9px] font-mono px-1 text-muted-foreground truncate">{pos.homeCode}</span>
-                            <span className="text-xs truncate px-1 font-medium">{pos.homeName || "—"}</span>
+                            <span className="text-xs px-1 font-medium flex items-center gap-1 min-w-0">
+                              <span className="truncate">{pos.homeName || "—"}</span>
+                              {isCaptainCode(pos.homeCode, "home") && (
+                                <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
+                              )}
+                              {isSubstituted(pos.homeCode, idx, "home") && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold shrink-0" title="Substitute (replaced original player)">SUB</Badge>
+                              )}
+                            </span>
                             {Array.from({ length: bestOf }, (_, gi) => (
                               <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].home > pos.scores[gi].away ? "font-bold" : "text-muted-foreground")}>
                                 {pos.scores[gi]?.home ?? ""}

@@ -1660,46 +1660,17 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? homeTotalPts : ""}</span>
                             <span className="flex items-center justify-center gap-0.5">
-                              {!isSubmitted && !pos.isForfeit && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button
-                                      className="text-muted-foreground hover:text-foreground hover:bg-accent rounded p-0.5"
-                                      title="Actions"
-                                    >
-                                      <MoreVertical className="w-4 h-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem onClick={() => setSwapTarget({ idx, side: "home" })}>
-                                      <ArrowLeftRight className="w-3.5 h-3.5 mr-2" /> Replace player
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive"
-                                      onClick={() => {
-                                        if (window.confirm(`Mark home player at position ${idx + 1} as a forfeit?\n\nAway team will be awarded a clean ${bestOf === 5 ? '3-0' : '2-0'} (15-0 each game), and home team will lose ${FORFEIT_PENALTY_POINTS} penalty points.`)) {
-                                          markForfeit(idx, "home");
-                                        }
-                                      }}
-                                    >
-                                      <UserX className="w-3.5 h-3.5 mr-2" /> Forfeit player
-                                    </DropdownMenuItem>
-                                    {(pos.completed || pos.scores.length > 0) && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          className="text-destructive focus:text-destructive"
-                                          onClick={() => {
-                                            if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
-                                            clearScores(idx);
-                                          }}
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Scratch / clear scores
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                              {!isSubmitted && !pos.isForfeit && (pos.completed || pos.scores.length > 0) && (
+                                <button
+                                  onClick={() => {
+                                    if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
+                                    clearScores(idx);
+                                  }}
+                                  className="text-muted-foreground hover:text-destructive hover:bg-accent rounded p-0.5"
+                                  title="Scratch / clear scores"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "home" && (
                                 <>

@@ -49,8 +49,10 @@ type StandingRow = {
   team_code: string;
   total: number;
   played: number;
-  weeks: Array<{ date: string; value: string; fixture_id: string | null; status: string | null }>;
+  weeks: Array<{ date: string; value: string; fixture_id: string | null; status: string | null; isBye?: boolean }>;
 };
+
+const BYE_CODE = "__BYE__";
 
 const CURRENT_YEAR = new Date().getFullYear();
 

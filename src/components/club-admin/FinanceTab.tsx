@@ -18,11 +18,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RemittancesPanel } from "./RemittancesPanel";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
+import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 
 /* ─── Chart of Accounts definition ─── */
 
 type GLAccount =
   | "debtors" | "creditors" | "bank" | "bank_current" | "cash"
+  | "opening_balance_equity"
   | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income"
   | "bar_expense" | "league_fees_expense" | "national_body_expense"
   | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "general_expense";
@@ -40,8 +42,9 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   bank_current:      { label: "Current Account",     type: "BS", category: "Asset",     normal: "Dr" },
   cash:              { label: "Cash / Petty Cash",   type: "BS", category: "Asset",     normal: "Dr" },
   debtors:           { label: "Accounts Receivable",  type: "BS", category: "Asset",     normal: "Dr" },
-  // Balance Sheet – Liabilities
+  // Balance Sheet – Liabilities / Equity
   creditors:         { label: "Accounts Payable",     type: "BS", category: "Liability", normal: "Cr" },
+  opening_balance_equity: { label: "Opening Balance Equity", type: "BS", category: "Liability", normal: "Cr" },
   // Income
   fee_income:        { label: "Fee Income",           type: "IS", category: "Income",    normal: "Cr" },
   membership_income: { label: "Membership Income",    type: "IS", category: "Income",    normal: "Cr" },
@@ -88,6 +91,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
 
   // Fetch journal entries
   const { data: journalEntries, isLoading } = useQuery({
@@ -472,6 +476,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Button size="sm" variant="outline" onClick={handleResyncFeesGL} className="gap-1.5 h-8">
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setOpeningBalancesOpen(true)} className="gap-1.5 h-8">
+                  <BookOpen className="w-3.5 h-3.5" /> Opening Balances
+                </Button>
+                <OpeningBalancesDialog
+                  open={openingBalancesOpen}
+                  onOpenChange={setOpeningBalancesOpen}
+                  clubId={clubId}
+                  accounts={CHART_OF_ACCOUNTS as any}
+                />
                 <Button size="sm" variant="outline" onClick={() => setResetOpen(true)} className="gap-1.5 h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
                   <AlertTriangle className="w-3.5 h-3.5" /> Reset Finances
                 </Button>

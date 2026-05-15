@@ -1922,7 +1922,7 @@ export default function LeagueGameDetail() {
                               {!isSubmitted && !pos.completed && (
                                 <>
                                   {hasPlayers && (
-                                    <Tooltip open={isFirstPlayable || hasResumableMarker ? true : undefined}>
+                                    <Tooltip open={isFirstPlayable && !hasResumableMarker ? true : undefined}>
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={() => {
@@ -1942,9 +1942,7 @@ export default function LeagueGameDetail() {
                                         </button>
                                       </TooltipTrigger>
                                       <TooltipContent side="left" className="max-w-[220px]">
-                                        {hasResumableMarker
-                                          ? "Resume the in-progress live score for this position."
-                                          : isFirstPlayable
+                                        {isFirstPlayable
                                           ? "Start marking your first game by clicking this Play button — live scoring will open for this position."
                                           : "Mark game live"}
                                       </TooltipContent>

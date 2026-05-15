@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RemittancesPanel } from "./RemittancesPanel";
 import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
+import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 
 /* ─── Chart of Accounts definition ─── */
 

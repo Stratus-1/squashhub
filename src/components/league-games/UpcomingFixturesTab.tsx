@@ -457,6 +457,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm">
+                        <TeamLogo
+                          logoUrl={teamLogoByCode?.[(f.home_team_code || "").toUpperCase()]}
+                          name={teamNameByCode?.[(f.home_team_code || "").toUpperCase()] || f.home_team_code}
+                          size={20}
+                        />
                         <span className="font-bold flex flex-col leading-tight">
                           <span>{f.home_team_code}</span>
                           {teamNameByCode?.[(f.home_team_code || "").toUpperCase()] && (
@@ -472,6 +477,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         ) : (
                           <span className="text-muted-foreground text-xs">vs</span>
                         )}
+                        <TeamLogo
+                          logoUrl={teamLogoByCode?.[(f.away_team_code || "").toUpperCase()]}
+                          name={teamNameByCode?.[(f.away_team_code || "").toUpperCase()] || f.away_team_code}
+                          size={20}
+                        />
                         <span className="font-bold flex flex-col leading-tight">
                           <span>{f.away_team_code}</span>
                           {teamNameByCode?.[(f.away_team_code || "").toUpperCase()] && (

@@ -2264,6 +2264,21 @@ export default function LeagueGameDetail() {
           }))}
         />
       )}
+
+      {isClubAdmin && fixtureId && (
+        <AdminManualScoreDialog
+          open={adminManualOpen}
+          onOpenChange={setAdminManualOpen}
+          fixtureId={fixtureId}
+          homeCode={homeCode}
+          awayCode={awayCode}
+          existing={existingResult as any}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+            queryClient.invalidateQueries({ queryKey: ["internal-standings"] });
+          }}
+        />
+      )}
     </div>
   );
 }

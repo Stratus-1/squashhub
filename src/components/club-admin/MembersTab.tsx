@@ -295,6 +295,11 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
           );
         })}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
+        {barOutstanding && barOutstanding > 0 ? (
+          <Badge variant="destructive" className="text-[9px] px-1 py-0" title="Outstanding honesty bar balance">
+            🍺 R{barOutstanding.toFixed(2)}
+          </Badge>
+        ) : null}
       </div>
 
       {/* Row 3: Fees receivable from member */}

@@ -559,9 +559,6 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     <Card className="p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {isInternalLeague && (
-            <TeamLogo logoUrl={(league as any).logo_url} name={league.name} size={32} />
-          )}
           <div className="flex-1 min-w-0">
           {editing ? (
             <div className="flex items-center gap-1">

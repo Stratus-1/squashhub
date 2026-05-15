@@ -940,6 +940,13 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
   // Preview of fees that will be created
   const selectedCat = feeCategories.find(c => c.id === feeCategoryId);
+  const isVisitor = (selectedCat?.name || "").trim().toLowerCase() === "visitor";
+
+  // Visitors don't get a club member number — clear it whenever Visitor is selected
+  useEffect(() => {
+    if (isVisitor && memberNumber) setMemberNumber("");
+  }, [isVisitor]);
+
   const previewFees: { label: string; amount: number }[] = [];
   if (selectedCat) {
     previewFees.push({ label: `Club – ${selectedCat.name}`, amount: selectedCat.annual_fee });

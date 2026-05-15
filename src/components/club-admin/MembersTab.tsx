@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff } from "lucide-react";
+import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff, Wallet } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
 function getAgeFromSaId(idNumber: string): number | null {
@@ -327,6 +328,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -811,10 +813,15 @@ export function MembersTab({ clubId }: { clubId: string }) {
           <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => fileRef.current?.click()}>
             <Upload className="w-3.5 h-3.5 mr-1" />Import
           </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setReconcileOpen(true)}>
+            <Wallet className="w-3.5 h-3.5 mr-1" />Reconcile Fees
+          </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
           <AddMemberDialog clubId={clubId} open={addOpen} onOpenChange={setAddOpen} />
         </div>
       </div>
+
+      <ReconcileFeesDialog clubId={clubId} open={reconcileOpen} onOpenChange={setReconcileOpen} />
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>

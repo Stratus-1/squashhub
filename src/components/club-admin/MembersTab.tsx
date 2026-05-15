@@ -813,10 +813,15 @@ export function MembersTab({ clubId }: { clubId: string }) {
           <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => fileRef.current?.click()}>
             <Upload className="w-3.5 h-3.5 mr-1" />Import
           </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setReconcileOpen(true)}>
+            <Wallet className="w-3.5 h-3.5 mr-1" />Reconcile Fees
+          </Button>
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
           <AddMemberDialog clubId={clubId} open={addOpen} onOpenChange={setAddOpen} />
         </div>
       </div>
+
+      <ReconcileFeesDialog clubId={clubId} open={reconcileOpen} onOpenChange={setReconcileOpen} />
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>

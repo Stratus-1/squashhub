@@ -308,6 +308,36 @@ function RoundCard({
     );
   };
 
+  /**
+   * Reassign only the court for each existing fixture so teams rotate between
+   * courts across play dates. Pairings, dates and start times are preserved.
+   * Within each date we keep the existing court ordering and shift it by the
+   * date index (relative to the sorted unique dates in the round).
+   */
+  const rotateCourtsOnly = () => {
+    const courtIds = round.court_ids ?? [];
+    if (courtIds.length < 2) {
+      toast.error("Need at least 2 courts assigned to this round to rotate.");
+      return;
+    }
+    if (!list.length) {
+      toast.error("No fixtures to rotate yet — generate or save fixtures first.");
+      return;
+    }
+    const dates = Array.from(new Set(list.map((f) => f.fixture_date).filter(Boolean) as string[])).sort();
+    const dateIdx = new Map(dates.map((d, i) => [d, i] as const));
+    const next = list.map((f) => {
+      if (!f.court_id || !f.fixture_date || f.away_team_code === "__BYE__") return f;
+      const curIdx = courtIds.indexOf(f.court_id);
+      if (curIdx < 0) return f;
+      const offset = dateIdx.get(f.fixture_date) ?? 0;
+      const newIdx = (curIdx + offset) % courtIds.length;
+      return { ...f, court_id: courtIds[newIdx] };
+    });
+    setDraft(next);
+    toast.success(`Rotated courts across ${dates.length} date(s) — pairings unchanged.`);
+  };
+
   const saveFixtures = useMutation({
     mutationFn: async () => {
       // Replace strategy: delete existing, insert new (carry-through edits & auto-gen alike)

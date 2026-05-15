@@ -23,6 +23,7 @@ import { IncomeStatementTab } from "./IncomeStatementTab";
 
 type GLAccount =
   | "debtors" | "creditors" | "bank" | "bank_current" | "cash"
+  | "opening_balance_equity"
   | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income"
   | "bar_expense" | "league_fees_expense" | "national_body_expense"
   | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "general_expense";

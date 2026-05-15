@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff } from "lucide-react";
+import { UserPlus, Upload, Download, Search, Edit2, Trash2, CheckCircle2, XCircle, ShieldCheck, ShieldOff, Wallet } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
 function getAgeFromSaId(idNumber: string): number | null {

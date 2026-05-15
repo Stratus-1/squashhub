@@ -290,9 +290,18 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const handleResyncFeesGL = async () => {
     if (!confirm("Recalculate the general ledger from the current state of all member fees? Manual transactions are preserved.")) return;
     try {
+      const { data: clubMemberRows, error: cmErr } = await fromExt("club_members")
+        .select("id")
+        .eq("club_id", clubId);
+      if (cmErr) throw cmErr;
+      const memberIds = (clubMemberRows || []).map((r: any) => r.id);
+      if (memberIds.length === 0) {
+        toast.info("No members found for this club");
+        return;
+      }
       const { data: fees, error: feeErr } = await fromExt("club_member_fee_payments")
         .select("id, club_member_id, fee_type, fee_label, amount, paid")
-        .eq("club_id", clubId);
+        .in("club_member_id", memberIds);
       if (feeErr) throw feeErr;
 
       const { error: delErr } = await fromExt("club_journal_entries")

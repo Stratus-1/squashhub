@@ -36,6 +36,8 @@ const DEFAULTS: Partial<LeagueRules> = {
   original_player_bonus_value: 1,
   team_win_bonus_enabled: false,
   team_win_bonus_value: 2,
+  team_size_mode: "fixed",
+  team_size: 4,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {
@@ -109,6 +111,37 @@ export default function AssociationRulesTab({ associationId }: Props) {
       </Card>
 
       <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Team size</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Mode</Label>
+            <Select
+              value={form.team_size_mode ?? "fixed"}
+              onValueChange={(v) => set("team_size_mode", v as LeagueRules["team_size_mode"])}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fixed">Fixed (NSA — extras become reserves)</SelectItem>
+                <SelectItem value="flexible">Flexible (NIL — grows with allocations)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Fixed: scorecard always shows the configured number of players; any additional allocations are reserves only.
+              Flexible: scorecard expands to however many players the captain has allocated (up to 8).
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{form.team_size_mode === "flexible" ? "Default / minimum players" : "Players per team"}</Label>
+            <Input type="number" min={1} max={8}
+              value={form.team_size ?? 4}
+              onChange={(e) => set("team_size", Number(e.target.value))} />
+            <p className="text-xs text-muted-foreground">Standard: 4</p>
+          </div>
+        </CardContent>
+      </Card>
+
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Match points & tiebreak</CardTitle>
         </CardHeader>

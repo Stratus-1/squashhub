@@ -572,17 +572,21 @@ function RoundCard({
                     <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
                     <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
                   </label>
-                  <label
-                    className="flex items-center gap-2 text-xs"
-                    title="Shift courts each round so teams don't always play on the same court"
-                  >
-                    <Checkbox checked={rotateCourts} onCheckedChange={(v) => setRotateCourts(!!v)} />
-                    Rotate teams between courts
-                  </label>
                 </div>
-                <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
-                  <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={rotateCourtsOnly}
+                    disabled={!list.length || (round.court_ids?.length ?? 0) < 2}
+                    title="Shift courts across dates without changing pairings or times"
+                  >
+                    Rotate courts
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
+                    <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
+                  </Button>
+                </div>
               </div>
             </div>
           )}

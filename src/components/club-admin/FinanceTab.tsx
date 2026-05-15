@@ -350,6 +350,34 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
+  /* ─── Reset all club finances (clean-slate onboarding) ─── */
+  const handleResetFinances = async () => {
+    if (resetConfirmText.trim() !== "RESET") {
+      toast.error('Type RESET to confirm');
+      return;
+    }
+    setResetSubmitting(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await (supabase as any).rpc("reset_club_finances", { p_club_id: clubId });
+      if (error) throw error;
+      const r = (data || {}) as any;
+      toast.success(
+        `Finances reset · ${r.journal_entries_deleted ?? 0} GL entries, ${r.transactions_deleted ?? 0} payments, ${r.fee_payments_deleted ?? 0} fee rows removed`
+      );
+      setResetOpen(false);
+      setResetConfirmText("");
+      queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["income-statement"] });
+    } catch (e: any) {
+      toast.error(e.message || "Reset failed");
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 mt-4">
       {/* Summary Cards */}

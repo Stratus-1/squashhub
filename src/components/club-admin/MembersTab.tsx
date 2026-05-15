@@ -940,6 +940,13 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
 
   // Preview of fees that will be created
   const selectedCat = feeCategories.find(c => c.id === feeCategoryId);
+  const isVisitor = (selectedCat?.name || "").trim().toLowerCase() === "visitor";
+
+  // Visitors don't get a club member number — clear it whenever Visitor is selected
+  useEffect(() => {
+    if (isVisitor && memberNumber) setMemberNumber("");
+  }, [isVisitor]);
+
   const previewFees: { label: string; amount: number }[] = [];
   if (selectedCat) {
     previewFees.push({ label: `Club – ${selectedCat.name}`, amount: selectedCat.annual_fee });
@@ -1038,14 +1045,15 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         user_id: profile?.id || null,
         name: trimmedName,
         email: trimmedEmail,
-        club_member_number: memberNumber || undefined,
+        club_member_number: isVisitor ? null : (memberNumber || undefined),
         id_number: idNumber || undefined,
         phone: phone && phone !== "+27" ? phone : undefined,
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
         gender: gender || undefined,
         skill_level: skillLevel || undefined,
-        plays_league: playsLeague,
+        plays_league: isVisitor ? false : playsLeague,
+        role: isVisitor ? ("visitor" as any) : undefined,
       }).select("id").single();
       if (error || !memberData) throw error || new Error("Failed to create member");
 
@@ -1101,7 +1109,9 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
               <option value="Ladies">Ladies</option>
             </select>
           </div>
-          <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Auto-generated" /></div>
+          {!isVisitor && (
+            <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Auto-generated" /></div>
+          )}
           <div className="space-y-1">
             <Label>ID Number</Label>
             <Input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="First 6 digits of ID or full ID" maxLength={13} />
@@ -1565,6 +1575,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               <option value="member">Member</option>
               <option value="admin">Admin</option>
               <option value="captain">Captain</option>
+              <option value="visitor">Visitor</option>
             </select>
           </div>
           <div className="space-y-1">

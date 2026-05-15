@@ -5016,7 +5016,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
-      club_member_role: "captain" | "admin" | "member"
+      club_member_role: "captain" | "admin" | "member" | "visitor"
       gl_account:
         | "debtors"
         | "fee_income"
@@ -5171,7 +5171,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
-      club_member_role: ["captain", "admin", "member"],
+      club_member_role: ["captain", "admin", "member", "visitor"],
       gl_account: [
         "debtors",
         "fee_income",

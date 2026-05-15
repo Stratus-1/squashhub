@@ -45,8 +45,8 @@ const GATEWAYS: GatewayDef[] = [
     description: "Modern card payments for SA businesses. Inline checkout & payment links.",
     website: "https://yoco.com",
     fields: [
-      { key: "public_key", label: "Public Key", placeholder: "pk_live_..." },
-      { key: "secret_key", label: "Secret Key", placeholder: "sk_live_...", sensitive: true },
+      { key: "public_key", label: "Public Key", placeholder: "pk_live_...", helperText: "Yoco Dashboard → Sell Online → Developers → API keys → copy the Public Key (starts with pk_live_)." },
+      { key: "secret_key", label: "Secret Key", placeholder: "sk_live_...", sensitive: true, helperText: "Same Developers screen → reveal & copy the Secret Key (sk_live_). Treat it like a password — never share it." },
     ],
   },
   {

@@ -32,6 +32,9 @@ export interface LeagueRules {
   // Team-win bonus: +N points to the team that wins the overall fixture for the night
   team_win_bonus_enabled: boolean;
   team_win_bonus_value: number;
+  // Team size: fixed (e.g. NSA = always 4, extras are reserves) or flexible (NIL — grows to however many were allocated)
+  team_size_mode: "fixed" | "flexible";
+  team_size: number;
 }
 
 export function useAssociationRules(associationId: string | null | undefined) {

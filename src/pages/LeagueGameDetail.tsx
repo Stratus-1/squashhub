@@ -82,8 +82,8 @@ interface OriginalLineupSnapshot {
 // Penalty points deducted from a team when one of their players forfeits a position
 const FORFEIT_PENALTY_POINTS = 2;
 
-// Maximum supported positions per team (NIL allows up to 5; NSA standard is 4).
-const MAX_POSITIONS = 5;
+// Maximum supported positions per team (NIL flexible mode can grow up to this; NSA standard is 4).
+const MAX_POSITIONS = 8;
 const DEFAULT_POSITIONS = 4;
 function emptyPositions(count: number = DEFAULT_POSITIONS): PositionEntry[] {
   return Array.from({ length: count }, () => ({
@@ -535,10 +535,16 @@ export default function LeagueGameDetail() {
           return { code, name: m?.name || "" };
         };
 
+        // Track members already placed in this team to prevent the same player
+        // appearing in two positions (e.g. due to a stale fixture override row).
+        const usedMembers = new Set<string>();
+
         const fillSlot = (target: Array<{ code: string; name: string }>, pos: number, memberId: string) => {
           if (pos < 1 || pos > MAX_POSITIONS) return;
           if (target[pos - 1].code || target[pos - 1].name) return;
+          if (usedMembers.has(memberId)) return;
           target[pos - 1] = buildSlot(memberId);
+          usedMembers.add(memberId);
         };
 
         // Priority 1: Fill-Up Leagues week lineup → goes into BOTH (originals and prefill)
@@ -563,11 +569,13 @@ export default function LeagueGameDetail() {
           if (slots[i].code || slots[i].name) continue;
           while (regIdx < teamRegs.length) {
             const r = teamRegs[regIdx++];
+            if (usedMembers.has(r.club_member_id)) continue;
             const m = memberMap.get(r.club_member_id) as any;
             const code = (r.league_association_number || r.ssa_number || m?.club_member_number || "").toString().toUpperCase();
             const name = m?.name || "";
             if (!code && !name) continue;
             slots[i] = { code, name };
+            usedMembers.add(r.club_member_id);
             if (!origSlots[i].code && !origSlots[i].name) origSlots[i] = { code, name };
             break;
           }
@@ -583,18 +591,8 @@ export default function LeagueGameDetail() {
     refetchOnMount: "always",
   });
 
-  // Decide between 4-player and 5-player scorecard.
-  // Grow to 5 if either team has a 5th allocation OR a saved row at position 5 already exists.
-  useEffect(() => {
-    const homeCode = fixture?.home_team_code;
-    const awayCode = fixture?.away_team_code;
-    const lineup = (prefillLineup as any)?.lineup || {};
-    const homeFifth = !!(homeCode && (lineup[homeCode]?.[4]?.code || lineup[homeCode]?.[4]?.name));
-    const awayFifth = !!(awayCode && (lineup[awayCode]?.[4]?.code || lineup[awayCode]?.[4]?.name));
-    const savedHasFifth = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === 5);
-    const next = savedHasFifth || homeFifth || awayFifth ? 5 : DEFAULT_POSITIONS;
-    setPositionCount((prev) => (prev === next ? prev : next));
-  }, [fixture, prefillLineup, existingMatches]);
+  // (team-size effect moved below leagueRules declaration)
+
 
   // (e.g. user returns from Edit Players in another tab/route).
   useEffect(() => {
@@ -656,6 +654,30 @@ export default function LeagueGameDetail() {
   // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence
   // over any previously-saved match_format so updated rules are reflected immediately.
   const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+
+  // Decide team size from association rules.
+  //   - "fixed" mode (e.g. NSA): always exactly team_size positions; extras are reserves only.
+  //   - "flexible" mode (e.g. NIL): grows from team_size up to MAX_POSITIONS based on
+  //     how many players the captain has actually allocated.
+  useEffect(() => {
+    const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+    const mode = leagueRules?.team_size_mode ?? "fixed";
+    if (mode === "fixed") {
+      setPositionCount((prev) => (prev === baseSize ? prev : baseSize));
+      return;
+    }
+    const homeCode = fixture?.home_team_code;
+    const awayCode = fixture?.away_team_code;
+    const lineup = (prefillLineup as any)?.lineup || {};
+    let maxFilled = baseSize;
+    for (let i = baseSize; i < MAX_POSITIONS; i++) {
+      const homeFilled = !!(homeCode && (lineup[homeCode]?.[i]?.code || lineup[homeCode]?.[i]?.name));
+      const awayFilled = !!(awayCode && (lineup[awayCode]?.[i]?.code || lineup[awayCode]?.[i]?.name));
+      const savedHasIt = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === i + 1);
+      if (homeFilled || awayFilled || savedHasIt) maxFilled = i + 1;
+    }
+    setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
+  }, [fixture, prefillLineup, existingMatches, leagueRules]);
   useEffect(() => {
     if (leagueRules) {
       const ppg = leagueRules.points_per_game;

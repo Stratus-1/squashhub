@@ -91,6 +91,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
 
   // Fetch journal entries
   const { data: journalEntries, isLoading } = useQuery({

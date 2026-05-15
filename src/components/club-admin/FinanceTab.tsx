@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RemittancesPanel } from "./RemittancesPanel";
+import { ReconcileFeesDialog } from "./ReconcileFeesDialog";
 
 /* ─── Chart of Accounts definition ─── */
 
@@ -82,6 +83,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [txMethod, setTxMethod] = useState<"bank" | "cash" | "card">("bank");
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
 
   // Fetch journal entries
   const { data: journalEntries, isLoading } = useQuery({
@@ -418,12 +420,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                     ))}
                   </SelectContent>
                 </Select>
+                <Button size="sm" variant="outline" onClick={() => setReconcileOpen(true)} className="gap-1.5 h-8">
+                  <Wallet className="w-3.5 h-3.5" /> Reconcile Fees
+                </Button>
                 <Button size="sm" variant="outline" onClick={handleResyncFeesGL} className="gap-1.5 h-8">
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
                 </Button>
                 <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
                 </Button>
+                <ReconcileFeesDialog clubId={clubId} open={reconcileOpen} onOpenChange={setReconcileOpen} />
               </div>
             </div>
 

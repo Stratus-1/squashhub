@@ -394,8 +394,13 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             </TableCell>
                             <TableCell className="text-xs">
                               <div className="flex items-center gap-2">
+                                <TeamLogo
+                                  logoUrl={teamInfoByCode?.get(s.team_code)?.logo_url}
+                                  name={teamInfoByCode?.get(s.team_code)?.name || s.team_code}
+                                  size={22}
+                                />
                                 <span className="font-medium">
-                                  {teamNameByCode?.get(s.team_code) || s.team_code}
+                                  {teamInfoByCode?.get(s.team_code)?.name || s.team_code}
                                 </span>
                                 <span className="font-mono text-[10px] text-muted-foreground">
                                   {s.team_code}

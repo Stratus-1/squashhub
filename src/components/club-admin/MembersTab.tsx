@@ -1109,7 +1109,9 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
               <option value="Ladies">Ladies</option>
             </select>
           </div>
-          <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Auto-generated" /></div>
+          {!isVisitor && (
+            <div className="space-y-1"><Label>Club Member Number</Label><Input value={memberNumber} onChange={e => setMemberNumber(e.target.value)} placeholder="Auto-generated" /></div>
+          )}
           <div className="space-y-1">
             <Label>ID Number</Label>
             <Input value={idNumber} onChange={e => setIdNumber(e.target.value.replace(/\D/g, "").slice(0, 13))} placeholder="First 6 digits of ID or full ID" maxLength={13} />

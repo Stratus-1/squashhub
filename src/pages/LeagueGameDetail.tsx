@@ -381,7 +381,14 @@ export default function LeagueGameDetail() {
 
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
-      const targetCount = Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
+      // In "fixed" team-size mode (e.g. NSA always 4), the scorecard must stay
+      // pinned to team_size even if a stale match row at a higher position exists.
+      // In "flexible" mode (e.g. NIL), allow growth based on actual saved positions.
+      const mode = leagueRules?.team_size_mode ?? "fixed";
+      const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+      const targetCount = mode === "fixed"
+        ? baseSize
+        : Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);

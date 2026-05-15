@@ -270,21 +270,23 @@ export default function LeagueGameDetail() {
     queryKey: ["league-team-meta", fixture?.home_team_code, fixture?.away_team_code],
     enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
     queryFn: async () => {
-      const empty = { nameByCode: {} as Record<string, string>, clubIdByCode: {} as Record<string, string>, captainCodeByCode: {} as Record<string, string> };
+      const empty = { nameByCode: {} as Record<string, string>, clubIdByCode: {} as Record<string, string>, captainCodeByCode: {} as Record<string, string>, logoByCode: {} as Record<string, string> };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return empty;
       const { data: leagues } = await (supabase as any)
-        .from("leagues").select("id, code, name, club_id, captain_member_id").in("code", codes);
+        .from("leagues").select("id, code, name, club_id, captain_member_id, logo_url").in("code", codes);
       const nameByCode: Record<string, string> = {};
       const clubIdByCode: Record<string, string> = {};
       const leagueIdToCode: Record<string, string> = {};
       const captainMemberIdByCode: Record<string, string> = {};
+      const logoByCode: Record<string, string> = {};
       for (const l of (leagues || []) as any[]) {
         const k = String(l.code || "").toUpperCase();
         if (l.name) nameByCode[k] = l.name;
         if (l.club_id) clubIdByCode[k] = l.club_id;
         leagueIdToCode[l.id] = k;
         if (l.captain_member_id) captainMemberIdByCode[k] = l.captain_member_id;
+        if (l.logo_url) logoByCode[k] = l.logo_url;
       }
       const leagueIds = (leagues || []).map((l: any) => l.id);
       if (leagueIds.length) {

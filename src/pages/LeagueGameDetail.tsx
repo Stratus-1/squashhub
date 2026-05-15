@@ -324,10 +324,11 @@ export default function LeagueGameDetail() {
           if (c) captainCodeByCode[k] = c;
         }
       }
-      return { nameByCode, clubIdByCode, captainCodeByCode };
+      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode };
     },
   });
   const teamNamesByCode = teamMeta?.nameByCode;
+  const teamLogosByCode = teamMeta?.logoByCode;
 
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {

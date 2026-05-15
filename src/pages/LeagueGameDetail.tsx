@@ -1525,7 +1525,10 @@ export default function LeagueGameDetail() {
           <div className="grid grid-cols-2 border-b">
             <div className="p-2 border-r bg-primary text-primary-foreground">
               <span className="text-xs font-black uppercase tracking-widest block">HOME TEAM</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {isInternalLeague && (
+                  <TeamLogo logoUrl={teamLogosByCode?.[homeCode.toUpperCase()]} name={homeTeamName || homeCode} size={40} className="bg-white/20" />
+                )}
                 <span className="font-mono font-black text-lg">{homeCode}</span>
                 {homeTeamName && (
                   <span className="text-xs font-semibold opacity-90 truncate">{homeTeamName}</span>
@@ -1535,7 +1538,10 @@ export default function LeagueGameDetail() {
             </div>
             <div className="p-2 bg-accent text-accent-foreground">
               <span className="text-xs font-black uppercase tracking-widest block">VISITORS TEAM</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {isInternalLeague && (
+                  <TeamLogo logoUrl={teamLogosByCode?.[awayCode.toUpperCase()]} name={awayTeamName || awayCode} size={40} className="bg-white/20" />
+                )}
                 <span className="font-mono font-black text-lg">{awayCode}</span>
                 {awayTeamName && (
                   <span className="text-xs font-semibold opacity-90 truncate">{awayTeamName}</span>

@@ -2205,6 +2205,24 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
+        {isClubAdmin && (
+          <div className="rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-3 space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-destructive">Admin tools</div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Skip the rubber-by-rubber workflow and enter the final total points directly. Use this for results imported from outside (e.g. NSA scrape) or to correct a finalized fixture.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+              onClick={() => setAdminManualOpen(true)}
+            >
+              <Edit3 className="w-4 h-4 mr-1" />
+              {isSubmittedRaw ? "Adjust Final Score (Admin)" : "Enter Final Score Manually (Admin)"}
+            </Button>
+          </div>
+        )}
+
 
         <p className="text-[10px] text-muted-foreground text-center">
           Bonus points follow league rules: {leagueRules?.bonus_points_mode === "per_game_won" ? `+${leagueRules?.bonus_points_value ?? 1} per game won (both teams)` : leagueRules?.bonus_points_mode === "fixed_winner" ? `+${leagueRules?.bonus_points_value ?? 1} flat to fixture winner` : `+${leagueRules?.bonus_points_value ?? 1} to winning team for each rubber they won`}{summary.opbEnabled ? `, plus +${summary.opbValue} per original (non-reserve) player who plays` : ""}. Forfeit: opponent gets a clean sweep and the absent side loses {FORFEIT_PENALTY_POINTS} points.

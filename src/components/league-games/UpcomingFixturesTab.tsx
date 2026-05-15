@@ -45,7 +45,7 @@ type Props = {
   weekStartDow?: number;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, teamNameByCode, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, teamNameByCode, teamLogoByCode, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const qc = useQueryClient();

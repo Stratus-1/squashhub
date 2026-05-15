@@ -624,15 +624,15 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       </button>
 
       {/* Controls */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-6">
         <Button
           variant="outline"
           size="lg"
-          className="w-full gap-2 text-base font-semibold"
+          className="w-full gap-3 h-20 text-2xl font-bold"
           disabled={history.length === 0 || matchOver || resting}
           onClick={undo}
         >
-          <Undo2 className="w-5 h-5" />
+          <Undo2 className="w-7 h-7" />
           Undo
         </Button>
         <Button

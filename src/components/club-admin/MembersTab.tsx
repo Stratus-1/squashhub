@@ -328,6 +328,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [reconcileOpen, setReconcileOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);

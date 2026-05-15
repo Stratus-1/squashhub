@@ -1996,16 +1996,25 @@ export default function LeagueGameDetail() {
                                 </>
                               )}
                               {!isSubmitted && pos.completed && !pos.isForfeit && (
-                                <button
-                                  onClick={() => {
-                                    if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
-                                    clearScores(idx);
-                                  }}
-                                  className="text-muted-foreground hover:text-destructive hover:bg-accent rounded p-0.5"
-                                  title="Scratch / clear scores"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => setManualEntry(idx)}
+                                    className="text-muted-foreground hover:text-primary hover:bg-accent rounded p-0.5"
+                                    title="Edit scores"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;
+                                      clearScores(idx);
+                                    }}
+                                    className="text-muted-foreground hover:text-destructive hover:bg-accent rounded p-0.5"
+                                    title="Scratch / clear scores"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
                               )}
                               {pos.isForfeit && pos.forfeitSide === "away" && (
                                 <>

@@ -583,18 +583,29 @@ export default function LeagueGameDetail() {
     refetchOnMount: "always",
   });
 
-  // Decide between 4-player and 5-player scorecard.
-  // Grow to 5 if either team has a 5th allocation OR a saved row at position 5 already exists.
+  // Decide team size from association rules.
+  //   - "fixed" mode (e.g. NSA): always exactly team_size positions; extras are reserves only.
+  //   - "flexible" mode (e.g. NIL): grows from team_size up to MAX_POSITIONS based on
+  //     how many players the captain has actually allocated.
   useEffect(() => {
+    const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+    const mode = leagueRules?.team_size_mode ?? "fixed";
+    if (mode === "fixed") {
+      setPositionCount((prev) => (prev === baseSize ? prev : baseSize));
+      return;
+    }
     const homeCode = fixture?.home_team_code;
     const awayCode = fixture?.away_team_code;
     const lineup = (prefillLineup as any)?.lineup || {};
-    const homeFifth = !!(homeCode && (lineup[homeCode]?.[4]?.code || lineup[homeCode]?.[4]?.name));
-    const awayFifth = !!(awayCode && (lineup[awayCode]?.[4]?.code || lineup[awayCode]?.[4]?.name));
-    const savedHasFifth = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === 5);
-    const next = savedHasFifth || homeFifth || awayFifth ? 5 : DEFAULT_POSITIONS;
-    setPositionCount((prev) => (prev === next ? prev : next));
-  }, [fixture, prefillLineup, existingMatches]);
+    let maxFilled = baseSize;
+    for (let i = baseSize; i < MAX_POSITIONS; i++) {
+      const homeFilled = !!(homeCode && (lineup[homeCode]?.[i]?.code || lineup[homeCode]?.[i]?.name));
+      const awayFilled = !!(awayCode && (lineup[awayCode]?.[i]?.code || lineup[awayCode]?.[i]?.name));
+      const savedHasIt = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === i + 1);
+      if (homeFilled || awayFilled || savedHasIt) maxFilled = i + 1;
+    }
+    setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
+  }, [fixture, prefillLineup, existingMatches, leagueRules]);
 
   // (e.g. user returns from Edit Players in another tab/route).
   useEffect(() => {

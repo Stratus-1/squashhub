@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
-import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [txMemberId, setTxMemberId] = useState<string>("");
   const [txSubmitting, setTxSubmitting] = useState(false);
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetSubmitting, setResetSubmitting] = useState(false);
 
   // Fetch journal entries
   const { data: journalEntries, isLoading } = useQuery({
@@ -347,6 +350,34 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     }
   };
 
+  /* ─── Reset all club finances (clean-slate onboarding) ─── */
+  const handleResetFinances = async () => {
+    if (resetConfirmText.trim() !== "RESET") {
+      toast.error('Type RESET to confirm');
+      return;
+    }
+    setResetSubmitting(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await (supabase as any).rpc("reset_club_finances", { p_club_id: clubId });
+      if (error) throw error;
+      const r = (data || {}) as any;
+      toast.success(
+        `Finances reset · ${r.journal_entries_deleted ?? 0} GL entries, ${r.transactions_deleted ?? 0} payments, ${r.fee_payments_deleted ?? 0} fee rows removed`
+      );
+      setResetOpen(false);
+      setResetConfirmText("");
+      queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["income-statement"] });
+    } catch (e: any) {
+      toast.error(e.message || "Reset failed");
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 mt-4">
       {/* Summary Cards */}
@@ -431,6 +462,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleResyncFeesGL} className="gap-1.5 h-8">
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setResetOpen(true)} className="gap-1.5 h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Reset Finances
                 </Button>
                 <Button size="sm" onClick={() => setTxOpen(true)} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
@@ -739,6 +773,54 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <Button className="w-full" onClick={handleRecordTransaction} disabled={txSubmitting}>
               {txSubmitting ? "Recording..." : "Record Transaction"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Finances Confirm Dialog */}
+      <Dialog open={resetOpen} onOpenChange={(o) => { setResetOpen(o); if (!o) setResetConfirmText(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" /> Reset Club Finances
+            </DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">This will <strong>permanently delete</strong> for this club:</span>
+              <ul className="list-disc list-inside text-xs space-y-0.5 pl-2">
+                <li>All general ledger entries (journal)</li>
+                <li>All pending and confirmed payment transactions</li>
+                <li>All member fee charges (paid &amp; unpaid)</li>
+              </ul>
+              <span className="block text-xs">Honesty bar stock, prices and tabs are <strong>not</strong> affected.</span>
+              <span className="block text-xs text-muted-foreground pt-1">After resetting, use <em>Reconcile Fees</em> on the Members tab to set who owes what, then <em>Resync Fees</em> to rebuild the GL.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div>
+              <Label className="text-xs">Type <code className="font-mono bg-muted px-1 rounded">RESET</code> to confirm</Label>
+              <Input
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="RESET"
+                className="h-9 text-xs mt-1 font-mono"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setResetOpen(false)} disabled={resetSubmitting}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleResetFinances}
+                disabled={resetSubmitting || resetConfirmText.trim() !== "RESET"}
+                className="gap-1.5"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                {resetSubmitting ? "Resetting…" : "Permanently Reset"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

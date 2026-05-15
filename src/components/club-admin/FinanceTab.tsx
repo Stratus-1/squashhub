@@ -394,11 +394,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             <Send className="w-3 h-3" /> Remittances
           </TabsTrigger>
           <TabsTrigger value="trial" className="text-xs">Trial Balance</TabsTrigger>
+          <TabsTrigger value="income" className="text-xs">Income Statement</TabsTrigger>
           <TabsTrigger value="coa" className="text-xs">Chart of Accounts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="remittances">
           <RemittancesPanel clubId={clubId} />
+        </TabsContent>
+
+        <TabsContent value="income">
+          <IncomeStatementTab clubId={clubId} clubName={club?.name} accounts={CHART_OF_ACCOUNTS as any} />
         </TabsContent>
 
         {/* Journal Tab */}

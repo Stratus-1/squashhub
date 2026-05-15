@@ -624,34 +624,25 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       </button>
 
       {/* Controls */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2">
         <Button
           variant="outline"
-          size="sm"
-          className="flex-1 gap-1.5"
+          size="lg"
+          className="w-full gap-2 text-base font-semibold"
           disabled={history.length === 0 || matchOver || resting}
           onClick={undo}
         >
-          <Undo2 className="w-3.5 h-3.5" />
+          <Undo2 className="w-5 h-5" />
           Undo
         </Button>
         <Button
           variant="outline"
           size="sm"
-          className="flex-1 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          className="w-full gap-1.5 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
           onClick={() => { setScratchConfirmText(""); setScratchOpen(true); }}
         >
           <Trash2 className="w-3.5 h-3.5" />
           Scratch
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 gap-1.5"
-          onClick={onReset}
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          New Match
         </Button>
       </div>
 

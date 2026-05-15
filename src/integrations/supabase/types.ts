@@ -177,6 +177,7 @@ export type Database = {
           payment_method: string
           purchased_by: string | null
           quantity: number
+          supplier: string | null
           supplier_note: string | null
           total_cost: number
           unit_cost: number
@@ -191,6 +192,7 @@ export type Database = {
           payment_method?: string
           purchased_by?: string | null
           quantity: number
+          supplier?: string | null
           supplier_note?: string | null
           total_cost?: number
           unit_cost?: number
@@ -205,6 +207,7 @@ export type Database = {
           payment_method?: string
           purchased_by?: string | null
           quantity?: number
+          supplier?: string | null
           supplier_note?: string | null
           total_cost?: number
           unit_cost?: number

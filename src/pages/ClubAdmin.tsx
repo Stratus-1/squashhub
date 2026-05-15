@@ -125,26 +125,28 @@ export default function ClubAdmin() {
         />
         <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
           {/* Tile grid — responsive across all breakpoints */}
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
-            {visibleTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.value;
-              return (
-              <button
-                  key={tab.value}
-                  onClick={() => setActiveTab(tab.value)}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                    isActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : COLOR_STYLES[tab.color] || "bg-card/80 text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
-                </button>
-              );
-            })}
+          <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.value;
+                return (
+                <button
+                    key={tab.value}
+                    onClick={() => setActiveTab(tab.value)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Active section header + content */}

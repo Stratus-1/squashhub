@@ -3182,6 +3182,7 @@ export type Database = {
           code: string | null
           created_at: string
           id: string
+          logo_url: string | null
           name: string
           nsa_team_code: string | null
           nsa_team_id: string | null
@@ -3196,6 +3197,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           id?: string
+          logo_url?: string | null
           name: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null
@@ -3210,6 +3212,7 @@ export type Database = {
           code?: string | null
           created_at?: string
           id?: string
+          logo_url?: string | null
           name?: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null

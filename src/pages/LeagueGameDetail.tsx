@@ -353,6 +353,10 @@ export default function LeagueGameDetail() {
   // Updated by an effect below once prefill / saved matches are available.
   const [positionCount, setPositionCount] = useState<number>(DEFAULT_POSITIONS);
 
+  // Apply association-level league rules — pulled up early because positionCount
+  // logic below needs team_size_mode / team_size to clamp scorecard size.
+  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+
 
   // Resize positions state when positionCount changes (preserves existing entries).
   useEffect(() => {
@@ -381,7 +385,14 @@ export default function LeagueGameDetail() {
 
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
-      const targetCount = Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
+      // In "fixed" team-size mode (e.g. NSA always 4), the scorecard must stay
+      // pinned to team_size even if a stale match row at a higher position exists.
+      // In "flexible" mode (e.g. NIL), allow growth based on actual saved positions.
+      const mode = leagueRules?.team_size_mode ?? "fixed";
+      const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+      const targetCount = mode === "fixed"
+        ? baseSize
+        : Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
@@ -410,7 +421,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
@@ -650,10 +661,7 @@ export default function LeagueGameDetail() {
     });
   }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount]);
 
-  // Apply association-level league rules — these are the authoritative format
-  // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence
-  // over any previously-saved match_format so updated rules are reflected immediately.
-  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+  // (leagueRules fetched above near positionCount declaration)
 
   // Decide team size from association rules.
   //   - "fixed" mode (e.g. NSA): always exactly team_size positions; extras are reserves only.

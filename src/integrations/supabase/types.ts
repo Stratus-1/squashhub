@@ -4982,6 +4982,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
       respond_league_week_availability: {
         Args: {
           _club_member_id: string

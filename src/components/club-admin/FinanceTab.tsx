@@ -476,6 +476,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                 <Button size="sm" variant="outline" onClick={handleResyncFeesGL} className="gap-1.5 h-8">
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setOpeningBalancesOpen(true)} className="gap-1.5 h-8">
+                  <BookOpen className="w-3.5 h-3.5" /> Opening Balances
+                </Button>
+                <OpeningBalancesDialog
+                  open={openingBalancesOpen}
+                  onOpenChange={setOpeningBalancesOpen}
+                  clubId={clubId}
+                  accounts={CHART_OF_ACCOUNTS as any}
+                />
                 <Button size="sm" variant="outline" onClick={() => setResetOpen(true)} className="gap-1.5 h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
                   <AlertTriangle className="w-3.5 h-3.5" /> Reset Finances
                 </Button>

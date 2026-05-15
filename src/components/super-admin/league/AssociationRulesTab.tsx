@@ -142,6 +142,7 @@ export default function AssociationRulesTab({ associationId }: Props) {
         </CardContent>
       </Card>
 
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Match points & tiebreak</CardTitle>
         </CardHeader>

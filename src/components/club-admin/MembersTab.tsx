@@ -194,12 +194,13 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, barOutstanding, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
   delegateTitle?: string | null;
   affiliations: AffiliationBadgeInfo[];
+  barOutstanding?: number;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;

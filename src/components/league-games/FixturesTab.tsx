@@ -193,7 +193,7 @@ function RoundCard({
 }) {
   const qc = useQueryClient();
   const [autoCreateBookings, setAutoCreateBookings] = useState<boolean>(!!(round as any).auto_create_bookings);
-  const [rotateCourts, setRotateCourts] = useState<boolean>(false);
+  
 
   const { data: courts } = useQuery({
     queryKey: ["round-courts", clubId, round.court_ids],

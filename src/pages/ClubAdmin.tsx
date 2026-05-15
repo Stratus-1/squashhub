@@ -45,21 +45,21 @@ const ADMIN_TABS: { value: string; label: string; icon: any; permission?: Permis
 ];
 
 const COLOR_STYLES: Record<string, string> = {
-  blue: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20",
-  slate: "border-slate-500/40 bg-slate-500/10 text-slate-700 dark:text-slate-300 hover:bg-slate-500/20",
-  emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20",
-  cyan: "border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20",
-  green: "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300 hover:bg-green-500/20",
-  teal: "border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-300 hover:bg-teal-500/20",
-  indigo: "border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20",
-  violet: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20",
-  sky: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20",
-  orange: "border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-300 hover:bg-orange-500/20",
-  amber: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20",
-  yellow: "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-500/20",
-  rose: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20",
-  pink: "border-pink-500/40 bg-pink-500/10 text-pink-700 dark:text-pink-300 hover:bg-pink-500/20",
-  red: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300 hover:bg-red-500/20",
+  blue: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",
+  slate: "border-slate-400/60 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-500/15 dark:text-slate-200 dark:hover:bg-slate-500/25",
+  emerald: "border-emerald-500/50 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25",
+  cyan: "border-cyan-500/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25",
+  green: "border-green-500/50 bg-green-50 text-green-800 hover:bg-green-100 dark:bg-green-500/15 dark:text-green-200 dark:hover:bg-green-500/25",
+  teal: "border-teal-500/50 bg-teal-50 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/25",
+  indigo: "border-indigo-500/50 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25",
+  violet: "border-violet-500/50 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/15 dark:text-violet-200 dark:hover:bg-violet-500/25",
+  sky: "border-sky-500/50 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-200 dark:hover:bg-sky-500/25",
+  orange: "border-orange-500/50 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:bg-orange-500/15 dark:text-orange-200 dark:hover:bg-orange-500/25",
+  amber: "border-amber-500/50 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25",
+  yellow: "border-yellow-500/50 bg-yellow-50 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-500/15 dark:text-yellow-200 dark:hover:bg-yellow-500/25",
+  rose: "border-rose-500/50 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25",
+  pink: "border-pink-500/50 bg-pink-50 text-pink-800 hover:bg-pink-100 dark:bg-pink-500/15 dark:text-pink-200 dark:hover:bg-pink-500/25",
+  red: "border-red-500/50 bg-red-50 text-red-800 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-200 dark:hover:bg-red-500/25",
 };
 
 export default function ClubAdmin() {
@@ -125,26 +125,28 @@ export default function ClubAdmin() {
         />
         <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
           {/* Tile grid — responsive across all breakpoints */}
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
-            {visibleTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.value;
-              return (
-              <button
-                  key={tab.value}
-                  onClick={() => setActiveTab(tab.value)}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                    isActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : COLOR_STYLES[tab.color] || "bg-card/80 text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
-                </button>
-              );
-            })}
+          <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.value;
+                return (
+                <button
+                    key={tab.value}
+                    onClick={() => setActiveTab(tab.value)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Active section header + content */}

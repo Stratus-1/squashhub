@@ -463,6 +463,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
       toast.success(`Invoice recorded — R${invoiceTotal.toFixed(2)} across ${validLines.length} item(s)`);
       setOpen(false);
       setInvoiceNumber("");
+      setSupplier("");
       setInvoiceDate(format(new Date(), "yyyy-MM-dd"));
       setPaymentMethod("cash");
       setLines([{ bar_item_id: "", quantity: "1", unit_cost: "" }]);

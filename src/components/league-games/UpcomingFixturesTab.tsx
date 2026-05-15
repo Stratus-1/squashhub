@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 // NSA fixtures are now read from the DB (synced via nsa-sync-fixtures edge fn) — no live hook here.
 import { toast } from "sonner";
+import { TeamLogo } from "./TeamLogo";
 
 type Props = {
   platformAssocIds: string[];

@@ -597,8 +597,17 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
               </p>
             </div>
           )}
+          </div>
         </div>
         <div className="flex items-center gap-1">
+          {isInternalLeague && (
+            <TeamLogoUpload
+              leagueId={league.id}
+              clubId={(league as any).club_id}
+              currentLogoUrl={(league as any).logo_url}
+              teamName={league.name}
+            />
+          )}
           {!editing && (
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Rename team" onClick={() => { setNameDraft(league.name); setEditing(true); }}>
               <Pencil className="w-3.5 h-3.5" />

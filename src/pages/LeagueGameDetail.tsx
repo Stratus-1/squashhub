@@ -661,10 +661,7 @@ export default function LeagueGameDetail() {
     });
   }, [prefillLineup, existingMatches, fixture, originalLineupSnapshot, positionCount]);
 
-  // Apply association-level league rules — these are the authoritative format
-  // set by the league admin (e.g. NSA = PAR 15, Best of 5). They take precedence
-  // over any previously-saved match_format so updated rules are reflected immediately.
-  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+  // (leagueRules fetched above near positionCount declaration)
 
   // Decide team size from association rules.
   //   - "fixed" mode (e.g. NSA): always exactly team_size positions; extras are reserves only.

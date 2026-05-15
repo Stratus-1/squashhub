@@ -414,6 +414,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [lines, setLines] = useState<InvoiceLine[]>([{ bar_item_id: "", quantity: "1", unit_cost: "" }]);
@@ -438,6 +439,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
     setSubmitting(true);
     try {
       const supplierNote = [
+        supplier ? `Supplier: ${supplier}` : null,
         invoiceNumber ? `Inv #${invoiceNumber}` : null,
         paymentMethod ? `Paid: ${paymentMethod}` : null,
       ].filter(Boolean).join(" | ");
@@ -448,6 +450,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
         quantity: parseInt(l.quantity),
         unit_cost: parseFloat(l.unit_cost) || 0,
         total_cost: (parseInt(l.quantity)) * (parseFloat(l.unit_cost) || 0),
+        supplier: supplier.trim() || null,
         supplier_note: supplierNote || null,
         invoice_number: invoiceNumber.trim() || null,
         invoice_date: invoiceDate,
@@ -460,6 +463,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
       toast.success(`Invoice recorded — R${invoiceTotal.toFixed(2)} across ${validLines.length} item(s)`);
       setOpen(false);
       setInvoiceNumber("");
+      setSupplier("");
       setInvoiceDate(format(new Date(), "yyyy-MM-dd"));
       setPaymentMethod("cash");
       setLines([{ bar_item_id: "", quantity: "1", unit_cost: "" }]);
@@ -492,6 +496,16 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Supplier */}
+            <div>
+              <Label className="text-xs">Supplier</Label>
+              <Input
+                value={supplier}
+                onChange={e => setSupplier(e.target.value)}
+                placeholder="e.g. Makro, SAB, Coca-Cola"
+                maxLength={120}
+              />
+            </div>
             {/* Invoice header */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>

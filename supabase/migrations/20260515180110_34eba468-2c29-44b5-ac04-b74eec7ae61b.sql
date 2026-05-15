@@ -1,0 +1,1 @@
+ALTER TABLE public.bar_stock_purchases ADD COLUMN IF NOT EXISTS supplier text;

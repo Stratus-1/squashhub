@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
+import { AdminManualScoreDialog } from "@/components/league-games/AdminManualScoreDialog";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
@@ -160,6 +161,7 @@ export default function LeagueGameDetail() {
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
   const [nsaDialogOpen, setNsaDialogOpen] = useState(false);
+  const [adminManualOpen, setAdminManualOpen] = useState(false);
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
@@ -2203,6 +2205,24 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
+        {isClubAdmin && (
+          <div className="rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-3 space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-destructive">Admin tools</div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Skip the rubber-by-rubber workflow and enter the final total points directly. Use this for results imported from outside (e.g. NSA scrape) or to correct a finalized fixture.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+              onClick={() => setAdminManualOpen(true)}
+            >
+              <Edit3 className="w-4 h-4 mr-1" />
+              {isSubmittedRaw ? "Adjust Final Score (Admin)" : "Enter Final Score Manually (Admin)"}
+            </Button>
+          </div>
+        )}
+
 
         <p className="text-[10px] text-muted-foreground text-center">
           Bonus points follow league rules: {leagueRules?.bonus_points_mode === "per_game_won" ? `+${leagueRules?.bonus_points_value ?? 1} per game won (both teams)` : leagueRules?.bonus_points_mode === "fixed_winner" ? `+${leagueRules?.bonus_points_value ?? 1} flat to fixture winner` : `+${leagueRules?.bonus_points_value ?? 1} to winning team for each rubber they won`}{summary.opbEnabled ? `, plus +${summary.opbValue} per original (non-reserve) player who plays` : ""}. Forfeit: opponent gets a clean sweep and the absent side loses {FORFEIT_PENALTY_POINTS} points.
@@ -2242,6 +2262,21 @@ export default function LeagueGameDetail() {
             away_player_name: p.awayName,
             games: (p.scores || []).slice(0, 5).map((s) => [s.home, s.away] as [number, number]),
           }))}
+        />
+      )}
+
+      {isClubAdmin && fixtureId && (
+        <AdminManualScoreDialog
+          open={adminManualOpen}
+          onOpenChange={setAdminManualOpen}
+          fixtureId={fixtureId}
+          homeCode={homeCode}
+          awayCode={awayCode}
+          existing={existingResult as any}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+            queryClient.invalidateQueries({ queryKey: ["internal-standings"] });
+          }}
         />
       )}
     </div>

@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { StepByStepLeagueSetup } from "./StepByStepLeagueSetup";
 import { AddReservesDialog } from "./AddReservesDialog";
 import { UserPlus } from "lucide-react";
+import { TeamLogoUpload } from "@/components/league-games/TeamLogoUpload";
+import { TeamLogo } from "@/components/league-games/TeamLogo";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 

@@ -184,6 +184,30 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
           Configure your club's outgoing email settings for member communications.
           If left blank, the platform default will be used.
         </p>
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-2 text-xs">
+          <p className="font-medium text-amber-700 dark:text-amber-400">How to set this up</p>
+          <div>
+            <p className="font-medium text-foreground">Using Gmail / Google Workspace?</p>
+            <ol className="list-decimal pl-4 text-muted-foreground space-y-0.5 mt-1">
+              <li>Enable 2-Step Verification on your Google account (required).</li>
+              <li>Visit <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-primary underline">myaccount.google.com/apppasswords</a>.</li>
+              <li>Create an App Password for "Mail" — copy the 16-character password.</li>
+              <li>Use <code className="bg-muted px-1 rounded">smtp.gmail.com</code>, port <code className="bg-muted px-1 rounded">587</code>, your full Gmail address as Username, and the App Password as Password.</li>
+            </ol>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Using another provider (cPanel, Outlook, hosting)?</p>
+            <p className="text-muted-foreground mt-1">
+              Ask your IT/email provider for the <strong>outgoing mail (SMTP) server</strong> details:
+              host (e.g. <code className="bg-muted px-1 rounded">mail.yourdomain.co.za</code>),
+              port (usually <code className="bg-muted px-1 rounded">587</code> TLS or <code className="bg-muted px-1 rounded">465</code> SSL),
+              username (typically your full email address) and password.
+            </p>
+          </div>
+          <p className="text-muted-foreground">
+            Credentials are stored encrypted in our secrets vault and only used to send emails on your club's behalf. Use the <strong>Send Test Email</strong> button below to verify your settings.
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
             <Label>Sender Name</Label>

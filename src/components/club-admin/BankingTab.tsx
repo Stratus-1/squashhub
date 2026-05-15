@@ -45,8 +45,8 @@ const GATEWAYS: GatewayDef[] = [
     description: "Modern card payments for SA businesses. Inline checkout & payment links.",
     website: "https://yoco.com",
     fields: [
-      { key: "public_key", label: "Public Key", placeholder: "pk_live_..." },
-      { key: "secret_key", label: "Secret Key", placeholder: "sk_live_...", sensitive: true },
+      { key: "public_key", label: "Public Key", placeholder: "pk_live_...", helperText: "Yoco Dashboard → Sell Online → Developers → API keys → copy the Public Key (starts with pk_live_)." },
+      { key: "secret_key", label: "Secret Key", placeholder: "sk_live_...", sensitive: true, helperText: "Same Developers screen → reveal & copy the Secret Key (sk_live_). Treat it like a password — never share it." },
     ],
   },
   {
@@ -246,6 +246,17 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
               </a>
             </div>
             <p className="text-xs text-muted-foreground">{selectedGateway.description}</p>
+            {selectedGateway.id === "yoco" && (
+              <div className="rounded border border-amber-500/30 bg-amber-500/5 p-2 space-y-1">
+                <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">How to get your Yoco API keys</p>
+                <ol className="text-[11px] text-muted-foreground list-decimal pl-4 space-y-0.5">
+                  <li>Sign in at <a href="https://portal.yoco.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">portal.yoco.com</a> with your Yoco merchant account.</li>
+                  <li>Go to <strong>Sell Online → Developers → API keys</strong>.</li>
+                  <li>Copy the <strong>Public Key</strong> (pk_live_…) and <strong>Secret Key</strong> (sk_live_…) into the fields below.</li>
+                  <li>Use <em>test</em> keys (pk_test_/sk_test_) while trialling; switch to live keys before collecting real payments.</li>
+                </ol>
+              </div>
+            )}
           </div>
         )}
 

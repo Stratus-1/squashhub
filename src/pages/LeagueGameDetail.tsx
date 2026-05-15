@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
+import { AdminManualScoreDialog } from "@/components/league-games/AdminManualScoreDialog";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";

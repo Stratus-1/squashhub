@@ -1575,6 +1575,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               <option value="member">Member</option>
               <option value="admin">Admin</option>
               <option value="captain">Captain</option>
+              <option value="visitor">Visitor</option>
             </select>
           </div>
           <div className="space-y-1">

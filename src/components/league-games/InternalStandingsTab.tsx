@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TeamLogo } from "./TeamLogo";
 
 type ClubLeague = {
   id: string;
@@ -126,24 +127,27 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  // Map team_code -> team display name (from leagues table for this association)
-  const { data: teamNameByCode } = useQuery({
-    queryKey: ["team-names-by-code", associationId],
+  // Map team_code -> { name, logo_url } (from leagues table for this association)
+  const { data: teamInfoByCode } = useQuery({
+    queryKey: ["team-logos-by-code", associationId],
     enabled: !!associationId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leagues")
-        .select("code, name")
+        .select("code, name, logo_url")
         .eq("association_id", associationId);
       if (error) throw error;
-      const map = new Map<string, string>();
+      const map = new Map<string, { name: string; logo_url: string | null }>();
       (data || []).forEach((l: any) => {
-        if (l.code) map.set(l.code, l.name || l.code);
+        if (l.code) map.set(l.code, { name: l.name || l.code, logo_url: l.logo_url || null });
       });
       return map;
     },
   });
+  const teamNameByCode = teamInfoByCode
+    ? new Map(Array.from(teamInfoByCode.entries()).map(([k, v]) => [k, v.name]))
+    : undefined;
 
   // Selection: a tier label or "ALL"
   const [selection, setSelection] = useState<string>("");
@@ -391,8 +395,13 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             </TableCell>
                             <TableCell className="text-xs">
                               <div className="flex items-center gap-2">
+                                <TeamLogo
+                                  logoUrl={teamInfoByCode?.get(s.team_code)?.logo_url}
+                                  name={teamInfoByCode?.get(s.team_code)?.name || s.team_code}
+                                  size={22}
+                                />
                                 <span className="font-medium">
-                                  {teamNameByCode?.get(s.team_code) || s.team_code}
+                                  {teamInfoByCode?.get(s.team_code)?.name || s.team_code}
                                 </span>
                                 <span className="font-mono text-[10px] text-muted-foreground">
                                   {s.team_code}

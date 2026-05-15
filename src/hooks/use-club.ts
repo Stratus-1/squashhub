@@ -138,6 +138,7 @@ export interface League {
   name: string;
   code?: string;
   nsa_team_id?: string | null;
+  logo_url?: string | null;
 }
 
 export interface NationalBodyFee {

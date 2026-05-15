@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 // NSA fixtures are now read from the DB (synced via nsa-sync-fixtures edge fn) — no live hook here.
 import { toast } from "sonner";
+import { TeamLogo } from "./TeamLogo";
 
 type Props = {
   platformAssocIds: string[];
@@ -24,6 +25,8 @@ type Props = {
   myTeamCodes: Set<string>;
   /** Optional map of team code -> custom team/league display name (e.g. "Cobras"). */
   teamNameByCode?: Record<string, string>;
+  /** Optional map of team code -> logo URL. */
+  teamLogoByCode?: Record<string, string>;
   /** Start of the configured squash week (yyyy-MM-dd). Falls back to today. */
   weekStart?: string;
   /** End of the squash week window (yyyy-MM-dd). Falls back to weekStart + 6 days, or today + 14 days. */
@@ -42,7 +45,7 @@ type Props = {
   weekStartDow?: number;
 };
 
-export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, teamNameByCode, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
+export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCodes, teamNameByCode, teamLogoByCode, weekStart, weekEnd, associationScope = "region", clubId, associationId, externalSource, externalClubId, weekStartDow }: Props) {
   const { activeMember } = useMemberContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -454,6 +457,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-sm">
+                        <TeamLogo
+                          logoUrl={teamLogoByCode?.[(f.home_team_code || "").toUpperCase()]}
+                          name={teamNameByCode?.[(f.home_team_code || "").toUpperCase()] || f.home_team_code}
+                          size={20}
+                        />
                         <span className="font-bold flex flex-col leading-tight">
                           <span>{f.home_team_code}</span>
                           {teamNameByCode?.[(f.home_team_code || "").toUpperCase()] && (
@@ -469,6 +477,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         ) : (
                           <span className="text-muted-foreground text-xs">vs</span>
                         )}
+                        <TeamLogo
+                          logoUrl={teamLogoByCode?.[(f.away_team_code || "").toUpperCase()]}
+                          name={teamNameByCode?.[(f.away_team_code || "").toUpperCase()] || f.away_team_code}
+                          size={20}
+                        />
                         <span className="font-bold flex flex-col leading-tight">
                           <span>{f.away_team_code}</span>
                           {teamNameByCode?.[(f.away_team_code || "").toUpperCase()] && (

@@ -29,6 +29,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
+import { TeamLogo } from "@/components/league-games/TeamLogo";
 import { DndContext, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 
 /** Droppable wrapper that BECOMES the grid row. Adds drop highlight ring. */
@@ -270,21 +271,23 @@ export default function LeagueGameDetail() {
     queryKey: ["league-team-meta", fixture?.home_team_code, fixture?.away_team_code],
     enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
     queryFn: async () => {
-      const empty = { nameByCode: {} as Record<string, string>, clubIdByCode: {} as Record<string, string>, captainCodeByCode: {} as Record<string, string> };
+      const empty = { nameByCode: {} as Record<string, string>, clubIdByCode: {} as Record<string, string>, captainCodeByCode: {} as Record<string, string>, logoByCode: {} as Record<string, string> };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return empty;
       const { data: leagues } = await (supabase as any)
-        .from("leagues").select("id, code, name, club_id, captain_member_id").in("code", codes);
+        .from("leagues").select("id, code, name, club_id, captain_member_id, logo_url").in("code", codes);
       const nameByCode: Record<string, string> = {};
       const clubIdByCode: Record<string, string> = {};
       const leagueIdToCode: Record<string, string> = {};
       const captainMemberIdByCode: Record<string, string> = {};
+      const logoByCode: Record<string, string> = {};
       for (const l of (leagues || []) as any[]) {
         const k = String(l.code || "").toUpperCase();
         if (l.name) nameByCode[k] = l.name;
         if (l.club_id) clubIdByCode[k] = l.club_id;
         leagueIdToCode[l.id] = k;
         if (l.captain_member_id) captainMemberIdByCode[k] = l.captain_member_id;
+        if (l.logo_url) logoByCode[k] = l.logo_url;
       }
       const leagueIds = (leagues || []).map((l: any) => l.id);
       if (leagueIds.length) {
@@ -322,10 +325,11 @@ export default function LeagueGameDetail() {
           if (c) captainCodeByCode[k] = c;
         }
       }
-      return { nameByCode, clubIdByCode, captainCodeByCode };
+      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode };
     },
   });
   const teamNamesByCode = teamMeta?.nameByCode;
+  const teamLogosByCode = teamMeta?.logoByCode;
 
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {
@@ -1522,7 +1526,10 @@ export default function LeagueGameDetail() {
           <div className="grid grid-cols-2 border-b">
             <div className="p-2 border-r bg-primary text-primary-foreground">
               <span className="text-xs font-black uppercase tracking-widest block">HOME TEAM</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {isInternalLeague && (
+                  <TeamLogo logoUrl={teamLogosByCode?.[homeCode.toUpperCase()]} name={homeTeamName || homeCode} size={40} className="bg-white/20" />
+                )}
                 <span className="font-mono font-black text-lg">{homeCode}</span>
                 {homeTeamName && (
                   <span className="text-xs font-semibold opacity-90 truncate">{homeTeamName}</span>
@@ -1532,7 +1539,10 @@ export default function LeagueGameDetail() {
             </div>
             <div className="p-2 bg-accent text-accent-foreground">
               <span className="text-xs font-black uppercase tracking-widest block">VISITORS TEAM</span>
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {isInternalLeague && (
+                  <TeamLogo logoUrl={teamLogosByCode?.[awayCode.toUpperCase()]} name={awayTeamName || awayCode} size={40} className="bg-white/20" />
+                )}
                 <span className="font-mono font-black text-lg">{awayCode}</span>
                 {awayTeamName && (
                   <span className="text-xs font-semibold opacity-90 truncate">{awayTeamName}</span>

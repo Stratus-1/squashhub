@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { StepByStepLeagueSetup } from "./StepByStepLeagueSetup";
 import { AddReservesDialog } from "./AddReservesDialog";
 import { UserPlus } from "lucide-react";
+import { TeamLogoUpload } from "@/components/league-games/TeamLogoUpload";
+import { TeamLogo } from "@/components/league-games/TeamLogo";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -550,10 +552,14 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     qcRow.invalidateQueries({ queryKey: ["league-registrations", league.id] });
   };
 
+  const assocForLeague = associations.find(a => a.id === league.association_id);
+  const isInternalLeague = assocForLeague?.scope === "internal";
+
   return (
     <Card className="p-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
           {editing ? (
             <div className="flex items-center gap-1">
               <Input
@@ -588,8 +594,17 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
               </p>
             </div>
           )}
+          </div>
         </div>
         <div className="flex items-center gap-1">
+          {isInternalLeague && (
+            <TeamLogoUpload
+              leagueId={league.id}
+              clubId={(league as any).club_id}
+              currentLogoUrl={(league as any).logo_url}
+              teamName={league.name}
+            />
+          )}
           {!editing && (
             <Button variant="ghost" size="icon" className="h-7 w-7" title="Rename team" onClick={() => { setNameDraft(league.name); setEditing(true); }}>
               <Pencil className="w-3.5 h-3.5" />

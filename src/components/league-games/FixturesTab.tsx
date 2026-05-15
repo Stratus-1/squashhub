@@ -193,7 +193,7 @@ function RoundCard({
 }) {
   const qc = useQueryClient();
   const [autoCreateBookings, setAutoCreateBookings] = useState<boolean>(!!(round as any).auto_create_bookings);
-  const [rotateCourts, setRotateCourts] = useState<boolean>(false);
+  
 
   const { data: courts } = useQuery({
     queryKey: ["round-courts", clubId, round.court_ids],
@@ -273,7 +273,7 @@ function RoundCard({
       round.round_date,
       round.end_date,
       (round as any).play_dows ?? [],
-      rotateCourts,
+      false,
     );
     console.log("[autoDistribute]", { selectedTeams, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots, byes });
     if (error) {
@@ -306,6 +306,36 @@ function RoundCard({
       `Generated ${generated.length} fixtures across ${dayCount} day(s)` +
         (byeRows.length ? ` · ${byeRows.length} bye(s)` : ""),
     );
+  };
+
+  /**
+   * Reassign only the court for each existing fixture so teams rotate between
+   * courts across play dates. Pairings, dates and start times are preserved.
+   * Within each date we keep the existing court ordering and shift it by the
+   * date index (relative to the sorted unique dates in the round).
+   */
+  const rotateCourtsOnly = () => {
+    const courtIds = round.court_ids ?? [];
+    if (courtIds.length < 2) {
+      toast.error("Need at least 2 courts assigned to this round to rotate.");
+      return;
+    }
+    if (!list.length) {
+      toast.error("No fixtures to rotate yet — generate or save fixtures first.");
+      return;
+    }
+    const dates = Array.from(new Set(list.map((f) => f.fixture_date).filter(Boolean) as string[])).sort();
+    const dateIdx = new Map(dates.map((d, i) => [d, i] as const));
+    const next = list.map((f) => {
+      if (!f.court_id || !f.fixture_date || f.away_team_code === "__BYE__") return f;
+      const curIdx = courtIds.indexOf(f.court_id);
+      if (curIdx < 0) return f;
+      const offset = dateIdx.get(f.fixture_date) ?? 0;
+      const newIdx = (curIdx + offset) % courtIds.length;
+      return { ...f, court_id: courtIds[newIdx] };
+    });
+    setDraft(next);
+    toast.success(`Rotated courts across ${dates.length} date(s) — pairings unchanged.`);
   };
 
   const saveFixtures = useMutation({
@@ -542,17 +572,21 @@ function RoundCard({
                     <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
                     <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
                   </label>
-                  <label
-                    className="flex items-center gap-2 text-xs"
-                    title="Shift courts each round so teams don't always play on the same court"
-                  >
-                    <Checkbox checked={rotateCourts} onCheckedChange={(v) => setRotateCourts(!!v)} />
-                    Rotate teams between courts
-                  </label>
                 </div>
-                <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
-                  <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={rotateCourtsOnly}
+                    disabled={!list.length || (round.court_ids?.length ?? 0) < 2}
+                    title="Shift courts across dates without changing pairings or times"
+                  >
+                    Rotate courts
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
+                    <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
+                  </Button>
+                </div>
               </div>
             </div>
           )}

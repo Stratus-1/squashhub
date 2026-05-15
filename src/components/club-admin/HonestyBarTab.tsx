@@ -439,6 +439,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
     setSubmitting(true);
     try {
       const supplierNote = [
+        supplier ? `Supplier: ${supplier}` : null,
         invoiceNumber ? `Inv #${invoiceNumber}` : null,
         paymentMethod ? `Paid: ${paymentMethod}` : null,
       ].filter(Boolean).join(" | ");
@@ -449,6 +450,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
         quantity: parseInt(l.quantity),
         unit_cost: parseFloat(l.unit_cost) || 0,
         total_cost: (parseInt(l.quantity)) * (parseFloat(l.unit_cost) || 0),
+        supplier: supplier.trim() || null,
         supplier_note: supplierNote || null,
         invoice_number: invoiceNumber.trim() || null,
         invoice_date: invoiceDate,

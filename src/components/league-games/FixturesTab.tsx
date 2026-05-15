@@ -273,6 +273,7 @@ function RoundCard({
       round.round_date,
       round.end_date,
       (round as any).play_dows ?? [],
+      rotateCourts,
     );
     console.log("[autoDistribute]", { selectedTeams, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots, byes });
     if (error) {

@@ -193,6 +193,7 @@ function RoundCard({
 }) {
   const qc = useQueryClient();
   const [autoCreateBookings, setAutoCreateBookings] = useState<boolean>(!!(round as any).auto_create_bookings);
+  const [rotateCourts, setRotateCourts] = useState<boolean>(false);
 
   const { data: courts } = useQuery({
     queryKey: ["round-courts", clubId, round.court_ids],
@@ -272,6 +273,7 @@ function RoundCard({
       round.round_date,
       round.end_date,
       (round as any).play_dows ?? [],
+      rotateCourts,
     );
     console.log("[autoDistribute]", { selectedTeams, court_ids: round.court_ids, start: round.start_time, end: round.end_time, slot: round.slot_minutes, range: [round.round_date, round.end_date], play_dows: (round as any).play_dows, slots, byes });
     if (error) {
@@ -534,11 +536,20 @@ function RoundCard({
                 ))}
                 {!teams.length && <span className="text-xs text-muted-foreground">No teams in this association</span>}
               </div>
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <label className="flex items-center gap-2 text-xs">
-                  <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
-                  <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
-                </label>
+              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <label className="flex items-center gap-2 text-xs">
+                    <Checkbox checked={autoCreateBookings} onCheckedChange={(v) => setAutoCreateBookings(!!v)} />
+                    <CalendarPlus className="h-3.5 w-3.5" /> Auto-create court bookings on save
+                  </label>
+                  <label
+                    className="flex items-center gap-2 text-xs"
+                    title="Shift courts each round so teams don't always play on the same court"
+                  >
+                    <Checkbox checked={rotateCourts} onCheckedChange={(v) => setRotateCourts(!!v)} />
+                    Rotate teams between courts
+                  </label>
+                </div>
                 <Button size="sm" variant="secondary" onClick={autoDistribute} disabled={selectedTeams.length < 2}>
                   <Wand2 className="h-3.5 w-3.5 mr-1" /> Auto-distribute
                 </Button>

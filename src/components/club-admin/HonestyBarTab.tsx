@@ -496,6 +496,16 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Supplier */}
+            <div>
+              <Label className="text-xs">Supplier</Label>
+              <Input
+                value={supplier}
+                onChange={e => setSupplier(e.target.value)}
+                placeholder="e.g. Makro, SAB, Coca-Cola"
+                maxLength={120}
+              />
+            </div>
             {/* Invoice header */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>

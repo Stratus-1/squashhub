@@ -167,6 +167,7 @@ export function allocateRoundRobinByDate(
   startDate?: string,
   endDate?: string,
   playDows?: number[],
+  rotateCourts: boolean = false,
 ): RoundRobinAllocation {
   const cleanTeams = [...new Set(teams.filter(Boolean))];
   if (cleanTeams.length < 2) return { slots: [], byes: [], error: "Select at least 2 teams to distribute." };
@@ -193,10 +194,16 @@ export function allocateRoundRobinByDate(
   rounds.forEach((pairings, roundIdx) => {
     const date = dates[Math.min(roundIdx * spacing, dates.length - 1)];
     pairings.forEach((pair, matchIdx) => {
+      // When rotateCourts is on, shift the court index by the round number so
+      // teams move between courts week-to-week instead of always playing on the
+      // same court.
+      const courtIdx = rotateCourts
+        ? (matchIdx + roundIdx) % courtIds.length
+        : matchIdx % courtIds.length;
       slots.push({
         home: pair.home,
         away: pair.away,
-        courtId: courtIds[matchIdx % courtIds.length],
+        courtId: courtIds[courtIdx],
         startTime: slotTimes[Math.floor(matchIdx / courtIds.length)],
         date,
       });

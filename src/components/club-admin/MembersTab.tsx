@@ -1045,14 +1045,15 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
         user_id: profile?.id || null,
         name: trimmedName,
         email: trimmedEmail,
-        club_member_number: memberNumber || undefined,
+        club_member_number: isVisitor ? null : (memberNumber || undefined),
         id_number: idNumber || undefined,
         phone: phone && phone !== "+27" ? phone : undefined,
         address: address || undefined,
         fee_category_id: feeCategoryId || undefined,
         gender: gender || undefined,
         skill_level: skillLevel || undefined,
-        plays_league: playsLeague,
+        plays_league: isVisitor ? false : playsLeague,
+        role: isVisitor ? ("visitor" as any) : undefined,
       }).select("id").single();
       if (error || !memberData) throw error || new Error("Failed to create member");
 

@@ -353,6 +353,10 @@ export default function LeagueGameDetail() {
   // Updated by an effect below once prefill / saved matches are available.
   const [positionCount, setPositionCount] = useState<number>(DEFAULT_POSITIONS);
 
+  // Apply association-level league rules — pulled up early because positionCount
+  // logic below needs team_size_mode / team_size to clamp scorecard size.
+  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+
 
   // Resize positions state when positionCount changes (preserves existing entries).
   useEffect(() => {

@@ -126,24 +126,27 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
     },
   });
 
-  // Map team_code -> team display name (from leagues table for this association)
-  const { data: teamNameByCode } = useQuery({
-    queryKey: ["team-names-by-code", associationId],
+  // Map team_code -> { name, logo_url } (from leagues table for this association)
+  const { data: teamInfoByCode } = useQuery({
+    queryKey: ["team-logos-by-code", associationId],
     enabled: !!associationId,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leagues")
-        .select("code, name")
+        .select("code, name, logo_url")
         .eq("association_id", associationId);
       if (error) throw error;
-      const map = new Map<string, string>();
+      const map = new Map<string, { name: string; logo_url: string | null }>();
       (data || []).forEach((l: any) => {
-        if (l.code) map.set(l.code, l.name || l.code);
+        if (l.code) map.set(l.code, { name: l.name || l.code, logo_url: l.logo_url || null });
       });
       return map;
     },
   });
+  const teamNameByCode = teamInfoByCode
+    ? new Map(Array.from(teamInfoByCode.entries()).map(([k, v]) => [k, v.name]))
+    : undefined;
 
   // Selection: a tier label or "ALL"
   const [selection, setSelection] = useState<string>("");

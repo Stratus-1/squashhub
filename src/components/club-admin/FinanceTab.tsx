@@ -40,8 +40,9 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   bank_current:      { label: "Current Account",     type: "BS", category: "Asset",     normal: "Dr" },
   cash:              { label: "Cash / Petty Cash",   type: "BS", category: "Asset",     normal: "Dr" },
   debtors:           { label: "Accounts Receivable",  type: "BS", category: "Asset",     normal: "Dr" },
-  // Balance Sheet – Liabilities
+  // Balance Sheet – Liabilities / Equity
   creditors:         { label: "Accounts Payable",     type: "BS", category: "Liability", normal: "Cr" },
+  opening_balance_equity: { label: "Opening Balance Equity", type: "BS", category: "Liability", normal: "Cr" },
   // Income
   fee_income:        { label: "Fee Income",           type: "IS", category: "Income",    normal: "Cr" },
   membership_income: { label: "Membership Income",    type: "IS", category: "Income",    normal: "Cr" },

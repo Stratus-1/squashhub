@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsClubAdmin, useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TeamLogo } from "./TeamLogo";
 
 type ClubLeague = {
   id: string;

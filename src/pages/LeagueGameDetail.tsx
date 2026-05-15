@@ -535,10 +535,16 @@ export default function LeagueGameDetail() {
           return { code, name: m?.name || "" };
         };
 
+        // Track members already placed in this team to prevent the same player
+        // appearing in two positions (e.g. due to a stale fixture override row).
+        const usedMembers = new Set<string>();
+
         const fillSlot = (target: Array<{ code: string; name: string }>, pos: number, memberId: string) => {
           if (pos < 1 || pos > MAX_POSITIONS) return;
           if (target[pos - 1].code || target[pos - 1].name) return;
+          if (usedMembers.has(memberId)) return;
           target[pos - 1] = buildSlot(memberId);
+          usedMembers.add(memberId);
         };
 
         // Priority 1: Fill-Up Leagues week lineup → goes into BOTH (originals and prefill)
@@ -563,11 +569,13 @@ export default function LeagueGameDetail() {
           if (slots[i].code || slots[i].name) continue;
           while (regIdx < teamRegs.length) {
             const r = teamRegs[regIdx++];
+            if (usedMembers.has(r.club_member_id)) continue;
             const m = memberMap.get(r.club_member_id) as any;
             const code = (r.league_association_number || r.ssa_number || m?.club_member_number || "").toString().toUpperCase();
             const name = m?.name || "";
             if (!code && !name) continue;
             slots[i] = { code, name };
+            usedMembers.add(r.club_member_id);
             if (!origSlots[i].code && !origSlots[i].name) origSlots[i] = { code, name };
             break;
           }

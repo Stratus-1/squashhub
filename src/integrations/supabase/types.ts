@@ -2872,6 +2872,8 @@ export type Database = {
           points_per_game: number
           share_bonus_on_tie: boolean
           sub_direction: string
+          team_size: number
+          team_size_mode: string
           team_win_bonus_enabled: boolean
           team_win_bonus_value: number
           tiebreak_at: number | null
@@ -2902,6 +2904,8 @@ export type Database = {
           points_per_game?: number
           share_bonus_on_tie?: boolean
           sub_direction?: string
+          team_size?: number
+          team_size_mode?: string
           team_win_bonus_enabled?: boolean
           team_win_bonus_value?: number
           tiebreak_at?: number | null
@@ -2932,6 +2936,8 @@ export type Database = {
           points_per_game?: number
           share_bonus_on_tie?: boolean
           sub_direction?: string
+          team_size?: number
+          team_size_mode?: string
           team_win_bonus_enabled?: boolean
           team_win_bonus_value?: number
           tiebreak_at?: number | null

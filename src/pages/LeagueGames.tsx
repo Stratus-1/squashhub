@@ -167,6 +167,16 @@ export default function LeagueGames() {
     return map;
   }, [leaguesInScope]);
 
+  const teamLogoByCode = useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const l of leaguesInScope) {
+      if (l.code && (l as any).logo_url) {
+        map[l.code.toUpperCase()] = (l as any).logo_url;
+      }
+    }
+    return map;
+  }, [leaguesInScope]);
+
   const myTeamCodes = useMemo(() => {
     const assocId = (myPrimaryLeagueReg as any)?.association_id as string | undefined;
     const code = (myPrimaryLeagueReg as any)?.leagues?.code as string | undefined;

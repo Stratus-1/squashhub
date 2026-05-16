@@ -413,6 +413,9 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {s.played}
                             </TableCell>
+                            <TableCell className="text-center text-xs font-medium">
+                              {s.played > 0 ? (s.total / s.played).toFixed(1) : "—"}
+                            </TableCell>
                             {s.weeks.map((w, j) => {
                               if (w.isBye) {
                                 return (

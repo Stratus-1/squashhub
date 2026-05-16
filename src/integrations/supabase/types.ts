@@ -4687,6 +4687,7 @@ export type Database = {
       yoco_payment_sessions: {
         Row: {
           amount: number
+          bar_tab_entry_ids: string[]
           club_id: string
           club_member_id: string
           completed_at: string | null
@@ -4703,6 +4704,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bar_tab_entry_ids?: string[]
           club_id: string
           club_member_id: string
           completed_at?: string | null
@@ -4719,6 +4721,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bar_tab_entry_ids?: string[]
           club_id?: string
           club_member_id?: string
           completed_at?: string | null

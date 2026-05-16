@@ -160,21 +160,6 @@ export default function MyAccount() {
       });
     }
 
-    // Inject unsettled honesty bar entries as charges (they reduce available balance)
-    for (const entry of (barTabEntries as any[])) {
-      const amt = Number(entry.total) || 0;
-      if (amt <= 0) continue;
-      const itemName = entry.bar_items?.name || "Bar item";
-      lines.push({
-        id: `bar-${entry.id}`,
-        date: entry.created_at,
-        description: `Honesty Bar: ${entry.quantity}× ${itemName}`,
-        debit: 0,
-        credit: amt,
-        status: "confirmed",
-      });
-    }
-
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));
@@ -221,23 +206,12 @@ export default function MyAccount() {
     return statementLines[statementLines.length - 1]?.balance || 0;
   })();
 
-  // Available "cash" in wallet (top-ups minus already-settled items),
-  // i.e. how much can still be spent paying outstanding fees/bar via credit.
+  // Available "cash" in wallet (top-ups minus confirmed account charges),
+  // i.e. how much can still be spent paying outstanding fees via credit.
   const unpaidFeesTotal = (fees || [])
     .filter((f: any) => !f.paid)
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
-  const availableCash = creditBalance + unpaidFeesTotal + barTabTotal;
-
-  // If navigated with ?payBar=1, open the top-up dialog pre-filled with bar total
-  const topUpAutoOpened = useRef(false);
-  useEffect(() => {
-    if (searchParams.get("payBar") === "1" && !topUpAutoOpened.current && barTabTotal > 0) {
-      topUpAutoOpened.current = true;
-      setTopUpAmount(barTabTotal.toFixed(2));
-      setTopUpOpen(true);
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, barTabTotal]);
+  const availableCash = creditBalance + unpaidFeesTotal;
 
   // Verify Yoco checkout when redirected back from Yoco
   const yocoVerifiedRef = useRef<string | null>(null);

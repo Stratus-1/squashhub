@@ -39,7 +39,7 @@ export function ShareBookingDialog({
   opponentName,
   inviterName,
 }: ShareBookingDialogProps) {
-  const courtLabel = courtName || `${courtLabel}`;
+  const courtLabel = courtName || `Court ${courtId}`;
   const [tab, setTab] = useState("email");
   const [email, setEmail] = useState("");
   const [name, setName] = useState(opponentName || "");

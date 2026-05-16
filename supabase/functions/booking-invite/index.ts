@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     const courtId = (booking as any).court_id;
     // Look up the human-friendly court name (e.g. "Court 1") instead of
     // exposing the global integer id (which is sequence-wide, not per-club).
-    let courtLabel = `${courtLabel}`;
+    let courtLabel = `Court ${courtId}`;
     if (courtId != null) {
       const { data: courtRow } = await supabaseAdmin
         .from("courts")

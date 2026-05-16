@@ -56,14 +56,15 @@ export default function HonestyBar() {
   const qc = useQueryClient();
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();
+  const isSuperAdmin = useIsSuperAdmin();
+  const canSeeVisitors = isAdmin || isSuperAdmin;
   const clubId = club?.id;
   const memberId = activeMember?.id;
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
-
-
+  const [activeTab, setActiveTab] = useState("shop");
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],
@@ -93,6 +94,20 @@ export default function HonestyBar() {
       return data as BarTabEntry[];
     },
     enabled: !!clubId && !!memberId,
+  });
+
+  const { data: visitorSales = [] } = useQuery({
+    queryKey: ["bar-visitor-sales", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_visitor_sales")
+        .select("*, bar_items:bar_item_id(name, category)")
+        .eq("club_id", clubId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!clubId && canSeeVisitors,
   });
 
   const cartTotal = Object.entries(cart).reduce((sum, [itemId, qty]) => {

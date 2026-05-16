@@ -1151,7 +1151,7 @@ export default function MyAccount() {
             {payMethod === "card" && (
               <Card className="p-3 bg-muted/50">
                 <p className="text-xs text-muted-foreground">
-                  Card payment via {club?.payment_gateway || "payment gateway"}. Fees will be marked as paid immediately.
+                  Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
                 </p>
               </Card>
             )}
@@ -1236,7 +1236,7 @@ export default function MyAccount() {
             {payBarMethod === "card" && (
               <Card className="p-3 bg-muted/50">
                 <p className="text-xs text-muted-foreground">
-                  Card payment via {club?.payment_gateway || "Yoco"}. Your bar tab will be settled immediately.
+                  Card payment via {club?.payment_gateway || "Yoco"}. You will be redirected to complete the card payment before your bar tab is settled.
                 </p>
               </Card>
             )}

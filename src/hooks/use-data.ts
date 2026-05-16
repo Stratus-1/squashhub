@@ -613,6 +613,40 @@ export function useLadder(clubId?: string) {
         );
       }
 
+      // 3b. Pull internal-platform league results (NIL, LS, and any other non-NSA platform
+      // associations stored in our DB). NSA stats are sourced from nsa-proxy above; everything
+      // else is recorded directly via league_match_results.
+      const allMemberCodes = new Set<string>();
+      for (const codes of nsaCodesByMember.values()) {
+        for (const c of codes) allMemberCodes.add(c);
+      }
+      if (allMemberCodes.size > 0) {
+        const { data: internalResults } = await fromAny("league_match_results")
+          .select(
+            "home_player_code, away_player_code, winner, is_forfeit, fixture:platform_league_fixtures!inner(association:platform_league_associations!inner(external_source))"
+          )
+          .not("winner", "is", null);
+
+        for (const row of internalResults || []) {
+          const platform = (row as any).fixture?.association;
+          if (platform?.external_source) continue; // skip NSA (handled by proxy)
+          const winner = (row as any).winner as "home" | "away" | null;
+          if (!winner) continue;
+          const homeCode = normalizeNsaCode((row as any).home_player_code);
+          const awayCode = normalizeNsaCode((row as any).away_player_code);
+          for (const [code, isHome] of [[homeCode, true], [awayCode, false]] as const) {
+            if (!code || !allMemberCodes.has(code)) continue;
+            const won = (winner === "home" && isHome) || (winner === "away" && !isHome);
+            const existing = liveStatsByCode.get(code) || { wins: 0, losses: 0, matches_played: 0 };
+            liveStatsByCode.set(code, {
+              wins: existing.wins + (won ? 1 : 0),
+              losses: existing.losses + (won ? 0 : 1),
+              matches_played: existing.matches_played + 1,
+            });
+          }
+        }
+      }
+
       // 4. Build ladder entries (single source of truth: club_members.ladder_position)
       const ladder = (members || []).map(m => {
         const profile = m.user_id ? profileMap.get(m.user_id) : null;

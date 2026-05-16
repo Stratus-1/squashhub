@@ -372,6 +372,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                         <TableHead>Team</TableHead>
                         <TableHead className="text-center w-14 font-bold">Total</TableHead>
                         <TableHead className="text-center w-12">P</TableHead>
+                        <TableHead className="text-center w-14" title="Average points per game played">Avg</TableHead>
                         {weeks.map((d) => (
                           <TableHead
                             key={d}

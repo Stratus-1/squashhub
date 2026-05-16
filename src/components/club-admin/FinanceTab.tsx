@@ -23,7 +23,7 @@ import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 /* ─── Chart of Accounts definition ─── */
 
 type GLAccount =
-  | "debtors" | "creditors" | "bank" | "bank_current" | "cash"
+  | "debtors" | "creditors" | "bank_current" | "cash"
   | "opening_balance_equity"
   | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income"
   | "bar_expense" | "league_fees_expense" | "national_body_expense"
@@ -38,10 +38,9 @@ interface AccountMeta {
 
 const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   // Balance Sheet – Assets
-  bank:              { label: "Bank (Legacy)",       type: "BS", category: "Asset",     normal: "Dr" },
   bank_current:      { label: "Current Account",     type: "BS", category: "Asset",     normal: "Dr" },
-  cash:              { label: "Cash / Petty Cash",   type: "BS", category: "Asset",     normal: "Dr" },
-  debtors:           { label: "Accounts Receivable",  type: "BS", category: "Asset",     normal: "Dr" },
+  cash:              { label: "Petty Cash",          type: "BS", category: "Asset",     normal: "Dr" },
+  debtors:           { label: "Accounts Receivable", type: "BS", category: "Asset",     normal: "Dr" },
   // Balance Sheet – Liabilities / Equity
   creditors:         { label: "Accounts Payable",     type: "BS", category: "Liability", normal: "Cr" },
   opening_balance_equity: { label: "Opening Balance Equity", type: "BS", category: "Liability", normal: "Cr" },

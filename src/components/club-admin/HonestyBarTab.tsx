@@ -188,9 +188,9 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "" });
+  const [form, setForm] = useState({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0" });
 
-  const resetForm = () => setForm({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "" });
+  const resetForm = () => setForm({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0" });
 
   const openEdit = (item: BarItem) => {
     setEditItem(item);
@@ -201,6 +201,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       image_url: item.image_url || "",
       low_stock_threshold: String(item.low_stock_threshold),
       cost_price: item.cost_price ? String(item.cost_price) : "",
+      opening_stock: "0",
     });
   };
 
@@ -215,6 +216,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       image_url: form.image_url.trim() || null,
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
       cost_price: parseFloat(form.cost_price) || 0,
+      stock_qty: parseInt(form.opening_stock) || 0,
     });
     if (error) toast.error(error.message);
     else {
@@ -299,6 +301,17 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
             placeholder="5"
           />
         </div>
+        {!editItem && (
+          <div>
+            <Label className="text-xs">Opening Stock</Label>
+            <Input
+              type="number" min={0}
+              value={form.opening_stock}
+              onChange={e => setForm(p => ({ ...p, opening_stock: e.target.value }))}
+              placeholder="0"
+            />
+          </div>
+        )}
         <div>
           <Label className="text-xs">Category</Label>
           <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>

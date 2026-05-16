@@ -242,6 +242,13 @@ export default function MyAccount() {
     return statementLines[statementLines.length - 1]?.balance || 0;
   })();
 
+  // Available "cash" in wallet (top-ups minus already-settled items),
+  // i.e. how much can still be spent paying outstanding fees/bar via credit.
+  const unpaidFeesTotal = (fees || [])
+    .filter((f: any) => !f.paid)
+    .reduce((s: number, f: any) => s + Number(f.amount), 0);
+  const availableCash = creditBalance + unpaidFeesTotal + barTabTotal;
+
   // Auto-open bar payment dialog if navigated with ?payBar=1
   useEffect(() => {
     if (searchParams.get("payBar") === "1" && !barPayAutoOpened.current && barTabTotal > 0) {

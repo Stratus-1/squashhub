@@ -14,6 +14,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
@@ -236,14 +237,93 @@ export default function MyAccount() {
     }
   }, [searchParams, barTabTotal, creditBalance]);
 
+  // Verify Yoco checkout when redirected back from Yoco
+  const yocoVerifiedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const sid = searchParams.get("yoco_session");
+    const cancelled = searchParams.get("yoco_cancelled");
+    if (cancelled) {
+      toast.info("Card payment cancelled.");
+      const next = new URLSearchParams(searchParams);
+      next.delete("yoco_cancelled");
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    if (!sid || yocoVerifiedRef.current === sid) return;
+    yocoVerifiedRef.current = sid;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", {
+          body: { session_id: sid },
+        });
+        if (error) throw error;
+        if (data?.status === "completed") {
+          toast.success("Card payment received — thank you!");
+          queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+          queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+        } else if (["cancelled", "failed", "expired"].includes(data?.status)) {
+          toast.error(`Payment ${data.status}. No charge was made.`);
+        } else {
+          toast.info("Payment still processing. Refresh in a moment.");
+        }
+      } catch (e: any) {
+        toast.error(e.message || "Could not verify card payment");
+      } finally {
+        const next = new URLSearchParams(searchParams);
+        next.delete("yoco_session");
+        setSearchParams(next, { replace: true });
+      }
+    })();
+  }, [searchParams]);
+
   const pendingTopUps = (transactions || []).filter(
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );
+
+  // Launch Yoco checkout for fee payment or top-up
+  const startYocoCheckout = async (opts: {
+    amount: number;
+    purpose: "fee" | "topup";
+    fee_ids?: string[];
+    description?: string;
+  }) => {
+    if (!clubId || !clubMemberId) throw new Error("No club membership found.");
+    if (club?.payment_gateway !== "yoco") {
+      throw new Error("Yoco is not configured for this club.");
+    }
+    const return_url = `${window.location.origin}/my-account`;
+    const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
+      body: {
+        club_id: clubId,
+        club_member_id: clubMemberId,
+        amount: opts.amount,
+        purpose: opts.purpose,
+        fee_ids: opts.fee_ids || [],
+        description: opts.description,
+        return_url,
+      },
+    });
+    if (error) throw new Error(error.message || "Could not start Yoco checkout");
+    if ((data as any)?.error) throw new Error((data as any).error);
+    const redirect = (data as any)?.redirect_url;
+    if (!redirect) throw new Error("Yoco did not return a redirect URL");
+    window.location.href = redirect;
+  };
+
 
   // Top-up mutation
   const topUpMutation = useMutation({
     mutationFn: async ({ amount, method }: { amount: number; method: string }) => {
       if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
+      if (method === "card") {
+        // Route through Yoco gateway
+        await startYocoCheckout({
+          amount,
+          purpose: "topup",
+          description: `Wallet top-up of R${amount.toFixed(2)}`,
+        });
+        return;
+      }
       const { error } = await fromExt("member_credit_transactions").insert({
         club_id: clubId,
         club_member_id: clubMemberId,
@@ -251,8 +331,7 @@ export default function MyAccount() {
         type: "debit",
         method,
         description: `Top-up via ${method.toUpperCase()}`,
-        status: method === "card" ? "confirmed" : "pending",
-        confirmed_at: method === "card" ? new Date().toISOString() : null,
+        status: "pending",
       });
       if (error) throw error;
     },
@@ -324,36 +403,14 @@ export default function MyAccount() {
           }
         }
       } else if (method === "card") {
-        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
-          club_id: clubId,
-          club_member_id: clubMemberId,
+        // Route through Yoco — payment + fee marking happens after verify-return
+        await startYocoCheckout({
           amount: payAmount,
-          type: "debit",
-          method: "card",
+          purpose: "fee",
+          fee_ids: selectedFees.map((f: any) => f.id),
           description: txDescription.replace("Fee payment", "Card payment").replace("Partial payment", "Partial card payment"),
-          status: "confirmed",
-        }).select("id").single();
-        if (txErr) throw txErr;
-        
-
-        if (isPartial) {
-          let remaining = payAmount;
-          for (const fee of selectedFees) {
-            const feeAmt = Number(fee.amount);
-            const deduction = Math.min(remaining, feeAmt);
-            remaining -= deduction;
-            const newAmount = feeAmt - deduction;
-            if (newAmount <= 0) {
-              await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString(), amount: 0 }).eq("id", fee.id);
-            } else {
-              await fromExt("club_member_fee_payments").update({ amount: newAmount }).eq("id", fee.id);
-            }
-          }
-        } else {
-          for (const fee of selectedFees) {
-            await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString() }).eq("id", fee.id);
-          }
-        }
+        });
+        return;
       } else {
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           club_id: clubId,

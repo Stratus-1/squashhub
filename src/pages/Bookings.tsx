@@ -1690,7 +1690,7 @@ export default function Bookings() {
                 className="gap-1.5 rounded-lg"
                 onClick={() => {
                   const msg = encodeURIComponent(
-                    `🏸 Squash booking!\n\nCourt ${calendarPrompt.courtId} on ${calendarPrompt.dateStr} from ${calendarPrompt.startTime} to ${calendarPrompt.endTime}.\n\nJoin me!`
+                    `🏸 Squash booking!\n\n${getCourtName(calendarPrompt.courtId)} on ${calendarPrompt.dateStr} from ${calendarPrompt.startTime} to ${calendarPrompt.endTime}.\n\nJoin me!`
                   );
                   window.open(`https://wa.me/?text=${msg}`, "_blank");
                 }}

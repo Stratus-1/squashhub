@@ -280,11 +280,12 @@ export default function MyAccount() {
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );
 
-  // Launch Yoco checkout for fee payment or top-up
+  // Launch Yoco checkout for fee payment, top-up, or bar tab
   const startYocoCheckout = async (opts: {
     amount: number;
-    purpose: "fee" | "topup";
+    purpose: "fee" | "topup" | "bartab";
     fee_ids?: string[];
+    bar_tab_entry_ids?: string[];
     description?: string;
   }) => {
     if (!clubId || !clubMemberId) throw new Error("No club membership found.");
@@ -299,6 +300,7 @@ export default function MyAccount() {
         amount: opts.amount,
         purpose: opts.purpose,
         fee_ids: opts.fee_ids || [],
+        bar_tab_entry_ids: opts.bar_tab_entry_ids || [],
         description: opts.description,
         return_url,
       },

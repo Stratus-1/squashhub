@@ -315,6 +315,15 @@ export default function MyAccount() {
   const topUpMutation = useMutation({
     mutationFn: async ({ amount, method }: { amount: number; method: string }) => {
       if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
+      if (method === "card") {
+        // Route through Yoco gateway
+        await startYocoCheckout({
+          amount,
+          purpose: "topup",
+          description: `Wallet top-up of R${amount.toFixed(2)}`,
+        });
+        return;
+      }
       const { error } = await fromExt("member_credit_transactions").insert({
         club_id: clubId,
         club_member_id: clubMemberId,
@@ -322,8 +331,7 @@ export default function MyAccount() {
         type: "debit",
         method,
         description: `Top-up via ${method.toUpperCase()}`,
-        status: method === "card" ? "confirmed" : "pending",
-        confirmed_at: method === "card" ? new Date().toISOString() : null,
+        status: "pending",
       });
       if (error) throw error;
     },

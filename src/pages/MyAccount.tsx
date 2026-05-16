@@ -1023,7 +1023,7 @@ export default function MyAccount() {
             {payMethod === "credit" && (
               <Card className="p-3 bg-green-500/5 border-green-500/20">
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  Pay from your credit balance of R{creditBalance.toFixed(2)}
+                  Pay from your available wallet of R{availableCash.toFixed(2)}
                 </p>
               </Card>
             )}
@@ -1132,7 +1132,7 @@ export default function MyAccount() {
             {payBarMethod === "credit" && (
               <Card className="p-3 bg-green-500/5 border-green-500/20">
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  Pay from your credit balance of R{creditBalance.toFixed(2)}
+                  Pay from your available wallet of R{availableCash.toFixed(2)}
                 </p>
               </Card>
             )}

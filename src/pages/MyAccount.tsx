@@ -543,7 +543,84 @@ export default function MyAccount() {
     onError: (e: any) => toast.error(e.message || "Payment failed"),
   });
 
-  const copyBankDetails = () => {
+  // Apply available wallet credit to outstanding fees (oldest first), then bar tab.
+  // Centralized "settle from credit" action used from the wallet card.
+  const applyCreditMutation = useMutation({
+    mutationFn: async () => {
+      if (!clubId || !clubMemberId) throw new Error("No club membership found.");
+      let cash = availableCash;
+      if (cash <= 0) throw new Error("No available credit to apply.");
+      const unpaidSorted = [...(fees || [])]
+        .filter((f: any) => !f.paid)
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const barSorted = [...(barTabEntries as any[])]
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      // Allocate to fees first
+      for (const fee of unpaidSorted) {
+        if (cash <= 0) break;
+        const owed = Number(fee.amount);
+        const pay = Math.min(cash, owed);
+        cash -= pay;
+        await fromExt("member_credit_transactions").insert({
+          club_id: clubId,
+          club_member_id: clubMemberId,
+          amount: pay,
+          type: "debit",
+          method: "credit",
+          description: pay < owed
+            ? `Partial credit applied: ${fee.fee_label}`
+            : `Credit applied: ${fee.fee_label}`,
+          status: "confirmed",
+          confirmed_at: new Date().toISOString(),
+        });
+        if (pay >= owed) {
+          await fromExt("club_member_fee_payments")
+            .update({ paid: true, paid_at: new Date().toISOString() })
+            .eq("id", fee.id);
+        } else {
+          await fromExt("club_member_fee_payments")
+            .update({ amount: owed - pay })
+            .eq("id", fee.id);
+        }
+      }
+
+      // Then allocate remaining cash to bar entries (whole entries only)
+      for (const entry of barSorted) {
+        const amt = Number(entry.total);
+        if (cash < amt) continue;
+        cash -= amt;
+        const desc = `Credit applied: Honesty Bar (${entry.quantity}× ${entry.bar_items?.name || "item"})`;
+        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
+          club_id: clubId,
+          club_member_id: clubMemberId,
+          amount: amt,
+          type: "debit",
+          method: "credit",
+          description: desc,
+          status: "confirmed",
+          confirmed_at: new Date().toISOString(),
+        }).select("id").single();
+        if (txErr) throw txErr;
+        const journalRef = crypto.randomUUID();
+        await fromExt("club_journal_entries").insert([
+          { club_id: clubId, journal_ref: journalRef, account: "bank" as any, debit: amt, credit: 0, description: desc, club_member_id: clubMemberId, transaction_id: txData.id },
+          { club_id: clubId, journal_ref: journalRef, account: "debtors" as any, debit: 0, credit: amt, description: desc, club_member_id: clubMemberId, transaction_id: txData.id },
+        ]);
+        await fromExt("bar_tab_entries")
+          .update({ settled: true, settled_at: new Date().toISOString() })
+          .eq("id", entry.id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["my-bar-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["bar-tab-unsettled"] });
+      toast.success("Outstanding items settled from your credit.");
+    },
+    onError: (e: any) => toast.error(e.message || "Could not apply credit"),
+  });
     const details = [
       clubSecrets?.bank_name && `Bank: ${clubSecrets?.bank_name}`,
       clubSecrets?.bank_account_name && `Account: ${clubSecrets?.bank_account_name}`,

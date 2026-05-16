@@ -234,10 +234,10 @@ export default function LeagueGames() {
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className={`grid w-full ${
-              selectedAssoc?.scope === "internal" && !hideFillUp ? "grid-cols-4"
-              : (selectedAssoc?.scope === "internal" && hideFillUp) ? "grid-cols-3"
-              : hideFillUp ? "grid-cols-2"
-              : "grid-cols-3"
+              selectedAssoc?.scope === "internal" && !hideFillUp ? "grid-cols-5"
+              : (selectedAssoc?.scope === "internal" && hideFillUp) ? "grid-cols-4"
+              : hideFillUp ? "grid-cols-3"
+              : "grid-cols-4"
             } h-auto`}>
               <TabsTrigger
                 value="fixtures"
@@ -265,7 +265,13 @@ export default function LeagueGames() {
                 value="standings"
                 className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow"
               >
-                Standings
+                Team Standings
+              </TabsTrigger>
+              <TabsTrigger
+                value="individuals"
+                className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow"
+              >
+                Individuals
               </TabsTrigger>
             </TabsList>
 
@@ -318,6 +324,21 @@ export default function LeagueGames() {
                 clubId={clubId}
                 associationId={selectedAssocId}
               />
+            </TabsContent>
+
+            <TabsContent value="individuals" className="mt-4">
+              {clubId && selectedAssocId ? (
+                <IndividualStandingsTab
+                  clubId={clubId}
+                  associationId={selectedAssocId}
+                  platformAssocId={selectedAssoc?.platform_association_id ?? null}
+                  clubLeagues={leaguesInScope}
+                />
+              ) : (
+                <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+                  Select an association to view individual contributions.
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         )}

@@ -181,6 +181,21 @@ export default function MyAccount() {
       });
     }
 
+    // Inject unsettled honesty bar entries as charges (they reduce available balance)
+    for (const entry of (barTabEntries as any[])) {
+      const amt = Number(entry.total) || 0;
+      if (amt <= 0) continue;
+      const itemName = entry.bar_items?.name || "Bar item";
+      lines.push({
+        id: `bar-${entry.id}`,
+        date: entry.created_at,
+        description: `Honesty Bar: ${entry.quantity}× ${itemName}`,
+        debit: 0,
+        credit: amt,
+        status: "confirmed",
+      });
+    }
+
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));
@@ -227,11 +242,18 @@ export default function MyAccount() {
     return statementLines[statementLines.length - 1]?.balance || 0;
   })();
 
+  // Available "cash" in wallet (top-ups minus already-settled items),
+  // i.e. how much can still be spent paying outstanding fees/bar via credit.
+  const unpaidFeesTotal = (fees || [])
+    .filter((f: any) => !f.paid)
+    .reduce((s: number, f: any) => s + Number(f.amount), 0);
+  const availableCash = creditBalance + unpaidFeesTotal + barTabTotal;
+
   // Auto-open bar payment dialog if navigated with ?payBar=1
   useEffect(() => {
     if (searchParams.get("payBar") === "1" && !barPayAutoOpened.current && barTabTotal > 0) {
       barPayAutoOpened.current = true;
-      setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+      setPayBarMethod(availableCash >= barTabTotal ? "credit" : "card");
       setPayBarOpen(true);
       setSearchParams({}, { replace: true });
     }
@@ -371,7 +393,7 @@ export default function MyAccount() {
         : `Fee payment: ${feeDescription}`;
 
       if (method === "credit") {
-        if (creditBalance < payAmount) {
+        if (availableCash < payAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
         const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
@@ -584,10 +606,13 @@ export default function MyAccount() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  {creditBalance >= 0 ? "Credit Balance" : "Amount Owing"}
+                  {creditBalance >= 0 ? "Account Balance (Available)" : "Net Amount Owing"}
                 </p>
                 <p className={cn("text-2xl font-bold font-heading", creditBalance >= 0 ? "text-foreground" : "text-destructive")}>
                   {creditBalance < 0 ? "-" : ""}R{Math.abs(creditBalance).toFixed(2)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Top-ups less outstanding fees & bar tab
                 </p>
               </div>
             </div>
@@ -652,7 +677,7 @@ export default function MyAccount() {
                 className="w-full mt-2 gap-2"
                 onClick={() => {
                   setPayFeeId("batch");
-                  setPayMethod(creditBalance >= selectedFeeTotal ? "credit" : "eft");
+                  setPayMethod(availableCash >= selectedFeeTotal ? "credit" : "eft");
                   setPayMode("full");
                   setPartialAmount("");
                 }}
@@ -719,7 +744,7 @@ export default function MyAccount() {
               <Button
                 className="w-full gap-2"
                 onClick={() => {
-                  setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+                  setPayBarMethod(availableCash >= barTabTotal ? "credit" : "card");
                   setPayBarOpen(true);
                 }}
               >
@@ -972,7 +997,7 @@ export default function MyAccount() {
                 variant={payMethod === "credit" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"
                 onClick={() => setPayMethod("credit")}
-                disabled={creditBalance < actualPayAmount}
+                disabled={availableCash < actualPayAmount}
               >
                 <Wallet className="w-4 h-4" />
                 Credit
@@ -998,7 +1023,7 @@ export default function MyAccount() {
             {payMethod === "credit" && (
               <Card className="p-3 bg-green-500/5 border-green-500/20">
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  Pay from your credit balance of R{creditBalance.toFixed(2)}
+                  Pay from your available wallet of R{availableCash.toFixed(2)}
                 </p>
               </Card>
             )}
@@ -1081,7 +1106,7 @@ export default function MyAccount() {
                 variant={payBarMethod === "credit" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"
                 onClick={() => setPayBarMethod("credit")}
-                disabled={creditBalance < barTabTotal}
+                disabled={availableCash < barTabTotal}
               >
                 <Wallet className="w-4 h-4" />
                 Credit
@@ -1107,7 +1132,7 @@ export default function MyAccount() {
             {payBarMethod === "credit" && (
               <Card className="p-3 bg-green-500/5 border-green-500/20">
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  Pay from your credit balance of R{creditBalance.toFixed(2)}
+                  Pay from your available wallet of R{availableCash.toFixed(2)}
                 </p>
               </Card>
             )}

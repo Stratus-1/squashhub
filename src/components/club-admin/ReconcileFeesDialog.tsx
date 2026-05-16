@@ -22,6 +22,12 @@ interface MemberRow {
   id: string;
   name: string | null;
   club_member_number: string | null;
+  fee_category_id: string | null;
+}
+interface FeeCategory {
+  id: string;
+  name: string;
+  annual_fee: number;
 }
 
 const fmt = (n: number) =>

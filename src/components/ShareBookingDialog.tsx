@@ -32,12 +32,14 @@ export function ShareBookingDialog({
   onOpenChange,
   bookingId,
   courtId,
+  courtName,
   dateStr,
   startTime,
   endTime,
   opponentName,
   inviterName,
 }: ShareBookingDialogProps) {
+  const courtLabel = courtName || `Court ${courtId}`;
   const [tab, setTab] = useState("email");
   const [email, setEmail] = useState("");
   const [name, setName] = useState(opponentName || "");

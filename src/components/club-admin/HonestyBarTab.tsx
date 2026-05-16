@@ -216,6 +216,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       image_url: form.image_url.trim() || null,
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
       cost_price: parseFloat(form.cost_price) || 0,
+      stock_qty: parseInt(form.opening_stock) || 0,
     });
     if (error) toast.error(error.message);
     else {

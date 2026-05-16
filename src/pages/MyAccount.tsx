@@ -360,12 +360,9 @@ export default function MyAccount() {
       if (error) throw error;
     },
     onSuccess: () => {
+      if (topUpMethod === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
-      toast.success(
-        topUpMethod === "eft"
-          ? "EFT top-up request submitted. Upload proof of payment for faster processing."
-          : "Card top-up confirmed! Your balance has been updated."
-      );
+      toast.success("EFT top-up request submitted. Upload proof of payment for faster processing.");
       setTopUpOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Failed to submit top-up"),
@@ -450,6 +447,7 @@ export default function MyAccount() {
       }
     },
     onSuccess: (_, vars) => {
+      if (vars.method === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
       if (vars.method === "eft") {
@@ -530,6 +528,7 @@ export default function MyAccount() {
       }
     },
     onSuccess: (_, vars) => {
+      if (vars.method === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["my-bar-tab"] });
       queryClient.invalidateQueries({ queryKey: ["bar-tab-unsettled"] });

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
@@ -30,8 +30,6 @@ export default function MyAccount() {
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
   const { data: clubSecrets } = useClubSecrets(club?.id);
-  const navigate = useNavigate();
-
   const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
     queryKey: ["account-club-member", club?.id, activeMember?.id],
     queryFn: async () => {
@@ -256,12 +254,11 @@ export default function MyAccount() {
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );
 
-  // Launch Yoco checkout for fee payment, top-up, or bar tab
+  // Launch Yoco checkout for fee payment or account top-up
   const startYocoCheckout = async (opts: {
     amount: number;
-    purpose: "fee" | "topup" | "bartab";
+    purpose: "fee" | "topup";
     fee_ids?: string[];
-    bar_tab_entry_ids?: string[];
     description?: string;
   }) => {
     if (!clubId || !clubMemberId) throw new Error("No club membership found.");
@@ -276,7 +273,6 @@ export default function MyAccount() {
         amount: opts.amount,
         purpose: opts.purpose,
         fee_ids: opts.fee_ids || [],
-        bar_tab_entry_ids: opts.bar_tab_entry_ids || [],
         description: opts.description,
         return_url,
       },

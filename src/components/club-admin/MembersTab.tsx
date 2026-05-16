@@ -349,25 +349,6 @@ export function MembersTab({ clubId }: { clubId: string }) {
     enabled: memberIds.length > 0,
   });
 
-  // Outstanding (unsettled) honesty bar balance per member
-  const { data: barTabRows = [] } = useQuery({
-    queryKey: ["club-member-bar-outstanding", clubId, memberIds.join(",")],
-    enabled: memberIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await fromExt("bar_tab_entries")
-        .select("club_member_id, total")
-        .eq("club_id", clubId)
-        .eq("settled", false)
-        .in("club_member_id", memberIds);
-      if (error) throw error;
-      return (data || []) as Array<{ club_member_id: string; total: number }>;
-    },
-  });
-  const barOutstandingByMember = new Map<string, number>();
-  for (const r of barTabRows) {
-    barOutstandingByMember.set(r.club_member_id, (barOutstandingByMember.get(r.club_member_id) || 0) + Number(r.total || 0));
-  }
-
   // Build the lookup of association abbreviations / names / scope (so we know
   // which ones are "internal" — those use the member's club number).
   const assocById = new Map<string, { name: string; abbreviation: string | null; scope: string | null }>();

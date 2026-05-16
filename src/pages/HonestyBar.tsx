@@ -164,6 +164,19 @@ export default function HonestyBar() {
       <PageHeader title="Honesty Bar" backTo="/" />
 
       <div className="px-4 space-y-4 mt-2">
+        {isAdmin && (
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setVisitorSaleOpen(true)}
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              Visitor sale (cash / card / EFT)
+            </Button>
+          </div>
+        )}
         {/* Item catalog */}
         {groupedByCategory.map(group => {
           const Icon = group.icon;

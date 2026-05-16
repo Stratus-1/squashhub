@@ -136,9 +136,10 @@ export default function HonestyBar() {
     }
   };
 
+  const inStock = items.filter(i => i.stock_qty > 0);
   const groupedByCategory = CATEGORIES.map(cat => ({
     ...cat,
-    items: items.filter(i => i.category === cat.value),
+    items: inStock.filter(i => i.category === cat.value),
   })).filter(g => g.items.length > 0);
 
   if (!clubId || !club?.honesty_bar_enabled) {
@@ -168,44 +169,38 @@ export default function HonestyBar() {
                 <Icon className="w-4 h-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold">{group.label}</h3>
               </div>
-              <div className="space-y-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                 {group.items.map(item => {
                   const qty = cart[item.id] || 0;
-                  const outOfStock = item.stock_qty <= 0;
                   return (
                     <Card
                       key={item.id}
-                      className={`p-2 flex items-center gap-3 transition-colors ${outOfStock ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-accent/50"}`}
-                      onClick={() => !outOfStock && updateCart(item.id, 1)}
+                      className={`relative p-1.5 flex flex-col items-center gap-1 cursor-pointer hover:bg-accent/50 transition-colors ${qty > 0 ? "ring-2 ring-primary" : ""}`}
+                      onClick={() => updateCart(item.id, 1)}
                     >
-                      <div className="w-10 h-10 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                      <div className="w-full aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
-                          <span className="text-lg">{CATEGORY_ICONS[item.category] || "📦"}</span>
+                          <span className="text-2xl">{CATEGORY_ICONS[item.category] || "📦"}</span>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          R{item.price.toFixed(2)}
-                          {outOfStock && <span className="ml-1.5 text-destructive font-medium">• Out of stock</span>}
-                        </p>
-                      </div>
-                      {!outOfStock && (
-                        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                          {qty > 0 && (
-                            <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateCart(item.id, -1)}>
-                              <Minus className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                          {qty > 0 && (
-                            <span className="w-6 text-center text-sm font-medium">{qty}</span>
-                          )}
-                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateCart(item.id, 1)}>
-                            <Plus className="w-3.5 h-3.5" />
+                      <p className="text-[11px] font-medium leading-tight text-center truncate w-full">{item.name}</p>
+                      <p className="text-[11px] text-muted-foreground leading-none">R{item.price.toFixed(2)}</p>
+                      {qty > 0 && (
+                        <>
+                          <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                            {qty}
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="absolute top-1 left-1 h-5 w-5"
+                            onClick={(e) => { e.stopPropagation(); updateCart(item.id, -1); }}
+                          >
+                            <Minus className="w-3 h-3" />
                           </Button>
-                        </div>
+                        </>
                       )}
                     </Card>
                   );

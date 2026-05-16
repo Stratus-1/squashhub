@@ -436,6 +436,7 @@ export default function MyAccount() {
 
   const unpaidFees = (fees || []).filter((f: any) => !f.paid);
   const paidFees = (fees || []).filter((f: any) => f.paid);
+  const isAccountPayment = creditBalance < 0 && Number(topUpAmount) === Math.abs(creditBalance);
   const selectedFeeTotal = unpaidFees
     .filter((f: any) => selectedFeeIds.includes(f.id))
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
@@ -659,8 +660,8 @@ export default function MyAccount() {
       <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Top Up Credit</DialogTitle>
-            <DialogDescription>Add funds to your account via EFT or card.</DialogDescription>
+            <DialogTitle>{isAccountPayment ? "Pay Account" : "Top Up Credit"}</DialogTitle>
+            <DialogDescription>{isAccountPayment ? "Pay your outstanding account balance via EFT or card." : "Add funds to your account via EFT or card."}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
@@ -726,7 +727,7 @@ export default function MyAccount() {
               {topUpMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : null}
-              Submit {topUpMethod.toUpperCase()} Top-Up · R{Number(topUpAmount || 0).toFixed(2)}
+              {isAccountPayment ? "Pay" : "Submit"} {topUpMethod.toUpperCase()} {isAccountPayment ? "Payment" : "Top-Up"} · R{Number(topUpAmount || 0).toFixed(2)}
             </Button>
           </div>
         </DialogContent>

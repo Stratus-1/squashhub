@@ -257,6 +257,18 @@ export function ReconcileFeesDialog({
                       {member.club_member_number && (
                         <Badge variant="outline" className="text-[10px] font-mono">#{member.club_member_number}</Badge>
                       )}
+                      <select
+                        value={member.fee_category_id || ""}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleCategoryChange(member, e.target.value)}
+                        className="h-6 text-[11px] border rounded px-1 bg-background max-w-[140px]"
+                        title="Membership fee category"
+                      >
+                        <option value="">— category —</option>
+                        {feeCategories.map(c => (
+                          <option key={c.id} value={c.id}>{c.name} ({fmt(c.annual_fee)})</option>
+                        ))}
+                      </select>
                       <span className="text-[11px] text-muted-foreground tabular-nums">{memFees.length} fees</span>
                       <span className="text-[11px] text-emerald-600 tabular-nums w-20 text-right">{fmt(paid)}</span>
                       <span className={cn("text-[11px] tabular-nums w-20 text-right font-semibold", outstanding > 0 ? "text-amber-600" : "text-muted-foreground")}>

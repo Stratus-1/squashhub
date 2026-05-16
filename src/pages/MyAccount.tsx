@@ -181,6 +181,21 @@ export default function MyAccount() {
       });
     }
 
+    // Inject unsettled honesty bar entries as charges (they reduce available balance)
+    for (const entry of (barTabEntries as any[])) {
+      const amt = Number(entry.total) || 0;
+      if (amt <= 0) continue;
+      const itemName = entry.bar_items?.name || "Bar item";
+      lines.push({
+        id: `bar-${entry.id}`,
+        date: entry.created_at,
+        description: `Honesty Bar: ${entry.quantity}× ${itemName}`,
+        debit: 0,
+        credit: amt,
+        status: "confirmed",
+      });
+    }
+
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));

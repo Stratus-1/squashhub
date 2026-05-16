@@ -704,11 +704,25 @@ export function MemberOnboardingWizard({
         }
         const wasUnclaimed = !prior?.user_id;
 
+        // For re-claim of a previously-unclaimed imported row, recompute the
+        // bottom slot via the SECURITY DEFINER RPC (RLS would otherwise hide
+        // existing members from this freshly-signed-up user).
+        let bottomLadderPosition: number | null = null;
+        if (wasUnclaimed) {
+          const { data: bp } = await supabase.rpc("next_bottom_ladder_position", {
+            _club_id: clubId,
+            _gender: gender || "",
+          });
+          bottomLadderPosition = typeof bp === "number" ? bp : null;
+        }
+
         let attempt = 0;
         // up to 3 retries on number collision
         while (true) {
           const updatePayload = buildUpdate(finalMemberNumber);
-          if (wasUnclaimed) updatePayload.ladder_position = bottomLadderPosition;
+          if (wasUnclaimed && bottomLadderPosition != null) {
+            updatePayload.ladder_position = bottomLadderPosition;
+          }
           const { error: memErr } = await fromExt("club_members")
             .update(updatePayload)
             .eq("id", existingMember.id);
@@ -723,6 +737,8 @@ export function MemberOnboardingWizard({
       } else {
         let attempt = 0;
         while (true) {
+          // ladder_position omitted → set_default_ladder_rank trigger (SECURITY
+          // DEFINER) assigns the next bottom slot of the right gender group.
           const { error: memErr } = await fromExt("club_members")
             .insert({
               ...memberData,
@@ -730,7 +746,6 @@ export function MemberOnboardingWizard({
               club_id: clubId,
               user_id: user.id,
               role: "member",
-              ladder_position: bottomLadderPosition,
             });
           if (!memErr) break;
           if (isMemberNumberConflict(memErr) && attempt < 3) {

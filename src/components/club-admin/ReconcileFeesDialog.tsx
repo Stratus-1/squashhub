@@ -169,6 +169,48 @@ export function ReconcileFeesDialog({
     });
   };
 
+  const handleCategoryChange = async (member: MemberRow, newCategoryId: string) => {
+    const cat = feeCategories.find(c => c.id === newCategoryId);
+    try {
+      const { error: mErr } = await fromExt("club_members")
+        .update({ fee_category_id: newCategoryId || null })
+        .eq("id", member.id);
+      if (mErr) throw mErr;
+
+      // Update existing "club" fee record for current season to reflect new category
+      if (cat) {
+        const memFees = feesByMember.get(member.id) || [];
+        const clubFee = memFees.find(f => f.fee_type === "club");
+        if (clubFee) {
+          const { error: fErr } = await fromExt("club_member_fee_payments")
+            .update({
+              amount: cat.annual_fee,
+              fee_label: `Club – ${cat.name}`,
+            })
+            .eq("id", clubFee.id);
+          if (fErr) throw fErr;
+        } else {
+          // No club fee yet — create one as outstanding
+          const { error: iErr } = await fromExt("club_member_fee_payments").insert({
+            club_member_id: member.id,
+            fee_type: "club",
+            fee_label: `Club – ${cat.name}`,
+            amount: cat.annual_fee,
+            paid: false,
+            season_year: new Date().getFullYear(),
+          });
+          if (iErr) throw iErr;
+        }
+      }
+      toast.success(`Category updated for ${member.name}`);
+      qc.invalidateQueries({ queryKey: ["reconcile-members", clubId] });
+      qc.invalidateQueries({ queryKey: ["reconcile-fees"] });
+      qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update category");
+    }
+  };
+
   const handleSave = async () => {
     const changes = Object.entries(overrides).filter(([id, paid]) => {
       const f = fees.find(ff => ff.id === id);

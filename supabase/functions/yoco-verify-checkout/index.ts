@@ -131,37 +131,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // For bartab purpose, settle the bar tab entries and post GL
-    if (session.purpose === "bartab" && Array.isArray(session.bar_tab_entry_ids) && session.bar_tab_entry_ids.length) {
-      for (const entryId of session.bar_tab_entry_ids) {
-        await admin
-          .from("bar_tab_entries")
-          .update({ settled: true, settled_at: new Date().toISOString() })
-          .eq("id", entryId);
-      }
-      const journalRef = crypto.randomUUID();
-      await admin.from("club_journal_entries").insert([
-        {
-          club_id: session.club_id,
-          journal_ref: journalRef,
-          account: "bank",
-          debit: amount,
-          credit: 0,
-          description,
-          club_member_id: session.club_member_id,
-        },
-        {
-          club_id: session.club_id,
-          journal_ref: journalRef,
-          account: "debtors",
-          debit: 0,
-          credit: amount,
-          description,
-          club_member_id: session.club_member_id,
-        },
-      ]);
-    }
-
     return json({ status: "completed", amount });
   } catch (e: any) {
     console.error("yoco-verify-checkout error:", e);

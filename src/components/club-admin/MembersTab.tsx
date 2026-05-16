@@ -194,13 +194,12 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, barOutstanding, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
+function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations, onEdit, onDelete, onTogglePaid, onCreateFee, onToggleAdmin, onAssignNumber, numberLabel }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
   delegateTitle?: string | null;
   affiliations: AffiliationBadgeInfo[];
-  barOutstanding?: number;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePaid: (feeId: string, paid: boolean) => void;
@@ -295,11 +294,6 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
           );
         })}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
-        {barOutstanding && barOutstanding > 0 ? (
-          <Badge variant="destructive" className="text-[9px] px-1 py-0" title="Outstanding honesty bar balance">
-            🍺 R{barOutstanding.toFixed(2)}
-          </Badge>
-        ) : null}
       </div>
 
       {/* Row 3: Fees receivable from member */}
@@ -354,25 +348,6 @@ export function MembersTab({ clubId }: { clubId: string }) {
     },
     enabled: memberIds.length > 0,
   });
-
-  // Outstanding (unsettled) honesty bar balance per member
-  const { data: barTabRows = [] } = useQuery({
-    queryKey: ["club-member-bar-outstanding", clubId, memberIds.join(",")],
-    enabled: memberIds.length > 0,
-    queryFn: async () => {
-      const { data, error } = await fromExt("bar_tab_entries")
-        .select("club_member_id, total")
-        .eq("club_id", clubId)
-        .eq("settled", false)
-        .in("club_member_id", memberIds);
-      if (error) throw error;
-      return (data || []) as Array<{ club_member_id: string; total: number }>;
-    },
-  });
-  const barOutstandingByMember = new Map<string, number>();
-  for (const r of barTabRows) {
-    barOutstandingByMember.set(r.club_member_id, (barOutstandingByMember.get(r.club_member_id) || 0) + Number(r.total || 0));
-  }
 
   // Build the lookup of association abbreviations / names / scope (so we know
   // which ones are "internal" — those use the member's club number).
@@ -875,7 +850,6 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     payableFees={computeClubPayableFees(m, feePayments)}
                     delegateTitle={getDelegateTitle(m.id)}
                     affiliations={affiliationsByMember.get(m.id) || []}
-                    barOutstanding={barOutstandingByMember.get(m.id) || 0}
                     onEdit={() => setEditMember(m)}
                     onDelete={() => handleDelete(m.id)}
                     onTogglePaid={handleTogglePaid}

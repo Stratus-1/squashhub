@@ -8,8 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight, Wine } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
@@ -30,8 +30,6 @@ export default function MyAccount() {
   const queryClient = useQueryClient();
   const club = clubData?.club as any;
   const { data: clubSecrets } = useClubSecrets(club?.id);
-  const navigate = useNavigate();
-
   const { data: activeClubMember, isLoading: activeClubMemberLoading } = useQuery({
     queryKey: ["account-club-member", club?.id, activeMember?.id],
     queryFn: async () => {
@@ -95,24 +93,6 @@ export default function MyAccount() {
     },
     enabled: !!clubMemberId,
   });
-
-  // Honesty bar unsettled entries
-  const { data: barTabEntries = [], isLoading: barTabLoading } = useQuery({
-    queryKey: ["my-bar-tab", clubMemberId, clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("bar_tab_entries")
-        .select("*, bar_items:bar_item_id(name, category)")
-        .eq("club_member_id", clubMemberId!)
-        .eq("club_id", clubId!)
-        .eq("settled", false)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!clubMemberId && !!clubId && !!club?.honesty_bar_enabled,
-  });
-
-  const barTabTotal = (barTabEntries as any[]).reduce((s: number, e: any) => s + Number(e.total), 0);
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
@@ -178,21 +158,6 @@ export default function MyAccount() {
       });
     }
 
-    // Inject unsettled honesty bar entries as charges (they reduce available balance)
-    for (const entry of (barTabEntries as any[])) {
-      const amt = Number(entry.total) || 0;
-      if (amt <= 0) continue;
-      const itemName = entry.bar_items?.name || "Bar item";
-      lines.push({
-        id: `bar-${entry.id}`,
-        date: entry.created_at,
-        description: `Honesty Bar: ${entry.quantity}× ${itemName}`,
-        debit: 0,
-        credit: amt,
-        status: "confirmed",
-      });
-    }
-
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));
@@ -239,23 +204,12 @@ export default function MyAccount() {
     return statementLines[statementLines.length - 1]?.balance || 0;
   })();
 
-  // Available "cash" in wallet (top-ups minus already-settled items),
-  // i.e. how much can still be spent paying outstanding fees/bar via credit.
+  // Available "cash" in wallet (top-ups minus confirmed account charges),
+  // i.e. how much can still be spent paying outstanding fees via credit.
   const unpaidFeesTotal = (fees || [])
     .filter((f: any) => !f.paid)
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
-  const availableCash = creditBalance + unpaidFeesTotal + barTabTotal;
-
-  // If navigated with ?payBar=1, open the top-up dialog pre-filled with bar total
-  const topUpAutoOpened = useRef(false);
-  useEffect(() => {
-    if (searchParams.get("payBar") === "1" && !topUpAutoOpened.current && barTabTotal > 0) {
-      topUpAutoOpened.current = true;
-      setTopUpAmount(barTabTotal.toFixed(2));
-      setTopUpOpen(true);
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, barTabTotal]);
+  const availableCash = creditBalance + unpaidFeesTotal;
 
   // Verify Yoco checkout when redirected back from Yoco
   const yocoVerifiedRef = useRef<string | null>(null);
@@ -300,12 +254,11 @@ export default function MyAccount() {
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );
 
-  // Launch Yoco checkout for fee payment, top-up, or bar tab
+  // Launch Yoco checkout for fee payment or account top-up
   const startYocoCheckout = async (opts: {
     amount: number;
-    purpose: "fee" | "topup" | "bartab";
+    purpose: "fee" | "topup";
     fee_ids?: string[];
-    bar_tab_entry_ids?: string[];
     description?: string;
   }) => {
     if (!clubId || !clubMemberId) throw new Error("No club membership found.");
@@ -320,7 +273,6 @@ export default function MyAccount() {
         amount: opts.amount,
         purpose: opts.purpose,
         fee_ids: opts.fee_ids || [],
-        bar_tab_entry_ids: opts.bar_tab_entry_ids || [],
         description: opts.description,
         return_url,
       },
@@ -484,6 +436,7 @@ export default function MyAccount() {
 
   const unpaidFees = (fees || []).filter((f: any) => !f.paid);
   const paidFees = (fees || []).filter((f: any) => f.paid);
+  const isAccountPayment = creditBalance < 0 && Number(topUpAmount) === Math.abs(creditBalance);
   const selectedFeeTotal = unpaidFees
     .filter((f: any) => selectedFeeIds.includes(f.id))
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
@@ -615,60 +568,6 @@ export default function MyAccount() {
         )}
       </motion.div>
 
-      {/* Honesty Bar Tab */}
-      {club?.honesty_bar_enabled && (
-        <motion.div
-          className="px-4 mt-4"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.07 }}
-        >
-          <h2 className="text-sm font-semibold font-heading mb-2 flex items-center gap-1.5">
-            <Wine className="w-3.5 h-3.5 text-primary" />
-            Honesty Bar
-          </h2>
-          {barTabLoading ? (
-            <Card className="p-4 flex justify-center">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            </Card>
-          ) : barTabTotal > 0 ? (
-            <Card className="p-3 space-y-3 border-destructive/20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">{(barTabEntries as any[]).length} unsettled item{(barTabEntries as any[]).length !== 1 ? "s" : ""}</p>
-                  <p className="text-lg font-bold text-destructive">R{barTabTotal.toFixed(2)}</p>
-                </div>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/honesty-bar")}>
-                  <Wine className="w-3.5 h-3.5" />
-                  View Tab
-                </Button>
-              </div>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {(barTabEntries as any[]).slice(0, 5).map((e: any) => (
-                  <div key={e.id} className="flex justify-between text-xs text-muted-foreground">
-                    <span>{e.quantity}× {e.bar_items?.name || "Item"}</span>
-                    <span>R{Number(e.total).toFixed(2)}</span>
-                  </div>
-                ))}
-                {(barTabEntries as any[]).length > 5 && (
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    +{(barTabEntries as any[]).length - 5} more items
-                  </p>
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground text-center">
-                Bar items are charged to your account — pay your account balance above.
-              </p>
-            </Card>
-          ) : (
-            <Card className="p-3 text-center text-sm text-muted-foreground">
-              <CheckCircle2 className="w-4 h-4 text-green-500 mx-auto mb-1" />
-              No outstanding bar tab 🎉
-            </Card>
-          )}
-        </motion.div>
-      )}
-
       {/* Paid Fees */}
       {paidFees.length > 0 && (
         <motion.div
@@ -761,8 +660,8 @@ export default function MyAccount() {
       <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Top Up Credit</DialogTitle>
-            <DialogDescription>Add funds to your account via EFT or card.</DialogDescription>
+            <DialogTitle>{isAccountPayment ? "Pay Account" : "Top Up Credit"}</DialogTitle>
+            <DialogDescription>{isAccountPayment ? "Pay your outstanding account balance via EFT or card." : "Add funds to your account via EFT or card."}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 mt-2">
@@ -828,7 +727,7 @@ export default function MyAccount() {
               {topUpMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : null}
-              Submit {topUpMethod.toUpperCase()} Top-Up · R{Number(topUpAmount || 0).toFixed(2)}
+              {isAccountPayment ? "Pay" : "Submit"} {topUpMethod.toUpperCase()} {isAccountPayment ? "Payment" : "Top-Up"} · R{Number(topUpAmount || 0).toFixed(2)}
             </Button>
           </div>
         </DialogContent>

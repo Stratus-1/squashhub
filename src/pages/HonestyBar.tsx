@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart, Check } from "lucide-react";
+import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubContext } from "@/contexts/ClubContext";
@@ -51,7 +50,6 @@ const CATEGORIES = [
 ];
 
 export default function HonestyBar() {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const { club } = useClubContext();
   const { activeMember } = useMemberContext();
@@ -91,7 +89,6 @@ export default function HonestyBar() {
     enabled: !!clubId && !!memberId,
   });
 
-  const unsettledTotal = myTab.filter(e => !e.settled).reduce((sum, e) => sum + e.total, 0);
   const cartTotal = Object.entries(cart).reduce((sum, [itemId, qty]) => {
     const item = items.find(i => i.id === itemId);
     return sum + (item ? item.price * qty : 0);
@@ -162,24 +159,6 @@ export default function HonestyBar() {
       <PageHeader title="Honesty Bar" backTo="/" />
 
       <div className="px-4 space-y-4 mt-2">
-        {/* Outstanding balance */}
-        {unsettledTotal > 0 && (
-          <Card className="p-3 bg-destructive/10 border-destructive/30">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Outstanding Balance</span>
-              <Badge variant="destructive">R{unsettledTotal.toFixed(2)}</Badge>
-            </div>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="w-full mt-2 gap-1.5"
-              onClick={() => navigate("/my-account?payBar=1")}
-            >
-              Pay Now
-            </Button>
-          </Card>
-        )}
-
         {/* Item catalog */}
         {groupedByCategory.map(group => {
           const Icon = group.icon;
@@ -276,11 +255,7 @@ export default function HonestyBar() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-sm font-medium">R{entry.total.toFixed(2)}</span>
-                    {entry.settled ? (
-                      <Badge variant="secondary" className="text-[10px]"><Check className="w-3 h-3 mr-0.5" />Paid</Badge>
-                    ) : (
-                      <Badge variant="destructive" className="text-[10px]">Owing</Badge>
-                    )}
+                    <Badge variant="secondary" className="text-[10px]">On account</Badge>
                   </div>
                 </Card>
               ))}

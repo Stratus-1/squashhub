@@ -39,7 +39,7 @@ export function ShareBookingDialog({
   opponentName,
   inviterName,
 }: ShareBookingDialogProps) {
-  const courtLabel = courtName || `Court ${courtId}`;
+  const courtLabel = courtName || `${courtLabel}`;
   const [tab, setTab] = useState("email");
   const [email, setEmail] = useState("");
   const [name, setName] = useState(opponentName || "");
@@ -85,7 +85,7 @@ export function ShareBookingDialog({
       const siteUrl = window.location.origin;
       const msg = encodeURIComponent(
         `🏸 You're invited to play squash!\n\n` +
-        `${inviterName || "A player"} has booked Court ${courtId} on ${dateStr} from ${startTime} to ${endTime}.\n\n` +
+        `${inviterName || "A player"} has booked ${courtLabel} on ${dateStr} from ${startTime} to ${endTime}.\n\n` +
         `Open the app: ${siteUrl}`
       );
       const waUrl = data?.whatsappUrl || `https://wa.me/?text=${msg}`;
@@ -115,7 +115,7 @@ export function ShareBookingDialog({
 
         <div className="rounded-md border p-3 mb-2">
           <p className="text-sm font-medium">
-            Court {courtId} · {dateStr}
+            {courtLabel} · {dateStr}
           </p>
           <p className="text-xs text-muted-foreground">
             {startTime} – {endTime}

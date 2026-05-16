@@ -695,7 +695,7 @@ export default function MyAccount() {
                 </p>
               </div>
             </div>
-            <Button size="sm" onClick={() => setTopUpOpen(true)} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => { setTopUpAmount("100"); setTopUpOpen(true); }} className="gap-1.5">
               <Wallet className="w-3.5 h-3.5" />
               Top Up
             </Button>
@@ -708,6 +708,41 @@ export default function MyAccount() {
               </p>
             </div>
           )}
+
+          {/* Consolidated payment actions */}
+          {(() => {
+            const outstanding = unpaidFeesTotal + barTabTotal;
+            const hasOutstanding = outstanding > 0;
+            const canApplyCredit = hasOutstanding && availableCash > 0;
+            const owing = creditBalance < 0 ? Math.abs(creditBalance) : 0;
+            if (!hasOutstanding) return null;
+            return (
+              <div className="mt-3 space-y-2">
+                {canApplyCredit && (
+                  <Button
+                    className="w-full gap-2"
+                    disabled={applyCreditMutation.isPending}
+                    onClick={() => applyCreditMutation.mutate()}
+                  >
+                    {applyCreditMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
+                    Apply credit to outstanding · R{Math.min(availableCash, outstanding).toFixed(2)}
+                  </Button>
+                )}
+                {owing > 0 && (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => { setTopUpAmount(owing.toFixed(2)); setTopUpOpen(true); }}
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    Pay outstanding · R{owing.toFixed(2)}
+                  </Button>
+                )}
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Payments are applied to your oldest fees first, then any bar tab.
+                </p>
+              </div>
+            );
+          })()}
         </Card>
       </motion.div>
 

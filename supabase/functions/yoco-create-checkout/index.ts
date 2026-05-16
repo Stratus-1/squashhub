@@ -33,16 +33,17 @@ Deno.serve(async (req) => {
       club_id,
       club_member_id,
       amount,
-      purpose,        // 'fee' | 'topup'
+      purpose,        // 'fee' | 'topup' | 'bartab'
       fee_ids = [],
+      bar_tab_entry_ids = [],
       description,
-      return_url,     // where to send user after Yoco
+      return_url,
     } = body || {};
 
     if (!club_id || !club_member_id || !amount || !purpose || !return_url) {
       return json({ error: "Missing required fields" }, 400);
     }
-    if (!["fee", "topup"].includes(purpose)) {
+    if (!["fee", "topup", "bartab"].includes(purpose)) {
       return json({ error: "Invalid purpose" }, 400);
     }
     const amt = Number(amount);
@@ -50,7 +51,6 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Verify member belongs to user & club
     const { data: member, error: memberErr } = await admin
       .from("club_members")
       .select("id, club_id, user_id")
@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
       return json({ error: "Member not found or not yours" }, 403);
     }
 
-    // Load club gateway settings
     const { data: club } = await admin
       .from("clubs")
       .select("id, name, payment_gateway")
@@ -81,7 +80,6 @@ Deno.serve(async (req) => {
       return json({ error: "Yoco secret key not configured" }, 400);
     }
 
-    // Create session row first
     const { data: session, error: sessErr } = await admin
       .from("yoco_payment_sessions")
       .insert({
@@ -91,7 +89,8 @@ Deno.serve(async (req) => {
         amount: amt,
         purpose,
         fee_ids,
-        description: description || (purpose === "topup" ? "Wallet top-up" : "Fee payment"),
+        bar_tab_entry_ids,
+        description: description || (purpose === "topup" ? "Wallet top-up" : purpose === "bartab" ? "Bar tab payment" : "Fee payment"),
         status: "created",
       })
       .select("id")

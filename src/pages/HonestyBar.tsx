@@ -53,9 +53,13 @@ const CATEGORIES = [
 export default function HonestyBar() {
   const qc = useQueryClient();
   const { club } = useClubContext();
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const clubId = club?.id;
   const memberId = activeMember?.id;
+
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);

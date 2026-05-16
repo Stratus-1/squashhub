@@ -19,6 +19,7 @@ interface ShareBookingDialogProps {
   onOpenChange: (open: boolean) => void;
   bookingId: string;
   courtId: number;
+  courtName?: string;
   dateStr: string;
   startTime: string;
   endTime: string;

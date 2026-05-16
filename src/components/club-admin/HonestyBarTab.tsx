@@ -188,9 +188,9 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "" });
+  const [form, setForm] = useState({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0" });
 
-  const resetForm = () => setForm({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "" });
+  const resetForm = () => setForm({ name: "", price: "", category: "drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0" });
 
   const openEdit = (item: BarItem) => {
     setEditItem(item);

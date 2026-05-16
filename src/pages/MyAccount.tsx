@@ -543,6 +543,85 @@ export default function MyAccount() {
     onError: (e: any) => toast.error(e.message || "Payment failed"),
   });
 
+  // Apply available wallet credit to outstanding fees (oldest first), then bar tab.
+  // Centralized "settle from credit" action used from the wallet card.
+  const applyCreditMutation = useMutation({
+    mutationFn: async () => {
+      if (!clubId || !clubMemberId) throw new Error("No club membership found.");
+      let cash = availableCash;
+      if (cash <= 0) throw new Error("No available credit to apply.");
+      const unpaidSorted = [...(fees || [])]
+        .filter((f: any) => !f.paid)
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const barSorted = [...(barTabEntries as any[])]
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      // Allocate to fees first
+      for (const fee of unpaidSorted) {
+        if (cash <= 0) break;
+        const owed = Number(fee.amount);
+        const pay = Math.min(cash, owed);
+        cash -= pay;
+        await fromExt("member_credit_transactions").insert({
+          club_id: clubId,
+          club_member_id: clubMemberId,
+          amount: pay,
+          type: "debit",
+          method: "credit",
+          description: pay < owed
+            ? `Partial credit applied: ${fee.fee_label}`
+            : `Credit applied: ${fee.fee_label}`,
+          status: "confirmed",
+          confirmed_at: new Date().toISOString(),
+        });
+        if (pay >= owed) {
+          await fromExt("club_member_fee_payments")
+            .update({ paid: true, paid_at: new Date().toISOString() })
+            .eq("id", fee.id);
+        } else {
+          await fromExt("club_member_fee_payments")
+            .update({ amount: owed - pay })
+            .eq("id", fee.id);
+        }
+      }
+
+      // Then allocate remaining cash to bar entries (whole entries only)
+      for (const entry of barSorted) {
+        const amt = Number(entry.total);
+        if (cash < amt) continue;
+        cash -= amt;
+        const desc = `Credit applied: Honesty Bar (${entry.quantity}× ${entry.bar_items?.name || "item"})`;
+        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
+          club_id: clubId,
+          club_member_id: clubMemberId,
+          amount: amt,
+          type: "debit",
+          method: "credit",
+          description: desc,
+          status: "confirmed",
+          confirmed_at: new Date().toISOString(),
+        }).select("id").single();
+        if (txErr) throw txErr;
+        const journalRef = crypto.randomUUID();
+        await fromExt("club_journal_entries").insert([
+          { club_id: clubId, journal_ref: journalRef, account: "bank" as any, debit: amt, credit: 0, description: desc, club_member_id: clubMemberId, transaction_id: txData.id },
+          { club_id: clubId, journal_ref: journalRef, account: "debtors" as any, debit: 0, credit: amt, description: desc, club_member_id: clubMemberId, transaction_id: txData.id },
+        ]);
+        await fromExt("bar_tab_entries")
+          .update({ settled: true, settled_at: new Date().toISOString() })
+          .eq("id", entry.id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["my-bar-tab"] });
+      queryClient.invalidateQueries({ queryKey: ["bar-tab-unsettled"] });
+      toast.success("Outstanding items settled from your credit.");
+    },
+    onError: (e: any) => toast.error(e.message || "Could not apply credit"),
+  });
+
   const copyBankDetails = () => {
     const details = [
       clubSecrets?.bank_name && `Bank: ${clubSecrets?.bank_name}`,
@@ -616,7 +695,7 @@ export default function MyAccount() {
                 </p>
               </div>
             </div>
-            <Button size="sm" onClick={() => setTopUpOpen(true)} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => { setTopUpAmount("100"); setTopUpOpen(true); }} className="gap-1.5">
               <Wallet className="w-3.5 h-3.5" />
               Top Up
             </Button>
@@ -629,6 +708,41 @@ export default function MyAccount() {
               </p>
             </div>
           )}
+
+          {/* Consolidated payment actions */}
+          {(() => {
+            const outstanding = unpaidFeesTotal + barTabTotal;
+            const hasOutstanding = outstanding > 0;
+            const canApplyCredit = hasOutstanding && availableCash > 0;
+            const owing = creditBalance < 0 ? Math.abs(creditBalance) : 0;
+            if (!hasOutstanding) return null;
+            return (
+              <div className="mt-3 space-y-2">
+                {canApplyCredit && (
+                  <Button
+                    className="w-full gap-2"
+                    disabled={applyCreditMutation.isPending}
+                    onClick={() => applyCreditMutation.mutate()}
+                  >
+                    {applyCreditMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
+                    Apply credit to outstanding · R{Math.min(availableCash, outstanding).toFixed(2)}
+                  </Button>
+                )}
+                {owing > 0 && (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => { setTopUpAmount(owing.toFixed(2)); setTopUpOpen(true); }}
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    Pay outstanding · R{owing.toFixed(2)}
+                  </Button>
+                )}
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Payments are applied to your oldest fees first, then any bar tab.
+                </p>
+              </div>
+            );
+          })()}
         </Card>
       </motion.div>
 
@@ -652,45 +766,19 @@ export default function MyAccount() {
           <div className="space-y-1.5">
             {unpaidFees.map((fee: any) => (
               <Card key={fee.id} className="p-3 flex items-center gap-3">
-                <Checkbox
-                  checked={selectedFeeIds.includes(fee.id)}
-                  onCheckedChange={(checked) => {
-                    setSelectedFeeIds((prev) =>
-                      checked ? [...prev, fee.id] : prev.filter((id) => id !== fee.id)
-                    );
-                  }}
-                />
+                <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                    <p className="text-sm font-medium truncate">{fee.fee_label}</p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground ml-5.5">
-                    R{Number(fee.amount).toFixed(2)}
-                    {fee.season_year && ` · ${fee.season_year}`}
+                  <p className="text-sm font-medium truncate">{fee.fee_label}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {fee.season_year && `${fee.season_year} · `}Owing
                   </p>
                 </div>
+                <span className="text-sm font-semibold tabular-nums shrink-0">R{Number(fee.amount).toFixed(2)}</span>
               </Card>
             ))}
-            {selectedFeeIds.length > 0 && (
-              <Button
-                className="w-full mt-2 gap-2"
-                onClick={() => {
-                  setPayFeeId("batch");
-                  setPayMethod(availableCash >= selectedFeeTotal ? "credit" : "eft");
-                  setPayMode("full");
-                  setPartialAmount("");
-                }}
-              >
-                Make Payment · R{selectedFeeTotal.toFixed(2)}
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            )}
-            {selectedFeeIds.length === 0 && (
-              <p className="text-[11px] text-muted-foreground text-center mt-1">
-                Select fees above to pay
-              </p>
-            )}
+            <p className="text-[11px] text-muted-foreground text-center mt-1">
+              Pay from the wallet above — payments allocate to oldest fees first.
+            </p>
           </div>
         ) : (
           <Card className="p-3 text-center text-sm text-muted-foreground">
@@ -741,16 +829,9 @@ export default function MyAccount() {
                   </p>
                 )}
               </div>
-              <Button
-                className="w-full gap-2"
-                onClick={() => {
-                  setPayBarMethod(availableCash >= barTabTotal ? "credit" : "card");
-                  setPayBarOpen(true);
-                }}
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                Pay Now · R{barTabTotal.toFixed(2)}
-              </Button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Pay from the wallet above — already deducted from your available balance.
+              </p>
             </Card>
           ) : (
             <Card className="p-3 text-center text-sm text-muted-foreground">

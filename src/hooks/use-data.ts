@@ -613,6 +613,21 @@ export function useLadder(clubId?: string) {
         );
       }
 
+      // 3a-bis. Also pull player codes from member_league_registrations (NIL/LS may store
+      // codes here rather than in member_association_affiliations).
+      if (memberIds.length > 0) {
+        const { data: regs } = await fromAny("member_league_registrations")
+          .select("club_member_id, league_association_number")
+          .in("club_member_id", memberIds);
+        for (const row of regs || []) {
+          const code = normalizeNsaCode((row as any).league_association_number);
+          if (!code) continue;
+          const memberId = String((row as any).club_member_id);
+          if (!nsaCodesByMember.has(memberId)) nsaCodesByMember.set(memberId, new Set());
+          nsaCodesByMember.get(memberId)?.add(code);
+        }
+      }
+
       // 3b. Pull internal-platform league results (NIL, LS, and any other non-NSA platform
       // associations stored in our DB). NSA stats are sourced from nsa-proxy above; everything
       // else is recorded directly via league_match_results.
@@ -620,30 +635,55 @@ export function useLadder(clubId?: string) {
       for (const codes of nsaCodesByMember.values()) {
         for (const c of codes) allMemberCodes.add(c);
       }
-      if (allMemberCodes.size > 0) {
-        const { data: internalResults } = await fromAny("league_match_results")
-          .select(
-            "home_player_code, away_player_code, winner, is_forfeit, fixture:platform_league_fixtures!inner(association:platform_league_associations!inner(external_source))"
-          )
-          .not("winner", "is", null);
 
-        for (const row of internalResults || []) {
-          const platform = (row as any).fixture?.association;
-          if (platform?.external_source) continue; // skip NSA (handled by proxy)
-          const winner = (row as any).winner as "home" | "away" | null;
-          if (!winner) continue;
-          const homeCode = normalizeNsaCode((row as any).home_player_code);
-          const awayCode = normalizeNsaCode((row as any).away_player_code);
-          for (const [code, isHome] of [[homeCode, true], [awayCode, false]] as const) {
-            if (!code || !allMemberCodes.has(code)) continue;
-            const won = (winner === "home" && isHome) || (winner === "away" && !isHome);
-            const existing = liveStatsByCode.get(code) || { wins: 0, losses: 0, matches_played: 0 };
-            liveStatsByCode.set(code, {
+      // Build a name -> memberId lookup so we can also attribute results recorded with a
+      // player code that isn't linked to the member yet (common for NIL/LS where captains
+      // record results before player codes are wired to club_member rows).
+      const normalizeName = (v: unknown) =>
+        String(v || "").toLowerCase().replace(/\s+/g, " ").trim();
+      const memberIdByName = new Map<string, string>();
+      for (const m of members || []) {
+        const n = normalizeName((m as any).name);
+        if (n && !memberIdByName.has(n)) memberIdByName.set(n, m.id);
+      }
+      const liveStatsByMember = new Map<string, { wins: number; losses: number; matches_played: number }>();
+
+      const { data: internalResults } = await fromAny("league_match_results")
+        .select(
+          "home_player_code, away_player_code, home_player_name, away_player_name, winner, is_forfeit, fixture:platform_league_fixtures!inner(association:platform_league_associations!inner(external_source))"
+        )
+        .not("winner", "is", null);
+
+      for (const row of internalResults || []) {
+        const platform = (row as any).fixture?.association;
+        if (platform?.external_source) continue; // skip NSA (handled by proxy)
+        const winner = (row as any).winner as "home" | "away" | null;
+        if (!winner) continue;
+        const sides = [
+          { code: normalizeNsaCode((row as any).home_player_code), name: normalizeName((row as any).home_player_name), isHome: true },
+          { code: normalizeNsaCode((row as any).away_player_code), name: normalizeName((row as any).away_player_name), isHome: false },
+        ];
+        for (const side of sides) {
+          const won = (winner === "home" && side.isHome) || (winner === "away" && !side.isHome);
+          // Prefer code-based attribution if the code is linked to a member
+          if (side.code && allMemberCodes.has(side.code)) {
+            const existing = liveStatsByCode.get(side.code) || { wins: 0, losses: 0, matches_played: 0 };
+            liveStatsByCode.set(side.code, {
               wins: existing.wins + (won ? 1 : 0),
               losses: existing.losses + (won ? 0 : 1),
               matches_played: existing.matches_played + 1,
             });
+            continue;
           }
+          // Fallback: match by player name to a club member
+          const memberId = side.name ? memberIdByName.get(side.name) : undefined;
+          if (!memberId) continue;
+          const existing = liveStatsByMember.get(memberId) || { wins: 0, losses: 0, matches_played: 0 };
+          liveStatsByMember.set(memberId, {
+            wins: existing.wins + (won ? 1 : 0),
+            losses: existing.losses + (won ? 0 : 1),
+            matches_played: existing.matches_played + 1,
+          });
         }
       }
 

@@ -671,22 +671,13 @@ export function MemberOnboardingWizard({
       // vs a genuinely new member joining. Fees only apply to new members.
       const isPreExistingMember = !!existingMember;
 
-      // Always place self-registering members at the bottom of the ladder
-      // (within their gender group). Admins reposition them afterwards based
-      // on league standing or skill assessment. This applies to both brand-new
-      // inserts AND pre-existing imported rows being linked for the first time.
-      const isLadiesGroup = ["female", "ladies", "f"].includes((gender || "").toLowerCase());
-      const { data: bottomRows } = await fromExt("club_members")
-        .select("ladder_position, gender")
-        .eq("club_id", clubId)
-        .not("ladder_position", "is", null);
-      const groupMax = (bottomRows || []).reduce((mx: number, r: any) => {
-        const isLadies = ["female", "ladies", "f"].includes(String(r.gender || "").toLowerCase());
-        if (isLadies !== isLadiesGroup) return mx;
-        const p = Number(r.ladder_position) || 0;
-        return p > mx ? p : mx;
-      }, 0);
-      const bottomLadderPosition = groupMax + 1;
+      // Ladder placement: the `set_default_ladder_rank` DB trigger (SECURITY
+      // DEFINER) will assign the bottom slot of the correct gender group on
+      // INSERT when ladder_position is NULL. For pre-existing imported rows
+      // being claimed for the first time we explicitly null it out so the
+      // trigger logic can be re-run via an UPDATE path below — but here we
+      // rely on it instead of computing client-side (RLS would otherwise
+      // hide other members from a self-registering user and force position 1).
 
       // Helper: detect unique-constraint collision on club_member_number
       // (race when another member registered between auto-allocation and save)
@@ -713,11 +704,25 @@ export function MemberOnboardingWizard({
         }
         const wasUnclaimed = !prior?.user_id;
 
+        // For re-claim of a previously-unclaimed imported row, recompute the
+        // bottom slot via the SECURITY DEFINER RPC (RLS would otherwise hide
+        // existing members from this freshly-signed-up user).
+        let bottomLadderPosition: number | null = null;
+        if (wasUnclaimed) {
+          const { data: bp } = await supabase.rpc("next_bottom_ladder_position", {
+            _club_id: clubId,
+            _gender: gender || "",
+          });
+          bottomLadderPosition = typeof bp === "number" ? bp : null;
+        }
+
         let attempt = 0;
         // up to 3 retries on number collision
         while (true) {
           const updatePayload = buildUpdate(finalMemberNumber);
-          if (wasUnclaimed) updatePayload.ladder_position = bottomLadderPosition;
+          if (wasUnclaimed && bottomLadderPosition != null) {
+            updatePayload.ladder_position = bottomLadderPosition;
+          }
           const { error: memErr } = await fromExt("club_members")
             .update(updatePayload)
             .eq("id", existingMember.id);
@@ -732,6 +737,8 @@ export function MemberOnboardingWizard({
       } else {
         let attempt = 0;
         while (true) {
+          // ladder_position omitted → set_default_ladder_rank trigger (SECURITY
+          // DEFINER) assigns the next bottom slot of the right gender group.
           const { error: memErr } = await fromExt("club_members")
             .insert({
               ...memberData,
@@ -739,7 +746,6 @@ export function MemberOnboardingWizard({
               club_id: clubId,
               user_id: user.id,
               role: "member",
-              ladder_position: bottomLadderPosition,
             });
           if (!memErr) break;
           if (isMemberNumberConflict(memErr) && attempt < 3) {

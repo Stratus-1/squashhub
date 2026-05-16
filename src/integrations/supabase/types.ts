@@ -5035,6 +5035,10 @@ export type Database = {
         }
         Returns: number
       }
+      next_bottom_ladder_position: {
+        Args: { _club_id: string; _gender: string }
+        Returns: number
+      }
       next_league_week_start: {
         Args: { _dow: number; _from: string }
         Returns: string

@@ -372,6 +372,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                         <TableHead>Team</TableHead>
                         <TableHead className="text-center w-14 font-bold">Total</TableHead>
                         <TableHead className="text-center w-12">P</TableHead>
+                        <TableHead className="text-center w-14" title="Average points per game played">Avg</TableHead>
                         {weeks.map((d) => (
                           <TableHead
                             key={d}
@@ -411,6 +412,9 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                             <TableCell className="text-center font-bold">{s.total}</TableCell>
                             <TableCell className="text-center text-xs text-muted-foreground">
                               {s.played}
+                            </TableCell>
+                            <TableCell className="text-center text-xs font-medium">
+                              {s.played > 0 ? (s.total / s.played).toFixed(1) : "—"}
                             </TableCell>
                             {s.weeks.map((w, j) => {
                               if (w.isBye) {

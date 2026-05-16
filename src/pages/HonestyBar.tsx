@@ -276,6 +276,14 @@ export default function HonestyBar() {
         </div>
       </div>
 
+      <QuickVisitorSaleDialog
+        open={visitorSaleOpen}
+        onOpenChange={setVisitorSaleOpen}
+        items={items}
+        clubId={clubId!}
+        loggedByMemberId={memberId}
+      />
+
       <BackToDashboard />
     </div>
   );

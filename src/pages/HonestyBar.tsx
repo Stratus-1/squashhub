@@ -61,8 +61,7 @@ export default function HonestyBar() {
   const [submitting, setSubmitting] = useState(false);
   const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
 
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const [submitting, setSubmitting] = useState(false);
+
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],

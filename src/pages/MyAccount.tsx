@@ -253,7 +253,7 @@ export default function MyAccount() {
   useEffect(() => {
     if (searchParams.get("payBar") === "1" && !barPayAutoOpened.current && barTabTotal > 0) {
       barPayAutoOpened.current = true;
-      setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+      setPayBarMethod(availableCash >= barTabTotal ? "credit" : "card");
       setPayBarOpen(true);
       setSearchParams({}, { replace: true });
     }
@@ -393,7 +393,7 @@ export default function MyAccount() {
         : `Fee payment: ${feeDescription}`;
 
       if (method === "credit") {
-        if (creditBalance < payAmount) {
+        if (availableCash < payAmount) {
           throw new Error("Insufficient credit balance. Please top up first.");
         }
         const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
@@ -677,7 +677,7 @@ export default function MyAccount() {
                 className="w-full mt-2 gap-2"
                 onClick={() => {
                   setPayFeeId("batch");
-                  setPayMethod(creditBalance >= selectedFeeTotal ? "credit" : "eft");
+                  setPayMethod(availableCash >= selectedFeeTotal ? "credit" : "eft");
                   setPayMode("full");
                   setPartialAmount("");
                 }}
@@ -744,7 +744,7 @@ export default function MyAccount() {
               <Button
                 className="w-full gap-2"
                 onClick={() => {
-                  setPayBarMethod(creditBalance >= barTabTotal ? "credit" : "card");
+                  setPayBarMethod(availableCash >= barTabTotal ? "credit" : "card");
                   setPayBarOpen(true);
                 }}
               >
@@ -997,7 +997,7 @@ export default function MyAccount() {
                 variant={payMethod === "credit" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"
                 onClick={() => setPayMethod("credit")}
-                disabled={creditBalance < actualPayAmount}
+                disabled={availableCash < actualPayAmount}
               >
                 <Wallet className="w-4 h-4" />
                 Credit
@@ -1106,7 +1106,7 @@ export default function MyAccount() {
                 variant={payBarMethod === "credit" ? "default" : "outline"}
                 className="gap-1.5 h-12 text-xs flex-col"
                 onClick={() => setPayBarMethod("credit")}
-                disabled={creditBalance < barTabTotal}
+                disabled={availableCash < barTabTotal}
               >
                 <Wallet className="w-4 h-4" />
                 Credit

@@ -1655,7 +1655,7 @@ export default function Bookings() {
           <div className="space-y-3 py-2">
             <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1">
               <p className="text-sm font-semibold">
-                Court {calendarPrompt.courtId} · {calendarPrompt.dateStr}
+                {getCourtName(calendarPrompt.courtId)} · {calendarPrompt.dateStr}
               </p>
               <p className="text-xs text-muted-foreground">
                 {calendarPrompt.startTime} - {calendarPrompt.endTime}

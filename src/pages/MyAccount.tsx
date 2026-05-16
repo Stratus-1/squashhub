@@ -621,6 +621,8 @@ export default function MyAccount() {
     },
     onError: (e: any) => toast.error(e.message || "Could not apply credit"),
   });
+
+  const copyBankDetails = () => {
     const details = [
       clubSecrets?.bank_name && `Bank: ${clubSecrets?.bank_name}`,
       clubSecrets?.bank_account_name && `Account: ${clubSecrets?.bank_account_name}`,

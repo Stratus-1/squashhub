@@ -1655,7 +1655,7 @@ export default function Bookings() {
           <div className="space-y-3 py-2">
             <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1">
               <p className="text-sm font-semibold">
-                Court {calendarPrompt.courtId} · {calendarPrompt.dateStr}
+                {getCourtName(calendarPrompt.courtId)} · {calendarPrompt.dateStr}
               </p>
               <p className="text-xs text-muted-foreground">
                 {calendarPrompt.startTime} - {calendarPrompt.endTime}
@@ -1690,7 +1690,7 @@ export default function Bookings() {
                 className="gap-1.5 rounded-lg"
                 onClick={() => {
                   const msg = encodeURIComponent(
-                    `🏸 Squash booking!\n\nCourt ${calendarPrompt.courtId} on ${calendarPrompt.dateStr} from ${calendarPrompt.startTime} to ${calendarPrompt.endTime}.\n\nJoin me!`
+                    `🏸 Squash booking!\n\n${getCourtName(calendarPrompt.courtId)} on ${calendarPrompt.dateStr} from ${calendarPrompt.startTime} to ${calendarPrompt.endTime}.\n\nJoin me!`
                   );
                   window.open(`https://wa.me/?text=${msg}`, "_blank");
                 }}
@@ -1742,6 +1742,7 @@ export default function Bookings() {
         onOpenChange={(open) => setShareDialog((s) => ({ ...s, open }))}
         bookingId={shareDialog.bookingId}
         courtId={shareDialog.courtId}
+        courtName={getCourtName(shareDialog.courtId)}
         dateStr={shareDialog.dateStr}
         startTime={shareDialog.startTime}
         endTime={shareDialog.endTime}

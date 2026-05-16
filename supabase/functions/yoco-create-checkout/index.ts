@@ -33,9 +33,8 @@ Deno.serve(async (req) => {
       club_id,
       club_member_id,
       amount,
-      purpose,        // 'fee' | 'topup' | 'bartab'
+      purpose,        // 'fee' | 'topup'
       fee_ids = [],
-      bar_tab_entry_ids = [],
       description,
       return_url,
     } = body || {};
@@ -43,7 +42,7 @@ Deno.serve(async (req) => {
     if (!club_id || !club_member_id || !amount || !purpose || !return_url) {
       return json({ error: "Missing required fields" }, 400);
     }
-    if (!["fee", "topup", "bartab"].includes(purpose)) {
+    if (!["fee", "topup"].includes(purpose)) {
       return json({ error: "Invalid purpose" }, 400);
     }
     const amt = Number(amount);
@@ -89,8 +88,7 @@ Deno.serve(async (req) => {
         amount: amt,
         purpose,
         fee_ids,
-        bar_tab_entry_ids,
-        description: description || (purpose === "topup" ? "Wallet top-up" : purpose === "bartab" ? "Bar tab payment" : "Fee payment"),
+        description: description || (purpose === "topup" ? "Wallet top-up" : "Fee payment"),
         status: "created",
       })
       .select("id")

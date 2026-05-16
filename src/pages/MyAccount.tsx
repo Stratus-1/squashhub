@@ -449,7 +449,18 @@ export default function MyAccount() {
 
       const desc = `Honesty Bar payment (${(barTabEntries as any[]).length} items)`;
 
-      // Record transaction
+      if (method === "card") {
+        // Route through Yoco — settlement happens after verify-return
+        await startYocoCheckout({
+          amount: barTabTotal,
+          purpose: "bartab",
+          bar_tab_entry_ids: (barTabEntries as any[]).map((e: any) => e.id),
+          description: desc,
+        });
+        return;
+      }
+
+      // Record transaction (credit or eft)
       const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
         club_id: clubId,
         club_member_id: clubMemberId,
@@ -457,13 +468,13 @@ export default function MyAccount() {
         type: "debit",
         method,
         description: desc,
-        status: method === "card" ? "confirmed" : method === "credit" ? "confirmed" : "pending",
-        confirmed_at: method !== "eft" ? new Date().toISOString() : null,
+        status: method === "credit" ? "confirmed" : "pending",
+        confirmed_at: method === "credit" ? new Date().toISOString() : null,
       }).select("id").single();
       if (txErr) throw txErr;
 
-      // Post GL entries for confirmed payments
-      if (method !== "eft") {
+      // Post GL entries for confirmed payments (credit only — eft waits for admin)
+      if (method === "credit") {
         const journalRef = crypto.randomUUID();
         await fromExt("club_journal_entries").insert([
           {
@@ -487,10 +498,6 @@ export default function MyAccount() {
             transaction_id: txData.id,
           },
         ]);
-      }
-
-      // Mark entries as settled
-      if (method !== "eft") {
         for (const entry of (barTabEntries as any[])) {
           await fromExt("bar_tab_entries")
             .update({ settled: true, settled_at: new Date().toISOString() })

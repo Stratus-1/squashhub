@@ -1742,6 +1742,7 @@ export default function Bookings() {
         onOpenChange={(open) => setShareDialog((s) => ({ ...s, open }))}
         bookingId={shareDialog.bookingId}
         courtId={shareDialog.courtId}
+        courtName={getCourtName(shareDialog.courtId)}
         dateStr={shareDialog.dateStr}
         startTime={shareDialog.startTime}
         endTime={shareDialog.endTime}

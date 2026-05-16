@@ -67,32 +67,18 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
-  const { data: unsettledEntries = [] } = useQuery({
-    queryKey: ["bar-tab-unsettled", clubId],
+  const { data: recentEntries = [] } = useQuery({
+    queryKey: ["bar-tab-recent", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("bar_tab_entries")
         .select("*, bar_items:bar_item_id(name, category), club_members:club_member_id(name)")
         .eq("club_id", clubId)
-        .eq("settled", false)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(50);
       if (error) throw error;
       return data as BarTabEntry[];
     },
   });
-
-  const memberTabs = unsettledEntries.reduce((acc, entry) => {
-    const memberId = entry.club_member_id;
-    if (!acc[memberId]) {
-      acc[memberId] = {
-        name: (entry.club_members as any)?.name || "Unknown",
-        entries: [],
-        total: 0,
-      };
-    }
-    acc[memberId].entries.push(entry);
-    acc[memberId].total += entry.total;
-    return acc;
-  }, {} as Record<string, { name: string; entries: BarTabEntry[]; total: number }>);
 
   const toggleBarEnabled = async () => {
     try {
@@ -128,50 +114,24 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
           <PurchaseInvoice clubId={clubId} items={items} />
 
           <Card className="p-6 space-y-4">
-            <h3 className="font-semibold">Outstanding Tabs ({Object.keys(memberTabs).length} members)</h3>
-            <p className="text-sm text-muted-foreground">Members with unsettled bar items.</p>
+            <h3 className="font-semibold">Recent Bar Charges</h3>
+            <p className="text-sm text-muted-foreground">Bar items are charged directly to each member account.</p>
 
-            {Object.keys(memberTabs).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No outstanding tabs 🎉</p>
+            {recentEntries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No bar charges yet.</p>
             ) : (
-              <div className="space-y-3">
-                {Object.entries(memberTabs)
-                  .sort((a, b) => b[1].total - a[1].total)
-                  .map(([memberId, tab]) => (
-                    <div key={memberId} className="rounded-lg border p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{tab.name}</span>
-                        <Badge variant="destructive" className="text-xs">
-                          R{tab.total.toFixed(2)}
-                        </Badge>
-                      </div>
-                      <div className="space-y-1">
-                        {tab.entries.map(e => (
-                          <div key={e.id} className="flex justify-between text-xs text-muted-foreground">
-                            <span>{e.quantity}× {(e.bar_items as any)?.name}</span>
-                            <span>R{e.total.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full text-xs h-7"
-                        onClick={async () => {
-                          const entryIds = tab.entries.map(e => e.id);
-                          for (const id of entryIds) {
-                            await fromExt("bar_tab_entries")
-                              .update({ settled: true, settled_at: new Date().toISOString() })
-                              .eq("id", id);
-                          }
-                          toast.success(`Settled R${tab.total.toFixed(2)} for ${tab.name}`);
-                          qc.invalidateQueries({ queryKey: ["bar-tab-unsettled"] });
-                        }}
-                      >
-                        Mark as Settled
-                      </Button>
+              <div className="space-y-2">
+                {recentEntries.slice(0, 20).map(e => (
+                  <div key={e.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{(e.club_members as any)?.name || "Unknown"}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {e.quantity}× {(e.bar_items as any)?.name || "Item"} · {format(new Date(e.created_at), "dd MMM HH:mm")}
+                      </p>
                     </div>
-                  ))}
+                    <Badge variant="secondary" className="text-xs">R{e.total.toFixed(2)}</Badge>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
@@ -657,7 +617,7 @@ function AdminAddCharge({ clubId, items, members }: { clubId: string; items: Bar
       setMemberId("");
       setItemId("");
       setQuantity(1);
-      qc.invalidateQueries({ queryKey: ["bar-tab-unsettled"] });
+      qc.invalidateQueries({ queryKey: ["bar-tab-recent"] });
     }
   };
 

@@ -11,6 +11,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub, useMyLeagueRegistration } from "@/hooks/use-club";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
+import { IndividualStandingsTab } from "@/components/league-games/IndividualStandingsTab";
 import { FillUpLeaguesTab } from "@/components/league-games/FillUpLeaguesTab";
 import { FixturesTab } from "@/components/league-games/FixturesTab";
 import { Button } from "@/components/ui/button";

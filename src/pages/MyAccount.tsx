@@ -585,42 +585,29 @@ export default function MyAccount() {
       }
 
       // Then allocate remaining cash to bar entries (whole entries only).
-      // Record TWO transactions per settled entry: the bar charge (credit) and the
-      // offsetting payment from wallet credit (debit). Net balance change = 0, and
-      // both lines appear in the statement for full audit trail.
+      // Record a SINGLE charge transaction per settled entry (the bar consumption
+      // paid from wallet credit). This reduces the wallet balance by the charge
+      // amount — exactly one economic event, no offsetting debit.
       for (const entry of barSorted) {
         const amt = Number(entry.total);
         if (cash < amt) continue;
         cash -= amt;
-        const itemLabel = `Honesty Bar (${entry.quantity}× ${entry.bar_items?.name || "item"})`;
-        // 1. The bar charge itself (so it remains visible after settlement)
-        await fromExt("member_credit_transactions").insert({
+        const itemLabel = `Honesty Bar (${entry.quantity}× ${entry.bar_items?.name || "item"}) — paid from credit`;
+        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
           club_id: clubId,
           club_member_id: clubMemberId,
           amount: -amt,
           type: "credit",
-          method: "system",
-          description: itemLabel,
-          status: "confirmed",
-          confirmed_at: new Date().toISOString(),
-        });
-        // 2. The payment from wallet credit
-        const desc = `Credit applied: ${itemLabel}`;
-        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
-          club_id: clubId,
-          club_member_id: clubMemberId,
-          amount: amt,
-          type: "debit",
           method: "credit",
-          description: desc,
+          description: itemLabel,
           status: "confirmed",
           confirmed_at: new Date().toISOString(),
         }).select("id").single();
         if (txErr) throw txErr;
         const journalRef = crypto.randomUUID();
         await fromExt("club_journal_entries").insert([
-          { club_id: clubId, journal_ref: journalRef, account: "bank" as any, debit: amt, credit: 0, description: desc, club_member_id: clubMemberId, transaction_id: txData.id },
-          { club_id: clubId, journal_ref: journalRef, account: "debtors" as any, debit: 0, credit: amt, description: desc, club_member_id: clubMemberId, transaction_id: txData.id },
+          { club_id: clubId, journal_ref: journalRef, account: "bank" as any, debit: amt, credit: 0, description: itemLabel, club_member_id: clubMemberId, transaction_id: txData.id },
+          { club_id: clubId, journal_ref: journalRef, account: "debtors" as any, debit: 0, credit: amt, description: itemLabel, club_member_id: clubMemberId, transaction_id: txData.id },
         ]);
         await fromExt("bar_tab_entries")
           .update({ settled: true, settled_at: new Date().toISOString() })

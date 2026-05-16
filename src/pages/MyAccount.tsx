@@ -599,10 +599,13 @@ export default function MyAccount() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                  {creditBalance >= 0 ? "Credit Balance" : "Amount Owing"}
+                  {creditBalance >= 0 ? "Account Balance (Available)" : "Net Amount Owing"}
                 </p>
                 <p className={cn("text-2xl font-bold font-heading", creditBalance >= 0 ? "text-foreground" : "text-destructive")}>
                   {creditBalance < 0 ? "-" : ""}R{Math.abs(creditBalance).toFixed(2)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Top-ups less outstanding fees & bar tab
                 </p>
               </div>
             </div>

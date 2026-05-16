@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight, Wine } from "lucide-react";
+import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub } from "@/hooks/use-club";
@@ -95,24 +95,6 @@ export default function MyAccount() {
     },
     enabled: !!clubMemberId,
   });
-
-  // Honesty bar unsettled entries
-  const { data: barTabEntries = [], isLoading: barTabLoading } = useQuery({
-    queryKey: ["my-bar-tab", clubMemberId, clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("bar_tab_entries")
-        .select("*, bar_items:bar_item_id(name, category)")
-        .eq("club_member_id", clubMemberId!)
-        .eq("club_id", clubId!)
-        .eq("settled", false)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!clubMemberId && !!clubId && !!club?.honesty_bar_enabled,
-  });
-
-  const barTabTotal = (barTabEntries as any[]).reduce((s: number, e: any) => s + Number(e.total), 0);
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 

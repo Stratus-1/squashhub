@@ -585,12 +585,28 @@ export default function MyAccount() {
         }
       }
 
-      // Then allocate remaining cash to bar entries (whole entries only)
+      // Then allocate remaining cash to bar entries (whole entries only).
+      // Record TWO transactions per settled entry: the bar charge (credit) and the
+      // offsetting payment from wallet credit (debit). Net balance change = 0, and
+      // both lines appear in the statement for full audit trail.
       for (const entry of barSorted) {
         const amt = Number(entry.total);
         if (cash < amt) continue;
         cash -= amt;
-        const desc = `Credit applied: Honesty Bar (${entry.quantity}× ${entry.bar_items?.name || "item"})`;
+        const itemLabel = `Honesty Bar (${entry.quantity}× ${entry.bar_items?.name || "item"})`;
+        // 1. The bar charge itself (so it remains visible after settlement)
+        await fromExt("member_credit_transactions").insert({
+          club_id: clubId,
+          club_member_id: clubMemberId,
+          amount: -amt,
+          type: "credit",
+          method: "system",
+          description: itemLabel,
+          status: "confirmed",
+          confirmed_at: new Date().toISOString(),
+        });
+        // 2. The payment from wallet credit
+        const desc = `Credit applied: ${itemLabel}`;
         const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
           club_id: clubId,
           club_member_id: clubMemberId,

@@ -328,6 +328,77 @@ export type Database = {
           },
         ]
       }
+      bar_visitor_sales: {
+        Row: {
+          bar_item_id: string
+          club_id: string
+          created_at: string
+          id: string
+          logged_by: string | null
+          note: string | null
+          payment_method: string
+          quantity: number
+          total: number
+          unit_price: number
+          visitor_name: string | null
+        }
+        Insert: {
+          bar_item_id: string
+          club_id: string
+          created_at?: string
+          id?: string
+          logged_by?: string | null
+          note?: string | null
+          payment_method: string
+          quantity: number
+          total: number
+          unit_price: number
+          visitor_name?: string | null
+        }
+        Update: {
+          bar_item_id?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          logged_by?: string | null
+          note?: string | null
+          payment_method?: string
+          quantity?: number
+          total?: number
+          unit_price?: number
+          visitor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_visitor_sales_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_visitor_sales_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_visitor_sales_logged_by_fkey"
+            columns: ["logged_by"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_visitor_sales_logged_by_fkey"
+            columns: ["logged_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_invites: {
         Row: {
           booking_id: string

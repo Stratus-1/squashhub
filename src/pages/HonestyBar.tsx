@@ -5,11 +5,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart } from "lucide-react";
+import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart, Receipt } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,12 +53,15 @@ const CATEGORIES = [
 export default function HonestyBar() {
   const qc = useQueryClient();
   const { club } = useClubContext();
-  const { activeMember } = useMemberContext();
+  const { activeMember, isAdmin } = useMemberContext();
   const clubId = club?.id;
   const memberId = activeMember?.id;
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
+
+
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],
@@ -160,6 +164,19 @@ export default function HonestyBar() {
       <PageHeader title="Honesty Bar" backTo="/" />
 
       <div className="px-4 space-y-4 mt-2">
+        {isAdmin && (
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setVisitorSaleOpen(true)}
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              Visitor sale (cash / card / EFT)
+            </Button>
+          </div>
+        )}
         {/* Item catalog */}
         {groupedByCategory.map(group => {
           const Icon = group.icon;
@@ -258,6 +275,14 @@ export default function HonestyBar() {
           )}
         </div>
       </div>
+
+      <QuickVisitorSaleDialog
+        open={visitorSaleOpen}
+        onOpenChange={setVisitorSaleOpen}
+        items={items}
+        clubId={clubId!}
+        loggedByMemberId={memberId}
+      />
 
       <BackToDashboard />
     </div>

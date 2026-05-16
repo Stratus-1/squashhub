@@ -4684,6 +4684,65 @@ export type Database = {
         }
         Relationships: []
       }
+      yoco_payment_sessions: {
+        Row: {
+          amount: number
+          club_id: string
+          club_member_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          fee_ids: string[]
+          id: string
+          purpose: string
+          status: string
+          updated_at: string
+          user_id: string | null
+          yoco_checkout_id: string | null
+          yoco_redirect_url: string | null
+        }
+        Insert: {
+          amount: number
+          club_id: string
+          club_member_id: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          fee_ids?: string[]
+          id?: string
+          purpose: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          yoco_checkout_id?: string | null
+          yoco_redirect_url?: string | null
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          club_member_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          fee_ids?: string[]
+          id?: string
+          purpose?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          yoco_checkout_id?: string | null
+          yoco_redirect_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "yoco_payment_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       association_member_affiliations_v: {

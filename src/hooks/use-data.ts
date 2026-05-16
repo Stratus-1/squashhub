@@ -691,8 +691,10 @@ export function useLadder(clubId?: string) {
       const ladder = (members || []).map(m => {
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
         const ladderPos = m.ladder_position ?? null;
-        const liveStats = [...(nsaCodesByMember.get(m.id) || [])]
-          .map((code) => liveStatsByCode.get(code))
+        const liveStats = [
+          ...[...(nsaCodesByMember.get(m.id) || [])].map((code) => liveStatsByCode.get(code)),
+          liveStatsByMember.get(m.id),
+        ]
           .filter(Boolean)
           .reduce(
             (acc, stats) => ({

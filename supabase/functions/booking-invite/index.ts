@@ -81,6 +81,17 @@ Deno.serve(async (req) => {
     const startTime = String((booking as any).start_time || "").slice(0, 5);
     const endTime = String((booking as any).end_time || "").slice(0, 5);
     const courtId = (booking as any).court_id;
+    // Look up the human-friendly court name (e.g. "Court 1") instead of
+    // exposing the global integer id (which is sequence-wide, not per-club).
+    let courtLabel = `Court ${courtId}`;
+    if (courtId != null) {
+      const { data: courtRow } = await supabaseAdmin
+        .from("courts")
+        .select("name")
+        .eq("id", courtId)
+        .maybeSingle();
+      if (courtRow?.name) courtLabel = String(courtRow.name);
+    }
     const inviterName = inviter?.name || "A player";
 
     const challengeId = (booking as any).challenge_id ? String((booking as any).challenge_id) : "";

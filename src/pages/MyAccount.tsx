@@ -657,7 +657,7 @@ export default function MyAccount() {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground text-center">
-                Pay from the wallet above — already deducted from your available balance.
+                Bar items are charged to your account — pay your account balance above.
               </p>
             </Card>
           ) : (

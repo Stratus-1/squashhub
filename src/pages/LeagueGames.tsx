@@ -238,14 +238,34 @@ export default function LeagueGames() {
               : hideFillUp ? "grid-cols-2"
               : "grid-cols-3"
             } h-auto`}>
-              <TabsTrigger value="fixtures" className="text-xs sm:text-sm py-2">Upcoming</TabsTrigger>
+              <TabsTrigger
+                value="fixtures"
+                className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow"
+              >
+                Upcoming
+              </TabsTrigger>
               {!hideFillUp && (
-                <TabsTrigger value="leagues" className="text-xs sm:text-sm py-2">Fill Up Leagues</TabsTrigger>
+                <TabsTrigger
+                  value="leagues"
+                  className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-violet-500 data-[state=active]:text-white data-[state=active]:shadow"
+                >
+                  Fill Up Leagues
+                </TabsTrigger>
               )}
               {selectedAssoc?.scope === "internal" && (
-                <TabsTrigger value="rounds" className="text-xs sm:text-sm py-2">Rounds</TabsTrigger>
+                <TabsTrigger
+                  value="rounds"
+                  className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow"
+                >
+                  Rounds
+                </TabsTrigger>
               )}
-              <TabsTrigger value="standings" className="text-xs sm:text-sm py-2">Standings</TabsTrigger>
+              <TabsTrigger
+                value="standings"
+                className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow"
+              >
+                Standings
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="fixtures" className="mt-4">

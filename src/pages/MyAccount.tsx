@@ -766,45 +766,19 @@ export default function MyAccount() {
           <div className="space-y-1.5">
             {unpaidFees.map((fee: any) => (
               <Card key={fee.id} className="p-3 flex items-center gap-3">
-                <Checkbox
-                  checked={selectedFeeIds.includes(fee.id)}
-                  onCheckedChange={(checked) => {
-                    setSelectedFeeIds((prev) =>
-                      checked ? [...prev, fee.id] : prev.filter((id) => id !== fee.id)
-                    );
-                  }}
-                />
+                <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
-                    <p className="text-sm font-medium truncate">{fee.fee_label}</p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground ml-5.5">
-                    R{Number(fee.amount).toFixed(2)}
-                    {fee.season_year && ` · ${fee.season_year}`}
+                  <p className="text-sm font-medium truncate">{fee.fee_label}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {fee.season_year && `${fee.season_year} · `}Owing
                   </p>
                 </div>
+                <span className="text-sm font-semibold tabular-nums shrink-0">R{Number(fee.amount).toFixed(2)}</span>
               </Card>
             ))}
-            {selectedFeeIds.length > 0 && (
-              <Button
-                className="w-full mt-2 gap-2"
-                onClick={() => {
-                  setPayFeeId("batch");
-                  setPayMethod(availableCash >= selectedFeeTotal ? "credit" : "eft");
-                  setPayMode("full");
-                  setPartialAmount("");
-                }}
-              >
-                Make Payment · R{selectedFeeTotal.toFixed(2)}
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            )}
-            {selectedFeeIds.length === 0 && (
-              <p className="text-[11px] text-muted-foreground text-center mt-1">
-                Select fees above to pay
-              </p>
-            )}
+            <p className="text-[11px] text-muted-foreground text-center mt-1">
+              Pay from the wallet above — payments allocate to oldest fees first.
+            </p>
           </div>
         ) : (
           <Card className="p-3 text-center text-sm text-muted-foreground">

@@ -255,11 +255,7 @@ export default function HonestyBar() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-sm font-medium">R{entry.total.toFixed(2)}</span>
-                    {entry.settled ? (
-                      <Badge variant="secondary" className="text-[10px]"><Check className="w-3 h-3 mr-0.5" />Paid</Badge>
-                    ) : (
-                      <Badge variant="destructive" className="text-[10px]">Owing</Badge>
-                    )}
+                    <Badge variant="secondary" className="text-[10px]">On account</Badge>
                   </div>
                 </Card>
               ))}

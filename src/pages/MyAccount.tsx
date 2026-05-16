@@ -403,36 +403,14 @@ export default function MyAccount() {
           }
         }
       } else if (method === "card") {
-        const { data: txData, error: txErr } = await fromExt("member_credit_transactions").insert({
-          club_id: clubId,
-          club_member_id: clubMemberId,
+        // Route through Yoco — payment + fee marking happens after verify-return
+        await startYocoCheckout({
           amount: payAmount,
-          type: "debit",
-          method: "card",
+          purpose: "fee",
+          fee_ids: selectedFees.map((f: any) => f.id),
           description: txDescription.replace("Fee payment", "Card payment").replace("Partial payment", "Partial card payment"),
-          status: "confirmed",
-        }).select("id").single();
-        if (txErr) throw txErr;
-        
-
-        if (isPartial) {
-          let remaining = payAmount;
-          for (const fee of selectedFees) {
-            const feeAmt = Number(fee.amount);
-            const deduction = Math.min(remaining, feeAmt);
-            remaining -= deduction;
-            const newAmount = feeAmt - deduction;
-            if (newAmount <= 0) {
-              await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString(), amount: 0 }).eq("id", fee.id);
-            } else {
-              await fromExt("club_member_fee_payments").update({ amount: newAmount }).eq("id", fee.id);
-            }
-          }
-        } else {
-          for (const fee of selectedFees) {
-            await fromExt("club_member_fee_payments").update({ paid: true, paid_at: new Date().toISOString() }).eq("id", fee.id);
-          }
-        }
+        });
+        return;
       } else {
         const { error: txErr } = await fromExt("member_credit_transactions").insert({
           club_id: clubId,

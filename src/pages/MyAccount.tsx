@@ -829,16 +829,9 @@ export default function MyAccount() {
                   </p>
                 )}
               </div>
-              <Button
-                className="w-full gap-2"
-                onClick={() => {
-                  setPayBarMethod(availableCash >= barTabTotal ? "credit" : "card");
-                  setPayBarOpen(true);
-                }}
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                Pay Now · R{barTabTotal.toFixed(2)}
-              </Button>
+              <p className="text-[11px] text-muted-foreground text-center">
+                Pay from the wallet above — already deducted from your available balance.
+              </p>
             </Card>
           ) : (
             <Card className="p-3 text-center text-sm text-muted-foreground">

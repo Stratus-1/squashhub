@@ -201,6 +201,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
       image_url: item.image_url || "",
       low_stock_threshold: String(item.low_stock_threshold),
       cost_price: item.cost_price ? String(item.cost_price) : "",
+      opening_stock: "0",
     });
   };
 

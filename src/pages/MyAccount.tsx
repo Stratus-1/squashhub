@@ -246,15 +246,16 @@ export default function MyAccount() {
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
   const availableCash = creditBalance + unpaidFeesTotal + barTabTotal;
 
-  // Auto-open bar payment dialog if navigated with ?payBar=1
+  // If navigated with ?payBar=1, open the top-up dialog pre-filled with bar total
+  const topUpAutoOpened = useRef(false);
   useEffect(() => {
-    if (searchParams.get("payBar") === "1" && !barPayAutoOpened.current && barTabTotal > 0) {
-      barPayAutoOpened.current = true;
-      setPayBarMethod(availableCash >= barTabTotal ? "credit" : "card");
-      setPayBarOpen(true);
+    if (searchParams.get("payBar") === "1" && !topUpAutoOpened.current && barTabTotal > 0) {
+      topUpAutoOpened.current = true;
+      setTopUpAmount(barTabTotal.toFixed(2));
+      setTopUpOpen(true);
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, barTabTotal, creditBalance]);
+  }, [searchParams, barTabTotal]);
 
   // Verify Yoco checkout when redirected back from Yoco
   const yocoVerifiedRef = useRef<string | null>(null);

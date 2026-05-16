@@ -52,11 +52,24 @@ export function ReconcileFeesDialog({
     queryKey: ["reconcile-members", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("id, name, club_member_number")
+        .select("id, name, club_member_number, fee_category_id")
         .eq("club_id", clubId)
         .order("name");
       if (error) throw error;
       return (data || []) as MemberRow[];
+    },
+    enabled: open && !!clubId,
+  });
+
+  const { data: feeCategories = [] } = useQuery({
+    queryKey: ["reconcile-fee-categories", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_fee_categories")
+        .select("id, name, annual_fee")
+        .eq("club_id", clubId)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as FeeCategory[];
     },
     enabled: open && !!clubId,
   });

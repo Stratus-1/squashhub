@@ -22,6 +22,12 @@ interface MemberRow {
   id: string;
   name: string | null;
   club_member_number: string | null;
+  fee_category_id: string | null;
+}
+interface FeeCategory {
+  id: string;
+  name: string;
+  annual_fee: number;
 }
 
 const fmt = (n: number) =>
@@ -46,11 +52,24 @@ export function ReconcileFeesDialog({
     queryKey: ["reconcile-members", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("id, name, club_member_number")
+        .select("id, name, club_member_number, fee_category_id")
         .eq("club_id", clubId)
         .order("name");
       if (error) throw error;
       return (data || []) as MemberRow[];
+    },
+    enabled: open && !!clubId,
+  });
+
+  const { data: feeCategories = [] } = useQuery({
+    queryKey: ["reconcile-fee-categories", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_fee_categories")
+        .select("id, name, annual_fee")
+        .eq("club_id", clubId)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as FeeCategory[];
     },
     enabled: open && !!clubId,
   });
@@ -150,6 +169,48 @@ export function ReconcileFeesDialog({
     });
   };
 
+  const handleCategoryChange = async (member: MemberRow, newCategoryId: string) => {
+    const cat = feeCategories.find(c => c.id === newCategoryId);
+    try {
+      const { error: mErr } = await fromExt("club_members")
+        .update({ fee_category_id: newCategoryId || null })
+        .eq("id", member.id);
+      if (mErr) throw mErr;
+
+      // Update existing "club" fee record for current season to reflect new category
+      if (cat) {
+        const memFees = feesByMember.get(member.id) || [];
+        const clubFee = memFees.find(f => f.fee_type === "club");
+        if (clubFee) {
+          const { error: fErr } = await fromExt("club_member_fee_payments")
+            .update({
+              amount: cat.annual_fee,
+              fee_label: `Club – ${cat.name}`,
+            })
+            .eq("id", clubFee.id);
+          if (fErr) throw fErr;
+        } else {
+          // No club fee yet — create one as outstanding
+          const { error: iErr } = await fromExt("club_member_fee_payments").insert({
+            club_member_id: member.id,
+            fee_type: "club",
+            fee_label: `Club – ${cat.name}`,
+            amount: cat.annual_fee,
+            paid: false,
+            season_year: new Date().getFullYear(),
+          });
+          if (iErr) throw iErr;
+        }
+      }
+      toast.success(`Category updated for ${member.name}`);
+      qc.invalidateQueries({ queryKey: ["reconcile-members", clubId] });
+      qc.invalidateQueries({ queryKey: ["reconcile-fees"] });
+      qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update category");
+    }
+  };
+
   const handleSave = async () => {
     const changes = Object.entries(overrides).filter(([id, paid]) => {
       const f = fees.find(ff => ff.id === id);
@@ -238,6 +299,18 @@ export function ReconcileFeesDialog({
                       {member.club_member_number && (
                         <Badge variant="outline" className="text-[10px] font-mono">#{member.club_member_number}</Badge>
                       )}
+                      <select
+                        value={member.fee_category_id || ""}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleCategoryChange(member, e.target.value)}
+                        className="h-6 text-[11px] border rounded px-1 bg-background max-w-[140px]"
+                        title="Membership fee category"
+                      >
+                        <option value="">— category —</option>
+                        {feeCategories.map(c => (
+                          <option key={c.id} value={c.id}>{c.name} ({fmt(c.annual_fee)})</option>
+                        ))}
+                      </select>
                       <span className="text-[11px] text-muted-foreground tabular-nums">{memFees.length} fees</span>
                       <span className="text-[11px] text-emerald-600 tabular-nums w-20 text-right">{fmt(paid)}</span>
                       <span className={cn("text-[11px] tabular-nums w-20 text-right font-semibold", outstanding > 0 ? "text-amber-600" : "text-muted-foreground")}>

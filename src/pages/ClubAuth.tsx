@@ -711,6 +711,7 @@ export default function ClubAuth() {
     <div className="min-h-screen relative flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
       <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
+      <BackToHomeLink />
       <SEO
         title={`Sign In | ${clubName}`}
         description={`Sign in or register for ${clubName} on SquashHub.`}

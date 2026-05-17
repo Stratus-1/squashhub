@@ -104,16 +104,24 @@ export default function Home() {
     staleTime: 60_000,
   });
 
-  // A club is "live" once an admin (chairman) is assigned. Until then, clicking
-  // a club routes NSA players to the /league self-signup flow instead of the
-  // tenant portal.
+  // Clubs that have at least one full admin (role='admin') assigned. NSA-seeded
+  // tenants graduate into "Live Clubs" once any such admin exists.
+  const { data: clubsWithAdmins } = useQuery({
+    queryKey: ["clubs-with-admins"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_clubs_with_admins");
+      if (error) throw error;
+      return new Set<string>((data || []).map((r: { club_id: string }) => r.club_id));
+    },
+    staleTime: 60_000,
+  });
+
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
-  // NSA-seeded tenants are the imported NSA roster (not yet claimed by admins).
-  // Everything else (including independent clubs like Gordons Bay) is "non-NSA"
-  // and shows under Live Clubs regardless of whether a chairman is assigned.
-  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded");
+  const adminSet = clubsWithAdmins ?? new Set<string>();
+  // Live = non-NSA-seeded OR an NSA-seeded club that now has an admin assigned.
+  const liveClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded" || adminSet.has(t.id));
   const nonNsaClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded");
-  const liveClubs = nonNsaClubs;
+  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded" && !adminSet.has(t.id));
   const clubs = allClubs;
   const associations = tenants?.filter((t) => t.tenant_type === "association") ?? [];
 

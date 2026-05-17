@@ -164,7 +164,8 @@ export default function LeagueSignup() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-primary/5 flex items-center justify-center p-4">
+      <div className="min-h-screen relative bg-gradient-to-b from-background to-primary/5 flex items-center justify-center p-4">
+        <BackToHomeLink />
         <SEO title="Welcome to SquashHub" description="Sign in to access your league dashboard." />
         <Card className="max-w-md w-full p-8 text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">

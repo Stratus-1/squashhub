@@ -108,8 +108,12 @@ export default function Home() {
   // a club routes NSA players to the /league self-signup flow instead of the
   // tenant portal.
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
-  const liveClubs = allClubs.filter((t) => !!t.chairman_member_id);
-  const nsaClubs = allClubs.filter((t) => !t.chairman_member_id);
+  // NSA-seeded tenants are the imported NSA roster (not yet claimed by admins).
+  // Everything else (including independent clubs like Gordons Bay) is "non-NSA"
+  // and shows under Live Clubs regardless of whether a chairman is assigned.
+  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded");
+  const nonNsaClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded");
+  const liveClubs = nonNsaClubs;
   const clubs = allClubs;
   const associations = tenants?.filter((t) => t.tenant_type === "association") ?? [];
 
@@ -532,28 +536,49 @@ export default function Home() {
                 </div>
               </div>
             )}
-            {nsaClubs.length > 3 && (
-              <div>
-                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-                  <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
-                    All NSA Clubs
-                  </h3>
-                  <Button
-                    size="sm"
-                    onClick={() => navigate("/league")}
-                    className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
-                  >
-                    <Trophy className="w-3.5 h-3.5 mr-1" /> NSA Members Register Here
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  These clubs are listed from NSA but not yet administratively live on SquashHub. Clicking a club will take you to the league self-signup page.
-                </p>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {nsaClubs.map((t) => (
-                    <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
-                  ))}
-                </div>
+            {(nsaClubs.length > 3 || nonNsaClubs.length > 3) && (
+              <div className="grid lg:grid-cols-2 gap-8">
+                {nsaClubs.length > 3 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                      <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                        All NSA Clubs
+                      </h3>
+                      <Button
+                        size="sm"
+                        onClick={() => navigate("/league")}
+                        className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold"
+                      >
+                        <Trophy className="w-3.5 h-3.5 mr-1" /> NSA Members Register Here
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      These clubs are listed from NSA but not yet administratively live on SquashHub. Clicking a club will take you to the league self-signup page.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {nsaClubs.map((t) => (
+                        <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} nsaMode />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {nonNsaClubs.length > 3 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                      <h3 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
+                        Non-NSA Clubs
+                      </h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Independent clubs running on SquashHub outside the NSA roster. Sign in via their portal.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {nonNsaClubs.map((t) => (
+                        <TenantRow key={t.id} tenant={t} navigate={navigate} icon={Building2} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {associations.length > 6 && (

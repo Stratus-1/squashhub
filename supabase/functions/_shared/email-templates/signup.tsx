@@ -10,41 +10,63 @@ import {
   Heading,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
+import { PLATFORM_BRAND, type TenantBrand } from './branding.ts'
+
 interface SignupEmailProps {
   siteName: string
   siteUrl: string
   recipient: string
   confirmationUrl: string
+  brand?: TenantBrand
 }
 
 export const SignupEmail = ({
-  siteName,
   siteUrl,
   recipient,
   confirmationUrl,
-}: SignupEmailProps) => (
+  brand = PLATFORM_BRAND,
+}: SignupEmailProps) => {
+  const tenantName = brand.displayName
+  const isTenant = !brand.isPlatform
+  return (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email to activate your {siteName} account</Preview>
+    <Preview>Confirm your email to activate your {tenantName} account</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>
-          <Heading style={brand}>SquashHub</Heading>
+          <Img
+            src={PLATFORM_BRAND.logoUrl}
+            alt="SquashHub"
+            width="140"
+            style={logo}
+          />
           <Text style={tagline}>The home of South African squash</Text>
         </Section>
 
         <Section style={card}>
+          {isTenant && brand.logoUrl && brand.logoUrl !== PLATFORM_BRAND.logoUrl && (
+            <Section style={{ textAlign: 'center', margin: '0 0 20px' }}>
+              <Img
+                src={brand.logoUrl}
+                alt={tenantName}
+                height="64"
+                style={tenantLogo}
+              />
+            </Section>
+          )}
           <Heading style={h1}>Welcome to the court 🎾</Heading>
           <Text style={text}>
             Thanks for signing up to{' '}
-            <Link href={siteUrl} style={link}>
-              <strong>{siteName}</strong>
+            <Link href={brand.siteUrl || siteUrl} style={link}>
+              <strong>{tenantName}</strong>
             </Link>
             . You're one click away from joining your club, tracking your
             ladder position, confirming league availability, and challenging
@@ -76,16 +98,18 @@ export const SignupEmail = ({
         <Hr style={hr} />
 
         <Text style={footer}>
-          If you didn't create a SquashHub account, you can safely ignore
+          If you didn't create a {tenantName} account, you can safely ignore
           this email — no account will be created.
         </Text>
         <Text style={footerSmall}>
-          SquashHub · Powered by Stratus Software Solutions (Pty) Ltd
+          {isTenant ? `${tenantName} · Powered by SquashHub` : 'SquashHub'} ·
+          Powered by Stratus Software Solutions (Pty) Ltd
         </Text>
       </Container>
     </Body>
   </Html>
-)
+  )
+}
 
 export default SignupEmail
 
@@ -99,19 +123,14 @@ const main = {
 }
 const container = { padding: '24px 20px', maxWidth: '560px', margin: '0 auto' }
 const header = { textAlign: 'center' as const, padding: '8px 0 24px' }
-const brand = {
-  fontSize: '28px',
-  fontWeight: 'bold' as const,
-  color: navy,
-  letterSpacing: '-0.5px',
-  margin: '0',
-}
+const logo = { margin: '0 auto', display: 'block' }
+const tenantLogo = { margin: '0 auto', display: 'block', maxHeight: '64px' }
 const tagline = {
   fontSize: '12px',
   color: '#7a8290',
   textTransform: 'uppercase' as const,
   letterSpacing: '1px',
-  margin: '6px 0 0',
+  margin: '10px 0 0',
 }
 const card = {
   backgroundColor: '#f8fafc',
@@ -124,6 +143,7 @@ const h1 = {
   fontWeight: 'bold' as const,
   color: navy,
   margin: '0 0 16px',
+  textAlign: 'center' as const,
 }
 const text = {
   fontSize: '15px',

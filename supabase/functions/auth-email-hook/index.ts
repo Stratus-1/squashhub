@@ -222,9 +222,11 @@ async function handleWebhook(req: Request): Promise<Response> {
   }
 
   // Resolve tenant branding from the redirect URL (e.g. csi.squashhub.co.za →
-  // CSIR logo; squashhub.co.za → SquashHub platform logo).
+  // club logo; squashhub.co.za → SquashHub platform logo).
   const brandingResolver = new TenantBrandingResolver(ROOT_DOMAIN)
-  const brand = await brandingResolver.resolveFromUrl(payload.data.url)
+  const brand = await brandingResolver.resolveFromUrl(
+    payload.data.redirect_to || payload.data.url,
+  )
 
   // Build template props from payload.data (HookData structure)
   const templateProps = {

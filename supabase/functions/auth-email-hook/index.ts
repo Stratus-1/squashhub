@@ -9,6 +9,7 @@ import { MagicLinkEmail } from '../_shared/email-templates/magic-link.tsx'
 import { RecoveryEmail } from '../_shared/email-templates/recovery.tsx'
 import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
 import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
+import { PLATFORM_BRAND, TenantBrandingResolver } from '../_shared/email-templates/branding.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,8 @@ const SAMPLE_DATA: Record<string, object> = {
   recovery: {
     siteName: SITE_NAME,
     confirmationUrl: SAMPLE_PROJECT_URL,
+    recipient: SAMPLE_EMAIL,
+    brand: PLATFORM_BRAND,
   },
   invite: {
     siteName: SITE_NAME,
@@ -218,16 +221,22 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
+  // Resolve tenant branding from the redirect URL (e.g. csi.squashhub.co.za →
+  // CSIR logo; squashhub.co.za → SquashHub platform logo).
+  const brandingResolver = new TenantBrandingResolver(ROOT_DOMAIN)
+  const brand = await brandingResolver.resolveFromUrl(payload.data.url)
+
   // Build template props from payload.data (HookData structure)
   const templateProps = {
     siteName: SITE_NAME,
-    siteUrl: `https://${ROOT_DOMAIN}`,
+    siteUrl: brand.siteUrl,
     recipient: payload.data.email,
     confirmationUrl: payload.data.url,
     token: payload.data.token,
     email: payload.data.email,
     oldEmail: payload.data.old_email,
     newEmail: payload.data.new_email,
+    brand,
   }
 
   // Render React Email to HTML and plain text

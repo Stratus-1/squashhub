@@ -716,7 +716,7 @@ export default function Home() {
           </nav>
         </div>
         <div className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} SquashHub · A product of HKFT Services (Pty) Ltd / Proudly designed by JLT Digital
+          © {new Date().getFullYear()} SquashHub · A product of Stratus Software Solutions (Pty) Ltd / Proudly designed by JLT Digital
         </div>
       </footer>
     </div>

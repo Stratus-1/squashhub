@@ -27,9 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const publicBaseUrl =
-    (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.trim()?.replace(/\/+$/, "") ||
-    "https://squashhub.co.za";
+  // Always route auth/email links to the production domain (or the active
+  // tenant subdomain when the user is signing up from one) — never to a
+  // Lovable preview URL.
+  const publicBaseUrl = getAuthRedirectBase();
 
   useEffect(() => {
     const forceLocalSignOut = async () => {

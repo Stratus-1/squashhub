@@ -63,6 +63,8 @@ const SAMPLE_DATA: Record<string, object> = {
   recovery: {
     siteName: SITE_NAME,
     confirmationUrl: SAMPLE_PROJECT_URL,
+    recipient: SAMPLE_EMAIL,
+    brand: PLATFORM_BRAND,
   },
   invite: {
     siteName: SITE_NAME,

@@ -25,8 +25,10 @@ function toBool(value: unknown, fallback: boolean) {
   return fallback;
 }
 
+import { getAuthRedirectBase } from "@/lib/site";
+
 function getPublicWebBaseUrl() {
-  return (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.trim()?.replace(/\/+$/, "") || window.location.origin;
+  return getAuthRedirectBase();
 }
 
 export function DashboardAccountSettings() {

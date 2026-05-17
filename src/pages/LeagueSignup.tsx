@@ -195,7 +195,8 @@ export default function LeagueSignup() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-primary/5 p-4 md:p-8 pb-24">
+    <div className="min-h-screen relative bg-gradient-to-b from-background to-primary/5 p-4 md:p-8 pb-24">
+      <BackToHomeLink />
       <SEO
         title="Free signup for NSA league players | SquashHub"
         description="Sign up free for SquashHub. View your league fixtures, submit scorecards to NSA, and connect with teammates."

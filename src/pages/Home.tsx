@@ -108,8 +108,12 @@ export default function Home() {
   // a club routes NSA players to the /league self-signup flow instead of the
   // tenant portal.
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
-  const liveClubs = allClubs.filter((t) => !!t.chairman_member_id);
-  const nsaClubs = allClubs.filter((t) => !t.chairman_member_id);
+  // NSA-seeded tenants are the imported NSA roster (not yet claimed by admins).
+  // Everything else (including independent clubs like Gordons Bay) is "non-NSA"
+  // and shows under Live Clubs regardless of whether a chairman is assigned.
+  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded");
+  const nonNsaClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded");
+  const liveClubs = nonNsaClubs;
   const clubs = allClubs;
   const associations = tenants?.filter((t) => t.tenant_type === "association") ?? [];
 

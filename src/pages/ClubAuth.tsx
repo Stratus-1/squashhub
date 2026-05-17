@@ -20,6 +20,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
+import { BackToHomeLink } from "@/components/BackToHomeLink";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -623,6 +624,7 @@ export default function ClubAuth() {
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
         <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
+        <BackToHomeLink />
         <SEO title={`Reset Password | ${clubName}`} description="Reset your password." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="text-center mb-6">
@@ -654,6 +656,7 @@ export default function ClubAuth() {
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
         <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
+        <BackToHomeLink />
         <SEO title={`Registration Complete | ${clubName}`} description="Account created." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
@@ -681,6 +684,7 @@ export default function ClubAuth() {
       <div className="min-h-screen relative flex items-center justify-center px-4">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
         <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
+        <BackToHomeLink />
         <SEO title={`Visitor Registered | ${clubName}`} description="Visitor registered." path="/auth" noIndex />
         <motion.div className="w-full max-w-sm relative z-10" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="p-6 text-center space-y-4">
@@ -707,6 +711,7 @@ export default function ClubAuth() {
     <div className="min-h-screen relative flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBg})` }} />
       <div className="absolute inset-0" style={{ backgroundColor: "rgba(11, 31, 80, 0.3)" }} />
+      <BackToHomeLink />
       <SEO
         title={`Sign In | ${clubName}`}
         description={`Sign in or register for ${clubName} on SquashHub.`}

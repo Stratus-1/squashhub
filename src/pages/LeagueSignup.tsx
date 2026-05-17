@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -164,7 +165,8 @@ export default function LeagueSignup() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-primary/5 flex items-center justify-center p-4">
+      <div className="min-h-screen relative bg-gradient-to-b from-background to-primary/5 flex items-center justify-center p-4">
+        <BackToHomeLink />
         <SEO title="Welcome to SquashHub" description="Sign in to access your league dashboard." />
         <Card className="max-w-md w-full p-8 text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
@@ -193,7 +195,8 @@ export default function LeagueSignup() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-primary/5 p-4 md:p-8 pb-24">
+    <div className="min-h-screen relative bg-gradient-to-b from-background to-primary/5 p-4 md:p-8 pb-24">
+      <BackToHomeLink />
       <SEO
         title="Free signup for NSA league players | SquashHub"
         description="Sign up free for SquashHub. View your league fixtures, submit scorecards to NSA, and connect with teammates."

@@ -1,4 +1,4 @@
-const PRODUCTION_SITE_URL = "https://squashhub.co.za";
+const PRODUCTION_SITE_URL = "https://www.squashhub.co.za";
 const PRODUCTION_ROOT = "squashhub.co.za";
 
 function normalizeSiteUrl(input: string): string {

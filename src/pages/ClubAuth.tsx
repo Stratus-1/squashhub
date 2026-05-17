@@ -20,6 +20,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
+import { BackToHomeLink } from "@/components/BackToHomeLink";
 
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();

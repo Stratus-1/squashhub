@@ -655,12 +655,17 @@ export default function LeagueGameDetail() {
         const away = awaySlots[i] || { code: "", name: "" };
         const slotHasPlay = (Array.isArray(p.scores) && p.scores.length > 0) || !!p.isForfeit;
         if (slotHasPlay) return p;
+        // Preserve any side that already has a saved player (code OR name) — the
+        // captain may have manually replaced a player with a reserve/visitor that
+        // has no NSF code. Only fill empty sides from the captain's lineup.
+        const homeAlreadySet = !!(p.homeCode || p.homeName);
+        const awayAlreadySet = !!(p.awayCode || p.awayName);
         return {
           ...p,
-          homeCode: homeHasAny ? (home.code || "") : p.homeCode,
-          homeName: homeHasAny ? (home.name || "") : p.homeName,
-          awayCode: awayHasAny ? (away.code || "") : p.awayCode,
-          awayName: awayHasAny ? (away.name || "") : p.awayName,
+          homeCode: !homeAlreadySet && homeHasAny ? (home.code || "") : p.homeCode,
+          homeName: !homeAlreadySet && homeHasAny ? (home.name || "") : p.homeName,
+          awayCode: !awayAlreadySet && awayHasAny ? (away.code || "") : p.awayCode,
+          awayName: !awayAlreadySet && awayHasAny ? (away.name || "") : p.awayName,
         };
       });
       if (
@@ -1114,7 +1119,9 @@ export default function LeagueGameDetail() {
 
   const startMarking = (posIdx: number) => {
     const pos = positions[posIdx];
-    if (!pos.homeCode || !pos.awayCode) { toast.error("Both players required"); return; }
+    const homeOk = !!(pos.homeCode || pos.homeName);
+    const awayOk = !!(pos.awayCode || pos.awayName);
+    if (!homeOk || !awayOk) { toast.error("Both players required"); return; }
     const config = buildMarkerConfigForPosition(posIdx);
     if (config) clearMarkerStateForSession(getMarkerSessionKeys(config));
     setResumableMarker(null);
@@ -1654,9 +1661,9 @@ export default function LeagueGameDetail() {
             <tbody>
               {(() => { return null; })()}
               {positions.map((pos, idx) => {
-                const hasPlayers = pos.homeCode && pos.awayCode;
+                const hasPlayers = (pos.homeCode || pos.homeName) && (pos.awayCode || pos.awayName);
                 const noGamesMarkedYet = !isSubmitted && positions.every(p => !p.completed && (!p.scores || p.scores.length === 0));
-                const isFirstPlayable = noGamesMarkedYet && positions.findIndex(p => p.homeCode && p.awayCode && !p.completed) === idx;
+                const isFirstPlayable = noGamesMarkedYet && positions.findIndex(p => (p.homeCode || p.homeName) && (p.awayCode || p.awayName) && !p.completed) === idx;
                 const hasResumableMarker = resumableMarker === idx;
                 const pr = summary.posResults[idx];
                 // Total points = sum of all individual game scores

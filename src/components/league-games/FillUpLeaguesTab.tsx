@@ -34,6 +34,7 @@ import {
   type FixtureLite,
 } from "./fill-leagues/types";
 import { useAssociationRules } from "@/hooks/use-association-rules";
+import { useNsaFixtures, NSA_CURRENT_SEASON, type NsaTeam } from "@/hooks/use-nsa";
 import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";

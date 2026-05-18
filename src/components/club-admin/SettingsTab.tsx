@@ -303,6 +303,45 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         </p>
       </Card>
 
+      {/* Email Signature Generator */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="font-semibold">Email Signature</h3>
+            <p className="text-sm text-muted-foreground">
+              Auto-generated from your Club Information (logo, contact person, phone, email, address).
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={generateSignature}>Generate / Refresh</Button>
+            {form.email_signature_html && <Button variant="ghost" size="sm" onClick={copySignature}>Copy HTML</Button>}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label>Disclaimer</Label>
+          <textarea
+            className="w-full min-h-[72px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={form.email_disclaimer}
+            onChange={(e) => setForm(p => ({ ...p, email_disclaimer: e.target.value }))}
+            placeholder="Confidentiality / legal disclaimer shown at the bottom of the signature"
+          />
+        </div>
+        {form.email_signature_html ? (
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Preview</Label>
+            <div className="rounded-md border bg-white p-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: form.email_signature_html }} />
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">View HTML source</summary>
+              <pre className="mt-2 p-2 bg-muted rounded text-[11px] overflow-x-auto whitespace-pre-wrap">{form.email_signature_html}</pre>
+            </details>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Click <strong>Generate / Refresh</strong> to build a signature from your club info. Make sure your Club Info tab has the logo, contact person, phone, email, and address filled in first.
+          </p>
+        )}
+      </Card>
+
       <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">
         {updateClub.isPending || updateSecrets.isPending ? "Saving..." : "Save Settings"}
       </Button>

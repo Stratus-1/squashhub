@@ -357,6 +357,36 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
     ? `<p style="margin:14px 0 0;font-size:11px;color:#94a3b8;line-height:1.4">${escapeHtml(club.email_disclaimer)}</p>`
     : "";
 
+  const send = useMutation({
+    mutationFn: async () => {
+      if (!subject.trim()) throw new Error("Subject required");
+      if (!body.trim()) throw new Error("Body required");
+      if (audienceType === "league" && !leagueId) throw new Error("Pick a league");
+      if (audienceType === "selected" && !selectedMemberIds.length) throw new Error("Select at least one member");
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: campaign, error } = await supabase.from("club_email_campaigns").insert({
+        club_id: clubId, template_id: template.id || null, name, subject, body_html: body,
+        audience_type: audienceType,
+        audience_member_ids: audienceType === "selected" ? selectedMemberIds : [],
+        audience_league_id: audienceType === "league" ? leagueId : null,
+        status: "draft", created_by: user?.id,
+      }).select("id").single();
+      if (error) throw error;
+
+      const { data: result, error: fnErr } = await supabase.functions.invoke("send-club-campaign", { body: { campaign_id: campaign.id } });
+      if (fnErr) throw fnErr;
+      if ((result as any)?.error) throw new Error((result as any).error);
+      return result;
+    },
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["email-campaigns", clubId] });
+      toast({ title: "Campaign sent", description: `Sent ${r?.sent || 0} • Failed ${r?.failed || 0} • Total ${r?.total || 0}` });
+      onClose();
+    },
+    onError: (e: any) => toast({ title: "Send failed", description: e?.message || String(e), variant: "destructive" }),
+  });
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">

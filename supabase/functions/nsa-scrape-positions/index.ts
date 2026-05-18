@@ -58,12 +58,19 @@ function stripTags(s: string): string {
 async function listCompletedFixtures(lookbackDays: number): Promise<FixtureLite[]> {
   // NSA's status filter is unreliable — pull all fixtures and filter client-side
   // to dates in [today - lookback, today).
-  // NB: do NOT send Accept: application/json — that triggers a different (leagues map) response.
+  // NB: NSA returns an ARRAY when no Accept header negotiates JSON, and a
+  // {leagues, ...} object when Accept: application/json is sent. Force text/html.
   const res = await fetch(`${NSA_BASE}/fixtures.php?json`, {
-    headers: { "User-Agent": UA },
+    headers: { "User-Agent": UA, Accept: "text/html,*/*" },
   });
   if (!res.ok) throw new Error(`NSA fixtures HTTP ${res.status}`);
-  const raw = (await res.json()) as Array<{
+  const text = await res.text();
+  let parsed: unknown;
+  try { parsed = JSON.parse(text); } catch (e) {
+    throw new Error(`NSA fixtures parse failed: ${(e as Error).message}; preview=${text.slice(0, 120)}`);
+  }
+  // Handle both shapes: array of fixtures, or { fixtures: [...] } / { data: [...] }
+  let raw: Array<{
     id: string | number;
     category?: string;
     league?: string;
@@ -73,6 +80,16 @@ async function listCompletedFixtures(lookbackDays: number): Promise<FixtureLite[
     team1?: { code?: string };
     team2?: { code?: string };
   }>;
+  if (Array.isArray(parsed)) {
+    raw = parsed as typeof raw;
+  } else if (parsed && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>;
+    if (Array.isArray(obj.fixtures)) raw = obj.fixtures as typeof raw;
+    else if (Array.isArray(obj.data)) raw = obj.data as typeof raw;
+    else throw new Error(`NSA fixtures: unexpected object shape, keys=${Object.keys(obj).slice(0,5).join(",")}`);
+  } else {
+    throw new Error(`NSA fixtures: unexpected type ${typeof parsed}`);
+  }
 
   const today = new Date();
   const cutoff = new Date(today);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -603,6 +603,37 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       return (data as LineupRow[]) || [];
     },
   });
+
+  // Realtime: keep lineup & unavailability in sync across users on the same week
+  useEffect(() => {
+    if (!clubId || !weekStart) return;
+    const channel = supabase
+      .channel(`realtime:lwl:${clubId}:${weekStart}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "league_week_lineups", filter: `club_id=eq.${clubId}` },
+        (payload: any) => {
+          const row = (payload.new ?? payload.old) as { week_start_date?: string } | undefined;
+          if (!row || row.week_start_date === weekStart) {
+            qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "league_week_unavailability", filter: `club_id=eq.${clubId}` },
+        (payload: any) => {
+          const row = (payload.new ?? payload.old) as { week_start_date?: string } | undefined;
+          if (!row || row.week_start_date === weekStart) {
+            qc.invalidateQueries({ queryKey: ["lwu", clubId, weekStart] });
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clubId, weekStart, qc]);
 
   // Week-wide unavailability
   const { data: unavailable = [] } = useQuery<{ id: string; club_member_id: string }[]>({

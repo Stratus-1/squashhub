@@ -42,6 +42,7 @@ const ADMIN_TABS: { value: string; label: string; icon: any; permission?: Permis
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
   { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
+  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
 ];
 

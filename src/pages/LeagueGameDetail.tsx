@@ -1119,7 +1119,9 @@ export default function LeagueGameDetail() {
 
   const startMarking = (posIdx: number) => {
     const pos = positions[posIdx];
-    if (!pos.homeCode || !pos.awayCode) { toast.error("Both players required"); return; }
+    const homeOk = !!(pos.homeCode || pos.homeName);
+    const awayOk = !!(pos.awayCode || pos.awayName);
+    if (!homeOk || !awayOk) { toast.error("Both players required"); return; }
     const config = buildMarkerConfigForPosition(posIdx);
     if (config) clearMarkerStateForSession(getMarkerSessionKeys(config));
     setResumableMarker(null);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
@@ -34,6 +34,7 @@ import {
   type FixtureLite,
 } from "./fill-leagues/types";
 import { useAssociationRules } from "@/hooks/use-association-rules";
+import { useNsaFixtures, NSA_CURRENT_SEASON, type NsaTeam } from "@/hooks/use-nsa";
 import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";
@@ -401,6 +402,84 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     return rows;
   }, [previousFixtures, previousMatchResults, registrations, sortedLeagues]);
 
+  // ---------- NSA fallback for play history ----------
+  // If a player has no local scorecard history yet (e.g. captain hasn't entered
+  // results in SquashHub but the matches were played on NSA's site), fall back
+  // to NSA's per-team roster. Any NSF code with `played > 0` is treated as
+  // having play history in THAT team's league. Keeps local data authoritative.
+  const isNsaContext = useMemo(
+    () => sortedLeagues.some(l => /^(NSF|[A-Z]{2,4})\d{3,}$/i.test((l.code || "").trim())),
+    [sortedLeagues],
+  );
+  const { data: nsaFixturesAll = [] } = useNsaFixtures({
+    league: NSA_CURRENT_SEASON,
+    status: "completed",
+    enabled: isNsaContext && leagueCodes.length > 0,
+  });
+  const nsaTeamIdByCode = useMemo(() => {
+    const m = new Map<string, string>();
+    const norm = (s: string) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    for (const f of nsaFixturesAll) {
+      for (const t of [f.team1, f.team2]) {
+        if (t?.code) m.set(norm(t.code), String(t.id));
+      }
+    }
+    return m;
+  }, [nsaFixturesAll]);
+  const nsaTeamQueries = useQueries({
+    queries: sortedLeagues
+      .map(l => ({ id: l.id, code: l.code }))
+      .filter(l => !!l.code)
+      .map(l => {
+        const norm = (l.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        const teamId = nsaTeamIdByCode.get(norm) || null;
+        return {
+          queryKey: ["nsa-team-roster-for-league", l.id, teamId],
+          queryFn: async (): Promise<{ leagueId: string; team: NsaTeam | null }> => {
+            if (!teamId) return { leagueId: l.id, team: null };
+            const { data, error } = await supabase.functions.invoke("nsa-proxy", {
+              body: { endpoint: "team", params: { team: teamId } },
+            });
+            if (error) throw new Error(error.message || "NSA team fetch failed");
+            if (data?.error) throw new Error(data.error);
+            return { leagueId: l.id, team: (data?.data ?? null) as NsaTeam | null };
+          },
+          enabled: isNsaContext && !!teamId,
+          staleTime: 5 * 60_000,
+          retry: 1,
+        };
+      }),
+  });
+  const nsaPlayedRows = useMemo<PlayedLeagueRow[]>(() => {
+    if (!isNsaContext) return [];
+    const memberByCode = new Map<string, string>();
+    for (const r of registrations) {
+      const code = (r.league_association_number || r.ssa_number || "").toString().trim().toUpperCase();
+      if (code && !memberByCode.has(code)) memberByCode.set(code, r.club_member_id);
+    }
+    const rows: PlayedLeagueRow[] = [];
+    // Use today as the fixture_date so NSA-only history is treated as recent
+    // enough to bind the player's "home" league for movement-cap checks.
+    const today = format(new Date(), "yyyy-MM-dd");
+    for (const q of nsaTeamQueries) {
+      const payload = q.data as { leagueId: string; team: NsaTeam | null } | undefined;
+      if (!payload?.team?.players) continue;
+      for (const p of payload.team.players) {
+        const played = Number(p.result_summary?.played ?? 0);
+        if (!played) continue;
+        const memberId = memberByCode.get((p.code || "").trim().toUpperCase());
+        if (!memberId) continue;
+        rows.push({
+          league_id: payload.leagueId,
+          club_member_id: memberId,
+          position: null,
+          fixture_date: today,
+        });
+      }
+    }
+    return rows;
+  }, [isNsaContext, nsaTeamQueries, registrations]);
+
   const latestPlayedByMember = useMemo(() => {
     const m = new Map<string, PlayedLeagueRow>();
     const sortedRows = [...previousPlayedRows].sort((a, b) => {
@@ -413,8 +492,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     for (const row of sortedRows) {
       if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
     }
+    // Fallback: members with no local history use NSA's roster as their home league.
+    for (const row of nsaPlayedRows) {
+      if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
+    }
     return m;
-  }, [previousPlayedRows, sortedLeagues]);
+  }, [previousPlayedRows, nsaPlayedRows, sortedLeagues]);
 
   // Members
   const memberIds = useMemo(() => {

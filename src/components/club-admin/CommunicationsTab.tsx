@@ -273,9 +273,28 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
   const { data: members = [] } = useQuery({
     queryKey: ["club-members-email", clubId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("club_members").select("id,name,email,club_member_number").eq("club_id", clubId).not("email", "is", null).order("name");
+      const { data, error } = await supabase.from("club_members").select("id,name,email,phone,club_member_number,id_number").eq("club_id", clubId).not("email", "is", null).order("name");
       if (error) throw error;
-      return data as { id: string; name: string; email: string; club_member_number: string | null }[];
+      return data as { id: string; name: string; email: string; phone: string | null; club_member_number: string | null; id_number: string | null }[];
+    },
+  });
+
+  const { data: club } = useQuery({
+    queryKey: ["club-comms-meta", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clubs").select("name,email,phone,email_signature_html,email_disclaimer").eq("id", clubId).maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  const { data: leagueMemberIds = [] } = useQuery({
+    queryKey: ["league-member-ids", leagueId],
+    enabled: audienceType === "league" && !!leagueId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("member_league_registrations").select("club_member_id, league_association_number").eq("league_id", leagueId);
+      if (error) throw error;
+      return (data || []) as { club_member_id: string; league_association_number: string | null }[];
     },
   });
 
@@ -288,8 +307,55 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
   const audienceCount = useMemo(() => {
     if (audienceType === "all") return members.length;
     if (audienceType === "selected") return selectedMemberIds.length;
-    return 0; // league count loaded server-side
-  }, [audienceType, members, selectedMemberIds]);
+    if (audienceType === "league") return leagueMemberIds.length;
+    return 0;
+  }, [audienceType, members, selectedMemberIds, leagueMemberIds]);
+
+  const firstRecipient = useMemo(() => {
+    let m: any = null;
+    let leagueNum = "";
+    if (audienceType === "all") m = members[0];
+    else if (audienceType === "selected") m = members.find((mm) => mm.id === selectedMemberIds[0]);
+    else if (audienceType === "league" && leagueMemberIds.length) {
+      const first = leagueMemberIds[0];
+      m = members.find((mm) => mm.id === first.club_member_id);
+      leagueNum = String(first.league_association_number || "");
+    }
+    return { member: m, leagueNum };
+  }, [audienceType, members, selectedMemberIds, leagueMemberIds]);
+
+  const previewLeagueName = useMemo(() => leagues.find((l) => l.id === leagueId)?.name || "", [leagues, leagueId]);
+
+  const previewVars: Record<string, string> = useMemo(() => {
+    const m = firstRecipient.member;
+    if (m) {
+      const full = String(m.name || "").trim();
+      const [first, ...rest] = full.split(/\s+/);
+      return {
+        title: "", first_name: first || "", surname: rest.join(" "), name: full,
+        member_number: String(m.club_member_number || ""),
+        email: String(m.email || ""), phone: String(m.phone || ""),
+        id_number: String(m.id_number || ""),
+        league_name: previewLeagueName, league_number: firstRecipient.leagueNum,
+        club_name: String(club?.name || ""), club_email: String(club?.email || ""), club_phone: String(club?.phone || ""),
+      };
+    }
+    return {
+      title: "Mr", first_name: "Jane", surname: "Doe", name: "Jane Doe",
+      member_number: "M001", email: "jane@example.com", phone: "0821234567",
+      id_number: "8001015009087", league_name: previewLeagueName || "Men's League 1", league_number: "12345",
+      club_name: String(club?.name || "Your Club"), club_email: String(club?.email || "info@yourclub.co.za"), club_phone: String(club?.phone || "0110001111"),
+    };
+  }, [firstRecipient, previewLeagueName, club]);
+  const renderPreview = (s: string) => String(s ?? "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, k) => previewVars[k] ?? "");
+
+  const escapeHtml = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const sigBlock = club?.email_signature_html
+    ? `<div style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:14px">${club.email_signature_html}</div>`
+    : "";
+  const disclaimerBlock = club?.email_disclaimer
+    ? `<p style="margin:14px 0 0;font-size:11px;color:#94a3b8;line-height:1.4">${escapeHtml(club.email_disclaimer)}</p>`
+    : "";
 
   const send = useMutation({
     mutationFn: async () => {
@@ -320,14 +386,6 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
     },
     onError: (e: any) => toast({ title: "Send failed", description: e?.message || String(e), variant: "destructive" }),
   });
-
-  const previewVars: Record<string, string> = {
-    title: "Mr", first_name: "Jane", surname: "Doe", name: "Jane Doe",
-    member_number: "M001", email: "jane@example.com", phone: "0821234567",
-    id_number: "8001015009087", league_name: "Men's League 1", league_number: "12345",
-    club_name: "Your Club", club_email: "info@yourclub.co.za", club_phone: "0110001111",
-  };
-  const renderPreview = (s: string) => s.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, k) => previewVars[k] ?? "");
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -407,12 +465,19 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
               <p className="text-[11px] text-muted-foreground mb-1">Click a merge field to insert into the <strong>{activeField}</strong>:</p>
               <MergeFieldChips onInsert={insertToken} />
             </div>
-            <Button size="sm" variant="outline" onClick={() => setShowPreview((s) => !s)} className="gap-1"><Eye className="w-3 h-3" />{showPreview ? "Hide" : "Show"} preview (sample data)</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowPreview((s) => !s)} className="gap-1"><Eye className="w-3 h-3" />{showPreview ? "Hide" : "Show"} preview {firstRecipient.member ? "(first recipient)" : "(sample data)"}</Button>
             {showPreview && (
-              <div className="border border-border rounded p-3 bg-background">
-                <p className="text-[11px] text-muted-foreground mb-1">Subject preview:</p>
-                <p className="text-sm font-medium mb-2">{renderPreview(subject)}</p>
-                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderPreview(body) }} />
+              <div className="border border-border rounded p-3 bg-background space-y-2">
+                <p className="text-[11px] text-muted-foreground">
+                  {firstRecipient.member
+                    ? <>Previewing as <strong>{previewVars.name}</strong> &lt;{previewVars.email}&gt; — the first recipient in this audience.</>
+                    : <>No recipients resolved yet — showing sample data.</>}
+                </p>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Subject preview:</p>
+                  <p className="text-sm font-medium">{renderPreview(subject)}</p>
+                </div>
+                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderPreview(body) + sigBlock + disclaimerBlock }} />
               </div>
             )}
           </div>

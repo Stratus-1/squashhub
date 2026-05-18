@@ -891,24 +891,20 @@ export default function LeagueGameDetail() {
     // If setup already saved, persist immediately
     if (setupDone && fixtureId && user) {
       try {
-        // Re-derive the updated positions snapshot (state hasn't flushed yet, so recompute manually)
-        setTimeout(async () => {
-          const rowsToSave = updatedPositionsForSave.length ? updatedPositionsForSave : positions;
-          for (let i = 0; i < rowsToSave.length; i++) {
-            const p = rowsToSave[i];
-            if (!p.homeCode && !p.awayCode && !p.homeName && !p.awayName) continue;
-            await supabase.from("league_match_results" as any).upsert({
-              fixture_id: fixtureId, position: i + 1,
-              home_player_code: p.homeCode.toUpperCase(),
-              away_player_code: p.awayCode.toUpperCase(),
-              home_player_name: p.homeName,
-              away_player_name: p.awayName,
-              game_scores: p.scores, home_games_won: 0, away_games_won: 0,
-              winner: null,
-            } as any, { onConflict: "fixture_id,position" });
-          }
-          queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
-        }, 50);
+        for (let i = 0; i < updatedPositionsForSave.length; i++) {
+          const p = updatedPositionsForSave[i];
+          if (!p.homeCode && !p.awayCode && !p.homeName && !p.awayName) continue;
+          await supabase.from("league_match_results" as any).upsert({
+            fixture_id: fixtureId, position: i + 1,
+            home_player_code: p.homeCode.toUpperCase(),
+            away_player_code: p.awayCode.toUpperCase(),
+            home_player_name: p.homeName,
+            away_player_name: p.awayName,
+            game_scores: p.scores, home_games_won: 0, away_games_won: 0,
+            winner: null,
+          } as any, { onConflict: "fixture_id,position" });
+        }
+        queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
       } catch (e) { console.error("Swap persist failed", e); }
     }
   }, [swapTarget, setupDone, fixtureId, user, positions, queryClient, buildSwappedPositions]);

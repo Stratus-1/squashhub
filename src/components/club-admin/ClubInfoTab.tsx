@@ -21,6 +21,7 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     name: club.name || "",
     address: club.address || "",
     email: club.email || "",
+    contact_person_name: (club as any).contact_person_name || "",
     phone: club.phone || "",
     chairman_member_id: club.chairman_member_id || "",
     secretary_member_id: club.secretary_member_id || "",

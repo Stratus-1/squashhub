@@ -87,9 +87,26 @@ function leagueOrder(name: string, code: string | null): number {
 const isLadiesLeague = (n: string) => /ladies|women/i.test(n);
 const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
 const DEFAULT_FILL_POSITIONS = 4;
-const MAX_FILL_POSITIONS = 5;
-const boundedFillTeamSize = (...counts: number[]) =>
-  Math.min(MAX_FILL_POSITIONS, Math.max(DEFAULT_FILL_POSITIONS, ...counts.filter(Number.isFinite)));
+const ABSOLUTE_MAX_FILL_POSITIONS = 10;
+/**
+ * Resolve the number of lineup slots for a league based on the association's
+ * team-size rule (set in Super Admin → Association Rules):
+ *   - fixed    → exactly `rules.team_size` (e.g. NSA = 4). Extras are reserves.
+ *   - flexible → grows with the allocated squad (NIL — e.g. 5+ per team).
+ * Always honour any previously-saved lineup positions so we never hide existing data.
+ */
+const resolveTeamSize = (
+  rules: { team_size_mode?: "fixed" | "flexible" | null; team_size?: number | null } | null | undefined,
+  registeredCount: number,
+  savedMaxPosition = 0,
+) => {
+  const base = rules?.team_size && rules.team_size > 0 ? rules.team_size : DEFAULT_FILL_POSITIONS;
+  const mode = rules?.team_size_mode ?? "fixed";
+  const size = mode === "flexible"
+    ? Math.max(base, registeredCount, savedMaxPosition)
+    : Math.max(base, savedMaxPosition);
+  return Math.min(ABSOLUTE_MAX_FILL_POSITIONS, size);
+};
 
 export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesAssociationId, weekStartDow }: Props) {
   const qc = useQueryClient();

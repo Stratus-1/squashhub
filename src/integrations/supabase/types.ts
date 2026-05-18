@@ -14,6 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_events: {
+        Row: {
+          club_id: string
+          club_member_id: string | null
+          door_name: string | null
+          event_type: string
+          id: string
+          occurred_at: string
+          provider_person_id: string | null
+          raw: Json | null
+        }
+        Insert: {
+          club_id: string
+          club_member_id?: string | null
+          door_name?: string | null
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          provider_person_id?: string | null
+          raw?: Json | null
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string | null
+          door_name?: string | null
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          provider_person_id?: string | null
+          raw?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_events_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_events_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      access_provisioning_log: {
+        Row: {
+          action: string
+          attempts: number
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          id: string
+          provider: string
+          request: Json | null
+          response: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          attempts?: number
+          club_id: string
+          club_member_id?: string | null
+          created_at?: string
+          id?: string
+          provider: string
+          request?: Json | null
+          response?: Json | null
+          status: string
+        }
+        Update: {
+          action?: string
+          attempts?: number
+          club_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          id?: string
+          provider?: string
+          request?: Json | null
+          response?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_provisioning_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_provisioning_log_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_provisioning_log_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -1574,6 +1690,9 @@ export type Database = {
           club_member_number: string | null
           email: string | null
           enable_league_association_id: string | null
+          face_consent_at: string | null
+          face_provider_person_id: string | null
+          face_provisioned_at: string | null
           fee_category_id: string | null
           gender: string | null
           home_club_id: string | null
@@ -1598,6 +1717,9 @@ export type Database = {
           club_member_number?: string | null
           email?: string | null
           enable_league_association_id?: string | null
+          face_consent_at?: string | null
+          face_provider_person_id?: string | null
+          face_provisioned_at?: string | null
           fee_category_id?: string | null
           gender?: string | null
           home_club_id?: string | null
@@ -1622,6 +1744,9 @@ export type Database = {
           club_member_number?: string | null
           email?: string | null
           enable_league_association_id?: string | null
+          face_consent_at?: string | null
+          face_provider_person_id?: string | null
+          face_provisioned_at?: string | null
           fee_category_id?: string | null
           gender?: string | null
           home_club_id?: string | null
@@ -1727,6 +1852,7 @@ export type Database = {
           access_control_api_key: string | null
           access_control_api_url: string | null
           access_control_type: string | null
+          access_provider: string | null
           bank_account_name: string | null
           bank_account_number: string | null
           bank_branch_code: string | null
@@ -1746,11 +1872,18 @@ export type Database = {
           smtp_port: number | null
           smtp_user: string | null
           updated_at: string
+          zk_area_id: string | null
+          zk_base_url: string | null
+          zk_door_group: string | null
+          zk_password: string | null
+          zk_username: string | null
+          zk_webhook_secret: string | null
         }
         Insert: {
           access_control_api_key?: string | null
           access_control_api_url?: string | null
           access_control_type?: string | null
+          access_provider?: string | null
           bank_account_name?: string | null
           bank_account_number?: string | null
           bank_branch_code?: string | null
@@ -1770,11 +1903,18 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          zk_area_id?: string | null
+          zk_base_url?: string | null
+          zk_door_group?: string | null
+          zk_password?: string | null
+          zk_username?: string | null
+          zk_webhook_secret?: string | null
         }
         Update: {
           access_control_api_key?: string | null
           access_control_api_url?: string | null
           access_control_type?: string | null
+          access_provider?: string | null
           bank_account_name?: string | null
           bank_account_number?: string | null
           bank_branch_code?: string | null
@@ -1794,6 +1934,12 @@ export type Database = {
           smtp_port?: number | null
           smtp_user?: string | null
           updated_at?: string
+          zk_area_id?: string | null
+          zk_base_url?: string | null
+          zk_door_group?: string | null
+          zk_password?: string | null
+          zk_username?: string | null
+          zk_webhook_secret?: string | null
         }
         Relationships: [
           {

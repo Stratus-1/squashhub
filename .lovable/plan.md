@@ -1,68 +1,85 @@
-# NSA member sync — allocation, linking & active state
+# ZKTeco Face Recognition Integration
 
-Extends the existing **Sync members from NSA** flow on Super Admin → Leagues → Members so that the synced roster does more than just populate the platform table.
+The platform already has the bones of face access control: `AccessControlTab.tsx` with a "Face Recognition" method, a `face_enrolment_required` flag on clubs, a `FaceEnrolmentDialog` (selfie via webcam → stored in `member-faces` bucket → `avatar_url` on `club_members`), and a profile-completion prompt that nudges members to enrol. What's missing is a **provider** abstraction so we can talk to ZKTeco (and similar systems like Hikvision/Suprema later) and actually push enrolled faces to the door terminal.
 
-## What changes
+## What we'll build
 
-### 1. Admin Members tab — grouped view
-Instead of a flat list, group `platform_league_members` rows for the active association as:
+### 1. Provider model in the Access Control tab
+Add a "Provider" dropdown that appears when **Face Recognition** is selected:
+- **ZKTeco — ZKBio CVSecurity / ZKBio Access** (cloud or LAN)
+- **ZKTeco — Standalone terminal (Push protocol)** (terminal posts to our endpoint)
+- **Generic / Other** (manual enrolment only, no API push)
 
-```text
-NSA Club (e.g. Killarney Country Club)
-├─ Team KIL1     [Active 7 · Inactive 1]
-│   • Smith, John          KIL1   ACTIVE   12 matches   ✓ linked to club_member
-│   • …
-└─ Team KIL2
-    • …
-Unallocated / no team
-└─ …
-```
+When ZKTeco is picked, show the right fields:
+- **ZKBio**: Base URL (e.g. `http://192.168.x.x:8088` or cloud URL), API username, API password, Area/Department ID, Default access level/door group, "Verify connection" button
+- **Standalone Push**: Show a generated webhook URL + shared secret that the terminal posts attendance/enrolment to
+- Both: a **Test connection** action and **Sync all enrolled members now** action
 
-- Collapsible per club, per team.
-- Each row shows: name, NSA code, team, status (`ACTIVE`/`INACTIVE`), matches played, and a small badge if the NSA member is **linked** to a `club_members` row in the platform (via NSA number).
-- Filters: search, status (Active / Inactive / All), club.
+Store these in the existing `club_secrets` row (new columns: `access_provider`, `zk_base_url`, `zk_username`, `zk_password`, `zk_area_id`, `zk_door_group`, `zk_webhook_secret`).
 
-### 2. Sync edge function — extended behaviour
+### 2. Member-side enrolment improvements
+Today `FaceEnrolmentDialog` captures a selfie. We'll:
+- Keep the selfie path (works for ZKBio — it accepts a Base64 photo per person).
+- Add an **"Upload existing photo"** option (file picker) alongside "Use camera" — useful for members who can't get to a camera right now or who want to use a passport-style photo.
+- Add a lightweight client-side quality check (min resolution, single face hint — purely advisory, no ML on device) before allowing save.
+- After save, enqueue a **provisioning job** so the photo + member ID get pushed to the configured ZKTeco endpoint.
 
-After upserting NSA players into `platform_league_members`, the function now:
+### 3. Enrolment provisioning + sync (edge function)
+New edge function `access-provision-member`:
+- Input: `club_id`, `club_member_id` (or `user_id`)
+- Looks up the provider config from `club_secrets`
+- For ZKBio: creates/updates the person (`club_member_number` as personId, full name, photo Base64) and assigns the configured door group
+- For Standalone Push: stores the payload in an outbox table — the terminal pulls it via the push-protocol endpoint on its next heartbeat
+- Logs the result to a new `access_provisioning_log` table (status, provider response, retry count)
 
-**a. Active / inactive flag (NSA roster ⇒ club_members)**
-- For every `member_association_affiliations` row pointing at this association:
-  - If its `league_association_number` is in this season's NSA roster → `active = true`, `deactivated_at = null`.
-  - If it is **not** in the roster → `active = false`, `deactivated_at = now()`. Member is still listed (we never delete the affiliation — per existing rule).
-- Same flag mirrored on `platform_league_members.user_state` (`ACTIVE` if on roster, `INACTIVE` if previously synced but no longer present).
+Triggered automatically when:
+- A member completes face enrolment
+- An admin clicks "Sync all enrolled members now"
+- A new member is added to a club that has face recognition enabled
 
-**b. Auto-link & team allocation (only when a club_member exists)**
-- For each NSA player code:
-  - Look up `club_members` via `member_association_affiliations.league_association_number = user_code` for this association.
-  - If found:
-    - Mark affiliation `active = true`.
-    - Find the matching local `leagues` row by `nsa_team_id` (the NSA team id we got from `team.php`). If present, upsert `member_league_registrations(club_member_id, league_id)` so the player is allocated to their team for this season.
-  - If not found:
-    - **Do not** auto-create a `club_members` row. The NSA player stays only in `platform_league_members` until a club admin (or self-signup with that NSA number) creates the local member.
+### 4. Door event ingestion (optional, ZK Push)
+New edge function `access-zk-push` (verify_jwt = false, secret in URL or header) that:
+- Accepts ZKTeco's Push protocol payloads (attendance records, enrolment confirmations)
+- Validates the per-club secret
+- Writes accepted check-ins to a new `access_events` table (member, door, timestamp, granted/denied)
 
-**c. Result summary** in the banner is extended:
-`13 added · 4 updated · 2 deactivated · 9 linked · 5 allocated to teams · 31 unchanged`
+This gives admins a live "who came in today" feed later, and confirms enrolment actually landed on the device.
 
-## Out of scope
-- No auto-creation of `club_members` from NSA roster.
-- No NSA-side writes (this is read-only sync).
-- No change to the fixtures sync function.
+### 5. Admin visibility
+In the Access Control tab, below the form, show:
+- **Enrolment status**: x of y members have a face photo; x of those are pushed to the device
+- **Recent door events** (last 20) if `access_events` has data
+- Per-member "Re-sync" button on the Members tab when face recognition is the active method
+
+### 6. POPIA / consent
+- Update the enrolment dialog copy to spell out: data shared with ZKTeco device at your club, stored locally on the terminal, can be deleted on request.
+- Add an explicit consent checkbox the first time a member enrols; record `face_consent_at` on `club_members`.
 
 ## Technical details
 
-**Edge function `supabase/functions/nsa-sync-members/index.ts`** (extend existing):
-1. After current upsert into `platform_league_members`, build `Set<user_code>` of roster.
-2. Query all `member_association_affiliations` for this `association_id` joined via `league_associations.platform_association_id` to find affiliations belonging to clubs linked to this NSA association.
-3. Diff against roster set:
-   - In roster → `update active=true, deactivated_at=null`.
-   - Not in roster → `update active=false, deactivated_at=now()`.
-4. For each NSA player with a matching affiliation, look up `leagues` row where `nsa_team_id = <player's team id>` and `club_id = <affiliation's club_id>`; upsert into `member_league_registrations` (`onConflict: club_member_id,league_id`, no overwrite of `is_captain`/`is_reserve`).
-5. Also set `platform_league_members.user_state = 'INACTIVE'` for codes previously stored under this association but absent from the new roster (no delete).
+**New DB columns**
+- `club_secrets`: `access_provider text`, `zk_base_url text`, `zk_username text`, `zk_password text`, `zk_area_id text`, `zk_door_group text`, `zk_webhook_secret text`
+- `club_members`: `face_consent_at timestamptz`, `face_provisioned_at timestamptz`, `face_provider_person_id text`
 
-**Admin UI `src/pages/admin/SuperAdminLeagues.tsx`** Members tab:
-- Add `useMemo` grouping `platform_league_members` by `club_name → affiliation (team code)`.
-- Render collapsible `<Accordion>` per club, then per team. Status badges from `user_state`. "Linked" badge resolved via a single query joining `member_association_affiliations` on `(association_id, league_association_number)` to get linked club_member ids.
-- Keep the search + Sync button bar at the top.
+**New tables**
+- `access_provisioning_log` (club_id, club_member_id, provider, status, request, response, attempts, created_at) — RLS: club admins only
+- `access_events` (club_id, club_member_id nullable, provider_person_id, door_name, event_type, occurred_at, raw) — RLS: club admins read, edge function writes via service role
 
-No DB schema changes required — all needed columns (`active`, `deactivated_at`, `user_state`, `nsa_team_id`) already exist.
+**New edge functions**
+- `access-provision-member` (verify_jwt = true) — server-to-ZKBio bridge
+- `access-zk-push` (verify_jwt = false) — receives ZK Push payloads, secret-gated
+
+**Frontend changes**
+- `AccessControlTab.tsx` — provider dropdown, ZK fields, Test/Sync buttons, status panel
+- `FaceEnrolmentDialog.tsx` — add "Upload photo" tab, consent checkbox, call `access-provision-member` after save
+- `MembersTab.tsx` — add "Re-sync face" action when face recognition is the active method
+
+## What we won't do yet
+- Direct LAN discovery of ZK terminals (requires being on the same network as the device — out of scope for a hosted SaaS)
+- Liveness detection / anti-spoofing on enrolment (rely on the terminal's own liveness)
+- Hikvision / Suprema providers — the provider abstraction is ready for them but only ZKTeco is wired up now
+
+## Things I need from you before building
+1. **Which ZKTeco setup does Nelspruit actually have** — ZKBio CVSecurity (server software with a REST API), a standalone terminal that supports the Push protocol, or just a local terminal that gets enrolled via USB stick? The integration path differs significantly.
+2. **Network**: is the ZKBio server reachable from the public internet (with a real URL/port + credentials), or is it LAN-only? If LAN-only we have to use the Push direction (terminal pulls from us).
+3. **Are you OK with the camera selfie being the primary enrolment method**, with photo upload as a fallback?

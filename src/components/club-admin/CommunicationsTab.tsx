@@ -465,12 +465,19 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
               <p className="text-[11px] text-muted-foreground mb-1">Click a merge field to insert into the <strong>{activeField}</strong>:</p>
               <MergeFieldChips onInsert={insertToken} />
             </div>
-            <Button size="sm" variant="outline" onClick={() => setShowPreview((s) => !s)} className="gap-1"><Eye className="w-3 h-3" />{showPreview ? "Hide" : "Show"} preview (sample data)</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowPreview((s) => !s)} className="gap-1"><Eye className="w-3 h-3" />{showPreview ? "Hide" : "Show"} preview {firstRecipient.member ? "(first recipient)" : "(sample data)"}</Button>
             {showPreview && (
-              <div className="border border-border rounded p-3 bg-background">
-                <p className="text-[11px] text-muted-foreground mb-1">Subject preview:</p>
-                <p className="text-sm font-medium mb-2">{renderPreview(subject)}</p>
-                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderPreview(body) }} />
+              <div className="border border-border rounded p-3 bg-background space-y-2">
+                <p className="text-[11px] text-muted-foreground">
+                  {firstRecipient.member
+                    ? <>Previewing as <strong>{previewVars.name}</strong> &lt;{previewVars.email}&gt; — the first recipient in this audience.</>
+                    : <>No recipients resolved yet — showing sample data.</>}
+                </p>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Subject preview:</p>
+                  <p className="text-sm font-medium">{renderPreview(subject)}</p>
+                </div>
+                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderPreview(body) + sigBlock + disclaimerBlock }} />
               </div>
             )}
           </div>

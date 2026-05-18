@@ -10,7 +10,8 @@ interface Props {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
-  onInsertMerge?: (insertAtCursor: (text: string) => void) => void;
+  onEditorReady?: (editor: any) => void;
+  onFocus?: () => void;
 }
 
 export function RichTextEditor({ value, onChange, placeholder }: Props) {

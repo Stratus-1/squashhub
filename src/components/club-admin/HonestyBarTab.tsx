@@ -262,17 +262,15 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
             placeholder="5"
           />
         </div>
-        {!editItem && (
-          <div>
-            <Label className="text-xs">Opening Stock</Label>
-            <Input
-              type="number" min={0}
-              value={form.opening_stock}
-              onChange={e => setForm(p => ({ ...p, opening_stock: e.target.value }))}
-              placeholder="0"
-            />
-          </div>
-        )}
+        <div>
+          <Label className="text-xs">{editItem ? "Current Stock Level" : "Opening Stock"}</Label>
+          <Input
+            type="number" min={0}
+            value={form.opening_stock}
+            onChange={e => setForm(p => ({ ...p, opening_stock: e.target.value }))}
+            placeholder="0"
+          />
+        </div>
         <div>
           <Label className="text-xs">Category</Label>
           <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>

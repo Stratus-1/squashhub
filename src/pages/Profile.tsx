@@ -721,6 +721,8 @@ function ViewMode({
   setMode: (m: "edit") => void;
 }) {
   const [showInactive, setShowInactive] = useState(false);
+  const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);
+  const hasFaceEnrolled = !!clubMember?.face_consent_at;
   const email = profile.email as string | null;
   const rank = typeof clubMember?.ladder_position === "number" ? clubMember.ladder_position : null;
   const skillLabel = clubMember?.skill_level

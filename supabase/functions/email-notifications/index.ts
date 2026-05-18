@@ -196,25 +196,23 @@ async function handleTestEmail(payload: Record<string, unknown>, authHeader: str
     console.log(`[test-email] Attempting SMTP send to ${to} via ${smtpHost}:${smtpPort}`);
     
     const smtpPromise = (async () => {
-      const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
-      const client = new SMTPClient({
-        connection: {
-          hostname: smtpHost,
-          port: smtpPort,
-          tls: smtpPort === 465,
-          auth: { username: smtpUser, password: smtpPass },
-        },
+      const nodemailer = await import("npm:nodemailer@6.9.14");
+      const transporter = nodemailer.default.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465, // true for 465 (implicit TLS), false for 587 (STARTTLS)
+        auth: { user: smtpUser, pass: smtpPass },
+        requireTLS: smtpPort === 587,
       });
 
-      await client.send({
+      await transporter.sendMail({
         from: `${senderName} <${senderEmail}>`,
-        to: to,
+        to,
         subject,
-        content: textBody,
+        text: textBody,
         html,
       });
 
-      await client.close();
       console.log(`[test-email] SMTP send succeeded to ${to}`);
       return { ok: true };
     })();

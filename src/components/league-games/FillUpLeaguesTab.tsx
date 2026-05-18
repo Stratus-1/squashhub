@@ -195,9 +195,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const counts = new Map<string, number>();
     for (const r of registrations) counts.set(r.league_id, (counts.get(r.league_id) ?? 0) + 1);
     const sizes = new Map<string, number>();
-    for (const lg of sortedLeagues) sizes.set(lg.id, boundedFillTeamSize(counts.get(lg.id) ?? 0));
+    for (const lg of sortedLeagues) sizes.set(lg.id, resolveTeamSize(subRules, counts.get(lg.id) ?? 0));
     return sizes;
-  }, [registrations, sortedLeagues]);
+  }, [registrations, sortedLeagues, subRules]);
 
   // Build a list of candidate planning weeks.
   // Always start with the CURRENT squash week (the one containing today) so an

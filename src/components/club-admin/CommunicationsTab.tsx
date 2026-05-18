@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -143,6 +143,9 @@ function TemplateEditorDialog({ clubId, template, onClose }: { clubId: string; t
   const [name, setName] = useState(template.name);
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.body_html);
+  const [activeField, setActiveField] = useState<"subject" | "body">("subject");
+  const [bodyEditor, setBodyEditor] = useState<any>(null);
+  const subjectRef = useRef<HTMLInputElement>(null);
   const isNew = !template.id;
 
   const save = useMutation({
@@ -162,7 +165,26 @@ function TemplateEditorDialog({ clubId, template, onClose }: { clubId: string; t
     onError: (e: any) => toast({ title: "Save failed", description: e?.message, variant: "destructive" }),
   });
 
-  const insertSubject = (token: string) => setSubject((s) => s + token);
+  const insertToken = (token: string) => {
+    if (activeField === "body" && bodyEditor) {
+      bodyEditor.chain().focus().insertContent(token).run();
+      return;
+    }
+    const el = subjectRef.current;
+    if (el) {
+      const start = el.selectionStart ?? subject.length;
+      const end = el.selectionEnd ?? subject.length;
+      const next = subject.slice(0, start) + token + subject.slice(end);
+      setSubject(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + token.length;
+        el.setSelectionRange(pos, pos);
+      });
+    } else {
+      setSubject((s) => s + token);
+    }
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -177,22 +199,22 @@ function TemplateEditorDialog({ clubId, template, onClose }: { clubId: string; t
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs">Subject</Label>
-              <span className="text-[10px] text-muted-foreground">Click a field below to insert</span>
+              <Label className="text-xs">Subject {activeField === "subject" && <span className="text-primary">●</span>}</Label>
             </div>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Hi {{first_name}}, news from {{club_name}}" />
-            <div className="mt-2"><MergeFieldChips onInsert={insertSubject} /></div>
+            <Input ref={subjectRef} value={subject} onChange={(e) => setSubject(e.target.value)} onFocus={() => setActiveField("subject")} placeholder="e.g. Hi {{first_name}}, news from {{club_name}}" />
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs">Body</Label>
+              <Label className="text-xs">Body {activeField === "body" && <span className="text-primary">●</span>}</Label>
               <span className="text-[10px] text-muted-foreground">Your signature is appended automatically</span>
             </div>
-            <RichTextEditor value={body} onChange={setBody} placeholder="Write your email…" />
-            <div className="mt-2">
-              <p className="text-[10px] text-muted-foreground mb-1">Insert merge field (paste at cursor or type manually):</p>
-              <MergeFieldChips onInsert={(t) => setBody((b) => (b ? b.replace(/<\/p>\s*$/, ` ${t}</p>`) || b + t : `<p>${t}</p>`))} />
-            </div>
+            <RichTextEditor value={body} onChange={setBody} placeholder="Write your email…" onEditorReady={setBodyEditor} onFocus={() => setActiveField("body")} />
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-1">
+              Click a merge field to insert into the <strong>{activeField}</strong>. Click inside the subject or body first to switch.
+            </p>
+            <MergeFieldChips onInsert={insertToken} />
           </div>
         </div>
         <DialogFooter>
@@ -214,6 +236,30 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [memberFilter, setMemberFilter] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [activeField, setActiveField] = useState<"subject" | "body">("subject");
+  const [bodyEditor, setBodyEditor] = useState<any>(null);
+  const subjectRef = useRef<HTMLInputElement>(null);
+
+  const insertToken = (token: string) => {
+    if (activeField === "body" && bodyEditor) {
+      bodyEditor.chain().focus().insertContent(token).run();
+      return;
+    }
+    const el = subjectRef.current;
+    if (el) {
+      const start = el.selectionStart ?? subject.length;
+      const end = el.selectionEnd ?? subject.length;
+      const next = subject.slice(0, start) + token + subject.slice(end);
+      setSubject(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + token.length;
+        el.setSelectionRange(pos, pos);
+      });
+    } else {
+      setSubject((s) => s + token);
+    }
+  };
 
   const { data: leagues = [] } = useQuery({
     queryKey: ["club-leagues", clubId],
@@ -350,14 +396,16 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
 
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Subject</Label>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-              <div className="mt-2"><MergeFieldChips onInsert={(t) => setSubject((s) => s + t)} /></div>
+              <Label className="text-xs">Subject {activeField === "subject" && <span className="text-primary">●</span>}</Label>
+              <Input ref={subjectRef} value={subject} onChange={(e) => setSubject(e.target.value)} onFocus={() => setActiveField("subject")} />
             </div>
             <div>
-              <Label className="text-xs">Body</Label>
-              <RichTextEditor value={body} onChange={setBody} />
-              <div className="mt-2"><MergeFieldChips onInsert={(t) => setBody((b) => b + t)} /></div>
+              <Label className="text-xs">Body {activeField === "body" && <span className="text-primary">●</span>}</Label>
+              <RichTextEditor value={body} onChange={setBody} onEditorReady={setBodyEditor} onFocus={() => setActiveField("body")} />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-1">Click a merge field to insert into the <strong>{activeField}</strong>:</p>
+              <MergeFieldChips onInsert={insertToken} />
             </div>
             <Button size="sm" variant="outline" onClick={() => setShowPreview((s) => !s)} className="gap-1"><Eye className="w-3 h-3" />{showPreview ? "Hide" : "Show"} preview (sample data)</Button>
             {showPreview && (

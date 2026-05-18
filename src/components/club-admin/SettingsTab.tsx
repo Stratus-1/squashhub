@@ -31,6 +31,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     smtp_port: "" as string | number,
     smtp_user: "",
     smtp_pass: "",
+    email_signature_html: (club as any).email_signature_html || "",
+    email_disclaimer: (club as any).email_disclaimer || "This email and any attachments are confidential and intended solely for the addressee. If you are not the intended recipient, please notify the sender and delete this email.",
   });
 
   // Populate SMTP fields from secrets when loaded
@@ -64,6 +66,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         member_number_start: form.member_number_start,
         auto_number_existing_onboarding: form.auto_number_existing_onboarding,
         challenge_levels_up: form.challenge_levels_up,
+        email_signature_html: form.email_signature_html || null,
+        email_disclaimer: form.email_disclaimer || null,
       } as any);
 
       // Save sensitive SMTP settings to club_secrets table
@@ -80,6 +84,44 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
       toast.success("Settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
+    }
+  };
+
+  const generateSignature = () => {
+    const c: any = club;
+    const name = c.name || "";
+    const contact = c.contact_person_name || "";
+    const email = c.email || "";
+    const phone = c.phone || "";
+    const address = c.address || "";
+    const logo = c.logo_url || "";
+    const disclaimer = form.email_disclaimer || "";
+
+    const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5;">
+  <tr>
+    ${logo ? `<td style="padding-right: 16px; vertical-align: top;"><img src="${logo}" alt="${name}" style="width: 72px; height: 72px; object-fit: contain;" /></td>` : ""}
+    <td style="vertical-align: top; border-left: 3px solid #1E3A5F; padding-left: 16px;">
+      ${contact ? `<div style="font-weight: 700; font-size: 14px; color: #0f172a;">${contact}</div>` : ""}
+      <div style="font-weight: 600; color: #1E3A5F; margin-top: 2px;">${name}</div>
+      ${phone ? `<div style="margin-top: 6px;">📞 <a href="tel:${phone}" style="color: #1f2937; text-decoration: none;">${phone}</a></div>` : ""}
+      ${email ? `<div>✉️ <a href="mailto:${email}" style="color: #1E3A5F; text-decoration: none;">${email}</a></div>` : ""}
+      ${address ? `<div style="margin-top: 4px; color: #4b5563;">📍 ${address}</div>` : ""}
+    </td>
+  </tr>
+  ${disclaimer ? `<tr><td colspan="2" style="padding-top: 14px;"><div style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 11px; color: #6b7280; font-style: italic;">${disclaimer}</div></td></tr>` : ""}
+</table>`;
+
+    setForm(p => ({ ...p, email_signature_html: html }));
+    toast.success("Signature generated — review the preview and click Save Settings");
+  };
+
+  const copySignature = async () => {
+    if (!form.email_signature_html) return;
+    try {
+      await navigator.clipboard.writeText(form.email_signature_html);
+      toast.success("Signature HTML copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
     }
   };
 
@@ -259,6 +301,45 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         <p className="text-xs text-muted-foreground">
           Sends a test email to verify your SMTP settings work.
         </p>
+      </Card>
+
+      {/* Email Signature Generator */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="font-semibold">Email Signature</h3>
+            <p className="text-sm text-muted-foreground">
+              Auto-generated from your Club Information (logo, contact person, phone, email, address).
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={generateSignature}>Generate / Refresh</Button>
+            {form.email_signature_html && <Button variant="ghost" size="sm" onClick={copySignature}>Copy HTML</Button>}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Label>Disclaimer</Label>
+          <textarea
+            className="w-full min-h-[72px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={form.email_disclaimer}
+            onChange={(e) => setForm(p => ({ ...p, email_disclaimer: e.target.value }))}
+            placeholder="Confidentiality / legal disclaimer shown at the bottom of the signature"
+          />
+        </div>
+        {form.email_signature_html ? (
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Preview</Label>
+            <div className="rounded-md border bg-white p-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: form.email_signature_html }} />
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">View HTML source</summary>
+              <pre className="mt-2 p-2 bg-muted rounded text-[11px] overflow-x-auto whitespace-pre-wrap">{form.email_signature_html}</pre>
+            </details>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Click <strong>Generate / Refresh</strong> to build a signature from your club info. Make sure your Club Info tab has the logo, contact person, phone, email, and address filled in first.
+          </p>
+        )}
       </Card>
 
       <Button onClick={handleSave} disabled={updateClub.isPending || updateSecrets.isPending} className="w-full md:w-auto">

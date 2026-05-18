@@ -119,7 +119,15 @@ export default function Home() {
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
   const adminSet = clubsWithAdmins ?? new Set<string>();
   // Live = non-NSA-seeded OR an NSA-seeded club that now has an admin assigned.
-  const liveClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded" || adminSet.has(t.id));
+  // Sort so clubs with a full admin (truly active) surface first, then alphabetical.
+  const liveClubs = allClubs
+    .filter((t) => t.tenant_type !== "nsa_seeded" || adminSet.has(t.id))
+    .sort((a, b) => {
+      const aAdmin = adminSet.has(a.id) ? 0 : 1;
+      const bAdmin = adminSet.has(b.id) ? 0 : 1;
+      if (aAdmin !== bAdmin) return aAdmin - bAdmin;
+      return a.name.localeCompare(b.name);
+    });
   const nonNsaClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded");
   const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded" && !adminSet.has(t.id));
   const clubs = allClubs;

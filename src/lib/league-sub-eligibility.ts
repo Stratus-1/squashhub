@@ -125,7 +125,17 @@ export function checkSubEligibility(
   // is only 2 slots apart, not 11.
   const cap = rules.max_position_movement_per_week;
   if (cap != null && cap >= 0) {
-    const homePos = player.homePosition ?? 4; // assume bottom of league if unknown position
+    // If we know the home league but NOT the position, we cannot honestly compute
+    // the slot delta — defaulting to #4 (or any guess) produces false-positive
+    // "movement cap exceeded" warnings. Allow with a soft warning instead.
+    if (player.homePosition == null) {
+      return {
+        ok: true,
+        warn: true,
+        reason: `Position unknown for last fixture (L${player.homeLeagueNumber}) — please verify placement`,
+      };
+    }
+    const homePos = player.homePosition;
     const order = rules.league_number_order && rules.league_number_order.length > 0
       ? rules.league_number_order
       : null;

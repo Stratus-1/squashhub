@@ -273,9 +273,28 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
   const { data: members = [] } = useQuery({
     queryKey: ["club-members-email", clubId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("club_members").select("id,name,email,club_member_number").eq("club_id", clubId).not("email", "is", null).order("name");
+      const { data, error } = await supabase.from("club_members").select("id,name,email,phone,club_member_number,id_number").eq("club_id", clubId).not("email", "is", null).order("name");
       if (error) throw error;
-      return data as { id: string; name: string; email: string; club_member_number: string | null }[];
+      return data as { id: string; name: string; email: string; phone: string | null; club_member_number: string | null; id_number: string | null }[];
+    },
+  });
+
+  const { data: club } = useQuery({
+    queryKey: ["club-comms-meta", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clubs").select("name,email,phone,email_signature_html,email_disclaimer").eq("id", clubId).maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  const { data: leagueMemberIds = [] } = useQuery({
+    queryKey: ["league-member-ids", leagueId],
+    enabled: audienceType === "league" && !!leagueId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("member_league_registrations").select("club_member_id, league_association_number").eq("league_id", leagueId);
+      if (error) throw error;
+      return (data || []) as { club_member_id: string; league_association_number: string | null }[];
     },
   });
 
@@ -288,46 +307,55 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
   const audienceCount = useMemo(() => {
     if (audienceType === "all") return members.length;
     if (audienceType === "selected") return selectedMemberIds.length;
-    return 0; // league count loaded server-side
-  }, [audienceType, members, selectedMemberIds]);
+    if (audienceType === "league") return leagueMemberIds.length;
+    return 0;
+  }, [audienceType, members, selectedMemberIds, leagueMemberIds]);
 
-  const send = useMutation({
-    mutationFn: async () => {
-      if (!subject.trim()) throw new Error("Subject required");
-      if (!body.trim()) throw new Error("Body required");
-      if (audienceType === "league" && !leagueId) throw new Error("Pick a league");
-      if (audienceType === "selected" && !selectedMemberIds.length) throw new Error("Select at least one member");
+  const firstRecipient = useMemo(() => {
+    let m: any = null;
+    let leagueNum = "";
+    if (audienceType === "all") m = members[0];
+    else if (audienceType === "selected") m = members.find((mm) => mm.id === selectedMemberIds[0]);
+    else if (audienceType === "league" && leagueMemberIds.length) {
+      const first = leagueMemberIds[0];
+      m = members.find((mm) => mm.id === first.club_member_id);
+      leagueNum = String(first.league_association_number || "");
+    }
+    return { member: m, leagueNum };
+  }, [audienceType, members, selectedMemberIds, leagueMemberIds]);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: campaign, error } = await supabase.from("club_email_campaigns").insert({
-        club_id: clubId, template_id: template.id || null, name, subject, body_html: body,
-        audience_type: audienceType,
-        audience_member_ids: audienceType === "selected" ? selectedMemberIds : [],
-        audience_league_id: audienceType === "league" ? leagueId : null,
-        status: "draft", created_by: user?.id,
-      }).select("id").single();
-      if (error) throw error;
+  const previewLeagueName = useMemo(() => leagues.find((l) => l.id === leagueId)?.name || "", [leagues, leagueId]);
 
-      const { data: result, error: fnErr } = await supabase.functions.invoke("send-club-campaign", { body: { campaign_id: campaign.id } });
-      if (fnErr) throw fnErr;
-      if ((result as any)?.error) throw new Error((result as any).error);
-      return result;
-    },
-    onSuccess: (r: any) => {
-      qc.invalidateQueries({ queryKey: ["email-campaigns", clubId] });
-      toast({ title: "Campaign sent", description: `Sent ${r?.sent || 0} • Failed ${r?.failed || 0} • Total ${r?.total || 0}` });
-      onClose();
-    },
-    onError: (e: any) => toast({ title: "Send failed", description: e?.message || String(e), variant: "destructive" }),
-  });
+  const previewVars: Record<string, string> = useMemo(() => {
+    const m = firstRecipient.member;
+    if (m) {
+      const full = String(m.name || "").trim();
+      const [first, ...rest] = full.split(/\s+/);
+      return {
+        title: "", first_name: first || "", surname: rest.join(" "), name: full,
+        member_number: String(m.club_member_number || ""),
+        email: String(m.email || ""), phone: String(m.phone || ""),
+        id_number: String(m.id_number || ""),
+        league_name: previewLeagueName, league_number: firstRecipient.leagueNum,
+        club_name: String(club?.name || ""), club_email: String(club?.email || ""), club_phone: String(club?.phone || ""),
+      };
+    }
+    return {
+      title: "Mr", first_name: "Jane", surname: "Doe", name: "Jane Doe",
+      member_number: "M001", email: "jane@example.com", phone: "0821234567",
+      id_number: "8001015009087", league_name: previewLeagueName || "Men's League 1", league_number: "12345",
+      club_name: String(club?.name || "Your Club"), club_email: String(club?.email || "info@yourclub.co.za"), club_phone: String(club?.phone || "0110001111"),
+    };
+  }, [firstRecipient, previewLeagueName, club]);
+  const renderPreview = (s: string) => String(s ?? "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, k) => previewVars[k] ?? "");
 
-  const previewVars: Record<string, string> = {
-    title: "Mr", first_name: "Jane", surname: "Doe", name: "Jane Doe",
-    member_number: "M001", email: "jane@example.com", phone: "0821234567",
-    id_number: "8001015009087", league_name: "Men's League 1", league_number: "12345",
-    club_name: "Your Club", club_email: "info@yourclub.co.za", club_phone: "0110001111",
-  };
-  const renderPreview = (s: string) => s.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_, k) => previewVars[k] ?? "");
+  const escapeHtml = (s: string) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const sigBlock = club?.email_signature_html
+    ? `<div style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:14px">${club.email_signature_html}</div>`
+    : "";
+  const disclaimerBlock = club?.email_disclaimer
+    ? `<p style="margin:14px 0 0;font-size:11px;color:#94a3b8;line-height:1.4">${escapeHtml(club.email_disclaimer)}</p>`
+    : "";
 
   return (
     <Dialog open onOpenChange={onClose}>

@@ -455,7 +455,17 @@ Deno.serve(async (req) => {
       text = `${title}\n\n${body}\n\nOpen: ${link}\n`;
     }
 
-    const result = await sendViaResend({ to: email, subject, html, text });
+    const clubMail = await resolveClubMail(targetUserId);
+    let result: { ok: boolean; skipped?: boolean; reason?: string };
+    if (clubMail) {
+      result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });
+      if (!result.ok) {
+        console.warn("[email-notifications] club SMTP failed, falling back to Resend", result.reason);
+        result = await sendViaResend({ to: email, subject, html, text });
+      }
+    } else {
+      result = await sendViaResend({ to: email, subject, html, text });
+    }
 
     if (!result.ok) {
       return new Response(JSON.stringify(result), {

@@ -779,6 +779,39 @@ function ViewMode({
         </Card>
       )}
 
+      {clubMember && (
+        <Card className="border-border/60">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <ScanFace className="w-3.5 h-3.5" /> Face Recognition
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {hasFaceEnrolled
+                    ? "Your face is enrolled. Re-scan if your appearance has changed or the door doesn't recognise you."
+                    : "Scan your face once — used to open the club's door reader automatically."}
+                </p>
+              </div>
+              {hasFaceEnrolled && (
+                <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant={hasFaceEnrolled ? "outline" : "default"}
+              className="w-full gap-1.5"
+              onClick={() => setShowFaceEnrolment(true)}
+            >
+              <ScanFace className="w-3.5 h-3.5" />
+              {hasFaceEnrolled ? "Re-scan face" : "Scan your face"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
+
       {clubMember && affiliations.length > 0 && (
         <Card className="border-border/60">
           <CardContent className="p-4 space-y-2">

@@ -4078,6 +4078,78 @@ export type Database = {
           },
         ]
       }
+      nsa_rubber_history: {
+        Row: {
+          category: string | null
+          created_at: string
+          fixture_date: string
+          games_against: number | null
+          games_for: number | null
+          id: string
+          is_home: boolean
+          league_label: string | null
+          nsa_fixture_id: number
+          nsa_league_id: number | null
+          player_code: string
+          player_name: string | null
+          points_against: number | null
+          points_for: number | null
+          position: number
+          round: number | null
+          rubbers_against: number | null
+          rubbers_for: number | null
+          scraped_at: string
+          team_code: string
+          won: boolean | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          fixture_date: string
+          games_against?: number | null
+          games_for?: number | null
+          id?: string
+          is_home: boolean
+          league_label?: string | null
+          nsa_fixture_id: number
+          nsa_league_id?: number | null
+          player_code: string
+          player_name?: string | null
+          points_against?: number | null
+          points_for?: number | null
+          position: number
+          round?: number | null
+          rubbers_against?: number | null
+          rubbers_for?: number | null
+          scraped_at?: string
+          team_code: string
+          won?: boolean | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          fixture_date?: string
+          games_against?: number | null
+          games_for?: number | null
+          id?: string
+          is_home?: boolean
+          league_label?: string | null
+          nsa_fixture_id?: number
+          nsa_league_id?: number | null
+          player_code?: string
+          player_name?: string | null
+          points_against?: number | null
+          points_for?: number | null
+          position?: number
+          round?: number | null
+          rubbers_against?: number | null
+          rubbers_for?: number | null
+          scraped_at?: string
+          team_code?: string
+          won?: boolean | null
+        }
+        Relationships: []
+      }
       platform_league_associations: {
         Row: {
           created_at: string

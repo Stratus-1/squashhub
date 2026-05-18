@@ -1949,7 +1949,7 @@ export default function LeagueGameDetail() {
                               {!isSubmitted && !pos.completed && (
                                 <>
                                   {hasPlayers && (
-                                    <Tooltip open={isFirstPlayable && !hasResumableMarker ? true : undefined}>
+                                    <Tooltip open={isFirstPlayable && !hasResumableMarker && firstHintVisible ? true : undefined}>
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={() => {

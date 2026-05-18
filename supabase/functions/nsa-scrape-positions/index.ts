@@ -58,8 +58,9 @@ function stripTags(s: string): string {
 async function listCompletedFixtures(lookbackDays: number): Promise<FixtureLite[]> {
   // NSA's status filter is unreliable — pull all fixtures and filter client-side
   // to dates in [today - lookback, today).
+  // NB: do NOT send Accept: application/json — that triggers a different (leagues map) response.
   const res = await fetch(`${NSA_BASE}/fixtures.php?json`, {
-    headers: { "User-Agent": UA, Accept: "application/json" },
+    headers: { "User-Agent": UA },
   });
   if (!res.ok) throw new Error(`NSA fixtures HTTP ${res.status}`);
   const raw = (await res.json()) as Array<{

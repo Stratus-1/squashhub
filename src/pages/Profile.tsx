@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Pencil, Camera, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Camera, Trash2, ScanFace, CheckCircle2 } from "lucide-react";
+import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 

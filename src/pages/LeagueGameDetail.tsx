@@ -95,6 +95,7 @@ function emptyPositions(count: number = DEFAULT_POSITIONS): PositionEntry[] {
 }
 
 const normalizePlayerCode = (code: string | null | undefined) => (code || "").trim().toUpperCase();
+const normalizePlayerName = (name: string | null | undefined) => (name || "").trim().replace(/\s+/g, " ").toUpperCase();
 
 const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot => ({
   home: rows.map((p) => normalizePlayerCode(p.homeCode)),
@@ -761,7 +762,7 @@ export default function LeagueGameDetail() {
     updatePosition(idx, side === "home" ? "homeName" : "awayName", name);
   };
 
-  const setupValid = positions.some((p) => p.homeCode && p.awayCode);
+  const setupValid = positions.some((p) => (p.homeCode || p.homeName) && (p.awayCode || p.awayName));
 
   // Map of currently-assigned NSF codes -> location, for the swap dialog
   const buildInUseMap = useCallback((side: "home" | "away") => {
@@ -795,7 +796,7 @@ export default function LeagueGameDetail() {
     const codeKey = side === "home" ? "homeCode" : "awayCode";
     const nameKey = side === "home" ? "homeName" : "awayName";
     setPositions((prev) => {
-      const emptyIdx = prev.findIndex((p) => !p[codeKey]);
+      const emptyIdx = prev.findIndex((p) => !p[codeKey] && !p[nameKey]);
       if (emptyIdx === -1) {
         toast.error(`All ${side === "home" ? "home" : "visitors"} positions are full`);
         return prev;
@@ -848,43 +849,41 @@ export default function LeagueGameDetail() {
     handleRosterDrop(o.side, o.idx, a.code, a.name);
   }, [handleRosterDrop]);
 
+  const buildSwappedPositions = useCallback((rows: PositionEntry[], idx: number, side: "home" | "away", c: SwapCandidate) => {
+    const next = rows.map((p) => ({ ...p }));
+    const codeUpper = c.code.toUpperCase();
+    const candidateNameKey = normalizePlayerName(c.name);
+    const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
+    const targetNameKey = side === "home" ? "homeName" : "awayName";
+    let existingIdx = -1;
+    let existingSide: "home" | "away" | null = null;
+    next.forEach((p, i) => {
+      const homeMatches = codeUpper ? p.homeCode.toUpperCase() === codeUpper : normalizePlayerName(p.homeName) === candidateNameKey;
+      const awayMatches = codeUpper ? p.awayCode.toUpperCase() === codeUpper : normalizePlayerName(p.awayName) === candidateNameKey;
+      if (homeMatches) { existingIdx = i; existingSide = "home"; }
+      else if (awayMatches) { existingIdx = i; existingSide = "away"; }
+    });
+    const targetOldCode = next[idx][targetCodeKey];
+    const targetOldName = next[idx][targetNameKey];
+    next[idx] = { ...next[idx], [targetCodeKey]: codeUpper, [targetNameKey]: c.name };
+    if (existingIdx >= 0 && existingSide === side && existingIdx !== idx) {
+      const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+      const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+      next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: targetOldCode, [oldNameKey]: targetOldName };
+    } else if (existingIdx >= 0 && existingSide && existingSide !== side) {
+      const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+      const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+      next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: "", [oldNameKey]: "" };
+    }
+    return next;
+  }, []);
+
   const handleSwap = useCallback(async (c: SwapCandidate) => {
     if (!swapTarget) return;
     const { idx, side } = swapTarget;
-    const codeUpper = c.code.toUpperCase();
-    const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
-    const targetNameKey = side === "home" ? "homeName" : "awayName";
+    const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c);
 
-    setPositions((prev) => {
-      const next = prev.map((p) => ({ ...p }));
-
-      // Find if candidate is already in lineup somewhere → that becomes the displaced slot
-      let existingIdx = -1;
-      let existingSide: "home" | "away" | null = null;
-      next.forEach((p, i) => {
-        if (p.homeCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "home"; }
-        else if (p.awayCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "away"; }
-      });
-
-      const targetOldCode = next[idx][targetCodeKey];
-      const targetOldName = next[idx][targetNameKey];
-
-      // Place new player at target
-      next[idx] = { ...next[idx], [targetCodeKey]: codeUpper, [targetNameKey]: c.name };
-
-      // If candidate was elsewhere on the same side → swap (move displaced player into candidate's old spot)
-      if (existingIdx >= 0 && existingSide === side && existingIdx !== idx) {
-        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
-        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
-        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: targetOldCode, [oldNameKey]: targetOldName };
-      } else if (existingIdx >= 0 && existingSide && existingSide !== side) {
-        // Candidate was on the OTHER team — clear that other-side slot (shouldn't happen, but safe)
-        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
-        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
-        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: "", [oldNameKey]: "" };
-      }
-      return next;
-    });
+    setPositions(updatedPositionsForSave);
 
     setSwapTarget(null);
     toast.success(`Player swapped — remember to save setup`);
@@ -892,26 +891,23 @@ export default function LeagueGameDetail() {
     // If setup already saved, persist immediately
     if (setupDone && fixtureId && user) {
       try {
-        // Re-derive the updated positions snapshot (state hasn't flushed yet, so recompute manually)
-        setTimeout(async () => {
-          for (let i = 0; i < positions.length; i++) {
-            const p = positions[i];
-            if (!p.homeCode && !p.awayCode) continue;
-            await supabase.from("league_match_results" as any).upsert({
-              fixture_id: fixtureId, position: i + 1,
-              home_player_code: (i === idx && side === "home" ? codeUpper : p.homeCode.toUpperCase()),
-              away_player_code: (i === idx && side === "away" ? codeUpper : p.awayCode.toUpperCase()),
-              home_player_name: (i === idx && side === "home" ? c.name : p.homeName),
-              away_player_name: (i === idx && side === "away" ? c.name : p.awayName),
-              game_scores: p.scores, home_games_won: 0, away_games_won: 0,
-              winner: null,
-            } as any, { onConflict: "fixture_id,position" });
-          }
-          queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
-        }, 50);
+        for (let i = 0; i < updatedPositionsForSave.length; i++) {
+          const p = updatedPositionsForSave[i];
+          if (!p.homeCode && !p.awayCode && !p.homeName && !p.awayName) continue;
+          await supabase.from("league_match_results" as any).upsert({
+            fixture_id: fixtureId, position: i + 1,
+            home_player_code: p.homeCode.toUpperCase(),
+            away_player_code: p.awayCode.toUpperCase(),
+            home_player_name: p.homeName,
+            away_player_name: p.awayName,
+            game_scores: p.scores, home_games_won: 0, away_games_won: 0,
+            winner: null,
+          } as any, { onConflict: "fixture_id,position" });
+        }
+        queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
       } catch (e) { console.error("Swap persist failed", e); }
     }
-  }, [swapTarget, setupDone, fixtureId, user, positions, queryClient]);
+  }, [swapTarget, setupDone, fixtureId, user, positions, queryClient, buildSwappedPositions]);
 
   const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
     updatePosition(idx, side === "home" ? "homeCode" : "awayCode", "");

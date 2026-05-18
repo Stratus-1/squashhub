@@ -321,7 +321,7 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
           const isLowStock = item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
           const isOutOfStock = item.stock_qty <= 0;
           return (
-            <div key={item.id} className="flex items-center gap-3 rounded-lg border p-2.5">
+            <div key={item.id} className="flex items-start sm:items-center gap-2 sm:gap-3 rounded-lg border p-2.5">
               <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
                 {item.image_url ? (
                   <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
@@ -330,40 +330,41 @@ function ItemManager({ clubId, items, loading }: { clubId: string; items: BarIte
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <span className={`text-sm font-medium ${!item.active ? "line-through text-muted-foreground" : ""}`}>
+                <div className={`text-sm font-medium truncate ${!item.active ? "line-through text-muted-foreground" : ""}`}>
                   {item.name}
-                </span>
-                <span className="text-xs text-muted-foreground ml-2">R{item.price.toFixed(2)}</span>
-                {item.cost_price > 0 && (
-                  <span className="text-xs text-muted-foreground ml-1">(cost R{item.cost_price.toFixed(2)})</span>
-                )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                  <span className="text-xs text-muted-foreground">R{item.price.toFixed(2)}</span>
+                  {item.cost_price > 0 && (
+                    <span className="text-xs text-muted-foreground">(cost R{item.cost_price.toFixed(2)})</span>
+                  )}
+                  {isOutOfStock ? (
+                    <Badge variant="destructive" className="text-[10px] gap-0.5">
+                      <AlertTriangle className="w-3 h-3" /> Out
+                    </Badge>
+                  ) : isLowStock ? (
+                    <Badge variant="secondary" className="text-[10px] gap-0.5 border-orange-300 text-orange-700 dark:text-orange-400">
+                      <AlertTriangle className="w-3 h-3" /> {item.stock_qty} (min {item.low_stock_threshold})
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px]">{item.stock_qty} in stock</Badge>
+                  )}
+                  <Badge variant="outline" className="text-[10px]">{cat?.label}</Badge>
+                </div>
               </div>
-              {/* Stock indicator */}
-              <div className="flex items-center gap-1">
-                {isOutOfStock ? (
-                  <Badge variant="destructive" className="text-[10px] gap-0.5">
-                    <AlertTriangle className="w-3 h-3" /> Out
-                  </Badge>
-                ) : isLowStock ? (
-                  <Badge variant="secondary" className="text-[10px] gap-0.5 border-orange-300 text-orange-700 dark:text-orange-400">
-                    <AlertTriangle className="w-3 h-3" /> {item.stock_qty} (min {item.low_stock_threshold})
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-[10px]">{item.stock_qty} in stock</Badge>
-                )}
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit item" onClick={() => openEdit(item)}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Switch
+                  checked={item.active}
+                  onCheckedChange={() => handleToggleActive(item.id, item.active)}
+                  className="scale-75"
+                />
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(item.id)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
               </div>
-              <Badge variant="outline" className="text-[10px]">{cat?.label}</Badge>
-              <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit item" onClick={() => openEdit(item)}>
-                <Pencil className="w-3.5 h-3.5" />
-              </Button>
-              <Switch
-                checked={item.active}
-                onCheckedChange={() => handleToggleActive(item.id, item.active)}
-                className="scale-75"
-              />
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(item.id)}>
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
             </div>
           );
         })}

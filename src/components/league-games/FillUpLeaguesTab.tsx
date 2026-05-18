@@ -1384,7 +1384,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
                     if (error) { toast.error(`Sync failed: ${error.message}`); return; }
                     if (data?.error) { toast.error(`Sync failed: ${data.error}`); return; }
                     toast.success(`Scraped ${data?.scraped ?? 0} fixtures (${data?.rows_upserted ?? 0} rows). Refresh in a moment.`);
-                    queryClient.invalidateQueries({ queryKey: ["nsa-rubber-history"] });
+                    qc.invalidateQueries({ queryKey: ["nsa-rubber-history"] });
                   }}
                 >
                   Sync NSA positions

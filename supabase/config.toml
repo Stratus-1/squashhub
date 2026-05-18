@@ -17,3 +17,5 @@ project_id = "bzbuppwzljadulwntjys"
     verify_jwt = false
   [functions.nsa-scrape-positions]
     verify_jwt = false
+  [functions.access-zk-push]
+    verify_jwt = false

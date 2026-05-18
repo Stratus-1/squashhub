@@ -154,6 +154,7 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
           <div className="space-y-1"><Label>Club Name</Label><Input value={form.name} onChange={set("name")} /></div>
           <div className="space-y-1"><Label>Address</Label><Input value={form.address} onChange={set("address")} /></div>
           <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={set("email")} /></div>
+          <div className="space-y-1"><Label>Contact Person Name</Label><Input value={form.contact_person_name} onChange={set("contact_person_name")} placeholder="e.g. John Smith" /></div>
           <div className="space-y-1"><Label>Phone</Label><Input type="tel" value={form.phone} onChange={set("phone")} /></div>
         </div>
       </Card>

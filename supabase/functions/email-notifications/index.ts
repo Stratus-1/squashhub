@@ -72,6 +72,100 @@ async function sendViaResend(args: { to: string; subject: string; html: string; 
   return { ok: true };
 }
 
+interface ClubMail {
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+  senderName: string;
+  senderEmail: string;
+  signatureHtml: string;
+  disclaimer: string;
+  clubName: string;
+}
+
+async function resolveClubMail(userId: string): Promise<ClubMail | null> {
+  try {
+    const { data: member } = await supabaseAdmin
+      .from("club_members")
+      .select("club_id")
+      .eq("user_id", userId)
+      .not("club_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+    const clubId = member?.club_id;
+    if (!clubId) return null;
+
+    const [{ data: secrets }, { data: club }] = await Promise.all([
+      supabaseAdmin
+        .from("club_secrets")
+        .select("smtp_host,smtp_port,smtp_user,smtp_pass,sender_name,sender_email")
+        .eq("club_id", clubId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("clubs")
+        .select("name,email_signature_html,email_disclaimer")
+        .eq("id", clubId)
+        .maybeSingle(),
+    ]);
+
+    if (!secrets?.smtp_host || !secrets?.smtp_user || !secrets?.smtp_pass || !secrets?.sender_email) {
+      return null;
+    }
+    return {
+      smtpHost: String(secrets.smtp_host).trim(),
+      smtpPort: Number(secrets.smtp_port) || 587,
+      smtpUser: String(secrets.smtp_user).trim(),
+      smtpPass: String(secrets.smtp_pass),
+      senderName: String(secrets.sender_name || club?.name || "Club").trim(),
+      senderEmail: String(secrets.sender_email).trim(),
+      signatureHtml: String(club?.email_signature_html || "").trim(),
+      disclaimer: String(club?.email_disclaimer || "").trim(),
+      clubName: String(club?.name || "").trim(),
+    };
+  } catch (err) {
+    console.warn("[resolveClubMail] failed", err);
+    return null;
+  }
+}
+
+async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: string; html: string; text: string }) {
+  const ALLOWED_SMTP_PORTS = new Set([25, 465, 587, 2525]);
+  if (!ALLOWED_SMTP_PORTS.has(cfg.smtpPort)) {
+    return { ok: false as const, skipped: false, reason: `SMTP port ${cfg.smtpPort} not allowed` };
+  }
+
+  const signatureBlock = cfg.signatureHtml
+    ? `<div style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:14px">${cfg.signatureHtml}</div>`
+    : "";
+  const disclaimerBlock = cfg.disclaimer
+    ? `<p style="margin:14px 0 0;font-size:11px;color:#94a3b8;line-height:1.4">${escapeHtml(cfg.disclaimer)}</p>`
+    : "";
+  const fullHtml = `${args.html}${signatureBlock}${disclaimerBlock}`;
+  const fullText = `${args.text}${cfg.disclaimer ? `\n\n${cfg.disclaimer}` : ""}`;
+
+  try {
+    const nodemailer = await import("npm:nodemailer@6.9.14");
+    const transporter = nodemailer.default.createTransport({
+      host: cfg.smtpHost,
+      port: cfg.smtpPort,
+      secure: cfg.smtpPort === 465,
+      requireTLS: cfg.smtpPort === 587,
+      auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
+    });
+    await transporter.sendMail({
+      from: `${cfg.senderName} <${cfg.senderEmail}>`,
+      to: args.to,
+      subject: args.subject,
+      text: fullText,
+      html: fullHtml,
+    });
+    return { ok: true as const };
+  } catch (err) {
+    return { ok: false as const, skipped: false, reason: (err as Error).message || String(err) };
+  }
+}
+
 function escapeHtml(s: string) {
   return s
     .replace(/&/g, "&amp;")
@@ -361,7 +455,17 @@ Deno.serve(async (req) => {
       text = `${title}\n\n${body}\n\nOpen: ${link}\n`;
     }
 
-    const result = await sendViaResend({ to: email, subject, html, text });
+    const clubMail = await resolveClubMail(targetUserId);
+    let result: { ok: boolean; skipped?: boolean; reason?: string };
+    if (clubMail) {
+      result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });
+      if (!result.ok) {
+        console.warn("[email-notifications] club SMTP failed, falling back to Resend", result.reason);
+        result = await sendViaResend({ to: email, subject, html, text });
+      }
+    } else {
+      result = await sendViaResend({ to: email, subject, html, text });
+    }
 
     if (!result.ok) {
       return new Response(JSON.stringify(result), {

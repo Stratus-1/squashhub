@@ -236,6 +236,30 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [memberFilter, setMemberFilter] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [activeField, setActiveField] = useState<"subject" | "body">("subject");
+  const [bodyEditor, setBodyEditor] = useState<any>(null);
+  const subjectRef = useRef<HTMLInputElement>(null);
+
+  const insertToken = (token: string) => {
+    if (activeField === "body" && bodyEditor) {
+      bodyEditor.chain().focus().insertContent(token).run();
+      return;
+    }
+    const el = subjectRef.current;
+    if (el) {
+      const start = el.selectionStart ?? subject.length;
+      const end = el.selectionEnd ?? subject.length;
+      const next = subject.slice(0, start) + token + subject.slice(end);
+      setSubject(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + token.length;
+        el.setSelectionRange(pos, pos);
+      });
+    } else {
+      setSubject((s) => s + token);
+    }
+  };
 
   const { data: leagues = [] } = useQuery({
     queryKey: ["club-leagues", clubId],

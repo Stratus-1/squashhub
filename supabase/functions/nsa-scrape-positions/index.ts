@@ -149,26 +149,9 @@ function parseFixtureResults(html: string, fx: FixtureLite): RubberRow[] {
     if (position > 4) break;
     const teamCode = isHome ? fx.team1_code : fx.team2_code;
 
-    // Pull all numeric cells in order after the NSF code
-    const nums = players[i].cells
-      .map((c) => (/^-?\d+$/.test(c) ? parseInt(c, 10) : null));
-
-    // First 3 numeric values belong to that player's own side; the next 3 belong to opponent.
-    const ownNums: number[] = [];
-    const oppNums: number[] = [];
-    for (const n of nums) {
-      if (n === null) continue;
-      if (ownNums.length < 3) ownNums.push(n);
-      else if (oppNums.length < 3) oppNums.push(n);
-      else break;
-    }
-
-    const [pFor, gFor, tFor] = [ownNums[0] ?? null, ownNums[1] ?? null, ownNums[2] ?? null];
-    const [pAg, gAg, tAg] = [oppNums[0] ?? null, oppNums[1] ?? null, oppNums[2] ?? null];
-
-    let won: boolean | null = null;
-    if (tFor != null && tAg != null && (tFor > 0 || tAg > 0)) won = tFor > tAg;
-
+    // Note: NSA's scorecard layout displays per-game running totals rather than
+    // rubber summary stats, so we don't try to derive points/games/rubbers from
+    // it. Position + player_code + team is what movement-cap checks need.
     out.push({
       nsa_fixture_id: fx.id,
       fixture_date: fx.date,
@@ -181,13 +164,13 @@ function parseFixtureResults(html: string, fx: FixtureLite): RubberRow[] {
       position,
       player_code: players[i].code,
       player_name: players[i].name,
-      points_for: pFor,
-      games_for: gFor,
-      rubbers_for: tFor,
-      points_against: pAg,
-      games_against: gAg,
-      rubbers_against: tAg,
-      won,
+      points_for: null,
+      games_for: null,
+      rubbers_for: null,
+      points_against: null,
+      games_against: null,
+      rubbers_against: null,
+      won: null,
     });
   }
 

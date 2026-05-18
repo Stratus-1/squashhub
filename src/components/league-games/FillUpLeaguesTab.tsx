@@ -921,11 +921,13 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const positionsForLeague = (lg: LeagueRow) => {
     const lp = lineupByLeague.get(lg.id);
-    // Dynamic team size mirrors the scorecard: default 4, expand to 5 when this
-    // league has 5+ registered/allocated players or a saved lineup at position 5.
+    // Team size is driven by the association rule (Super Admin → Association Rules):
+    //   - fixed mode: exactly rules.team_size (NSA = 4); extras go to the bench.
+    //   - flexible mode: grows with allocated/registered squad (NIL, etc.).
+    // Saved lineup positions are always respected so historical data stays visible.
     const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
-    const registeredSize = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
-    const size = boundedFillTeamSize(registeredSize, maxLineupPos);
+    const registeredCount = registrations.filter(r => r.league_id === lg.id).length;
+    const size = resolveTeamSize(subRules, registeredCount, maxLineupPos);
     return Array.from({ length: size }, (_, i) => ({
       position: i + 1,
       memberId: lp?.get(i + 1) ?? null,

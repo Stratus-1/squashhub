@@ -1923,9 +1923,12 @@ export type Database = {
           chairman_member_id: string | null
           challenge_levels_up: number | null
           club_captain_member_id: string | null
+          contact_person_name: string | null
           created_at: string
           created_by: string | null
           email: string | null
+          email_disclaimer: string | null
+          email_signature_html: string | null
           external_booking_label: string | null
           external_booking_provider: string | null
           external_booking_url: string | null
@@ -1972,9 +1975,12 @@ export type Database = {
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null
+          contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
+          email_disclaimer?: string | null
+          email_signature_html?: string | null
           external_booking_label?: string | null
           external_booking_provider?: string | null
           external_booking_url?: string | null
@@ -2021,9 +2027,12 @@ export type Database = {
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
           club_captain_member_id?: string | null
+          contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
+          email_disclaimer?: string | null
+          email_signature_html?: string | null
           external_booking_label?: string | null
           external_booking_provider?: string | null
           external_booking_url?: string | null

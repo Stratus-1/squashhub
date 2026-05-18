@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Camera, ScanFace, Loader2, Upload } from "lucide-react";
+import { Camera, ScanFace, Loader2, Upload, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
@@ -17,6 +17,54 @@ import { toast } from "sonner";
 interface FaceEnrolmentDialogProps {
   open: boolean;
   onClose: () => void;
+}
+
+type LiveStep = "idle" | "front" | "left" | "right" | "done";
+
+const STEP_PROMPT: Record<LiveStep, string> = {
+  idle: "",
+  front: "Look straight at the camera",
+  left: "Slowly turn your head LEFT",
+  right: "Now turn your head RIGHT",
+  done: "Great — capturing your best frame…",
+};
+
+/** Compute a simple sharpness score (variance of grayscale laplacian-ish). */
+function sharpnessScore(canvas: HTMLCanvasElement): number {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return 0;
+  const w = canvas.width, h = canvas.height;
+  const data = ctx.getImageData(0, 0, w, h).data;
+  let sum = 0, sumSq = 0, n = 0;
+  // Sample every 4th pixel for speed
+  for (let y = 1; y < h - 1; y += 4) {
+    for (let x = 1; x < w - 1; x += 4) {
+      const i = (y * w + x) * 4;
+      const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      const gx = 0.299 * data[i + 4] + 0.587 * data[i + 5] + 0.114 * data[i + 6];
+      const gy = 0.299 * data[i + w * 4] + 0.587 * data[i + w * 4 + 1] + 0.114 * data[i + w * 4 + 2];
+      const lap = Math.abs(g - gx) + Math.abs(g - gy);
+      sum += lap; sumSq += lap * lap; n++;
+    }
+  }
+  const mean = sum / n;
+  return sumSq / n - mean * mean;
+}
+
+/** Mean abs grayscale diff between two equally-sized canvases. */
+function frameDiff(a: HTMLCanvasElement, b: HTMLCanvasElement): number {
+  const ca = a.getContext("2d"), cb = b.getContext("2d");
+  if (!ca || !cb) return 0;
+  const w = Math.min(a.width, b.width), h = Math.min(a.height, b.height);
+  const da = ca.getImageData(0, 0, w, h).data;
+  const db = cb.getImageData(0, 0, w, h).data;
+  let total = 0, n = 0;
+  for (let i = 0; i < da.length; i += 16) {
+    const ga = 0.299 * da[i] + 0.587 * da[i + 1] + 0.114 * da[i + 2];
+    const gb = 0.299 * db[i] + 0.587 * db[i + 1] + 0.114 * db[i + 2];
+    total += Math.abs(ga - gb); n++;
+  }
+  return total / n;
 }
 
 export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps) {
@@ -38,6 +86,11 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [consent, setConsent] = useState(false);
+
+  // Liveness state
+  const [liveStep, setLiveStep] = useState<LiveStep>("idle");
+  const [livenessRunning, setLivenessRunning] = useState(false);
+  const framesRef = useRef<HTMLCanvasElement[]>([]);
 
   const startCamera = useCallback(async () => {
     setCameraError(null);
@@ -65,21 +118,73 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
       stopCamera();
       setCapturedPhoto(null);
       setCameraError(null);
+      setLiveStep("idle");
+      setLivenessRunning(false);
+      framesRef.current = [];
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
 
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+  /** Grab the current video frame into a fresh offscreen canvas. */
+  const grabFrame = (): HTMLCanvasElement | null => {
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
-    setCapturedPhoto(canvas.toDataURL("image/jpeg", 0.9));
-    stopCamera();
+    if (!video || !video.videoWidth) return null;
+    const c = document.createElement("canvas");
+    c.width = video.videoWidth;
+    c.height = video.videoHeight;
+    c.getContext("2d")!.drawImage(video, 0, 0);
+    return c;
+  };
+
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  /** Guided liveness: prompt 3 head positions, capture frames, verify movement. */
+  const runLiveness = async () => {
+    if (!videoRef.current || !cameraStream) return;
+    setLivenessRunning(true);
+    framesRef.current = [];
+    try {
+      const steps: LiveStep[] = ["front", "left", "right"];
+      for (const step of steps) {
+        setLiveStep(step);
+        await wait(1800); // give user time to move
+        // Average over a couple of frames for stability
+        const f = grabFrame();
+        if (f) framesRef.current.push(f);
+        await wait(200);
+      }
+      setLiveStep("done");
+
+      const [front, left, right] = framesRef.current;
+      if (!front || !left || !right) throw new Error("Could not capture all frames");
+
+      // Liveness: frames must differ meaningfully (i.e. you moved)
+      const d1 = frameDiff(front, left);
+      const d2 = frameDiff(front, right);
+      const moved = d1 > 6 && d2 > 6; // empirical threshold on 0–255 scale
+
+      if (!moved) {
+        toast.error("We couldn't detect head movement. Please try again and turn your head.");
+        setLiveStep("idle");
+        setLivenessRunning(false);
+        return;
+      }
+
+      // Pick sharpest of the three for enrolment (usually the front one)
+      const scored = framesRef.current.map((c) => ({ c, s: sharpnessScore(c) }));
+      scored.sort((a, b) => b.s - a.s);
+      const best = scored[0].c;
+
+      setCapturedPhoto(best.toDataURL("image/jpeg", 0.92));
+      stopCamera();
+      toast.success("Live capture verified ✓");
+    } catch (err: any) {
+      console.error("[Liveness] error", err);
+      toast.error("Live capture failed — try again");
+      setLiveStep("idle");
+    } finally {
+      setLivenessRunning(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,7 +206,6 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
           toast.error("Photo must be at least 300×300 pixels");
           return;
         }
-        // Re-encode as JPEG to normalise format / size.
         const canvas = document.createElement("canvas");
         const maxDim = 800;
         const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
@@ -117,6 +221,8 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
 
   const retake = () => {
     setCapturedPhoto(null);
+    setLiveStep("idle");
+    framesRef.current = [];
     if (mode === "camera") startCamera();
   };
 
@@ -149,7 +255,6 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
           .eq("user_id", user.id);
       }
 
-      // Fire-and-forget push to the configured access provider.
       if (myClubMember?.id) {
         supabase.functions
           .invoke("access-provision-member", { body: { club_id: clubId, club_member_id: myClubMember.id } })
@@ -176,14 +281,15 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
             <ScanFace className="w-5 h-5 text-primary" /> Face Enrolment
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Your club uses face recognition at the door. Capture a selfie or upload a clear, front-facing photo.
+            Your club uses face recognition at the door. We'll do a quick live face scan to enrol you — turn your head as prompted.
           </DialogDescription>
         </DialogHeader>
 
         {capturedPhoto ? (
           <div className="space-y-3 text-center">
-            <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20">
+            <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20 relative">
               <img src={capturedPhoto} alt="Your face" className="w-full h-full object-cover" />
+              <CheckCircle2 className="absolute bottom-1 right-1 w-7 h-7 text-green-500 bg-background rounded-full" />
             </div>
             <div className="flex gap-2 justify-center">
               <Button size="sm" variant="outline" onClick={retake}>Retake</Button>
@@ -192,7 +298,7 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
         ) : (
           <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
             <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="camera"><Camera className="w-3.5 h-3.5 mr-1" /> Camera</TabsTrigger>
+              <TabsTrigger value="camera"><Camera className="w-3.5 h-3.5 mr-1" /> Live scan</TabsTrigger>
               <TabsTrigger value="upload"><Upload className="w-3.5 h-3.5 mr-1" /> Upload</TabsTrigger>
             </TabsList>
             <TabsContent value="camera" className="space-y-3 text-center pt-3">
@@ -203,11 +309,25 @@ export function FaceEnrolmentDialog({ open, onClose }: FaceEnrolmentDialogProps)
                 </Card>
               ) : (
                 <>
-                  <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20 bg-muted">
+                  <div className="w-48 h-48 rounded-full overflow-hidden mx-auto border-4 border-primary/20 bg-muted relative">
                     <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                    {livenessRunning && liveStep !== "idle" && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/40 backdrop-blur-[1px]">
+                        <span className="text-xs font-semibold text-foreground bg-background/90 px-2 py-1 rounded">
+                          {STEP_PROMPT[liveStep]}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <Button size="sm" onClick={capturePhoto} disabled={!cameraStream}>
-                    <Camera className="w-4 h-4 mr-1" /> Capture
+                  <p className="text-[11px] text-muted-foreground">
+                    Live capture verifies you're a real person (not a printed photo) by detecting head movement.
+                  </p>
+                  <Button size="sm" onClick={runLiveness} disabled={!cameraStream || livenessRunning}>
+                    {livenessRunning ? (
+                      <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Scanning…</>
+                    ) : (
+                      <><ScanFace className="w-4 h-4 mr-1" /> Start live scan</>
+                    )}
                   </Button>
                 </>
               )}

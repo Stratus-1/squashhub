@@ -893,7 +893,32 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     return (cap?.club_member_id || lg.captain_member_id) === meMember.id;
   };
 
-  const canEditLeague = (lg: LeagueRow): boolean => isCaptainOfLeague(lg) || !!amIAdmin;
+  // Leagues I captain (any number, same association is implicit — sortedLeagues is already
+  // scoped to the active association).
+  const myCaptainedLeagues = useMemo(
+    () => sortedLeagues.filter(isCaptainOfLeague),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sortedLeagues, registrations, meMember?.id],
+  );
+
+  // Captains can also edit the league one step above and one step below their own team,
+  // restricted to the same gender group (Men's / Ladies / Mixed). This lets a captain
+  // pull a sub up from the league below or borrow down from the league above.
+  const isAdjacentToMyCaptainedLeague = (lg: LeagueRow): boolean => {
+    if (myCaptainedLeagues.length === 0) return false;
+    const groupOf = (x: LeagueRow) =>
+      isMensLeague(x.name) ? "m" : isLadiesLeague(x.name) ? "f" : "x";
+    const targetOrder = leagueOrder(lg.name, lg.code);
+    const targetGroup = groupOf(lg);
+    return myCaptainedLeagues.some(my => {
+      if (groupOf(my) !== targetGroup) return false;
+      const diff = Math.abs(leagueOrder(my.name, my.code) - targetOrder);
+      return diff === 1;
+    });
+  };
+
+  const canEditLeague = (lg: LeagueRow): boolean =>
+    isCaptainOfLeague(lg) || isAdjacentToMyCaptainedLeague(lg) || !!amIAdmin;
 
   // For members registered in multiple leagues within the same gender group, pick a
   // single "home" league = the WEAKEST team they're registered to (highest league number).

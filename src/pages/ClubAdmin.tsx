@@ -21,6 +21,7 @@ import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
+import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";

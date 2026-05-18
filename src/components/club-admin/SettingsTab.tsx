@@ -31,6 +31,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     smtp_port: "" as string | number,
     smtp_user: "",
     smtp_pass: "",
+    email_signature_html: (club as any).email_signature_html || "",
+    email_disclaimer: (club as any).email_disclaimer || "This email and any attachments are confidential and intended solely for the addressee. If you are not the intended recipient, please notify the sender and delete this email.",
   });
 
   // Populate SMTP fields from secrets when loaded

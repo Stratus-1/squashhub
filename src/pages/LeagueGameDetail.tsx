@@ -655,12 +655,17 @@ export default function LeagueGameDetail() {
         const away = awaySlots[i] || { code: "", name: "" };
         const slotHasPlay = (Array.isArray(p.scores) && p.scores.length > 0) || !!p.isForfeit;
         if (slotHasPlay) return p;
+        // Preserve any side that already has a saved player (code OR name) — the
+        // captain may have manually replaced a player with a reserve/visitor that
+        // has no NSF code. Only fill empty sides from the captain's lineup.
+        const homeAlreadySet = !!(p.homeCode || p.homeName);
+        const awayAlreadySet = !!(p.awayCode || p.awayName);
         return {
           ...p,
-          homeCode: homeHasAny ? (home.code || "") : p.homeCode,
-          homeName: homeHasAny ? (home.name || "") : p.homeName,
-          awayCode: awayHasAny ? (away.code || "") : p.awayCode,
-          awayName: awayHasAny ? (away.name || "") : p.awayName,
+          homeCode: !homeAlreadySet && homeHasAny ? (home.code || "") : p.homeCode,
+          homeName: !homeAlreadySet && homeHasAny ? (home.name || "") : p.homeName,
+          awayCode: !awayAlreadySet && awayHasAny ? (away.code || "") : p.awayCode,
+          awayName: !awayAlreadySet && awayHasAny ? (away.name || "") : p.awayName,
         };
       });
       if (

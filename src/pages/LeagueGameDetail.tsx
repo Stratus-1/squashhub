@@ -95,6 +95,7 @@ function emptyPositions(count: number = DEFAULT_POSITIONS): PositionEntry[] {
 }
 
 const normalizePlayerCode = (code: string | null | undefined) => (code || "").trim().toUpperCase();
+const normalizePlayerName = (name: string | null | undefined) => (name || "").trim().replace(/\s+/g, " ").toUpperCase();
 
 const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot => ({
   home: rows.map((p) => normalizePlayerCode(p.homeCode)),
@@ -761,7 +762,7 @@ export default function LeagueGameDetail() {
     updatePosition(idx, side === "home" ? "homeName" : "awayName", name);
   };
 
-  const setupValid = positions.some((p) => p.homeCode && p.awayCode);
+  const setupValid = positions.some((p) => (p.homeCode || p.homeName) && (p.awayCode || p.awayName));
 
   // Map of currently-assigned NSF codes -> location, for the swap dialog
   const buildInUseMap = useCallback((side: "home" | "away") => {
@@ -795,7 +796,7 @@ export default function LeagueGameDetail() {
     const codeKey = side === "home" ? "homeCode" : "awayCode";
     const nameKey = side === "home" ? "homeName" : "awayName";
     setPositions((prev) => {
-      const emptyIdx = prev.findIndex((p) => !p[codeKey]);
+      const emptyIdx = prev.findIndex((p) => !p[codeKey] && !p[nameKey]);
       if (emptyIdx === -1) {
         toast.error(`All ${side === "home" ? "home" : "visitors"} positions are full`);
         return prev;

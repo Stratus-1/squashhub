@@ -480,9 +480,73 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     return rows;
   }, [isNsaContext, nsaTeamQueries, registrations]);
 
+  // ---------- NSA rubber history (scraped scorecards) ----------
+  // Daily-scraped per-position rubber data from NSA. Unlike `team` roster fallback,
+  // this includes the *position* each player played, so movement-cap checks get a
+  // real homePosition instead of defaulting to #4.
+  const nsaPlayerCodes = useMemo(() => {
+    const codes = new Set<string>();
+    for (const r of registrations) {
+      const c = (r.league_association_number || r.ssa_number || "").toString().trim().toUpperCase();
+      if (c) codes.add(c);
+    }
+    return Array.from(codes);
+  }, [registrations]);
+
+  const { data: nsaRubberHistory = [] } = useQuery<Array<{
+    player_code: string;
+    team_code: string;
+    position: number;
+    fixture_date: string;
+  }>>({
+    queryKey: ["nsa-rubber-history", nsaPlayerCodes.join(","), leagueCodes.join(",")],
+    queryFn: async () => {
+      if (nsaPlayerCodes.length === 0 || leagueCodes.length === 0) return [];
+      const { data, error } = await supabase
+        .from("nsa_rubber_history" as any)
+        .select("player_code, team_code, position, fixture_date")
+        .in("player_code", nsaPlayerCodes)
+        .in("team_code", leagueCodes)
+        .order("fixture_date", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return (data || []) as Array<{ player_code: string; team_code: string; position: number; fixture_date: string }>;
+    },
+    enabled: isNsaContext && nsaPlayerCodes.length > 0 && leagueCodes.length > 0,
+    staleTime: 5 * 60_000,
+  });
+
+  const nsaRubberPlayedRows = useMemo<PlayedLeagueRow[]>(() => {
+    if (nsaRubberHistory.length === 0) return [];
+    const leagueByCode = new Map<string, string>();
+    for (const lg of sortedLeagues) {
+      if (lg.code) leagueByCode.set(lg.code.toUpperCase(), lg.id);
+    }
+    const memberByCode = new Map<string, string>();
+    for (const r of registrations) {
+      const c = (r.league_association_number || r.ssa_number || "").toString().trim().toUpperCase();
+      if (c && !memberByCode.has(c)) memberByCode.set(c, r.club_member_id);
+    }
+    const rows: PlayedLeagueRow[] = [];
+    for (const h of nsaRubberHistory) {
+      const leagueId = leagueByCode.get((h.team_code || "").toUpperCase());
+      const memberId = memberByCode.get((h.player_code || "").trim().toUpperCase());
+      if (leagueId && memberId) {
+        rows.push({
+          league_id: leagueId,
+          club_member_id: memberId,
+          position: h.position,
+          fixture_date: h.fixture_date,
+        });
+      }
+    }
+    return rows;
+  }, [nsaRubberHistory, registrations, sortedLeagues]);
+
   const latestPlayedByMember = useMemo(() => {
     const m = new Map<string, PlayedLeagueRow>();
-    const sortedRows = [...previousPlayedRows].sort((a, b) => {
+    // Priority: local scorecards > NSA scraped scorecards (with position) > NSA team roster (no position).
+    const sortedRows = [...previousPlayedRows, ...nsaRubberPlayedRows].sort((a, b) => {
       const dateDiff = new Date(b.fixture_date).getTime() - new Date(a.fixture_date).getTime();
       if (dateDiff !== 0) return dateDiff;
       const aLeague = sortedLeagues.find(l => l.id === a.league_id);
@@ -492,12 +556,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     for (const row of sortedRows) {
       if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
     }
-    // Fallback: members with no local history use NSA's roster as their home league.
+    // Last-resort: NSA team roster (gives league but no position).
     for (const row of nsaPlayedRows) {
       if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
     }
     return m;
-  }, [previousPlayedRows, nsaPlayedRows, sortedLeagues]);
+  }, [previousPlayedRows, nsaRubberPlayedRows, nsaPlayedRows, sortedLeagues]);
 
   // Members
   const memberIds = useMemo(() => {

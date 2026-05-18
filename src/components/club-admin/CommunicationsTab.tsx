@@ -396,14 +396,16 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
 
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Subject</Label>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-              <div className="mt-2"><MergeFieldChips onInsert={(t) => setSubject((s) => s + t)} /></div>
+              <Label className="text-xs">Subject {activeField === "subject" && <span className="text-primary">●</span>}</Label>
+              <Input ref={subjectRef} value={subject} onChange={(e) => setSubject(e.target.value)} onFocus={() => setActiveField("subject")} />
             </div>
             <div>
-              <Label className="text-xs">Body</Label>
-              <RichTextEditor value={body} onChange={setBody} />
-              <div className="mt-2"><MergeFieldChips onInsert={(t) => setBody((b) => b + t)} /></div>
+              <Label className="text-xs">Body {activeField === "body" && <span className="text-primary">●</span>}</Label>
+              <RichTextEditor value={body} onChange={setBody} onEditorReady={setBodyEditor} onFocus={() => setActiveField("body")} />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-1">Click a merge field to insert into the <strong>{activeField}</strong>:</p>
+              <MergeFieldChips onInsert={insertToken} />
             </div>
             <Button size="sm" variant="outline" onClick={() => setShowPreview((s) => !s)} className="gap-1"><Eye className="w-3 h-3" />{showPreview ? "Hide" : "Show"} preview (sample data)</Button>
             {showPreview && (

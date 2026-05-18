@@ -66,6 +66,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         member_number_start: form.member_number_start,
         auto_number_existing_onboarding: form.auto_number_existing_onboarding,
         challenge_levels_up: form.challenge_levels_up,
+        email_signature_html: form.email_signature_html || null,
+        email_disclaimer: form.email_disclaimer || null,
       } as any);
 
       // Save sensitive SMTP settings to club_secrets table
@@ -82,6 +84,44 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
       toast.success("Settings saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
+    }
+  };
+
+  const generateSignature = () => {
+    const c: any = club;
+    const name = c.name || "";
+    const contact = c.contact_person_name || "";
+    const email = c.email || "";
+    const phone = c.phone || "";
+    const address = c.address || "";
+    const logo = c.logo_url || "";
+    const disclaimer = form.email_disclaimer || "";
+
+    const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5;">
+  <tr>
+    ${logo ? `<td style="padding-right: 16px; vertical-align: top;"><img src="${logo}" alt="${name}" style="width: 72px; height: 72px; object-fit: contain;" /></td>` : ""}
+    <td style="vertical-align: top; border-left: 3px solid #1E3A5F; padding-left: 16px;">
+      ${contact ? `<div style="font-weight: 700; font-size: 14px; color: #0f172a;">${contact}</div>` : ""}
+      <div style="font-weight: 600; color: #1E3A5F; margin-top: 2px;">${name}</div>
+      ${phone ? `<div style="margin-top: 6px;">📞 <a href="tel:${phone}" style="color: #1f2937; text-decoration: none;">${phone}</a></div>` : ""}
+      ${email ? `<div>✉️ <a href="mailto:${email}" style="color: #1E3A5F; text-decoration: none;">${email}</a></div>` : ""}
+      ${address ? `<div style="margin-top: 4px; color: #4b5563;">📍 ${address}</div>` : ""}
+    </td>
+  </tr>
+  ${disclaimer ? `<tr><td colspan="2" style="padding-top: 14px;"><div style="border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 11px; color: #6b7280; font-style: italic;">${disclaimer}</div></td></tr>` : ""}
+</table>`;
+
+    setForm(p => ({ ...p, email_signature_html: html }));
+    toast.success("Signature generated — review the preview and click Save Settings");
+  };
+
+  const copySignature = async () => {
+    if (!form.email_signature_html) return;
+    try {
+      await navigator.clipboard.writeText(form.email_signature_html);
+      toast.success("Signature HTML copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
     }
   };
 

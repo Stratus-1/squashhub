@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail } from "lucide-react";
 
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
@@ -21,6 +21,7 @@ import { AccessControlTab } from "@/components/club-admin/AccessControlTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
+import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
@@ -41,6 +42,7 @@ const ADMIN_TABS: { value: string; label: string; icon: any; permission?: Permis
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow" },
   { value: "bar", label: "Bar", icon: Beer, permission: "bar", color: "rose" },
   { value: "access", label: "Access", icon: DoorOpen, permission: "access", color: "pink" },
+  { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red" },
 ];
 
@@ -109,6 +111,7 @@ export default function ClubAdmin() {
       case "champs": return <ClubChampsTab clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
+      case "comms": return <CommunicationsTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       default: return null;
     }

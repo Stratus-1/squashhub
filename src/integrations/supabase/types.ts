@@ -1121,6 +1121,170 @@ export type Database = {
           },
         ]
       }
+      club_email_campaign_recipients: {
+        Row: {
+          campaign_id: string
+          club_member_id: string | null
+          created_at: string
+          email: string
+          error_message: string | null
+          id: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          club_member_id?: string | null
+          created_at?: string
+          email: string
+          error_message?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          email?: string
+          error_message?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_email_campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "club_email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_email_campaigns: {
+        Row: {
+          audience_league_id: string | null
+          audience_member_ids: string[] | null
+          audience_type: string
+          body_html: string
+          club_id: string
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          name: string
+          sent_at: string | null
+          sent_count: number
+          status: string
+          subject: string
+          template_id: string | null
+          total_recipients: number
+          updated_at: string
+        }
+        Insert: {
+          audience_league_id?: string | null
+          audience_member_ids?: string[] | null
+          audience_type: string
+          body_html: string
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          name?: string
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject: string
+          template_id?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Update: {
+          audience_league_id?: string | null
+          audience_member_ids?: string[] | null
+          audience_type?: string
+          body_html?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          name?: string
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          subject?: string
+          template_id?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_email_campaigns_audience_league_id_fkey"
+            columns: ["audience_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_email_campaigns_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_email_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "club_email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_email_templates: {
+        Row: {
+          body_html: string
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_email_templates_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_event_courts: {
         Row: {
           court_id: number

@@ -14,7 +14,7 @@ interface Props {
   onFocus?: () => void;
 }
 
-export function RichTextEditor({ value, onChange, placeholder }: Props) {
+export function RichTextEditor({ value, onChange, placeholder, onEditorReady, onFocus }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -23,12 +23,17 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
     ],
     content: value || "",
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onFocus: () => onFocus?.(),
     editorProps: {
       attributes: {
         class: "prose prose-sm max-w-none min-h-[200px] p-3 focus:outline-none dark:prose-invert",
       },
     },
   });
+
+  useEffect(() => {
+    if (editor) onEditorReady?.(editor);
+  }, [editor, onEditorReady]);
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {

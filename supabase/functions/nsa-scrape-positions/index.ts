@@ -57,11 +57,11 @@ function stripTags(s: string): string {
 }
 
 async function listCompletedFixtures(lookbackDays: number): Promise<FixtureLite[]> {
-  // NSA's status filter is unreliable — pull all fixtures and filter client-side
-  // to dates in [today - lookback, today).
-  // NB: NSA returns an ARRAY when no Accept header negotiates JSON, and a
-  // {leagues, ...} object when Accept: application/json is sent. Force text/html.
-  const res = await fetch(`${NSA_BASE}/fixtures.php?json`, {
+  // NSA's status filter is unreliable — pull all fixtures for the season and
+  // filter client-side to dates in [today - lookback, today).
+  // NB: without ?league=... NSA returns a leagues/clubs catalog object.
+  const url = `${NSA_BASE}/fixtures.php?json&league=${encodeURIComponent(NSA_SEASON)}`;
+  const res = await fetch(url, {
     headers: { "User-Agent": UA, Accept: "text/html,*/*" },
   });
   if (!res.ok) throw new Error(`NSA fixtures HTTP ${res.status}`);

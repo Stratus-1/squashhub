@@ -849,52 +849,41 @@ export default function LeagueGameDetail() {
     handleRosterDrop(o.side, o.idx, a.code, a.name);
   }, [handleRosterDrop]);
 
+  const buildSwappedPositions = useCallback((rows: PositionEntry[], idx: number, side: "home" | "away", c: SwapCandidate) => {
+    const next = rows.map((p) => ({ ...p }));
+    const codeUpper = c.code.toUpperCase();
+    const candidateNameKey = normalizePlayerName(c.name);
+    const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
+    const targetNameKey = side === "home" ? "homeName" : "awayName";
+    let existingIdx = -1;
+    let existingSide: "home" | "away" | null = null;
+    next.forEach((p, i) => {
+      const homeMatches = codeUpper ? p.homeCode.toUpperCase() === codeUpper : normalizePlayerName(p.homeName) === candidateNameKey;
+      const awayMatches = codeUpper ? p.awayCode.toUpperCase() === codeUpper : normalizePlayerName(p.awayName) === candidateNameKey;
+      if (homeMatches) { existingIdx = i; existingSide = "home"; }
+      else if (awayMatches) { existingIdx = i; existingSide = "away"; }
+    });
+    const targetOldCode = next[idx][targetCodeKey];
+    const targetOldName = next[idx][targetNameKey];
+    next[idx] = { ...next[idx], [targetCodeKey]: codeUpper, [targetNameKey]: c.name };
+    if (existingIdx >= 0 && existingSide === side && existingIdx !== idx) {
+      const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+      const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+      next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: targetOldCode, [oldNameKey]: targetOldName };
+    } else if (existingIdx >= 0 && existingSide && existingSide !== side) {
+      const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
+      const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
+      next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: "", [oldNameKey]: "" };
+    }
+    return next;
+  }, []);
+
   const handleSwap = useCallback(async (c: SwapCandidate) => {
     if (!swapTarget) return;
     const { idx, side } = swapTarget;
-    const codeUpper = c.code.toUpperCase();
-    const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
-    const targetNameKey = side === "home" ? "homeName" : "awayName";
-    const candidateNameKey = normalizePlayerName(c.name);
-    let updatedPositionsForSave: PositionEntry[] = [];
+    const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c);
 
-    setPositions((prev) => {
-      const next = prev.map((p) => ({ ...p }));
-
-      // Find if candidate is already in lineup somewhere → that becomes the displaced slot
-      let existingIdx = -1;
-      let existingSide: "home" | "away" | null = null;
-      next.forEach((p, i) => {
-        const homeMatches = codeUpper
-          ? p.homeCode.toUpperCase() === codeUpper
-          : normalizePlayerName(p.homeName) === candidateNameKey;
-        const awayMatches = codeUpper
-          ? p.awayCode.toUpperCase() === codeUpper
-          : normalizePlayerName(p.awayName) === candidateNameKey;
-        if (homeMatches) { existingIdx = i; existingSide = "home"; }
-        else if (awayMatches) { existingIdx = i; existingSide = "away"; }
-      });
-
-      const targetOldCode = next[idx][targetCodeKey];
-      const targetOldName = next[idx][targetNameKey];
-
-      // Place new player at target
-      next[idx] = { ...next[idx], [targetCodeKey]: codeUpper, [targetNameKey]: c.name };
-
-      // If candidate was elsewhere on the same side → swap (move displaced player into candidate's old spot)
-      if (existingIdx >= 0 && existingSide === side && existingIdx !== idx) {
-        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
-        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
-        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: targetOldCode, [oldNameKey]: targetOldName };
-      } else if (existingIdx >= 0 && existingSide && existingSide !== side) {
-        // Candidate was on the OTHER team — clear that other-side slot (shouldn't happen, but safe)
-        const oldCodeKey = existingSide === "home" ? "homeCode" : "awayCode";
-        const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
-        next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: "", [oldNameKey]: "" };
-      }
-      updatedPositionsForSave = next;
-      return next;
-    });
+    setPositions(updatedPositionsForSave);
 
     setSwapTarget(null);
     toast.success(`Player swapped — remember to save setup`);
@@ -922,7 +911,7 @@ export default function LeagueGameDetail() {
         }, 50);
       } catch (e) { console.error("Swap persist failed", e); }
     }
-  }, [swapTarget, setupDone, fixtureId, user, positions, queryClient]);
+  }, [swapTarget, setupDone, fixtureId, user, positions, queryClient, buildSwappedPositions]);
 
   const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
     updatePosition(idx, side === "home" ? "homeCode" : "awayCode", "");

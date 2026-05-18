@@ -492,8 +492,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     for (const row of sortedRows) {
       if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
     }
+    // Fallback: members with no local history use NSA's roster as their home league.
+    for (const row of nsaPlayedRows) {
+      if (!m.has(row.club_member_id)) m.set(row.club_member_id, row);
+    }
     return m;
-  }, [previousPlayedRows, sortedLeagues]);
+  }, [previousPlayedRows, nsaPlayedRows, sortedLeagues]);
 
   // Members
   const memberIds = useMemo(() => {

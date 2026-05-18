@@ -202,7 +202,7 @@ async function alreadyScrapedSet(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  let body: { fixture_ids?: number[]; lookback_days?: number; force?: boolean } = {};
+  let body: { fixture_ids?: number[]; lookback_days?: number; force?: boolean; background?: boolean } = {};
   try {
     if (req.method === "POST") {
       const text = await req.text();
@@ -219,11 +219,14 @@ Deno.serve(async (req) => {
 
   const lookbackDays = Math.max(1, Math.min(180, body.lookback_days ?? 14));
   const force = !!body.force;
+  // Background mode: return immediately, continue scraping after response.
+  // Default to background when a single explicit fixture_ids list is NOT supplied
+  // (single-fixture calls are fast enough to wait on).
+  const background = body.background ?? !(body.fixture_ids && body.fixture_ids.length <= 5);
 
-  try {
+  const runScrape = async () => {
     let fixtures: FixtureLite[];
     if (body.fixture_ids && body.fixture_ids.length > 0) {
-      // Need date/team metadata for the requested ids — pull a wider list and filter
       const all = await listCompletedFixtures(365);
       const wanted = new Set(body.fixture_ids.map(Number));
       fixtures = all.filter((f) => wanted.has(f.id));
@@ -260,10 +263,22 @@ Deno.serve(async (req) => {
       } catch (err) {
         summary.errors.push({ fixture_id: fx.id, error: (err as Error).message });
       }
-      // polite delay so we don't hammer NSA
       await new Promise((r) => setTimeout(r, 250));
     }
+    return summary;
+  };
 
+  try {
+    if (background) {
+      // Fire-and-forget so the HTTP call doesn't time out on large lookbacks.
+      // @ts-ignore — EdgeRuntime is a Supabase runtime global.
+      EdgeRuntime.waitUntil(runScrape().catch((e) => console.error("[nsa-scrape-positions] bg error", e)));
+      return new Response(
+        JSON.stringify({ success: true, background: true, message: "Scrape started in background" }),
+        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const summary = await runScrape();
     return new Response(JSON.stringify({ success: true, ...summary }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

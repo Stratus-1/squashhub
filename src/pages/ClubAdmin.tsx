@@ -111,6 +111,7 @@ export default function ClubAdmin() {
       case "champs": return <ClubChampsTab clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
+      case "comms": return <CommunicationsTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       default: return null;
     }

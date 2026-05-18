@@ -18,6 +18,7 @@ const corsHeaders = {
 
 const NSA_BASE = "https://admin.northerns.co.za/nsa";
 const UA = "SquashHub-PositionScraper/1.0";
+const NSA_SEASON = "s79"; // 2026 season — matches NSA_CURRENT_SEASON in src/hooks/use-nsa.ts
 
 type FixtureLite = {
   id: number;

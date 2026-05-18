@@ -1370,6 +1370,26 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
                   Reset to auto
                 </Button>
               )}
+              {amIAdmin && isNsaContext && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[10px] ml-auto"
+                  onClick={async () => {
+                    toast.info("Syncing NSA positions…");
+                    const { data, error } = await supabase.functions.invoke("nsa-scrape-positions", {
+                      body: { lookback_days: 21 },
+                    });
+                    if (error) { toast.error(`Sync failed: ${error.message}`); return; }
+                    if (data?.error) { toast.error(`Sync failed: ${data.error}`); return; }
+                    toast.success(`Scraped ${data?.scraped ?? 0} fixtures (${data?.rows_upserted ?? 0} rows). Refresh in a moment.`);
+                    queryClient.invalidateQueries({ queryKey: ["nsa-rubber-history"] });
+                  }}
+                >
+                  Sync NSA positions
+                </Button>
+              )}
             </div>
           )}
           <p className="text-xs text-muted-foreground">

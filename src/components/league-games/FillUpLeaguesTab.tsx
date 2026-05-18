@@ -510,7 +510,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
         .order("fixture_date", { ascending: false })
         .limit(1000);
       if (error) throw error;
-      return (data || []) as Array<{ player_code: string; team_code: string; position: number; fixture_date: string }>;
+      return ((data || []) as unknown) as Array<{ player_code: string; team_code: string; position: number; fixture_date: string }>;
     },
     enabled: isNsaContext && nsaPlayerCodes.length > 0 && leagueCodes.length > 0,
     staleTime: 5 * 60_000,

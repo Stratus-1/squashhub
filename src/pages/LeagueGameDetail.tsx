@@ -855,6 +855,8 @@ export default function LeagueGameDetail() {
     const codeUpper = c.code.toUpperCase();
     const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
     const targetNameKey = side === "home" ? "homeName" : "awayName";
+    const candidateNameKey = normalizePlayerName(c.name);
+    let updatedPositionsForSave: PositionEntry[] = [];
 
     setPositions((prev) => {
       const next = prev.map((p) => ({ ...p }));
@@ -863,8 +865,14 @@ export default function LeagueGameDetail() {
       let existingIdx = -1;
       let existingSide: "home" | "away" | null = null;
       next.forEach((p, i) => {
-        if (p.homeCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "home"; }
-        else if (p.awayCode.toUpperCase() === codeUpper) { existingIdx = i; existingSide = "away"; }
+        const homeMatches = codeUpper
+          ? p.homeCode.toUpperCase() === codeUpper
+          : normalizePlayerName(p.homeName) === candidateNameKey;
+        const awayMatches = codeUpper
+          ? p.awayCode.toUpperCase() === codeUpper
+          : normalizePlayerName(p.awayName) === candidateNameKey;
+        if (homeMatches) { existingIdx = i; existingSide = "home"; }
+        else if (awayMatches) { existingIdx = i; existingSide = "away"; }
       });
 
       const targetOldCode = next[idx][targetCodeKey];
@@ -884,6 +892,7 @@ export default function LeagueGameDetail() {
         const oldNameKey = existingSide === "home" ? "homeName" : "awayName";
         next[existingIdx] = { ...next[existingIdx], [oldCodeKey]: "", [oldNameKey]: "" };
       }
+      updatedPositionsForSave = next;
       return next;
     });
 
@@ -895,15 +904,16 @@ export default function LeagueGameDetail() {
       try {
         // Re-derive the updated positions snapshot (state hasn't flushed yet, so recompute manually)
         setTimeout(async () => {
-          for (let i = 0; i < positions.length; i++) {
-            const p = positions[i];
-            if (!p.homeCode && !p.awayCode) continue;
+          const rowsToSave = updatedPositionsForSave.length ? updatedPositionsForSave : positions;
+          for (let i = 0; i < rowsToSave.length; i++) {
+            const p = rowsToSave[i];
+            if (!p.homeCode && !p.awayCode && !p.homeName && !p.awayName) continue;
             await supabase.from("league_match_results" as any).upsert({
               fixture_id: fixtureId, position: i + 1,
-              home_player_code: (i === idx && side === "home" ? codeUpper : p.homeCode.toUpperCase()),
-              away_player_code: (i === idx && side === "away" ? codeUpper : p.awayCode.toUpperCase()),
-              home_player_name: (i === idx && side === "home" ? c.name : p.homeName),
-              away_player_name: (i === idx && side === "away" ? c.name : p.awayName),
+              home_player_code: p.homeCode.toUpperCase(),
+              away_player_code: p.awayCode.toUpperCase(),
+              home_player_name: p.homeName,
+              away_player_name: p.awayName,
               game_scores: p.scores, home_games_won: 0, away_games_won: 0,
               winner: null,
             } as any, { onConflict: "fixture_id,position" });

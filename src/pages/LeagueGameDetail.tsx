@@ -1508,7 +1508,12 @@ export default function LeagueGameDetail() {
   const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
     const orig = normalizePlayerCode(side === "home" ? originalLineupSnapshot?.home?.[idx] : originalLineupSnapshot?.away?.[idx]);
     const cur = normalizePlayerCode(code);
-    return !!orig && !!cur && orig !== cur;
+    if (!orig || !cur || orig === cur) return false;
+    // Only treat as a substitute if the slot has actually been played.
+    // Otherwise it's just a pre-play lineup re-order and shouldn't be flagged.
+    const pos = positions[idx];
+    const hasPlay = !!pos && ((Array.isArray(pos.scores) && pos.scores.length > 0) || !!pos.isForfeit);
+    return hasPlay;
   };
 
   return (

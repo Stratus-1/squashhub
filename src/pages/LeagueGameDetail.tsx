@@ -168,6 +168,12 @@ export default function LeagueGameDetail() {
   const [setupDone, setSetupDone] = useState(false);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const [resumableMarker, setResumableMarker] = useState<number | null>(null);
+  const [firstHintVisible, setFirstHintVisible] = useState(true);
+  useEffect(() => {
+    if (!firstHintVisible) return;
+    const t = setTimeout(() => setFirstHintVisible(false), 2000);
+    return () => clearTimeout(t);
+  }, [firstHintVisible]);
   const liveScoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [manualEntry, setManualEntry] = useState<number | null>(null);
   // Indices of completed games (within the current manualEntry rubber) that the

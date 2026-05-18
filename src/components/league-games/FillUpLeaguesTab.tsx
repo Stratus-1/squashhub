@@ -87,9 +87,26 @@ function leagueOrder(name: string, code: string | null): number {
 const isLadiesLeague = (n: string) => /ladies|women/i.test(n);
 const isMensLeague = (n: string) => /\bmen\b/i.test(n) && !/women/i.test(n);
 const DEFAULT_FILL_POSITIONS = 4;
-const MAX_FILL_POSITIONS = 5;
-const boundedFillTeamSize = (...counts: number[]) =>
-  Math.min(MAX_FILL_POSITIONS, Math.max(DEFAULT_FILL_POSITIONS, ...counts.filter(Number.isFinite)));
+const ABSOLUTE_MAX_FILL_POSITIONS = 10;
+/**
+ * Resolve the number of lineup slots for a league based on the association's
+ * team-size rule (set in Super Admin → Association Rules):
+ *   - fixed    → exactly `rules.team_size` (e.g. NSA = 4). Extras are reserves.
+ *   - flexible → grows with the allocated squad (NIL — e.g. 5+ per team).
+ * Always honour any previously-saved lineup positions so we never hide existing data.
+ */
+const resolveTeamSize = (
+  rules: { team_size_mode?: "fixed" | "flexible" | null; team_size?: number | null } | null | undefined,
+  registeredCount: number,
+  savedMaxPosition = 0,
+) => {
+  const base = rules?.team_size && rules.team_size > 0 ? rules.team_size : DEFAULT_FILL_POSITIONS;
+  const mode = rules?.team_size_mode ?? "fixed";
+  const size = mode === "flexible"
+    ? Math.max(base, registeredCount, savedMaxPosition)
+    : Math.max(base, savedMaxPosition);
+  return Math.min(ABSOLUTE_MAX_FILL_POSITIONS, size);
+};
 
 export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesAssociationId, weekStartDow }: Props) {
   const qc = useQueryClient();
@@ -178,9 +195,9 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const counts = new Map<string, number>();
     for (const r of registrations) counts.set(r.league_id, (counts.get(r.league_id) ?? 0) + 1);
     const sizes = new Map<string, number>();
-    for (const lg of sortedLeagues) sizes.set(lg.id, boundedFillTeamSize(counts.get(lg.id) ?? 0));
+    for (const lg of sortedLeagues) sizes.set(lg.id, resolveTeamSize(subRules, counts.get(lg.id) ?? 0));
     return sizes;
-  }, [registrations, sortedLeagues]);
+  }, [registrations, sortedLeagues, subRules]);
 
   // Build a list of candidate planning weeks.
   // Always start with the CURRENT squash week (the one containing today) so an
@@ -904,11 +921,13 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const positionsForLeague = (lg: LeagueRow) => {
     const lp = lineupByLeague.get(lg.id);
-    // Dynamic team size mirrors the scorecard: default 4, expand to 5 when this
-    // league has 5+ registered/allocated players or a saved lineup at position 5.
+    // Team size is driven by the association rule (Super Admin → Association Rules):
+    //   - fixed mode: exactly rules.team_size (NSA = 4); extras go to the bench.
+    //   - flexible mode: grows with allocated/registered squad (NIL, etc.).
+    // Saved lineup positions are always respected so historical data stays visible.
     const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
-    const registeredSize = registeredTeamSizeByLeague.get(lg.id) ?? DEFAULT_FILL_POSITIONS;
-    const size = boundedFillTeamSize(registeredSize, maxLineupPos);
+    const registeredCount = registrations.filter(r => r.league_id === lg.id).length;
+    const size = resolveTeamSize(subRules, registeredCount, maxLineupPos);
     return Array.from({ length: size }, (_, i) => ({
       position: i + 1,
       memberId: lp?.get(i + 1) ?? null,

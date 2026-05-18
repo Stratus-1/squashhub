@@ -19,6 +19,7 @@ export const PERMISSION_SLUGS = [
   { value: "champs", label: "Tournaments" },
   { value: "bar", label: "Honesty Bar" },
   { value: "access", label: "Access Control" },
+  { value: "communications", label: "Communications" },
 ] as const;
 
 export type PermissionSlug = typeof PERMISSION_SLUGS[number]["value"];

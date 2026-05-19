@@ -1630,9 +1630,6 @@ export default function LeagueGameDetail() {
     const pos = positions[idx];
     const curName = normalizePlayerName(side === "home" ? pos?.homeName : pos?.awayName);
     if (!cur && !curName) return false;
-    // Only treat as a substitute if the slot has actually been played.
-    const hasPlay = !!pos && ((Array.isArray(pos.scores) && pos.scores.length > 0) || !!pos.isForfeit);
-    if (!hasPlay) return false;
     // SUB = player is NOT in the team's original admin teams list in ANY position
     // (mirrors the original-player bonus logic).
     const squadCodes = side === "home" ? homeSquadSet : awaySquadSet;

@@ -698,7 +698,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
                 placeholder="—"
                 onChange={(e) => setPpgDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-                className="h-6 text-xs w-12"
+                className="h-6 text-xs w-16"
                 title="Blank = inherit association default (e.g. 11). Override e.g. 15."
               />
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={save} disabled={saving}>

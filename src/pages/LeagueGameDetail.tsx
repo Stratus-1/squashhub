@@ -278,7 +278,13 @@ export default function LeagueGameDetail() {
     queryKey: ["league-team-meta", fixture?.home_team_code, fixture?.away_team_code],
     enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
     queryFn: async () => {
-      const empty = { nameByCode: {} as Record<string, string>, clubIdByCode: {} as Record<string, string>, captainCodeByCode: {} as Record<string, string>, logoByCode: {} as Record<string, string> };
+      const empty = {
+        nameByCode: {} as Record<string, string>,
+        clubIdByCode: {} as Record<string, string>,
+        captainCodeByCode: {} as Record<string, string>,
+        logoByCode: {} as Record<string, string>,
+        ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }>,
+      };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return empty;
       const { data: leagues } = await (supabase as any)
@@ -297,7 +303,22 @@ export default function LeagueGameDetail() {
         if (l.logo_url) logoByCode[k] = l.logo_url;
       }
       const leagueIds = (leagues || []).map((l: any) => l.id);
+      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }> = {};
       if (leagueIds.length) {
+        const { data: teamRules } = await (supabase as any)
+          .from("league_rules")
+          .select("league_id, team_size, team_size_mode")
+          .in("league_id", leagueIds);
+        for (const r of (teamRules || []) as any[]) {
+          const k = leagueIdToCode[r.league_id];
+          const size = Number(r.team_size);
+          if (k && Number.isFinite(size) && size > 0) {
+            ruleByCode[k] = {
+              team_size: Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))),
+              team_size_mode: r.team_size_mode === "flexible" ? "flexible" : "fixed",
+            };
+          }
+        }
         const { data: caps } = await (supabase as any)
           .from("member_league_registrations")
           .select("league_id, club_member_id, is_captain")
@@ -332,11 +353,12 @@ export default function LeagueGameDetail() {
           if (c) captainCodeByCode[k] = c;
         }
       }
-      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode };
+      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode, ruleByCode };
     },
   });
   const teamNamesByCode = teamMeta?.nameByCode;
   const teamLogosByCode = teamMeta?.logoByCode;
+  const teamRulesByCode = teamMeta?.ruleByCode;
 
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {

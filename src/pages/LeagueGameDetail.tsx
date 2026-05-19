@@ -1312,8 +1312,13 @@ export default function LeagueGameDetail() {
     const snap = hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot! : null;
     const homeOriginalCodes = mergeOriginals(snap?.home ?? null, fallbackOriginalCodes(homeTeamCode));
     const awayOriginalCodes = mergeOriginals(snap?.away ?? null, fallbackOriginalCodes(awayTeamCode));
-    const homeOriginalCount = countOriginalsStillInTheirSetupSlot(positions, homeOriginalCodes, "home");
-    const awayOriginalCount = countOriginalsStillInTheirSetupSlot(positions, awayOriginalCodes, "away");
+    // Permanent squad = whoever the captain currently has registered to the team
+    // (via member_league_registrations / week lineup). Promoting a former reserve
+    // to a full-time spot in league setup adds them here, so they count as original.
+    const homePermanentSquad = fallbackOriginalCodes(homeTeamCode);
+    const awayPermanentSquad = fallbackOriginalCodes(awayTeamCode);
+    const homeOriginalCount = countOriginalsStillInTheirSetupSlot(positions, homeOriginalCodes, "home", homePermanentSquad);
+    const awayOriginalCount = countOriginalsStillInTheirSetupSlot(positions, awayOriginalCodes, "away", awayPermanentSquad);
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 

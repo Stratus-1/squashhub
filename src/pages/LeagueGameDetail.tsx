@@ -423,10 +423,12 @@ export default function LeagueGameDetail() {
       // In "fixed" team-size mode (e.g. NSA always 4), the scorecard must stay
       // pinned to team_size even if a stale match row at a higher position exists.
       // In "flexible" mode (e.g. NIL), allow growth based on actual saved positions.
-      const mode = leagueRules?.team_size_mode ?? "fixed";
-      const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+      const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+      const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+      const mode = homeRule?.team_size_mode ?? awayRule?.team_size_mode ?? leagueRules?.team_size_mode ?? "fixed";
+      const baseSize = Math.max(homeRule?.team_size ?? 0, awayRule?.team_size ?? 0, leagueRules?.team_size ?? DEFAULT_POSITIONS);
       const targetCount = mode === "fixed"
-        ? baseSize
+        ? Math.min(MAX_POSITIONS, Math.max(1, baseSize))
         : Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
@@ -456,7 +458,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;

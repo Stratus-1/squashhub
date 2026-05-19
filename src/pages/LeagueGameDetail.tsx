@@ -1606,15 +1606,41 @@ export default function LeagueGameDetail() {
     if (!c) return false;
     return side === "home" ? c === homeCaptainCode : c === awayCaptainCode;
   };
+  // Permanent squad lookup (codes + names) for each team — used to keep SUB badge
+  // in sync with original-player bonus logic: anyone who is a current full-time
+  // squad member is NOT a sub, even if they swap slots.
+  const { homeSquadSet, awaySquadSet, homeSquadNameSet, awaySquadNameSet } = useMemo(() => {
+    const originalsMap = (prefillLineup as any)?.originals || {};
+    const codes = (teamCode: string) => new Set(
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean) as string[]
+    );
+    const names = (teamCode: string) => new Set(
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name)).filter(Boolean) as string[]
+    );
+    return {
+      homeSquadSet: codes(fixture?.home_team_code || ""),
+      awaySquadSet: codes(fixture?.away_team_code || ""),
+      homeSquadNameSet: names(fixture?.home_team_code || ""),
+      awaySquadNameSet: names(fixture?.away_team_code || ""),
+    };
+  }, [prefillLineup, fixture]);
+
   const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
     const orig = normalizePlayerCode(side === "home" ? originalLineupSnapshot?.home?.[idx] : originalLineupSnapshot?.away?.[idx]);
     const cur = normalizePlayerCode(code);
     if (!orig || !cur || orig === cur) return false;
     // Only treat as a substitute if the slot has actually been played.
-    // Otherwise it's just a pre-play lineup re-order and shouldn't be flagged.
     const pos = positions[idx];
     const hasPlay = !!pos && ((Array.isArray(pos.scores) && pos.scores.length > 0) || !!pos.isForfeit);
-    return hasPlay;
+    if (!hasPlay) return false;
+    // Align with original-player bonus: if this player IS in the team's current
+    // permanent squad (by code or name), they're a full-time member, not a sub.
+    const squadCodes = side === "home" ? homeSquadSet : awaySquadSet;
+    const squadNames = side === "home" ? homeSquadNameSet : awaySquadNameSet;
+    if (squadCodes.has(cur)) return false;
+    const curName = normalizePlayerName(side === "home" ? positions[idx]?.homeName : positions[idx]?.awayName);
+    if (curName && squadNames.has(curName)) return false;
+    return true;
   };
 
   return (

@@ -1626,19 +1626,18 @@ export default function LeagueGameDetail() {
     return side === "home" ? c === homeCaptainCode : c === awayCaptainCode;
   };
   const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
-    const orig = normalizePlayerCode(side === "home" ? originalLineupSnapshot?.home?.[idx] : originalLineupSnapshot?.away?.[idx]);
     const cur = normalizePlayerCode(code);
-    if (!orig || !cur || orig === cur) return false;
-    // Only treat as a substitute if the slot has actually been played.
     const pos = positions[idx];
+    const curName = normalizePlayerName(side === "home" ? pos?.homeName : pos?.awayName);
+    if (!cur && !curName) return false;
+    // Only treat as a substitute if the slot has actually been played.
     const hasPlay = !!pos && ((Array.isArray(pos.scores) && pos.scores.length > 0) || !!pos.isForfeit);
     if (!hasPlay) return false;
-    // Align with original-player bonus: if this player IS in the team's current
-    // permanent squad (by code or name), they're a full-time member, not a sub.
+    // SUB = player is NOT in the team's original admin teams list in ANY position
+    // (mirrors the original-player bonus logic).
     const squadCodes = side === "home" ? homeSquadSet : awaySquadSet;
     const squadNames = side === "home" ? homeSquadNameSet : awaySquadNameSet;
-    if (squadCodes.has(cur)) return false;
-    const curName = normalizePlayerName(side === "home" ? positions[idx]?.homeName : positions[idx]?.awayName);
+    if (cur && squadCodes.has(cur)) return false;
     if (curName && squadNames.has(curName)) return false;
     return true;
   };

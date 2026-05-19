@@ -603,18 +603,33 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="flex-1 min-w-0">
           {editing ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <Input
                 autoFocus
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={() => { if (!savingName) saveName(); }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") saveName();
                   if (e.key === "Escape") { setEditing(false); setNameDraft(league.name); }
                 }}
-                className="h-7 text-sm"
+                className="h-7 text-sm flex-1 min-w-[140px]"
+                placeholder="Team name"
               />
+              <div className="flex items-center gap-1">
+                <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Players/match</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={sizeDraft || ""}
+                  onChange={(e) => setSizeDraft(parseInt(e.target.value) || 1)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveName();
+                    if (e.key === "Escape") { setEditing(false); setNameDraft(league.name); }
+                  }}
+                  className="h-7 text-sm w-14"
+                />
+              </div>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveName} disabled={savingName}>
                 <Check className="w-3.5 h-3.5" />
               </Button>
@@ -628,6 +643,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
               <p className="text-xs text-muted-foreground">
                 {associations.find(a => a.id === league.association_id)?.name || "No association"}
                 {regs.length > 0 && ` • ${regs.length} player${regs.length !== 1 ? "s" : ""}`}
+                {typeof currentTeamSize === "number" && currentTeamSize > 0 && ` • ${currentTeamSize}/match`}
                 {(() => {
                   const captain = regs.find((r: any) => r.is_captain);
                   if (captain) return ` • Capt: ${getMemberName(captain)}`;
@@ -648,7 +664,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
             />
           )}
           {!editing && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" title="Rename team" onClick={() => { setNameDraft(league.name); setEditing(true); }}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit name & players per match" onClick={openEdit}>
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           )}

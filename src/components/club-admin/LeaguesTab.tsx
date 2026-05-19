@@ -152,11 +152,18 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     try {
       const teamIds = teamLeagues.map(l => l.id);
       if (teamIds.length > 0) {
-        const { data: regs } = await fromExt("member_league_registrations").select("league_id").in("league_id", teamIds);
-        const counts = new Map<string, number>();
-        (regs || []).forEach((r: any) => counts.set(r.league_id, (counts.get(r.league_id) || 0) + 1));
-        const max = Math.max(0, ...Array.from(counts.values()));
-        if (max > 0) perTeam = max;
+        // Prefer league_rules.team_size (the saved league rule) over registration counts.
+        const { data: rules } = await fromExt("league_rules").select("team_size").in("league_id", teamIds);
+        const ruleSizes = (rules || []).map((r: any) => r.team_size).filter((n: any) => typeof n === "number" && n > 0);
+        if (ruleSizes.length > 0) {
+          perTeam = Math.max(...ruleSizes);
+        } else {
+          const { data: regs } = await fromExt("member_league_registrations").select("league_id").in("league_id", teamIds);
+          const counts = new Map<string, number>();
+          (regs || []).forEach((r: any) => counts.set(r.league_id, (counts.get(r.league_id) || 0) + 1));
+          const max = Math.max(0, ...Array.from(counts.values()));
+          if (max > 0) perTeam = max;
+        }
       }
       if (reservesLeague) {
         const { data: rRegs } = await fromExt("member_league_registrations").select("id").eq("league_id", reservesLeague.id);

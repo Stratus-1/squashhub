@@ -557,8 +557,8 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
     queryKey: ["league-rules-subgroup", leagueIds.join(",")],
     enabled: leagueIds.length > 0,
     queryFn: async () => {
-      const { data } = await fromExt("league_rules").select("league_id, team_size").in("league_id", leagueIds);
-      return (data || []) as Array<{ league_id: string; team_size: number | null }>;
+      const { data } = await fromExt("league_rules").select("league_id, team_size, points_per_game").in("league_id", leagueIds);
+      return (data || []) as Array<{ league_id: string; team_size: number | null; points_per_game: number | null }>;
     },
   });
 
@@ -566,13 +566,37 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
   const uniformSize = sizes.length === leagueIds.length && new Set(sizes).size === 1 ? sizes[0] : null;
   const displaySize = uniformSize ?? (sizes.length > 0 ? `${Math.min(...sizes)}–${Math.max(...sizes)}` : "—");
 
+  const ppgs = rules.map(r => r.points_per_game).filter((n): n is number => typeof n === "number" && n > 0);
+  // If every team in the level has the same override, show it. If none have an override → "Default".
+  // If mixed → show range.
+  const uniformPpg = ppgs.length === leagueIds.length && new Set(ppgs).size === 1 ? ppgs[0] : null;
+  const displayPpg: string | number =
+    ppgs.length === 0 ? "Default"
+    : uniformPpg ?? `${Math.min(...ppgs)}–${Math.max(...ppgs)}`;
+
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<number>(uniformSize ?? 4);
+  const [ppgDraft, setPpgDraft] = useState<string>("");
   const [saving, setSaving] = useState(false);
   useEffect(() => { if (uniformSize != null) setDraft(uniformSize); }, [uniformSize]);
+  useEffect(() => {
+    if (uniformPpg != null) setPpgDraft(String(uniformPpg));
+    else if (ppgs.length === 0) setPpgDraft("");
+  }, [uniformPpg, ppgs.length]);
 
   const save = async () => {
     const size = Math.max(1, Math.min(8, Math.floor(draft || 0)));
+    // ppg: blank = inherit (null). Otherwise must be 5..21.
+    let ppgValue: number | null = null;
+    const trimmed = ppgDraft.trim();
+    if (trimmed !== "") {
+      const n = parseInt(trimmed, 10);
+      if (!Number.isFinite(n) || n < 5 || n > 21) {
+        toast.error("Points per game must be between 5 and 21 (or blank to inherit)");
+        return;
+      }
+      ppgValue = n;
+    }
     setSaving(true);
     try {
       const rows = leagues.map(l => ({
@@ -581,13 +605,20 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
         association_id: l.association_id,
         team_size: size,
         team_size_mode: "fixed" as const,
+        points_per_game: ppgValue,
       }));
       const { error } = await fromExt("league_rules").upsert(rows, { onConflict: "league_id" });
       if (error) throw error;
-      toast.success(`${label}: players per match set to ${size}`);
+      toast.success(
+        `${label}: ${size} players/match` +
+        (ppgValue ? `, play to ${ppgValue}` : ", play to default")
+      );
       setEditing(false);
       qc.invalidateQueries({ queryKey: ["league-rules-subgroup", leagueIds.join(",")] });
-      leagueIds.forEach(id => qc.invalidateQueries({ queryKey: ["league-rules-team-size", id] }));
+      leagueIds.forEach(id => {
+        qc.invalidateQueries({ queryKey: ["league-rules-team-size", id] });
+        qc.invalidateQueries({ queryKey: ["league-rules-row", id] });
+      });
     } catch (e: any) {
       toast.error(e?.message || "Failed to save rule");
     } finally {
@@ -602,7 +633,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
           {label}
           <span className="text-muted-foreground font-normal"> • {leagues.length} team{leagues.length !== 1 ? "s" : ""}</span>
         </p>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           {editing ? (
             <>
               <Label className="text-[10px] text-muted-foreground">Players/match</Label>
@@ -615,6 +646,18 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
                 onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
                 className="h-6 text-xs w-12"
               />
+              <Label className="text-[10px] text-muted-foreground ml-1">Play to</Label>
+              <Input
+                type="number"
+                min={5}
+                max={21}
+                value={ppgDraft}
+                placeholder="—"
+                onChange={(e) => setPpgDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+                className="h-6 text-xs w-12"
+                title="Blank = inherit association default (e.g. 11). Override e.g. 15."
+              />
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={save} disabled={saving}>
                 <Check className="w-3 h-3" />
               </Button>
@@ -626,6 +669,8 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
             <>
               <span className="text-[11px] text-muted-foreground">
                 Players/match: <span className="font-semibold text-foreground">{displaySize}</span>
+                <span className="mx-1.5">•</span>
+                Play to: <span className="font-semibold text-foreground">{displayPpg}</span>
               </span>
               <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit league rule (applies to all teams in this division)" onClick={() => setEditing(true)}>
                 <Pencil className="w-3 h-3" />

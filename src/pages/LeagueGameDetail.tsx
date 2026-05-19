@@ -792,7 +792,9 @@ export default function LeagueGameDetail() {
   }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
   useEffect(() => {
     if (leagueRules) {
-      const ppg = leagueRules.points_per_game;
+      const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+      const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+      const ppg = homeRule?.points_per_game ?? awayRule?.points_per_game ?? leagueRules.points_per_game;
       if (ppg === 15) setScoringFormat("par15");
       else if (ppg === 11) setScoringFormat("par11");
       if (leagueRules.games_format === "best_of_3") setBestOf(3);
@@ -805,7 +807,7 @@ export default function LeagueGameDetail() {
       if (fmt.scoringFormat) setScoringFormat(fmt.scoringFormat);
       if (fmt.bestOf) setBestOf(fmt.bestOf);
     }
-  }, [leagueRules, existingResult]);
+  }, [leagueRules, existingResult, fixture, teamRulesByCode]);
 
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {
     if (!code || code.length < 3) return "";

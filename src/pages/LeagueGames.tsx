@@ -233,7 +233,7 @@ export default function LeagueGames() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className={`grid w-full ${
+            <TabsList className={`grid w-full gap-1 ${
               selectedAssoc?.scope === "internal" && !hideFillUp ? "grid-cols-5"
               : (selectedAssoc?.scope === "internal" && hideFillUp) ? "grid-cols-4"
               : hideFillUp ? "grid-cols-3"

@@ -328,19 +328,20 @@ export default function LeagueGameDetail() {
         if (l.logo_url) logoByCode[k] = l.logo_url;
       }
       const leagueIds = (leagues || []).map((l: any) => l.id);
-      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }> = {};
+      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }> = {};
       if (leagueIds.length) {
         const { data: teamRules } = await (supabase as any)
           .from("league_rules")
-          .select("league_id, team_size, team_size_mode")
+          .select("league_id, team_size, team_size_mode, points_per_game")
           .in("league_id", leagueIds);
         for (const r of (teamRules || []) as any[]) {
           const k = leagueIdToCode[r.league_id];
           const size = Number(r.team_size);
-          if (k && Number.isFinite(size) && size > 0) {
+          if (k) {
             ruleByCode[k] = {
-              team_size: Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))),
+              team_size: Number.isFinite(size) && size > 0 ? Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))) : DEFAULT_POSITIONS,
               team_size_mode: r.team_size_mode === "flexible" ? "flexible" : "fixed",
+              points_per_game: typeof r.points_per_game === "number" ? r.points_per_game : null,
             };
           }
         }

@@ -2197,6 +2197,11 @@ export default function LeagueGameDetail() {
                     const buttonRowSpan = summary.opbEnabled ? 3 : 2;
                     return (
                       <>
+                        <tr className="bg-muted/60 text-[10px] font-black border-t">
+                          <td colSpan={2 + bestOf} />
+                          <td className="text-center p-1 bg-primary text-primary-foreground">H</td>
+                          <td className="text-center p-1 bg-accent text-accent-foreground">V</td>
+                        </tr>
                         <tr className="bg-muted/40 font-semibold text-xs border-t">
                           <td
                             rowSpan={buttonRowSpan}

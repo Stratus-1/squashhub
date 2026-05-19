@@ -585,11 +585,24 @@ export default function LeagueGameDetail() {
           .forEach((l: any) => fillSlot(slots, l.position, l.club_member_id));
 
         // Priority 3: registrations by player_rank for any unfilled positions → BOTH
+        // Cap the fallback to the highest position already established by the captain's
+        // week lineup or per-fixture override (or DEFAULT_POSITIONS). This prevents
+        // unused registered players from being appended as phantom extra positions
+        // beyond what was actually played.
         const teamRegs = (regs || [])
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
+        const maxExplicitPos = Math.max(
+          DEFAULT_POSITIONS,
+          ...weekLineups
+            .filter((l: any) => matchingLeagues.includes(l.league_id))
+            .map((l: any) => l.position || 0),
+          ...(fixtureLineups || [])
+            .filter((l: any) => matchingLeagues.includes(l.league_id))
+            .map((l: any) => l.position || 0),
+        );
         let regIdx = 0;
-        for (let i = 0; i < MAX_POSITIONS; i++) {
+        for (let i = 0; i < maxExplicitPos; i++) {
           if (slots[i].code || slots[i].name) continue;
           while (regIdx < teamRegs.length) {
             const r = teamRegs[regIdx++];

@@ -1762,7 +1762,7 @@ export default function LeagueGameDetail() {
                     }>
                     <span className="p-1 text-left">#</span>
                     <span className="p-1 text-left"></span>
-                    <span className="p-1 text-left">NSF</span>
+                    <span className="p-1 text-left">Code</span>
                     <span className="p-1 text-left">Player</span>
                     {setupDone && Array.from({ length: bestOf }, (_, i) => (
                       <span key={i} className="p-1 text-center">{i + 1}</span>
@@ -1805,7 +1805,7 @@ export default function LeagueGameDetail() {
                         {!setupDone ? (
                           <>
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
-                              onBlur={() => handleCodeBlur(idx, "home")} placeholder="NSF#"
+                              onBlur={() => handleCodeBlur(idx, "home")} placeholder="Code"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700 flex items-center gap-1">
                               <span className="truncate">{pos.homeName}</span>
@@ -1969,7 +1969,7 @@ export default function LeagueGameDetail() {
                         {!setupDone ? (
                           <>
                             <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}
-                              onBlur={() => handleCodeBlur(idx, "away")} placeholder="NSF#"
+                              onBlur={() => handleCodeBlur(idx, "away")} placeholder="Code"
                               className="h-6 text-[9px] font-mono border-0 rounded-none bg-transparent px-1" disabled={isSubmitted} />
                             <span className="text-xs truncate px-1 text-green-700 flex items-center gap-1">
                               <span className="truncate">{pos.awayName}</span>

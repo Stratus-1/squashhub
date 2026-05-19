@@ -3262,7 +3262,7 @@ export type Database = {
           notes: string | null
           original_player_bonus_enabled: boolean
           original_player_bonus_value: number
-          points_per_game: number
+          points_per_game: number | null
           share_bonus_on_tie: boolean
           sub_direction: string
           team_size: number
@@ -3294,7 +3294,7 @@ export type Database = {
           notes?: string | null
           original_player_bonus_enabled?: boolean
           original_player_bonus_value?: number
-          points_per_game?: number
+          points_per_game?: number | null
           share_bonus_on_tie?: boolean
           sub_direction?: string
           team_size?: number
@@ -3326,7 +3326,7 @@ export type Database = {
           notes?: string | null
           original_player_bonus_enabled?: boolean
           original_player_bonus_value?: number
-          points_per_game?: number
+          points_per_game?: number | null
           share_bonus_on_tie?: boolean
           sub_direction?: string
           team_size?: number

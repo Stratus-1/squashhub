@@ -1,0 +1,1 @@
+ALTER TABLE public.league_rules ALTER COLUMN points_per_game DROP NOT NULL;

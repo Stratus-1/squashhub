@@ -1410,6 +1410,25 @@ export default function LeagueGameDetail() {
     }
   };
 
+  // Permanent squad lookup (codes + names) for each team — used to keep SUB badge
+  // in sync with original-player bonus logic: anyone who is a current full-time
+  // squad member is NOT a sub, even if they swap slots.
+  const { homeSquadSet, awaySquadSet, homeSquadNameSet, awaySquadNameSet } = useMemo(() => {
+    const originalsMap = (prefillLineup as any)?.originals || {};
+    const codes = (teamCode: string) => new Set(
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean) as string[]
+    );
+    const names = (teamCode: string) => new Set(
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name)).filter(Boolean) as string[]
+    );
+    return {
+      homeSquadSet: codes(fixture?.home_team_code || ""),
+      awaySquadSet: codes(fixture?.away_team_code || ""),
+      homeSquadNameSet: names(fixture?.home_team_code || ""),
+      awaySquadNameSet: names(fixture?.away_team_code || ""),
+    };
+  }, [prefillLineup, fixture]);
+
   if (!fixture) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
@@ -1606,25 +1625,6 @@ export default function LeagueGameDetail() {
     if (!c) return false;
     return side === "home" ? c === homeCaptainCode : c === awayCaptainCode;
   };
-  // Permanent squad lookup (codes + names) for each team — used to keep SUB badge
-  // in sync with original-player bonus logic: anyone who is a current full-time
-  // squad member is NOT a sub, even if they swap slots.
-  const { homeSquadSet, awaySquadSet, homeSquadNameSet, awaySquadNameSet } = useMemo(() => {
-    const originalsMap = (prefillLineup as any)?.originals || {};
-    const codes = (teamCode: string) => new Set(
-      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean) as string[]
-    );
-    const names = (teamCode: string) => new Set(
-      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name)).filter(Boolean) as string[]
-    );
-    return {
-      homeSquadSet: codes(fixture?.home_team_code || ""),
-      awaySquadSet: codes(fixture?.away_team_code || ""),
-      homeSquadNameSet: names(fixture?.home_team_code || ""),
-      awaySquadNameSet: names(fixture?.away_team_code || ""),
-    };
-  }, [prefillLineup, fixture]);
-
   const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
     const orig = normalizePlayerCode(side === "home" ? originalLineupSnapshot?.home?.[idx] : originalLineupSnapshot?.away?.[idx]);
     const cur = normalizePlayerCode(code);

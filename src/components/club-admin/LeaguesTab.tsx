@@ -506,6 +506,150 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
   );
 }
 
+// ─── Sub-groups leagues by league number (1st, 2nd, …) within an association group ───
+function LeagueNumberSubGroups({ groupLeagues, associations, members, onDelete }: {
+  groupLeagues: League[];
+  associations: LeagueAssociation[];
+  members: ClubMember[];
+  onDelete: (id: string) => void;
+}) {
+  // Extract league number ("1st", "2nd", …) from name; reserves bucket separately.
+  const subGroups = useMemo(() => {
+    const map = new Map<string, League[]>();
+    for (const l of groupLeagues) {
+      const isReserves = /reserves?/i.test(l.name);
+      const ord = l.name.match(/(\d+(?:st|nd|rd|th))/i)?.[1] || (isReserves ? "Reserves" : "Other");
+      const key = isReserves ? `${ord} Reserves` : ord;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(l);
+    }
+    // Sort by numeric ordinal, reserves last within their number
+    const ordNum = (k: string) => parseInt(k.match(/\d+/)?.[0] || "9999", 10);
+    return Array.from(map.entries())
+      .map(([key, list]) => ({ key, list }))
+      .sort((a, b) => {
+        const an = ordNum(a.key); const bn = ordNum(b.key);
+        if (an !== bn) return an - bn;
+        return a.key.localeCompare(b.key);
+      });
+  }, [groupLeagues]);
+
+  return (
+    <div className="space-y-3">
+      {subGroups.map(sg => (
+        <SubGroupBlock
+          key={sg.key}
+          label={sg.key}
+          leagues={sg.list}
+          associations={associations}
+          members={members}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
+  label: string;
+  leagues: League[];
+  associations: LeagueAssociation[];
+  members: ClubMember[];
+  onDelete: (id: string) => void;
+}) {
+  const qc = useQueryClient();
+  const leagueIds = useMemo(() => leagues.map(l => l.id), [leagues]);
+  const { data: rules = [] } = useQuery({
+    queryKey: ["league-rules-subgroup", leagueIds.join(",")],
+    enabled: leagueIds.length > 0,
+    queryFn: async () => {
+      const { data } = await fromExt("league_rules").select("league_id, team_size").in("league_id", leagueIds);
+      return (data || []) as Array<{ league_id: string; team_size: number | null }>;
+    },
+  });
+
+  const sizes = rules.map(r => r.team_size).filter((n): n is number => typeof n === "number" && n > 0);
+  const uniformSize = sizes.length === leagueIds.length && new Set(sizes).size === 1 ? sizes[0] : null;
+  const displaySize = uniformSize ?? (sizes.length > 0 ? `${Math.min(...sizes)}–${Math.max(...sizes)}` : "—");
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<number>(uniformSize ?? 4);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if (uniformSize != null) setDraft(uniformSize); }, [uniformSize]);
+
+  const save = async () => {
+    const size = Math.max(1, Math.min(8, Math.floor(draft || 0)));
+    setSaving(true);
+    try {
+      const rows = leagues.map(l => ({
+        league_id: l.id,
+        club_id: (l as any).club_id,
+        association_id: l.association_id,
+        team_size: size,
+        team_size_mode: "fixed" as const,
+      }));
+      const { error } = await fromExt("league_rules").upsert(rows, { onConflict: "league_id" });
+      if (error) throw error;
+      toast.success(`${label}: players per match set to ${size}`);
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ["league-rules-subgroup", leagueIds.join(",")] });
+      leagueIds.forEach(id => qc.invalidateQueries({ queryKey: ["league-rules-team-size", id] }));
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save rule");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2 px-1 py-1 rounded bg-muted/40 border border-border/50">
+        <p className="text-[11px] font-semibold">
+          {label}
+          <span className="text-muted-foreground font-normal"> • {leagues.length} team{leagues.length !== 1 ? "s" : ""}</span>
+        </p>
+        <div className="flex items-center gap-1">
+          {editing ? (
+            <>
+              <Label className="text-[10px] text-muted-foreground">Players/match</Label>
+              <Input
+                type="number"
+                min={1}
+                max={8}
+                value={draft || ""}
+                onChange={(e) => setDraft(parseInt(e.target.value) || 1)}
+                onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
+                className="h-6 text-xs w-12"
+              />
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={save} disabled={saving}>
+                <Check className="w-3 h-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(false)}>
+                <X className="w-3 h-3" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <span className="text-[11px] text-muted-foreground">
+                Players/match: <span className="font-semibold text-foreground">{displaySize}</span>
+              </span>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit league rule (applies to all teams in this division)" onClick={() => setEditing(true)}>
+                <Pencil className="w-3 h-3" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="space-y-2">
+        {leagues.map(l => (
+          <LeagueCard key={l.id} league={l} associations={associations} onDelete={onDelete} members={members} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 // ─── League Card with inline players ───
 function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   league: League;

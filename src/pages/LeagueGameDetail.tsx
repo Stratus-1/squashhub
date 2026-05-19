@@ -308,7 +308,7 @@ export default function LeagueGameDetail() {
         clubIdByCode: {} as Record<string, string>,
         captainCodeByCode: {} as Record<string, string>,
         logoByCode: {} as Record<string, string>,
-        ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }>,
+        ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }>,
       };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return empty;
@@ -328,19 +328,20 @@ export default function LeagueGameDetail() {
         if (l.logo_url) logoByCode[k] = l.logo_url;
       }
       const leagueIds = (leagues || []).map((l: any) => l.id);
-      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }> = {};
+      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }> = {};
       if (leagueIds.length) {
         const { data: teamRules } = await (supabase as any)
           .from("league_rules")
-          .select("league_id, team_size, team_size_mode")
+          .select("league_id, team_size, team_size_mode, points_per_game")
           .in("league_id", leagueIds);
         for (const r of (teamRules || []) as any[]) {
           const k = leagueIdToCode[r.league_id];
           const size = Number(r.team_size);
-          if (k && Number.isFinite(size) && size > 0) {
+          if (k) {
             ruleByCode[k] = {
-              team_size: Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))),
+              team_size: Number.isFinite(size) && size > 0 ? Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))) : DEFAULT_POSITIONS,
               team_size_mode: r.team_size_mode === "flexible" ? "flexible" : "fixed",
+              points_per_game: typeof r.points_per_game === "number" ? r.points_per_game : null,
             };
           }
         }
@@ -791,7 +792,9 @@ export default function LeagueGameDetail() {
   }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
   useEffect(() => {
     if (leagueRules) {
-      const ppg = leagueRules.points_per_game;
+      const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+      const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+      const ppg = homeRule?.points_per_game ?? awayRule?.points_per_game ?? leagueRules.points_per_game;
       if (ppg === 15) setScoringFormat("par15");
       else if (ppg === 11) setScoringFormat("par11");
       if (leagueRules.games_format === "best_of_3") setBestOf(3);
@@ -804,7 +807,7 @@ export default function LeagueGameDetail() {
       if (fmt.scoringFormat) setScoringFormat(fmt.scoringFormat);
       if (fmt.bestOf) setBestOf(fmt.bestOf);
     }
-  }, [leagueRules, existingResult]);
+  }, [leagueRules, existingResult, fixture, teamRulesByCode]);
 
   const lookupPlayer = useCallback(async (code: string): Promise<string> => {
     if (!code || code.length < 3) return "";
@@ -1183,8 +1186,11 @@ export default function LeagueGameDetail() {
     if (!pos || !fixtureId) return null;
     // Always derive from association rules when present so Super Admin's
     // configured format wins over any stale local state.
-    const effectiveFormat = leagueRules?.points_per_game === 15 ? "par15"
-      : leagueRules?.points_per_game === 11 ? "par11"
+    const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+    const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+    const effectivePpg = homeRule?.points_per_game ?? awayRule?.points_per_game ?? leagueRules?.points_per_game;
+    const effectiveFormat = effectivePpg === 15 ? "par15"
+      : effectivePpg === 11 ? "par11"
       : scoringFormat;
     const effectiveBestOf = leagueRules?.games_format === "best_of_5" ? 5
       : leagueRules?.games_format === "best_of_3" ? 3
@@ -1196,7 +1202,7 @@ export default function LeagueGameDetail() {
       source: "league", sourceId: fixtureId,
       sourcePosition: posIdx + 1,
     };
-  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
+  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules, teamRulesByCode]);
 
   const startMarking = (posIdx: number) => {
     const pos = positions[posIdx];

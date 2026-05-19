@@ -1309,6 +1309,10 @@ export default function LeagueGameDetail() {
     const originalsMap = (prefillLineup as any)?.originals || {};
     const fallbackOriginalCodes = (teamCode: string) =>
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean);
+    const fallbackOriginalNames = (teamCode: string) =>
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name)).filter(Boolean);
+    const fallbackOriginalNameByPos = (teamCode: string) =>
+      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name));
     // Merge: use saved snapshot for slots it covers, fall back to prefill originals for any
     // additional slots (e.g. snapshot saved as 4-player, fixture later expanded to 5-player).
     const mergeOriginals = (snapshotCodes: string[] | null, fallbackCodes: string[]): string[] => {
@@ -1322,13 +1326,17 @@ export default function LeagueGameDetail() {
     const snap = hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot! : null;
     const homeOriginalCodes = mergeOriginals(snap?.home ?? null, fallbackOriginalCodes(homeTeamCode));
     const awayOriginalCodes = mergeOriginals(snap?.away ?? null, fallbackOriginalCodes(awayTeamCode));
+    const homeOriginalNames = fallbackOriginalNameByPos(homeTeamCode);
+    const awayOriginalNames = fallbackOriginalNameByPos(awayTeamCode);
     // Permanent squad = whoever the captain currently has registered to the team
     // (via member_league_registrations / week lineup). Promoting a former reserve
     // to a full-time spot in league setup adds them here, so they count as original.
     const homePermanentSquad = fallbackOriginalCodes(homeTeamCode);
     const awayPermanentSquad = fallbackOriginalCodes(awayTeamCode);
-    const homeOriginalCount = countOriginalsStillInTheirSetupSlot(positions, homeOriginalCodes, "home", homePermanentSquad);
-    const awayOriginalCount = countOriginalsStillInTheirSetupSlot(positions, awayOriginalCodes, "away", awayPermanentSquad);
+    const homePermanentSquadNames = fallbackOriginalNames(homeTeamCode);
+    const awayPermanentSquadNames = fallbackOriginalNames(awayTeamCode);
+    const homeOriginalCount = countOriginalsStillInTheirSetupSlot(positions, homeOriginalCodes, "home", homePermanentSquad, homeOriginalNames, homePermanentSquadNames);
+    const awayOriginalCount = countOriginalsStillInTheirSetupSlot(positions, awayOriginalCodes, "away", awayPermanentSquad, awayOriginalNames, awayPermanentSquadNames);
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 

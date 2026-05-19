@@ -645,7 +645,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
       const rows = leagues.map(l => ({
         league_id: l.id,
         club_id: (l as any).club_id,
-        association_id: l.association_id,
+        association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
         team_size: size,
         team_size_mode: "fixed" as const,
         points_per_game: ppgValue,

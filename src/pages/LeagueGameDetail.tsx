@@ -1762,7 +1762,7 @@ export default function LeagueGameDetail() {
                     }>
                     <span className="p-1 text-left">#</span>
                     <span className="p-1 text-left"></span>
-                    <span className="p-1 text-left">NSF</span>
+                    <span className="p-1 text-left">Code</span>
                     <span className="p-1 text-left">Player</span>
                     {setupDone && Array.from({ length: bestOf }, (_, i) => (
                       <span key={i} className="p-1 text-center">{i + 1}</span>

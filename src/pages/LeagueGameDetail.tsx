@@ -105,11 +105,26 @@ const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot =>
 const hasOriginalSnapshot = (snapshot: OriginalLineupSnapshot | null) =>
   !!snapshot && [...snapshot.home, ...snapshot.away].some(Boolean);
 
-const countOriginalsStillInTheirSetupSlot = (rows: PositionEntry[], originalCodes: string[], side: "home" | "away") => {
+const countOriginalsStillInTheirSetupSlot = (
+  rows: PositionEntry[],
+  originalCodes: string[],
+  side: "home" | "away",
+  permanentSquadCodes: string[] = [],
+) => {
   const key = side === "home" ? "homeCode" : "awayCode";
+  const squadSet = new Set(
+    permanentSquadCodes.map((c) => normalizePlayerCode(c)).filter(Boolean),
+  );
   return rows.reduce((count, row, idx) => {
     const originalCode = normalizePlayerCode(originalCodes[idx]);
-    return originalCode && normalizePlayerCode(row[key]) === originalCode ? count + 1 : count;
+    const currentCode = normalizePlayerCode(row[key]);
+    if (!currentCode) return count;
+    // (a) Player still in their original snapshot slot, OR
+    // (b) Player is part of the team's current permanent squad (captain promoted
+    //     a former reserve to a full-time spot via the league setup page).
+    if (originalCode && currentCode === originalCode) return count + 1;
+    if (squadSet.has(currentCode)) return count + 1;
+    return count;
   }, 0);
 };
 

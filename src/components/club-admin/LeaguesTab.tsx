@@ -491,11 +491,13 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                 </Button>
               </div>
             </div>
-            <div className="space-y-2">
-              {g.leagues.map(l => (
-                <LeagueCard key={l.id} league={l} associations={associations} onDelete={onDelete} members={members} />
-              ))}
-            </div>
+            <LeagueNumberSubGroups
+              groupLeagues={g.leagues}
+              associations={associations}
+              members={members}
+              onDelete={onDelete}
+            />
+
           </div>
         ))}
         {leagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No {title.toLowerCase()} leagues</p>}

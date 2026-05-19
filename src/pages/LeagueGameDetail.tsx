@@ -616,15 +616,17 @@ export default function LeagueGameDetail() {
         const teamRegs = (regs || [])
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
-        const maxExplicitPos = Math.max(
-          DEFAULT_POSITIONS,
+        const teamRule = ruleByCode[String(code || "").toUpperCase()];
+        const fallbackSize = teamRule?.team_size ?? DEFAULT_POSITIONS;
+        const maxExplicitPos = Math.min(MAX_POSITIONS, Math.max(
+          fallbackSize,
           ...weekLineups
             .filter((l: any) => matchingLeagues.includes(l.league_id))
             .map((l: any) => l.position || 0),
           ...(fixtureLineups || [])
             .filter((l: any) => matchingLeagues.includes(l.league_id))
             .map((l: any) => l.position || 0),
-        );
+        ));
         let regIdx = 0;
         for (let i = 0; i < maxExplicitPos; i++) {
           if (slots[i].code || slots[i].name) continue;

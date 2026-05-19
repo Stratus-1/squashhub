@@ -291,6 +291,21 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         }
       }
 
+      // Persist the "players per match" rule for every league row in this batch
+      // (regular teams + reserves). Upsert by league_id so re-running setup updates.
+      const allLeagueIdsForRules = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
+      if (allLeagueIdsForRules.length > 0) {
+        const rulesRows = allLeagueIdsForRules.map((lid) => ({
+          league_id: lid,
+          club_id: clubId,
+          association_id: associationId,
+          team_size: perTeam,
+          team_size_mode: "fixed" as const,
+        }));
+        const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });
+        if (rulesError) throw rulesError;
+      }
+
       // Wipe any existing registrations on these league rows, then insert fresh
       const allLeagueIds = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
       for (const lid of allLeagueIds) {
@@ -488,8 +503,9 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                 <Input type="number" min={1} max={8} value={numTeams || ""} onChange={(e) => setNumTeams(parseInt(e.target.value) || 1)} />
               </div>
               <div>
-                <Label className="text-xs">d. Members per team?</Label>
+                <Label className="text-xs">d. Players per match (league rule)?</Label>
                 <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
+                <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
               </div>
               <div>
                 <Label className="text-xs">e. How many reserves?</Label>

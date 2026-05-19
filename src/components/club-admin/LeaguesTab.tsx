@@ -799,7 +799,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
           {
             league_id: league.id,
             club_id: (league as any).club_id,
-            association_id: league.association_id,
+            association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
             team_size: size,
             team_size_mode: "fixed" as const,
           },

@@ -481,6 +481,25 @@ export default function LeagueGameDetail() {
 
       const leagueIds = leagues.map((l: any) => l.id);
       const clubIds = [...new Set(leagues.map((l: any) => l.club_id).filter(Boolean))];
+      const leagueIdToCode = new Map<string, string>();
+      for (const l of leagues as any[]) {
+        if (l.id && l.code) leagueIdToCode.set(l.id, String(l.code).toUpperCase());
+      }
+      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }> = {};
+      const { data: teamRules } = await (supabase as any)
+        .from("league_rules")
+        .select("league_id, team_size, team_size_mode")
+        .in("league_id", leagueIds);
+      for (const r of (teamRules || []) as any[]) {
+        const k = leagueIdToCode.get(r.league_id);
+        const size = Number(r.team_size);
+        if (k && Number.isFinite(size) && size > 0) {
+          ruleByCode[k] = {
+            team_size: Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))),
+            team_size_mode: r.team_size_mode === "flexible" ? "flexible" : "fixed",
+          };
+        }
+      }
 
       // Compute squash week_start_date from fixture_date.
       // Priority: fixture's association week_start_dow > club's league_week_start_dow > Wed default.

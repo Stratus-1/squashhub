@@ -1626,6 +1626,9 @@ export default function LeagueGameDetail() {
     return side === "home" ? c === homeCaptainCode : c === awayCaptainCode;
   };
   const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
+    // SUB indicator only applies when the league has the original-player bonus rule.
+    // Without that rule (e.g. NSA), substitutions are unrestricted and irrelevant.
+    if (!leagueRules?.original_player_bonus_enabled) return false;
     const cur = normalizePlayerCode(code);
     const pos = positions[idx];
     const curName = normalizePlayerName(side === "home" ? pos?.homeName : pos?.awayName);

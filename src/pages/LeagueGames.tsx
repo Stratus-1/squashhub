@@ -233,7 +233,7 @@ export default function LeagueGames() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className={`grid w-full ${
+            <TabsList className={`grid w-full gap-1 ${
               selectedAssoc?.scope === "internal" && !hideFillUp ? "grid-cols-5"
               : (selectedAssoc?.scope === "internal" && hideFillUp) ? "grid-cols-4"
               : hideFillUp ? "grid-cols-3"
@@ -241,35 +241,37 @@ export default function LeagueGames() {
             } h-auto`}>
               <TabsTrigger
                 value="fixtures"
-                className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow"
+                className="text-[10px] sm:text-sm px-1 py-2 font-medium whitespace-normal leading-tight text-center data-[state=active]:bg-sky-500 data-[state=active]:text-white data-[state=active]:shadow"
               >
                 Upcoming
               </TabsTrigger>
               {!hideFillUp && (
                 <TabsTrigger
                   value="leagues"
-                  className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-violet-500 data-[state=active]:text-white data-[state=active]:shadow"
+                  className="text-[10px] sm:text-sm px-1 py-2 font-medium whitespace-normal leading-tight text-center data-[state=active]:bg-violet-500 data-[state=active]:text-white data-[state=active]:shadow"
                 >
-                  Fill Up Leagues
+                  <span className="sm:hidden">Fill Up</span>
+                  <span className="hidden sm:inline">Fill Up Leagues</span>
                 </TabsTrigger>
               )}
               {selectedAssoc?.scope === "internal" && (
                 <TabsTrigger
                   value="rounds"
-                  className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow"
+                  className="text-[10px] sm:text-sm px-1 py-2 font-medium whitespace-normal leading-tight text-center data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow"
                 >
                   Rounds
                 </TabsTrigger>
               )}
               <TabsTrigger
                 value="standings"
-                className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow"
+                className="text-[10px] sm:text-sm px-1 py-2 font-medium whitespace-normal leading-tight text-center data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow"
               >
-                Team Standings
+                <span className="sm:hidden">Standings</span>
+                <span className="hidden sm:inline">Team Standings</span>
               </TabsTrigger>
               <TabsTrigger
                 value="individuals"
-                className="text-xs sm:text-sm py-2 font-medium data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow"
+                className="text-[10px] sm:text-sm px-1 py-2 font-medium whitespace-normal leading-tight text-center data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow"
               >
                 Individuals
               </TabsTrigger>

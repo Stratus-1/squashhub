@@ -488,8 +488,9 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
                 <Input type="number" min={1} max={8} value={numTeams || ""} onChange={(e) => setNumTeams(parseInt(e.target.value) || 1)} />
               </div>
               <div>
-                <Label className="text-xs">d. Members per team?</Label>
+                <Label className="text-xs">d. Players per match (league rule)?</Label>
                 <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
+                <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
               </div>
               <div>
                 <Label className="text-xs">e. How many reserves?</Label>

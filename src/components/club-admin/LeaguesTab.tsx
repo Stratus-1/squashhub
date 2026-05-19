@@ -509,16 +509,80 @@ function LeagueNumberSubGroups({ groupLeagues, associations, members, onDelete }
 }) {
   // Determine each league's "level" (1st / 2nd / 3rd / …).
   // Priority:
-  //   1. Ordinal in the team's own name ("Men's 2nd Eagles") — used when present.
-  //   2. Otherwise infer from the team's code position vs reserves anchors:
+  //   1. Tier derived from actual fixtures (round name like "1st League round 1") —
+  //      this is the source of truth that the Standings view also uses.
+  //   2. Ordinal in the team's own name ("Men's 2nd Eagles").
+  //   3. Infer from the team's code position vs reserves anchors:
   //      sort all teams in this group by code, then every team is assigned to the
   //      next reserves row's ordinal (NIL002–006 → 1st because NIL007 is "1st L Reserves").
-  //   3. Fallback "Other".
+  //   4. Fallback "Other".
+
+  // Resolve fixture-based tier per team_code, scoped to this association group.
+  const assocId = groupLeagues[0]?.association_id || null;
+  const { data: platformAssocId } = useQuery({
+    queryKey: ["leagues-subgroup-platform-assoc", assocId],
+    enabled: !!assocId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("league_associations")
+        .select("platform_association_id")
+        .eq("id", assocId!)
+        .maybeSingle();
+      return ((data as any)?.platform_association_id as string | null) ?? assocId;
+    },
+  });
+  const { data: fixtureTierByCode } = useQuery({
+    queryKey: ["leagues-subgroup-fixture-tiers", assocId, platformAssocId],
+    enabled: !!assocId && !!platformAssocId,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data: rounds } = await supabase
+        .from("league_rounds")
+        .select("id, name")
+        .eq("association_id", assocId!);
+      const roundTier = new Map<string, string>();
+      (rounds || []).forEach((r: any) => {
+        const tier = String(r.name || "")
+          .replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, "")
+          .trim();
+        const m = tier.match(/(\d+(?:st|nd|rd|th))\s*League/i);
+        if (m) roundTier.set(r.id, m[1]);
+      });
+      const roundIds = Array.from(roundTier.keys());
+      if (roundIds.length === 0) return new Map<string, string>();
+      const { data: fx } = await supabase
+        .from("platform_league_fixtures")
+        .select("round_id, home_team_code, away_team_code")
+        .eq("association_id", platformAssocId!)
+        .in("round_id", roundIds);
+      // Tally tier votes per team_code; pick most frequent.
+      const tally = new Map<string, Map<string, number>>();
+      const bump = (code: string | null, tier: string) => {
+        if (!code || code.startsWith("__")) return;
+        if (!tally.has(code)) tally.set(code, new Map());
+        const m = tally.get(code)!;
+        m.set(tier, (m.get(tier) || 0) + 1);
+      };
+      (fx || []).forEach((f: any) => {
+        const tier = roundTier.get(f.round_id);
+        if (!tier) return;
+        bump(f.home_team_code, tier);
+        bump(f.away_team_code, tier);
+      });
+      const result = new Map<string, string>();
+      tally.forEach((m, code) => {
+        let bestTier = ""; let best = -1;
+        m.forEach((n, t) => { if (n > best) { best = n; bestTier = t; } });
+        if (bestTier) result.set(code, bestTier);
+      });
+      return result;
+    },
+  });
+
   const subGroups = useMemo(() => {
     const codeOf = (l: League) => String((l as any).code || "").toUpperCase();
-    // Sort by code so the "next reserves anchor" walk works.
     const sorted = [...groupLeagues].sort((a, b) => codeOf(a).localeCompare(codeOf(b)));
-    // Find reserves anchors with their ordinals, in code order.
     const reservesAnchors: Array<{ idx: number; ord: string }> = [];
     sorted.forEach((l, i) => {
       if (/reserves?/i.test(l.name)) {
@@ -527,13 +591,17 @@ function LeagueNumberSubGroups({ groupLeagues, associations, members, onDelete }
       }
     });
     const levelFor = (l: League, i: number): string => {
-      // 1. Own name has ordinal?
+      // 1. Fixture-based tier (source of truth).
+      const code = codeOf(l);
+      const fromFx = fixtureTierByCode?.get(code);
+      if (fromFx && !/reserves?/i.test(l.name)) return fromFx;
+      // 2. Own name has ordinal?
       const own = l.name.match(/(\d+(?:st|nd|rd|th))/i)?.[1];
       if (own) return own;
-      // 2. Nearest reserves anchor at or after this index.
+      // 3. Nearest reserves anchor at or after this index.
       const next = reservesAnchors.find(a => a.idx >= i);
       if (next) return next.ord;
-      // 3. Otherwise, after-the-last-anchor → use the last anchor + 1.
+      // 4. After the last anchor → last anchor + 1.
       if (reservesAnchors.length > 0) {
         const lastOrd = reservesAnchors[reservesAnchors.length - 1].ord;
         const n = parseInt(lastOrd, 10);
@@ -557,19 +625,17 @@ function LeagueNumberSubGroups({ groupLeagues, associations, members, onDelete }
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(l);
     });
-    // Sort by numeric ordinal; "Other" last; reserves after their league within same number.
     const ordNum = (k: string) => k === "Other" ? 9999 : parseInt(k.match(/\d+/)?.[0] || "9999", 10);
     return Array.from(map.entries())
       .map(([key, list]) => ({ key, list }))
       .sort((a, b) => {
         const an = ordNum(a.key); const bn = ordNum(b.key);
         if (an !== bn) return an - bn;
-        // same ordinal: league before reserves
         const aRes = /reserves/i.test(a.key) ? 1 : 0;
         const bRes = /reserves/i.test(b.key) ? 1 : 0;
         return aRes - bRes;
       });
-  }, [groupLeagues]);
+  }, [groupLeagues, fixtureTierByCode]);
 
   return (
     <div className="space-y-3">

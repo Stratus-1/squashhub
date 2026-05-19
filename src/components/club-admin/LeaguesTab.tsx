@@ -364,18 +364,12 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 <Users className="w-3.5 h-3.5" />Allocate
               </Button>
             </div>
-            <div className="space-y-2">
-              {sortLeagues(otherLeagues).map(l => (
-                <LeagueCard
-                  key={l.id}
-                  league={l}
-                  associations={associations}
-                  onDelete={handleDeleteLeague}
-                  members={members}
-                  onAllocate={() => setAllocateGroup({ associationId: l.association_id ?? null, gender: "mixed", leagues: [l] })}
-                />
-              ))}
-            </div>
+            <LeagueNumberSubGroups
+              groupLeagues={sortLeagues(otherLeagues)}
+              associations={associations}
+              members={members}
+              onDelete={handleDeleteLeague}
+            />
           </div>
         )}
       </div>

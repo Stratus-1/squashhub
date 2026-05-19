@@ -1186,8 +1186,11 @@ export default function LeagueGameDetail() {
     if (!pos || !fixtureId) return null;
     // Always derive from association rules when present so Super Admin's
     // configured format wins over any stale local state.
-    const effectiveFormat = leagueRules?.points_per_game === 15 ? "par15"
-      : leagueRules?.points_per_game === 11 ? "par11"
+    const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+    const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+    const effectivePpg = homeRule?.points_per_game ?? awayRule?.points_per_game ?? leagueRules?.points_per_game;
+    const effectiveFormat = effectivePpg === 15 ? "par15"
+      : effectivePpg === 11 ? "par11"
       : scoringFormat;
     const effectiveBestOf = leagueRules?.games_format === "best_of_5" ? 5
       : leagueRules?.games_format === "best_of_3" ? 3
@@ -1199,7 +1202,7 @@ export default function LeagueGameDetail() {
       source: "league", sourceId: fixtureId,
       sourcePosition: posIdx + 1,
     };
-  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules]);
+  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules, teamRulesByCode]);
 
   const startMarking = (posIdx: number) => {
     const pos = positions[posIdx];

@@ -515,6 +515,7 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(league.name);
+  const [sizeDraft, setSizeDraft] = useState<number>(4);
   const [savingName, setSavingName] = useState(false);
   const qcRow = useQueryClient();
   const { data: regs = [] } = useQuery({
@@ -529,34 +530,68 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     },
   });
 
+  // Load the current saved "players per match" for this league
+  const { data: currentTeamSize } = useQuery({
+    queryKey: ["league-rules-team-size", league.id],
+    queryFn: async () => {
+      const { data } = await fromExt("league_rules").select("team_size").eq("league_id", league.id).maybeSingle();
+      return (data as any)?.team_size ?? null;
+    },
+  });
+
   const getMemberName = (reg: any) => {
     const m = members.find(m => m.id === reg.club_member_id);
     return m?.name || m?.profiles?.name || "Unknown";
   };
 
+  const openEdit = () => {
+    setNameDraft(league.name);
+    setSizeDraft(typeof currentTeamSize === "number" && currentTeamSize > 0 ? currentTeamSize : 4);
+    setEditing(true);
+  };
+
   const saveName = async () => {
     const trimmed = nameDraft.trim();
-    if (!trimmed || trimmed === league.name) { setEditing(false); setNameDraft(league.name); return; }
+    const size = Math.max(1, Math.min(8, Math.floor(sizeDraft || 0)));
+    const nameChanged = trimmed && trimmed !== league.name;
+    const sizeChanged = typeof currentTeamSize !== "number" || size !== currentTeamSize;
+    if (!nameChanged && !sizeChanged) { setEditing(false); setNameDraft(league.name); return; }
     setSavingName(true);
-    const { data, error } = await fromExt("leagues")
-      .update({ name: trimmed })
-      .eq("id", league.id)
-      .select("id, name");
-    setSavingName(false);
-    if (error) { toast.error(error.message); return; }
-    if (!data || data.length === 0) {
-      toast.error("Couldn't rename — you don't have permission to edit this league.");
-      return;
+    try {
+      if (nameChanged) {
+        const { data, error } = await fromExt("leagues")
+          .update({ name: trimmed })
+          .eq("id", league.id)
+          .select("id, name");
+        if (error) throw error;
+        if (!data || data.length === 0) throw new Error("Couldn't rename — you don't have permission to edit this league.");
+      }
+      if (sizeChanged) {
+        const { error: ruleErr } = await fromExt("league_rules").upsert(
+          {
+            league_id: league.id,
+            club_id: (league as any).club_id,
+            association_id: league.association_id,
+            team_size: size,
+            team_size_mode: "fixed" as const,
+          },
+          { onConflict: "league_id" }
+        );
+        if (ruleErr) throw ruleErr;
+      }
+      toast.success(nameChanged && sizeChanged ? "Team renamed & size updated" : nameChanged ? "Team renamed" : "Players per match updated");
+      setEditing(false);
+      qcRow.invalidateQueries({ queryKey: ["leagues"] });
+      qcRow.invalidateQueries({ queryKey: ["leagues-with-captain"] });
+      qcRow.invalidateQueries({ queryKey: ["club-leagues-codes-assoc"] });
+      qcRow.invalidateQueries({ queryKey: ["member-league-registrations"] });
+      qcRow.invalidateQueries({ queryKey: ["league-registrations", league.id] });
+      qcRow.invalidateQueries({ queryKey: ["league-rules-team-size", league.id] });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save");
+    } finally {
+      setSavingName(false);
     }
-    toast.success("Team renamed");
-    setEditing(false);
-    // Invalidate every cache key that holds league rows so the new name shows
-    // up immediately in Fill-Up, Fixtures, Standings, club leagues lists, etc.
-    qcRow.invalidateQueries({ queryKey: ["leagues"] });
-    qcRow.invalidateQueries({ queryKey: ["leagues-with-captain"] });
-    qcRow.invalidateQueries({ queryKey: ["club-leagues-codes-assoc"] });
-    qcRow.invalidateQueries({ queryKey: ["member-league-registrations"] });
-    qcRow.invalidateQueries({ queryKey: ["league-registrations", league.id] });
   };
 
   const assocForLeague = associations.find(a => a.id === league.association_id);

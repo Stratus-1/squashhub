@@ -123,22 +123,31 @@ export default function AssociationRulesTab({ associationId }: Props) {
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="fixed">Fixed (NSA — extras become reserves)</SelectItem>
-                <SelectItem value="flexible">Flexible (NIL — grows with allocations)</SelectItem>
+                <SelectItem value="fixed">Fixed number of players</SelectItem>
+                <SelectItem value="flexible">Set per league team</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
               Fixed: scorecard always shows the configured number of players; any additional allocations are reserves only.
-              Flexible: scorecard expands to however many players the captain has allocated (up to 8).
+              Set per league team: each league sets its own size in its league settings; scorecard expands to whatever the captain has allocated (up to 8).
             </p>
           </div>
-          <div className="space-y-1.5">
-            <Label>{form.team_size_mode === "flexible" ? "Default / minimum players" : "Players per team"}</Label>
-            <Input type="number" min={1} max={8}
-              value={form.team_size ?? 4}
-              onChange={(e) => set("team_size", Number(e.target.value))} />
-            <p className="text-xs text-muted-foreground">Standard: 4</p>
-          </div>
+          {form.team_size_mode === "fixed" ? (
+            <div className="space-y-1.5">
+              <Label>Players per team</Label>
+              <Input type="number" min={1} max={8}
+                value={form.team_size ?? 4}
+                onChange={(e) => set("team_size", Number(e.target.value))} />
+              <p className="text-xs text-muted-foreground">Scorecard always shows exactly this many positions.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-muted-foreground">Players per team</Label>
+              <div className="h-10 rounded-md border border-dashed border-border bg-muted/30 px-3 flex items-center text-xs text-muted-foreground italic">
+                Not applicable — set in each league's own settings.
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

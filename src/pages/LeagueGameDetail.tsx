@@ -744,8 +744,10 @@ export default function LeagueGameDetail() {
   //   - "flexible" mode (e.g. NIL): grows from team_size up to MAX_POSITIONS based on
   //     how many players the captain has actually allocated.
   useEffect(() => {
-    const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
-    const mode = leagueRules?.team_size_mode ?? "fixed";
+    const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+    const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+    const baseSize = Math.min(MAX_POSITIONS, Math.max(1, homeRule?.team_size ?? 0, awayRule?.team_size ?? 0, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+    const mode = homeRule?.team_size_mode ?? awayRule?.team_size_mode ?? leagueRules?.team_size_mode ?? "fixed";
     if (mode === "fixed") {
       setPositionCount((prev) => (prev === baseSize ? prev : baseSize));
       return;
@@ -761,7 +763,7 @@ export default function LeagueGameDetail() {
       if (homeFilled || awayFilled || savedHasIt) maxFilled = i + 1;
     }
     setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
-  }, [fixture, prefillLineup, existingMatches, leagueRules]);
+  }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
   useEffect(() => {
     if (leagueRules) {
       const ppg = leagueRules.points_per_game;

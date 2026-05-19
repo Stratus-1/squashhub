@@ -291,6 +291,21 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         }
       }
 
+      // Persist the "players per match" rule for every league row in this batch
+      // (regular teams + reserves). Upsert by league_id so re-running setup updates.
+      const allLeagueIdsForRules = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
+      if (allLeagueIdsForRules.length > 0) {
+        const rulesRows = allLeagueIdsForRules.map((lid) => ({
+          league_id: lid,
+          club_id: clubId,
+          association_id: associationId,
+          team_size: perTeam,
+          team_size_mode: "fixed" as const,
+        }));
+        const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });
+        if (rulesError) throw rulesError;
+      }
+
       // Wipe any existing registrations on these league rows, then insert fresh
       const allLeagueIds = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
       for (const lid of allLeagueIds) {

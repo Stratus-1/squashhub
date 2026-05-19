@@ -656,7 +656,6 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(league.name);
   const [sizeDraft, setSizeDraft] = useState<number>(4);
-  const [ppgDraft, setPpgDraft] = useState<string>("");
   const [savingName, setSavingName] = useState(false);
   const qcRow = useQueryClient();
   const { data: regs = [] } = useQuery({
@@ -671,16 +670,14 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
     },
   });
 
-  // Load the current saved per-league overrides for this league
-  const { data: currentRule } = useQuery({
-    queryKey: ["league-rules-row", league.id],
+  // Load the current saved "players per match" for this league
+  const { data: currentTeamSize } = useQuery({
+    queryKey: ["league-rules-team-size", league.id],
     queryFn: async () => {
-      const { data } = await fromExt("league_rules").select("team_size, points_per_game").eq("league_id", league.id).maybeSingle();
-      return (data as any) ?? null;
+      const { data } = await fromExt("league_rules").select("team_size").eq("league_id", league.id).maybeSingle();
+      return (data as any)?.team_size ?? null;
     },
   });
-  const currentTeamSize: number | null = currentRule?.team_size ?? null;
-  const currentPpg: number | null = currentRule?.points_per_game ?? null;
 
   const getMemberName = (reg: any) => {
     const m = members.find(m => m.id === reg.club_member_id);

@@ -278,7 +278,13 @@ export default function LeagueGameDetail() {
     queryKey: ["league-team-meta", fixture?.home_team_code, fixture?.away_team_code],
     enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
     queryFn: async () => {
-      const empty = { nameByCode: {} as Record<string, string>, clubIdByCode: {} as Record<string, string>, captainCodeByCode: {} as Record<string, string>, logoByCode: {} as Record<string, string> };
+      const empty = {
+        nameByCode: {} as Record<string, string>,
+        clubIdByCode: {} as Record<string, string>,
+        captainCodeByCode: {} as Record<string, string>,
+        logoByCode: {} as Record<string, string>,
+        ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }>,
+      };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return empty;
       const { data: leagues } = await (supabase as any)
@@ -297,7 +303,22 @@ export default function LeagueGameDetail() {
         if (l.logo_url) logoByCode[k] = l.logo_url;
       }
       const leagueIds = (leagues || []).map((l: any) => l.id);
+      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }> = {};
       if (leagueIds.length) {
+        const { data: teamRules } = await (supabase as any)
+          .from("league_rules")
+          .select("league_id, team_size, team_size_mode")
+          .in("league_id", leagueIds);
+        for (const r of (teamRules || []) as any[]) {
+          const k = leagueIdToCode[r.league_id];
+          const size = Number(r.team_size);
+          if (k && Number.isFinite(size) && size > 0) {
+            ruleByCode[k] = {
+              team_size: Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))),
+              team_size_mode: r.team_size_mode === "flexible" ? "flexible" : "fixed",
+            };
+          }
+        }
         const { data: caps } = await (supabase as any)
           .from("member_league_registrations")
           .select("league_id, club_member_id, is_captain")
@@ -332,11 +353,12 @@ export default function LeagueGameDetail() {
           if (c) captainCodeByCode[k] = c;
         }
       }
-      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode };
+      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode, ruleByCode };
     },
   });
   const teamNamesByCode = teamMeta?.nameByCode;
   const teamLogosByCode = teamMeta?.logoByCode;
+  const teamRulesByCode = teamMeta?.ruleByCode;
 
   // NSF code -> overlay info from NSA roster
   const nsaRosterMap = useMemo(() => {
@@ -401,10 +423,12 @@ export default function LeagueGameDetail() {
       // In "fixed" team-size mode (e.g. NSA always 4), the scorecard must stay
       // pinned to team_size even if a stale match row at a higher position exists.
       // In "flexible" mode (e.g. NIL), allow growth based on actual saved positions.
-      const mode = leagueRules?.team_size_mode ?? "fixed";
-      const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+      const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+      const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+      const mode = homeRule?.team_size_mode ?? awayRule?.team_size_mode ?? leagueRules?.team_size_mode ?? "fixed";
+      const baseSize = Math.max(homeRule?.team_size ?? 0, awayRule?.team_size ?? 0, leagueRules?.team_size ?? DEFAULT_POSITIONS);
       const targetCount = mode === "fixed"
-        ? baseSize
+        ? Math.min(MAX_POSITIONS, Math.max(1, baseSize))
         : Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
@@ -434,7 +458,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
@@ -457,6 +481,25 @@ export default function LeagueGameDetail() {
 
       const leagueIds = leagues.map((l: any) => l.id);
       const clubIds = [...new Set(leagues.map((l: any) => l.club_id).filter(Boolean))];
+      const leagueIdToCode = new Map<string, string>();
+      for (const l of leagues as any[]) {
+        if (l.id && l.code) leagueIdToCode.set(l.id, String(l.code).toUpperCase());
+      }
+      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible" }> = {};
+      const { data: teamRules } = await (supabase as any)
+        .from("league_rules")
+        .select("league_id, team_size, team_size_mode")
+        .in("league_id", leagueIds);
+      for (const r of (teamRules || []) as any[]) {
+        const k = leagueIdToCode.get(r.league_id);
+        const size = Number(r.team_size);
+        if (k && Number.isFinite(size) && size > 0) {
+          ruleByCode[k] = {
+            team_size: Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))),
+            team_size_mode: r.team_size_mode === "flexible" ? "flexible" : "fixed",
+          };
+        }
+      }
 
       // Compute squash week_start_date from fixture_date.
       // Priority: fixture's association week_start_dow > club's league_week_start_dow > Wed default.
@@ -592,15 +635,17 @@ export default function LeagueGameDetail() {
         const teamRegs = (regs || [])
           .filter((r: any) => matchingLeagues.includes(r.league_id))
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
-        const maxExplicitPos = Math.max(
-          DEFAULT_POSITIONS,
+        const teamRule = ruleByCode[String(code || "").toUpperCase()];
+        const fallbackSize = teamRule?.team_size ?? DEFAULT_POSITIONS;
+        const maxExplicitPos = Math.min(MAX_POSITIONS, Math.max(
+          fallbackSize,
           ...weekLineups
             .filter((l: any) => matchingLeagues.includes(l.league_id))
             .map((l: any) => l.position || 0),
           ...(fixtureLineups || [])
             .filter((l: any) => matchingLeagues.includes(l.league_id))
             .map((l: any) => l.position || 0),
-        );
+        ));
         let regIdx = 0;
         for (let i = 0; i < maxExplicitPos; i++) {
           if (slots[i].code || slots[i].name) continue;
@@ -699,8 +744,10 @@ export default function LeagueGameDetail() {
   //   - "flexible" mode (e.g. NIL): grows from team_size up to MAX_POSITIONS based on
   //     how many players the captain has actually allocated.
   useEffect(() => {
-    const baseSize = Math.min(MAX_POSITIONS, Math.max(1, leagueRules?.team_size ?? DEFAULT_POSITIONS));
-    const mode = leagueRules?.team_size_mode ?? "fixed";
+    const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
+    const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
+    const baseSize = Math.min(MAX_POSITIONS, Math.max(1, homeRule?.team_size ?? 0, awayRule?.team_size ?? 0, leagueRules?.team_size ?? DEFAULT_POSITIONS));
+    const mode = homeRule?.team_size_mode ?? awayRule?.team_size_mode ?? leagueRules?.team_size_mode ?? "fixed";
     if (mode === "fixed") {
       setPositionCount((prev) => (prev === baseSize ? prev : baseSize));
       return;
@@ -716,7 +763,7 @@ export default function LeagueGameDetail() {
       if (homeFilled || awayFilled || savedHasIt) maxFilled = i + 1;
     }
     setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
-  }, [fixture, prefillLineup, existingMatches, leagueRules]);
+  }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
   useEffect(() => {
     if (leagueRules) {
       const ppg = leagueRules.points_per_game;

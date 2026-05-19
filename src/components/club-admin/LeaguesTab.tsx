@@ -507,24 +507,67 @@ function LeagueNumberSubGroups({ groupLeagues, associations, members, onDelete }
   members: ClubMember[];
   onDelete: (id: string) => void;
 }) {
-  // Extract league number ("1st", "2nd", …) from name; reserves bucket separately.
+  // Determine each league's "level" (1st / 2nd / 3rd / …).
+  // Priority:
+  //   1. Ordinal in the team's own name ("Men's 2nd Eagles") — used when present.
+  //   2. Otherwise infer from the team's code position vs reserves anchors:
+  //      sort all teams in this group by code, then every team is assigned to the
+  //      next reserves row's ordinal (NIL002–006 → 1st because NIL007 is "1st L Reserves").
+  //   3. Fallback "Other".
   const subGroups = useMemo(() => {
+    const codeOf = (l: League) => String((l as any).code || "").toUpperCase();
+    // Sort by code so the "next reserves anchor" walk works.
+    const sorted = [...groupLeagues].sort((a, b) => codeOf(a).localeCompare(codeOf(b)));
+    // Find reserves anchors with their ordinals, in code order.
+    const reservesAnchors: Array<{ idx: number; ord: string }> = [];
+    sorted.forEach((l, i) => {
+      if (/reserves?/i.test(l.name)) {
+        const ord = l.name.match(/(\d+(?:st|nd|rd|th))/i)?.[1];
+        if (ord) reservesAnchors.push({ idx: i, ord });
+      }
+    });
+    const levelFor = (l: League, i: number): string => {
+      // 1. Own name has ordinal?
+      const own = l.name.match(/(\d+(?:st|nd|rd|th))/i)?.[1];
+      if (own) return own;
+      // 2. Nearest reserves anchor at or after this index.
+      const next = reservesAnchors.find(a => a.idx >= i);
+      if (next) return next.ord;
+      // 3. Otherwise, after-the-last-anchor → use the last anchor + 1.
+      if (reservesAnchors.length > 0) {
+        const lastOrd = reservesAnchors[reservesAnchors.length - 1].ord;
+        const n = parseInt(lastOrd, 10);
+        if (Number.isFinite(n)) {
+          const next = n + 1;
+          const suffix = next % 10 === 1 && next % 100 !== 11 ? "st"
+            : next % 10 === 2 && next % 100 !== 12 ? "nd"
+            : next % 10 === 3 && next % 100 !== 13 ? "rd"
+            : "th";
+          return `${next}${suffix}`;
+        }
+      }
+      return "Other";
+    };
+
     const map = new Map<string, League[]>();
-    for (const l of groupLeagues) {
+    sorted.forEach((l, i) => {
       const isReserves = /reserves?/i.test(l.name);
-      const ord = l.name.match(/(\d+(?:st|nd|rd|th))/i)?.[1] || (isReserves ? "Reserves" : "Other");
-      const key = isReserves ? `${ord} Reserves` : ord;
+      const ord = levelFor(l, i);
+      const key = isReserves ? `${ord} Reserves` : (ord === "Other" ? "Other" : `${ord} League`);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(l);
-    }
-    // Sort by numeric ordinal, reserves last within their number
-    const ordNum = (k: string) => parseInt(k.match(/\d+/)?.[0] || "9999", 10);
+    });
+    // Sort by numeric ordinal; "Other" last; reserves after their league within same number.
+    const ordNum = (k: string) => k === "Other" ? 9999 : parseInt(k.match(/\d+/)?.[0] || "9999", 10);
     return Array.from(map.entries())
       .map(([key, list]) => ({ key, list }))
       .sort((a, b) => {
         const an = ordNum(a.key); const bn = ordNum(b.key);
         if (an !== bn) return an - bn;
-        return a.key.localeCompare(b.key);
+        // same ordinal: league before reserves
+        const aRes = /reserves/i.test(a.key) ? 1 : 0;
+        const bRes = /reserves/i.test(b.key) ? 1 : 0;
+        return aRes - bRes;
       });
   }, [groupLeagues]);
 

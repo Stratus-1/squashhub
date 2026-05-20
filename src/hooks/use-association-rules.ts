@@ -42,15 +42,33 @@ export function useAssociationRules(associationId: string | null | undefined) {
     queryKey: ["association-rules", "direct", associationId],
     enabled: !!associationId,
     queryFn: async () => {
-      // Association rules are authored once in Super Admin against the platform
-      // association. Callers must pass that association id directly.
-      const { data, error } = await supabase
+      // Try tenant association first, then fall back to its platform_association_id.
+      // Rules are typically authored once in Super Admin against the platform
+      // association; tenant rows inherit unless they override.
+      const { data: direct, error: directErr } = await supabase
         .from("league_rules")
         .select("*")
         .eq("association_id", associationId!)
         .maybeSingle();
-      if (error) throw error;
-      return (data as LeagueRules | null) ?? null;
+      if (directErr) throw directErr;
+      if (direct) return direct as LeagueRules;
+
+      const { data: assoc, error: assocErr } = await supabase
+        .from("league_associations")
+        .select("platform_association_id")
+        .eq("id", associationId!)
+        .maybeSingle();
+      if (assocErr) throw assocErr;
+      const platformId = assoc?.platform_association_id;
+      if (!platformId) return null;
+
+      const { data: inherited, error: inheritedErr } = await supabase
+        .from("league_rules")
+        .select("*")
+        .eq("association_id", platformId)
+        .maybeSingle();
+      if (inheritedErr) throw inheritedErr;
+      return (inherited as LeagueRules | null) ?? null;
     },
   });
 }

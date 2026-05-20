@@ -1455,45 +1455,12 @@ export default function LeagueGameDetail() {
     return false;
   })();
 
-  // When a fixture has been finalized, the standings page reads the stored
-  // home_total_points / away_total_points / *_bonus_points / *_total_games
-  // directly. The live `summary` recomputation can drift if association rules
-  // changed (or differ from defaults) after submission — that mismatch
-  // confuses captains/members ("standings say 14-16 but scoreboard says 13-16").
-  // Prefer the persisted breakdown for display so the scoreboard always
-  // matches the standings; fall back to live computation when not yet
-  // submitted or while admin is overriding/editing.
-  const displaySummary = (() => {
-    const r = existingResult as any;
-    const useStored = isSubmittedRaw && !adminOverride && r;
-    if (!useStored) return summary;
-    const hg = r.home_total_games ?? summary.homeTotalGames;
-    const ag = r.away_total_games ?? summary.awayTotalGames;
-    const hb = r.home_bonus_points ?? summary.homeBonusPoints;
-    const ab = r.away_bonus_points ?? summary.awayBonusPoints;
-    const hpen = Number(r.home_penalty_points ?? summary.homePenaltyPoints) || 0;
-    const apen = Number(r.away_penalty_points ?? summary.awayPenaltyPoints) || 0;
-    const hp = r.home_total_points ?? summary.homeTotal;
-    const ap = r.away_total_points ?? summary.awayTotal;
-    // Recompose the bonus split for the breakdown rows: keep the live
-    // original-player count visible, fold any remaining stored bonus into
-    // the match-bonus row so the rows still add up to the stored total.
-    const homeMatchBonus = Math.max(0, hb - summary.homeOriginalBonus);
-    const awayMatchBonus = Math.max(0, ab - summary.awayOriginalBonus);
-    return {
-      ...summary,
-      homeTotalGames: hg,
-      awayTotalGames: ag,
-      homeBonusPoints: hb,
-      awayBonusPoints: ab,
-      homeMatchBonus,
-      awayMatchBonus,
-      homePenaltyPoints: hpen,
-      awayPenaltyPoints: apen,
-      homeTotal: hp,
-      awayTotal: ap,
-    };
-  })();
+  // Scoreboard always shows the live recomputed summary (current rules).
+  // Standings reads stored fixture totals — when association rules change,
+  // run the admin recalc to bring stored totals back in sync.
+  const displaySummary = summary;
+
+
 
 
 

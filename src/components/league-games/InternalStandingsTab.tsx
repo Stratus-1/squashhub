@@ -73,9 +73,10 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   const { activeMember } = useMemberContext();
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const isAdmin = isClubAdmin || isSuperAdmin;
   const canEditCell = (_teamCode: string, dateStr: string) => {
     if (dateStr > todayStr) return false;
-    return isClubAdmin || isSuperAdmin;
+    return isAdmin;
   };
 
   // Resolve the platform association id (fixtures live under platform_association_id,

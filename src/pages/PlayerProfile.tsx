@@ -392,7 +392,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#007aff]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Played</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.matches_played || 0}</p>
+                <p className="text-lg font-bold font-heading mt-1">{displayPlayed}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">matches</p>
               </div>
 

@@ -272,6 +272,17 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
     };
   }, []);
 
+  // Defensive: at the start of any game after the first, the winner of the previous
+  // game must serve from the right. This guarantees the rule even if some other
+  // state update races with setServer(gameWinner) at game end.
+  useEffect(() => {
+    if (completedGames.length === 0) return;
+    if (scoreA !== 0 || scoreB !== 0) return; // only at start of a new game
+    const lastWinner = completedGames[completedGames.length - 1].winnerId;
+    setServer((curr) => (curr === lastWinner ? curr : lastWinner));
+    setServeSide((curr) => (curr === "R" ? curr : "R"));
+  }, [completedGames, scoreA, scoreB]);
+
   const toggleServeSide = useCallback(() => {
     if (matchOver || resting || !tossDecided) return;
     setServeSide((s) => (s === "R" ? "L" : "R"));

@@ -134,22 +134,30 @@ export default function PlayerProfile() {
     };
   }, [id, queryClient]);
 
+  // Prefer live aggregated totals (matches + league fixtures) over the
+  // stale per-profile counters which can sit at 0 for new/imported members.
+  const liveMatches = squashTotals?.matches ?? null;
+  const liveWins = squashTotals?.wins ?? null;
+  const liveLosses = squashTotals?.losses ?? null;
+
+  const displayPlayed = liveMatches ?? Number(player?.matches_played || 0);
+  const displayWins = liveWins ?? Number(player?.wins || 0);
+  const displayLosses = liveLosses ?? Number(player?.losses || 0);
+
   const winRate = useMemo(() => {
-    if (!player) return 0;
-    return player.matches_played > 0 ? Math.round((player.wins / player.matches_played) * 100) : 0;
-  }, [player]);
+    if (squashTotals && typeof squashTotals.win_rate === "number") return squashTotals.win_rate;
+    return displayPlayed > 0 ? Math.round((displayWins / displayPlayed) * 100) : 0;
+  }, [squashTotals, displayPlayed, displayWins]);
 
   const perfProgress = useMemo(() => {
     const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
-    const played = Number(player?.matches_played || 0);
-    const wins = Number(player?.wins || 0);
     const winPct = Number.isFinite(winRate) ? winRate : 0;
     return {
-      played: clamp01(played / 50),
-      wins: clamp01(wins / 25),
+      played: clamp01(displayPlayed / 50),
+      wins: clamp01(displayWins / 25),
       winPct: clamp01(winPct / 100),
     };
-  }, [player?.matches_played, player?.wins, winRate]);
+  }, [displayPlayed, displayWins, winRate]);
 
   const rivals = useMemo(() => {
     const rows = headToHead || [];
@@ -271,7 +279,7 @@ export default function PlayerProfile() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">{player.name || "Player"}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {player.matches_played} played · {player.wins}W {player.losses}L · {winRate}% win
+                    {displayPlayed} played · {displayWins}W {displayLosses}L · {winRate}% win
                   </p>
                 </div>
               </div>
@@ -384,7 +392,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#007aff]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Played</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.matches_played || 0}</p>
+                <p className="text-lg font-bold font-heading mt-1">{displayPlayed}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">matches</p>
               </div>
 
@@ -393,7 +401,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#34c759]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Wins</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.wins || 0}</p>
+                <p className="text-lg font-bold font-heading mt-1">{displayWins}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">wins</p>
               </div>
 
@@ -402,7 +410,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#ff9500]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Losses</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.losses || 0}</p>
+                <p className="text-lg font-bold font-heading mt-1">{displayLosses}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">losses</p>
               </div>
 

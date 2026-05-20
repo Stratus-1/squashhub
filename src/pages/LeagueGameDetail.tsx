@@ -1488,6 +1488,16 @@ export default function LeagueGameDetail() {
             initialScores={(positions[activeMarker]?.scores || []).map((s) => ({ a: s.home, b: s.away }))}
             onMatchComplete={handleMarkerComplete}
             onReset={() => setActiveMarker(null)}
+            onScratch={() => {
+              if (activeMarker === null) return;
+              const current = positions[activeMarker];
+              if (current) {
+                const cleared = { ...current, scores: [], completed: false };
+                setPositions((prev) => { const next = [...prev]; next[activeMarker] = cleared; return next; });
+                persistPositionScores(activeMarker, cleared);
+              }
+              setActiveMarker(null);
+            }}
             onProgress={(games) => {
               if (activeMarker === null) return;
               const current = positions[activeMarker];

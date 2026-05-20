@@ -553,7 +553,7 @@ export default function PlayerProfile() {
               value={
                 squashTotals && (squashTotals.sets_for || squashTotals.sets_against)
                   ? `${squashTotals.sets_for}-${squashTotals.sets_against}`
-                  : nsaStats
+                  : nsaStats && (nsaStats.sets_for || nsaStats.sets_against)
                     ? `${nsaStats.sets_for}-${nsaStats.sets_against}`
                     : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }
@@ -564,7 +564,7 @@ export default function PlayerProfile() {
               value={
                 squashTotals && (squashTotals.points_for || squashTotals.points_against)
                   ? `${squashTotals.points_for}-${squashTotals.points_against}`
-                  : nsaStats
+                  : nsaStats && (nsaStats.points_for || nsaStats.points_against)
                     ? `${nsaStats.points_for}-${nsaStats.points_against}`
                     : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }

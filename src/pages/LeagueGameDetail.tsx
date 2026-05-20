@@ -1727,39 +1727,68 @@ export default function LeagueGameDetail() {
         </div>
 
         {/* Match format selection — only during setup */}
-        {!setupDone && !isSubmitted && (
-          <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
-            <span className="text-xs font-semibold text-foreground">Match Format</span>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Scoring</Label>
-                <RadioGroup value={scoringFormat} onValueChange={(v) => setScoringFormat(v as "par11" | "par15")} className="flex gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="par11" id="par11" />
-                    <Label htmlFor="par11" className="text-xs font-normal cursor-pointer">PAR 11</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="par15" id="par15" />
-                    <Label htmlFor="par15" className="text-xs font-normal cursor-pointer">PAR 15</Label>
-                  </div>
-                </RadioGroup>
+        {!setupDone && !isSubmitted && (() => {
+          const ruleScoring: "par11" | "par15" | null =
+            leagueRules?.points_per_game === 15 ? "par15"
+            : leagueRules?.points_per_game === 11 ? "par11"
+            : null;
+          const ruleBestOf: 3 | 5 | null =
+            leagueRules?.games_format === "best_of_5" ? 5
+            : leagueRules?.games_format === "best_of_3" ? 3
+            : null;
+          const scoringLocked = ruleScoring !== null;
+          const bestOfLocked = ruleBestOf !== null;
+          return (
+            <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-foreground">Match Format</span>
+                {(scoringLocked || bestOfLocked) && (
+                  <span className="text-[10px] text-muted-foreground italic">Set by league rules</span>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Best of</Label>
-                <RadioGroup value={String(bestOf)} onValueChange={(v) => setBestOf(Number(v) as 3 | 5)} className="flex gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="3" id="bo3" />
-                    <Label htmlFor="bo3" className="text-xs font-normal cursor-pointer">3</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="5" id="bo5" />
-                    <Label htmlFor="bo5" className="text-xs font-normal cursor-pointer">5</Label>
-                  </div>
-                </RadioGroup>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-muted-foreground">
+                    Scoring{scoringLocked && " · locked"}
+                  </Label>
+                  <RadioGroup
+                    value={scoringLocked ? ruleScoring! : scoringFormat}
+                    onValueChange={(v) => { if (!scoringLocked) setScoringFormat(v as "par11" | "par15"); }}
+                    className={`flex gap-3 ${scoringLocked ? "opacity-70 pointer-events-none" : ""}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="par11" id="par11" disabled={scoringLocked} />
+                      <Label htmlFor="par11" className="text-xs font-normal cursor-pointer">PAR 11</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="par15" id="par15" disabled={scoringLocked} />
+                      <Label htmlFor="par15" className="text-xs font-normal cursor-pointer">PAR 15</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-muted-foreground">
+                    Best of{bestOfLocked && " · locked"}
+                  </Label>
+                  <RadioGroup
+                    value={String(bestOfLocked ? ruleBestOf : bestOf)}
+                    onValueChange={(v) => { if (!bestOfLocked) setBestOf(Number(v) as 3 | 5); }}
+                    className={`flex gap-3 ${bestOfLocked ? "opacity-70 pointer-events-none" : ""}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="3" id="bo3" disabled={bestOfLocked} />
+                      <Label htmlFor="bo3" className="text-xs font-normal cursor-pointer">3</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="5" id="bo5" disabled={bestOfLocked} />
+                      <Label htmlFor="bo5" className="text-xs font-normal cursor-pointer">5</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Live NSA roster banner */}
         {nsaLive && !setupDone && !isSubmitted && (

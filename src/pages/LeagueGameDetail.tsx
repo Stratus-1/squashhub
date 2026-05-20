@@ -1440,7 +1440,12 @@ export default function LeagueGameDetail() {
   }
 
   const isSubmittedRaw = existingResult?.status === "submitted" || existingResult?.status === "confirmed";
-  const isSubmitted = isSubmittedRaw && !adminOverride;
+  const hasUnfinishedPlayablePositions = positions.some((pos) => {
+    const hasPlayers = !!(pos.homeCode || pos.homeName) && !!(pos.awayCode || pos.awayName);
+    return hasPlayers && !pos.completed && !pos.isForfeit;
+  });
+  const isSubmittedLocked = isSubmittedRaw && !hasUnfinishedPlayablePositions;
+  const isSubmitted = isSubmittedLocked && !adminOverride;
   const fixtureDateStr: string | undefined = (fixture as any)?.fixture_date;
   const fixtureStartTime: string | undefined = (fixture as any)?.start_time;
   const isFixturePast = (() => {
@@ -2358,7 +2363,7 @@ export default function LeagueGameDetail() {
           </Button>
         )}
 
-        {isSubmittedRaw && !adminOverride && (
+        {isSubmittedLocked && !adminOverride && (
           <div className="text-center py-2 space-y-2">
             <Badge className="bg-green-500/15 text-green-700 text-sm px-4 py-1">
               <Check className="w-4 h-4 mr-1" /> Results Submitted
@@ -2373,14 +2378,14 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {isSubmittedRaw && adminOverride && (
+        {isSubmittedLocked && adminOverride && (
           <div className="rounded-md border-2 border-destructive/60 bg-destructive/10 p-3 text-xs">
             <div className="font-bold mb-1">Admin override active</div>
             <p className="leading-snug">You're editing previously submitted results. Press <b>Submit Results</b> below to overwrite the standings.</p>
           </div>
         )}
 
-        {!isSubmittedRaw && isFixturePast && isClubAdmin && (
+        {!isSubmittedLocked && isFixturePast && isClubAdmin && (
           <div className="rounded-md border-2 border-amber-500/60 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
             <div className="font-bold mb-1">Overdue fixture — admin entry</div>
             <p className="leading-snug">This match date has passed and no results were submitted. As an admin, you can enter scores below and submit on behalf of the captains.</p>
@@ -2400,7 +2405,7 @@ export default function LeagueGameDetail() {
               onClick={() => setAdminManualOpen(true)}
             >
               <Edit3 className="w-4 h-4 mr-1" />
-              {isSubmittedRaw ? "Adjust Final Score (Admin)" : "Enter Final Score Manually (Admin)"}
+              {isSubmittedLocked ? "Adjust Final Score (Admin)" : "Enter Final Score Manually (Admin)"}
             </Button>
           </div>
         )}

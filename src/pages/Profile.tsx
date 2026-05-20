@@ -720,6 +720,8 @@ function ViewMode({
   close: () => void;
   setMode: (m: "edit") => void;
 }) {
+  const { data: club } = useMyClub();
+  const faceRequired = !!(club as any)?.face_enrolment_required;
   const [showInactive, setShowInactive] = useState(false);
   const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);
   const hasFaceEnrolled = !!clubMember?.face_consent_at;

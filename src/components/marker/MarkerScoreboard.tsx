@@ -139,6 +139,10 @@ interface Props {
     durationSeconds: number;
   }) => void;
   onReset: () => void;
+  /** Called when the user scratches the match. If provided, this is invoked
+   *  instead of onReset so the parent can also wipe any upstream persisted
+   *  scores (e.g. league position scores in DB) before exiting the marker. */
+  onScratch?: () => void;
   /** Fired whenever a game completes (live progress). Receives the running
    *  list of completed games so followers can see scores update game-by-game. */
   onProgress?: (games: GameScore[]) => void;

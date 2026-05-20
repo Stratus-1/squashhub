@@ -757,25 +757,17 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const upsertLineup = useMutation({
     mutationFn: async (input: { league_id: string; position: number; club_member_id: string }) => {
-      // Remove the player from any other lineup slots this week first (move semantics)
-      await supabase
-        .from("league_week_lineups")
-        .delete()
-        .eq("club_id", clubId)
-        .eq("week_start_date", weekStart)
-        .eq("club_member_id", input.club_member_id);
-
-      // Then upsert into the target slot (unique on league+week+position)
-      const { error } = await supabase.from("league_week_lineups").upsert(
-        {
-          club_id: clubId,
-          league_id: input.league_id,
-          week_start_date: weekStart,
-          position: input.position,
-          club_member_id: input.club_member_id,
-        },
-        { onConflict: "league_id,week_start_date,position" },
-      );
+      // Atomically move the player to the target slot. The RPC runs as
+      // SECURITY DEFINER so it can clear the player from another league's
+      // lineup (which RLS would otherwise block when the caller only
+      // captains the TARGET league, not the source league).
+      const { error } = await supabase.rpc("move_player_to_lineup", {
+        p_club_id: clubId,
+        p_week_start_date: weekStart,
+        p_target_league_id: input.league_id,
+        p_target_position: input.position,
+        p_club_member_id: input.club_member_id,
+      });
       if (error) throw error;
     },
     onSuccess: () => {

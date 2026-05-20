@@ -571,8 +571,12 @@ export default function PlayerProfile() {
               icon={<Activity className="w-4 h-4" />}
             />
             <StatCard
-              label="Avg mins"
-              value={squashTotals?.avg_duration_min != null ? `${squashTotals.avg_duration_min}m` : squashTotalsLoading ? "…" : "—"}
+              label={squashTotals?.avg_duration_min != null ? "Avg mins" : "Last"}
+              value={
+                squashTotals?.avg_duration_min != null
+                  ? `${squashTotals.avg_duration_min}m`
+                  : squashTotals?.last_match_date || nsaStats?.last_match_date || ((squashTotalsLoading || nsaStatsLoading) ? "…" : "—")
+              }
               icon={<Timer className="w-4 h-4" />}
             />
           </div>

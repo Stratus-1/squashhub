@@ -507,24 +507,28 @@ export default function PlayerProfile() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <StatCard
               label="Streak"
-              value={squashTotals?.current_streak || (squashTotalsLoading ? "…" : "—")}
+              value={squashTotals?.current_streak || nsaStats?.current_streak || ((squashTotalsLoading || nsaStatsLoading) ? "…" : "—")}
               icon={<Flame className="w-4 h-4" />}
             />
             <StatCard
               label="Sets F/A"
               value={
-                squashTotals
+                squashTotals && (squashTotals.sets_for || squashTotals.sets_against)
                   ? `${squashTotals.sets_for}-${squashTotals.sets_against}`
-                  : squashTotalsLoading ? "…" : "—"
+                  : nsaStats
+                    ? `${nsaStats.sets_for}-${nsaStats.sets_against}`
+                    : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }
               icon={<Activity className="w-4 h-4" />}
             />
             <StatCard
               label="Points F/A"
               value={
-                squashTotals
+                squashTotals && (squashTotals.points_for || squashTotals.points_against)
                   ? `${squashTotals.points_for}-${squashTotals.points_against}`
-                  : squashTotalsLoading ? "…" : "—"
+                  : nsaStats
+                    ? `${nsaStats.points_for}-${nsaStats.points_against}`
+                    : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }
               icon={<Activity className="w-4 h-4" />}
             />

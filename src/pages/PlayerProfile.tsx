@@ -410,7 +410,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#ff9500]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Losses</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.losses || 0}</p>
+                <p className="text-lg font-bold font-heading mt-1">{displayLosses}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">losses</p>
               </div>
 

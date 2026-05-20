@@ -401,7 +401,7 @@ export default function PlayerProfile() {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#34c759]" />
                   <p className="text-[10px] uppercase tracking-wide text-foreground/70">Wins</p>
                 </div>
-                <p className="text-lg font-bold font-heading mt-1">{player.wins || 0}</p>
+                <p className="text-lg font-bold font-heading mt-1">{displayWins}</p>
                 <p className="text-[11px] text-muted-foreground -mt-0.5">wins</p>
               </div>
 

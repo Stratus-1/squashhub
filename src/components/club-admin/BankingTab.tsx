@@ -120,6 +120,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
 
+  // Resync dropdown when club data finishes loading or changes (e.g. after a save).
+  useEffect(() => {
+    setGateway(club.payment_gateway || "");
+  }, [club.payment_gateway]);
+
   const selectedGateway = useMemo(() => GATEWAYS.find(g => g.id === gateway), [gateway]);
 
   // Load saved credentials from secrets

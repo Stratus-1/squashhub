@@ -1,5 +1,5 @@
 // NSA proxy — forwards GET requests to admin.northerns.co.za with ?json
-// Endpoints supported: 'fixtures' | 'team' | 'standings'
+// Endpoints supported: 'fixtures' | 'team' | 'standings' | 'fixture_results'
 //
 // 'fixtures' & 'team': pass-through JSON endpoints (?json appended).
 // 'standings': scrapes standings.php HTML and returns parsed JSON.
@@ -18,7 +18,7 @@ const corsHeaders = {
 };
 
 const NSA_BASE = "https://admin.northerns.co.za/nsa";
-const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings", "fixture_penalties"]);
+const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings", "fixture_penalties", "fixture_results"]);
 const CACHE_TTL_MS = 60_000;
 const SEASON_MAP_TTL_MS = 24 * 60 * 60 * 1000;
 

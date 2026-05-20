@@ -365,7 +365,6 @@ async function fetchFixtureResults(fixtureId: number): Promise<FixtureResults> {
       return {
         player_name: cells[codeIdx - 1] || "",
         player_code: cells[codeIdx].toUpperCase(),
-        gameScores: compact.slice(0, -3),
         points: tail[0],
         games: tail[1],
         rubbers: tail[2],

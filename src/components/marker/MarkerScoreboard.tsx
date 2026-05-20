@@ -139,6 +139,10 @@ interface Props {
     durationSeconds: number;
   }) => void;
   onReset: () => void;
+  /** Called when the user scratches the match. If provided, this is invoked
+   *  instead of onReset so the parent can also wipe any upstream persisted
+   *  scores (e.g. league position scores in DB) before exiting the marker. */
+  onScratch?: () => void;
   /** Fired whenever a game completes (live progress). Receives the running
    *  list of completed games so followers can see scores update game-by-game. */
   onProgress?: (games: GameScore[]) => void;
@@ -147,7 +151,7 @@ interface Props {
   onLiveScore?: (games: GameScore[], current: { a: number; b: number }) => void;
 }
 
-export function MarkerScoreboard({ config, initialScores, onMatchComplete, onReset, onProgress, onLiveScore }: Props) {
+export function MarkerScoreboard({ config, initialScores, onMatchComplete, onReset, onScratch, onProgress, onLiveScore }: Props) {
   const pointsToWin = getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";
@@ -691,7 +695,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
                 setScratchOpen(false);
                 setScratchConfirmText("");
                 toast.success("Match marking scratched. Starting fresh.");
-                onReset();
+                if (onScratch) onScratch();
+                else onReset();
               }}
             >
               <Trash2 className="w-3.5 h-3.5" />

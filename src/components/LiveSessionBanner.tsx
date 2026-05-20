@@ -26,6 +26,7 @@ export function LiveSessionBanner() {
   const { data: myBookings } = useMyBookings();
   const { data: clubData } = useMyClub();
   const lightFeePerHour = (clubData?.club as any)?.light_fee_per_hour ?? 0;
+  const lightsIntegrationEnabled = !!(clubData?.club as any)?.lights_integration_enabled;
   const [dismissed, setDismissed] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [transferOpen, setTransferOpen] = useState<string | null>(null);

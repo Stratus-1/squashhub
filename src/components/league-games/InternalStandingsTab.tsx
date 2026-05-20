@@ -73,9 +73,10 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
   const { activeMember } = useMemberContext();
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const isAdmin = isClubAdmin || isSuperAdmin;
   const canEditCell = (_teamCode: string, dateStr: string) => {
     if (dateStr > todayStr) return false;
-    return isClubAdmin || isSuperAdmin;
+    return isAdmin;
   };
 
   // Resolve the platform association id (fixtures live under platform_association_id,
@@ -426,21 +427,26 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                               }
                               const editable = !!w.fixture_id && canEditCell(s.team_code, w.date);
                               const isPast = w.date <= todayStr;
+                              const hasResult = !!w.value;
+                              const viewable = !!w.fixture_id && (hasResult || isPast);
+                              const clickable = editable || viewable;
                               const missing = !w.value && isPast && !!w.fixture_id;
                               const tip = !w.fixture_id
                                 ? "No fixture"
-                                : !isPast
-                                ? "Future fixture"
                                 : editable
                                 ? (w.value ? "Edit results" : "Enter results")
-                                : "Only a club or super admin can enter or edit results.";
+                                : hasResult
+                                ? "View scoreboard"
+                                : isPast
+                                ? "View fixture"
+                                : "Future fixture";
                               const cell = (
                                 <button
                                   type="button"
-                                  disabled={!editable}
-                                  onClick={() => editable && navigate(`/league-games/${w.fixture_id}`)}
+                                  disabled={!clickable}
+                                  onClick={() => clickable && navigate(`/league-games/${w.fixture_id}`)}
                                   className={`w-full h-full px-1 py-0.5 rounded inline-flex items-center justify-center gap-1 ${
-                                    editable
+                                    clickable
                                       ? "hover:bg-primary/10 cursor-pointer"
                                       : "cursor-default"
                                   } ${missing ? "text-destructive font-semibold" : ""}`}

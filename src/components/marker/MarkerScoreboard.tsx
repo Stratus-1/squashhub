@@ -327,8 +327,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         setScoreA(0);
         setScoreB(0);
 
-        // Alternate who serves first in next game
-        setServer(gameWinner === "a" ? "b" : "a");
+        // Winner of the previous game serves first, from the right
+        setServer(gameWinner);
         setServeSide("R");
 
         // Live progress broadcast (game-by-game)

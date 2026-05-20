@@ -279,7 +279,7 @@ export default function PlayerProfile() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">{player.name || "Player"}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {player.matches_played} played · {player.wins}W {player.losses}L · {winRate}% win
+                    {displayPlayed} played · {displayWins}W {displayLosses}L · {winRate}% win
                   </p>
                 </div>
               </div>

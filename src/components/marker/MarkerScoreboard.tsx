@@ -695,7 +695,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
                 setScratchOpen(false);
                 setScratchConfirmText("");
                 toast.success("Match marking scratched. Starting fresh.");
-                onReset();
+                if (onScratch) onScratch();
+                else onReset();
               }}
             >
               <Trash2 className="w-3.5 h-3.5" />

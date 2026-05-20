@@ -124,7 +124,7 @@ function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a:
     completedGames.push({ a, b, winnerId });
     if (winnerId === "a") gamesA += 1;
     else gamesB += 1;
-    server = winnerId === "a" ? "b" : "a";
+    server = winnerId;
   }
 
   return { scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide: "R" };
@@ -327,8 +327,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         setScoreA(0);
         setScoreB(0);
 
-        // Alternate who serves first in next game
-        setServer(gameWinner === "a" ? "b" : "a");
+        // Winner of the previous game serves first, from the right
+        setServer(gameWinner);
         setServeSide("R");
 
         // Live progress broadcast (game-by-game)

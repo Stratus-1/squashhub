@@ -151,7 +151,7 @@ interface Props {
   onLiveScore?: (games: GameScore[], current: { a: number; b: number }) => void;
 }
 
-export function MarkerScoreboard({ config, initialScores, onMatchComplete, onReset, onProgress, onLiveScore }: Props) {
+export function MarkerScoreboard({ config, initialScores, onMatchComplete, onReset, onScratch, onProgress, onLiveScore }: Props) {
   const pointsToWin = getPointsToWin(config.scoringFormat);
   const gamesToWin = Math.ceil(config.bestOf / 2);
   const isEnglish = config.scoringFormat === "english9";

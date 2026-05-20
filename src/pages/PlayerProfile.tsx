@@ -221,8 +221,11 @@ export default function PlayerProfile() {
   const displayLosses = pickNonZero(liveLosses, ladderRow?.losses, nsaStats?.losses, player?.losses);
 
   const winRate = useMemo(() => {
-    if (squashTotals && typeof squashTotals.win_rate === "number" && (squashTotals.matches ?? 0) > 0) return squashTotals.win_rate;
-    return displayPlayed > 0 ? Math.round((displayWins / displayPlayed) * 100) : 0;
+    // Always derive from the resolved displayed W/P so we don't trust a stale
+    // squashTotals.win_rate of 0 when wins are actually > 0.
+    if (displayPlayed > 0) return Math.round((displayWins / displayPlayed) * 100);
+    if (squashTotals && typeof squashTotals.win_rate === "number") return squashTotals.win_rate;
+    return 0;
   }, [squashTotals, displayPlayed, displayWins]);
 
   const perfProgress = useMemo(() => {

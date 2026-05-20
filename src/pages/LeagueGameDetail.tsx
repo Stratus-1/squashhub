@@ -2242,7 +2242,7 @@ export default function LeagueGameDetail() {
               {setupDone && (
                 <>
                   {(() => {
-                    const buttonRowSpan = summary.opbEnabled ? 3 : 2;
+                    const buttonRowSpan = displaySummary.opbEnabled ? 3 : 2;
                     return (
                       <>
                         <tr className="bg-muted/60 text-[10px] font-black border-t">
@@ -2267,21 +2267,21 @@ export default function LeagueGameDetail() {
                             )}
                           </td>
                           <td colSpan={bestOf} className="p-1 text-right">SUB TOTALS (G)</td>
-                          <td className="text-center p-1">{summary.homeTotalGames}</td>
-                          <td className="text-center p-1">{summary.awayTotalGames}</td>
+                          <td className="text-center p-1">{displaySummary.homeTotalGames}</td>
+                          <td className="text-center p-1">{displaySummary.awayTotalGames}</td>
                         </tr>
                         <tr className="bg-muted/40 font-semibold text-xs">
                           <td colSpan={bestOf} className="p-1 text-right">BONUS (WIN)</td>
-                          <td className="text-center p-1">{summary.homeMatchBonus}</td>
-                          <td className="text-center p-1">{summary.awayMatchBonus}</td>
+                          <td className="text-center p-1">{displaySummary.homeMatchBonus}</td>
+                          <td className="text-center p-1">{displaySummary.awayMatchBonus}</td>
                         </tr>
-                        {summary.opbEnabled && (
+                        {displaySummary.opbEnabled && (
                           <tr className="bg-muted/40 font-semibold text-xs">
                             <td colSpan={bestOf} className="p-1 text-right">
-                              ORIGINAL PLAYERS (×{summary.opbValue})
+                              ORIGINAL PLAYERS (×{displaySummary.opbValue})
                             </td>
-                            <td className="text-center p-1">{summary.homeOriginalCount} = {summary.homeOriginalBonus}</td>
-                            <td className="text-center p-1">{summary.awayOriginalCount} = {summary.awayOriginalBonus}</td>
+                            <td className="text-center p-1">{displaySummary.homeOriginalCount} = {displaySummary.homeOriginalBonus}</td>
+                            <td className="text-center p-1">{displaySummary.awayOriginalCount} = {displaySummary.awayOriginalBonus}</td>
                           </tr>
                         )}
                       </>
@@ -2290,29 +2290,30 @@ export default function LeagueGameDetail() {
                   <tr className="bg-muted/40 font-semibold text-xs">
                     <td colSpan={2} className="p-1 text-right">BONUS POINTS</td>
                     <td colSpan={bestOf} />
-                    <td className="text-center p-1">{summary.homeBonusPoints}</td>
-                    <td className="text-center p-1">{summary.awayBonusPoints}</td>
+                    <td className="text-center p-1">{displaySummary.homeBonusPoints}</td>
+                    <td className="text-center p-1">{displaySummary.awayBonusPoints}</td>
                   </tr>
-                  {(summary.homePenaltyPoints > 0 || summary.awayPenaltyPoints > 0) && (
+                  {(displaySummary.homePenaltyPoints > 0 || displaySummary.awayPenaltyPoints > 0) && (
                     <tr className="bg-destructive/10 font-semibold text-xs text-destructive">
                       <td colSpan={2} className="p-1 text-right">FORFEIT PENALTY</td>
                       <td colSpan={bestOf} />
-                      <td className="text-center p-1">{summary.homePenaltyPoints > 0 ? `-${summary.homePenaltyPoints}` : ""}</td>
-                      <td className="text-center p-1">{summary.awayPenaltyPoints > 0 ? `-${summary.awayPenaltyPoints}` : ""}</td>
+                      <td className="text-center p-1">{displaySummary.homePenaltyPoints > 0 ? `-${displaySummary.homePenaltyPoints}` : ""}</td>
+                      <td className="text-center p-1">{displaySummary.awayPenaltyPoints > 0 ? `-${displaySummary.awayPenaltyPoints}` : ""}</td>
                     </tr>
                   )}
                   <tr className="bg-muted/60 font-bold text-sm">
                     <td colSpan={2} className="p-1 text-right">TOTAL</td>
                     <td colSpan={bestOf} />
-                    <td className="text-center p-1">{summary.homeTotal}</td>
-                    <td className="text-center p-1">{summary.awayTotal}</td>
+                    <td className="text-center p-1">{displaySummary.homeTotal}</td>
+                    <td className="text-center p-1">{displaySummary.awayTotal}</td>
                   </tr>
                   <tr className="bg-primary/10 font-bold text-sm border-t-2 border-primary/30">
                     <td colSpan={2} className="p-1 text-right text-primary">TOTAL POINTS (P)</td>
                     <td colSpan={bestOf} />
-                    <td className="text-center p-1 text-primary">{summary.homeAllPoints}</td>
-                    <td className="text-center p-1 text-primary">{summary.awayAllPoints}</td>
+                    <td className="text-center p-1 text-primary">{displaySummary.homeAllPoints}</td>
+                    <td className="text-center p-1 text-primary">{displaySummary.awayAllPoints}</td>
                   </tr>
+
                 </>
               )}
             </tbody>

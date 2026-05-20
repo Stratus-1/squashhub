@@ -5296,6 +5296,18 @@ export type Database = {
           sets_for: number
         }[]
       }
+      admin_list_unclaimed_club_members: {
+        Args: { _club_id: string }
+        Returns: {
+          club_subdomain: string
+          email: string
+          full_name: string
+          league_name: string
+          member_id: string
+          nsa_number: string
+          phone: string
+        }[]
+      }
       admin_reorder_ladder: {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined

@@ -124,7 +124,7 @@ function buildStateFromSavedScores(config: MarkerConfig, savedScores: Array<{ a:
     completedGames.push({ a, b, winnerId });
     if (winnerId === "a") gamesA += 1;
     else gamesB += 1;
-    server = winnerId === "a" ? "b" : "a";
+    server = winnerId;
   }
 
   return { scoreA, scoreB, gamesA, gamesB, completedGames, server, serveSide: "R" };

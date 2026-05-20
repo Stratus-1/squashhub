@@ -781,7 +781,7 @@ function ViewMode({
         </Card>
       )}
 
-      {clubMember && (
+      {clubMember && faceRequired && (
         <Card className="border-border/60">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between gap-2">

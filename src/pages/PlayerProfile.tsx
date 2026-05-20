@@ -156,19 +156,54 @@ export default function PlayerProfile() {
         .from("member_association_affiliations")
         .select("league_association_number, active")
         .eq("club_member_id", memberId);
+      const normalizeCode = (value: unknown) => String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
       const codes = Array.from(new Set(
         ((affs || []) as any[])
-          .map((a) => (a.league_association_number || "").toString().trim().toUpperCase())
+          .map((a) => normalizeCode(a.league_association_number))
           .filter(Boolean)
       ));
       if (codes.length === 0) return null;
       const { data: rows } = await (supabase as any)
         .from("nsa_rubber_history")
-        .select("fixture_date, won, games_for, games_against, points_for, points_against")
+        .select("nsa_fixture_id, fixture_date, player_code, won, games_for, games_against, rubbers_for, rubbers_against, points_for, points_against")
         .in("player_code", codes)
         .order("fixture_date", { ascending: false })
         .limit(500);
-      const list = (rows || []) as Array<any>;
+      const rawList = (rows || []) as Array<any>;
+      const hasStoredScore = (r: any) =>
+        r.won === true || r.won === false ||
+        r.games_for != null || r.games_against != null || r.points_for != null || r.points_against != null;
+      const missingFixtureIds = Array.from(new Set(
+        rawList
+          .filter((r) => !hasStoredScore(r) && r.nsa_fixture_id)
+          .map((r) => Number(r.nsa_fixture_id))
+          .filter((n) => Number.isFinite(n))
+      )).slice(0, 60);
+      const scoreByFixtureAndCode = new Map<string, any>();
+      await Promise.allSettled(missingFixtureIds.map(async (fixtureId) => {
+        const { data, error } = await supabase.functions.invoke("nsa-proxy", {
+          body: { endpoint: "fixture_results", params: { fixture_id: fixtureId } },
+        });
+        if (error || data?.error) return;
+        for (const p of data?.data?.players || []) {
+          const code = normalizeCode(p?.player_code);
+          if (code) scoreByFixtureAndCode.set(`${fixtureId}:${code}`, p);
+        }
+      }));
+      const list = rawList.map((r) => {
+        const fetched = scoreByFixtureAndCode.get(`${Number(r.nsa_fixture_id)}:${normalizeCode(r.player_code)}`);
+        if (!fetched) return r;
+        return {
+          ...r,
+          won: r.won ?? fetched.won,
+          games_for: r.games_for ?? fetched.games_for,
+          games_against: r.games_against ?? fetched.games_against,
+          rubbers_for: r.rubbers_for ?? fetched.rubbers_for,
+          rubbers_against: r.rubbers_against ?? fetched.rubbers_against,
+          points_for: r.points_for ?? fetched.points_for,
+          points_against: r.points_against ?? fetched.points_against,
+        };
+      });
       if (list.length === 0) return null;
       let wins = 0, losses = 0, setsFor = 0, setsAgainst = 0, ptsFor = 0, ptsAgainst = 0;
       for (const r of list) {
@@ -518,7 +553,7 @@ export default function PlayerProfile() {
               value={
                 squashTotals && (squashTotals.sets_for || squashTotals.sets_against)
                   ? `${squashTotals.sets_for}-${squashTotals.sets_against}`
-                  : nsaStats
+                  : nsaStats && (nsaStats.sets_for || nsaStats.sets_against)
                     ? `${nsaStats.sets_for}-${nsaStats.sets_against}`
                     : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }
@@ -529,15 +564,19 @@ export default function PlayerProfile() {
               value={
                 squashTotals && (squashTotals.points_for || squashTotals.points_against)
                   ? `${squashTotals.points_for}-${squashTotals.points_against}`
-                  : nsaStats
+                  : nsaStats && (nsaStats.points_for || nsaStats.points_against)
                     ? `${nsaStats.points_for}-${nsaStats.points_against}`
                     : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }
               icon={<Activity className="w-4 h-4" />}
             />
             <StatCard
-              label="Avg mins"
-              value={squashTotals?.avg_duration_min != null ? `${squashTotals.avg_duration_min}m` : squashTotalsLoading ? "…" : "—"}
+              label={squashTotals?.avg_duration_min != null ? "Avg mins" : "Last"}
+              value={
+                squashTotals?.avg_duration_min != null
+                  ? `${squashTotals.avg_duration_min}m`
+                  : squashTotals?.last_match_date || nsaStats?.last_match_date || ((squashTotalsLoading || nsaStatsLoading) ? "…" : "—")
+              }
               icon={<Timer className="w-4 h-4" />}
             />
           </div>

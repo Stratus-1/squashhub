@@ -1,5 +1,5 @@
 // NSA proxy — forwards GET requests to admin.northerns.co.za with ?json
-// Endpoints supported: 'fixtures' | 'team' | 'standings'
+// Endpoints supported: 'fixtures' | 'team' | 'standings' | 'fixture_results'
 //
 // 'fixtures' & 'team': pass-through JSON endpoints (?json appended).
 // 'standings': scrapes standings.php HTML and returns parsed JSON.
@@ -18,7 +18,7 @@ const corsHeaders = {
 };
 
 const NSA_BASE = "https://admin.northerns.co.za/nsa";
-const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings", "fixture_penalties"]);
+const ALLOWED_ENDPOINTS = new Set(["fixtures", "team", "standings", "fixture_penalties", "fixture_results"]);
 const CACHE_TTL_MS = 60_000;
 const SEASON_MAP_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -204,6 +204,28 @@ type FixturePenaltiesResult = {
   teams: FixturePenaltyTeam[];
 };
 
+type FixtureResultPlayer = {
+  player_code: string;
+  player_name: string;
+  team_code: string | null;
+  is_home: boolean | null;
+  points_for: number;
+  games_for: number;
+  rubbers_for: number;
+  points_against: number;
+  games_against: number;
+  rubbers_against: number;
+  won: boolean | null;
+};
+
+type FixtureResults = {
+  nsa_fixture_id: number;
+  title: string | null;
+  home_team_code: string | null;
+  away_team_code: string | null;
+  players: FixtureResultPlayer[];
+};
+
 function stripTags(s: string): string {
   return s.replace(/<[^>]+>/g, "").replace(/&nbsp;?/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -315,6 +337,53 @@ async function fetchFixturePenalties(fixtureId: number): Promise<FixturePenaltie
   };
 }
 
+async function fetchFixtureResults(fixtureId: number): Promise<FixtureResults> {
+  const url = `${NSA_BASE}/fixtureresults.php?fixture=${fixtureId}`;
+  const res = await fetch(url, { headers: { "User-Agent": "SquashHub-Proxy/1.0" } });
+  if (!res.ok) throw new Error(`NSA HTTP ${res.status}`);
+  const html = await res.text();
+  const titleMatch = html.match(/Fixture\s+Results:\s*([^<\n]+)/i);
+  const title = titleMatch ? stripTags(titleMatch[1]).trim() : null;
+  const codePair = title?.match(/([A-Z]{2,5}\d{2,4})\s+vs\s+([A-Z]{2,5}\d{2,4})/i);
+  const home_team_code = codePair?.[1]?.toUpperCase() ?? null;
+  const away_team_code = codePair?.[2]?.toUpperCase() ?? null;
+  const players: FixtureResultPlayer[] = [];
+  const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
+
+  for (let i = 0; i < rows.length - 1; i++) {
+    const leftCells = [...rows[i][1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => stripTags(c[1]));
+    const rightCells = [...rows[i + 1][1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => stripTags(c[1]));
+    const leftCodeIdx = leftCells.findIndex((c) => /^NSF\d{3,6}$/i.test(c));
+    const rightCodeIdx = rightCells.findIndex((c) => /^NSF\d{3,6}$/i.test(c));
+    if (leftCodeIdx < 0 || rightCodeIdx < 0) continue;
+
+    const parseSide = (cells: string[], codeIdx: number) => {
+      const nums = cells.slice(codeIdx + 1).map((c) => (/^\d+$/.test(c) ? parseInt(c, 10) : null));
+      const compact = nums.filter((n): n is number => n !== null);
+      if (compact.length < 3) return null;
+      const tail = compact.slice(-3);
+      return {
+        player_name: cells[codeIdx - 1] || "",
+        player_code: cells[codeIdx].toUpperCase(),
+        points: tail[0],
+        games: tail[1],
+        rubbers: tail[2],
+      };
+    };
+    const left = parseSide(leftCells, leftCodeIdx);
+    const right = parseSide(rightCells, rightCodeIdx);
+    if (!left || !right) continue;
+    const leftWon = left.rubbers !== right.rubbers ? left.rubbers > right.rubbers : left.games > right.games;
+    players.push(
+      { player_code: left.player_code, player_name: left.player_name, team_code: home_team_code, is_home: true, points_for: left.points, games_for: left.games, rubbers_for: left.rubbers, points_against: right.points, games_against: right.games, rubbers_against: right.rubbers, won: leftWon },
+      { player_code: right.player_code, player_name: right.player_name, team_code: away_team_code, is_home: false, points_for: right.points, games_for: right.games, rubbers_for: right.rubbers, points_against: left.points, games_against: left.games, rubbers_against: left.rubbers, won: !leftWon },
+    );
+    i++;
+  }
+
+  return { nsa_fixture_id: fixtureId, title, home_team_code, away_team_code, players };
+}
+
 // ---------- main handler ----------
 
 Deno.serve(async (req) => {
@@ -401,6 +470,31 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (err) {
       return new Response(JSON.stringify({ error: `Fixture penalties fetch failed: ${(err as Error).message}` }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
+  // ---------- fixture results ----------
+  if (endpoint === "fixture_results") {
+    const fixId = parseInt(params.fixture_id || "", 10);
+    if (!fixId) {
+      return new Response(JSON.stringify({ error: "fixture_id required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const key = cacheKey("fixture_results", { fixture_id: String(fixId) });
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      return new Response(JSON.stringify({ data: cached.data, cached: true, age_ms: Date.now() - cached.at }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    try {
+      const result = await fetchFixtureResults(fixId);
+      cache.set(key, { at: Date.now(), data: result });
+      return new Response(JSON.stringify({ data: result, cached: false }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: `Fixture results fetch failed: ${(err as Error).message}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }

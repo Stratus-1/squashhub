@@ -714,7 +714,7 @@ function SubGroupBlock({ label, leagues, associations, members, onDelete }: {
         association_id: null, // per-league rule: scope CHECK requires association_id NULL when league_id set
         team_size: size,
         team_size_mode: "fixed" as const,
-        points_per_game: ppgValue,
+        points_per_game: ppgValue ?? null, // null = inherit from league/super-admin
       }));
       const { error } = await fromExt("league_rules").upsert(rows, { onConflict: "league_id" });
       if (error) throw error;

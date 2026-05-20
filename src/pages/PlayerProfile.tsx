@@ -545,17 +545,17 @@ export default function PlayerProfile() {
                 <p className="text-xs text-muted-foreground">
                   Confirmed:{" "}
                   <span className="text-foreground font-medium">
-                    {squashTotals ? `${squashTotals.wins}W ${squashTotals.losses}L` : squashTotalsLoading ? "…" : "—"}
+                    {displayPlayed > 0 ? `${displayWins}W ${displayLosses}L` : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"}
                   </span>{" "}
                   ·{" "}
                   <span className="text-foreground font-medium">
-                    {squashTotals ? `${squashTotals.win_rate}%` : squashTotalsLoading ? "…" : "—"} win
+                    {displayPlayed > 0 ? `${winRate}%` : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"} win
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Last:{" "}
                   <span className="text-foreground font-medium">
-                    {squashTotals?.last_match_date || (squashTotalsLoading ? "…" : "—")}
+                    {squashTotals?.last_match_date || nsaStats?.last_match_date || ((squashTotalsLoading || nsaStatsLoading) ? "…" : "—")}
                   </span>
                 </p>
               </div>

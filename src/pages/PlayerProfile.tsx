@@ -145,6 +145,65 @@ export default function PlayerProfile() {
     ) || null;
   }, [ladder, id]);
 
+  // NSA rubber-history stats — populates the empty Streak/Sets/Points/Last
+  // tiles for NSA-affiliated members by aggregating scraped scorecards.
+  const { data: nsaStats, isLoading: nsaStatsLoading } = useQuery({
+    queryKey: ["player-nsa-rubber-stats", playerMemberId || id],
+    queryFn: async () => {
+      const memberId = playerMemberId || id;
+      if (!memberId) return null;
+      const { data: affs } = await (supabase as any)
+        .from("member_association_affiliations")
+        .select("league_association_number, active")
+        .eq("club_member_id", memberId);
+      const codes = Array.from(new Set(
+        ((affs || []) as any[])
+          .map((a) => (a.league_association_number || "").toString().trim().toUpperCase())
+          .filter(Boolean)
+      ));
+      if (codes.length === 0) return null;
+      const { data: rows } = await (supabase as any)
+        .from("nsa_rubber_history")
+        .select("fixture_date, won, games_for, games_against, points_for, points_against")
+        .in("player_code", codes)
+        .order("fixture_date", { ascending: false })
+        .limit(500);
+      const list = (rows || []) as Array<any>;
+      if (list.length === 0) return null;
+      let wins = 0, losses = 0, setsFor = 0, setsAgainst = 0, ptsFor = 0, ptsAgainst = 0;
+      for (const r of list) {
+        if (r.won === true) wins++;
+        else if (r.won === false) losses++;
+        setsFor += Number(r.games_for ?? 0);
+        setsAgainst += Number(r.games_against ?? 0);
+        ptsFor += Number(r.points_for ?? 0);
+        ptsAgainst += Number(r.points_against ?? 0);
+      }
+      // Streak: walk from most recent same-result run
+      let streakCount = 0;
+      let streakKind: "W" | "L" | null = null;
+      for (const r of list) {
+        if (r.won !== true && r.won !== false) continue;
+        const kind: "W" | "L" = r.won ? "W" : "L";
+        if (streakKind === null) { streakKind = kind; streakCount = 1; }
+        else if (kind === streakKind) streakCount++;
+        else break;
+      }
+      return {
+        matches: wins + losses,
+        wins, losses,
+        sets_for: setsFor,
+        sets_against: setsAgainst,
+        points_for: ptsFor,
+        points_against: ptsAgainst,
+        current_streak: streakKind ? `${streakCount}${streakKind}` : null,
+        last_match_date: list[0]?.fixture_date || null,
+      };
+    },
+    enabled: !!id && showAdvanced,
+    staleTime: 5 * 60_000,
+  });
+
   const liveMatches = squashTotals?.matches ?? null;
   const liveWins = squashTotals?.wins ?? null;
   const liveLosses = squashTotals?.losses ?? null;
@@ -157,12 +216,12 @@ export default function PlayerProfile() {
     return 0;
   };
 
-  const displayPlayed = pickNonZero(liveMatches, ladderRow?.matches_played, player?.matches_played);
-  const displayWins = pickNonZero(liveWins, ladderRow?.wins, player?.wins);
-  const displayLosses = pickNonZero(liveLosses, ladderRow?.losses, player?.losses);
+  const displayPlayed = pickNonZero(liveMatches, ladderRow?.matches_played, nsaStats?.matches, player?.matches_played);
+  const displayWins = pickNonZero(liveWins, ladderRow?.wins, nsaStats?.wins, player?.wins);
+  const displayLosses = pickNonZero(liveLosses, ladderRow?.losses, nsaStats?.losses, player?.losses);
 
   const winRate = useMemo(() => {
-    if (squashTotals && typeof squashTotals.win_rate === "number") return squashTotals.win_rate;
+    if (squashTotals && typeof squashTotals.win_rate === "number" && (squashTotals.matches ?? 0) > 0) return squashTotals.win_rate;
     return displayPlayed > 0 ? Math.round((displayWins / displayPlayed) * 100) : 0;
   }, [squashTotals, displayPlayed, displayWins]);
 
@@ -448,24 +507,28 @@ export default function PlayerProfile() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <StatCard
               label="Streak"
-              value={squashTotals?.current_streak || (squashTotalsLoading ? "…" : "—")}
+              value={squashTotals?.current_streak || nsaStats?.current_streak || ((squashTotalsLoading || nsaStatsLoading) ? "…" : "—")}
               icon={<Flame className="w-4 h-4" />}
             />
             <StatCard
               label="Sets F/A"
               value={
-                squashTotals
+                squashTotals && (squashTotals.sets_for || squashTotals.sets_against)
                   ? `${squashTotals.sets_for}-${squashTotals.sets_against}`
-                  : squashTotalsLoading ? "…" : "—"
+                  : nsaStats
+                    ? `${nsaStats.sets_for}-${nsaStats.sets_against}`
+                    : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }
               icon={<Activity className="w-4 h-4" />}
             />
             <StatCard
               label="Points F/A"
               value={
-                squashTotals
+                squashTotals && (squashTotals.points_for || squashTotals.points_against)
                   ? `${squashTotals.points_for}-${squashTotals.points_against}`
-                  : squashTotalsLoading ? "…" : "—"
+                  : nsaStats
+                    ? `${nsaStats.points_for}-${nsaStats.points_against}`
+                    : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"
               }
               icon={<Activity className="w-4 h-4" />}
             />
@@ -482,17 +545,17 @@ export default function PlayerProfile() {
                 <p className="text-xs text-muted-foreground">
                   Confirmed:{" "}
                   <span className="text-foreground font-medium">
-                    {squashTotals ? `${squashTotals.wins}W ${squashTotals.losses}L` : squashTotalsLoading ? "…" : "—"}
+                    {displayPlayed > 0 ? `${displayWins}W ${displayLosses}L` : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"}
                   </span>{" "}
                   ·{" "}
                   <span className="text-foreground font-medium">
-                    {squashTotals ? `${squashTotals.win_rate}%` : squashTotalsLoading ? "…" : "—"} win
+                    {displayPlayed > 0 ? `${winRate}%` : (squashTotalsLoading || nsaStatsLoading) ? "…" : "—"} win
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Last:{" "}
                   <span className="text-foreground font-medium">
-                    {squashTotals?.last_match_date || (squashTotalsLoading ? "…" : "—")}
+                    {squashTotals?.last_match_date || nsaStats?.last_match_date || ((squashTotalsLoading || nsaStatsLoading) ? "…" : "—")}
                   </span>
                 </p>
               </div>

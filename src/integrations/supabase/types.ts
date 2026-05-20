@@ -5349,6 +5349,23 @@ export type Database = {
           club_id: string
         }[]
       }
+      get_head_to_head: {
+        Args: { limit_count?: number; target_user_id: string }
+        Returns: {
+          avg_duration_min: number
+          last_match_date: string
+          losses: number
+          matches: number
+          opponent_id: string
+          opponent_name: string
+          points_against: number
+          points_for: number
+          sets_against: number
+          sets_for: number
+          win_rate: number
+          wins: number
+        }[]
+      }
       get_head_to_head_by_member: {
         Args: { limit_count?: number; target_member_id: string }
         Returns: {
@@ -5417,6 +5434,7 @@ export type Database = {
             }
             Returns: Json
           }
+      get_squash_totals: { Args: { target_user_id: string }; Returns: Json }
       get_squash_totals_by_member: {
         Args: { target_member_id: string }
         Returns: Json

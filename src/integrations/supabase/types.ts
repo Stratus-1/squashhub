@@ -5494,6 +5494,16 @@ export type Database = {
         Args: { _member_id: string; _permission: string }
         Returns: boolean
       }
+      move_player_to_lineup: {
+        Args: {
+          p_club_id: string
+          p_club_member_id: string
+          p_target_league_id: string
+          p_target_position: number
+          p_week_start_date: string
+        }
+        Returns: undefined
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string

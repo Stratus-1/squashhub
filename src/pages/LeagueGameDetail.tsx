@@ -1440,7 +1440,12 @@ export default function LeagueGameDetail() {
   }
 
   const isSubmittedRaw = existingResult?.status === "submitted" || existingResult?.status === "confirmed";
-  const isSubmitted = isSubmittedRaw && !adminOverride;
+  const hasUnfinishedPlayablePositions = positions.some((pos) => {
+    const hasPlayers = !!(pos.homeCode || pos.homeName) && !!(pos.awayCode || pos.awayName);
+    return hasPlayers && !pos.completed && !pos.isForfeit;
+  });
+  const isSubmittedLocked = isSubmittedRaw && !hasUnfinishedPlayablePositions;
+  const isSubmitted = isSubmittedLocked && !adminOverride;
   const fixtureDateStr: string | undefined = (fixture as any)?.fixture_date;
   const fixtureStartTime: string | undefined = (fixture as any)?.start_time;
   const isFixturePast = (() => {

@@ -136,13 +136,30 @@ export default function PlayerProfile() {
 
   // Prefer live aggregated totals (matches + league fixtures) over the
   // stale per-profile counters which can sit at 0 for new/imported members.
+  // Fall back to the ladder row, which already aggregates NSA-proxy stats
+  // and internal league_match_results per club member.
+  const ladderRow = useMemo(() => {
+    if (!ladder || !id) return null as any;
+    return (ladder as any[]).find(
+      (m: any) => m.club_member_id === id || m.id === id || m.user_id === id
+    ) || null;
+  }, [ladder, id]);
+
   const liveMatches = squashTotals?.matches ?? null;
   const liveWins = squashTotals?.wins ?? null;
   const liveLosses = squashTotals?.losses ?? null;
 
-  const displayPlayed = liveMatches ?? Number(player?.matches_played || 0);
-  const displayWins = liveWins ?? Number(player?.wins || 0);
-  const displayLosses = liveLosses ?? Number(player?.losses || 0);
+  const pickNonZero = (...vals: Array<number | null | undefined>) => {
+    for (const v of vals) {
+      const n = Number(v ?? 0);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 0;
+  };
+
+  const displayPlayed = pickNonZero(liveMatches, ladderRow?.matches_played, player?.matches_played);
+  const displayWins = pickNonZero(liveWins, ladderRow?.wins, player?.wins);
+  const displayLosses = pickNonZero(liveLosses, ladderRow?.losses, player?.losses);
 
   const winRate = useMemo(() => {
     if (squashTotals && typeof squashTotals.win_rate === "number") return squashTotals.win_rate;

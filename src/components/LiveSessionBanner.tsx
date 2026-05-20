@@ -76,7 +76,8 @@ export function LiveSessionBanner() {
     (s: any) => currentBooking && s.booking_id === currentBooking.id
   );
 
-  // Nothing to show
+  // Nothing to show — and never show on clubs without lights integration
+  if (!lightsIntegrationEnabled) return null;
   if (!currentBooking && activeSessions.length === 0) return null;
   if (dismissed) return null;
 

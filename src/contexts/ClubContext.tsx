@@ -15,6 +15,8 @@ interface ClubContextType {
     address: string | null;
     email: string | null;
     phone: string | null;
+    payment_gateway: string | null;
+    payment_gateway_public_key: string | null;
     logo_url: string | null;
     chairman_member_id: string | null;
     secretary_member_id: string | null;
@@ -43,7 +45,7 @@ export function ClubProvider({ children }: { children: ReactNode }) {
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, honesty_bar_enabled, face_enrolment_required, tenant_type, mixed_ladder_enabled, challenge_levels_up")
+        .select("id, name, subdomain, address, email, phone, payment_gateway, payment_gateway_public_key, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, honesty_bar_enabled, face_enrolment_required, tenant_type, mixed_ladder_enabled, challenge_levels_up")
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;

@@ -304,12 +304,18 @@ export default function PlayerProfile() {
   // Use ladder position for challenge eligibility
   const playerLadderPosition = useMemo(() => {
     if (!id || !ladder) return null;
-    return ladder.find(p => p.id === id)?.ladder_position ?? null;
+    const row = (ladder as any[]).find((p: any) =>
+      p.club_member_id === id || p.user_id === id || p.id === id
+    );
+    return row?.ladder_position ?? null;
   }, [id, ladder]);
 
   const myLadderPosition = useMemo(() => {
     if (!user?.id || !ladder) return null;
-    return ladder.find(p => p.id === user.id)?.ladder_position ?? null;
+    const row = (ladder as any[]).find((p: any) =>
+      p.user_id === user.id || p.id === user.id
+    );
+    return row?.ladder_position ?? null;
   }, [user?.id, ladder]);
 
   const canChallenge = useMemo(() => {

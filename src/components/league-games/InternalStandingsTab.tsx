@@ -344,6 +344,14 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         </span>
       </div>
 
+      <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+        <MousePointerClick className="w-3.5 h-3.5 text-primary shrink-0" />
+        <span>
+          Tap any score cell <span className="inline-flex items-center gap-1 mx-1 px-1.5 py-0.5 rounded bg-background border"><Eye className="w-3 h-3 text-primary/70" /></span>
+          to open the scoreboard. Captains and admins see <Pencil className="inline w-3 h-3 mx-1 opacity-60" /> to edit.
+        </span>
+      </div>
+
       {isLoading && (
         <div className="flex justify-center py-12">
           <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

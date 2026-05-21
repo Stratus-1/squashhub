@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, RefreshCw, Pencil } from "lucide-react";
+import { BarChart3, RefreshCw, Pencil, Eye, MousePointerClick } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -344,6 +344,14 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
         </span>
       </div>
 
+      <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+        <MousePointerClick className="w-3.5 h-3.5 text-primary shrink-0" />
+        <span>
+          Tap any score cell <span className="inline-flex items-center gap-1 mx-1 px-1.5 py-0.5 rounded bg-background border"><Eye className="w-3 h-3 text-primary/70" /></span>
+          to open the scoreboard. Captains and admins see <Pencil className="inline w-3 h-3 mx-1 opacity-60" /> to edit.
+        </span>
+      </div>
+
       {isLoading && (
         <div className="flex justify-center py-12">
           <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -447,7 +455,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                                   onClick={() => clickable && navigate(`/league-games/${w.fixture_id}`)}
                                   className={`w-full h-full px-1 py-0.5 rounded inline-flex items-center justify-center gap-1 ${
                                     clickable
-                                      ? "hover:bg-primary/10 cursor-pointer"
+                                      ? "hover:bg-primary/10 cursor-pointer ring-1 ring-primary/20 hover:ring-primary/60"
                                       : "cursor-default"
                                   } ${missing ? "text-destructive font-semibold" : ""}`}
                                 >
@@ -458,7 +466,11 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                                   ) : (
                                     <span className="text-muted-foreground/40">·</span>
                                   )}
-                                  {editable && <Pencil className="w-3 h-3 opacity-60" />}
+                                  {editable ? (
+                                    <Pencil className="w-3 h-3 opacity-60" />
+                                  ) : viewable && hasResult ? (
+                                    <Eye className="w-3 h-3 text-primary/70" />
+                                  ) : null}
                                 </button>
                               );
                               return (

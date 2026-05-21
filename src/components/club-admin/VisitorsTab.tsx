@@ -51,7 +51,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           last_name: parts.slice(1).join(" "),
           email: m.email || null,
           phone: m.phone || null,
-          home_club_name: "Nelspruit Squash Club",
+          home_club_name: "Club visitor",
           member_number: m.club_member_number || null,
           category: m.gender || "Men",
           created_at: m.joined_at,

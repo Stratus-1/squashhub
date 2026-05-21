@@ -35,7 +35,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         .order("created_at", { ascending: false });
       if (error) throw error;
       const { data: memberVisitors, error: memberError } = await fromExt("club_members")
-        .select("id, name, email, phone, club_member_number, gender, joined_at")
+        .select("id, name, email, phone, club_member_number, gender, joined_at, profiles:user_id(email, phone)")
         .eq("club_id", clubId)
         .eq("role", "visitor")
         .order("joined_at", { ascending: false });
@@ -49,8 +49,8 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           source: "member_record" as const,
           first_name: parts[0] || "Visitor",
           last_name: parts.slice(1).join(" "),
-          email: m.email || null,
-          phone: m.phone || null,
+          email: m.email || m.profiles?.email || null,
+          phone: m.phone || m.profiles?.phone || null,
           home_club_name: "Club visitor",
           member_number: m.club_member_number || null,
           category: m.gender || "Men",

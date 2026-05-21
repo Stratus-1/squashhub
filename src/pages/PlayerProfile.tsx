@@ -243,17 +243,28 @@ export default function PlayerProfile() {
   const liveWins = squashTotals?.wins ?? null;
   const liveLosses = squashTotals?.losses ?? null;
 
-  const pickNonZero = (...vals: Array<number | null | undefined>) => {
-    for (const v of vals) {
-      const n = Number(v ?? 0);
-      if (Number.isFinite(n) && n > 0) return n;
-    }
-    return 0;
+  // Pick the most complete stats SOURCE (highest matches_played) and use ALL of
+  // its fields together — never mix `played` from one source with `wins`/`losses`
+  // from another, or the totals become internally inconsistent (e.g. 2 played
+  // 2W 2L 100% win).
+  const statsSources = [
+    { played: liveMatches, wins: liveWins, losses: liveLosses },
+    { played: ladderRow?.matches_played, wins: ladderRow?.wins, losses: ladderRow?.losses },
+    { played: nsaStats?.matches, wins: nsaStats?.wins, losses: nsaStats?.losses },
+    { played: player?.matches_played, wins: player?.wins, losses: player?.losses },
+  ];
+  const toNum = (v: any) => {
+    const n = Number(v ?? 0);
+    return Number.isFinite(n) ? n : 0;
   };
+  const bestSource = statsSources.reduce(
+    (best, s) => (toNum(s.played) > toNum(best.played) ? s : best),
+    { played: 0, wins: 0, losses: 0 } as any
+  );
+  const displayPlayed = toNum(bestSource.played);
+  const displayWins = toNum(bestSource.wins);
+  const displayLosses = toNum(bestSource.losses);
 
-  const displayPlayed = pickNonZero(liveMatches, ladderRow?.matches_played, nsaStats?.matches, player?.matches_played);
-  const displayWins = pickNonZero(liveWins, ladderRow?.wins, nsaStats?.wins, player?.wins);
-  const displayLosses = pickNonZero(liveLosses, ladderRow?.losses, nsaStats?.losses, player?.losses);
 
   const winRate = useMemo(() => {
     // Always derive from the resolved displayed W/P so we don't trust a stale

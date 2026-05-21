@@ -1445,9 +1445,6 @@ export default function LeagueGameDetail() {
     return hasPlayers && !pos.completed && !pos.isForfeit;
   });
   const isSubmittedLocked = isSubmittedRaw && !hasUnfinishedPlayablePositions;
-  // Captains can edit only on the live night (before fixture starts and before submit).
-  // Once the fixture date/time has passed, only admins may edit (via adminOverride).
-  const isSubmitted = (isSubmittedLocked || (isFixturePast && !isClubAdmin)) && !adminOverride;
   const fixtureDateStr: string | undefined = (fixture as any)?.fixture_date;
   const fixtureStartTime: string | undefined = (fixture as any)?.start_time;
   const isFixturePast = (() => {
@@ -1461,6 +1458,9 @@ export default function LeagueGameDetail() {
     }
     return false;
   })();
+  // Captains can edit only on the live night (before fixture starts and before submit).
+  // Once the fixture date/time has passed, only admins may edit (via adminOverride).
+  const isSubmitted = (isSubmittedLocked || (isFixturePast && !isClubAdmin)) && !adminOverride;
 
   // Scoreboard always shows the live recomputed summary (current rules).
   // Standings reads stored fixture totals — when association rules change,

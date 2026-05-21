@@ -447,7 +447,7 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                                   onClick={() => clickable && navigate(`/league-games/${w.fixture_id}`)}
                                   className={`w-full h-full px-1 py-0.5 rounded inline-flex items-center justify-center gap-1 ${
                                     clickable
-                                      ? "hover:bg-primary/10 cursor-pointer"
+                                      ? "hover:bg-primary/10 cursor-pointer ring-1 ring-primary/20 hover:ring-primary/60"
                                       : "cursor-default"
                                   } ${missing ? "text-destructive font-semibold" : ""}`}
                                 >
@@ -458,7 +458,11 @@ export function InternalStandingsTab({ clubId, associationId, clubLeagues, myLea
                                   ) : (
                                     <span className="text-muted-foreground/40">·</span>
                                   )}
-                                  {editable && <Pencil className="w-3 h-3 opacity-60" />}
+                                  {editable ? (
+                                    <Pencil className="w-3 h-3 opacity-60" />
+                                  ) : viewable && hasResult ? (
+                                    <Eye className="w-3 h-3 text-primary/70" />
+                                  ) : null}
                                 </button>
                               );
                               return (

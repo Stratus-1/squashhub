@@ -301,22 +301,35 @@ export default function PlayerProfile() {
     return (headToHead || []).find((r: any) => r.opponent_id === user.id) || null;
   }, [headToHead, id, user?.id]);
 
-  // Use ladder position for challenge eligibility
+  // Use ladder position for challenge eligibility.
+  // When the club has mixed_ladder_enabled, position is the index across the full ladder
+  // (matching the Ladder page); otherwise use the per-gender ladder_position from the hook.
+  const mixedLadderEnabled = !!(clubData?.club as any)?.mixed_ladder_enabled;
+
+  const resolveLadderPosition = (matcher: (p: any) => boolean): number | null => {
+    if (!ladder) return null;
+    const list = ladder as any[];
+    if (mixedLadderEnabled) {
+      const idx = list.findIndex(matcher);
+      return idx >= 0 ? idx + 1 : null;
+    }
+    const row = list.find(matcher);
+    return row?.ladder_position ?? null;
+  };
+
   const playerLadderPosition = useMemo(() => {
-    if (!id || !ladder) return null;
-    const row = (ladder as any[]).find((p: any) =>
+    if (!id) return null;
+    return resolveLadderPosition((p: any) =>
       p.club_member_id === id || p.user_id === id || p.id === id
     );
-    return row?.ladder_position ?? null;
-  }, [id, ladder]);
+  }, [id, ladder, mixedLadderEnabled]);
 
   const myLadderPosition = useMemo(() => {
-    if (!user?.id || !ladder) return null;
-    const row = (ladder as any[]).find((p: any) =>
+    if (!user?.id) return null;
+    return resolveLadderPosition((p: any) =>
       p.user_id === user.id || p.id === user.id
     );
-    return row?.ladder_position ?? null;
-  }, [user?.id, ladder]);
+  }, [user?.id, ladder, mixedLadderEnabled]);
 
   const canChallenge = useMemo(() => {
     if (!user?.id || !myLadderPosition || !playerLadderPosition) return false;

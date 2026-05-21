@@ -53,7 +53,7 @@ export interface ClubMember {
   user_id?: string;
   name?: string;
   email?: string;
-  role: "captain" | "admin" | "member";
+  role: "captain" | "admin" | "member" | "visitor";
   club_member_number?: string;
   plays_league: boolean;
   ladder_position?: number;

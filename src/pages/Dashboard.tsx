@@ -424,7 +424,7 @@ export default function Dashboard() {
     // Only show onboarding if the member hasn't been assigned a member number yet
     // (member number is assigned during the onboarding wizard completion)
     const isVisitorMember =
-      myClubMember?.role === "visitor" ||
+      (myClubMember?.role as string | undefined) === "visitor" ||
       myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor";
     const missingMemberData =
       hasClub &&

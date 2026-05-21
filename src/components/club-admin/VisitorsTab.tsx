@@ -68,7 +68,9 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       v.first_name.toLowerCase().includes(term) ||
       v.last_name.toLowerCase().includes(term) ||
       v.home_club_name.toLowerCase().includes(term) ||
-      (v.email || "").toLowerCase().includes(term)
+      (v.email || "").toLowerCase().includes(term) ||
+      (v.phone || "").toLowerCase().includes(term) ||
+      (v.member_number || "").toLowerCase().includes(term)
     );
   });
 
@@ -76,9 +78,11 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     setDeleting(id);
     try {
       const visitor = visitors.find((v) => v.id === id);
-      const { error } = visitor?.source === "member_record"
-        ? await fromExt("club_members").delete().eq("id", id)
-        : await fromExt("club_visitors").delete().eq("id", id);
+      if (visitor?.source === "member_record") {
+        toast.info("This visitor is linked to an account — edit or remove them from Members.");
+        return;
+      }
+      const { error } = await fromExt("club_visitors").delete().eq("id", id);
       if (error) throw error;
       toast.success("Visitor removed");
       queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });

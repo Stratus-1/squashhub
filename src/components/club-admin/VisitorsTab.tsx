@@ -105,7 +105,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-        Visitors registered for tournaments and competitions.
+        Visitors registered for tournaments, competitions, and linked visitor accounts.
       </p>
 
       <div className="relative">
@@ -148,19 +148,21 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   </p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 text-destructive hover:text-destructive"
-                disabled={deleting === v.id}
-                onClick={() => handleDelete(v.id)}
-              >
-                {deleting === v.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </Button>
+              {v.source !== "member_record" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-destructive hover:text-destructive"
+                  disabled={deleting === v.id}
+                  onClick={() => handleDelete(v.id)}
+                >
+                  {deleting === v.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </Button>
+              )}
             </Card>
           ))}
         </div>

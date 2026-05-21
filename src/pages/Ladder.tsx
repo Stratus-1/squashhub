@@ -191,7 +191,7 @@ export default function Ladder() {
     memberLeagueMap.get(player.club_member_id) || [];
 
   const [activeLeagueFilter, setActiveLeagueFilter] = useState<string | null>(null);
-  const [groupByLeague, setGroupByLeague] = useState(true);
+  const [groupByLeague, setGroupByLeague] = useState(false);
 
   const handleLeagueClick = (leagueId: string) => {
     setActiveLeagueFilter((prev) => (prev === leagueId ? null : leagueId));

@@ -451,8 +451,15 @@ export default function LeagueGameDetail() {
       // In "flexible" mode (e.g. NIL), allow growth based on actual saved positions.
       const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
       const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
-      const mode = homeRule?.team_size_mode ?? awayRule?.team_size_mode ?? leagueRules?.team_size_mode ?? "fixed";
-      const baseSize = Math.max(homeRule?.team_size ?? 0, awayRule?.team_size ?? 0, leagueRules?.team_size ?? DEFAULT_POSITIONS);
+      // Per-league rules win over the association-wide fallback. Only fall back to
+      // leagueRules when NEITHER team has its own rule row.
+      const hasTeamRule = !!(homeRule || awayRule);
+      const mode = hasTeamRule
+        ? ((homeRule?.team_size_mode ?? awayRule?.team_size_mode) as "fixed" | "flexible")
+        : (leagueRules?.team_size_mode ?? "fixed");
+      const baseSize = hasTeamRule
+        ? Math.max(homeRule?.team_size ?? 0, awayRule?.team_size ?? 0)
+        : (leagueRules?.team_size ?? DEFAULT_POSITIONS);
       const targetCount = mode === "fixed"
         ? Math.min(MAX_POSITIONS, Math.max(1, baseSize))
         : Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));

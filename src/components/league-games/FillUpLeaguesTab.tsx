@@ -192,13 +192,46 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     enabled: leagueIds.length > 0,
   });
 
+  // Per-league rule overrides (Super Admin → Leagues → per-league team size).
+  // When present these win over the association-wide subRules so e.g. NIL's 1st
+  // league (size 4) and 2nd/3rd leagues (size 5) can co-exist under the same
+  // flexible association rule.
+  const { data: leagueRulesByLeague } = useQuery<Map<string, { team_size: number | null; team_size_mode: "fixed" | "flexible" | null }>>({
+    queryKey: ["league-rules-by-league", leagueIds.join(",")],
+    queryFn: async () => {
+      const m = new Map<string, { team_size: number | null; team_size_mode: "fixed" | "flexible" | null }>();
+      if (leagueIds.length === 0) return m;
+      const { data, error } = await supabase
+        .from("league_rules")
+        .select("league_id, team_size, team_size_mode")
+        .in("league_id", leagueIds);
+      if (error) throw error;
+      for (const r of (data as any[]) || []) {
+        if (r.league_id) m.set(r.league_id, { team_size: r.team_size, team_size_mode: r.team_size_mode });
+      }
+      return m;
+    },
+    enabled: leagueIds.length > 0,
+  });
+
+  const rulesForLeague = (lgId: string) => {
+    const per = leagueRulesByLeague?.get(lgId);
+    if (per && (per.team_size || per.team_size_mode)) {
+      return {
+        team_size: per.team_size ?? subRules?.team_size ?? null,
+        team_size_mode: per.team_size_mode ?? subRules?.team_size_mode ?? null,
+      };
+    }
+    return subRules ?? null;
+  };
+
   const registeredTeamSizeByLeague = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of registrations) counts.set(r.league_id, (counts.get(r.league_id) ?? 0) + 1);
     const sizes = new Map<string, number>();
-    for (const lg of sortedLeagues) sizes.set(lg.id, resolveTeamSize(subRules, counts.get(lg.id) ?? 0));
+    for (const lg of sortedLeagues) sizes.set(lg.id, resolveTeamSize(rulesForLeague(lg.id), counts.get(lg.id) ?? 0));
     return sizes;
-  }, [registrations, sortedLeagues, subRules]);
+  }, [registrations, sortedLeagues, subRules, leagueRulesByLeague]);
 
   // Build a list of candidate planning weeks.
   // Always start with the CURRENT squash week (the one containing today) so an
@@ -1122,7 +1155,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     // Saved lineup positions are always respected so historical data stays visible.
     const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
     const registeredCount = registrations.filter(r => r.league_id === lg.id).length;
-    const size = resolveTeamSize(subRules, registeredCount, maxLineupPos);
+    const size = resolveTeamSize(rulesForLeague(lg.id), registeredCount, maxLineupPos);
     return Array.from({ length: size }, (_, i) => ({
       position: i + 1,
       memberId: lp?.get(i + 1) ?? null,

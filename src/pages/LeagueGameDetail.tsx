@@ -794,6 +794,9 @@ export default function LeagueGameDetail() {
     // Per-league rule wins over the association-wide fallback (which may be
     // "flexible" while individual leagues are fixed at 4 or 5).
     const hasTeamRule = !!(homeRule || awayRule);
+    const mode = hasTeamRule
+      ? ((homeRule?.team_size_mode ?? awayRule?.team_size_mode) as "fixed" | "flexible")
+      : (leagueRules?.team_size_mode ?? "fixed");
     const baseSize = Math.min(
       MAX_POSITIONS,
       Math.max(
@@ -803,9 +806,6 @@ export default function LeagueGameDetail() {
           : (leagueRules?.team_size ?? DEFAULT_POSITIONS),
       ),
     );
-    const mode = hasTeamRule
-      ? ((homeRule?.team_size_mode ?? awayRule?.team_size_mode) as "fixed" | "flexible")
-      : (leagueRules?.team_size_mode ?? "fixed");
     if (mode === "fixed") {
       setPositionCount((prev) => (prev === baseSize ? prev : baseSize));
       return;

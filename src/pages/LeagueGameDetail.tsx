@@ -1179,6 +1179,13 @@ export default function LeagueGameDetail() {
         } as any, { onConflict: "fixture_id,position" });
         if (error) throw error;
       }
+      // Guardrail: remove any stale match rows beyond the configured team size
+      // (e.g. a phantom 5th player left over from a captain editing mistake).
+      await (supabase as any)
+        .from("league_match_results")
+        .delete()
+        .eq("fixture_id", fixtureId)
+        .gt("position", positions.length);
       const { error: sumErr } = await supabase.from("league_fixture_results" as any).upsert({
         fixture_id: fixtureId,
         home_total_games: 0, away_total_games: 0,

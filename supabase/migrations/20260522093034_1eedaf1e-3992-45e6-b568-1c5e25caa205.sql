@@ -1,0 +1,1 @@
+UPDATE public.league_rules SET team_size=4, updated_at=now() WHERE league_id='cf09d883-f89f-42dd-be66-c0e6e46b9c14';

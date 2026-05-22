@@ -799,7 +799,7 @@ export default function LeagueGameDetail() {
       Math.max(
         1,
         hasTeamRule
-          ? Math.max(homeRule?.team_size ?? 0, awayRule?.team_size ?? 0)
+          ? resolveFixtureBaseSize(homeRule, awayRule, mode)
           : (leagueRules?.team_size ?? DEFAULT_POSITIONS),
       ),
     );

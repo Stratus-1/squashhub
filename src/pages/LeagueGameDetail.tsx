@@ -1458,9 +1458,11 @@ export default function LeagueGameDetail() {
     }
     return false;
   })();
-  // Captains can edit only on the live night (before fixture starts and before submit).
-  // Once the fixture date/time has passed, only admins may edit (via adminOverride).
-  const isSubmitted = (isSubmittedLocked || (isFixturePast && !isClubAdmin)) && !adminOverride;
+  // Captains can edit until results are submitted. Once submitted, only admins
+  // (with adminOverride) may re-open. We no longer auto-lock past-date fixtures
+  // that have not yet been captured — captains often fill the scorecard the
+  // morning after league night.
+  const isSubmitted = isSubmittedLocked && !adminOverride;
 
   // Scoreboard always shows the live recomputed summary (current rules).
   // Standings reads stored fixture totals — when association rules change,

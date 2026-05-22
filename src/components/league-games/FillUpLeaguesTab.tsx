@@ -1155,7 +1155,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     // Saved lineup positions are always respected so historical data stays visible.
     const maxLineupPos = lp ? Math.max(0, ...Array.from(lp.keys())) : 0;
     const registeredCount = registrations.filter(r => r.league_id === lg.id).length;
-    const size = resolveTeamSize(subRules, registeredCount, maxLineupPos);
+    const size = resolveTeamSize(rulesForLeague(lg.id), registeredCount, maxLineupPos);
     return Array.from({ length: size }, (_, i) => ({
       position: i + 1,
       memberId: lp?.get(i + 1) ?? null,

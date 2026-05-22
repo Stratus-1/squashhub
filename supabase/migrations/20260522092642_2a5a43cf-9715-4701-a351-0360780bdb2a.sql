@@ -1,0 +1,1 @@
+DELETE FROM public.league_week_lineups WHERE league_id='cf09d883-f89f-42dd-be66-c0e6e46b9c14' AND week_start_date='2026-05-08' AND position=5;

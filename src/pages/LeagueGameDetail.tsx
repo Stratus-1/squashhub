@@ -261,6 +261,15 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId && !tournamentMatchId,
   });
 
+  const { data: fixtureCourt } = useQuery({
+    queryKey: ["league-fixture-court", fixture?.court_id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courts").select("name").eq("id", fixture!.court_id!).maybeSingle();
+      if (error) throw error; return data as { name: string } | null;
+    },
+    enabled: !!fixture?.court_id,
+  });
+
   const { data: existingResult, isFetched: existingResultFetched } = useQuery({
     queryKey: ["league-fixture-result", fixtureId],
     queryFn: async () => {
@@ -1762,7 +1771,7 @@ export default function LeagueGameDetail() {
             </div>
           </div>
           <div className="p-1.5 text-[10px] text-muted-foreground bg-muted/30 flex items-center justify-between">
-            <span>Venue: {fixture.venue_name}</span>
+            <span>Venue: {fixture.venue_name}{fixtureCourt?.name ? ` · ${fixtureCourt.name}` : ""}</span>
             <span className="font-medium">
               {scoringFormat === "par11" ? "PAR 11" : "PAR 15"} · Best of {bestOf}
             </span>

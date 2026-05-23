@@ -1771,7 +1771,7 @@ export default function LeagueGameDetail() {
             </div>
           </div>
           <div className="p-1.5 text-[10px] text-muted-foreground bg-muted/30 flex items-center justify-between">
-            <span>Venue: {fixture.venue_name}</span>
+            <span>Venue: {fixture.venue_name}{fixtureCourt?.name ? ` · ${fixtureCourt.name}` : ""}</span>
             <span className="font-medium">
               {scoringFormat === "par11" ? "PAR 11" : "PAR 15"} · Best of {bestOf}
             </span>

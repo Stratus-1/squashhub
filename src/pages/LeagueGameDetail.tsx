@@ -261,6 +261,15 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId && !tournamentMatchId,
   });
 
+  const { data: fixtureCourt } = useQuery({
+    queryKey: ["league-fixture-court", fixture?.court_id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("courts").select("name").eq("id", fixture!.court_id!).maybeSingle();
+      if (error) throw error; return data as { name: string } | null;
+    },
+    enabled: !!fixture?.court_id,
+  });
+
   const { data: existingResult, isFetched: existingResultFetched } = useQuery({
     queryKey: ["league-fixture-result", fixtureId],
     queryFn: async () => {

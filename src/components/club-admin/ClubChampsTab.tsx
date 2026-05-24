@@ -738,7 +738,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               champ_id: champId,
               club_member_id: memberId,
               status: fee > 0 && paymentRequired ? "pending_payment" : "paid",
-              invited_by_admin: true,
+              invited_by_admin: false,
               fee_paid_cents: 0,
             }));
           if (registrations.length > 0) {

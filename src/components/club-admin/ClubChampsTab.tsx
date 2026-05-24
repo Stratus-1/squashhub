@@ -214,6 +214,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
+  const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
 
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({

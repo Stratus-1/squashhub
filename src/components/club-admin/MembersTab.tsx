@@ -320,7 +320,9 @@ function MemberCard({ member: m, fees, payableFees, delegateTitle, affiliations,
 }
 
 export function MembersTab({ clubId }: { clubId: string }) {
-  const { data: members = [], isLoading } = useClubMembers(clubId);
+  const { data: allMembersRaw = [], isLoading } = useClubMembers(clubId);
+  // Exclude visitor-role entries — they live in the Visitors tab to avoid mixing them with real members.
+  const members = allMembersRaw.filter((m: any) => String(m.role || "").toLowerCase() !== "visitor");
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);

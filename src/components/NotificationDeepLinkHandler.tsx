@@ -3,6 +3,8 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+const PERSISTENT_INVITE_TYPES = new Set(["tournament_invite", "tournament_partner_invite"]);
+
 export function NotificationDeepLinkHandler() {
   const { user } = useAuth();
   const location = useLocation();
@@ -23,6 +25,13 @@ export function NotificationDeepLinkHandler() {
 
     (async () => {
       try {
+        const { data: notification } = await supabase
+          .from("notifications")
+          .select("type")
+          .eq("id", notificationId)
+          .maybeSingle();
+        if (notification?.type && PERSISTENT_INVITE_TYPES.has(notification.type)) return;
+
         await supabase
           .from("notifications")
           .update({ read: true })

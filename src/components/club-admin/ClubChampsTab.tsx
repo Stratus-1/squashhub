@@ -232,7 +232,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   });
 
   useEffect(() => {
-    if (partnerMode !== "players" || !isDoubles) return;
+    if (partnerMode !== "players" || matchType !== "doubles") return;
     // Dedupe reciprocal rows: only keep one pair per unordered (a,b)
     const seen = new Set<string>();
     const pairs: DoublePair[] = [];

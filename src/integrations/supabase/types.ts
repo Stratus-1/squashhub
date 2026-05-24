@@ -1157,6 +1157,7 @@ export type Database = {
           club_member_id: string
           created_at: string
           fee_paid_cents: number
+          fee_payment_id: string | null
           id: string
           invited_by_admin: boolean
           paid_at: string | null
@@ -1171,6 +1172,7 @@ export type Database = {
           club_member_id: string
           created_at?: string
           fee_paid_cents?: number
+          fee_payment_id?: string | null
           id?: string
           invited_by_admin?: boolean
           paid_at?: string | null
@@ -1185,6 +1187,7 @@ export type Database = {
           club_member_id?: string
           created_at?: string
           fee_paid_cents?: number
+          fee_payment_id?: string | null
           id?: string
           invited_by_admin?: boolean
           paid_at?: string | null
@@ -1214,6 +1217,13 @@ export type Database = {
             columns: ["club_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_fee_payment_id_fkey"
+            columns: ["fee_payment_id"]
+            isOneToOne: false
+            referencedRelation: "club_member_fee_payments"
             referencedColumns: ["id"]
           },
           {
@@ -5419,6 +5429,10 @@ export type Database = {
           sets_against: number
           sets_for: number
         }[]
+      }
+      accept_tournament_invite: {
+        Args: { p_accept: boolean; p_registration_id: string }
+        Returns: Json
       }
       admin_list_unclaimed_club_members: {
         Args: { _club_id: string }

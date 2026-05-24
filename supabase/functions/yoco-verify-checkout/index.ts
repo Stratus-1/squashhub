@@ -139,8 +139,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // For tournament purpose, mark the registration as paid
+    // For tournament purpose, mark the registration as paid and clear the linked entry fee
     if (session.purpose === "tournament" && session.champ_registration_id) {
+      const { data: regRow } = await admin
+        .from("club_champs_registrations")
+        .select("fee_payment_id")
+        .eq("id", session.champ_registration_id)
+        .maybeSingle();
+
       await admin
         .from("club_champs_registrations")
         .update({
@@ -150,6 +156,13 @@ Deno.serve(async (req) => {
           paid_at: new Date().toISOString(),
         })
         .eq("id", session.champ_registration_id);
+
+      if (regRow?.fee_payment_id) {
+        await admin
+          .from("club_member_fee_payments")
+          .update({ paid: true, paid_at: new Date().toISOString() })
+          .eq("id", regRow.fee_payment_id);
+      }
     }
 
 

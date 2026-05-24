@@ -189,16 +189,20 @@ export function TournamentInviteActions({ notification, champId, registrationId,
         return "accepted";
       }
 
-      if (paymentRequired && yocoReady) {
+      // Player invite: RPC credits the entry fee to the player's account and updates status
+      const { data: rpcData, error: rpcErr } = await (supabase as any).rpc("accept_tournament_invite", {
+        p_registration_id: registration.id,
+        p_accept: true,
+      });
+      if (rpcErr) throw rpcErr;
+      await markNotificationRead();
+
+      const newStatus = (rpcData as any)?.status as string;
+      if (newStatus === "pending_eft" && yocoReady) {
         await launchPayment();
         return "payment_started";
       }
-
-      const nextStatus = paymentRequired ? "pending_eft" : "paid";
-      const { error } = await fromExt("club_champs_registrations").update({ status: nextStatus }).eq("id", registration.id);
-      if (error) throw error;
-      await markNotificationRead();
-      return nextStatus === "pending_eft" ? "eft" : "accepted";
+      return newStatus === "pending_eft" ? "eft" : "accepted";
     },
     onSuccess: async (result) => {
       await refetchRegistration();

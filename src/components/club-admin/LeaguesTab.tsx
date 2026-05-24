@@ -1041,6 +1041,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const dragItem = useRef<{ leagueId: string; idx: number } | null>(null);
   const dragOverItem = useRef<{ leagueId: string; idx: number } | null>(null);
   const [dragFromPool, setDragFromPool] = useState<string | null>(null);
+  const [poolSearch, setPoolSearch] = useState("");
 
   // The association these leagues belong to (all leagues passed in share the same association in practice).
   const associationId = leagues.find(l => l.association_id)?.association_id || null;

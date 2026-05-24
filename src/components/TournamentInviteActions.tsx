@@ -250,6 +250,33 @@ export function TournamentInviteActions({ notification, champId, registrationId,
     return <Card className={cn("p-3 flex items-center justify-center", className)}><Loader2 className="w-4 h-4 animate-spin text-primary" /></Card>;
   }
 
+  // If we have the tournament but the user isn't registered yet (e.g. update broadcast),
+  // prompt them to register instead of showing a dead-end "not available" message.
+  if (champ && !registration) {
+    const openTournament = () => {
+      onResolved?.();
+      navigate(`/club-champs/${champ.id}`);
+    };
+    return (
+      <Card className={cn("p-3 border-primary/30 bg-primary/5", className)}>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+            <Trophy className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate">{champ.name}</p>
+            <p className="text-[11px] text-muted-foreground">
+              You're not registered yet. Open the tournament to register{paymentRequired ? ` (${formatMoney(entryFeeCents)} entry)` : ""}.
+            </p>
+            <Button size="sm" className="h-8 text-xs mt-3 w-full" onClick={openTournament}>
+              Register / View Tournament <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   if (!champ || !registration) {
     return <Card className={cn("p-3 text-sm text-muted-foreground", className)}>Tournament invite details are not available.</Card>;
   }

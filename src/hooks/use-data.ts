@@ -140,13 +140,15 @@ export function useUnreadNotificationsCount() {
               .select("id", { count: "exact", head: true })
               .eq("read", false)
               .in("club_member_id", linkedMemberIds)
+              .or("data->>app_silent.is.null,data->>app_silent.eq.false")
           : Promise.resolve({ count: 0, error: null }),
         supabase
           .from("notifications")
           .select("id", { count: "exact", head: true })
           .eq("read", false)
           .eq("user_id", user.id)
-          .is("club_member_id", null),
+          .is("club_member_id", null)
+          .or("data->>app_silent.is.null,data->>app_silent.eq.false"),
       ]);
 
       if (memberResult.error) throw memberResult.error;

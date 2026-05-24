@@ -146,6 +146,11 @@ export function NotificationActionModal() {
     },
   });
 
+  const nonPersistentNotifications = useMemo(
+    () => notifications.filter((n) => !isTournamentInviteNotification(n)),
+    [notifications],
+  );
+
   const respondAvailability = useMutation({
     mutationFn: async ({
       notificationId,
@@ -190,17 +195,18 @@ export function NotificationActionModal() {
 
   const handleAction = useCallback(() => {
     if (!current) return;
-    markRead.mutate(current.id);
+    if (!isTournamentInviteNotification(current)) markRead.mutate(current.id);
     const url = current.url || "/notifications";
-    const shouldOpenDetail = current.type === "marketing" || url.startsWith("/notifications");
+    const navigation = getNotificationNavigation(current);
+    const shouldOpenDetail = navigation.shouldOpenDetail || current.type === "marketing" || url.startsWith("/notifications");
     setOpen(false);
     setDismissed(true);
-    navigate(shouldOpenDetail ? `/notifications?notificationId=${current.id}` : url);
+    navigate(shouldOpenDetail ? navigation.targetUrl : url);
   }, [current, markRead, navigate]);
 
   const handleDismiss = useCallback(() => {
     if (!current) return;
-    markRead.mutate(current.id);
+    if (!isTournamentInviteNotification(current)) markRead.mutate(current.id);
     if (isLast) {
       setOpen(false);
       setDismissed(true);
@@ -211,12 +217,12 @@ export function NotificationActionModal() {
 
   const handleDismissAll = useCallback(() => {
     // Mark all as read
-    for (const n of notifications) {
+    for (const n of nonPersistentNotifications) {
       if (!n.read) markRead.mutate(n.id);
     }
     setOpen(false);
     setDismissed(true);
-  }, [notifications, markRead]);
+  }, [nonPersistentNotifications, markRead]);
 
   if (!user || total === 0) return null;
 

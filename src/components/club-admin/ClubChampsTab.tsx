@@ -969,6 +969,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
     setPaymentRequired(champ.payment_required !== false);
+    setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")

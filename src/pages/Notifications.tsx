@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
 
 const iconMap: Record<string, typeof Bell> = {
   challenge: Swords,
@@ -19,6 +20,8 @@ const iconMap: Record<string, typeof Bell> = {
   ladder: Trophy,
   match: CheckCircle,
   marketing: Bell,
+  tournament_invite: Trophy,
+  tournament_partner_invite: Trophy,
   event: Calendar,
   general: Bell,
 };
@@ -112,7 +115,7 @@ export default function Notifications() {
     const target = (notifications as any[]).find((n) => String(n.id) === notificationIdToOpen) || null;
     if (!target) return;
     setSelected(target);
-    if (!target.read) markRead.mutate(String(target.id));
+    if (!target.read && !isTournamentInviteNotification(target)) markRead.mutate(String(target.id));
   }, [notificationIdToOpen, notifications]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const clearNotificationIdParam = () => {
@@ -187,6 +190,7 @@ export default function Notifications() {
                 const notif = selected as any;
                 const Icon = iconMap[notif.type] || Bell;
                 const navigation = getNotificationNavigation(notif);
+                const isTournamentInvite = isTournamentInviteNotification(notif);
                 const email = notif?.data?.email && typeof notif.data.email === "object" ? notif.data.email : null;
                 const htmlRaw = email && typeof email.html === "string" ? String(email.html) : "";
                 const textRaw = email && typeof email.text === "string" ? String(email.text) : "";
@@ -222,7 +226,9 @@ export default function Notifications() {
                       </div>
                     </Card>
 
-                    {srcDoc ? (
+                    {isTournamentInvite ? (
+                      <TournamentInviteActions notification={notif} onResolved={onBackToList} />
+                    ) : srcDoc ? (
                       <Card className="overflow-hidden">
                         <iframe
                           title="Message"
@@ -266,7 +272,7 @@ export default function Notifications() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
                     onClick={() => {
-                      if (!notif.read) markRead.mutate(notif.id);
+                      if (!notif.read && !isTournamentInviteNotification(notif as any)) markRead.mutate(notif.id);
                       if (navigation.shouldOpenDetail) {
                         setSelected(notif);
                         return;

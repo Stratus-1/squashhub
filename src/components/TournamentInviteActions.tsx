@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type NotificationLike = {
@@ -40,11 +41,12 @@ export function isTournamentInviteNotification(notification?: { type?: string | 
 
 export function TournamentInviteActions({ notification, champId, registrationId, champ: champProp, compact, className, onResolved }: Props) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { linkedMembers } = useMemberContext();
   const verifiedRef = useRef<string | null>(null);
   const data = notification?.data || {};
   const resolvedChampId = champId || data.champ_id;
-  const resolvedRegistrationId = registrationId || data.registration_id;
   const isPartnerInvite = notification?.type === "tournament_partner_invite";
 
   const { data: fetchedChamp, isLoading: champLoading } = useQuery({
@@ -58,6 +60,26 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   });
 
   const champ = champProp || fetchedChamp;
+
+  // Resolve registration: explicit id wins, otherwise look up by champ + linked member
+  const linkedMemberIds = useMemo(() => linkedMembers.map((m) => m.id).filter(Boolean), [linkedMembers]);
+  const { data: registrationByLookup } = useQuery({
+    queryKey: ["tournament-invite-reg-lookup", resolvedChampId, linkedMemberIds.join(",")],
+    queryFn: async () => {
+      if (!resolvedChampId || linkedMemberIds.length === 0) return null;
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id")
+        .eq("champ_id", resolvedChampId)
+        .in("club_member_id", linkedMemberIds)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string } | null;
+    },
+    enabled: !registrationId && !data.registration_id && !!resolvedChampId && linkedMemberIds.length > 0,
+  });
+
+  const resolvedRegistrationId = registrationId || data.registration_id || registrationByLookup?.id;
 
   const { data: registration, refetch: refetchRegistration, isLoading: regLoading } = useQuery({
     queryKey: ["tournament-invite-registration", resolvedRegistrationId],
@@ -226,6 +248,33 @@ export function TournamentInviteActions({ notification, champId, registrationId,
 
   if (champLoading || regLoading) {
     return <Card className={cn("p-3 flex items-center justify-center", className)}><Loader2 className="w-4 h-4 animate-spin text-primary" /></Card>;
+  }
+
+  // If we have the tournament but the user isn't registered yet (e.g. update broadcast),
+  // prompt them to register instead of showing a dead-end "not available" message.
+  if (champ && !registration) {
+    const openTournament = () => {
+      onResolved?.();
+      navigate(`/club-champs/${champ.id}`);
+    };
+    return (
+      <Card className={cn("p-3 border-primary/30 bg-primary/5", className)}>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+            <Trophy className="w-4 h-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate">{champ.name}</p>
+            <p className="text-[11px] text-muted-foreground">
+              You're not registered yet. Open the tournament to register{paymentRequired ? ` (${formatMoney(entryFeeCents)} entry)` : ""}.
+            </p>
+            <Button size="sm" className="h-8 text-xs mt-3 w-full" onClick={openTournament}>
+              Register / View Tournament <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
   }
 
   if (!champ || !registration) {

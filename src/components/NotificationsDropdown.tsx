@@ -70,6 +70,7 @@ export function NotificationsDropdown({
               .from("notifications")
               .select("*")
               .in("club_member_id", linkedMemberIds)
+              .or("data->>app_silent.is.null,data->>app_silent.eq.false")
               .order("created_at", { ascending: false })
               .limit(15)
           : Promise.resolve({ data: [], error: null }),
@@ -78,6 +79,7 @@ export function NotificationsDropdown({
           .select("*")
           .eq("user_id", user.id)
           .is("club_member_id", null)
+          .or("data->>app_silent.is.null,data->>app_silent.eq.false")
           .order("created_at", { ascending: false })
           .limit(15),
       ]);

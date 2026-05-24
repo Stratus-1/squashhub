@@ -1045,6 +1045,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     switch (step) {
       case "category": return true;
       case "registration":
+        if (!startDate || !endDate) return false;
+        if (new Date(endDate) < new Date(startDate)) return false;
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) return false;
         if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) return false;
         return true;

@@ -72,33 +72,50 @@ function getActionLabel(type: string): string {
 
 export function NotificationActionModal() {
   const { user } = useAuth();
-  const { activeMember } = useMemberContext();
+  const { activeMember, linkedMembers } = useMemberContext();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
 
-  // Fetch unread notifications
+  const linkedMemberIds = Array.from(
+    new Set(linkedMembers.map((m) => m.id).filter(Boolean))
+  );
+
+  // Fetch unread notifications across ALL linked members + legacy user-scoped rows
   const { data: unreadNotifications } = useQuery({
-    queryKey: ["unread-notifications-modal", user?.id, activeMember?.id],
+    queryKey: ["unread-notifications-modal", user?.id, linkedMemberIds.join(",")],
     queryFn: async () => {
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .eq("read", false)
-        .order("created_at", { ascending: false })
-        .limit(20);
+      if (!user?.id) return [] as NotificationRow[];
 
-      if (activeMember?.id) {
-        query = query.eq("club_member_id", activeMember.id);
-      } else {
-        query = query.eq("user_id", user!.id);
-      }
+      const [memberResult, legacyResult] = await Promise.all([
+        linkedMemberIds.length > 0
+          ? supabase
+              .from("notifications")
+              .select("*")
+              .eq("read", false)
+              .in("club_member_id", linkedMemberIds)
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from("notifications")
+          .select("*")
+          .eq("read", false)
+          .eq("user_id", user.id)
+          .is("club_member_id", null)
+          .order("created_at", { ascending: false })
+          .limit(20),
+      ]);
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as NotificationRow[];
+      if (memberResult.error) throw memberResult.error;
+      if (legacyResult.error) throw legacyResult.error;
+
+      return [...(memberResult.data || []), ...(legacyResult.data || [])]
+        .filter((n, i, all) => all.findIndex((x) => x.id === n.id) === i)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 20) as NotificationRow[];
     },
     enabled: !!user?.id,
     refetchOnWindowFocus: true,

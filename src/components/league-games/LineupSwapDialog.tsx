@@ -213,8 +213,10 @@ export function LineupSwapDialog({
                         <span className="font-medium truncate">{c.name}</span>
                         {c.squad ? (
                           <Badge variant="secondary" className="text-[9px] px-1 py-0">Squad</Badge>
-                        ) : (
+                        ) : c.reserve ? (
                           <Badge variant="outline" className="text-[9px] px-1 py-0">Reserve</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0">Member</Badge>
                         )}
                         {c.rank != null && (
                           <span className="text-[10px] text-muted-foreground">#{c.rank}</span>

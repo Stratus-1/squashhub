@@ -806,6 +806,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   });
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
+  const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);
 
   const deleteChamp = useMutation({
     mutationFn: async ({ id, withBookings }: { id: string; withBookings: boolean }) => {

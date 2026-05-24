@@ -1594,7 +1594,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>Allocate {gender === "men" ? "Men" : "Ladies"} to Leagues</DialogTitle>
+            <DialogTitle>Allocate {gender === "men" ? "Men" : gender === "ladies" ? "Ladies" : "Players"} to Leagues</DialogTitle>
             <div className="flex gap-2">
               <Button
                 size="sm"

@@ -1240,9 +1240,34 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     })();
   }, [open, leagues.length, gender, members]);
 
-  // Get all assigned member IDs across all leagues
-  const assignedMemberIds = Object.values(leagueData).flat().map(p => p.club_member_id);
-  const unassignedMembers = genderMembers.filter(m => !assignedMemberIds.includes(m.id));
+  // Helpers — distinguish team (non-reserves) vs reserves leagues so a member
+  // can sit in one team AND in any number of reserves lists without the pool
+  // hiding them.
+  const isReservesLeagueByName = (name: string) => /reserves?/i.test(name);
+  const teamLeagueIds = useMemo(
+    () => new Set(leagues.filter(l => !isReservesLeagueByName(l.name)).map(l => l.id)),
+    [leagues],
+  );
+
+  /** League id where this member is currently in a team (non-reserves) slot, else null. */
+  const findTeamLeagueOfMember = (memberId: string): string | null => {
+    for (const lid of teamLeagueIds) {
+      if ((leagueData[lid] || []).some(p => p.club_member_id === memberId)) return lid;
+    }
+    return null;
+  };
+
+  // Pool = every eligible gender member. Each row shows whether they're already
+  // on a team (badge), so admin can still drag them into a reserves zone.
+  // Filter by search term.
+  const poolMembers = useMemo(() => {
+    const term = poolSearch.trim().toLowerCase();
+    if (!term) return genderMembers;
+    return genderMembers.filter(m => {
+      const n = (m.name || m.profiles?.name || "").toLowerCase();
+      return n.includes(term);
+    });
+  }, [genderMembers, poolSearch]);
 
   // Helper to get league number for a member (from league name ordinal)
   const getMemberLeagueNo = (memberId: string): string | null => {

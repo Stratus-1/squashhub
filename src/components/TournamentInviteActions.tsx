@@ -41,11 +41,12 @@ export function isTournamentInviteNotification(notification?: { type?: string | 
 
 export function TournamentInviteActions({ notification, champId, registrationId, champ: champProp, compact, className, onResolved }: Props) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { linkedMembers } = useMemberContext();
   const verifiedRef = useRef<string | null>(null);
   const data = notification?.data || {};
   const resolvedChampId = champId || data.champ_id;
-  const resolvedRegistrationId = registrationId || data.registration_id;
   const isPartnerInvite = notification?.type === "tournament_partner_invite";
 
   const { data: fetchedChamp, isLoading: champLoading } = useQuery({
@@ -59,6 +60,26 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   });
 
   const champ = champProp || fetchedChamp;
+
+  // Resolve registration: explicit id wins, otherwise look up by champ + linked member
+  const linkedMemberIds = useMemo(() => linkedMembers.map((m) => m.id).filter(Boolean), [linkedMembers]);
+  const { data: registrationByLookup } = useQuery({
+    queryKey: ["tournament-invite-reg-lookup", resolvedChampId, linkedMemberIds.join(",")],
+    queryFn: async () => {
+      if (!resolvedChampId || linkedMemberIds.length === 0) return null;
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id")
+        .eq("champ_id", resolvedChampId)
+        .in("club_member_id", linkedMemberIds)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string } | null;
+    },
+    enabled: !registrationId && !data.registration_id && !!resolvedChampId && linkedMemberIds.length > 0,
+  });
+
+  const resolvedRegistrationId = registrationId || data.registration_id || registrationByLookup?.id;
 
   const { data: registration, refetch: refetchRegistration, isLoading: regLoading } = useQuery({
     queryKey: ["tournament-invite-registration", resolvedRegistrationId],

@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, ExternalLink, ThumbsUp, ThumbsDown, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { getNotificationNavigation } from "@/lib/notification-navigation";
+import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
 
 type NotificationRow = {
   id: string;
@@ -34,6 +36,8 @@ const iconMap: Record<string, typeof Bell> = {
   event: Calendar,
   general: Bell,
   league_availability: Trophy,
+  tournament_invite: Trophy,
+  tournament_partner_invite: Trophy,
   captain_fillup_reminder: Users,
 };
 
@@ -46,6 +50,8 @@ const typeLabel: Record<string, string> = {
   event: "Event",
   general: "Notification",
   league_availability: "League",
+  tournament_invite: "Tournament",
+  tournament_partner_invite: "Tournament",
   captain_fillup_reminder: "Captain",
 };
 

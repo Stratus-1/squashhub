@@ -215,6 +215,39 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
 
+  // For partnerMode === "players": auto-load confirmed pairs from registrations
+  const { data: confirmedPairRegs = [] } = useQuery({
+    queryKey: ["champ-confirmed-pairs", editingChampId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("club_member_id, partner_member_id")
+        .eq("champ_id", editingChampId as string)
+        .eq("partner_confirmed", true)
+        .neq("status", "cancelled")
+        .not("partner_member_id", "is", null);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!editingChampId && partnerMode === "players" && isDoubles && showWizard,
+  });
+
+  useEffect(() => {
+    if (partnerMode !== "players" || !isDoubles) return;
+    // Dedupe reciprocal rows: only keep one pair per unordered (a,b)
+    const seen = new Set<string>();
+    const pairs: DoublePair[] = [];
+    for (const r of confirmedPairRegs) {
+      const a = r.club_member_id;
+      const b = r.partner_member_id;
+      if (!a || !b) continue;
+      const key = [a, b].sort().join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pairs.push({ id: crypto.randomUUID(), player1Id: a, player2Id: b });
+    }
+    setDoublesPairs(pairs);
+  }, [confirmedPairRegs, partnerMode, isDoubles]);
+
   const { data: availableLeagues = [] } = useQuery({
     queryKey: ["club-leagues-for-tournament", clubId],
     queryFn: async () => {

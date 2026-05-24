@@ -617,7 +617,21 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           )}
           onClick={() => awardPoint("b")}
         >
-          <p className="text-xs font-medium opacity-80 truncate max-w-full">{playerBName}</p>
+          <div className="flex items-center gap-1.5 max-w-full">
+            {server === "b" && serveSide === "L" && (
+              <Badge
+                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
+              >L</Badge>
+            )}
+            <p className="text-xs font-medium opacity-80 truncate">{playerBName}</p>
+            {server === "b" && serveSide === "R" && (
+              <Badge
+                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
+              >R</Badge>
+            )}
+          </div>
           {config.playerB.number && (
             <p className="text-[10px] opacity-60">#{config.playerB.number}</p>
           )}

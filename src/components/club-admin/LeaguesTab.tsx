@@ -1381,8 +1381,27 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     return getSkillLabel(m?.skill_level);
   };
 
-  // Add from pool to league
+  // Add from pool to league. Enforces:
+  //  • No duplicate row in the same league.
+  //  • A member can only be in ONE team (non-reserves) league at a time.
+  //    They may additionally appear in any number of reserves lists.
   const addToLeague = (member: ClubMember, leagueId: string) => {
+    const targetIsReserves = !teamLeagueIds.has(leagueId);
+    // Already in this exact league? No-op.
+    if ((leagueData[leagueId] || []).some(p => p.club_member_id === member.id)) {
+      toast.info(`${member.name || member.profiles?.name || "Player"} is already in this league.`);
+      return;
+    }
+    if (!targetIsReserves) {
+      const existingTeamId = findTeamLeagueOfMember(member.id);
+      if (existingTeamId && existingTeamId !== leagueId) {
+        const existing = leagues.find(l => l.id === existingTeamId);
+        toast.error(
+          `${member.name || member.profiles?.name || "Player"} is already on ${existing?.name || "another team"}. Remove them from that team first.`,
+        );
+        return;
+      }
+    }
     setLeagueData(prev => {
       const current = prev[leagueId] || [];
       return {

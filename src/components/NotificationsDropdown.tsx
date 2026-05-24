@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getNotificationNavigation } from "@/lib/notification-navigation";
+import { isTournamentInviteNotification } from "@/components/TournamentInviteActions";
 import { cn } from "@/lib/utils";
 import { Bell, Calendar, CheckCircle, Loader2, Swords, Trophy, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -32,6 +33,8 @@ const iconMap: Record<string, typeof Bell> = {
   ladder: Trophy,
   match: CheckCircle,
   marketing: Bell,
+  tournament_invite: Trophy,
+  tournament_partner_invite: Trophy,
   event: Calendar,
   general: Bell,
 };
@@ -110,6 +113,7 @@ export function NotificationsDropdown({
           .update({ read: true })
           .eq("user_id", user.id)
           .is("club_member_id", null)
+          .not("type", "in", "(tournament_invite,tournament_partner_invite)")
           .eq("read", false),
       ];
 
@@ -119,6 +123,7 @@ export function NotificationsDropdown({
             .from("notifications")
             .update({ read: true })
             .in("club_member_id", linkedMemberIds)
+            .not("type", "in", "(tournament_invite,tournament_partner_invite)")
             .eq("read", false)
         );
       }
@@ -201,7 +206,7 @@ export function NotificationsDropdown({
                       !notif.read && "bg-primary/5"
                     )}
                     onClick={() => {
-                      if (!notif.read) markRead.mutate(notif.id);
+                      if (!notif.read && !isTournamentInviteNotification(notif)) markRead.mutate(notif.id);
                       setOpen(false);
                       navigate(navigation.targetUrl);
                     }}

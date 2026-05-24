@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical } from "lucide-react";
@@ -215,6 +216,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
   const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
+  const [description, setDescription] = useState("");
+  const [showInvitePreview, setShowInvitePreview] = useState(false);
 
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({
@@ -686,6 +689,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+            description: description.trim() || null,
           })
           .eq("id", editingChampId);
         if (updateErr) throw updateErr;
@@ -717,6 +721,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+            description: description.trim() || null,
           })
           .select()
           .single();
@@ -941,6 +946,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(["card"]));
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
+    setDescription("");
     setEditingChampId(null);
   };
 
@@ -972,6 +978,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
     setPaymentRequired(champ.payment_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
+    setDescription(champ.description || "");
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
@@ -1360,6 +1367,32 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 Choose how invited members are notified. Pick both for maximum reach.
               </p>
             </div>
+
+            {/* Tournament description / invite body */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm">Tournament details (shown in invites)</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowInvitePreview(true)}
+                >
+                  <Eye className="w-4 h-4 mr-1" /> Preview invite
+                </Button>
+              </div>
+              <Textarea
+                rows={5}
+                placeholder={`E.g.\nFormat: Round robin → top 2 to playoffs\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Appears inside the in-app notification and the email invitation sent to invited members.
+              </p>
+            </div>
+
+
 
 
             {/* Partner mode — doubles only */}
@@ -1924,6 +1957,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </Button>
         )}
       </div>
+
+      {/* Invite preview dialog — shows in-app notification + email side by side */}
+      <InvitePreviewDialog
+        open={showInvitePreview}
+        onOpenChange={setShowInvitePreview}
+        tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
+        description={description}
+        methods={inviteMethods}
+        startDate={startDate}
+        endDate={endDate}
+        entryFeeRand={entryFeeRand}
+      />
     </div>
   );
 }
@@ -2001,5 +2046,115 @@ function PairBuilder({
         <Plus className="w-4 h-4 mr-1" /> Add Pair
       </Button>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Invite preview — shows what the in-app notification and the
+// email invitation will look like before the tournament is saved.
+// ─────────────────────────────────────────────────────────────
+function InvitePreviewDialog({
+  open,
+  onOpenChange,
+  tournamentName,
+  description,
+  methods,
+  startDate,
+  endDate,
+  entryFeeRand,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tournamentName: string;
+  description: string;
+  methods: Set<"app" | "email">;
+  startDate: string;
+  endDate: string;
+  entryFeeRand: string;
+}) {
+  const fee = Number(entryFeeRand) || 0;
+  const dateLine =
+    startDate && endDate
+      ? startDate === endDate
+        ? `Date: ${startDate}`
+        : `Dates: ${startDate} → ${endDate}`
+      : null;
+  const feeLine = fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free";
+
+  const appBody =
+    `You have been invited to ${tournamentName}.` +
+    (description?.trim() ? `\n\n${description.trim()}` : "");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Invite preview</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            How invited members will see this tournament. Delivery: {Array.from(methods).join(" + ") || "app"}.
+          </p>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* In-app notification preview */}
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <Trophy className="w-3.5 h-3.5" /> In-app notification
+            </div>
+            <div className="rounded-md border bg-background p-3">
+              <p className="text-sm font-semibold">Tournament invitation</p>
+              <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
+              <div className="flex gap-2 mt-3">
+                <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>
+                <span className="text-xs px-2 py-1 rounded border">Decline</span>
+              </div>
+            </div>
+            {!methods.has("app") && (
+              <p className="text-[11px] text-muted-foreground italic">
+                Not sent in-app — email only is selected.
+              </p>
+            )}
+          </div>
+
+          {/* Email preview */}
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <CalendarIcon className="w-3.5 h-3.5" /> Email invitation
+            </div>
+            <div className="rounded-md border bg-background p-3 text-sm space-y-2">
+              <p className="text-xs text-muted-foreground">Subject</p>
+              <p className="font-semibold">You're invited: {tournamentName}</p>
+              <Separator />
+              <p>Hi there,</p>
+              <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
+              {(dateLine || feeLine) && (
+                <ul className="text-xs text-muted-foreground list-disc pl-5">
+                  {dateLine && <li>{dateLine}</li>}
+                  <li>{feeLine}</li>
+                </ul>
+              )}
+              {description?.trim() && (
+                <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
+                  {description.trim()}
+                </div>
+              )}
+              <p>Tap the button below to register or decline.</p>
+              <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
+                Open invitation
+              </span>
+            </div>
+            {!methods.has("email") && (
+              <p className="text-[11px] text-muted-foreground italic">
+                Not sent by email — in-app only is selected.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

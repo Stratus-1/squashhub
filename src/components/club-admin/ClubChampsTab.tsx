@@ -27,13 +27,14 @@ interface ClubChampsTabProps {
   clubId: string;
 }
 
-type WizardStep = "category" | "players" | "groups" | "schedule" | "review";
+type WizardStep = "category" | "registration" | "players" | "groups" | "schedule" | "review";
 type GenderCategory = "men" | "ladies" | "mixed";
 type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["category", "players", "groups", "schedule", "review"];
+const STEPS: WizardStep[] = ["category", "registration", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
+  registration: "Registration",
   players: "Players",
   groups: "Groups",
   schedule: "Schedule",
@@ -203,6 +204,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // League pre-fill (internal or external/regional) — supports multiple leagues
   const [sourceLeagueIds, setSourceLeagueIds] = useState<Set<string>>(new Set());
 
+  // Registration & payment
+  const [registrationMode, setRegistrationMode] = useState<"open" | "invite">("open");
+  const [partnerMode, setPartnerMode] = useState<"admin" | "players">("admin");
+  const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
+  const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
+  const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
+  const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
+  const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
+
   const { data: availableLeagues = [] } = useQuery({
     queryKey: ["club-leagues-for-tournament", clubId],
     queryFn: async () => {
@@ -309,7 +319,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const isDoubles = matchType === "doubles";
 
   const goToStep = (s: WizardStep) => {
-    if (s === "players" && step === "category") {
+    if (s === "players" && (step === "category" || step === "registration")) {
       // Don't override if league pre-fill already set the player list
       if (!isDoubles && !hasLeagueSelection) {
         const memberIds = genderMembers.map((m) => m.id);
@@ -616,6 +626,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
+            registration_mode: registrationMode,
+            partner_mode: partnerMode,
+            registration_opens_at: registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
+            registration_closes_at: registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+            entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
+            payment_methods: Array.from(paymentMethods),
+            payment_required: paymentRequired,
           })
           .eq("id", editingChampId);
         if (updateErr) throw updateErr;
@@ -639,6 +656,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
+            registration_mode: registrationMode,
+            partner_mode: partnerMode,
+            registration_opens_at: registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
+            registration_closes_at: registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+            entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
+            payment_methods: Array.from(paymentMethods),
+            payment_required: paymentRequired,
           })
           .select()
           .single();
@@ -832,6 +856,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
     setSourceLeagueIds(new Set());
+    setRegistrationMode("open");
+    setPartnerMode("admin");
+    setRegistrationOpensAt("");
+    setRegistrationClosesAt("");
+    setEntryFeeRand("0");
+    setPaymentMethods(new Set(["card"]));
+    setPaymentRequired(true);
     setEditingChampId(null);
   };
 
@@ -855,6 +886,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       ? champ.source_league_ids
       : (champ.source_league_id ? [champ.source_league_id] : []);
     setSourceLeagueIds(new Set(initialLeagueIds));
+    setRegistrationMode((champ.registration_mode as any) || "open");
+    setPartnerMode((champ.partner_mode as any) || "admin");
+    setRegistrationOpensAt(champ.registration_opens_at ? new Date(champ.registration_opens_at).toISOString().slice(0,16) : "");
+    setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
+    setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
+    setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
+    setPaymentRequired(champ.payment_required !== false);
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
@@ -932,6 +970,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const canProceed = () => {
     switch (step) {
       case "category": return true;
+      case "registration":
+        if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) return false;
+        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) return false;
+        return true;
       case "players":
         if (isDoubles) return doublesPairs.length >= 2;
         return selectedPlayerIds.size >= 3;
@@ -1181,6 +1223,109 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 onChange={(e) => setChampName(e.target.value)}
               />
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── STEP: REGISTRATION & PAYMENT ── */}
+      {step === "registration" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Registration &amp; Payment</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Decide how members enter this tournament and whether they must pay to qualify.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Registration mode */}
+            <div className="space-y-2">
+              <Label className="text-sm">Who can register?</Label>
+              <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open — any eligible club member</SelectItem>
+                  <SelectItem value="invite">Invite-only — admin shortlists members</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Partner mode — doubles only */}
+            {isDoubles && (
+              <div className="space-y-2">
+                <Label className="text-sm">Partner selection</Label>
+                <Select value={partnerMode} onValueChange={(v) => setPartnerMode(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin pairs all players</SelectItem>
+                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Registration window */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Registration opens</Label>
+                <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Registration closes</Label>
+                <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Entry fee */}
+            <div className="space-y-2">
+              <Label className="text-sm">Entry fee (ZAR)</Label>
+              <Input
+                type="number" min={0} step="1" inputMode="decimal"
+                value={entryFeeRand}
+                onChange={(e) => setEntryFeeRand(e.target.value)}
+                placeholder="0 = free"
+              />
+              <p className="text-xs text-muted-foreground">Set 0 for a free tournament.</p>
+            </div>
+
+            {/* Payment methods */}
+            {Number(entryFeeRand) > 0 && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm">Accepted payment methods</Label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={paymentMethods.has("card")}
+                        onCheckedChange={(c) => {
+                          const next = new Set(paymentMethods);
+                          c ? next.add("card") : next.delete("card");
+                          setPaymentMethods(next);
+                        }}
+                      />
+                      Card (online)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={paymentMethods.has("eft")}
+                        onCheckedChange={(c) => {
+                          const next = new Set(paymentMethods);
+                          c ? next.add("eft") : next.delete("eft");
+                          setPaymentMethods(next);
+                        }}
+                      />
+                      EFT (admin marks paid)
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Switch id="payment-required" checked={paymentRequired} onCheckedChange={setPaymentRequired} />
+                  <Label htmlFor="payment-required" className="text-sm">
+                    Player must pay before they qualify to play
+                  </Label>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

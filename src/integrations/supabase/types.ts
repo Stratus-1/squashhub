@@ -828,13 +828,21 @@ export type Database = {
           enable_playoffs: boolean
           end_date: string
           end_time: string
+          entries_locked: boolean
+          entry_fee_cents: number
           gender: string
           id: string
           match_duration_minutes: number
           match_type: string
           name: string
           num_groups: number
+          partner_mode: string
+          payment_methods: string[]
+          payment_required: boolean
           play_days: number[]
+          registration_closes_at: string | null
+          registration_mode: string
+          registration_opens_at: string | null
           round_format: string
           source_league_id: string | null
           source_league_ids: string[]
@@ -850,13 +858,21 @@ export type Database = {
           enable_playoffs?: boolean
           end_date: string
           end_time?: string
+          entries_locked?: boolean
+          entry_fee_cents?: number
           gender: string
           id?: string
           match_duration_minutes?: number
           match_type?: string
           name: string
           num_groups?: number
+          partner_mode?: string
+          payment_methods?: string[]
+          payment_required?: boolean
           play_days?: number[]
+          registration_closes_at?: string | null
+          registration_mode?: string
+          registration_opens_at?: string | null
           round_format?: string
           source_league_id?: string | null
           source_league_ids?: string[]
@@ -872,13 +888,21 @@ export type Database = {
           enable_playoffs?: boolean
           end_date?: string
           end_time?: string
+          entries_locked?: boolean
+          entry_fee_cents?: number
           gender?: string
           id?: string
           match_duration_minutes?: number
           match_type?: string
           name?: string
           num_groups?: number
+          partner_mode?: string
+          payment_methods?: string[]
+          payment_required?: boolean
           play_days?: number[]
+          registration_closes_at?: string | null
+          registration_mode?: string
+          registration_opens_at?: string | null
           round_format?: string
           source_league_id?: string | null
           source_league_ids?: string[]
@@ -1115,6 +1139,87 @@ export type Database = {
           {
             foreignKeyName: "club_champs_matches_winner_member_id_fkey"
             columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_champs_registrations: {
+        Row: {
+          champ_id: string
+          club_member_id: string
+          created_at: string
+          fee_paid_cents: number
+          id: string
+          invited_by_admin: boolean
+          paid_at: string | null
+          partner_confirmed: boolean
+          partner_member_id: string | null
+          payment_ref: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          champ_id: string
+          club_member_id: string
+          created_at?: string
+          fee_paid_cents?: number
+          id?: string
+          invited_by_admin?: boolean
+          paid_at?: string | null
+          partner_confirmed?: boolean
+          partner_member_id?: string | null
+          payment_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          champ_id?: string
+          club_member_id?: string
+          created_at?: string
+          fee_paid_cents?: number
+          id?: string
+          invited_by_admin?: boolean
+          paid_at?: string | null
+          partner_confirmed?: boolean
+          partner_member_id?: string | null
+          payment_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_champs_registrations_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_partner_member_id_fkey"
+            columns: ["partner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_partner_member_id_fkey"
+            columns: ["partner_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
             referencedColumns: ["id"]
@@ -5150,6 +5255,7 @@ export type Database = {
         Row: {
           amount: number
           bar_tab_entry_ids: string[]
+          champ_registration_id: string | null
           club_id: string
           club_member_id: string
           completed_at: string | null
@@ -5167,6 +5273,7 @@ export type Database = {
         Insert: {
           amount: number
           bar_tab_entry_ids?: string[]
+          champ_registration_id?: string | null
           club_id: string
           club_member_id: string
           completed_at?: string | null
@@ -5184,6 +5291,7 @@ export type Database = {
         Update: {
           amount?: number
           bar_tab_entry_ids?: string[]
+          champ_registration_id?: string | null
           club_id?: string
           club_member_id?: string
           completed_at?: string | null
@@ -5199,6 +5307,13 @@ export type Database = {
           yoco_redirect_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "yoco_payment_sessions_champ_registration_id_fkey"
+            columns: ["champ_registration_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs_registrations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "yoco_payment_sessions_club_id_fkey"
             columns: ["club_id"]

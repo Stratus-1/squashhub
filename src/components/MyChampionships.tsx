@@ -10,6 +10,7 @@ import { Trophy, ChevronRight, Calendar } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
@@ -26,12 +27,22 @@ export function MyChampionships() {
     queryKey: ["club-champs-active", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
-        .select("id, name, gender, match_type, status, start_date, end_date")
+        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode")
         .eq("club_id", clubId!)
         .neq("status", "completed")
         .order("start_date");
       if (error) throw error;
       return data || [];
+    },
+    enabled: !!clubId,
+  });
+
+  // Club payment gateway for member-side card checkout
+  const { data: clubInfo } = useQuery({
+    queryKey: ["club-payment-gateway", clubId],
+    queryFn: async () => {
+      const { data } = await fromExt("clubs").select("payment_gateway").eq("id", clubId!).maybeSingle();
+      return data as { payment_gateway: string | null } | null;
     },
     enabled: !!clubId,
   });
@@ -72,7 +83,36 @@ export function MyChampionships() {
     enabled: myChampIds.length > 0 && !!memberId,
   });
 
-  if (!myEntries.length) return null;
+  // My registrations across active champs (to filter what to offer)
+  const { data: myRegs = [] } = useQuery({
+    queryKey: ["my-champ-registrations", memberId, champIds],
+    queryFn: async () => {
+      if (!champIds.length || !memberId) return [];
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("champ_id, status")
+        .in("champ_id", champIds)
+        .eq("club_member_id", memberId);
+      if (error) throw error;
+      return (data || []) as Array<{ champ_id: string; status: string }>;
+    },
+    enabled: champIds.length > 0 && !!memberId,
+  });
+
+  const registeredChampIds = new Set(myRegs.filter(r => r.status !== "cancelled").map(r => r.champ_id));
+
+  const now = new Date();
+  const openForRegistration = (allChamps as any[]).filter((c) => {
+    if (registeredChampIds.has(c.id)) return false;
+    if (c.entries_locked) return false;
+    if (c.registration_mode !== "open") return false;
+    const opens = c.registration_opens_at ? new Date(c.registration_opens_at) : null;
+    const closes = c.registration_closes_at ? new Date(c.registration_closes_at) : null;
+    if (opens && now < opens) return false;
+    if (closes && now > closes) return false;
+    return true;
+  });
+
+  if (!myEntries.length && openForRegistration.length === 0) return null;
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);
@@ -90,6 +130,18 @@ export function MyChampionships() {
           View all <ChevronRight className="w-3 h-3 ml-1" />
         </Button>
       </div>
+
+      {openForRegistration.map((c: any) => (
+        <TournamentRegisterCard
+          key={`reg-${c.id}`}
+          champ={c}
+          clubId={clubId!}
+          memberId={memberId!}
+          paymentGateway={clubInfo?.payment_gateway || null}
+        />
+      ))}
+
+
 
       {myEntries.map((entry: any) => {
         const champ = allChamps.find((c: any) => c.id === entry.champ_id);

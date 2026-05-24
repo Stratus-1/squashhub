@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
+import { Users as UsersIcon } from "lucide-react";
 
 interface ClubChampsTabProps {
   clubId: string;
@@ -804,6 +806,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   });
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
+  const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);
 
   const deleteChamp = useMutation({
     mutationFn: async ({ id, withBookings }: { id: string; withBookings: boolean }) => {
@@ -1017,6 +1020,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
                       <Eye className="w-4 h-4 mr-1" /> View
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => setRegistrationsChamp(c)}>
+                      <UsersIcon className="w-4 h-4 mr-1" /> Registrations
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
                       <Pencil className="w-4 h-4 mr-1" /> Edit
                     </Button>
@@ -1059,6 +1065,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {registrationsChamp && (
+          <TournamentRegistrationsDialog
+            open={!!registrationsChamp}
+            onOpenChange={(v) => !v && setRegistrationsChamp(null)}
+            champ={registrationsChamp}
+            clubId={clubId}
+          />
+        )}
       </div>
     );
   }

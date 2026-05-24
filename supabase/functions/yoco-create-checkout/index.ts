@@ -33,8 +33,9 @@ Deno.serve(async (req) => {
       club_id,
       club_member_id,
       amount,
-      purpose,        // 'fee' | 'topup'
+      purpose,        // 'fee' | 'topup' | 'tournament'
       fee_ids = [],
+      champ_registration_id = null,
       description,
       return_url,
     } = body || {};
@@ -42,8 +43,11 @@ Deno.serve(async (req) => {
     if (!club_id || !club_member_id || !amount || !purpose || !return_url) {
       return json({ error: "Missing required fields" }, 400);
     }
-    if (!["fee", "topup"].includes(purpose)) {
+    if (!["fee", "topup", "tournament"].includes(purpose)) {
       return json({ error: "Invalid purpose" }, 400);
+    }
+    if (purpose === "tournament" && !champ_registration_id) {
+      return json({ error: "champ_registration_id is required for tournament purpose" }, 400);
     }
     const amt = Number(amount);
     if (!(amt > 0)) return json({ error: "Invalid amount" }, 400);
@@ -79,6 +83,11 @@ Deno.serve(async (req) => {
       return json({ error: "Yoco secret key not configured" }, 400);
     }
 
+    const defaultDesc =
+      purpose === "topup" ? "Wallet top-up" :
+      purpose === "tournament" ? "Tournament entry fee" :
+      "Fee payment";
+
     const { data: session, error: sessErr } = await admin
       .from("yoco_payment_sessions")
       .insert({
@@ -88,7 +97,8 @@ Deno.serve(async (req) => {
         amount: amt,
         purpose,
         fee_ids,
-        description: description || (purpose === "topup" ? "Wallet top-up" : "Fee payment"),
+        champ_registration_id,
+        description: description || defaultDesc,
         status: "created",
       })
       .select("id")

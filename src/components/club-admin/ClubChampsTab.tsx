@@ -331,8 +331,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection
-      ? ["category", "registration", "players", "schedule", "review"]
-      : ["category", "registration", "schedule", "review"];
+      ? ["category", "registration", "players", "review"]
+      : ["category", "registration", "review"];
   }, [awaitingPlayerPairs, selfPairInviteSelection]);
   const stepIdx = activeSteps.indexOf(step);
 

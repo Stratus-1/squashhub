@@ -287,7 +287,7 @@ export function NotificationActionModal() {
                   </span>
                 </div>
                 <p className="text-sm font-semibold mt-1.5">{current.title}</p>
-                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                <p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-pre-line break-words">
                   {current.message}
                 </p>
               </div>

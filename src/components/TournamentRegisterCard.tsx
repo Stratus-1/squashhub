@@ -132,9 +132,36 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Registered players in this champ (excluding cancelled). Partners may only be picked
+  // from members who have already registered and are not already paired with someone else.
+  const { data: registeredOthers = [] } = useQuery({
+    queryKey: ["champ-registered-others", champ.id, memberId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("club_member_id, partner_member_id, status")
+        .eq("champ_id", champ.id)
+        .neq("status", "cancelled");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champ?.id && !!myReg && champ?.match_type === "doubles" && champ?.partner_mode === "players",
+  });
+
   const eligiblePartners = (() => {
     const g = champ?.gender;
-    let list = members.filter((m: any) => m.id !== memberId);
+    const takenIds = new Set<string>();
+    registeredOthers.forEach((r: any) => {
+      if (r.partner_member_id) {
+        takenIds.add(r.club_member_id);
+        takenIds.add(r.partner_member_id);
+      }
+    });
+    const registeredIds = new Set(
+      registeredOthers
+        .filter((r: any) => r.club_member_id !== memberId && !takenIds.has(r.club_member_id))
+        .map((r: any) => r.club_member_id)
+    );
+    let list = members.filter((m: any) => m.id !== memberId && registeredIds.has(m.id));
     if (g === "men") list = list.filter((m: any) => m.gender && ["men", "male", "m"].includes(m.gender.toLowerCase()));
     else if (g === "ladies") list = list.filter((m: any) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()));
     return list;
@@ -208,8 +235,10 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
             </p>
           ) : (
             <div className="flex items-center gap-2">
-              <Select value={partnerId} onValueChange={setPartnerId}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choose your partner" /></SelectTrigger>
+              <Select value={partnerId} onValueChange={setPartnerId} disabled={eligiblePartners.length === 0}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder={eligiblePartners.length === 0 ? "Waiting for partner to register…" : "Choose your partner"} />
+                </SelectTrigger>
                 <SelectContent>
                   {eligiblePartners.map((m: any) => (
                     <SelectItem key={m.id} value={m.id}>{getName(m)}</SelectItem>

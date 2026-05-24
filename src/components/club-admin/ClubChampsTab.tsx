@@ -886,6 +886,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       ? champ.source_league_ids
       : (champ.source_league_id ? [champ.source_league_id] : []);
     setSourceLeagueIds(new Set(initialLeagueIds));
+    setRegistrationMode((champ.registration_mode as any) || "open");
+    setPartnerMode((champ.partner_mode as any) || "admin");
+    setRegistrationOpensAt(champ.registration_opens_at ? new Date(champ.registration_opens_at).toISOString().slice(0,16) : "");
+    setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
+    setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
+    setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
+    setPaymentRequired(champ.payment_required !== false);
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")

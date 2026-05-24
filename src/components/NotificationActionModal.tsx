@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, ExternalLink, ThumbsUp, ThumbsDown, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { getNotificationNavigation } from "@/lib/notification-navigation";
+import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
 
 type NotificationRow = {
   id: string;
@@ -34,6 +36,8 @@ const iconMap: Record<string, typeof Bell> = {
   event: Calendar,
   general: Bell,
   league_availability: Trophy,
+  tournament_invite: Trophy,
+  tournament_partner_invite: Trophy,
   captain_fillup_reminder: Users,
 };
 
@@ -46,6 +50,8 @@ const typeLabel: Record<string, string> = {
   event: "Event",
   general: "Notification",
   league_availability: "League",
+  tournament_invite: "Tournament",
+  tournament_partner_invite: "Tournament",
   captain_fillup_reminder: "Captain",
 };
 
@@ -169,6 +175,7 @@ export function NotificationActionModal() {
   });
 
   const notifications = unreadNotifications || [];
+  const nonPersistentNotifications = notifications.filter((n) => !isTournamentInviteNotification(n));
   const current = notifications[currentIndex] || null;
   const total = notifications.length;
   const isLast = currentIndex >= total - 1;
@@ -184,17 +191,18 @@ export function NotificationActionModal() {
 
   const handleAction = useCallback(() => {
     if (!current) return;
-    markRead.mutate(current.id);
+    if (!isTournamentInviteNotification(current)) markRead.mutate(current.id);
     const url = current.url || "/notifications";
-    const shouldOpenDetail = current.type === "marketing" || url.startsWith("/notifications");
+    const navigation = getNotificationNavigation(current);
+    const shouldOpenDetail = navigation.shouldOpenDetail || current.type === "marketing" || url.startsWith("/notifications");
     setOpen(false);
     setDismissed(true);
-    navigate(shouldOpenDetail ? `/notifications?notificationId=${current.id}` : url);
+    navigate(shouldOpenDetail ? navigation.targetUrl : url);
   }, [current, markRead, navigate]);
 
   const handleDismiss = useCallback(() => {
     if (!current) return;
-    markRead.mutate(current.id);
+    if (!isTournamentInviteNotification(current)) markRead.mutate(current.id);
     if (isLast) {
       setOpen(false);
       setDismissed(true);
@@ -205,12 +213,12 @@ export function NotificationActionModal() {
 
   const handleDismissAll = useCallback(() => {
     // Mark all as read
-    for (const n of notifications) {
+    for (const n of nonPersistentNotifications) {
       if (!n.read) markRead.mutate(n.id);
     }
     setOpen(false);
     setDismissed(true);
-  }, [notifications, markRead]);
+  }, [nonPersistentNotifications, markRead]);
 
   if (!user || total === 0) return null;
 
@@ -268,6 +276,9 @@ export function NotificationActionModal() {
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2 pt-1">
+              {isTournamentInviteNotification(current) && (
+                <TournamentInviteActions notification={current} compact onResolved={advanceOrClose} />
+              )}
               {current.type === "league_availability" && current.data?.week_start_date && current.data?.club_member_id && (
                 <div className="flex gap-2">
                   <Button
@@ -303,7 +314,7 @@ export function NotificationActionModal() {
                   </Button>
                 </div>
               )}
-              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && (
+              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && !isTournamentInviteNotification(current) && (
                 <Button className="w-full" onClick={handleAction}>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   {getActionLabel(current.type)}

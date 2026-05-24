@@ -27,10 +27,11 @@ function isPendingEventNotification(notification: NotificationNavigationInput) {
 export function getNotificationNavigation(notification: NotificationNavigationInput) {
   const resolvedUrl = String(notification.url || "/notifications");
   const pendingEvent = isPendingEventNotification(notification);
-  const shouldOpenDetail = notification.type === "marketing" || resolvedUrl.startsWith("/notifications") || pendingEvent;
+  const pendingTournamentInvite = notification.type === "tournament_invite" || notification.type === "tournament_partner_invite";
+  const shouldOpenDetail = notification.type === "marketing" || pendingTournamentInvite || resolvedUrl.startsWith("/notifications") || pendingEvent;
 
   return {
-    canNavigate: !pendingEvent && !resolvedUrl.startsWith("/notifications"),
+    canNavigate: !pendingEvent && !pendingTournamentInvite && !resolvedUrl.startsWith("/notifications"),
     shouldOpenDetail,
     targetUrl: shouldOpenDetail ? `/notifications?notificationId=${notification.id}` : resolvedUrl,
   };

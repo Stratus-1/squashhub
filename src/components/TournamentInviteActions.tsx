@@ -1,0 +1,272 @@
+import { useEffect, useMemo, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
+import { toast } from "sonner";
+
+type NotificationLike = {
+  id?: string;
+  type?: string | null;
+  read?: boolean;
+  data?: Record<string, any> | null;
+};
+
+type Props = {
+  notification?: NotificationLike | null;
+  champId?: string;
+  registrationId?: string;
+  champ?: any;
+  compact?: boolean;
+  className?: string;
+  onResolved?: () => void;
+};
+
+const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatMoney(cents: number) {
+  return `R${(Number(cents || 0) / 100).toFixed(2)}`;
+}
+
+export function isTournamentInviteNotification(notification?: { type?: string | null }) {
+  return notification?.type === "tournament_invite" || notification?.type === "tournament_partner_invite";
+}
+
+export function TournamentInviteActions({ notification, champId, registrationId, champ: champProp, compact, className, onResolved }: Props) {
+  const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const verifiedRef = useRef<string | null>(null);
+  const data = notification?.data || {};
+  const resolvedChampId = champId || data.champ_id;
+  const resolvedRegistrationId = registrationId || data.registration_id;
+  const isPartnerInvite = notification?.type === "tournament_partner_invite";
+
+  const { data: fetchedChamp, isLoading: champLoading } = useQuery({
+    queryKey: ["tournament-invite-champ", resolvedChampId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs").select("*").eq("id", resolvedChampId).maybeSingle();
+      if (error) throw error;
+      return data as any | null;
+    },
+    enabled: !!resolvedChampId && !champProp,
+  });
+
+  const champ = champProp || fetchedChamp;
+
+  const { data: registration, refetch: refetchRegistration, isLoading: regLoading } = useQuery({
+    queryKey: ["tournament-invite-registration", resolvedRegistrationId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("*, player:club_member_id(id, name, profiles:user_id(name)), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .eq("id", resolvedRegistrationId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any | null;
+    },
+    enabled: !!resolvedRegistrationId,
+  });
+
+  const { data: clubInfo } = useQuery({
+    queryKey: ["club-payment-gateway", champ?.club_id],
+    queryFn: async () => {
+      const { data } = await fromExt("clubs").select("payment_gateway").eq("id", champ.club_id).maybeSingle();
+      return data as { payment_gateway: string | null } | null;
+    },
+    enabled: !!champ?.club_id,
+  });
+
+  const entryFeeCents = Number(champ?.entry_fee_cents || 0);
+  const paymentRequired = !!champ?.payment_required && entryFeeCents > 0;
+  const paymentMethods = (champ?.payment_methods || []) as string[];
+  const acceptsCard = paymentMethods.includes("card");
+  const acceptsEft = paymentMethods.includes("eft");
+  const yocoReady = acceptsCard && clubInfo?.payment_gateway === "yoco";
+  const status = String(registration?.status || "");
+  const isAccepted = ["paid", "waived", "pending_eft"].includes(status) || (isPartnerInvite && registration?.partner_confirmed);
+  const isDeclined = status === "cancelled" || (isPartnerInvite && !registration?.partner_member_id && registration?.partner_confirmed === false);
+
+  const invalidateNotifications = () => {
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+    qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    qc.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
+  };
+
+  const markNotificationRead = async () => {
+    if (!notification?.id) return;
+    await supabase.from("notifications").update({ read: true }).eq("id", notification.id);
+  };
+
+  const launchPayment = async () => {
+    if (!champ || !registration) return;
+    const returnParams = new URLSearchParams(window.location.search);
+    returnParams.set("ctx", "tournament");
+    returnParams.set("yoco_registration", registration.id);
+    if (notification?.id) returnParams.set("notificationId", notification.id);
+    const return_url = `${window.location.origin}${window.location.pathname}?${returnParams.toString()}`;
+    const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
+      body: {
+        club_id: champ.club_id,
+        club_member_id: registration.club_member_id,
+        amount: entryFeeCents / 100,
+        purpose: "tournament",
+        champ_registration_id: registration.id,
+        description: `${champ.name} entry fee`,
+        return_url,
+      },
+    });
+    if (error) throw error;
+    if (data?.redirect_url) window.location.href = data.redirect_url;
+  };
+
+  useEffect(() => {
+    const sid = searchParams.get("yoco_session");
+    const cancelled = searchParams.get("yoco_cancelled");
+    const ctx = searchParams.get("ctx");
+    const yocoReg = searchParams.get("yoco_registration");
+    if (ctx !== "tournament" || (!sid && !cancelled) || (resolvedRegistrationId && yocoReg && yocoReg !== resolvedRegistrationId)) return;
+    const token = sid || cancelled || "";
+    if (verifiedRef.current === token) return;
+    verifiedRef.current = token;
+
+    (async () => {
+      try {
+        if (cancelled) {
+          toast.info("Payment cancelled — your invite will stay open.");
+          return;
+        }
+        const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
+        if (error) throw error;
+        if (data?.status === "completed") {
+          await markNotificationRead();
+          await refetchRegistration();
+          invalidateNotifications();
+          toast.success("Entry paid — tournament registration confirmed.");
+          onResolved?.();
+        } else if (["cancelled", "failed", "expired"].includes(data?.status)) {
+          toast.error(`Payment ${data.status}. Your invite will stay open.`);
+        }
+      } catch (e: any) {
+        toast.error(e.message || "Could not verify payment");
+      } finally {
+        const next = new URLSearchParams(searchParams);
+        next.delete("yoco_session");
+        next.delete("yoco_cancelled");
+        next.delete("yoco_registration");
+        next.delete("ctx");
+        setSearchParams(next, { replace: true });
+      }
+    })();
+  }, [resolvedRegistrationId, searchParams, setSearchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const respond = useMutation({
+    mutationFn: async (accept: boolean) => {
+      if (!registration) throw new Error("Invite not found");
+
+      if (!accept) {
+        if (isPartnerInvite) {
+          const { error } = await fromExt("club_champs_registrations")
+            .update({ partner_member_id: null, partner_confirmed: false })
+            .eq("id", registration.id);
+          if (error) throw error;
+        } else {
+          const { error } = await fromExt("club_champs_registrations").update({ status: "cancelled" }).eq("id", registration.id);
+          if (error) throw error;
+        }
+        await markNotificationRead();
+        return "declined";
+      }
+
+      if (isPartnerInvite) {
+        const { error } = await fromExt("club_champs_registrations").update({ partner_confirmed: true }).eq("id", registration.id);
+        if (error) throw error;
+        await markNotificationRead();
+        return "accepted";
+      }
+
+      if (paymentRequired && yocoReady) {
+        await launchPayment();
+        return "payment_started";
+      }
+
+      const nextStatus = paymentRequired ? "pending_eft" : "paid";
+      const { error } = await fromExt("club_champs_registrations").update({ status: nextStatus }).eq("id", registration.id);
+      if (error) throw error;
+      await markNotificationRead();
+      return nextStatus === "pending_eft" ? "eft" : "accepted";
+    },
+    onSuccess: async (result) => {
+      await refetchRegistration();
+      invalidateNotifications();
+      if (result === "payment_started") return;
+      toast.success(result === "declined" ? "Tournament invite declined." : result === "eft" ? "Invite accepted — EFT payment pending." : "Tournament invite accepted.");
+      onResolved?.();
+    },
+    onError: (e: any) => toast.error(e.message || "Could not update invite"),
+  });
+
+  const detailRows = useMemo(() => {
+    if (!champ) return [];
+    return [
+      `${GENDER_LABELS[champ.gender] || champ.gender} ${champ.match_type === "doubles" ? "Doubles" : "Singles"}`,
+      `${champ.start_date} to ${champ.end_date}`,
+      `${(champ.play_days as number[] | undefined)?.map((d) => DAY_NAMES[d]).join(", ") || "Tournament days"} · ${String(champ.start_time || "").slice(0, 5)} – ${String(champ.end_time || "").slice(0, 5)}`,
+      paymentRequired ? `${formatMoney(entryFeeCents)} entry fee${acceptsEft ? " · EFT accepted" : ""}` : "No entry fee",
+    ].filter(Boolean);
+  }, [acceptsEft, champ, entryFeeCents, paymentRequired]);
+
+  if (champLoading || regLoading) {
+    return <Card className={cn("p-3 flex items-center justify-center", className)}><Loader2 className="w-4 h-4 animate-spin text-primary" /></Card>;
+  }
+
+  if (!champ || !registration) {
+    return <Card className={cn("p-3 text-sm text-muted-foreground", className)}>Tournament invite details are not available.</Card>;
+  }
+
+  return (
+    <Card className={cn("p-3 border-primary/30 bg-primary/5", className)}>
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+          <Trophy className="w-4 h-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate">{champ.name}</p>
+              <p className="text-[11px] text-muted-foreground">{isPartnerInvite ? "Doubles partner invite" : "Tournament invitation"}</p>
+            </div>
+            <Badge variant={isAccepted ? "default" : isDeclined ? "secondary" : "outline"} className="text-[10px] shrink-0">
+              {isDeclined ? "Declined" : isAccepted ? (status === "pending_eft" ? "EFT pending" : "Accepted") : paymentRequired ? "Payment due" : "Awaiting reply"}
+            </Badge>
+          </div>
+
+          <div className={cn("grid gap-1 mt-2", compact ? "text-[11px]" : "text-xs")}>
+            {detailRows.map((row) => (
+              <div key={row} className="flex items-center gap-1.5 text-muted-foreground">
+                <CalendarClock className="w-3 h-3 shrink-0" />
+                <span>{row}</span>
+              </div>
+            ))}
+          </div>
+
+          {!isAccepted && !isDeclined && (
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+              <Button size="sm" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(true)}>
+                {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : yocoReady && paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                {isPartnerInvite ? "Accept Partner" : paymentRequired && yocoReady ? `Pay & Register ${formatMoney(entryFeeCents)}` : "Accept Invite"}
+              </Button>
+              <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(false)}>
+                <XCircle className="w-3 h-3 mr-1" /> Decline
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}

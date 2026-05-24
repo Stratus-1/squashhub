@@ -27,13 +27,14 @@ interface ClubChampsTabProps {
   clubId: string;
 }
 
-type WizardStep = "category" | "players" | "groups" | "schedule" | "review";
+type WizardStep = "category" | "registration" | "players" | "groups" | "schedule" | "review";
 type GenderCategory = "men" | "ladies" | "mixed";
 type MatchType = "singles" | "doubles";
 
-const STEPS: WizardStep[] = ["category", "players", "groups", "schedule", "review"];
+const STEPS: WizardStep[] = ["category", "registration", "players", "groups", "schedule", "review"];
 const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
+  registration: "Registration",
   players: "Players",
   groups: "Groups",
   schedule: "Schedule",

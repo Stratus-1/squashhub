@@ -1649,36 +1649,68 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions • Drop a reserve onto a team slot to promote (the displaced player drops back to reserves). Reserves can only sub UP into stronger leagues, never down.</p>
+          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {genderMembers.length} eligible • Drag players into leagues or between positions. A member can be in <strong>one team</strong> and <strong>one or more reserves</strong> lists — drag from the pool onto a reserves zone to add them as a reserve even if they're already on a team.</p>
         </DialogHeader>
 
         {!loaded ? (
           <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : (
           <div className="flex gap-4 flex-1 overflow-hidden">
-            {/* Left: Unassigned members pool */}
+            {/* Left: Available members pool */}
             <div className="w-56 flex-shrink-0 border rounded-md overflow-hidden flex flex-col">
-              <div className="bg-muted/50 px-3 py-2 border-b">
-                <p className="text-xs font-semibold">Available Players ({unassignedMembers.length})</p>
+              <div className="bg-muted/50 px-3 py-2 border-b space-y-1.5">
+                <p className="text-xs font-semibold">Available Players ({poolMembers.length})</p>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <Input
+                    value={poolSearch}
+                    onChange={(e) => setPoolSearch(e.target.value)}
+                    placeholder="Search players…"
+                    className="h-6 pl-6 pr-6 text-[11px]"
+                  />
+                  {poolSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setPoolSearch("")}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
                 <p className="text-[10px] text-muted-foreground">Sorted by club ladder</p>
               </div>
               <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
-                {unassignedMembers.map(m => (
-                  <div
-                    key={m.id}
-                    draggable
-                    onDragStart={() => handlePoolDragStart(m.id)}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs rounded cursor-grab active:cursor-grabbing hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors"
-                  >
-                    <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{m.name || m.profiles?.name || "Unknown"}</p>
-                      <p className="text-[10px] text-muted-foreground">{getSkillLabel(m.skill_level) || "No level"}</p>
+                {poolMembers.map(m => {
+                  const teamLid = findTeamLeagueOfMember(m.id);
+                  const teamLeague = teamLid ? leagues.find(l => l.id === teamLid) : null;
+                  return (
+                    <div
+                      key={m.id}
+                      draggable
+                      onDragStart={() => handlePoolDragStart(m.id)}
+                      className="flex items-center gap-1.5 px-2 py-1.5 text-xs rounded cursor-grab active:cursor-grabbing hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors"
+                    >
+                      <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium">{m.name || m.profiles?.name || "Unknown"}</p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-[10px] text-muted-foreground truncate">{getSkillLabel(m.skill_level) || "No level"}</p>
+                          {teamLeague && (
+                            <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 leading-none">
+                              {teamLeague.code || teamLeague.name}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {unassignedMembers.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground text-center py-4">All players allocated</p>
+                  );
+                })}
+                {poolMembers.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground text-center py-4">
+                    {poolSearch ? `No players match "${poolSearch}"` : "No eligible players"}
+                  </p>
                 )}
               </div>
             </div>

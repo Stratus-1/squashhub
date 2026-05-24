@@ -61,30 +61,100 @@ export function LineupSwapDialog({
       if (!leagueRow?.id) return [];
 
       const teamLeagueId = leagueRow.id as string;
-      const divisionName = (leagueRow.name || "") as string;
+      const teamLeagueName = (leagueRow.name || "") as string;
       const assocId = (leagueRow.association_id || associationId) as string | null;
 
-      // 2) Same-division team-leagues across the association (excluding this team)
-      //    A "division" = same league name (e.g. "Men's 2nd League 2026") in the same association.
-      let sameDivisionLeagueIds: string[] = [];
-      const divisionLeagueIdToCode = new Map<string, string>();
-      if (assocId && divisionName) {
-        const { data: divLeagues } = await (supabase as any)
-          .from("leagues")
-          .select("id, code")
-          .eq("association_id", assocId)
-          .eq("name", divisionName);
-        for (const l of (divLeagues || []) as any[]) {
-          if (l.id !== teamLeagueId) {
-            sameDivisionLeagueIds.push(l.id);
-            divisionLeagueIdToCode.set(l.id, l.code);
-          }
+      const ordRe = /(\d+(?:st|nd|rd|th))/i;
+
+      // 2) Pull ALL leagues in this association — we'll compute tier per league.
+      const { data: allLeagues } = await (supabase as any)
+        .from("leagues")
+        .select("id, code, name")
+        .eq("association_id", assocId);
+      const leaguesList = (allLeagues || []) as Array<{ id: string; code: string; name: string }>;
+
+      // 3) Resolve platform_association_id for fixture lookup (some assocs are tenant copies).
+      let platformAssocId: string | null = assocId;
+      try {
+        const { data: la } = await (supabase as any)
+          .from("league_associations")
+          .select("platform_association_id")
+          .eq("id", assocId)
+          .maybeSingle();
+        platformAssocId = (la?.platform_association_id as string | null) || assocId;
+      } catch { /* noop */ }
+
+      // 4) Build fixture-based tier per team code (source of truth, matches Standings).
+      const fixtureTierByCode = new Map<string, string>();
+      try {
+        const { data: rounds } = await (supabase as any)
+          .from("league_rounds")
+          .select("id, name")
+          .eq("association_id", assocId);
+        const roundTier = new Map<string, string>();
+        (rounds || []).forEach((r: any) => {
+          const cleaned = String(r.name || "").replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, "").trim();
+          const m = cleaned.match(/(\d+(?:st|nd|rd|th))\s*League/i);
+          if (m) roundTier.set(r.id, m[1]);
+        });
+        const roundIds = Array.from(roundTier.keys());
+        if (roundIds.length > 0 && platformAssocId) {
+          const { data: fx } = await (supabase as any)
+            .from("platform_league_fixtures")
+            .select("round_id, home_team_code, away_team_code")
+            .eq("association_id", platformAssocId)
+            .in("round_id", roundIds);
+          const tally = new Map<string, Map<string, number>>();
+          const bump = (code: string | null, tier: string) => {
+            if (!code || code.startsWith("__")) return;
+            if (!tally.has(code)) tally.set(code, new Map());
+            const m = tally.get(code)!;
+            m.set(tier, (m.get(tier) || 0) + 1);
+          };
+          (fx || []).forEach((f: any) => {
+            const tier = roundTier.get(f.round_id);
+            if (!tier) return;
+            bump(f.home_team_code, tier);
+            bump(f.away_team_code, tier);
+          });
+          tally.forEach((m, code) => {
+            let bestTier = ""; let best = -1;
+            m.forEach((n, t) => { if (n > best) { best = n; bestTier = t; } });
+            if (bestTier) fixtureTierByCode.set(code, bestTier);
+          });
+        }
+      } catch { /* noop */ }
+
+      const tierOf = (l: { code: string; name: string }): string | null => {
+        const isReserves = /reserves?/i.test(l.name);
+        // Non-reserve teams: prefer fixture-based tier.
+        if (!isReserves) {
+          const fromFx = fixtureTierByCode.get(l.code);
+          if (fromFx) return fromFx;
+        }
+        const m = l.name.match(ordRe);
+        return m ? m[1] : null;
+      };
+
+      const targetTier = tierOf({ code: teamCode, name: teamLeagueName });
+
+      // 5) Same-tier reserves leagues (any name with "reserve" + matching ordinal).
+      const sameTierReserveLeagueIds: string[] = [];
+      // Same-tier non-reserve team leagues (for bye candidates), with id↔code map.
+      const sameTierTeamLeagueIdToCode = new Map<string, string>();
+      for (const l of leaguesList) {
+        const t = tierOf(l);
+        if (!targetTier || t !== targetTier) continue;
+        if (/reserves?/i.test(l.name)) {
+          sameTierReserveLeagueIds.push(l.id);
+        } else if (l.id !== teamLeagueId) {
+          sameTierTeamLeagueIdToCode.set(l.id, l.code);
         }
       }
 
-      // 3) Find teams on bye this week (in same division only)
+      // 6) Find teams on bye this week (same tier only).
       const byeLeagueIds: string[] = [];
-      if (assocId && fixtureDate && sameDivisionLeagueIds.length > 0) {
+      if (platformAssocId && fixtureDate && sameTierTeamLeagueIdToCode.size > 0) {
         const fx = new Date(fixtureDate);
         const from = new Date(fx); from.setDate(from.getDate() - 3);
         const to = new Date(fx); to.setDate(to.getDate() + 3);
@@ -92,37 +162,39 @@ export function LineupSwapDialog({
         const { data: byeFixtures } = await (supabase as any)
           .from("platform_league_fixtures")
           .select("home_team_code, away_team_code, status, fixture_date")
-          .eq("association_id", assocId)
+          .eq("association_id", platformAssocId)
           .gte("fixture_date", fmt(from))
           .lte("fixture_date", fmt(to));
-        const divisionCodes = new Set(Array.from(divisionLeagueIdToCode.values()));
+        const tierCodes = new Set(Array.from(sameTierTeamLeagueIdToCode.values()));
         const byeCodes = new Set<string>();
         for (const f of (byeFixtures || []) as any[]) {
           const home = (f.home_team_code || "").toString();
           const away = (f.away_team_code || "").toString();
-          if (away === "__BYE__" && home && home !== teamCode && divisionCodes.has(home)) byeCodes.add(home);
-          else if (home === "__BYE__" && away && away !== teamCode && divisionCodes.has(away)) byeCodes.add(away);
+          if (away === "__BYE__" && home && home !== teamCode && tierCodes.has(home)) byeCodes.add(home);
+          else if (home === "__BYE__" && away && away !== teamCode && tierCodes.has(away)) byeCodes.add(away);
           else if (f.status === "bye") {
-            if (home && home !== "__BYE__" && home !== teamCode && divisionCodes.has(home)) byeCodes.add(home);
-            if (away && away !== "__BYE__" && away !== teamCode && divisionCodes.has(away)) byeCodes.add(away);
+            if (home && home !== "__BYE__" && home !== teamCode && tierCodes.has(home)) byeCodes.add(home);
+            if (away && away !== "__BYE__" && away !== teamCode && tierCodes.has(away)) byeCodes.add(away);
           }
         }
-        for (const [id, code] of divisionLeagueIdToCode.entries()) {
+        for (const [id, code] of sameTierTeamLeagueIdToCode.entries()) {
           if (byeCodes.has(code)) byeLeagueIds.push(id);
         }
       }
 
-      // 4) Pull registrations:
-      //    - reserves of THIS exact team-league (is_reserve = true)
-      //    - squad players (is_reserve = false) of same-division teams that are on bye this week
-      const candidateLeagueIds = [...new Set([teamLeagueId, ...byeLeagueIds])];
+      // 7) Pull registrations:
+      //    - reserves rows for ANY same-tier reserves league
+      //    - squad rows (is_reserve = false) of same-tier teams that are on bye
+      const reserveLeagueIdSet = new Set(sameTierReserveLeagueIds);
+      const candidateLeagueIds = [...new Set([...sameTierReserveLeagueIds, ...byeLeagueIds])];
+      if (candidateLeagueIds.length === 0) return [];
       const { data: regs } = await (supabase as any)
         .from("member_league_registrations")
         .select("club_member_id, league_id, league_association_number, ssa_number, player_rank, is_reserve")
         .in("league_id", candidateLeagueIds);
 
       const filteredRegs = ((regs || []) as any[]).filter((r) => {
-        if (r.league_id === teamLeagueId) return r.is_reserve === true;
+        if (reserveLeagueIdSet.has(r.league_id)) return true; // include all reserve-league rows
         return r.is_reserve !== true; // bye-team squad players only
       });
 

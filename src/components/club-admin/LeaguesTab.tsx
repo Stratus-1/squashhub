@@ -1598,6 +1598,24 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Guard: a member must not appear in more than one TEAM (non-reserves) league.
+      const teamMemberCounts = new Map<string, string[]>(); // memberId → league names
+      for (const lg of leagues) {
+        if (!teamLeagueIds.has(lg.id)) continue;
+        for (const p of (leagueData[lg.id] || [])) {
+          const arr = teamMemberCounts.get(p.club_member_id) || [];
+          arr.push(lg.name);
+          teamMemberCounts.set(p.club_member_id, arr);
+        }
+      }
+      for (const [mid, names] of teamMemberCounts) {
+        if (names.length > 1) {
+          const mname = members.find(m => m.id === mid)?.name || "A player";
+          toast.error(`${mname} is on more than one team (${names.join(", ")}). Remove them from one before saving.`);
+          setSaving(false);
+          return;
+        }
+      }
       const changedLeagues = leagues.filter(l => isLeagueChanged(l.id));
       if (changedLeagues.length === 0) {
         toast.info("No changes to save");

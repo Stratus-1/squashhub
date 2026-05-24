@@ -1365,16 +1365,44 @@ export default function ClubAuth() {
                 </div>
                 <div>
                   <Label htmlFor="visitor-home-club">Home Club <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="visitor-home-club"
-                    type="text"
-                    placeholder="e.g. Pretoria Squash Club"
-                    value={visitorHomeClub}
-                    onChange={(e) => setVisitorHomeClub(e.target.value)}
-                    required
-                    maxLength={100}
-                  />
+                  <Select
+                    value={visitorHomeClubMode === "other" ? "__other__" : (visitorHomeClub || "")}
+                    onValueChange={(v) => {
+                      if (v === "__other__") {
+                        setVisitorHomeClubMode("other");
+                        setVisitorHomeClub("");
+                      } else {
+                        setVisitorHomeClubMode("picker");
+                        setVisitorHomeClub(v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="visitor-home-club">
+                      <SelectValue placeholder="Select your home club" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {(allClubsForVisitorPicker || []).map((c) => (
+                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                      ))}
+                      <SelectItem value="__other__">Other (type in)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {visitorHomeClubMode === "other" && (
+                    <Input
+                      className="mt-2"
+                      type="text"
+                      placeholder="Type your club name"
+                      value={visitorHomeClub}
+                      onChange={(e) => setVisitorHomeClub(e.target.value)}
+                      required
+                      maxLength={100}
+                    />
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Pick from the list to keep records consistent. Only use "Other" if your club isn't shown.
+                  </p>
                 </div>
+
                 <div>
                   <Label htmlFor="visitor-member-number">Member Number at Home Club</Label>
                   <Input

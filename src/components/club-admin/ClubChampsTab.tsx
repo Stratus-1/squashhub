@@ -246,7 +246,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       pairs.push({ id: crypto.randomUUID(), player1Id: a, player2Id: b });
     }
     setDoublesPairs(pairs);
-  }, [confirmedPairRegs, partnerMode, isDoubles]);
+  }, [confirmedPairRegs, partnerMode, matchType]);
 
   const { data: availableLeagues = [] } = useQuery({
     queryKey: ["club-leagues-for-tournament", clubId],

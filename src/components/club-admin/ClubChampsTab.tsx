@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
@@ -214,6 +214,39 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
+
+  // For partnerMode === "players": auto-load confirmed pairs from registrations
+  const { data: confirmedPairRegs = [] } = useQuery({
+    queryKey: ["champ-confirmed-pairs", editingChampId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("club_member_id, partner_member_id")
+        .eq("champ_id", editingChampId as string)
+        .eq("partner_confirmed", true)
+        .neq("status", "cancelled")
+        .not("partner_member_id", "is", null);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!editingChampId && partnerMode === "players" && matchType === "doubles" && showWizard,
+  });
+
+  useEffect(() => {
+    if (partnerMode !== "players" || matchType !== "doubles") return;
+    // Dedupe reciprocal rows: only keep one pair per unordered (a,b)
+    const seen = new Set<string>();
+    const pairs: DoublePair[] = [];
+    for (const r of confirmedPairRegs) {
+      const a = r.club_member_id;
+      const b = r.partner_member_id;
+      if (!a || !b) continue;
+      const key = [a, b].sort().join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pairs.push({ id: crypto.randomUUID(), player1Id: a, player2Id: b });
+    }
+    setDoublesPairs(pairs);
+  }, [confirmedPairRegs, partnerMode, matchType]);
 
   const { data: availableLeagues = [] } = useQuery({
     queryKey: ["club-leagues-for-tournament", clubId],
@@ -1398,7 +1431,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       )}
 
       {/* ── STEP: PLAYERS (Doubles — Pair Builder) ── */}
-      {step === "players" && isDoubles && (
+      {step === "players" && isDoubles && partnerMode === "admin" && (
         <Card>
           <CardHeader>
             <CardTitle>Form Doubles Pairs — {GENDER_LABELS[gender]}</CardTitle>
@@ -1442,6 +1475,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* ── STEP: PLAYERS (Doubles — Players Self-Pair) ── */}
+      {step === "players" && isDoubles && partnerMode === "players" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Registered Pairs — {GENDER_LABELS[gender]}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Players choose their own partners during registration. {doublesPairs.length} pair{doublesPairs.length !== 1 ? "s" : ""} confirmed so far.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {doublesPairs.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                No confirmed pairs yet. Pairs will appear here once players register and accept partner invites.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {doublesPairs.map((pair) => (
+                  <div key={pair.id} className="flex items-center gap-2 p-2 rounded bg-muted/50 border">
+                    <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium text-sm flex-1">{getPairLabel(pair)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Use the <strong>Registrations</strong> button on the tournament card to manually pair or override entries.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
 
       {/* ── STEP: GROUPS ── */}
       {step === "groups" && (

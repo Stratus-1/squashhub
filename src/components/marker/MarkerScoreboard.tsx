@@ -594,14 +594,6 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
             <Badge variant="secondary" className="text-xs bg-primary-foreground/15 text-primary-foreground">
               Games: {gamesA}
             </Badge>
-            {server === "a" && (
-              <Badge
-                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
-                onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
-              >
-                {serveSide}
-              </Badge>
-            )}
           </div>
         </button>
 

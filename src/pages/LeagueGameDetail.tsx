@@ -2519,6 +2519,7 @@ export default function LeagueGameDetail() {
           currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
           currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
           inUseCodes={buildInUseMap(swapTarget.side)}
+          isAdmin={isClubAdmin}
           onSelect={handleSwap}
           onClear={() => handleClearSlot(swapTarget.idx, swapTarget.side)}
         />

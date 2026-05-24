@@ -970,6 +970,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const canProceed = () => {
     switch (step) {
       case "category": return true;
+      case "registration":
+        if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) return false;
+        if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) return false;
+        return true;
       case "players":
         if (isDoubles) return doublesPairs.length >= 2;
         return selectedPlayerIds.size >= 3;

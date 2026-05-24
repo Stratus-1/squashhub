@@ -978,6 +978,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
     setPaymentRequired(champ.payment_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
+    setDescription(champ.description || "");
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")

@@ -1045,6 +1045,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     switch (step) {
       case "category": return true;
       case "registration":
+        if (!startDate || !endDate) return false;
+        if (new Date(endDate) < new Date(startDate)) return false;
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) return false;
         if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) return false;
         return true;
@@ -1309,6 +1311,19 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             )}
 
+            {/* Tournament dates */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Tournament starts</Label>
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Tournament ends</Label>
+                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">Shown to invitees so they know when the tournament will be played.</p>
+
             {/* Registration window */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -1320,6 +1335,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
               </div>
             </div>
+
 
             {/* Entry fee */}
             <div className="space-y-2">

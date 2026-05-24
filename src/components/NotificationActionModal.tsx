@@ -96,6 +96,7 @@ export function NotificationActionModal() {
               .select("*")
               .eq("read", false)
               .in("club_member_id", linkedMemberIds)
+              .or("data->>app_silent.is.null,data->>app_silent.eq.false")
               .order("created_at", { ascending: false })
               .limit(20)
           : Promise.resolve({ data: [], error: null }),
@@ -105,6 +106,7 @@ export function NotificationActionModal() {
           .eq("read", false)
           .eq("user_id", user.id)
           .is("club_member_id", null)
+          .or("data->>app_silent.is.null,data->>app_silent.eq.false")
           .order("created_at", { ascending: false })
           .limit(20),
       ]);

@@ -98,6 +98,23 @@ export function MyChampionships() {
     enabled: champIds.length > 0 && !!memberId,
   });
 
+  // Pending partner invites where this member is the proposed partner
+  const { data: partnerInvites = [], refetch: refetchInvites } = useQuery({
+    queryKey: ["my-champ-partner-invites", memberId, champIds],
+    queryFn: async () => {
+      if (!champIds.length || !memberId) return [];
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id, champ_id, club_member_id, partner_confirmed, status, inviter:club_member_id(id, name, profiles:user_id(name))")
+        .in("champ_id", champIds)
+        .eq("partner_member_id", memberId)
+        .eq("partner_confirmed", false)
+        .neq("status", "cancelled");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: champIds.length > 0 && !!memberId,
+  });
+
   const registeredChampIds = new Set(myRegs.filter(r => r.status !== "cancelled").map(r => r.champ_id));
 
   const now = new Date();
@@ -112,7 +129,20 @@ export function MyChampionships() {
     return true;
   });
 
-  if (!myEntries.length && openForRegistration.length === 0) return null;
+  const respondToPartnerInvite = async (regId: string, accept: boolean) => {
+    const payload = accept
+      ? { partner_confirmed: true }
+      : { partner_member_id: null, partner_confirmed: false };
+    const { error } = await fromExt("club_champs_registrations").update(payload).eq("id", regId);
+    if (error) {
+      const { toast } = await import("sonner");
+      toast.error(error.message);
+      return;
+    }
+    refetchInvites();
+  };
+
+  if (!myEntries.length && openForRegistration.length === 0 && partnerInvites.length === 0) return null;
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);

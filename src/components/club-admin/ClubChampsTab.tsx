@@ -204,6 +204,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // League pre-fill (internal or external/regional) — supports multiple leagues
   const [sourceLeagueIds, setSourceLeagueIds] = useState<Set<string>>(new Set());
 
+  // Registration & payment
+  const [registrationMode, setRegistrationMode] = useState<"open" | "invite">("open");
+  const [partnerMode, setPartnerMode] = useState<"admin" | "players">("admin");
+  const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
+  const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
+  const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
+  const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
+  const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
+
   const { data: availableLeagues = [] } = useQuery({
     queryKey: ["club-leagues-for-tournament", clubId],
     queryFn: async () => {

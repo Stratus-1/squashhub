@@ -1957,6 +1957,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </Button>
         )}
       </div>
+
+      {/* Invite preview dialog — shows in-app notification + email side by side */}
+      <InvitePreviewDialog
+        open={showInvitePreview}
+        onOpenChange={setShowInvitePreview}
+        tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
+        description={description}
+        methods={inviteMethods}
+        startDate={startDate}
+        endDate={endDate}
+        entryFeeRand={entryFeeRand}
+      />
     </div>
   );
 }

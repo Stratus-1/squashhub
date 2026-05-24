@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock } fro
 import { format, eachDayOfInterval, getDay } from "date-fns";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useHasPermission } from "@/hooks/use-club-permissions";
+import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +59,15 @@ export default function ClubChampsView() {
   });
 
   const isDoubles = champ?.match_type === "doubles";
+
+  const { data: clubInfo } = useQuery({
+    queryKey: ["club-payment-gateway", champ?.club_id],
+    queryFn: async () => {
+      const { data } = await fromExt("clubs").select("payment_gateway").eq("id", champ!.club_id).maybeSingle();
+      return data as { payment_gateway: string | null } | null;
+    },
+    enabled: !!champ?.club_id,
+  });
 
   const getPlayerName = (player: any) => player?.name || player?.profiles?.name || "Unknown";
 

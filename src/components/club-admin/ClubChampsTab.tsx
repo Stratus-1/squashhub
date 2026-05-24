@@ -319,7 +319,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const isDoubles = matchType === "doubles";
 
   const goToStep = (s: WizardStep) => {
-    if (s === "players" && step === "category") {
+    if (s === "players" && (step === "category" || step === "registration")) {
       // Don't override if league pre-fill already set the player list
       if (!isDoubles && !hasLeagueSelection) {
         const memberIds = genderMembers.map((m) => m.id);

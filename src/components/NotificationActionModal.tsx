@@ -136,7 +136,7 @@ export function NotificationActionModal() {
           // User is returning — refetch and show modal
           setDismissed(false);
           setCurrentIndex(0);
-          queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal", user.id] });
+          queryClient.invalidateQueries({ queryKey: ["unread-notifications-modal"] });
         }
       }
     };

@@ -856,6 +856,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
     setSourceLeagueIds(new Set());
+    setRegistrationMode("open");
+    setPartnerMode("admin");
+    setRegistrationOpensAt("");
+    setRegistrationClosesAt("");
+    setEntryFeeRand("0");
+    setPaymentMethods(new Set(["card"]));
+    setPaymentRequired(true);
     setEditingChampId(null);
   };
 

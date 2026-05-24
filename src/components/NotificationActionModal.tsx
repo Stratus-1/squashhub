@@ -276,6 +276,9 @@ export function NotificationActionModal() {
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2 pt-1">
+              {isTournamentInviteNotification(current) && (
+                <TournamentInviteActions notification={current} compact onResolved={advanceOrClose} />
+              )}
               {current.type === "league_availability" && current.data?.week_start_date && current.data?.club_member_id && (
                 <div className="flex gap-2">
                   <Button
@@ -311,7 +314,7 @@ export function NotificationActionModal() {
                   </Button>
                 </div>
               )}
-              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && (
+              {current.url && !current.url.startsWith("/notifications") && current.type !== "league_availability" && !isTournamentInviteNotification(current) && (
                 <Button className="w-full" onClick={handleAction}>
                   <ExternalLink className="w-4 h-4 mr-2" />
                   {getActionLabel(current.type)}

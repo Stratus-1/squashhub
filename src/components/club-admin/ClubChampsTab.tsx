@@ -1223,6 +1223,109 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
+      {/* ── STEP: REGISTRATION & PAYMENT ── */}
+      {step === "registration" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Registration &amp; Payment</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Decide how members enter this tournament and whether they must pay to qualify.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Registration mode */}
+            <div className="space-y-2">
+              <Label className="text-sm">Who can register?</Label>
+              <Select value={registrationMode} onValueChange={(v) => setRegistrationMode(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open — any eligible club member</SelectItem>
+                  <SelectItem value="invite">Invite-only — admin shortlists members</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Partner mode — doubles only */}
+            {isDoubles && (
+              <div className="space-y-2">
+                <Label className="text-sm">Partner selection</Label>
+                <Select value={partnerMode} onValueChange={(v) => setPartnerMode(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin pairs all players</SelectItem>
+                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Registration window */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Registration opens</Label>
+                <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-sm">Registration closes</Label>
+                <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Entry fee */}
+            <div className="space-y-2">
+              <Label className="text-sm">Entry fee (ZAR)</Label>
+              <Input
+                type="number" min={0} step="1" inputMode="decimal"
+                value={entryFeeRand}
+                onChange={(e) => setEntryFeeRand(e.target.value)}
+                placeholder="0 = free"
+              />
+              <p className="text-xs text-muted-foreground">Set 0 for a free tournament.</p>
+            </div>
+
+            {/* Payment methods */}
+            {Number(entryFeeRand) > 0 && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm">Accepted payment methods</Label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={paymentMethods.has("card")}
+                        onCheckedChange={(c) => {
+                          const next = new Set(paymentMethods);
+                          c ? next.add("card") : next.delete("card");
+                          setPaymentMethods(next);
+                        }}
+                      />
+                      Card (online)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={paymentMethods.has("eft")}
+                        onCheckedChange={(c) => {
+                          const next = new Set(paymentMethods);
+                          c ? next.add("eft") : next.delete("eft");
+                          setPaymentMethods(next);
+                        }}
+                      />
+                      EFT (admin marks paid)
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Switch id="payment-required" checked={paymentRequired} onCheckedChange={setPaymentRequired} />
+                  <Label htmlFor="payment-required" className="text-sm">
+                    Player must pay before they qualify to play
+                  </Label>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── STEP: PLAYERS (Singles) ── */}
       {step === "players" && !isDoubles && (
         <Card>

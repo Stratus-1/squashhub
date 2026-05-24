@@ -325,7 +325,23 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     return list;
   }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
 
-  const stepIdx = STEPS.indexOf(step);
+  const isDoubles = matchType === "doubles";
+  const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationMode === "invite";
+  const awaitingPlayerPairs = isDoubles && partnerMode === "players" && doublesPairs.length === 0;
+  const activeSteps = useMemo<WizardStep[]>(() => {
+    if (!awaitingPlayerPairs) return STEPS;
+    return selfPairInviteSelection
+      ? ["category", "registration", "players", "schedule", "review"]
+      : ["category", "registration", "schedule", "review"];
+  }, [awaitingPlayerPairs, selfPairInviteSelection]);
+  const stepIdx = activeSteps.indexOf(step);
+
+  useEffect(() => {
+    if (activeSteps.includes(step)) return;
+    const currentOrder = STEPS.indexOf(step);
+    const nextStep = activeSteps.find((s) => STEPS.indexOf(s) >= currentOrder) || activeSteps[activeSteps.length - 1];
+    setStep(nextStep);
+  }, [activeSteps, step]);
 
   // Filter members by gender
   const genderMembers = useMemo(() => {
@@ -349,9 +365,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       .filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(m.gender.toLowerCase()))
       .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members]);
-
-  // Entities for scheduling = players (singles) or pair IDs (doubles)
-  const isDoubles = matchType === "doubles";
 
   const goToStep = (s: WizardStep) => {
     if (s === "players" && (step === "category" || step === "registration")) {
@@ -623,7 +636,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Create/update champ
   const createChamp = useMutation({
     mutationFn: async () => {
-      if (!schedulePreview) throw new Error("No schedule generated");
+      if (!schedulePreview && !awaitingPlayerPairs) throw new Error("No schedule generated");
 
       let champId: string;
       const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
@@ -707,6 +720,28 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (champErr) throw champErr;
         champId = champ.id;
       }
+
+      if (awaitingPlayerPairs) {
+        if (registrationMode === "invite") {
+          const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
+          const registrations = Array.from(selectedPlayerIds)
+            .filter((id) => !id.startsWith("visitor-"))
+            .map((memberId) => ({
+              champ_id: champId,
+              club_member_id: memberId,
+              status: fee > 0 && paymentRequired ? "pending_payment" : "paid",
+              invited_by_admin: true,
+              fee_paid_cents: 0,
+            }));
+          if (registrations.length > 0) {
+            const { error: regErr } = await fromExt("club_champs_registrations").upsert(registrations, { onConflict: "champ_id,club_member_id" });
+            if (regErr) throw regErr;
+          }
+        }
+        return { id: champId };
+      }
+
+      if (!schedulePreview) throw new Error("No schedule generated");
 
       // Create entries
       if (isDoubles) {
@@ -829,7 +864,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return { id: champId };
     },
     onSuccess: () => {
-      toast.success(editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
+      toast.success(awaitingPlayerPairs ? "Tournament saved — players can now register and choose partners." : editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       qc.invalidateQueries({ queryKey: ["club-champ-entries"] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
@@ -1014,11 +1049,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (registrationOpensAt && registrationClosesAt && new Date(registrationClosesAt) <= new Date(registrationOpensAt)) return false;
         return true;
       case "players":
+        if (selfPairInviteSelection) return selectedPlayerIds.size >= 2;
         if (isDoubles) return doublesPairs.length >= 2;
         return selectedPlayerIds.size >= 3;
       case "groups":
         return numGroups >= 1 && numGroups <= Math.floor(entityCount / 2);
       case "schedule":
+        if (awaitingPlayerPairs) return startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0;
         return startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
       case "review": return true;
       default: return false;
@@ -1119,7 +1156,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     <div className="space-y-4">
       {/* Step indicator */}
       <div className="flex items-center gap-1 text-sm overflow-x-auto">
-        {STEPS.map((s, i) => (
+          {activeSteps.map((s, i) => (
           <div key={s} className="flex items-center">
             {i > 0 && <ChevronRight className="w-3 h-3 mx-1 text-muted-foreground shrink-0" />}
             <span className={`whitespace-nowrap px-2 py-1 rounded ${s === step ? "bg-primary text-primary-foreground font-medium" : i < stepIdx ? "text-primary" : "text-muted-foreground"}`}>
@@ -1339,12 +1376,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         </Card>
       )}
 
-      {/* ── STEP: PLAYERS (Singles) ── */}
-      {step === "players" && !isDoubles && (
+      {/* ── STEP: PLAYERS / INVITES ── */}
+      {step === "players" && (!isDoubles || selfPairInviteSelection) && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Select Players — {GENDER_LABELS[gender]}</CardTitle>
+              <CardTitle>{selfPairInviteSelection ? "Invite Members" : "Select Players"} — {GENDER_LABELS[gender]}</CardTitle>
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
@@ -1362,6 +1399,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               {selectedPlayerIds.size} of {allSelectablePlayers.length} selected
               {visitorAsMembers.length > 0 && ` (incl. ${visitorAsMembers.filter((v: any) => selectedPlayerIds.has(v.id)).length} visitors)`}
             </p>
+            {selfPairInviteSelection && (
+              <p className="text-xs text-muted-foreground">
+                Selected members will receive the tournament invite. They register/pay first, then choose their own partners.
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             {allSelectablePlayers.length === 0 ? (
@@ -1438,7 +1480,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       )}
 
       {/* ── STEP: PLAYERS (Doubles — Players Self-Pair) ── */}
-      {step === "players" && isDoubles && partnerMode === "players" && (
+      {step === "players" && isDoubles && partnerMode === "players" && !selfPairInviteSelection && (
         <Card>
           <CardHeader>
             <CardTitle>Registered Pairs — {GENDER_LABELS[gender]}</CardTitle>
@@ -1740,7 +1782,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <div className="text-sm space-y-2">
               <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
               <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoubles ? "Doubles" : "Singles"}</p>
-              <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {entityCount} in {numGroups} group{numGroups > 1 ? "s" : ""}</p>
+          <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationMode === "invite" ? selectedPlayerIds.size : "Open"} registrations before scheduling` : `${entityCount} in ${numGroups} group${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
               <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
               <p><strong>Time:</strong> {startTime} – {endTime} ({matchDuration} min per match)</p>
@@ -1751,7 +1793,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
             <Separator />
 
-            {schedulePreview && (
+            {awaitingPlayerPairs && (
+              <p className="text-sm text-muted-foreground rounded-lg border p-3">
+                Save this tournament now. Once players have registered and confirmed partners, reopen it to generate groups and fixtures.
+              </p>
+            )}
+
+            {!awaitingPlayerPairs && schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {Array.from({ length: numGroups }, (_, gi) => {
                   const groupMatches = schedulePreview.allMatches.filter((m) => m.groupNum === gi + 1);
@@ -1781,16 +1829,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       {/* Navigation */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => stepIdx === 0 ? setShowWizard(false) : setStep(STEPS[stepIdx - 1])}>
+        <Button variant="outline" onClick={() => stepIdx === 0 ? setShowWizard(false) : setStep(activeSteps[stepIdx - 1])}>
           <ChevronLeft className="w-4 h-4 mr-1" /> {stepIdx === 0 ? "Cancel" : "Back"}
         </Button>
         {step === "review" ? (
           <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
             {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-            {editingChampId ? "Regenerate Matches" : "Generate Matches"}
+            {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Regenerate Matches" : "Generate Matches"}
           </Button>
         ) : (
-          <Button onClick={() => goToStep(STEPS[stepIdx + 1])} disabled={!canProceed()}>
+          <Button onClick={() => goToStep(activeSteps[stepIdx + 1])} disabled={!canProceed()}>
             Next <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         )}

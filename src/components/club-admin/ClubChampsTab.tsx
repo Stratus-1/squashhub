@@ -1456,7 +1456,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 onChange={(e) => setDescription(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Appears inside the in-app notification and the email invitation sent to invited members. Saving the tournament does NOT automatically re-notify — use "Re-send invites" above.
+                Appears inside the in-app notification and the email invitation. Creating or saving the tournament does NOT auto-notify — use "Send / Re-send invites" above.
               </p>
             </div>
 

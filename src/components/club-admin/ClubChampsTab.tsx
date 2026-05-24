@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
+import { Users as UsersIcon } from "lucide-react";
 
 interface ClubChampsTabProps {
   clubId: string;

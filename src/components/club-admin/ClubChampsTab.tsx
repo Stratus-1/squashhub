@@ -871,18 +871,74 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       return { id: champId };
     },
-    onSuccess: () => {
+    onSuccess: async (data: any) => {
       toast.success(awaitingPlayerPairs ? "Tournament saved — players can now register and choose partners." : editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       qc.invalidateQueries({ queryKey: ["club-champ-entries"] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
+
+      // For newly-created invite-mode tournaments, prompt admin to send invites now
+      const isNewInvite = !editingChampId && awaitingPlayerPairs && registrationMode === "invite";
+      const inviteeCount = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-")).length;
+      if (isNewInvite && inviteeCount > 0 && data?.id) {
+        if (confirm(`Tournament created with ${inviteeCount} invitee${inviteeCount === 1 ? "" : "s"}.\n\nSend invite notification/email now? (You can also send later from the edit dialog.)`)) {
+          await sendChampInvites(data.id);
+        }
+      }
+
       setShowWizard(false);
       resetWizard();
     },
     onError: (err: any) => toast.error(err.message || "Failed to create tournament"),
   });
+
+  // Shared helper: send invite notifications (and flag rows as invited) for a champ.
+  // Used by both the post-create prompt and the "Send / Re-send invites" button.
+  async function sendChampInvites(champId: string, opts?: { confirm?: boolean }) {
+    try {
+      if (opts?.confirm && !confirm("Send invite notification/email to all invited members now?")) return;
+      const { data: regs, error: regErr } = await fromExt("club_champs_registrations")
+        .select("id, club_member_id")
+        .eq("champ_id", champId);
+      if (regErr) throw regErr;
+      const rows = (regs || []).filter((r: any) => r.club_member_id);
+      if (rows.length === 0) {
+        toast.info("No invitees to notify.");
+        return;
+      }
+      const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
+      const sendApp = methods.includes("app");
+      const sendEmail = methods.includes("email");
+      const msg = `You have been invited to ${champName || "a tournament"}.` +
+        (description.trim() ? `\n\n${description.trim()}` : "");
+      const notifRows = rows.map((r: any) => ({
+        club_member_id: r.club_member_id,
+        title: "Tournament invitation",
+        message: msg,
+        type: "tournament_invite",
+        url: `/club-champs/${champId}`,
+        data: {
+          champ_id: champId,
+          send_email: sendEmail,
+          app_silent: !sendApp,
+          description: description.trim() || null,
+        },
+        read: !sendApp,
+      }));
+      const { error: insErr } = await fromExt("notifications").insert(notifRows);
+      if (insErr) throw insErr;
+      // Flag rows as invited so the badge appears + re-sends remain idempotent
+      await fromExt("club_champs_registrations")
+        .update({ invited_by_admin: true })
+        .in("id", rows.map((r: any) => r.id));
+      toast.success(`Sent invites to ${rows.length} member${rows.length === 1 ? "" : "s"}.`);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send invites");
+    }
+  }
+
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);

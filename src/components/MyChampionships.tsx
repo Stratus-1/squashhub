@@ -161,6 +161,25 @@ export function MyChampionships() {
         </Button>
       </div>
 
+      {partnerInvites.map((inv: any) => {
+        const champ = (allChamps as any[]).find((c) => c.id === inv.champ_id);
+        const inviterName = inv.inviter?.name || inv.inviter?.profiles?.name || "A member";
+        return (
+          <Card key={`inv-${inv.id}`} className="p-3 mb-2 border-amber-500/40 bg-amber-500/5">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5" /> Doubles partner invite
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {inviterName} invited you to partner in <span className="font-medium text-foreground">{champ?.name || "a tournament"}</span>.
+            </p>
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" className="h-7 text-xs" onClick={() => respondToPartnerInvite(inv.id, true)}>Accept</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => respondToPartnerInvite(inv.id, false)}>Decline</Button>
+            </div>
+          </Card>
+        );
+      })}
+
       {openForRegistration.map((c: any) => (
         <TournamentRegisterCard
           key={`reg-${c.id}`}

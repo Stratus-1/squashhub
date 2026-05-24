@@ -83,7 +83,36 @@ export function MyChampionships() {
     enabled: myChampIds.length > 0 && !!memberId,
   });
 
-  if (!myEntries.length) return null;
+  // My registrations across active champs (to filter what to offer)
+  const { data: myRegs = [] } = useQuery({
+    queryKey: ["my-champ-registrations", memberId, champIds],
+    queryFn: async () => {
+      if (!champIds.length || !memberId) return [];
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("champ_id, status")
+        .in("champ_id", champIds)
+        .eq("club_member_id", memberId);
+      if (error) throw error;
+      return (data || []) as Array<{ champ_id: string; status: string }>;
+    },
+    enabled: champIds.length > 0 && !!memberId,
+  });
+
+  const registeredChampIds = new Set(myRegs.filter(r => r.status !== "cancelled").map(r => r.champ_id));
+
+  const now = new Date();
+  const openForRegistration = (allChamps as any[]).filter((c) => {
+    if (registeredChampIds.has(c.id)) return false;
+    if (c.entries_locked) return false;
+    if (c.registration_mode !== "open") return false;
+    const opens = c.registration_opens_at ? new Date(c.registration_opens_at) : null;
+    const closes = c.registration_closes_at ? new Date(c.registration_closes_at) : null;
+    if (opens && now < opens) return false;
+    if (closes && now > closes) return false;
+    return true;
+  });
+
+  if (!myEntries.length && openForRegistration.length === 0) return null;
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);

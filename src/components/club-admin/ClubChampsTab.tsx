@@ -228,7 +228,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!editingChampId && partnerMode === "players" && isDoubles && showWizard,
+    enabled: !!editingChampId && partnerMode === "players" && matchType === "doubles" && showWizard,
   });
 
   useEffect(() => {

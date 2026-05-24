@@ -977,7 +977,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       .select("*")
       .eq("champ_id", champ.id);
 
-    if (entries) {
+    // Also load admin-invited registrations so invite-mode tournaments
+    // (where entries haven't been locked yet) still show their invitees.
+    const { data: registrations } = await fromExt("club_champs_registrations")
+      .select("club_member_id, partner_member_id, status")
+      .eq("champ_id", champ.id);
+
+    const hasEntries = entries && entries.length > 0;
+
+    if (hasEntries) {
       if (champ.match_type === "doubles") {
         const pairs: DoublePair[] = entries.map((e: any) => ({
           id: crypto.randomUUID(),
@@ -997,6 +1005,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
         setGroupAssignments(assignments);
       }
+    } else if (registrations && registrations.length > 0) {
+      if (champ.match_type === "doubles") {
+        const paired = registrations.filter((r: any) => r.partner_member_id);
+        const pairs: DoublePair[] = paired.map((r: any) => ({
+          id: crypto.randomUUID(),
+          player1Id: r.club_member_id,
+          player2Id: r.partner_member_id,
+        }));
+        setDoublesPairs(pairs);
+        // Invited members still waiting for a partner — keep them visible
+        // so the admin can re-invite or pair them.
+        const unpaired = registrations.filter((r: any) => !r.partner_member_id).map((r: any) => r.club_member_id);
+        setSelectedPlayerIds(new Set(unpaired));
+      } else {
+        setSelectedPlayerIds(new Set(registrations.map((r: any) => r.club_member_id)));
+      }
     }
 
     const { data: champMatches } = await fromExt("club_champs_matches")
@@ -1007,7 +1031,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       setSelectedCourtIds(courtIds);
     }
 
-    setStep("players");
+    // Open the wizard at step 1 so admin can review/edit every step.
+    setStep("category");
     setShowWizard(true);
   };
 

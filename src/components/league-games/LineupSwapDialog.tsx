@@ -14,6 +14,7 @@ export interface SwapCandidate {
   code: string;       // NSF / SSA / club number
   rank?: number;      // player_rank
   squad: boolean;     // true = registered for this exact team-league
+  reserve?: boolean;  // true = registered in another same-prefix league
   inUse?: { side: "home" | "away"; position: number } | null;
 }
 
@@ -27,13 +28,15 @@ interface Props {
   currentCode: string;
   /** Codes already assigned in this fixture, so we can mark "in use" */
   inUseCodes: Map<string, { side: "home" | "away"; position: number }>;
+  /** If true (club admin), allow selecting any club member; if false (captain), reserves only */
+  isAdmin?: boolean;
   onSelect: (c: SwapCandidate) => void;
   onClear?: () => void;
 }
 
 export function LineupSwapDialog({
   open, onOpenChange, teamCode, side, position,
-  currentName, currentCode, inUseCodes, onSelect, onClear,
+  currentName, currentCode, inUseCodes, isAdmin = false, onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
 

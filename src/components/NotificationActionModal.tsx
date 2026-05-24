@@ -146,11 +146,6 @@ export function NotificationActionModal() {
     },
   });
 
-  const nonPersistentNotifications = useMemo(
-    () => notifications.filter((n) => !isTournamentInviteNotification(n)),
-    [notifications],
-  );
-
   const respondAvailability = useMutation({
     mutationFn: async ({
       notificationId,
@@ -180,6 +175,7 @@ export function NotificationActionModal() {
   });
 
   const notifications = unreadNotifications || [];
+  const nonPersistentNotifications = notifications.filter((n) => !isTournamentInviteNotification(n));
   const current = notifications[currentIndex] || null;
   const total = notifications.length;
   const isLast = currentIndex >= total - 1;

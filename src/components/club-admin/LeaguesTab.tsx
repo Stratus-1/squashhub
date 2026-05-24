@@ -1499,31 +1499,62 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         setDragFromPool(null);
         return;
       }
-      // Move between leagues (auto-swap when target slot is occupied — promotes a
-      // reserve into a team and demotes the displaced player into reserves).
-      setLeagueData(prev => {
-        const fromItems = [...(prev[from.leagueId] || [])];
-        const toItems = [...(prev[to.leagueId] || [])];
-        const dragged = fromItems.splice(from.idx, 1)[0];
-        // If dropping onto an occupied slot in a non-reserves league, swap that
-        // player back to the source (reserves) league.
-        const targetIsReserves = isReservesLeague(to.leagueId);
-        const sourceIsReserves = isReservesLeague(from.leagueId);
-        const occupant = toItems[to.idx];
-        if (occupant && sourceIsReserves && !targetIsReserves) {
-          // Promote dragged into team slot; demote occupant into reserves.
-          toItems[to.idx] = { ...dragged, league_id: to.leagueId, is_captain: occupant.is_captain };
-          fromItems.splice(from.idx, 0, { ...occupant, league_id: from.leagueId, is_captain: false });
+      const targetIsReserves = isReservesLeague(to.leagueId);
+      const sourceIsReserves = isReservesLeague(from.leagueId);
+      const draggedSnapshot = (leagueData[from.leagueId] || [])[from.idx];
+
+      // Team → Reserves: COPY (player stays on the team, also appears in reserves)
+      if (!sourceIsReserves && targetIsReserves && draggedSnapshot) {
+        // Don't add a duplicate if already in this reserves list
+        if ((leagueData[to.leagueId] || []).some(p => p.club_member_id === draggedSnapshot.club_member_id)) {
+          toast.info("Already in this reserves list.");
         } else {
-          dragged.league_id = to.leagueId;
-          toItems.splice(to.idx, 0, dragged);
+          setLeagueData(prev => {
+            const toItems = [...(prev[to.leagueId] || [])];
+            toItems.splice(to.idx, 0, {
+              ...draggedSnapshot,
+              id: `copy-${Date.now()}-${draggedSnapshot.club_member_id}`,
+              league_id: to.leagueId,
+              is_captain: false,
+            });
+            return { ...prev, [to.leagueId]: toItems.map((p, i) => ({ ...p, player_rank: i + 1 })) };
+          });
         }
-        return {
-          ...prev,
-          [from.leagueId]: fromItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
-          [to.leagueId]: toItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
-        };
-      });
+      } else {
+        // Team → Team guard: block placing a member into a second team league.
+        if (!sourceIsReserves && !targetIsReserves && draggedSnapshot) {
+          const existsInTarget = (leagueData[to.leagueId] || []).some(
+            p => p.club_member_id === draggedSnapshot.club_member_id,
+          );
+          if (existsInTarget) {
+            toast.info("Already in this league.");
+            dragItem.current = null;
+            dragOverItem.current = null;
+            setDragFromPool(null);
+            return;
+          }
+        }
+        // Existing move (incl. reserve→team promote/demote swap)
+        setLeagueData(prev => {
+          const fromItems = [...(prev[from.leagueId] || [])];
+          const toItems = [...(prev[to.leagueId] || [])];
+          const dragged = fromItems.splice(from.idx, 1)[0];
+          const occupant = toItems[to.idx];
+          if (occupant && sourceIsReserves && !targetIsReserves) {
+            // Promote dragged into team slot; demote occupant into reserves.
+            toItems[to.idx] = { ...dragged, league_id: to.leagueId, is_captain: occupant.is_captain };
+            fromItems.splice(from.idx, 0, { ...occupant, league_id: from.leagueId, is_captain: false });
+          } else {
+            dragged.league_id = to.leagueId;
+            toItems.splice(to.idx, 0, dragged);
+          }
+          return {
+            ...prev,
+            [from.leagueId]: fromItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
+            [to.leagueId]: toItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
+          };
+        });
+      }
     }
 
     dragItem.current = null;

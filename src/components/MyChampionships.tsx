@@ -27,12 +27,22 @@ export function MyChampionships() {
     queryKey: ["club-champs-active", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
-        .select("id, name, gender, match_type, status, start_date, end_date")
+        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode")
         .eq("club_id", clubId!)
         .neq("status", "completed")
         .order("start_date");
       if (error) throw error;
       return data || [];
+    },
+    enabled: !!clubId,
+  });
+
+  // Club payment gateway for member-side card checkout
+  const { data: clubInfo } = useQuery({
+    queryKey: ["club-payment-gateway", clubId],
+    queryFn: async () => {
+      const { data } = await fromExt("clubs").select("payment_gateway").eq("id", clubId!).maybeSingle();
+      return data as { payment_gateway: string | null } | null;
     },
     enabled: !!clubId,
   });

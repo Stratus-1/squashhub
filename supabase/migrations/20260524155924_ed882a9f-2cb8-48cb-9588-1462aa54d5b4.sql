@@ -1,0 +1,1 @@
+ALTER TABLE public.club_members ADD COLUMN IF NOT EXISTS home_club_name text;

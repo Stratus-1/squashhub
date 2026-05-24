@@ -1968,6 +1968,7 @@ export type Database = {
           fee_category_id: string | null
           gender: string | null
           home_club_id: string | null
+          home_club_name: string | null
           id: string
           id_number: string | null
           is_league_only_membership: boolean
@@ -1995,6 +1996,7 @@ export type Database = {
           fee_category_id?: string | null
           gender?: string | null
           home_club_id?: string | null
+          home_club_name?: string | null
           id?: string
           id_number?: string | null
           is_league_only_membership?: boolean
@@ -2022,6 +2024,7 @@ export type Database = {
           fee_category_id?: string | null
           gender?: string | null
           home_club_id?: string | null
+          home_club_name?: string | null
           id?: string
           id_number?: string | null
           is_league_only_membership?: boolean

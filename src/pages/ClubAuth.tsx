@@ -74,6 +74,7 @@ export default function ClubAuth() {
   const [visitorLastName, setVisitorLastName] = useState("");
   const [visitorPhone, setVisitorPhone] = useState("");
   const [visitorHomeClub, setVisitorHomeClub] = useState("");
+  const [visitorHomeClubMode, setVisitorHomeClubMode] = useState<"picker" | "other">("picker");
   const [visitorMemberNumber, setVisitorMemberNumber] = useState("");
   const [visitorEmail, setVisitorEmail] = useState("");
   const [visitorCategory, setVisitorCategory] = useState("Men");
@@ -147,6 +148,21 @@ export default function ClubAuth() {
     },
     staleTime: 60_000,
   });
+
+  // All known clubs (for visitor home-club picker — prevents duplicate typed variants)
+  const { data: allClubsForVisitorPicker } = useQuery({
+    queryKey: ["all-clubs-visitor-picker"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("clubs")
+        .select("id, name, tenant_type")
+        .neq("tenant_type", "association")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string }>;
+    },
+    staleTime: 5 * 60_000,
+  });
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -697,7 +713,7 @@ export default function ClubAuth() {
             <p className="text-sm text-muted-foreground">
               You've been registered as a visitor at <span className="font-medium text-foreground">{clubName}</span>. The club admin can now select you for tournaments and league matches.
             </p>
-            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorMemberNumber(""); setVisitorCategory("Men"); }}>
+            <Button variant="outline" className="w-full" onClick={() => { setVisitorDone(false); setVisitorFirstName(""); setVisitorLastName(""); setVisitorPhone(""); setVisitorEmail(""); setVisitorHomeClub(""); setVisitorHomeClubMode("picker"); setVisitorMemberNumber(""); setVisitorCategory("Men"); }}>
               Register Another Visitor
             </Button>
           </Card>
@@ -1349,16 +1365,44 @@ export default function ClubAuth() {
                 </div>
                 <div>
                   <Label htmlFor="visitor-home-club">Home Club <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="visitor-home-club"
-                    type="text"
-                    placeholder="e.g. Pretoria Squash Club"
-                    value={visitorHomeClub}
-                    onChange={(e) => setVisitorHomeClub(e.target.value)}
-                    required
-                    maxLength={100}
-                  />
+                  <Select
+                    value={visitorHomeClubMode === "other" ? "__other__" : (visitorHomeClub || "")}
+                    onValueChange={(v) => {
+                      if (v === "__other__") {
+                        setVisitorHomeClubMode("other");
+                        setVisitorHomeClub("");
+                      } else {
+                        setVisitorHomeClubMode("picker");
+                        setVisitorHomeClub(v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="visitor-home-club">
+                      <SelectValue placeholder="Select your home club" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {(allClubsForVisitorPicker || []).map((c) => (
+                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                      ))}
+                      <SelectItem value="__other__">Other (type in)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {visitorHomeClubMode === "other" && (
+                    <Input
+                      className="mt-2"
+                      type="text"
+                      placeholder="Type your club name"
+                      value={visitorHomeClub}
+                      onChange={(e) => setVisitorHomeClub(e.target.value)}
+                      required
+                      maxLength={100}
+                    />
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Pick from the list to keep records consistent. Only use "Other" if your club isn't shown.
+                  </p>
                 </div>
+
                 <div>
                   <Label htmlFor="visitor-member-number">Member Number at Home Club</Label>
                   <Input

@@ -211,8 +211,8 @@ export function LineupSwapDialog({
       const regInfo = new Map<string, Info>();
       for (const r of filteredRegs) {
         const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
-        const isReserve = r.league_id === teamLeagueId;
-        const byeFrom = !isReserve ? divisionLeagueIdToCode.get(r.league_id) : undefined;
+        const isReserve = reserveLeagueIdSet.has(r.league_id);
+        const byeFrom = !isReserve ? sameTierTeamLeagueIdToCode.get(r.league_id) : undefined;
         const existing = regInfo.get(r.club_member_id);
         if (existing) {
           if (isReserve) existing.reserve = true;

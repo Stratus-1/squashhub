@@ -1065,6 +1065,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {registrationsChamp && (
+          <TournamentRegistrationsDialog
+            open={!!registrationsChamp}
+            onOpenChange={(v) => !v && setRegistrationsChamp(null)}
+            champ={registrationsChamp}
+            clubId={clubId}
+          />
+        )}
       </div>
     );
   }

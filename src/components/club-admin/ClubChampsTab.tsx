@@ -946,6 +946,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(["card"]));
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
+    setDescription("");
     setEditingChampId(null);
   };
 

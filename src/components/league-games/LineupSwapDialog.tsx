@@ -14,6 +14,7 @@ export interface SwapCandidate {
   code: string;       // NSF / SSA / club number
   rank?: number;      // player_rank
   squad: boolean;     // true = registered for this exact team-league
+  reserve?: boolean;  // true = registered in another same-prefix league
   inUse?: { side: "home" | "away"; position: number } | null;
 }
 
@@ -27,18 +28,20 @@ interface Props {
   currentCode: string;
   /** Codes already assigned in this fixture, so we can mark "in use" */
   inUseCodes: Map<string, { side: "home" | "away"; position: number }>;
+  /** If true (club admin), allow selecting any club member; if false (captain), reserves only */
+  isAdmin?: boolean;
   onSelect: (c: SwapCandidate) => void;
   onClear?: () => void;
 }
 
 export function LineupSwapDialog({
   open, onOpenChange, teamCode, side, position,
-  currentName, currentCode, inUseCodes, onSelect, onClear,
+  currentName, currentCode, inUseCodes, isAdmin = false, onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
 
   const { data: candidates, isLoading } = useQuery({
-    queryKey: ["lineup-swap-candidates", teamCode],
+    queryKey: ["lineup-swap-candidates", teamCode, isAdmin],
     queryFn: async (): Promise<SwapCandidate[]> => {
       if (!teamCode) return [];
 
@@ -69,38 +72,68 @@ export function LineupSwapDialog({
         .select("club_member_id, league_id, league_association_number, ssa_number, player_rank")
         .in("league_id", sameClubSamePrefixIds.length > 0 ? sameClubSamePrefixIds : [teamLeagueId]);
 
-      const memberIds = [...new Set(((regs || []) as any[]).map((r) => r.club_member_id))];
-      if (memberIds.length === 0) return [];
+      const regMemberIds = [...new Set(((regs || []) as any[]).map((r) => r.club_member_id))];
 
-      const { data: members } = await supabase
-        .from("club_members")
-        .select("id, name, club_member_number")
-        .in("id", memberIds);
-      const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
+      // 4) Admin gets every club member; captain gets only registered ones
+      let memberRows: any[] = [];
+      if (isAdmin) {
+        const { data: allMembers } = await supabase
+          .from("club_members")
+          .select("id, name, club_member_number")
+          .eq("club_id", clubId);
+        memberRows = allMembers || [];
+      } else if (regMemberIds.length > 0) {
+        const { data: members } = await supabase
+          .from("club_members")
+          .select("id, name, club_member_number")
+          .in("id", regMemberIds);
+        memberRows = members || [];
+      }
+      const memberMap = new Map(memberRows.map((m: any) => [m.id, m]));
 
-      // Build one entry per member; squad = registered specifically for this team-league
-      const seen = new Map<string, SwapCandidate>();
+      // Aggregate registration info per member
+      const regInfo = new Map<string, { squad: boolean; reserve: boolean; code: string; rank?: number }>();
       for (const r of (regs || []) as any[]) {
-        const m = memberMap.get(r.club_member_id) as any;
-        if (!m) continue;
-        const code = (r.league_association_number || r.ssa_number || m.club_member_number || "").toString().toUpperCase();
+        const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
         const isSquad = r.league_id === teamLeagueId;
-        const existing = seen.get(r.club_member_id);
+        const existing = regInfo.get(r.club_member_id);
         if (existing) {
           if (isSquad) existing.squad = true;
+          else existing.reserve = true;
           if (!existing.code && code) existing.code = code;
           if ((r.player_rank || 99) < (existing.rank ?? 99)) existing.rank = r.player_rank;
         } else {
-          seen.set(r.club_member_id, {
-            memberId: r.club_member_id,
-            name: m.name || "Unknown",
+          regInfo.set(r.club_member_id, {
+            squad: isSquad,
+            reserve: !isSquad,
             code,
             rank: r.player_rank,
-            squad: isSquad,
           });
         }
       }
-      return [...seen.values()];
+
+      const out: SwapCandidate[] = [];
+      const sourceIds = isAdmin ? memberRows.map((m) => m.id) : regMemberIds;
+      for (const id of sourceIds) {
+        const m = memberMap.get(id);
+        if (!m) continue;
+        const info = regInfo.get(id);
+        const code = (info?.code || m.club_member_number || "").toString().toUpperCase();
+        out.push({
+          memberId: id,
+          name: m.name || "Unknown",
+          code,
+          rank: info?.rank,
+          squad: !!info?.squad,
+          reserve: !!info?.reserve,
+        });
+      }
+
+      // Captains: only reserves (not squad of this exact team-league, and must be registered in a reserve league)
+      if (!isAdmin) {
+        return out.filter((c) => c.reserve && !c.squad);
+      }
+      return out;
     },
     enabled: open && !!teamCode,
     staleTime: 60_000,
@@ -156,7 +189,7 @@ export function LineupSwapDialog({
             </div>
           ) : filtered.length === 0 ? (
             <p className="text-xs text-center text-muted-foreground py-6">
-              No registered players found for this team's club.
+              {isAdmin ? "No club members found." : "No reserve players registered for this team."}
             </p>
           ) : (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">
@@ -180,8 +213,10 @@ export function LineupSwapDialog({
                         <span className="font-medium truncate">{c.name}</span>
                         {c.squad ? (
                           <Badge variant="secondary" className="text-[9px] px-1 py-0">Squad</Badge>
-                        ) : (
+                        ) : c.reserve ? (
                           <Badge variant="outline" className="text-[9px] px-1 py-0">Reserve</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0">Member</Badge>
                         )}
                         {c.rank != null && (
                           <span className="text-[10px] text-muted-foreground">#{c.rank}</span>

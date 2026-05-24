@@ -401,10 +401,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }));
   }, [filteredVisitors]);
 
-  // Combined list of members + visitors for player selection
+  // Combined list of members + visitors for admin player selection.
+  // Admins can shortlist any club member (gender filter is only used for self-registration
+  // eligibility and league-pre-fill — not for the manual invite list).
   const allSelectablePlayers = useMemo(() => {
-    return [...genderMembers, ...visitorAsMembers] as any[];
-  }, [genderMembers, visitorAsMembers]);
+    const sortedMembers = [...members].sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
+    return [...sortedMembers, ...visitorAsMembers] as any[];
+  }, [members, visitorAsMembers]);
 
   const selectedPlayers = useMemo(
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),

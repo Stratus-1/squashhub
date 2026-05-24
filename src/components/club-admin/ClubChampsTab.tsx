@@ -214,6 +214,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
+  const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
 
   // For partnerMode === "players": auto-load confirmed pairs from registrations
   const { data: confirmedPairRegs = [] } = useQuery({
@@ -684,6 +685,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
           })
           .eq("id", editingChampId);
         if (updateErr) throw updateErr;
@@ -714,6 +716,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
           })
           .select()
           .single();
@@ -937,6 +940,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEntryFeeRand("0");
     setPaymentMethods(new Set(["card"]));
     setPaymentRequired(true);
+    setInviteMethods(new Set(["app"]));
     setEditingChampId(null);
   };
 
@@ -967,6 +971,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
     setPaymentRequired(champ.payment_required !== false);
+    setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
@@ -1296,6 +1301,41 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Invite methods */}
+            <div className="space-y-2">
+              <Label className="text-sm">Invite delivery method</Label>
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={inviteMethods.has("app")}
+                    onCheckedChange={(c) => {
+                      const next = new Set(inviteMethods);
+                      c ? next.add("app") : next.delete("app");
+                      if (next.size === 0) next.add("app");
+                      setInviteMethods(next);
+                    }}
+                  />
+                  In-app notification
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={inviteMethods.has("email")}
+                    onCheckedChange={(c) => {
+                      const next = new Set(inviteMethods);
+                      c ? next.add("email") : next.delete("email");
+                      if (next.size === 0) next.add("app");
+                      setInviteMethods(next);
+                    }}
+                  />
+                  Email
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Choose how invited members are notified. Pick both for maximum reach.
+              </p>
+            </div>
+
 
             {/* Partner mode — doubles only */}
             {isDoubles && (

@@ -832,6 +832,7 @@ export type Database = {
           entry_fee_cents: number
           gender: string
           id: string
+          invite_methods: string[]
           match_duration_minutes: number
           match_type: string
           name: string
@@ -862,6 +863,7 @@ export type Database = {
           entry_fee_cents?: number
           gender: string
           id?: string
+          invite_methods?: string[]
           match_duration_minutes?: number
           match_type?: string
           name: string
@@ -892,6 +894,7 @@ export type Database = {
           entry_fee_cents?: number
           gender?: string
           id?: string
+          invite_methods?: string[]
           match_duration_minutes?: number
           match_type?: string
           name?: string

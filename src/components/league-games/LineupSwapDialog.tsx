@@ -14,7 +14,8 @@ export interface SwapCandidate {
   code: string;       // NSF / SSA / club number
   rank?: number;      // player_rank
   squad: boolean;     // true = registered for this exact team-league
-  reserve?: boolean;  // true = registered in another same-prefix league
+  reserve?: boolean;  // true = registered in another same-prefix reserve league
+  byeFrom?: string;   // team code of a team on bye this week
   inUse?: { side: "home" | "away"; position: number } | null;
 }
 
@@ -28,24 +29,30 @@ interface Props {
   currentCode: string;
   /** Codes already assigned in this fixture, so we can mark "in use" */
   inUseCodes: Map<string, { side: "home" | "away"; position: number }>;
-  /** If true (club admin), allow selecting any club member; if false (captain), reserves only */
+  /** Optional: kept for backwards compatibility — both captain and admin see the same pool */
   isAdmin?: boolean;
+  /** Association the current fixture belongs to — used to find teams on bye this week */
+  associationId?: string | null;
+  /** Fixture date (YYYY-MM-DD) — used to locate same-week bye fixtures (± 3 days) */
+  fixtureDate?: string | null;
   onSelect: (c: SwapCandidate) => void;
   onClear?: () => void;
 }
 
 export function LineupSwapDialog({
   open, onOpenChange, teamCode, side, position,
-  currentName, currentCode, inUseCodes, isAdmin = false, onSelect, onClear,
+  currentName, currentCode, inUseCodes,
+  associationId, fixtureDate,
+  onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
 
   const { data: candidates, isLoading } = useQuery({
-    queryKey: ["lineup-swap-candidates", teamCode, isAdmin],
+    queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate],
     queryFn: async (): Promise<SwapCandidate[]> => {
       if (!teamCode) return [];
 
-      // 1) Find the league in our system that matches this team code
+      // 1) Resolve this team-league
       const { data: leagueRow } = await (supabase as any)
         .from("leagues")
         .select("id, code, club_id")
@@ -56,56 +63,94 @@ export function LineupSwapDialog({
       const clubId = leagueRow.club_id as string;
       const teamLeagueId = leagueRow.id as string;
 
-      // 2) Find every league in this club with the same alpha prefix (the reserve pool)
+      // 2) Same-prefix leagues in this club = reserves pool
       const prefix = (teamCode.match(/^([A-Za-z]+)/)?.[1] || "").toUpperCase();
       const { data: clubLeagues } = await (supabase as any)
         .from("leagues")
         .select("id, code")
         .eq("club_id", clubId);
-      const sameClubSamePrefixIds = ((clubLeagues || []) as any[])
-        .filter((l) => (l.code || "").toUpperCase().startsWith(prefix))
+      const reservePoolLeagueIds = ((clubLeagues || []) as any[])
+        .filter((l) => (l.code || "").toUpperCase().startsWith(prefix) && l.id !== teamLeagueId)
         .map((l) => l.id as string);
 
-      // 3) Pull all member registrations across that pool
+      // 3) Find teams on bye this week in the same association
+      const byeTeamCodes: string[] = [];
+      if (associationId && fixtureDate) {
+        const fx = new Date(fixtureDate);
+        const from = new Date(fx); from.setDate(from.getDate() - 3);
+        const to = new Date(fx); to.setDate(to.getDate() + 3);
+        const fmt = (d: Date) => d.toISOString().slice(0, 10);
+        const { data: byeFixtures } = await (supabase as any)
+          .from("platform_league_fixtures")
+          .select("home_team_code, away_team_code, status, fixture_date")
+          .eq("association_id", associationId)
+          .gte("fixture_date", fmt(from))
+          .lte("fixture_date", fmt(to));
+        for (const f of (byeFixtures || []) as any[]) {
+          const home = (f.home_team_code || "").toString();
+          const away = (f.away_team_code || "").toString();
+          if (away === "__BYE__" && home && home !== teamCode) byeTeamCodes.push(home);
+          else if (home === "__BYE__" && away && away !== teamCode) byeTeamCodes.push(away);
+          else if (f.status === "bye") {
+            if (home && home !== "__BYE__" && home !== teamCode) byeTeamCodes.push(home);
+            if (away && away !== "__BYE__" && away !== teamCode) byeTeamCodes.push(away);
+          }
+        }
+      }
+
+      // 4) Resolve bye team codes → league ids (any club)
+      let byeLeagueIds: string[] = [];
+      const byeLeagueIdToCode = new Map<string, string>();
+      if (byeTeamCodes.length > 0) {
+        const { data: byeLeagues } = await (supabase as any)
+          .from("leagues")
+          .select("id, code")
+          .in("code", [...new Set(byeTeamCodes)]);
+        for (const l of (byeLeagues || []) as any[]) {
+          byeLeagueIds.push(l.id);
+          byeLeagueIdToCode.set(l.id, l.code);
+        }
+      }
+
+      // 5) Pull registrations across reserves pool + bye-team leagues + this team (for squad flag)
+      const allLeagueIds = [...new Set([teamLeagueId, ...reservePoolLeagueIds, ...byeLeagueIds])];
       const { data: regs } = await (supabase as any)
         .from("member_league_registrations")
         .select("club_member_id, league_id, league_association_number, ssa_number, player_rank")
-        .in("league_id", sameClubSamePrefixIds.length > 0 ? sameClubSamePrefixIds : [teamLeagueId]);
+        .in("league_id", allLeagueIds);
 
       const regMemberIds = [...new Set(((regs || []) as any[]).map((r) => r.club_member_id))];
+      if (regMemberIds.length === 0) return [];
 
-      // 4) Admin gets every club member; captain gets only registered ones
-      let memberRows: any[] = [];
-      if (isAdmin) {
-        const { data: allMembers } = await supabase
-          .from("club_members")
-          .select("id, name, club_member_number")
-          .eq("club_id", clubId);
-        memberRows = allMembers || [];
-      } else if (regMemberIds.length > 0) {
-        const { data: members } = await supabase
-          .from("club_members")
-          .select("id, name, club_member_number")
-          .in("id", regMemberIds);
-        memberRows = members || [];
-      }
-      const memberMap = new Map(memberRows.map((m: any) => [m.id, m]));
+      const { data: members } = await supabase
+        .from("club_members")
+        .select("id, name, club_member_number")
+        .in("id", regMemberIds);
+      const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
 
-      // Aggregate registration info per member
-      const regInfo = new Map<string, { squad: boolean; reserve: boolean; code: string; rank?: number }>();
+      const reservePoolSet = new Set(reservePoolLeagueIds);
+      const byeLeagueSet = new Set(byeLeagueIds);
+
+      interface Info { squad: boolean; reserve: boolean; byeFrom?: string; code: string; rank?: number }
+      const regInfo = new Map<string, Info>();
       for (const r of (regs || []) as any[]) {
         const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
         const isSquad = r.league_id === teamLeagueId;
+        const isReserve = reservePoolSet.has(r.league_id);
+        const isBye = byeLeagueSet.has(r.league_id);
+        const byeFrom = isBye ? byeLeagueIdToCode.get(r.league_id) : undefined;
         const existing = regInfo.get(r.club_member_id);
         if (existing) {
           if (isSquad) existing.squad = true;
-          else existing.reserve = true;
+          if (isReserve) existing.reserve = true;
+          if (isBye && !existing.byeFrom) existing.byeFrom = byeFrom;
           if (!existing.code && code) existing.code = code;
           if ((r.player_rank || 99) < (existing.rank ?? 99)) existing.rank = r.player_rank;
         } else {
           regInfo.set(r.club_member_id, {
             squad: isSquad,
-            reserve: !isSquad,
+            reserve: isReserve,
+            byeFrom,
             code,
             rank: r.player_rank,
           });
@@ -113,27 +158,28 @@ export function LineupSwapDialog({
       }
 
       const out: SwapCandidate[] = [];
-      const sourceIds = isAdmin ? memberRows.map((m) => m.id) : regMemberIds;
-      for (const id of sourceIds) {
+      for (const id of regMemberIds) {
         const m = memberMap.get(id);
         if (!m) continue;
         const info = regInfo.get(id);
-        const code = (info?.code || m.club_member_number || "").toString().toUpperCase();
+        if (!info) continue;
+        // Only show reserves or bye-team players (exclude this team's squad members from the list,
+        // they're already on the lineup; current player is also excluded via the disabled flag).
+        if (!info.reserve && !info.byeFrom && !info.squad) continue;
+        const code = (info.code || m.club_member_number || "").toString().toUpperCase();
         out.push({
           memberId: id,
           name: m.name || "Unknown",
           code,
-          rank: info?.rank,
-          squad: !!info?.squad,
-          reserve: !!info?.reserve,
+          rank: info.rank,
+          squad: info.squad,
+          reserve: info.reserve,
+          byeFrom: info.byeFrom,
         });
       }
 
-      // Captains: only reserves (not squad of this exact team-league, and must be registered in a reserve league)
-      if (!isAdmin) {
-        return out.filter((c) => c.reserve && !c.squad);
-      }
-      return out;
+      // Keep only reserves and bye-team players (drop pure same-team squad rows)
+      return out.filter((c) => c.reserve || c.byeFrom);
     },
     enabled: open && !!teamCode,
     staleTime: 60_000,
@@ -148,9 +194,9 @@ export function LineupSwapDialog({
     const match = q
       ? list.filter((c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
       : list;
-    // Sort: squad first, then by rank, then name
+    // Sort: reserves first, then by rank, then name
     return match.sort((a, b) => {
-      if (a.squad !== b.squad) return a.squad ? -1 : 1;
+      if (!!a.reserve !== !!b.reserve) return a.reserve ? -1 : 1;
       const ra = a.rank ?? 99; const rb = b.rank ?? 99;
       if (ra !== rb) return ra - rb;
       return a.name.localeCompare(b.name);
@@ -168,6 +214,9 @@ export function LineupSwapDialog({
           <DialogDescription className="text-xs">
             Currently: <span className="font-medium text-foreground">{currentName || "—"}</span>
             {currentCode && <span className="text-muted-foreground"> ({currentCode})</span>}
+            <span className="block text-[10px] text-muted-foreground mt-1">
+              Reserves for this league and players from teams on a bye this week.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -189,7 +238,7 @@ export function LineupSwapDialog({
             </div>
           ) : filtered.length === 0 ? (
             <p className="text-xs text-center text-muted-foreground py-6">
-              {isAdmin ? "No club members found." : "No reserve players registered for this team."}
+              No reserves or bye-team players available for this team.
             </p>
           ) : (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">
@@ -211,13 +260,11 @@ export function LineupSwapDialog({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium truncate">{c.name}</span>
-                        {c.squad ? (
-                          <Badge variant="secondary" className="text-[9px] px-1 py-0">Squad</Badge>
-                        ) : c.reserve ? (
+                        {c.reserve ? (
                           <Badge variant="outline" className="text-[9px] px-1 py-0">Reserve</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0">Member</Badge>
-                        )}
+                        ) : c.byeFrom ? (
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0">Bye · {c.byeFrom}</Badge>
+                        ) : null}
                         {c.rank != null && (
                           <span className="text-[10px] text-muted-foreground">#{c.rank}</span>
                         )}

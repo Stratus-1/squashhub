@@ -1617,45 +1617,63 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         }
       }
       const changedLeagues = leagues.filter(l => isLeagueChanged(l.id));
+      console.log("[AllocateLeagues] save start", {
+        totalLeagues: leagues.length,
+        changedLeagues: changedLeagues.map(l => ({
+          id: l.id, name: l.name, code: l.code,
+          isReserves: /reserves?/i.test(l.name),
+          before: (initialLeagueData.current[l.id] || []).length,
+          after: (leagueData[l.id] || []).length,
+        })),
+      });
       if (changedLeagues.length === 0) {
         toast.info("No changes to save");
         setSaving(false);
         return;
       }
+      let totalRowsWritten = 0;
       for (const league of changedLeagues) {
-        // Only delete the rows we are about to replace — and only for leagues
-        // that actually changed in this session.
+        const targetIsReserves = /reserves?/i.test(league.name);
         const { error: delErr } = await fromExt("member_league_registrations").delete().eq("league_id", league.id);
-        if (delErr) throw delErr;
+        if (delErr) {
+          console.error(`[AllocateLeagues] delete failed for ${league.name}`, delErr);
+          throw new Error(`Delete failed for "${league.name}": ${delErr.message}`);
+        }
         const players = leagueData[league.id] || [];
-        // Dedupe by club_member_id — a member can only be registered once per league.
         const seen = new Set<string>();
         const uniquePlayers = players.filter(p => {
           if (!p.club_member_id || seen.has(p.club_member_id)) return false;
           seen.add(p.club_member_id);
           return true;
         });
-        const targetIsReserves = /reserves?/i.test(league.name);
         if (uniquePlayers.length > 0) {
-          const { error } = await fromExt("member_league_registrations").upsert(
-            uniquePlayers.map((p, i) => ({
-              club_member_id: p.club_member_id,
-              league_id: league.id,
-              player_rank: i + 1,
-              is_captain: targetIsReserves ? false : p.is_captain,
-              is_reserve: targetIsReserves,
-              reserve_order: targetIsReserves ? i + 1 : null,
-              league_association_number:
-                affiliationNumberByMember[p.club_member_id] ||
-                p.league_association_number ||
-                null,
-            })),
+          const payload = uniquePlayers.map((p, i) => ({
+            club_member_id: p.club_member_id,
+            league_id: league.id,
+            player_rank: i + 1,
+            is_captain: targetIsReserves ? false : p.is_captain,
+            is_reserve: targetIsReserves,
+            reserve_order: targetIsReserves ? i + 1 : null,
+            league_association_number:
+              affiliationNumberByMember[p.club_member_id] ||
+              p.league_association_number ||
+              null,
+          }));
+          const { data: written, error } = await fromExt("member_league_registrations").upsert(
+            payload,
             { onConflict: "club_member_id,league_id", ignoreDuplicates: false }
-          );
-          if (error) throw error;
+          ).select("id");
+          if (error) {
+            console.error(`[AllocateLeagues] upsert failed for ${league.name}`, { error, payload });
+            throw new Error(`Save failed for "${league.name}": ${error.message}${error.details ? ` — ${error.details}` : ""}`);
+          }
+          const wrote = (written || []).length;
+          totalRowsWritten += wrote;
+          console.log(`[AllocateLeagues] wrote ${wrote}/${payload.length} rows to ${league.name} (${league.code})`, written);
+          if (wrote !== payload.length) {
+            toast.warning(`"${league.name}": wrote ${wrote} of ${payload.length} rows. RLS may be silently dropping rows.`);
+          }
         }
-        // Keep leagues.captain_member_id in sync with the saved roster so a
-        // former captain can't keep haunting the league as a phantom player.
         if (!targetIsReserves) {
           const newCaptain = uniquePlayers.find(p => p.is_captain)?.club_member_id || null;
           await fromExt("leagues")
@@ -1663,6 +1681,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
             .eq("id", league.id);
         }
       }
+      console.log("[AllocateLeagues] save complete", { totalRowsWritten });
       // Refresh snapshot so a second Save in the same session is a no-op.
       initialLeagueData.current = Object.fromEntries(
         Object.entries(leagueData).map(([k, v]) => [k, v.map(p => ({ ...p }))])

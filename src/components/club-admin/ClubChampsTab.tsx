@@ -1368,6 +1368,32 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </p>
             </div>
 
+            {/* Tournament description / invite body */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm">Tournament details (shown in invites)</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowInvitePreview(true)}
+                >
+                  <Eye className="w-4 h-4 mr-1" /> Preview invite
+                </Button>
+              </div>
+              <Textarea
+                rows={5}
+                placeholder={`E.g.\nFormat: Round robin → top 2 to playoffs\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Appears inside the in-app notification and the email invitation sent to invited members.
+              </p>
+            </div>
+
+
+
 
             {/* Partner mode — doubles only */}
             {isDoubles && (

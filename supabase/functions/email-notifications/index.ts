@@ -434,13 +434,13 @@ Deno.serve(async (req) => {
       }
     } else {
       const safeTitle = escapeHtml(title);
-      const safeBody = escapeHtml(body);
+      const safeBody = escapeHtml(body).replace(/\r\n|\r|\n/g, "<br />");
       const safeLink = escapeHtml(link);
 
       html = `
-        <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.4; color:#0f172a">
+        <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
-          <p style="margin:0 0 14px 0; color:#334155">${safeBody}</p>
+          <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
           <p style="margin:0 0 18px 0">
             <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
               Open in SquashHub

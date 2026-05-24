@@ -447,7 +447,30 @@ export default function ClubChampsView() {
           </p>
         </div>
 
-        {myMemberId && myMatches.length > 0 ? (
+        {groupNumbers.length === 0 && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-lg">Registration pending</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                The tournament schedule will appear here once players have accepted and registrations are finalized.
+              </p>
+              {myMemberId ? (
+                <TournamentRegisterCard
+                  champ={champ}
+                  clubId={champ.club_id}
+                  memberId={myMemberId}
+                  paymentGateway={clubInfo?.payment_gateway || null}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">Please sign in with the invited member account to respond.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {groupNumbers.length > 0 && myMemberId && myMatches.length > 0 ? (
           <Tabs defaultValue="my-fixtures" className="space-y-4">
             <TabsList className="w-full">
               <TabsTrigger value="my-fixtures" className="flex-1 gap-1"><User className="w-3.5 h-3.5" /> My Fixtures</TabsTrigger>
@@ -540,9 +563,9 @@ export default function ClubChampsView() {
               {renderAllGroups()}
             </TabsContent>
           </Tabs>
-        ) : (
+        ) : groupNumbers.length > 0 ? (
           <div className="space-y-4">{renderAllGroups()}</div>
-        )}
+        ) : null}
       </div>
     </div>
   );

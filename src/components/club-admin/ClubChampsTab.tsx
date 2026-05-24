@@ -1302,6 +1302,41 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </Select>
             </div>
 
+            {/* Invite methods */}
+            <div className="space-y-2">
+              <Label className="text-sm">Invite delivery method</Label>
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={inviteMethods.has("app")}
+                    onCheckedChange={(c) => {
+                      const next = new Set(inviteMethods);
+                      c ? next.add("app") : next.delete("app");
+                      if (next.size === 0) next.add("app");
+                      setInviteMethods(next);
+                    }}
+                  />
+                  In-app notification
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={inviteMethods.has("email")}
+                    onCheckedChange={(c) => {
+                      const next = new Set(inviteMethods);
+                      c ? next.add("email") : next.delete("email");
+                      if (next.size === 0) next.add("app");
+                      setInviteMethods(next);
+                    }}
+                  />
+                  Email
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Choose how invited members are notified. Pick both for maximum reach.
+              </p>
+            </div>
+
+
             {/* Partner mode — doubles only */}
             {isDoubles && (
               <div className="space-y-2">

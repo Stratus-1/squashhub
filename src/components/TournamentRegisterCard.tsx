@@ -235,8 +235,10 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
             </p>
           ) : (
             <div className="flex items-center gap-2">
-              <Select value={partnerId} onValueChange={setPartnerId}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choose your partner" /></SelectTrigger>
+              <Select value={partnerId} onValueChange={setPartnerId} disabled={eligiblePartners.length === 0}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder={eligiblePartners.length === 0 ? "Waiting for partner to register…" : "Choose your partner"} />
+                </SelectTrigger>
                 <SelectContent>
                   {eligiblePartners.map((m: any) => (
                     <SelectItem key={m.id} value={m.id}>{getName(m)}</SelectItem>

@@ -131,6 +131,18 @@ export function MyChampionships() {
         </Button>
       </div>
 
+      {openForRegistration.map((c: any) => (
+        <TournamentRegisterCard
+          key={`reg-${c.id}`}
+          champ={c}
+          clubId={clubId!}
+          memberId={memberId!}
+          paymentGateway={clubInfo?.payment_gateway || null}
+        />
+      ))}
+
+
+
       {myEntries.map((entry: any) => {
         const champ = allChamps.find((c: any) => c.id === entry.champ_id);
         if (!champ) return null;

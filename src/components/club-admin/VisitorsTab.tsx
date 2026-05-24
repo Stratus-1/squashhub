@@ -5,7 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Loader2, Trash2, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface Visitor {
@@ -25,6 +27,9 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Visitor | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const { data: visitors = [], isLoading } = useQuery({
     queryKey: ["club-visitors", clubId],
@@ -35,7 +40,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         .order("created_at", { ascending: false });
       if (error) throw error;
       const { data: memberVisitors, error: memberError } = await fromExt("club_members")
-        .select("id, name, email, phone, club_member_number, gender, joined_at, profiles:user_id(email, phone)")
+        .select("id, name, email, phone, club_member_number, gender, joined_at, home_club_name, profiles:user_id(email, phone)")
         .eq("club_id", clubId)
         .eq("role", "visitor")
         .order("joined_at", { ascending: false });
@@ -51,7 +56,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           last_name: parts.slice(1).join(" "),
           email: m.email || m.profiles?.email || null,
           phone: m.phone || m.profiles?.phone || null,
-          home_club_name: "Club visitor",
+          home_club_name: m.home_club_name || "Club visitor",
           member_number: m.club_member_number || null,
           category: m.gender || "Men",
           created_at: m.joined_at,
@@ -91,6 +96,37 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       toast.error(e.message || "Failed to delete visitor");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const openEdit = (v: Visitor) => {
+    setEditing(v);
+    setEditValue(v.home_club_name && v.home_club_name !== "Club visitor" ? v.home_club_name : "");
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const value = editValue.trim();
+    setSaving(true);
+    try {
+      if (editing.source === "member_record") {
+        const { error } = await fromExt("club_members")
+          .update({ home_club_name: value || null })
+          .eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await fromExt("club_visitors")
+          .update({ home_club_name: value || "Visitor" })
+          .eq("id", editing.id);
+        if (error) throw error;
+      }
+      toast.success("Home club updated");
+      setEditing(null);
+      queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update home club");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -148,6 +184,15 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   </p>
                 )}
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                onClick={() => openEdit(v)}
+                title="Edit home club"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
               {v.source !== "member_record" && (
                 <Button
                   variant="ghost"
@@ -167,6 +212,37 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           ))}
         </div>
       )}
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit home club</DialogTitle>
+            <DialogDescription>
+              {editing ? `${editing.first_name} ${editing.last_name}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="home-club">Home club name</Label>
+            <Input
+              id="home-club"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              placeholder="e.g. White River Squash Club"
+              maxLength={100}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Leave blank to clear. This is shown next to the visitor's name.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

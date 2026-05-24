@@ -52,30 +52,39 @@ export function LineupSwapDialog({
     queryFn: async (): Promise<SwapCandidate[]> => {
       if (!teamCode) return [];
 
-      // 1) Resolve this team-league
+      // 1) Resolve this team-league (a "league" row represents one club's team in a division)
       const { data: leagueRow } = await (supabase as any)
         .from("leagues")
-        .select("id, code, club_id")
+        .select("id, name, association_id")
         .eq("code", teamCode)
         .maybeSingle();
-      if (!leagueRow?.club_id) return [];
+      if (!leagueRow?.id) return [];
 
-      const clubId = leagueRow.club_id as string;
       const teamLeagueId = leagueRow.id as string;
+      const divisionName = (leagueRow.name || "") as string;
+      const assocId = (leagueRow.association_id || associationId) as string | null;
 
-      // 2) Same-prefix leagues in this club = reserves pool
-      const prefix = (teamCode.match(/^([A-Za-z]+)/)?.[1] || "").toUpperCase();
-      const { data: clubLeagues } = await (supabase as any)
-        .from("leagues")
-        .select("id, code")
-        .eq("club_id", clubId);
-      const reservePoolLeagueIds = ((clubLeagues || []) as any[])
-        .filter((l) => (l.code || "").toUpperCase().startsWith(prefix) && l.id !== teamLeagueId)
-        .map((l) => l.id as string);
+      // 2) Same-division team-leagues across the association (excluding this team)
+      //    A "division" = same league name (e.g. "Men's 2nd League 2026") in the same association.
+      let sameDivisionLeagueIds: string[] = [];
+      const divisionLeagueIdToCode = new Map<string, string>();
+      if (assocId && divisionName) {
+        const { data: divLeagues } = await (supabase as any)
+          .from("leagues")
+          .select("id, code")
+          .eq("association_id", assocId)
+          .eq("name", divisionName);
+        for (const l of (divLeagues || []) as any[]) {
+          if (l.id !== teamLeagueId) {
+            sameDivisionLeagueIds.push(l.id);
+            divisionLeagueIdToCode.set(l.id, l.code);
+          }
+        }
+      }
 
-      // 3) Find teams on bye this week in the same association
-      const byeTeamCodes: string[] = [];
-      if (associationId && fixtureDate) {
+      // 3) Find teams on bye this week (in same division only)
+      const byeLeagueIds: string[] = [];
+      if (assocId && fixtureDate && sameDivisionLeagueIds.length > 0) {
         const fx = new Date(fixtureDate);
         const from = new Date(fx); from.setDate(from.getDate() - 3);
         const to = new Date(fx); to.setDate(to.getDate() + 3);
@@ -83,43 +92,41 @@ export function LineupSwapDialog({
         const { data: byeFixtures } = await (supabase as any)
           .from("platform_league_fixtures")
           .select("home_team_code, away_team_code, status, fixture_date")
-          .eq("association_id", associationId)
+          .eq("association_id", assocId)
           .gte("fixture_date", fmt(from))
           .lte("fixture_date", fmt(to));
+        const divisionCodes = new Set(Array.from(divisionLeagueIdToCode.values()));
+        const byeCodes = new Set<string>();
         for (const f of (byeFixtures || []) as any[]) {
           const home = (f.home_team_code || "").toString();
           const away = (f.away_team_code || "").toString();
-          if (away === "__BYE__" && home && home !== teamCode) byeTeamCodes.push(home);
-          else if (home === "__BYE__" && away && away !== teamCode) byeTeamCodes.push(away);
+          if (away === "__BYE__" && home && home !== teamCode && divisionCodes.has(home)) byeCodes.add(home);
+          else if (home === "__BYE__" && away && away !== teamCode && divisionCodes.has(away)) byeCodes.add(away);
           else if (f.status === "bye") {
-            if (home && home !== "__BYE__" && home !== teamCode) byeTeamCodes.push(home);
-            if (away && away !== "__BYE__" && away !== teamCode) byeTeamCodes.push(away);
+            if (home && home !== "__BYE__" && home !== teamCode && divisionCodes.has(home)) byeCodes.add(home);
+            if (away && away !== "__BYE__" && away !== teamCode && divisionCodes.has(away)) byeCodes.add(away);
           }
         }
-      }
-
-      // 4) Resolve bye team codes → league ids (any club)
-      let byeLeagueIds: string[] = [];
-      const byeLeagueIdToCode = new Map<string, string>();
-      if (byeTeamCodes.length > 0) {
-        const { data: byeLeagues } = await (supabase as any)
-          .from("leagues")
-          .select("id, code")
-          .in("code", [...new Set(byeTeamCodes)]);
-        for (const l of (byeLeagues || []) as any[]) {
-          byeLeagueIds.push(l.id);
-          byeLeagueIdToCode.set(l.id, l.code);
+        for (const [id, code] of divisionLeagueIdToCode.entries()) {
+          if (byeCodes.has(code)) byeLeagueIds.push(id);
         }
       }
 
-      // 5) Pull registrations across reserves pool + bye-team leagues + this team (for squad flag)
-      const allLeagueIds = [...new Set([teamLeagueId, ...reservePoolLeagueIds, ...byeLeagueIds])];
+      // 4) Pull registrations:
+      //    - reserves of THIS exact team-league (is_reserve = true)
+      //    - squad players (is_reserve = false) of same-division teams that are on bye this week
+      const candidateLeagueIds = [...new Set([teamLeagueId, ...byeLeagueIds])];
       const { data: regs } = await (supabase as any)
         .from("member_league_registrations")
-        .select("club_member_id, league_id, league_association_number, ssa_number, player_rank")
-        .in("league_id", allLeagueIds);
+        .select("club_member_id, league_id, league_association_number, ssa_number, player_rank, is_reserve")
+        .in("league_id", candidateLeagueIds);
 
-      const regMemberIds = [...new Set(((regs || []) as any[]).map((r) => r.club_member_id))];
+      const filteredRegs = ((regs || []) as any[]).filter((r) => {
+        if (r.league_id === teamLeagueId) return r.is_reserve === true;
+        return r.is_reserve !== true; // bye-team squad players only
+      });
+
+      const regMemberIds = [...new Set(filteredRegs.map((r) => r.club_member_id))];
       if (regMemberIds.length === 0) return [];
 
       const { data: members } = await supabase
@@ -128,58 +135,40 @@ export function LineupSwapDialog({
         .in("id", regMemberIds);
       const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
 
-      const reservePoolSet = new Set(reservePoolLeagueIds);
-      const byeLeagueSet = new Set(byeLeagueIds);
-
-      interface Info { squad: boolean; reserve: boolean; byeFrom?: string; code: string; rank?: number }
+      interface Info { reserve: boolean; byeFrom?: string; code: string; rank?: number }
       const regInfo = new Map<string, Info>();
-      for (const r of (regs || []) as any[]) {
+      for (const r of filteredRegs) {
         const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
-        const isSquad = r.league_id === teamLeagueId;
-        const isReserve = reservePoolSet.has(r.league_id);
-        const isBye = byeLeagueSet.has(r.league_id);
-        const byeFrom = isBye ? byeLeagueIdToCode.get(r.league_id) : undefined;
+        const isReserve = r.league_id === teamLeagueId;
+        const byeFrom = !isReserve ? divisionLeagueIdToCode.get(r.league_id) : undefined;
         const existing = regInfo.get(r.club_member_id);
         if (existing) {
-          if (isSquad) existing.squad = true;
           if (isReserve) existing.reserve = true;
-          if (isBye && !existing.byeFrom) existing.byeFrom = byeFrom;
+          if (byeFrom && !existing.byeFrom) existing.byeFrom = byeFrom;
           if (!existing.code && code) existing.code = code;
           if ((r.player_rank || 99) < (existing.rank ?? 99)) existing.rank = r.player_rank;
         } else {
-          regInfo.set(r.club_member_id, {
-            squad: isSquad,
-            reserve: isReserve,
-            byeFrom,
-            code,
-            rank: r.player_rank,
-          });
+          regInfo.set(r.club_member_id, { reserve: isReserve, byeFrom, code, rank: r.player_rank });
         }
       }
 
       const out: SwapCandidate[] = [];
       for (const id of regMemberIds) {
         const m = memberMap.get(id);
-        if (!m) continue;
         const info = regInfo.get(id);
-        if (!info) continue;
-        // Only show reserves or bye-team players (exclude this team's squad members from the list,
-        // they're already on the lineup; current player is also excluded via the disabled flag).
-        if (!info.reserve && !info.byeFrom && !info.squad) continue;
+        if (!m || !info) continue;
         const code = (info.code || m.club_member_number || "").toString().toUpperCase();
         out.push({
           memberId: id,
           name: m.name || "Unknown",
           code,
           rank: info.rank,
-          squad: info.squad,
+          squad: false,
           reserve: info.reserve,
           byeFrom: info.byeFrom,
         });
       }
-
-      // Keep only reserves and bye-team players (drop pure same-team squad rows)
-      return out.filter((c) => c.reserve || c.byeFrom);
+      return out;
     },
     enabled: open && !!teamCode,
     staleTime: 60_000,

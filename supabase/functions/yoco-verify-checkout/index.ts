@@ -76,20 +76,28 @@ Deno.serve(async (req) => {
       .eq("id", session.id);
 
     const amount = Number(session.amount);
-    const description = session.description || (session.purpose === "topup" ? "Wallet top-up (Yoco)" : "Fee payment (Yoco)");
+    const description =
+      session.description ||
+      (session.purpose === "topup"
+        ? "Wallet top-up (Yoco)"
+        : session.purpose === "tournament"
+        ? "Tournament entry fee (Yoco)"
+        : "Fee payment (Yoco)");
 
-    // Record member_credit_transactions
-    await admin.from("member_credit_transactions").insert({
-      club_id: session.club_id,
-      club_member_id: session.club_member_id,
-      amount,
-      type: "debit",
-      method: "card",
-      description: `${description} [Yoco]`,
-      reference: session.yoco_checkout_id,
-      status: "confirmed",
-      confirmed_at: new Date().toISOString(),
-    });
+    // Record member_credit_transactions (skip for tournament — entry fees are not member-credit ledger items)
+    if (session.purpose !== "tournament") {
+      await admin.from("member_credit_transactions").insert({
+        club_id: session.club_id,
+        club_member_id: session.club_member_id,
+        amount,
+        type: "debit",
+        method: "card",
+        description: `${description} [Yoco]`,
+        reference: session.yoco_checkout_id,
+        status: "confirmed",
+        confirmed_at: new Date().toISOString(),
+      });
+    }
 
     // For fee purpose, mark linked fees paid
     if (session.purpose === "fee" && Array.isArray(session.fee_ids) && session.fee_ids.length) {
@@ -130,6 +138,20 @@ Deno.serve(async (req) => {
         }
       }
     }
+
+    // For tournament purpose, mark the registration as paid
+    if (session.purpose === "tournament" && session.champ_registration_id) {
+      await admin
+        .from("club_champs_registrations")
+        .update({
+          status: "paid",
+          fee_paid_cents: Math.round(amount * 100),
+          payment_ref: session.yoco_checkout_id,
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", session.champ_registration_id);
+    }
+
 
     return json({ status: "completed", amount });
   } catch (e: any) {

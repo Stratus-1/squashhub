@@ -2048,3 +2048,113 @@ function PairBuilder({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────
+// Invite preview — shows what the in-app notification and the
+// email invitation will look like before the tournament is saved.
+// ─────────────────────────────────────────────────────────────
+function InvitePreviewDialog({
+  open,
+  onOpenChange,
+  tournamentName,
+  description,
+  methods,
+  startDate,
+  endDate,
+  entryFeeRand,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tournamentName: string;
+  description: string;
+  methods: Set<"app" | "email">;
+  startDate: string;
+  endDate: string;
+  entryFeeRand: string;
+}) {
+  const fee = Number(entryFeeRand) || 0;
+  const dateLine =
+    startDate && endDate
+      ? startDate === endDate
+        ? `Date: ${startDate}`
+        : `Dates: ${startDate} → ${endDate}`
+      : null;
+  const feeLine = fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free";
+
+  const appBody =
+    `You have been invited to ${tournamentName}.` +
+    (description?.trim() ? `\n\n${description.trim()}` : "");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Invite preview</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            How invited members will see this tournament. Delivery: {Array.from(methods).join(" + ") || "app"}.
+          </p>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* In-app notification preview */}
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <Trophy className="w-3.5 h-3.5" /> In-app notification
+            </div>
+            <div className="rounded-md border bg-background p-3">
+              <p className="text-sm font-semibold">Tournament invitation</p>
+              <p className="text-sm whitespace-pre-wrap text-muted-foreground mt-1">{appBody}</p>
+              <div className="flex gap-2 mt-3">
+                <span className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground">Register</span>
+                <span className="text-xs px-2 py-1 rounded border">Decline</span>
+              </div>
+            </div>
+            {!methods.has("app") && (
+              <p className="text-[11px] text-muted-foreground italic">
+                Not sent in-app — email only is selected.
+              </p>
+            )}
+          </div>
+
+          {/* Email preview */}
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <CalendarIcon className="w-3.5 h-3.5" /> Email invitation
+            </div>
+            <div className="rounded-md border bg-background p-3 text-sm space-y-2">
+              <p className="text-xs text-muted-foreground">Subject</p>
+              <p className="font-semibold">You're invited: {tournamentName}</p>
+              <Separator />
+              <p>Hi there,</p>
+              <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
+              {(dateLine || feeLine) && (
+                <ul className="text-xs text-muted-foreground list-disc pl-5">
+                  {dateLine && <li>{dateLine}</li>}
+                  <li>{feeLine}</li>
+                </ul>
+              )}
+              {description?.trim() && (
+                <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
+                  {description.trim()}
+                </div>
+              )}
+              <p>Tap the button below to register or decline.</p>
+              <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
+                Open invitation
+              </span>
+            </div>
+            {!methods.has("email") && (
+              <p className="text-[11px] text-muted-foreground italic">
+                Not sent by email — in-app only is selected.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

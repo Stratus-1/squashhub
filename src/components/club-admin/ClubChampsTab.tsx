@@ -336,6 +336,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [awaitingPlayerPairs, selfPairInviteSelection]);
   const stepIdx = activeSteps.indexOf(step);
 
+  useEffect(() => {
+    if (activeSteps.includes(step)) return;
+    const currentOrder = STEPS.indexOf(step);
+    const nextStep = activeSteps.find((s) => STEPS.indexOf(s) >= currentOrder) || activeSteps[activeSteps.length - 1];
+    setStep(nextStep);
+  }, [activeSteps, step]);
+
   // Filter members by gender
   const genderMembers = useMemo(() => {
     if (gender === "mixed") {

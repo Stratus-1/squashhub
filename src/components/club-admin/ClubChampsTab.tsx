@@ -685,6 +685,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
           })
           .eq("id", editingChampId);
         if (updateErr) throw updateErr;

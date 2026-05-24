@@ -10,6 +10,7 @@ import { Trophy, ChevronRight, Calendar } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 

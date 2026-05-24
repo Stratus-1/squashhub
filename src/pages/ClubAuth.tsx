@@ -148,6 +148,21 @@ export default function ClubAuth() {
     staleTime: 60_000,
   });
 
+  // All known clubs (for visitor home-club picker — prevents duplicate typed variants)
+  const { data: allClubsForVisitorPicker } = useQuery({
+    queryKey: ["all-clubs-visitor-picker"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("clubs")
+        .select("id, name, tenant_type")
+        .neq("tenant_type", "association")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string }>;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

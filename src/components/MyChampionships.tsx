@@ -98,6 +98,23 @@ export function MyChampionships() {
     enabled: champIds.length > 0 && !!memberId,
   });
 
+  // Pending partner invites where this member is the proposed partner
+  const { data: partnerInvites = [], refetch: refetchInvites } = useQuery({
+    queryKey: ["my-champ-partner-invites", memberId, champIds],
+    queryFn: async () => {
+      if (!champIds.length || !memberId) return [];
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id, champ_id, club_member_id, partner_confirmed, status, inviter:club_member_id(id, name, profiles:user_id(name))")
+        .in("champ_id", champIds)
+        .eq("partner_member_id", memberId)
+        .eq("partner_confirmed", false)
+        .neq("status", "cancelled");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: champIds.length > 0 && !!memberId,
+  });
+
   const registeredChampIds = new Set(myRegs.filter(r => r.status !== "cancelled").map(r => r.champ_id));
 
   const now = new Date();
@@ -112,7 +129,20 @@ export function MyChampionships() {
     return true;
   });
 
-  if (!myEntries.length && openForRegistration.length === 0) return null;
+  const respondToPartnerInvite = async (regId: string, accept: boolean) => {
+    const payload = accept
+      ? { partner_confirmed: true }
+      : { partner_member_id: null, partner_confirmed: false };
+    const { error } = await fromExt("club_champs_registrations").update(payload).eq("id", regId);
+    if (error) {
+      const { toast } = await import("sonner");
+      toast.error(error.message);
+      return;
+    }
+    refetchInvites();
+  };
+
+  if (!myEntries.length && openForRegistration.length === 0 && partnerInvites.length === 0) return null;
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => b ? `${getName(a)} & ${getName(b)}` : getName(a);
@@ -130,6 +160,25 @@ export function MyChampionships() {
           View all <ChevronRight className="w-3 h-3 ml-1" />
         </Button>
       </div>
+
+      {partnerInvites.map((inv: any) => {
+        const champ = (allChamps as any[]).find((c) => c.id === inv.champ_id);
+        const inviterName = inv.inviter?.name || inv.inviter?.profiles?.name || "A member";
+        return (
+          <Card key={`inv-${inv.id}`} className="p-3 mb-2 border-amber-500/40 bg-amber-500/5">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5" /> Doubles partner invite
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {inviterName} invited you to partner in <span className="font-medium text-foreground">{champ?.name || "a tournament"}</span>.
+            </p>
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" className="h-7 text-xs" onClick={() => respondToPartnerInvite(inv.id, true)}>Accept</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => respondToPartnerInvite(inv.id, false)}>Decline</Button>
+            </div>
+          </Card>
+        );
+      })}
 
       {openForRegistration.map((c: any) => (
         <TournamentRegisterCard

@@ -1398,7 +1398,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       )}
 
       {/* ── STEP: PLAYERS (Doubles — Pair Builder) ── */}
-      {step === "players" && isDoubles && (
+      {step === "players" && isDoubles && partnerMode === "admin" && (
         <Card>
           <CardHeader>
             <CardTitle>Form Doubles Pairs — {GENDER_LABELS[gender]}</CardTitle>
@@ -1442,6 +1442,38 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* ── STEP: PLAYERS (Doubles — Players Self-Pair) ── */}
+      {step === "players" && isDoubles && partnerMode === "players" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Registered Pairs — {GENDER_LABELS[gender]}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Players choose their own partners during registration. {doublesPairs.length} pair{doublesPairs.length !== 1 ? "s" : ""} confirmed so far.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {doublesPairs.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                No confirmed pairs yet. Pairs will appear here once players register and accept partner invites.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {doublesPairs.map((pair) => (
+                  <div key={pair.id} className="flex items-center gap-2 p-2 rounded bg-muted/50 border">
+                    <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium text-sm flex-1">{getPairLabel(pair)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Use the <strong>Registrations</strong> button on the tournament card to manually pair or override entries.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
 
       {/* ── STEP: GROUPS ── */}
       {step === "groups" && (

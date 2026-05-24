@@ -656,6 +656,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
+            registration_mode: registrationMode,
+            partner_mode: partnerMode,
+            registration_opens_at: registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
+            registration_closes_at: registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+            entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
+            payment_methods: Array.from(paymentMethods),
+            payment_required: paymentRequired,
           })
           .select()
           .single();

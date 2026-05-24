@@ -189,7 +189,7 @@ export function LineupSwapDialog({
             </div>
           ) : filtered.length === 0 ? (
             <p className="text-xs text-center text-muted-foreground py-6">
-              No registered players found for this team's club.
+              {isAdmin ? "No club members found." : "No reserve players registered for this team."}
             </p>
           ) : (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">

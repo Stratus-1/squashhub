@@ -1434,49 +1434,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={async () => {
-                        if (!editingChampId) return;
-                        if (!confirm("Re-send invite notification/email to all currently invited members? Use this after editing tournament details.")) return;
-                        try {
-                          const { data: regs, error: regErr } = await fromExt("club_champs_registrations")
-                            .select("club_member_id")
-                            .eq("champ_id", editingChampId)
-                            .eq("invited_by_admin", true);
-                          if (regErr) throw regErr;
-                          const memberIds = (regs || []).map((r: any) => r.club_member_id).filter(Boolean);
-                          if (memberIds.length === 0) {
-                            toast.info("No invited members to notify.");
-                            return;
-                          }
-                          const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
-                          const sendApp = methods.includes("app");
-                          const sendEmail = methods.includes("email");
-                          const msg = `Tournament details have been updated for ${champName || "this tournament"}.` +
-                            (description.trim() ? `\n\n${description.trim()}` : "");
-                          const rows = memberIds.map((mid: string) => ({
-                            club_member_id: mid,
-                            title: "Tournament updated",
-                            message: msg,
-                            type: "tournament_invite",
-                            url: `/club-champs/${editingChampId}`,
-                            data: {
-                              champ_id: editingChampId,
-                              send_email: sendEmail,
-                              app_silent: !sendApp,
-                              description: description.trim() || null,
-                              resend: true,
-                            },
-                            read: !sendApp,
-                          }));
-                          const { error: insErr } = await fromExt("notifications").insert(rows);
-                          if (insErr) throw insErr;
-                          toast.success(`Re-sent invites to ${memberIds.length} member${memberIds.length === 1 ? "" : "s"}.`);
-                        } catch (e: any) {
-                          toast.error(e?.message || "Failed to re-send invites");
-                        }
-                      }}
+                      onClick={() => sendChampInvites(editingChampId, { confirm: true })}
                     >
-                      Re-send invites
+                      Send / Re-send invites
                     </Button>
                   )}
                   <Button

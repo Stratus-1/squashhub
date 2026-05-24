@@ -181,6 +181,48 @@ export default function Tournaments() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
+                    <Trophy className="w-4 h-4" /> Upcoming Tournaments
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {champs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No upcoming tournaments.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {champs.map((champ: any) => {
+                        const isDoubles = champ.match_type === "doubles";
+                        const closesAt = champ.registration_closes_at ? new Date(champ.registration_closes_at) : null;
+                        const opensAt = champ.registration_opens_at ? new Date(champ.registration_opens_at) : null;
+                        const now = new Date();
+                        const regOpen = (!opensAt || now >= opensAt) && (!closesAt || now <= closesAt) && !champ.entries_locked;
+                        return (
+                          <button
+                            key={champ.id}
+                            onClick={() => navigate(`/club-champs/${champ.id}`)}
+                            className="w-full flex items-center justify-between gap-2 p-2 rounded bg-muted/50 hover:bg-muted text-left"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{champ.name}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {GENDER_LABELS[champ.gender] || champ.gender} {isDoubles ? "Doubles" : "Singles"} · {champ.start_date} to {champ.end_date}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {regOpen && <Badge variant="default" className="text-[10px]">Open</Badge>}
+                              <Badge variant="secondary" className="text-[10px]">{champ.status}</Badge>
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
                     <Calendar className="w-4 h-4" /> All Upcoming Tournament Games
                   </CardTitle>
                 </CardHeader>

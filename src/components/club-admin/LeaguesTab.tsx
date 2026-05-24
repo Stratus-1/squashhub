@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, RefreshCw, Pencil, Check, Loader2, CalendarDays } from "lucide-react";
+import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, RefreshCw, Pencil, Check, Loader2, CalendarDays, Search } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1041,6 +1041,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const dragItem = useRef<{ leagueId: string; idx: number } | null>(null);
   const dragOverItem = useRef<{ leagueId: string; idx: number } | null>(null);
   const [dragFromPool, setDragFromPool] = useState<string | null>(null);
+  const [poolSearch, setPoolSearch] = useState("");
 
   // The association these leagues belong to (all leagues passed in share the same association in practice).
   const associationId = leagues.find(l => l.association_id)?.association_id || null;
@@ -1239,9 +1240,34 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     })();
   }, [open, leagues.length, gender, members]);
 
-  // Get all assigned member IDs across all leagues
-  const assignedMemberIds = Object.values(leagueData).flat().map(p => p.club_member_id);
-  const unassignedMembers = genderMembers.filter(m => !assignedMemberIds.includes(m.id));
+  // Helpers — distinguish team (non-reserves) vs reserves leagues so a member
+  // can sit in one team AND in any number of reserves lists without the pool
+  // hiding them.
+  const isReservesLeagueByName = (name: string) => /reserves?/i.test(name);
+  const teamLeagueIds = useMemo(
+    () => new Set(leagues.filter(l => !isReservesLeagueByName(l.name)).map(l => l.id)),
+    [leagues],
+  );
+
+  /** League id where this member is currently in a team (non-reserves) slot, else null. */
+  const findTeamLeagueOfMember = (memberId: string): string | null => {
+    for (const lid of teamLeagueIds) {
+      if ((leagueData[lid] || []).some(p => p.club_member_id === memberId)) return lid;
+    }
+    return null;
+  };
+
+  // Pool = every eligible gender member. Each row shows whether they're already
+  // on a team (badge), so admin can still drag them into a reserves zone.
+  // Filter by search term.
+  const poolMembers = useMemo(() => {
+    const term = poolSearch.trim().toLowerCase();
+    if (!term) return genderMembers;
+    return genderMembers.filter(m => {
+      const n = (m.name || m.profiles?.name || "").toLowerCase();
+      return n.includes(term);
+    });
+  }, [genderMembers, poolSearch]);
 
   // Helper to get league number for a member (from league name ordinal)
   const getMemberLeagueNo = (memberId: string): string | null => {
@@ -1355,8 +1381,27 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     return getSkillLabel(m?.skill_level);
   };
 
-  // Add from pool to league
+  // Add from pool to league. Enforces:
+  //  • No duplicate row in the same league.
+  //  • A member can only be in ONE team (non-reserves) league at a time.
+  //    They may additionally appear in any number of reserves lists.
   const addToLeague = (member: ClubMember, leagueId: string) => {
+    const targetIsReserves = !teamLeagueIds.has(leagueId);
+    // Already in this exact league? No-op.
+    if ((leagueData[leagueId] || []).some(p => p.club_member_id === member.id)) {
+      toast.info(`${member.name || member.profiles?.name || "Player"} is already in this league.`);
+      return;
+    }
+    if (!targetIsReserves) {
+      const existingTeamId = findTeamLeagueOfMember(member.id);
+      if (existingTeamId && existingTeamId !== leagueId) {
+        const existing = leagues.find(l => l.id === existingTeamId);
+        toast.error(
+          `${member.name || member.profiles?.name || "Player"} is already on ${existing?.name || "another team"}. Remove them from that team first.`,
+        );
+        return;
+      }
+    }
     setLeagueData(prev => {
       const current = prev[leagueId] || [];
       return {
@@ -1454,31 +1499,62 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         setDragFromPool(null);
         return;
       }
-      // Move between leagues (auto-swap when target slot is occupied — promotes a
-      // reserve into a team and demotes the displaced player into reserves).
-      setLeagueData(prev => {
-        const fromItems = [...(prev[from.leagueId] || [])];
-        const toItems = [...(prev[to.leagueId] || [])];
-        const dragged = fromItems.splice(from.idx, 1)[0];
-        // If dropping onto an occupied slot in a non-reserves league, swap that
-        // player back to the source (reserves) league.
-        const targetIsReserves = isReservesLeague(to.leagueId);
-        const sourceIsReserves = isReservesLeague(from.leagueId);
-        const occupant = toItems[to.idx];
-        if (occupant && sourceIsReserves && !targetIsReserves) {
-          // Promote dragged into team slot; demote occupant into reserves.
-          toItems[to.idx] = { ...dragged, league_id: to.leagueId, is_captain: occupant.is_captain };
-          fromItems.splice(from.idx, 0, { ...occupant, league_id: from.leagueId, is_captain: false });
+      const targetIsReserves = isReservesLeague(to.leagueId);
+      const sourceIsReserves = isReservesLeague(from.leagueId);
+      const draggedSnapshot = (leagueData[from.leagueId] || [])[from.idx];
+
+      // Team → Reserves: COPY (player stays on the team, also appears in reserves)
+      if (!sourceIsReserves && targetIsReserves && draggedSnapshot) {
+        // Don't add a duplicate if already in this reserves list
+        if ((leagueData[to.leagueId] || []).some(p => p.club_member_id === draggedSnapshot.club_member_id)) {
+          toast.info("Already in this reserves list.");
         } else {
-          dragged.league_id = to.leagueId;
-          toItems.splice(to.idx, 0, dragged);
+          setLeagueData(prev => {
+            const toItems = [...(prev[to.leagueId] || [])];
+            toItems.splice(to.idx, 0, {
+              ...draggedSnapshot,
+              id: `copy-${Date.now()}-${draggedSnapshot.club_member_id}`,
+              league_id: to.leagueId,
+              is_captain: false,
+            });
+            return { ...prev, [to.leagueId]: toItems.map((p, i) => ({ ...p, player_rank: i + 1 })) };
+          });
         }
-        return {
-          ...prev,
-          [from.leagueId]: fromItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
-          [to.leagueId]: toItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
-        };
-      });
+      } else {
+        // Team → Team guard: block placing a member into a second team league.
+        if (!sourceIsReserves && !targetIsReserves && draggedSnapshot) {
+          const existsInTarget = (leagueData[to.leagueId] || []).some(
+            p => p.club_member_id === draggedSnapshot.club_member_id,
+          );
+          if (existsInTarget) {
+            toast.info("Already in this league.");
+            dragItem.current = null;
+            dragOverItem.current = null;
+            setDragFromPool(null);
+            return;
+          }
+        }
+        // Existing move (incl. reserve→team promote/demote swap)
+        setLeagueData(prev => {
+          const fromItems = [...(prev[from.leagueId] || [])];
+          const toItems = [...(prev[to.leagueId] || [])];
+          const dragged = fromItems.splice(from.idx, 1)[0];
+          const occupant = toItems[to.idx];
+          if (occupant && sourceIsReserves && !targetIsReserves) {
+            // Promote dragged into team slot; demote occupant into reserves.
+            toItems[to.idx] = { ...dragged, league_id: to.leagueId, is_captain: occupant.is_captain };
+            fromItems.splice(from.idx, 0, { ...occupant, league_id: from.leagueId, is_captain: false });
+          } else {
+            dragged.league_id = to.leagueId;
+            toItems.splice(to.idx, 0, dragged);
+          }
+          return {
+            ...prev,
+            [from.leagueId]: fromItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
+            [to.leagueId]: toItems.map((p, i) => ({ ...p, player_rank: i + 1 })),
+          };
+        });
+      }
     }
 
     dragItem.current = null;
@@ -1522,6 +1598,24 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Guard: a member must not appear in more than one TEAM (non-reserves) league.
+      const teamMemberCounts = new Map<string, string[]>(); // memberId → league names
+      for (const lg of leagues) {
+        if (!teamLeagueIds.has(lg.id)) continue;
+        for (const p of (leagueData[lg.id] || [])) {
+          const arr = teamMemberCounts.get(p.club_member_id) || [];
+          arr.push(lg.name);
+          teamMemberCounts.set(p.club_member_id, arr);
+        }
+      }
+      for (const [mid, names] of teamMemberCounts) {
+        if (names.length > 1) {
+          const mname = members.find(m => m.id === mid)?.name || "A player";
+          toast.error(`${mname} is on more than one team (${names.join(", ")}). Remove them from one before saving.`);
+          setSaving(false);
+          return;
+        }
+      }
       const changedLeagues = leagues.filter(l => isLeagueChanged(l.id));
       if (changedLeagues.length === 0) {
         toast.info("No changes to save");
@@ -1623,36 +1717,68 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {unassignedMembers.length} unassigned • Drag players into leagues or between positions • Drop a reserve onto a team slot to promote (the displaced player drops back to reserves). Reserves can only sub UP into stronger leagues, never down.</p>
+          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {genderMembers.length} eligible • Drag players into leagues or between positions. A member can be in <strong>one team</strong> and <strong>one or more reserves</strong> lists — drag from the pool onto a reserves zone to add them as a reserve even if they're already on a team.</p>
         </DialogHeader>
 
         {!loaded ? (
           <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : (
           <div className="flex gap-4 flex-1 overflow-hidden">
-            {/* Left: Unassigned members pool */}
+            {/* Left: Available members pool */}
             <div className="w-56 flex-shrink-0 border rounded-md overflow-hidden flex flex-col">
-              <div className="bg-muted/50 px-3 py-2 border-b">
-                <p className="text-xs font-semibold">Available Players ({unassignedMembers.length})</p>
+              <div className="bg-muted/50 px-3 py-2 border-b space-y-1.5">
+                <p className="text-xs font-semibold">Available Players ({poolMembers.length})</p>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <Input
+                    value={poolSearch}
+                    onChange={(e) => setPoolSearch(e.target.value)}
+                    placeholder="Search players…"
+                    className="h-6 pl-6 pr-6 text-[11px]"
+                  />
+                  {poolSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setPoolSearch("")}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
                 <p className="text-[10px] text-muted-foreground">Sorted by club ladder</p>
               </div>
               <div className="flex-1 overflow-y-auto p-1 space-y-0.5">
-                {unassignedMembers.map(m => (
-                  <div
-                    key={m.id}
-                    draggable
-                    onDragStart={() => handlePoolDragStart(m.id)}
-                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs rounded cursor-grab active:cursor-grabbing hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors"
-                  >
-                    <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{m.name || m.profiles?.name || "Unknown"}</p>
-                      <p className="text-[10px] text-muted-foreground">{getSkillLabel(m.skill_level) || "No level"}</p>
+                {poolMembers.map(m => {
+                  const teamLid = findTeamLeagueOfMember(m.id);
+                  const teamLeague = teamLid ? leagues.find(l => l.id === teamLid) : null;
+                  return (
+                    <div
+                      key={m.id}
+                      draggable
+                      onDragStart={() => handlePoolDragStart(m.id)}
+                      className="flex items-center gap-1.5 px-2 py-1.5 text-xs rounded cursor-grab active:cursor-grabbing hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-colors"
+                    >
+                      <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium">{m.name || m.profiles?.name || "Unknown"}</p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-[10px] text-muted-foreground truncate">{getSkillLabel(m.skill_level) || "No level"}</p>
+                          {teamLeague && (
+                            <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 leading-none">
+                              {teamLeague.code || teamLeague.name}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {unassignedMembers.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground text-center py-4">All players allocated</p>
+                  );
+                })}
+                {poolMembers.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground text-center py-4">
+                    {poolSearch ? `No players match "${poolSearch}"` : "No eligible players"}
+                  </p>
                 )}
               </div>
             </div>

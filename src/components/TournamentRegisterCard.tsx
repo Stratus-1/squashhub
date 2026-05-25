@@ -125,11 +125,11 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (!myReg) throw new Error("Register first");
       if (!partnerId) throw new Error("Pick a partner");
       const { error } = await fromExt("club_champs_registrations")
-        .update({ partner_member_id: partnerId, partner_confirmed: false })
+        .update({ partner_member_id: partnerId, partner_confirmed: true })
         .eq("id", myReg.id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Partner invited"); setPartnerId(""); refetch(); },
+    onSuccess: () => { toast.success("Partner allocated"); setPartnerId(""); refetch(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -232,7 +232,6 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Check className="w-3 h-3 text-primary" />
               Partner: <span className="font-medium text-foreground">{getName(myReg.partner)}</span>
-              {!myReg.partner_confirmed && <Badge variant="outline" className="text-[10px] ml-1">awaiting confirmation</Badge>}
             </p>
           ) : (
             <div className="flex items-center gap-2">

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";
 
 export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
   const { user } = useAuth();
@@ -162,6 +163,9 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
+      {/* Club Participation & SLA */}
+      <ClubParticipationCard club={club} />
+
       {/* Challenge Rules */}
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Challenge Rules</h3>

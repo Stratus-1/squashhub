@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fromExt } from "@/lib/supabase-ext";
+import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -411,13 +412,42 @@ export default function ClubChampsView() {
     onError: (err: any) => toast.error(err.message || "Failed to reschedule"),
   });
 
-  if (isLoading) {
+  // Safety-net: if the tournament is not visible on the current host (typically
+  // because the user opened the invite link on www.squashhub.co.za but the
+  // tournament belongs to a club subdomain like nsc.squashhub.co.za), look up
+  // the owning club's subdomain and redirect to the correct host.
+  const [redirecting, setRedirecting] = useState(false);
+  useEffect(() => {
+    if (isLoading || champ || !champId) return;
+    const host = window.location.hostname.toLowerCase();
+    // Only attempt cross-host redirect on the production root domain.
+    if (host !== "www.squashhub.co.za" && host !== "squashhub.co.za") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await rpcExt("get_champ_host", { _champ_id: champId });
+        if (error || cancelled) return;
+        const row = Array.isArray(data) ? data[0] : data;
+        const sub = row?.subdomain as string | undefined;
+        if (sub) {
+          setRedirecting(true);
+          window.location.replace(`https://${sub}.squashhub.co.za/club-champs/${champId}`);
+        }
+      } catch {
+        /* swallow — falls through to "Tournament not found" */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isLoading, champ, champId]);
+
+  if (isLoading || redirecting) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>;
   }
 
   if (!champ) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Tournament not found.</div>;
   }
+
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24">

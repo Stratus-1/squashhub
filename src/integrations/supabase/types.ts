@@ -2388,6 +2388,7 @@ export type Database = {
           mixed_ladder_enabled: boolean
           name: string
           nsa_club_id: string | null
+          participation_active: boolean
           payment_gateway: string | null
           payment_gateway_public_key: string | null
           peak_weekday_end: string
@@ -2397,6 +2398,12 @@ export type Database = {
           phone: string | null
           roster_seeded_at: string | null
           secretary_member_id: string | null
+          sla_accepted_at: string | null
+          sla_accepted_by: string | null
+          sla_accepted_name: string | null
+          sla_accepted_role: string | null
+          sla_billing_option: string | null
+          sla_version: string | null
           subdomain: string | null
           tenant_type: string
           updated_at: string
@@ -2440,6 +2447,7 @@ export type Database = {
           mixed_ladder_enabled?: boolean
           name: string
           nsa_club_id?: string | null
+          participation_active?: boolean
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
           peak_weekday_end?: string
@@ -2449,6 +2457,12 @@ export type Database = {
           phone?: string | null
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
+          sla_accepted_at?: string | null
+          sla_accepted_by?: string | null
+          sla_accepted_name?: string | null
+          sla_accepted_role?: string | null
+          sla_billing_option?: string | null
+          sla_version?: string | null
           subdomain?: string | null
           tenant_type?: string
           updated_at?: string
@@ -2492,6 +2506,7 @@ export type Database = {
           mixed_ladder_enabled?: boolean
           name?: string
           nsa_club_id?: string | null
+          participation_active?: boolean
           payment_gateway?: string | null
           payment_gateway_public_key?: string | null
           peak_weekday_end?: string
@@ -2501,6 +2516,12 @@ export type Database = {
           phone?: string | null
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
+          sla_accepted_at?: string | null
+          sla_accepted_by?: string | null
+          sla_accepted_name?: string | null
+          sla_accepted_role?: string | null
+          sla_billing_option?: string | null
+          sla_version?: string | null
           subdomain?: string | null
           tenant_type?: string
           updated_at?: string

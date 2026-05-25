@@ -104,7 +104,7 @@ type SavedMatchPosition = { position?: number | null };
 
 const getSavedMaxPosition = (matches: SavedMatchPosition[] | null | undefined) => (
   Array.isArray(matches)
-    ? Math.min(MAX_POSITIONS, Math.max(0, ...matches.map((m: any) => Number(m?.position) || 0)))
+    ? Math.min(MAX_POSITIONS, Math.max(0, ...matches.map((m) => Number(m?.position) || 0)))
     : 0
 );
 

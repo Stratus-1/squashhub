@@ -66,6 +66,15 @@ Deno.serve(async (req) => {
 
     const svc = createClient(SUPABASE_URL, SERVICE_KEY);
 
+    // Authorization: caller must be admin of the supplied club
+    const { data: isAdmin } = await svc.rpc("is_club_admin", {
+      _user_id: claims.claims.sub,
+      _club_id: club_id,
+    });
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden — club admin role required" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { data: secrets } = await svc.from("club_secrets").select("*").eq("club_id", club_id).maybeSingle();
     const provider = (secrets as any)?.access_provider || "none";
 
@@ -74,6 +83,9 @@ Deno.serve(async (req) => {
       .select("id, club_id, name, club_member_number, avatar_url, face_provider_person_id")
       .eq("id", club_member_id).maybeSingle();
     if (!member) throw new Error("Member not found");
+    if (member.club_id !== club_id) {
+      return new Response(JSON.stringify({ error: "Member does not belong to the specified club" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const personId = member.face_provider_person_id || member.club_member_number || member.id;
 

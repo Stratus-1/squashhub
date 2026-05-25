@@ -477,7 +477,7 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
                   <p className="text-[11px] text-muted-foreground">Subject preview:</p>
                   <p className="text-sm font-medium">{renderPreview(subject)}</p>
                 </div>
-                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderPreview(body) + sigBlock + disclaimerBlock }} />
+                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderPreview(body) + sigBlock + disclaimerBlock) }} />
               </div>
             )}
           </div>

@@ -329,7 +329,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
         {form.email_signature_html ? (
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">Preview</Label>
-            <div className="rounded-md border bg-white p-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: form.email_signature_html }} />
+            <div className="rounded-md border bg-white p-4 overflow-x-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(form.email_signature_html) }} />
             <details className="text-xs">
               <summary className="cursor-pointer text-muted-foreground">View HTML source</summary>
               <pre className="mt-2 p-2 bg-muted rounded text-[11px] overflow-x-auto whitespace-pre-wrap">{form.email_signature_html}</pre>

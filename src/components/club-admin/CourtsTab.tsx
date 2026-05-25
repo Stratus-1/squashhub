@@ -232,13 +232,17 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                     />
                   </div>
                   {lightsForm.light_fee_per_hour > 0 && (
-                    <Input
-                      type="number" min={1} step={1}
-                      className="h-8 text-xs"
-                      value={lightsForm.light_fee_per_hour}
-                      onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
-                      placeholder="Fee per hour (R)"
-                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">R</span>
+                      <Input
+                        type="number" min={1} step={1}
+                        className="h-8 text-xs"
+                        value={lightsForm.light_fee_per_hour}
+                        onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
+                        placeholder="Fee"
+                      />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">per hour</span>
+                    </div>
                   )}
                 </div>
               </div>

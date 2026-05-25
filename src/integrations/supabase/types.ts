@@ -4187,6 +4187,7 @@ export type Database = {
           id: string
           name: string
           pro_rate: boolean
+          show_on_landing: boolean
           sort_order: number
           updated_at: string
         }
@@ -4202,6 +4203,7 @@ export type Database = {
           id?: string
           name: string
           pro_rate?: boolean
+          show_on_landing?: boolean
           sort_order?: number
           updated_at?: string
         }
@@ -4217,6 +4219,7 @@ export type Database = {
           id?: string
           name?: string
           pro_rate?: boolean
+          show_on_landing?: boolean
           sort_order?: number
           updated_at?: string
         }

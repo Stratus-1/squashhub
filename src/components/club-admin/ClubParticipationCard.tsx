@@ -235,3 +235,86 @@ export function ClubParticipationCard({ club }: { club: Club }) {
     </Card>
   );
 }
+
+function ShellyIntegrationSection({ club }: { club: Club }) {
+  const updateClub = useUpdateClub();
+  const c = club as any;
+  const [enabled, setEnabled] = useState<boolean>(!!c.shelly_integration_enabled);
+  const [supplyMode, setSupplyMode] = useState<"self_order" | "stratsol_supply">(
+    c.shelly_supply_mode || "stratsol_supply"
+  );
+  const [saving, setSaving] = useState(false);
+
+  const dirty =
+    enabled !== !!c.shelly_integration_enabled ||
+    (enabled && supplyMode !== (c.shelly_supply_mode || ""));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateClub.mutateAsync({
+        id: club.id,
+        shelly_integration_enabled: enabled,
+        shelly_supply_mode: enabled ? supplyMode : null,
+      } as any);
+      toast.success(enabled ? "Shelly PM integration preferences saved" : "Shelly PM integration disabled");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-md border p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Zap className="w-5 h-5 text-amber-500" />
+          <div>
+            <h3 className="font-semibold text-sm">Shelly PM Integration</h3>
+            <p className="text-xs text-muted-foreground">
+              Smart power-monitoring &amp; relay control for court lights and equipment.
+            </p>
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <Checkbox checked={enabled} onCheckedChange={(v) => setEnabled(!!v)} />
+          <span>Enable integration</span>
+        </label>
+      </div>
+
+      {enabled && (
+        <div className="space-y-2 pt-1">
+          <Label className="text-xs">Hardware supply</Label>
+          <RadioGroup
+            value={supplyMode}
+            onValueChange={(v) => setSupplyMode(v as "self_order" | "stratsol_supply")}
+            className="grid grid-cols-1 md:grid-cols-2 gap-2"
+          >
+            <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${supplyMode === "self_order" ? "border-primary bg-primary/5" : ""}`}>
+              <RadioGroupItem value="self_order" id="shelly-self" />
+              <div className="text-sm">
+                <div className="font-medium">Club orders Shelly hardware</div>
+                <div className="text-xs text-muted-foreground">We&apos;ll source and procure the Shelly devices ourselves.</div>
+              </div>
+            </label>
+            <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${supplyMode === "stratsol_supply" ? "border-primary bg-primary/5" : ""}`}>
+              <RadioGroupItem value="stratsol_supply" id="shelly-stratsol" />
+              <div className="text-sm">
+                <div className="font-medium">Stratsol supplies &amp; invoices</div>
+                <div className="text-xs text-muted-foreground">Stratus Software Solutions orders the hardware and invoices the club.</div>
+              </div>
+            </label>
+          </RadioGroup>
+        </div>
+      )}
+
+      {dirty && (
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save Shelly preferences"}
+        </Button>
+      )}
+    </div>
+  );
+}
+

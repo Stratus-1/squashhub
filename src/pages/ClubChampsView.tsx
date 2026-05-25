@@ -471,13 +471,30 @@ export default function ClubChampsView() {
                 The tournament schedule will appear here once players have accepted and registrations are finalized.
               </p>
               {myMemberId ? (
-                <TournamentRegisterCard
-                  champ={champ}
-                  clubId={champ.club_id}
-                  memberId={myMemberId}
-                  paymentGateway={clubInfo?.payment_gateway || null}
-                  allowSelfSignup
-                />
+                (() => {
+                  const myReg = registrations.find(
+                    (r: any) => r.club_member_id === myMemberId || r.partner_member_id === myMemberId,
+                  );
+                  const isInviteOnly = champ.registration_mode === "invite";
+                  // In invite mode, only show the register card to invitees (anyone with a
+                  // pre-created registration row). In open mode, show to everyone.
+                  if (isInviteOnly && !myReg) {
+                    return (
+                      <p className="text-sm text-muted-foreground">
+                        This tournament is invitation only. You haven't been invited — please contact the tournament organiser if you'd like to take part.
+                      </p>
+                    );
+                  }
+                  return (
+                    <TournamentRegisterCard
+                      champ={champ}
+                      clubId={champ.club_id}
+                      memberId={myMemberId}
+                      paymentGateway={clubInfo?.payment_gateway || null}
+                      allowSelfSignup
+                    />
+                  );
+                })()
               ) : (
                 <p className="text-sm text-muted-foreground">Please sign in with the invited member account to respond.</p>
               )}

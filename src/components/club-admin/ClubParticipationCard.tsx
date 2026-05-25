@@ -126,7 +126,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Activate Club Participation</DialogTitle>
             <DialogDescription>
@@ -134,9 +134,33 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 rounded-md border p-4 my-2 max-h-[45vh]">
-            <SquashHubSlaContent />
-          </ScrollArea>
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+            <div className="rounded-md border">
+              <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
+                <span className="text-xs font-medium text-muted-foreground">Service Level Agreement</span>
+                <div className="flex gap-1">
+                  <Button type="button" variant="ghost" size="sm" asChild className="h-7 px-2 text-xs">
+                    <a href="/sla" target="_blank" rel="noopener noreferrer">View full SLA</a>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      const w = window.open("/sla?print=1", "_blank");
+                      if (w) setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 800);
+                    }}
+                  >
+                    Download / Print
+                  </Button>
+                </div>
+              </div>
+              <div className="max-h-[40vh] overflow-y-auto p-4">
+                <SquashHubSlaContent />
+              </div>
+            </div>
+
 
           <div className="space-y-4">
             <div className="space-y-2">

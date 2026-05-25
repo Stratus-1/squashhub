@@ -1,7 +1,11 @@
+import { useEffect } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Printer } from "lucide-react";
 import { SquashHubSlaContent, SLA_EFFECTIVE_DATE } from "@/components/SquashHubSlaContent";
+
 
 export default function Sla() {
   return (

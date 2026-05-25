@@ -140,12 +140,10 @@ const buildOriginalSnapshot = (rows: PositionEntry[]): OriginalLineupSnapshot =>
 const hasOriginalSnapshot = (snapshot: OriginalLineupSnapshot | null) =>
   !!snapshot && [...snapshot.home, ...snapshot.away].some(Boolean);
 
-const countOriginalsStillInTheirSetupSlot = (
+const countEligibleOriginalPlayers = (
   rows: PositionEntry[],
-  originalCodes: string[],
   side: "home" | "away",
   permanentSquadCodes: string[] = [],
-  originalNames: string[] = [],
   permanentSquadNames: string[] = [],
 ) => {
   const codeKey = side === "home" ? "homeCode" : "awayCode";
@@ -157,16 +155,11 @@ const countOriginalsStillInTheirSetupSlot = (
     permanentSquadNames.map((n) => normalizePlayerName(n)).filter(Boolean),
   );
   return rows.reduce((count, row, idx) => {
-    const originalCode = normalizePlayerCode(originalCodes[idx]);
-    const originalName = normalizePlayerName(originalNames[idx]);
     const currentCode = normalizePlayerCode(row[codeKey]);
     const currentName = normalizePlayerName(row[nameKey] as string);
     if (!currentCode && !currentName) return count;
-    // (a) Same player as the original snapshot for this slot (by code or name)
-    if (originalCode && currentCode && currentCode === originalCode) return count + 1;
-    if (originalName && currentName && currentName === originalName) return count + 1;
-    // (b) Part of the team's current permanent squad — captain promoted a former
-    //     reserve to a full-time spot via the league setup page.
+    // Only players currently registered in the team's permanent squad qualify.
+    // A substitute must never earn original-player bonus points.
     if (currentCode && squadCodeSet.has(currentCode)) return count + 1;
     if (currentName && squadNameSet.has(currentName)) return count + 1;
     return count;
@@ -1373,8 +1366,8 @@ export default function LeagueGameDetail() {
       awayMatchBonus = awayMatchWins * bonusValue;
     }
 
-    // Original-player bonus (NIL): +N points per player from the saved setup lineup.
-    // The setup snapshot is captured before replacements, so reserve swaps recalculate immediately.
+    // Original-player bonus (NIL): only registered permanent squad members qualify.
+    // Subs/replacements never earn this bonus, regardless of snapshots or prior saves.
     const opbEnabled = !!leagueRules?.original_player_bonus_enabled;
     const opbValue = leagueRules?.original_player_bonus_value ?? 0;
     const homeTeamCode = fixture?.home_team_code || "";
@@ -1384,23 +1377,6 @@ export default function LeagueGameDetail() {
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean);
     const fallbackOriginalNames = (teamCode: string) =>
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name)).filter(Boolean);
-    const fallbackOriginalNameByPos = (teamCode: string) =>
-      (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name));
-    // Merge: use saved snapshot for slots it covers, fall back to prefill originals for any
-    // additional slots (e.g. snapshot saved as 4-player, fixture later expanded to 5-player).
-    const mergeOriginals = (snapshotCodes: string[] | null, fallbackCodes: string[]): string[] => {
-      const out: string[] = [];
-      for (let i = 0; i < positions.length; i++) {
-        const fromSnap = snapshotCodes?.[i];
-        out.push(fromSnap && fromSnap.length > 0 ? fromSnap : (fallbackCodes[i] || ""));
-      }
-      return out;
-    };
-    const snap = hasOriginalSnapshot(originalLineupSnapshot) ? originalLineupSnapshot! : null;
-    const homeOriginalCodes = mergeOriginals(snap?.home ?? null, fallbackOriginalCodes(homeTeamCode));
-    const awayOriginalCodes = mergeOriginals(snap?.away ?? null, fallbackOriginalCodes(awayTeamCode));
-    const homeOriginalNames = fallbackOriginalNameByPos(homeTeamCode);
-    const awayOriginalNames = fallbackOriginalNameByPos(awayTeamCode);
     // Permanent squad = whoever the captain currently has registered to the team
     // (via member_league_registrations / week lineup). Promoting a former reserve
     // to a full-time spot in league setup adds them here, so they count as original.
@@ -1408,8 +1384,8 @@ export default function LeagueGameDetail() {
     const awayPermanentSquad = fallbackOriginalCodes(awayTeamCode);
     const homePermanentSquadNames = fallbackOriginalNames(homeTeamCode);
     const awayPermanentSquadNames = fallbackOriginalNames(awayTeamCode);
-    const homeOriginalCount = countOriginalsStillInTheirSetupSlot(positions, homeOriginalCodes, "home", homePermanentSquad, homeOriginalNames, homePermanentSquadNames);
-    const awayOriginalCount = countOriginalsStillInTheirSetupSlot(positions, awayOriginalCodes, "away", awayPermanentSquad, awayOriginalNames, awayPermanentSquadNames);
+    const homeOriginalCount = countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
+    const awayOriginalCount = countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 

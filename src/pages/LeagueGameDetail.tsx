@@ -502,9 +502,8 @@ export default function LeagueGameDetail() {
       const baseSize = hasTeamRule
         ? resolveFixtureBaseSize(homeRule, awayRule, mode)
         : (leagueRules?.team_size ?? DEFAULT_POSITIONS);
-      const targetCount = mode === "fixed"
-        ? Math.min(MAX_POSITIONS, Math.max(1, baseSize))
-        : Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
+      const lineupMaxPosition = getLineupMaxPosition((prefillLineup as any)?.lineup, [fixture?.home_team_code, fixture?.away_team_code]);
+      const targetCount = Math.min(MAX_POSITIONS, Math.max(1, baseSize, getSavedMaxPosition(existingMatches), lineupMaxPosition));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
@@ -533,7 +532,7 @@ export default function LeagueGameDetail() {
       }
       setSetupDone(true);
     }
-  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, positionCount, leagueRules, fixture, teamRulesByCode]);
+  }, [existingMatches, activeMarker, manualEntry, originalLineupSnapshot, existingResult, existingResultFetched, prefillLineup, leagueRules, fixture, teamRulesByCode]);
 
   useEffect(() => {
     const savedSnapshot = (existingResult?.match_format as any)?.originalLineupSnapshot as OriginalLineupSnapshot | undefined;
@@ -842,20 +841,13 @@ export default function LeagueGameDetail() {
           : (leagueRules?.team_size ?? DEFAULT_POSITIONS),
       ),
     );
-    if (mode === "fixed") {
-      setPositionCount((prev) => (prev === baseSize ? prev : baseSize));
-      return;
-    }
     const homeCode = fixture?.home_team_code;
     const awayCode = fixture?.away_team_code;
     const lineup = (prefillLineup as any)?.lineup || {};
-    let maxFilled = baseSize;
-    for (let i = baseSize; i < MAX_POSITIONS; i++) {
-      const homeFilled = !!(homeCode && (lineup[homeCode]?.[i]?.code || lineup[homeCode]?.[i]?.name));
-      const awayFilled = !!(awayCode && (lineup[awayCode]?.[i]?.code || lineup[awayCode]?.[i]?.name));
-      const savedHasIt = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === i + 1);
-      if (homeFilled || awayFilled || savedHasIt) maxFilled = i + 1;
-    }
+    const maxFilled = Math.min(
+      MAX_POSITIONS,
+      Math.max(baseSize, getSavedMaxPosition(existingMatches), getLineupMaxPosition(lineup, [homeCode, awayCode])),
+    );
     setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
   }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
   useEffect(() => {

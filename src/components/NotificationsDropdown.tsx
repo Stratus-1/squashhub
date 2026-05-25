@@ -115,7 +115,6 @@ export function NotificationsDropdown({
           .update({ read: true })
           .eq("user_id", user.id)
           .is("club_member_id", null)
-          .not("type", "in", "(tournament_invite,tournament_partner_invite)")
           .eq("read", false),
       ];
 
@@ -125,10 +124,10 @@ export function NotificationsDropdown({
             .from("notifications")
             .update({ read: true })
             .in("club_member_id", linkedMemberIds)
-            .not("type", "in", "(tournament_invite,tournament_partner_invite)")
             .eq("read", false)
         );
       }
+
 
       await Promise.all(updates);
     },
@@ -201,10 +200,12 @@ export function NotificationsDropdown({
                 const Icon = iconMap[notif.type] || Bell;
                 const navigation = getNotificationNavigation(notif);
                 return (
-                  <button
+                  <div
                     key={notif.id}
+                    role="button"
+                    tabIndex={0}
                     className={cn(
-                      "w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-muted/40 transition-colors",
+                      "w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-muted/40 transition-colors cursor-pointer",
                       !notif.read && "bg-primary/5"
                     )}
                     onClick={() => {
@@ -241,6 +242,7 @@ export function NotificationsDropdown({
                         </Badge>
                       )}
                       <button
+                        type="button"
                         className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         title="Remove notification"
                         onClick={(e) => {
@@ -251,9 +253,10 @@ export function NotificationsDropdown({
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
+
             </div>
           ) : (
             <div className="text-center py-12 text-sm text-muted-foreground">

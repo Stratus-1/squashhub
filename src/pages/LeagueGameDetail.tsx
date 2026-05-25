@@ -1484,21 +1484,31 @@ export default function LeagueGameDetail() {
   // Permanent squad lookup (codes + names) for each team — used to keep SUB badge
   // in sync with original-player bonus logic: anyone who is a current full-time
   // squad member is NOT a sub, even if they swap slots.
+  // Prefers the FROZEN snapshot stored in match_format.permanentSquadSnapshot
+  // for any fixture that has already been saved (so historical SUB badges stay
+  // consistent with the bonus points captured on the day).
   const { homeSquadSet, awaySquadSet, homeSquadNameSet, awaySquadNameSet } = useMemo(() => {
+    const savedSquad = (existingResult?.match_format as any)?.permanentSquadSnapshot as
+      | { home?: { codes?: string[]; names?: string[] }; away?: { codes?: string[]; names?: string[] } }
+      | undefined;
     const originalsMap = (prefillLineup as any)?.originals || {};
-    const codes = (teamCode: string) => new Set(
+    const codesFromLive = (teamCode: string) => new Set(
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerCode(s.code)).filter(Boolean) as string[]
     );
-    const names = (teamCode: string) => new Set(
+    const namesFromLive = (teamCode: string) => new Set(
       (originalsMap[teamCode] || []).map((s: any) => normalizePlayerName(s.name)).filter(Boolean) as string[]
     );
+    const codesFromSaved = (arr?: string[]) =>
+      arr && arr.length > 0 ? new Set(arr.map(normalizePlayerCode).filter(Boolean) as string[]) : null;
+    const namesFromSaved = (arr?: string[]) =>
+      arr && arr.length > 0 ? new Set(arr.map(normalizePlayerName).filter(Boolean) as string[]) : null;
     return {
-      homeSquadSet: codes(fixture?.home_team_code || ""),
-      awaySquadSet: codes(fixture?.away_team_code || ""),
-      homeSquadNameSet: names(fixture?.home_team_code || ""),
-      awaySquadNameSet: names(fixture?.away_team_code || ""),
+      homeSquadSet: codesFromSaved(savedSquad?.home?.codes) || codesFromLive(fixture?.home_team_code || ""),
+      awaySquadSet: codesFromSaved(savedSquad?.away?.codes) || codesFromLive(fixture?.away_team_code || ""),
+      homeSquadNameSet: namesFromSaved(savedSquad?.home?.names) || namesFromLive(fixture?.home_team_code || ""),
+      awaySquadNameSet: namesFromSaved(savedSquad?.away?.names) || namesFromLive(fixture?.away_team_code || ""),
     };
-  }, [prefillLineup, fixture]);
+  }, [prefillLineup, fixture, existingResult]);
 
   if (!fixture) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;

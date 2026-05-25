@@ -43,6 +43,35 @@ export function getAuthRedirectBase(): string {
   return PRODUCTION_SITE_URL;
 }
 
+/**
+ * Builds an auth-email redirect URL that always lands on the production root
+ * (so it survives Supabase's allowed-redirect-URL allowlist), and encodes the
+ * active tenant subdomain as a `?tenant=<sub>` query parameter. A small
+ * bootstrap script in `index.html` reads that param on the root domain and
+ * re-routes the user (preserving the recovery/verification hash or `?code=`)
+ * to the tenant subdomain so the password reset / signup confirmation always
+ * completes on the club they were using.
+ */
+export function getTenantAwareAuthRedirect(path: string): string {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  let tenant: string | null = null;
+
+  if (typeof window !== "undefined") {
+    const { hostname } = window.location;
+    if (hostname.endsWith(`.${PRODUCTION_ROOT}`) && hostname !== `www.${PRODUCTION_ROOT}`) {
+      const sub = hostname.slice(0, hostname.length - PRODUCTION_ROOT.length - 1);
+      if (sub && !sub.includes(".") && sub !== "www") tenant = sub;
+    }
+  }
+
+  // Always route auth-email links through the production root domain.
+  // The bridge script in index.html bounces back to the tenant subdomain.
+  const base = PRODUCTION_SITE_URL;
+  const url = new URL(`${base}${cleanPath}`);
+  if (tenant) url.searchParams.set("tenant", tenant);
+  return url.toString();
+}
+
 export function absoluteUrl(pathOrUrl: string): string {
   const value = (pathOrUrl || "").trim();
   if (!value) return getSiteUrl();

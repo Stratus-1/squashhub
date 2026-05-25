@@ -2398,6 +2398,8 @@ export type Database = {
           phone: string | null
           roster_seeded_at: string | null
           secretary_member_id: string | null
+          shelly_integration_enabled: boolean
+          shelly_supply_mode: string | null
           sla_accepted_at: string | null
           sla_accepted_by: string | null
           sla_accepted_name: string | null
@@ -2457,6 +2459,8 @@ export type Database = {
           phone?: string | null
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
+          shelly_integration_enabled?: boolean
+          shelly_supply_mode?: string | null
           sla_accepted_at?: string | null
           sla_accepted_by?: string | null
           sla_accepted_name?: string | null
@@ -2516,6 +2520,8 @@ export type Database = {
           phone?: string | null
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
+          shelly_integration_enabled?: boolean
+          shelly_supply_mode?: string | null
           sla_accepted_at?: string | null
           sla_accepted_by?: string | null
           sla_accepted_name?: string | null

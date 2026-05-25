@@ -176,7 +176,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
 
-  if (champ?.registration_mode === "invite" && !myReg) return null;
+  if (champ?.registration_mode === "invite" && !myReg && !allowSelfSignup) return null;
 
   return (
     <Card className="p-3 mb-2 border-primary/30 bg-primary/5">

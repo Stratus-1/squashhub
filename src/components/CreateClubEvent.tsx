@@ -248,7 +248,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: linkedMemberIds.length > 0 && eventIds.length > 0,
   });
 
-  // Pre-select the creator as an attendee
+  // Pre-tick league/category members when selection changes
+  useEffect(() => {
+    if (form.invite_scope === "league" && leagueMemberIds) {
+      setForm((f) => ({ ...f, selected_member_ids: leagueMemberIds }));
+    }
+  }, [leagueMemberIds, form.invite_scope]);
+  useEffect(() => {
+    if (form.invite_scope === "category" && categoryMemberIds) {
+      setForm((f) => ({ ...f, selected_member_ids: categoryMemberIds }));
+    }
+  }, [categoryMemberIds, form.invite_scope]);
+
+
   useEffect(() => {
     if (activeMember?.id && form.selected_member_ids.length === 0) {
       setForm((f) => ({

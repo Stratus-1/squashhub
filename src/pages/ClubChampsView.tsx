@@ -486,13 +486,15 @@ export default function ClubChampsView() {
                     );
                   }
                   return (
-                    <TournamentRegisterCard
-                      champ={champ}
-                      clubId={champ.club_id}
-                      memberId={myMemberId}
-                      paymentGateway={clubInfo?.payment_gateway || null}
-                      allowSelfSignup
-                    />
+                    <div id="tournament-register-card">
+                      <TournamentRegisterCard
+                        champ={champ}
+                        clubId={champ.club_id}
+                        memberId={myMemberId}
+                        paymentGateway={clubInfo?.payment_gateway || null}
+                        allowSelfSignup
+                      />
+                    </div>
                   );
                 })()
               ) : (

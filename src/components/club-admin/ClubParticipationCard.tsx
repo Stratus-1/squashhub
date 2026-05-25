@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { CheckCircle2, ShieldCheck, FileSignature } from "lucide-react";
+import { CheckCircle2, ShieldCheck, FileSignature, FileText, Printer, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";
@@ -92,11 +92,29 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         <ul className="list-disc pl-5 text-muted-foreground space-y-1">
           <li><strong className="text-foreground">R6</strong> per active member per month (billed monthly), or</li>
           <li><strong className="text-foreground">R5</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save R12 / member / year)</li>
-          <li>Once-off <strong className="text-foreground">R150</strong> setup fee covering onboarding, data import and initial training</li>
         </ul>
+        <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
+          Fees are first invoiced from <strong>September 2025</strong> for the current financial year, and annually thereafter.
+        </p>
         {typeof memberCount === "number" && (
           <p className="text-xs text-muted-foreground">Your club currently has {memberCount} active member{memberCount === 1 ? "" : "s"}.</p>
         )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button type="button" variant="outline" size="sm" asChild>
+            <a href="/sla" target="_blank" rel="noopener noreferrer"><FileText className="w-3.5 h-3.5 mr-1.5" /> View full SLA</a>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const w = window.open("/sla?print=1", "_blank");
+              if (w) setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 800);
+            }}
+          >
+            <Printer className="w-3.5 h-3.5 mr-1.5" /> Download / Print SLA
+          </Button>
+        </div>
       </div>
 
       {isActive ? (
@@ -113,9 +131,6 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href="/sla" target="_blank" rel="noopener noreferrer">View SLA</a>
-            </Button>
             <Button variant="ghost" size="sm" onClick={handleDeactivate}>Deactivate</Button>
           </div>
         </div>
@@ -124,6 +139,9 @@ export function ClubParticipationCard({ club }: { club: Club }) {
           <FileSignature className="w-4 h-4 mr-2" /> Activate Participation &amp; Accept SLA
         </Button>
       )}
+
+      <ShellyIntegrationSection club={club} />
+
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -180,7 +198,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                     </div>
                   </label>
                 </RadioGroup>
-                <p className="text-xs text-muted-foreground">A once-off R150 setup fee applies on activation.</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence September 2025 for the current financial year, and annually thereafter.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -217,3 +235,86 @@ export function ClubParticipationCard({ club }: { club: Club }) {
     </Card>
   );
 }
+
+function ShellyIntegrationSection({ club }: { club: Club }) {
+  const updateClub = useUpdateClub();
+  const c = club as any;
+  const [enabled, setEnabled] = useState<boolean>(!!c.shelly_integration_enabled);
+  const [supplyMode, setSupplyMode] = useState<"self_order" | "stratsol_supply">(
+    c.shelly_supply_mode || "stratsol_supply"
+  );
+  const [saving, setSaving] = useState(false);
+
+  const dirty =
+    enabled !== !!c.shelly_integration_enabled ||
+    (enabled && supplyMode !== (c.shelly_supply_mode || ""));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateClub.mutateAsync({
+        id: club.id,
+        shelly_integration_enabled: enabled,
+        shelly_supply_mode: enabled ? supplyMode : null,
+      } as any);
+      toast.success(enabled ? "Shelly PM integration preferences saved" : "Shelly PM integration disabled");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-md border p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Zap className="w-5 h-5 text-amber-500" />
+          <div>
+            <h3 className="font-semibold text-sm">Shelly PM Integration</h3>
+            <p className="text-xs text-muted-foreground">
+              Smart power-monitoring &amp; relay control for court lights and equipment.
+            </p>
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <Checkbox checked={enabled} onCheckedChange={(v) => setEnabled(!!v)} />
+          <span>Enable integration</span>
+        </label>
+      </div>
+
+      {enabled && (
+        <div className="space-y-2 pt-1">
+          <Label className="text-xs">Hardware supply</Label>
+          <RadioGroup
+            value={supplyMode}
+            onValueChange={(v) => setSupplyMode(v as "self_order" | "stratsol_supply")}
+            className="grid grid-cols-1 md:grid-cols-2 gap-2"
+          >
+            <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${supplyMode === "self_order" ? "border-primary bg-primary/5" : ""}`}>
+              <RadioGroupItem value="self_order" id="shelly-self" />
+              <div className="text-sm">
+                <div className="font-medium">Club orders Shelly hardware</div>
+                <div className="text-xs text-muted-foreground">We&apos;ll source and procure the Shelly devices ourselves.</div>
+              </div>
+            </label>
+            <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${supplyMode === "stratsol_supply" ? "border-primary bg-primary/5" : ""}`}>
+              <RadioGroupItem value="stratsol_supply" id="shelly-stratsol" />
+              <div className="text-sm">
+                <div className="font-medium">Stratsol supplies &amp; invoices</div>
+                <div className="text-xs text-muted-foreground">Stratus Software Solutions orders the hardware and invoices the club.</div>
+              </div>
+            </label>
+          </RadioGroup>
+        </div>
+      )}
+
+      {dirty && (
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? "Saving..." : "Save Shelly preferences"}
+        </Button>
+      )}
+    </div>
+  );
+}
+

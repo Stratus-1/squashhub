@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { CheckCircle2, ShieldCheck, FileSignature } from "lucide-react";
+import { CheckCircle2, ShieldCheck, FileSignature, FileText, Printer, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateClub, type Club } from "@/hooks/use-club";
 import { SquashHubSlaContent, SLA_VERSION } from "@/components/SquashHubSlaContent";

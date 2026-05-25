@@ -90,7 +90,7 @@ const DEFAULT_POSITIONS = 4;
 const resolveFixtureBaseSize = (
   homeRule: { team_size?: number | null } | undefined,
   awayRule: { team_size?: number | null } | undefined,
-  mode: "fixed" | "flexible",
+  _mode: "fixed" | "flexible",
   fallback = DEFAULT_POSITIONS,
 ) => {
   const sizes = [homeRule?.team_size, awayRule?.team_size]
@@ -488,9 +488,8 @@ export default function LeagueGameDetail() {
 
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
-      // In "fixed" team-size mode (e.g. NSA always 4), the scorecard must stay
-      // pinned to team_size even if a stale match row at a higher position exists.
-      // In "flexible" mode (e.g. NIL), allow growth based on actual saved positions.
+      // Keep the scorecard large enough for the biggest configured team, any saved
+      // rubber rows, or the already-expanded local lineup while async refreshes land.
       const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
       const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
       // Per-league rules win over the association-wide fallback. Only fall back to
@@ -819,9 +818,9 @@ export default function LeagueGameDetail() {
   // (leagueRules fetched above near positionCount declaration)
 
   // Decide team size from association rules.
-  //   - "fixed" mode (e.g. NSA): always exactly team_size positions; extras are reserves only.
-  //   - "flexible" mode (e.g. NIL): grows from team_size up to MAX_POSITIONS based on
-  //     how many players the captain has actually allocated.
+  //   - Starts from configured team size and grows to include saved/local lineup rows.
+  //   - This prevents 5-player NIL scorecards briefly rendering correctly, then
+  //     shrinking back to 4 when saved results or rule metadata refresh later.
   useEffect(() => {
     const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
     const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;

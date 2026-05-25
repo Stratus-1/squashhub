@@ -10,6 +10,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from "sonner";
 import { Upload, X, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";
+
 
 export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();

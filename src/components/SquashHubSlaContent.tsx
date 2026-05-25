@@ -23,14 +23,16 @@ export function SquashHubSlaContent() {
       <h2>1. Subscription &amp; Fees</h2>
       <ul>
         <li>
+          <strong>Billing commencement:</strong> Subscription fees are first invoiced from
+          <strong> 1 September 2025</strong>, covering the remainder of the 2025/2026 financial year,
+          and annually (or monthly, depending on the chosen billing option) thereafter.
+        </li>
+        <li>
           <strong>Monthly billing:</strong> R6.00 per active member per month, billed monthly in arrears.
         </li>
         <li>
           <strong>Annual upfront billing:</strong> R5.00 per active member per month
           (R60.00 per member per year), payable annually in advance — a saving of R12 per member per year.
-        </li>
-        <li>
-          <strong>Once-off setup fee:</strong> R150.00, covering onboarding, data import and initial training.
         </li>
         <li>
           An &quot;active member&quot; is any member with an active status on the platform at the
@@ -43,6 +45,7 @@ export function SquashHubSlaContent() {
           Fee adjustments require at least <strong>60 days&apos; written notice</strong> to the Club.
         </li>
       </ul>
+
 
       <h2>2. Service Availability</h2>
       <p>

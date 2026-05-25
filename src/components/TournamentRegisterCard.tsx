@@ -129,7 +129,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         .eq("id", myReg.id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Partner invited"); setPartnerId(""); refetch(); },
+    onSuccess: () => { toast.success("Partner allocated"); setPartnerId(""); refetch(); },
     onError: (e: any) => toast.error(e.message),
   });
 

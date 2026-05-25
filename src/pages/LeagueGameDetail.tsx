@@ -691,8 +691,14 @@ export default function LeagueGameDetail() {
           .sort((a: any, b: any) => (a.player_rank || 99) - (b.player_rank || 99));
         const teamRule = ruleByCode[String(code || "").toUpperCase()];
         const fallbackSize = teamRule?.team_size ?? DEFAULT_POSITIONS;
+        // In flexible team-size mode (e.g. NIL), grow the scorecard to include
+        // all registered players (capped at MAX_POSITIONS) so a 5th, 6th, etc.
+        // player on the roster appears on the scorecard automatically.
+        const flexibleCap = teamRule?.team_size_mode === "flexible"
+          ? Math.min(MAX_POSITIONS, Math.max(fallbackSize, teamRegs.length))
+          : fallbackSize;
         const maxExplicitPos = Math.min(MAX_POSITIONS, Math.max(
-          fallbackSize,
+          flexibleCap,
           ...weekLineups
             .filter((l: any) => matchingLeagues.includes(l.league_id))
             .map((l: any) => l.position || 0),

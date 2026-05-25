@@ -339,6 +339,14 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Cross-tenant guard: target court must belong to the same club as the active session
+      if (targetCourt.club_id !== session.club_id) {
+        return new Response(JSON.stringify({ error: "Target court is not in your club" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const targetClubId = targetCourt?.club_id;
       const { data: targetSecrets } = targetClubId ? await supabase.from("club_secrets").select("shelly_auth_key").eq("club_id", targetClubId).maybeSingle() : { data: null };
       const targetAuthKey = targetSecrets?.shelly_auth_key;

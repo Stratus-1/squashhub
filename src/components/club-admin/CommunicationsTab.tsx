@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import DOMPurify from "dompurify";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -477,7 +478,7 @@ function CampaignDialog({ clubId, template, onClose }: { clubId: string; templat
                   <p className="text-[11px] text-muted-foreground">Subject preview:</p>
                   <p className="text-sm font-medium">{renderPreview(subject)}</p>
                 </div>
-                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: renderPreview(body) + sigBlock + disclaimerBlock }} />
+                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderPreview(body) + sigBlock + disclaimerBlock) }} />
               </div>
             )}
           </div>

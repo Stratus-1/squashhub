@@ -1655,9 +1655,9 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           throw new Error(`Load failed for "${league.name}": ${fetchErr.message}`);
         }
 
-        const dbIds = new Set((dbRows || []).map((r: any) => r.club_member_id));
-        const intendedIds = new Set(uniquePlayers.map(p => p.club_member_id));
-        const toDeleteMemberIds = [...dbIds].filter(id => !intendedIds.has(id));
+        const dbIds = new Set<string>((dbRows || []).map((r: any) => String(r.club_member_id)));
+        const intendedIds = new Set<string>(uniquePlayers.map(p => String(p.club_member_id)));
+        const toDeleteMemberIds: string[] = [...dbIds].filter(id => !intendedIds.has(id));
 
         if (toDeleteMemberIds.length > 0) {
           const { error: delErr, count } = await fromExt("member_league_registrations")

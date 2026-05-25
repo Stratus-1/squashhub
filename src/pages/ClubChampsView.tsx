@@ -69,6 +69,20 @@ export default function ClubChampsView() {
     enabled: !!champ?.club_id,
   });
 
+  const { data: registrations = [] } = useQuery({
+    queryKey: ["club-champ-registrations", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id, status, partner_confirmed, club_member_id, partner_member_id, member:club_member_id(id, name, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .eq("champ_id", champId!)
+        .neq("status", "cancelled");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champId,
+  });
+
+
   const getPlayerName = (player: any) => player?.name || player?.profiles?.name || "Unknown";
 
   const getTeamName = (player: any, partner: any) => {
@@ -462,15 +476,47 @@ export default function ClubChampsView() {
                   clubId={champ.club_id}
                   memberId={myMemberId}
                   paymentGateway={clubInfo?.payment_gateway || null}
+                  allowSelfSignup
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">Please sign in with the invited member account to respond.</p>
               )}
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  Registered Players ({registrations.length})
+                </p>
+                {registrations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">No one has registered yet. Be the first!</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {registrations.map((r: any) => {
+                      const name = getPlayerName(r.member);
+                      const partnerName = r.partner ? getPlayerName(r.partner) : null;
+                      const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
+                      const paid = r.status === "paid" || r.status === "waived";
+                      return (
+                        <li key={r.id} className={cn("flex items-center gap-2 text-sm p-2 rounded bg-background/60 border", isMe && "ring-1 ring-primary/40")}>
+                          <span className="font-medium flex-1 truncate">
+                            {name}
+                            {partnerName && <span className="text-muted-foreground"> & {partnerName}</span>}
+                            {isMe && <Badge variant="secondary" className="text-[9px] ml-1.5">You</Badge>}
+                          </span>
+                          <Badge variant={paid ? "default" : "outline"} className="text-[10px]">
+                            {r.status === "paid" ? "Paid" : r.status === "waived" ? "Entered" : r.status === "pending_payment" ? "Payment due" : r.status}
+                          </Badge>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
 
         {groupNumbers.length > 0 && myMemberId && myMatches.length > 0 ? (
+
           <Tabs defaultValue="my-fixtures" className="space-y-4">
             <TabsList className="w-full">
               <TabsTrigger value="my-fixtures" className="flex-1 gap-1"><User className="w-3.5 h-3.5" /> My Fixtures</TabsTrigger>

@@ -16,11 +16,12 @@ interface Props {
   clubId: string;
   memberId: string;
   paymentGateway: string | null;
+  allowSelfSignup?: boolean;
 }
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
-export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway }: Props) {
+export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway, allowSelfSignup }: Props) {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: members = [] } = useClubMembers(clubId);
@@ -175,7 +176,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
 
-  if (champ?.registration_mode === "invite" && !myReg) return null;
+  if (champ?.registration_mode === "invite" && !myReg && !allowSelfSignup) return null;
 
   return (
     <Card className="p-3 mb-2 border-primary/30 bg-primary/5">

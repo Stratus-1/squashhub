@@ -198,7 +198,7 @@ export function ClubParticipationCard({ club }: { club: Club }) {
                     </div>
                   </label>
                 </RadioGroup>
-                <p className="text-xs text-muted-foreground">A once-off R150 setup fee applies on activation.</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Fees commence September 2025 for the current financial year, and annually thereafter.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

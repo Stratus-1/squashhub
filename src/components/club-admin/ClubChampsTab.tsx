@@ -908,6 +908,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         toast.info("No invitees to notify.");
         return;
       }
+
+      // Build a tenant-aware absolute URL so the recipient lands on the correct
+      // club host (e.g. https://nsc.squashhub.co.za/club-champs/...) — without
+      // this the link goes to the root domain where RLS hides the tournament.
+      const { data: clubRow } = await fromExt("clubs")
+        .select("subdomain")
+        .eq("id", clubId)
+        .maybeSingle();
+      const sub = (clubRow as any)?.subdomain as string | undefined;
+      const path = `/club-champs/${champId}`;
+      const inviteUrl = sub ? `https://${sub}.squashhub.co.za${path}` : path;
+
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
       const sendEmail = methods.includes("email");
@@ -918,7 +930,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         title: "Tournament invitation",
         message: msg,
         type: "tournament_invite",
-        url: `/club-champs/${champId}`,
+        url: inviteUrl,
         data: {
           champ_id: champId,
           send_email: sendEmail,

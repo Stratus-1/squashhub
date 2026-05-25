@@ -1440,6 +1440,29 @@ export default function LeagueGameDetail() {
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);
+      // FREEZE the permanent squad on first save and PRESERVE it on every
+      // subsequent edit. This is the historical-integrity guarantee: bonus
+      // points and SUB badges for a saved fixture never change just because
+      // the captain later promoted a reserve or removed a player.
+      const existingSavedSquad = (existingResult?.match_format as any)?.permanentSquadSnapshot as
+        | { home?: { codes?: string[]; names?: string[] }; away?: { codes?: string[]; names?: string[] } }
+        | undefined;
+      const hasExistingSavedSquad = !!(
+        existingSavedSquad?.home?.codes?.length || existingSavedSquad?.away?.codes?.length
+        || existingSavedSquad?.home?.names?.length || existingSavedSquad?.away?.names?.length
+      );
+      const permanentSquadSnapshot = hasExistingSavedSquad
+        ? existingSavedSquad!
+        : {
+            home: {
+              codes: (summary as any)._homePermanentSquadCodes as string[],
+              names: (summary as any)._homePermanentSquadNames as string[],
+            },
+            away: {
+              codes: (summary as any)._awayPermanentSquadCodes as string[],
+              names: (summary as any)._awayPermanentSquadNames as string[],
+            },
+          };
       for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode) continue;

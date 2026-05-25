@@ -520,7 +520,7 @@ export default function ClubChampsView() {
                             {isMe && <Badge variant="secondary" className="text-[9px] ml-1.5">You</Badge>}
                           </span>
                           <Badge variant={paid ? "default" : "outline"} className="text-[10px]">
-                            {r.status === "paid" ? "Paid" : r.status === "waived" ? "Entered" : r.status === "pending_payment" ? "Payment due" : r.status}
+                            {paid ? "Registered" : r.status === "pending_payment" ? "Invited" : r.status === "pending_eft" ? "EFT pending" : r.status}
                           </Badge>
                         </li>
                       );

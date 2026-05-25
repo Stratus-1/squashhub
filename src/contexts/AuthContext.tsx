@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: metadata,
-        emailRedirectTo: `${publicBaseUrl}/auth/callback`,
+        emailRedirectTo: getTenantAwareAuthRedirect("/auth/callback"),
       },
     });
 

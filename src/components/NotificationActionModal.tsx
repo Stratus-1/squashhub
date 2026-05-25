@@ -253,7 +253,7 @@ export function NotificationActionModal() {
         setOpen(v);
       }}
     >
-      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0 max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">

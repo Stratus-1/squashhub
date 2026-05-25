@@ -137,6 +137,34 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!clubId && form.invite_scope === "league",
   });
 
+  // Member IDs matching the selected league (pre-tick in checklist)
+  const { data: leagueMemberIds } = useQuery({
+    queryKey: ["league-member-ids", form.invite_scope_id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("club_member_id")
+        .eq("league_id", form.invite_scope_id);
+      if (error) throw error;
+      return (data || []).map((r: any) => r.club_member_id as string);
+    },
+    enabled: form.invite_scope === "league" && !!form.invite_scope_id,
+  });
+
+  // Member IDs matching the selected fee category (pre-tick in checklist)
+  const { data: categoryMemberIds } = useQuery({
+    queryKey: ["category-member-ids", clubId, form.invite_scope_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select("id")
+        .eq("club_id", clubId!)
+        .eq("fee_category_id", form.invite_scope_id);
+      if (error) throw error;
+      return (data || []).map((r: any) => r.id as string);
+    },
+    enabled: form.invite_scope === "category" && !!form.invite_scope_id && !!clubId,
+  });
+
   // Fetch existing club events (for display below the create button)
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["club-events", clubId],

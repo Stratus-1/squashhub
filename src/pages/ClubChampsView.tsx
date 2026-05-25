@@ -69,6 +69,20 @@ export default function ClubChampsView() {
     enabled: !!champ?.club_id,
   });
 
+  const { data: registrations = [] } = useQuery({
+    queryKey: ["club-champ-registrations", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_registrations")
+        .select("id, status, partner_confirmed, club_member_id, partner_member_id, member:club_member_id(id, name, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .eq("champ_id", champId!)
+        .neq("status", "cancelled");
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champId,
+  });
+
+
   const getPlayerName = (player: any) => player?.name || player?.profiles?.name || "Unknown";
 
   const getTeamName = (player: any, partner: any) => {

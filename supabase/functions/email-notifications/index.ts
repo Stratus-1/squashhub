@@ -84,16 +84,19 @@ interface ClubMail {
   clubName: string;
 }
 
-async function resolveClubMail(userId: string): Promise<ClubMail | null> {
+async function resolveClubMail(userId: string, explicitClubId?: string | null): Promise<ClubMail | null> {
   try {
-    const { data: member } = await supabaseAdmin
-      .from("club_members")
-      .select("club_id")
-      .eq("user_id", userId)
-      .not("club_id", "is", null)
-      .limit(1)
-      .maybeSingle();
-    const clubId = member?.club_id;
+    let clubId: string | null = explicitClubId && explicitClubId.trim() ? explicitClubId.trim() : null;
+    if (!clubId) {
+      const { data: member } = await supabaseAdmin
+        .from("club_members")
+        .select("club_id")
+        .eq("user_id", userId)
+        .not("club_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+      clubId = member?.club_id ?? null;
+    }
     if (!clubId) return null;
 
     const [{ data: secrets }, { data: club }] = await Promise.all([

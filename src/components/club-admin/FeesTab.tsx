@@ -31,9 +31,11 @@ interface UnifiedFee {
   active: boolean;
   dueMonth: number; // 1-12
   dueDay: number; // 1-31
+  showOnLanding?: boolean;
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
+
 
 export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenantType?: string }) {
   const isAssociation = tenantType === "association";

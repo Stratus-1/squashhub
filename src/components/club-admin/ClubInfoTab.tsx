@@ -10,6 +10,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from "sonner";
 import { Upload, X, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ClubParticipationCard } from "@/components/club-admin/ClubParticipationCard";
+
 
 export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
   const updateClub = useUpdateClub();
@@ -121,7 +123,11 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
+      {/* Club Participation & SLA */}
+      <ClubParticipationCard club={club} />
+
       {/* Logo */}
+
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Club Logo</h3>
         <div className="flex items-center gap-4">

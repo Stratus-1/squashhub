@@ -45,7 +45,15 @@ export interface Club {
   created_by?: string;
   created_at: string;
   updated_at: string;
+  participation_active?: boolean;
+  sla_accepted_at?: string | null;
+  sla_accepted_by?: string | null;
+  sla_accepted_name?: string | null;
+  sla_accepted_role?: string | null;
+  sla_version?: string | null;
+  sla_billing_option?: "monthly" | "annual_upfront" | null;
 }
+
 
 export interface ClubMember {
   id: string;

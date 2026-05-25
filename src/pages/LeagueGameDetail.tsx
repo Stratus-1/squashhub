@@ -720,7 +720,7 @@ export default function LeagueGameDetail() {
         // player on the roster appears on the scorecard automatically.
         const flexibleCap = teamRule?.team_size_mode === "flexible"
           ? Math.min(MAX_POSITIONS, Math.max(fallbackSize, teamRegs.length))
-          : fallbackSize;
+          : Math.max(fallbackSize, fixtureWideSize);
         const maxExplicitPos = Math.min(MAX_POSITIONS, Math.max(
           flexibleCap,
           ...weekLineups

@@ -137,6 +137,34 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: !!clubId && form.invite_scope === "league",
   });
 
+  // Member IDs matching the selected league (pre-tick in checklist)
+  const { data: leagueMemberIds } = useQuery({
+    queryKey: ["league-member-ids", form.invite_scope_id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("member_league_registrations")
+        .select("club_member_id")
+        .eq("league_id", form.invite_scope_id);
+      if (error) throw error;
+      return (data || []).map((r: any) => r.club_member_id as string);
+    },
+    enabled: form.invite_scope === "league" && !!form.invite_scope_id,
+  });
+
+  // Member IDs matching the selected fee category (pre-tick in checklist)
+  const { data: categoryMemberIds } = useQuery({
+    queryKey: ["category-member-ids", clubId, form.invite_scope_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select("id")
+        .eq("club_id", clubId!)
+        .eq("fee_category_id", form.invite_scope_id);
+      if (error) throw error;
+      return (data || []).map((r: any) => r.id as string);
+    },
+    enabled: form.invite_scope === "category" && !!form.invite_scope_id && !!clubId,
+  });
+
   // Fetch existing club events (for display below the create button)
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["club-events", clubId],
@@ -220,7 +248,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: linkedMemberIds.length > 0 && eventIds.length > 0,
   });
 
-  // Pre-select the creator as an attendee
+  // Pre-tick league/category members when selection changes
+  useEffect(() => {
+    if (form.invite_scope === "league" && leagueMemberIds) {
+      setForm((f) => ({ ...f, selected_member_ids: leagueMemberIds }));
+    }
+  }, [leagueMemberIds, form.invite_scope]);
+  useEffect(() => {
+    if (form.invite_scope === "category" && categoryMemberIds) {
+      setForm((f) => ({ ...f, selected_member_ids: categoryMemberIds }));
+    }
+  }, [categoryMemberIds, form.invite_scope]);
+
+
   useEffect(() => {
     if (activeMember?.id && form.selected_member_ids.length === 0) {
       setForm((f) => ({
@@ -278,10 +318,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       return (data || []).map((m) => m.id);
     }
     if (form.invite_scope === "category" && form.invite_scope_id) {
+      // Use the (possibly edited) checklist selection
+      if (form.selected_member_ids.length > 0) return form.selected_member_ids;
       const { data } = await supabase.from("club_members").select("id").eq("club_id", clubId).eq("fee_category_id", form.invite_scope_id);
       return (data || []).map((m) => m.id);
     }
     if (form.invite_scope === "league" && form.invite_scope_id) {
+      if (form.selected_member_ids.length > 0) return form.selected_member_ids;
       const { data } = await fromExt("member_league_registrations").select("club_member_id").eq("league_id", form.invite_scope_id);
       return (data || []).map((m: any) => m.club_member_id);
     }
@@ -1115,9 +1158,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
 
-              {form.invite_scope === "selected" && (
+              {(form.invite_scope === "selected"
+                || (form.invite_scope === "league" && form.invite_scope_id)
+                || (form.invite_scope === "category" && form.invite_scope_id)) && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Select Members ({form.selected_member_ids.length} selected)</Label>
+                  <Label className="text-xs">
+                    {form.invite_scope === "league"
+                      ? `League members (${form.selected_member_ids.length} selected — untick to exclude)`
+                      : form.invite_scope === "category"
+                      ? `Category members (${form.selected_member_ids.length} selected — untick to exclude)`
+                      : `Select Members (${form.selected_member_ids.length} selected)`}
+                  </Label>
                   <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
                     {(members || []).map((m) => (
                       <label

@@ -158,7 +158,10 @@ export function NotificationsDropdown({
         <Button
           variant={triggerVariant}
           size="icon"
-          className={cn("relative", triggerClassName)}
+          className={cn(
+            "relative h-9 w-9 rounded-full bg-background/80 backdrop-blur-sm border border-border text-foreground shadow-sm hover:bg-background",
+            triggerClassName
+          )}
           aria-label="Open notifications"
         >
           <Bell className="w-5 h-5" />

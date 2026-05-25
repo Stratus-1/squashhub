@@ -253,9 +253,9 @@ export function NotificationActionModal() {
         setOpen(v);
       }}
     >
-      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0 max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="px-4 pt-4 pb-3 border-b flex items-center justify-between gap-3">
+        <div className="px-4 pt-4 pb-3 border-b flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <Bell className="w-4 h-4 text-primary shrink-0" />
             <p className="text-sm font-semibold font-heading truncate">
@@ -269,7 +269,7 @@ export function NotificationActionModal() {
 
         {/* Notification content */}
         {current && (
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-3 overflow-y-auto flex-1 min-h-0">
             <div className="flex items-start gap-3">
               <div className={cn(
                 "w-10 h-10 rounded-full flex items-center justify-center shrink-0",

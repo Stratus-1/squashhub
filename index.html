@@ -55,6 +55,55 @@
 </head>
   <body>
     <div id="root"></div>
+    <!--
+      Tenant auth-email bridge.
+      Runs BEFORE any module loads so the Supabase JS client never gets a
+      chance to consume the recovery hash / verification code on the wrong
+      origin. If we landed on the root domain with a ?tenant=<sub> query
+      and the URL also carries an auth artifact (recovery hash, verification
+      code, or callback path), bounce immediately to the tenant subdomain
+      preserving path + query + hash. Safe no-op for everything else.
+    -->
+    <script>
+      (function () {
+        try {
+          var host = window.location.hostname;
+          var isRoot = host === "squashhub.co.za" || host === "www.squashhub.co.za";
+          if (!isRoot) return;
+          var params = new URLSearchParams(window.location.search);
+          var tenant = (params.get("tenant") || "").toLowerCase().trim();
+          if (!/^[a-z0-9][a-z0-9-]{1,31}$/.test(tenant)) return;
+          if (tenant === "www") return;
+          var hash = window.location.hash || "";
+          var path = window.location.pathname || "/";
+          var hasAuthHash =
+            hash.indexOf("access_token=") !== -1 ||
+            hash.indexOf("refresh_token=") !== -1 ||
+            hash.indexOf("type=recovery") !== -1 ||
+            hash.indexOf("type=signup") !== -1 ||
+            hash.indexOf("type=invite") !== -1 ||
+            hash.indexOf("type=magiclink") !== -1 ||
+            hash.indexOf("error_code=") !== -1;
+          var hasCode = params.has("code") || params.has("token_hash");
+          var isAuthPath =
+            path === "/reset-password" ||
+            path === "/auth/callback" ||
+            path === "/auth";
+          if (!hasAuthHash && !hasCode && !isAuthPath) return;
+          // Strip the tenant param from the forwarded query (not needed on the subdomain).
+          params.delete("tenant");
+          var qs = params.toString();
+          var target =
+            "https://" + tenant + ".squashhub.co.za" +
+            path +
+            (qs ? "?" + qs : "") +
+            hash;
+          window.location.replace(target);
+        } catch (e) {
+          // Never block app startup.
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

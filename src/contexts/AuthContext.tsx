@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getAuthRedirectBase } from "@/lib/site";
+import { getTenantAwareAuthRedirect } from "@/lib/site";
 
 interface AuthContextType {
   user: User | null;
@@ -27,10 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Always route auth/email links to the production domain (or the active
-  // tenant subdomain when the user is signing up from one) — never to a
-  // Lovable preview URL.
-  const publicBaseUrl = getAuthRedirectBase();
+  // Auth-email redirect URLs are built per-call via getTenantAwareAuthRedirect()
+  // so they always land on the production root and bounce back to the active
+  // tenant subdomain via the bootstrap script in index.html.
 
   useEffect(() => {
     const forceLocalSignOut = async () => {
@@ -108,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: {
         data: metadata,
-        emailRedirectTo: `${publicBaseUrl}/auth/callback`,
+        emailRedirectTo: getTenantAwareAuthRedirect("/auth/callback"),
       },
     });
 
@@ -131,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${publicBaseUrl}/reset-password`,
+      redirectTo: getTenantAwareAuthRedirect("/reset-password"),
     });
     return { error: error as Error | null };
   };

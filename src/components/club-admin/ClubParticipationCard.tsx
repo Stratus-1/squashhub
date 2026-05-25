@@ -161,49 +161,50 @@ export function ClubParticipationCard({ club }: { club: Club }) {
               </div>
             </div>
 
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Billing option</Label>
-              <RadioGroup value={billing} onValueChange={(v) => setBilling(v as BillingOption)} className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "monthly" ? "border-primary bg-primary/5" : ""}`}>
-                  <RadioGroupItem value="monthly" id="bill-monthly" />
-                  <div className="text-sm">
-                    <div className="font-medium">Monthly — R6 / member / month</div>
-                    <div className="text-xs text-muted-foreground">Billed monthly in arrears</div>
-                  </div>
-                </label>
-                <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}>
-                  <RadioGroupItem value="annual_upfront" id="bill-annual" />
-                  <div className="text-sm">
-                    <div className="font-medium">Annual upfront — R5 / member / month</div>
-                    <div className="text-xs text-muted-foreground">Paid yearly in advance · save R12/member/year</div>
-                  </div>
-                </label>
-              </RadioGroup>
-              <p className="text-xs text-muted-foreground">A once-off R150 setup fee applies on activation.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="sla-name">Your full name</Label>
-                <Input id="sla-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Smith" />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Billing option</Label>
+                <RadioGroup value={billing} onValueChange={(v) => setBilling(v as BillingOption)} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "monthly" ? "border-primary bg-primary/5" : ""}`}>
+                    <RadioGroupItem value="monthly" id="bill-monthly" />
+                    <div className="text-sm">
+                      <div className="font-medium">Monthly — R6 / member / month</div>
+                      <div className="text-xs text-muted-foreground">Billed monthly in arrears</div>
+                    </div>
+                  </label>
+                  <label className={`flex items-start gap-2 rounded-md border p-3 cursor-pointer ${billing === "annual_upfront" ? "border-primary bg-primary/5" : ""}`}>
+                    <RadioGroupItem value="annual_upfront" id="bill-annual" />
+                    <div className="text-sm">
+                      <div className="font-medium">Annual upfront — R5 / member / month</div>
+                      <div className="text-xs text-muted-foreground">Paid yearly in advance · save R12/member/year</div>
+                    </div>
+                  </label>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">A once-off R150 setup fee applies on activation.</p>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="sla-role">Your role at the club</Label>
-                <Input id="sla-role" value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Chairman, Captain, Secretary" />
-              </div>
-            </div>
 
-            <label className="flex items-start gap-2 cursor-pointer text-sm">
-              <Checkbox checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} className="mt-0.5" />
-              <span>
-                I confirm that I am authorised to bind <strong>{club.name}</strong> and that the club
-                accepts the SquashHub Service Level Agreement (v{SLA_VERSION}), including the fees
-                set out above.
-              </span>
-            </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="sla-name">Your full name</Label>
+                  <Input id="sla-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Smith" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sla-role">Your role at the club</Label>
+                  <Input id="sla-role" value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Chairman, Captain, Secretary" />
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2 cursor-pointer text-sm">
+                <Checkbox checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} className="mt-0.5" />
+                <span>
+                  I confirm that I am authorised to bind <strong>{club.name}</strong> and that the club
+                  accepts the SquashHub Service Level Agreement (v{SLA_VERSION}), including the fees
+                  set out above.
+                </span>
+              </label>
+            </div>
           </div>
+
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>

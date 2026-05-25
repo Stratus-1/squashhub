@@ -271,6 +271,7 @@ function AppRoutes() {
       p === "/league" ||
       p === "/terms" ||
       p === "/privacy" ||
+      p === "/sla" ||
       p === "/lights" ||
       p.startsWith("/c/") ||
       p.startsWith("/tv");

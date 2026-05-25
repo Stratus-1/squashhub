@@ -31,9 +31,11 @@ interface UnifiedFee {
   active: boolean;
   dueMonth: number; // 1-12
   dueDay: number; // 1-31
+  showOnLanding?: boolean;
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
+
 
 export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenantType?: string }) {
   const isAssociation = tenantType === "association";
@@ -63,8 +65,10 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
       active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
+      showOnLanding: (c as any).show_on_landing ?? false,
       source: "member_fee_categories", raw: c,
     }));
+
     associations.forEach(a => {
       // Skip associations where members pay the league directly — these don't belong in the club's fee schedule.
       if ((a as any).members_pay_directly) return;
@@ -133,6 +137,16 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     qc.invalidateQueries({ queryKey: ["club-members"] });
     toast.success(`Fee ${newActive ? "activated" : "deactivated"}`);
   };
+
+  const handleToggleLanding = async (fee: UnifiedFee) => {
+    if (fee.source !== "member_fee_categories") return;
+    const newVal = !fee.showOnLanding;
+    const { error } = await fromExt("member_fee_categories").update({ show_on_landing: newVal }).eq("id", fee.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["fee-categories"] });
+    toast.success(newVal ? "Visible on landing page" : "Hidden from landing page");
+  };
+
 
   const handleDelete = async (fee: UnifiedFee) => {
     if (!confirm(`Delete "${fee.name}"?`)) return;
@@ -220,13 +234,14 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                 <TableHead>Due</TableHead>
                 <TableHead className="text-center">Pro-rate</TableHead>
                 <TableHead className="text-center">Active</TableHead>
+                <TableHead className="text-center">On Landing</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No fees configured. Add membership, league, or national body fees.
                   </TableCell>
                 </TableRow>
@@ -243,6 +258,13 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <TableCell className="text-center">
                     <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
                   </TableCell>
+                  <TableCell className="text-center">
+                    {fee.source === "member_fee_categories" ? (
+                      <Switch checked={!!fee.showOnLanding} onCheckedChange={() => handleToggleLanding(fee)} className="mx-auto" />
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditFee(fee)}><Edit2 className="w-3.5 h-3.5" /></Button>
@@ -251,6 +273,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   </TableCell>
                 </TableRow>
               ))}
+
             </TableBody>
           </Table>
         </Card>

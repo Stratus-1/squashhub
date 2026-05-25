@@ -113,6 +113,23 @@ export function TournamentInviteActions({ notification, champId, registrationId,
   const isAccepted = ["paid", "waived", "pending_eft"].includes(status) || (isPartnerInvite && registration?.partner_confirmed);
   const isDeclined = status === "cancelled" || (isPartnerInvite && !registration?.partner_member_id && registration?.partner_confirmed === false);
 
+  // Auto-clear the notification once the invite is already resolved (accepted/paid/declined),
+  // so the "new notifications" popup stops re-appearing for users who've already responded.
+  const autoClearedRef = useRef(false);
+  useEffect(() => {
+    if (autoClearedRef.current) return;
+    if (!notification?.id || notification.read) return;
+    if (!registration) return;
+    if (!(isAccepted || isDeclined)) return;
+    autoClearedRef.current = true;
+    (async () => {
+      await supabase.from("notifications").update({ read: true }).eq("id", notification.id);
+      invalidateNotifications();
+      onResolved?.();
+    })();
+  }, [notification?.id, notification?.read, registration, isAccepted, isDeclined]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
   const invalidateNotifications = () => {
     qc.invalidateQueries({ queryKey: ["notifications"] });
     qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });

@@ -649,6 +649,17 @@ export default function LeagueGameDetail() {
       //     so swapping in a reserve via Edit Players never re-classifies them as original.
       const result: Record<string, Array<{ code: string; name: string }>> = {};
       const originals: Record<string, Array<{ code: string; name: string }>> = {};
+      // Fixture-wide floor: if one team plays 5/match the scorecard renders 5
+      // rows, so the opposing team should also fill up to that many positions
+      // from its registered squad — otherwise its 5th player (e.g. Susan
+      // Crafford) silently disappears from the lineup.
+      const fixtureWideSize = Math.min(
+        MAX_POSITIONS,
+        Math.max(
+          DEFAULT_POSITIONS,
+          ...codes.map((c) => ruleByCode[String(c || "").toUpperCase()]?.team_size ?? DEFAULT_POSITIONS),
+        ),
+      );
       for (const code of codes) {
         const slots: Array<{ code: string; name: string }> = Array.from({ length: MAX_POSITIONS }, () => ({ code: "", name: "" }));
         const origSlots: Array<{ code: string; name: string }> = Array.from({ length: MAX_POSITIONS }, () => ({ code: "", name: "" }));
@@ -709,7 +720,7 @@ export default function LeagueGameDetail() {
         // player on the roster appears on the scorecard automatically.
         const flexibleCap = teamRule?.team_size_mode === "flexible"
           ? Math.min(MAX_POSITIONS, Math.max(fallbackSize, teamRegs.length))
-          : fallbackSize;
+          : Math.max(fallbackSize, fixtureWideSize);
         const maxExplicitPos = Math.min(MAX_POSITIONS, Math.max(
           flexibleCap,
           ...weekLineups

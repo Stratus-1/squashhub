@@ -3,8 +3,9 @@
  * Update SLA_VERSION whenever the terms change materially so existing
  * acceptances can be flagged as needing re-acceptance.
  */
-export const SLA_VERSION = "1.0";
+export const SLA_VERSION = "1.1";
 export const SLA_EFFECTIVE_DATE = "25 May 2026";
+
 
 export function SquashHubSlaContent() {
   return (

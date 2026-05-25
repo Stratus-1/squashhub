@@ -5513,6 +5513,13 @@ export type Database = {
         Args: { _association_id: string }
         Returns: string
       }
+      get_champ_host: {
+        Args: { _champ_id: string }
+        Returns: {
+          club_name: string
+          subdomain: string
+        }[]
+      }
       get_club_analytics:
         | { Args: { days_back?: number }; Returns: Json }
         | { Args: { days_back?: number; p_club_id?: string }; Returns: Json }

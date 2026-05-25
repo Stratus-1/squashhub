@@ -1479,13 +1479,31 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             {isDoubles && (
               <div className="space-y-2">
                 <Label className="text-sm">Partner selection</Label>
-                <Select value={partnerMode} onValueChange={(v) => setPartnerMode(v as any)}>
+                <Select
+                  value={partnerMode}
+                  onValueChange={(v) => setPartnerMode(v as any)}
+                  onOpenChange={(open) => {
+                    if (!open) return;
+                    // Workaround: Radix Select scroll-lock can reset the page scroll
+                    // position. Capture and restore it on the next tick.
+                    const y = window.scrollY;
+                    requestAnimationFrame(() => window.scrollTo({ top: y }));
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
                     <SelectItem value="admin">Admin pairs all players</SelectItem>
                     <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Only applies to doubles. Switch to Singles in Step 1 to hide this option.
+                </p>
+              </div>
+            )}
+            {!isDoubles && (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
               </div>
             )}
 

@@ -92,11 +92,29 @@ export function ClubParticipationCard({ club }: { club: Club }) {
         <ul className="list-disc pl-5 text-muted-foreground space-y-1">
           <li><strong className="text-foreground">R6</strong> per active member per month (billed monthly), or</li>
           <li><strong className="text-foreground">R5</strong> per active member per month if paid <strong className="text-foreground">annually in advance</strong> (save R12 / member / year)</li>
-          <li>Once-off <strong className="text-foreground">R150</strong> setup fee covering onboarding, data import and initial training</li>
         </ul>
+        <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded px-2 py-1.5">
+          Fees are first invoiced from <strong>September 2025</strong> for the current financial year, and annually thereafter.
+        </p>
         {typeof memberCount === "number" && (
           <p className="text-xs text-muted-foreground">Your club currently has {memberCount} active member{memberCount === 1 ? "" : "s"}.</p>
         )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button type="button" variant="outline" size="sm" asChild>
+            <a href="/sla" target="_blank" rel="noopener noreferrer"><FileText className="w-3.5 h-3.5 mr-1.5" /> View full SLA</a>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const w = window.open("/sla?print=1", "_blank");
+              if (w) setTimeout(() => { try { w.focus(); w.print(); } catch {} }, 800);
+            }}
+          >
+            <Printer className="w-3.5 h-3.5 mr-1.5" /> Download / Print SLA
+          </Button>
+        </div>
       </div>
 
       {isActive ? (
@@ -113,9 +131,6 @@ export function ClubParticipationCard({ club }: { club: Club }) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href="/sla" target="_blank" rel="noopener noreferrer">View SLA</a>
-            </Button>
             <Button variant="ghost" size="sm" onClick={handleDeactivate}>Deactivate</Button>
           </div>
         </div>
@@ -124,6 +139,9 @@ export function ClubParticipationCard({ club }: { club: Club }) {
           <FileSignature className="w-4 h-4 mr-2" /> Activate Participation &amp; Accept SLA
         </Button>
       )}
+
+      <ShellyIntegrationSection club={club} />
+
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">

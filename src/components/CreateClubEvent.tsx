@@ -1158,9 +1158,17 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               )}
 
-              {form.invite_scope === "selected" && (
+              {(form.invite_scope === "selected"
+                || (form.invite_scope === "league" && form.invite_scope_id)
+                || (form.invite_scope === "category" && form.invite_scope_id)) && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Select Members ({form.selected_member_ids.length} selected)</Label>
+                  <Label className="text-xs">
+                    {form.invite_scope === "league"
+                      ? `League members (${form.selected_member_ids.length} selected — untick to exclude)`
+                      : form.invite_scope === "category"
+                      ? `Category members (${form.selected_member_ids.length} selected — untick to exclude)`
+                      : `Select Members (${form.selected_member_ids.length} selected)`}
+                  </Label>
                   <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
                     {(members || []).map((m) => (
                       <label

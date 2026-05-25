@@ -318,10 +318,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       return (data || []).map((m) => m.id);
     }
     if (form.invite_scope === "category" && form.invite_scope_id) {
+      // Use the (possibly edited) checklist selection
+      if (form.selected_member_ids.length > 0) return form.selected_member_ids;
       const { data } = await supabase.from("club_members").select("id").eq("club_id", clubId).eq("fee_category_id", form.invite_scope_id);
       return (data || []).map((m) => m.id);
     }
     if (form.invite_scope === "league" && form.invite_scope_id) {
+      if (form.selected_member_ids.length > 0) return form.selected_member_ids;
       const { data } = await fromExt("member_league_registrations").select("club_member_id").eq("league_id", form.invite_scope_id);
       return (data || []).map((m: any) => m.club_member_id);
     }

@@ -163,10 +163,8 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 
   return (
     <div className="space-y-6 mt-4">
-      {/* Club Participation & SLA */}
-      <ClubParticipationCard club={club} />
-
       {/* Challenge Rules */}
+
       <Card className="p-6 space-y-4">
         <h3 className="font-semibold">Challenge Rules</h3>
         <p className="text-sm text-muted-foreground">How many ladder positions up can a player challenge?</p>

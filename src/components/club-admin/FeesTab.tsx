@@ -65,8 +65,10 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       id: c.id, name: c.name, type: "membership", typeLabel: "Membership",
       amount: c.annual_fee, feeClass: c.fee_class, proRate: (c as any).pro_rate ?? true,
       active: (c as any).active ?? true, dueMonth: (c as any).due_month ?? 1, dueDay: (c as any).due_day ?? 1,
+      showOnLanding: (c as any).show_on_landing ?? false,
       source: "member_fee_categories", raw: c,
     }));
+
     associations.forEach(a => {
       // Skip associations where members pay the league directly — these don't belong in the club's fee schedule.
       if ((a as any).members_pay_directly) return;

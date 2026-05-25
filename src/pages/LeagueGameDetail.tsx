@@ -97,7 +97,28 @@ const resolveFixtureBaseSize = (
     .map((size) => Number(size))
     .filter((size) => Number.isFinite(size) && size > 0);
   if (sizes.length === 0) return fallback;
-  return mode === "fixed" ? Math.min(...sizes) : Math.max(...sizes);
+  return Math.max(...sizes);
+};
+
+const getSavedMaxPosition = (matches: any[] | null | undefined) => (
+  Array.isArray(matches)
+    ? Math.min(MAX_POSITIONS, Math.max(0, ...matches.map((m: any) => Number(m?.position) || 0)))
+    : 0
+);
+
+const getLineupMaxPosition = (
+  lineup: Record<string, Array<{ code?: string; name?: string }>> | null | undefined,
+  codes: Array<string | null | undefined>,
+) => {
+  let maxPosition = 0;
+  for (const code of codes) {
+    if (!code) continue;
+    const slots = lineup?.[code] || lineup?.[code.toUpperCase()] || [];
+    for (let i = 0; i < Math.min(MAX_POSITIONS, slots.length); i++) {
+      if (slots[i]?.code || slots[i]?.name) maxPosition = Math.max(maxPosition, i + 1);
+    }
+  }
+  return maxPosition;
 };
 function emptyPositions(count: number = DEFAULT_POSITIONS): PositionEntry[] {
   return Array.from({ length: count }, () => ({

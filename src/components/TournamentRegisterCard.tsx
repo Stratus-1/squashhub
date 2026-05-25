@@ -232,7 +232,6 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Check className="w-3 h-3 text-primary" />
               Partner: <span className="font-medium text-foreground">{getName(myReg.partner)}</span>
-              {!myReg.partner_confirmed && <Badge variant="outline" className="text-[10px] ml-1">awaiting confirmation</Badge>}
             </p>
           ) : (
             <div className="flex items-center gap-2">

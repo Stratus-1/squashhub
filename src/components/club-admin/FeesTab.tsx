@@ -138,6 +138,16 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     toast.success(`Fee ${newActive ? "activated" : "deactivated"}`);
   };
 
+  const handleToggleLanding = async (fee: UnifiedFee) => {
+    if (fee.source !== "member_fee_categories") return;
+    const newVal = !fee.showOnLanding;
+    const { error } = await fromExt("member_fee_categories").update({ show_on_landing: newVal }).eq("id", fee.id);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["fee-categories"] });
+    toast.success(newVal ? "Visible on landing page" : "Hidden from landing page");
+  };
+
+
   const handleDelete = async (fee: UnifiedFee) => {
     if (!confirm(`Delete "${fee.name}"?`)) return;
     const { error } = await fromExt(fee.source as any).delete().eq("id", fee.id);

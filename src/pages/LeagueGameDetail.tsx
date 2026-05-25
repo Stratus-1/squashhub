@@ -90,14 +90,37 @@ const DEFAULT_POSITIONS = 4;
 const resolveFixtureBaseSize = (
   homeRule: { team_size?: number | null } | undefined,
   awayRule: { team_size?: number | null } | undefined,
-  mode: "fixed" | "flexible",
+  _mode: "fixed" | "flexible",
   fallback = DEFAULT_POSITIONS,
 ) => {
   const sizes = [homeRule?.team_size, awayRule?.team_size]
     .map((size) => Number(size))
     .filter((size) => Number.isFinite(size) && size > 0);
   if (sizes.length === 0) return fallback;
-  return mode === "fixed" ? Math.min(...sizes) : Math.max(...sizes);
+  return Math.max(...sizes);
+};
+
+type SavedMatchPosition = { position?: number | null };
+
+const getSavedMaxPosition = (matches: SavedMatchPosition[] | null | undefined) => (
+  Array.isArray(matches)
+    ? Math.min(MAX_POSITIONS, Math.max(0, ...matches.map((m) => Number(m?.position) || 0)))
+    : 0
+);
+
+const getLineupMaxPosition = (
+  lineup: Record<string, Array<{ code?: string; name?: string }>> | null | undefined,
+  codes: Array<string | null | undefined>,
+) => {
+  let maxPosition = 0;
+  for (const code of codes) {
+    if (!code) continue;
+    const slots = lineup?.[code] || lineup?.[code.toUpperCase()] || [];
+    for (let i = 0; i < Math.min(MAX_POSITIONS, slots.length); i++) {
+      if (slots[i]?.code || slots[i]?.name) maxPosition = Math.max(maxPosition, i + 1);
+    }
+  }
+  return maxPosition;
 };
 function emptyPositions(count: number = DEFAULT_POSITIONS): PositionEntry[] {
   return Array.from({ length: count }, () => ({
@@ -467,9 +490,8 @@ export default function LeagueGameDetail() {
 
   useEffect(() => {
     if (existingMatches && existingMatches.length > 0) {
-      // In "fixed" team-size mode (e.g. NSA always 4), the scorecard must stay
-      // pinned to team_size even if a stale match row at a higher position exists.
-      // In "flexible" mode (e.g. NIL), allow growth based on actual saved positions.
+      // Keep the scorecard large enough for the biggest configured team, any saved
+      // rubber rows, or the already-expanded local lineup while async refreshes land.
       const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
       const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
       // Per-league rules win over the association-wide fallback. Only fall back to
@@ -481,9 +503,7 @@ export default function LeagueGameDetail() {
       const baseSize = hasTeamRule
         ? resolveFixtureBaseSize(homeRule, awayRule, mode)
         : (leagueRules?.team_size ?? DEFAULT_POSITIONS);
-      const targetCount = mode === "fixed"
-        ? Math.min(MAX_POSITIONS, Math.max(1, baseSize))
-        : Math.max(positionCount, ...existingMatches.map((m: any) => m.position || 0));
+      const targetCount = Math.min(MAX_POSITIONS, Math.max(1, baseSize, getSavedMaxPosition(existingMatches), positionCount));
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
@@ -800,9 +820,9 @@ export default function LeagueGameDetail() {
   // (leagueRules fetched above near positionCount declaration)
 
   // Decide team size from association rules.
-  //   - "fixed" mode (e.g. NSA): always exactly team_size positions; extras are reserves only.
-  //   - "flexible" mode (e.g. NIL): grows from team_size up to MAX_POSITIONS based on
-  //     how many players the captain has actually allocated.
+  //   - Starts from configured team size and grows to include saved/local lineup rows.
+  //   - This prevents 5-player NIL scorecards briefly rendering correctly, then
+  //     shrinking back to 4 when saved results or rule metadata refresh later.
   useEffect(() => {
     const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
     const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
@@ -821,20 +841,13 @@ export default function LeagueGameDetail() {
           : (leagueRules?.team_size ?? DEFAULT_POSITIONS),
       ),
     );
-    if (mode === "fixed") {
-      setPositionCount((prev) => (prev === baseSize ? prev : baseSize));
-      return;
-    }
     const homeCode = fixture?.home_team_code;
     const awayCode = fixture?.away_team_code;
     const lineup = (prefillLineup as any)?.lineup || {};
-    let maxFilled = baseSize;
-    for (let i = baseSize; i < MAX_POSITIONS; i++) {
-      const homeFilled = !!(homeCode && (lineup[homeCode]?.[i]?.code || lineup[homeCode]?.[i]?.name));
-      const awayFilled = !!(awayCode && (lineup[awayCode]?.[i]?.code || lineup[awayCode]?.[i]?.name));
-      const savedHasIt = Array.isArray(existingMatches) && existingMatches.some((m: any) => m.position === i + 1);
-      if (homeFilled || awayFilled || savedHasIt) maxFilled = i + 1;
-    }
+    const maxFilled = Math.min(
+      MAX_POSITIONS,
+      Math.max(baseSize, getSavedMaxPosition(existingMatches), getLineupMaxPosition(lineup, [homeCode, awayCode])),
+    );
     setPositionCount((prev) => (prev === maxFilled ? prev : maxFilled));
   }, [fixture, prefillLineup, existingMatches, leagueRules, teamRulesByCode]);
   useEffect(() => {

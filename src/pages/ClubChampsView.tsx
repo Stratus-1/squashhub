@@ -502,12 +502,23 @@ export default function ClubChampsView() {
               )}
 
               {(() => {
-                const registered = registrations.filter(
+                // Hide players who have already been chosen as someone else's partner
+                // so they don't show up twice (once as the paired team, once as a solo entry).
+                const partneredIds = new Set<string>(
+                  registrations
+                    .filter((r: any) => r.partner_member_id)
+                    .map((r: any) => r.partner_member_id as string),
+                );
+                const visible = registrations.filter(
+                  (r: any) => !partneredIds.has(r.club_member_id),
+                );
+                const registered = visible.filter(
                   (r: any) => r.status === "paid" || r.status === "waived",
                 );
-                const invited = registrations.filter(
+                const invited = visible.filter(
                   (r: any) => r.status === "pending_payment" || r.status === "pending_eft",
                 );
+
 
                 const renderRow = (r: any, kind: "registered" | "invited") => {
                   const name = getPlayerName(r.member);

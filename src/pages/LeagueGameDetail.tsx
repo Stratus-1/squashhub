@@ -154,7 +154,7 @@ const countEligibleOriginalPlayers = (
   const squadNameSet = new Set(
     permanentSquadNames.map((n) => normalizePlayerName(n)).filter(Boolean),
   );
-  return rows.reduce((count, row, idx) => {
+  return rows.reduce((count, row) => {
     const currentCode = normalizePlayerCode(row[codeKey]);
     const currentName = normalizePlayerName(row[nameKey] as string);
     if (!currentCode && !currentName) return count;

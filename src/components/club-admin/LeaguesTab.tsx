@@ -1632,13 +1632,9 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         return;
       }
       let totalRowsWritten = 0;
+      let totalRowsDeleted = 0;
       for (const league of changedLeagues) {
         const targetIsReserves = /reserves?/i.test(league.name);
-        const { error: delErr } = await fromExt("member_league_registrations").delete().eq("league_id", league.id);
-        if (delErr) {
-          console.error(`[AllocateLeagues] delete failed for ${league.name}`, delErr);
-          throw new Error(`Delete failed for "${league.name}": ${delErr.message}`);
-        }
         const players = leagueData[league.id] || [];
         const seen = new Set<string>();
         const uniquePlayers = players.filter(p => {
@@ -1646,6 +1642,36 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           seen.add(p.club_member_id);
           return true;
         });
+
+        // NON-DESTRUCTIVE SAVE: diff against the CURRENT DB state (not the
+        // dialog's stale snapshot) so a stale dialog or accidental drag can
+        // never silently wipe a teammate. We only delete members the admin
+        // actually removed; everyone else is upserted in place.
+        const { data: dbRows, error: fetchErr } = await fromExt("member_league_registrations")
+          .select("id, club_member_id")
+          .eq("league_id", league.id);
+        if (fetchErr) {
+          console.error(`[AllocateLeagues] fetch current rows failed for ${league.name}`, fetchErr);
+          throw new Error(`Load failed for "${league.name}": ${fetchErr.message}`);
+        }
+
+        const dbIds = new Set((dbRows || []).map((r: any) => r.club_member_id));
+        const intendedIds = new Set(uniquePlayers.map(p => p.club_member_id));
+        const toDeleteMemberIds = [...dbIds].filter(id => !intendedIds.has(id));
+
+        if (toDeleteMemberIds.length > 0) {
+          const { error: delErr, count } = await fromExt("member_league_registrations")
+            .delete({ count: "exact" })
+            .eq("league_id", league.id)
+            .in("club_member_id", toDeleteMemberIds);
+          if (delErr) {
+            console.error(`[AllocateLeagues] targeted delete failed for ${league.name}`, delErr);
+            throw new Error(`Delete failed for "${league.name}": ${delErr.message}`);
+          }
+          totalRowsDeleted += count ?? toDeleteMemberIds.length;
+          console.log(`[AllocateLeagues] removed ${count ?? toDeleteMemberIds.length} from ${league.name}`, toDeleteMemberIds);
+        }
+
         if (uniquePlayers.length > 0) {
           const payload = uniquePlayers.map((p, i) => ({
             club_member_id: p.club_member_id,

@@ -458,7 +458,8 @@ Deno.serve(async (req) => {
       text = `${title}\n\n${body}\n\nOpen: ${link}\n`;
     }
 
-    const clubMail = await resolveClubMail(targetUserId);
+    const explicitClubId = String(payload?.clubId || (data as any)?.club_id || "") || null;
+    const clubMail = await resolveClubMail(targetUserId, explicitClubId);
     let result: { ok: boolean; skipped?: boolean; reason?: string };
     if (clubMail) {
       result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });

@@ -125,7 +125,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (!myReg) throw new Error("Register first");
       if (!partnerId) throw new Error("Pick a partner");
       const { error } = await fromExt("club_champs_registrations")
-        .update({ partner_member_id: partnerId, partner_confirmed: false })
+        .update({ partner_member_id: partnerId, partner_confirmed: true })
         .eq("id", myReg.id);
       if (error) throw error;
     },

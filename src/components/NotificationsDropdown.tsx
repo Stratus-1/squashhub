@@ -115,7 +115,6 @@ export function NotificationsDropdown({
           .update({ read: true })
           .eq("user_id", user.id)
           .is("club_member_id", null)
-          .not("type", "in", "(tournament_invite,tournament_partner_invite)")
           .eq("read", false),
       ];
 
@@ -125,10 +124,10 @@ export function NotificationsDropdown({
             .from("notifications")
             .update({ read: true })
             .in("club_member_id", linkedMemberIds)
-            .not("type", "in", "(tournament_invite,tournament_partner_invite)")
             .eq("read", false)
         );
       }
+
 
       await Promise.all(updates);
     },

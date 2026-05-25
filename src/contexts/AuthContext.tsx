@@ -27,10 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Always route auth/email links to the production domain (or the active
-  // tenant subdomain when the user is signing up from one) — never to a
-  // Lovable preview URL.
-  const publicBaseUrl = getAuthRedirectBase();
+  // Auth-email redirect URLs are built per-call via getTenantAwareAuthRedirect()
+  // so they always land on the production root and bounce back to the active
+  // tenant subdomain via the bootstrap script in index.html.
 
   useEffect(() => {
     const forceLocalSignOut = async () => {

@@ -486,48 +486,85 @@ export default function ClubChampsView() {
                     );
                   }
                   return (
-                    <TournamentRegisterCard
-                      champ={champ}
-                      clubId={champ.club_id}
-                      memberId={myMemberId}
-                      paymentGateway={clubInfo?.payment_gateway || null}
-                      allowSelfSignup
-                    />
+                    <div id="tournament-register-card">
+                      <TournamentRegisterCard
+                        champ={champ}
+                        clubId={champ.club_id}
+                        memberId={myMemberId}
+                        paymentGateway={clubInfo?.payment_gateway || null}
+                        allowSelfSignup
+                      />
+                    </div>
                   );
                 })()
               ) : (
                 <p className="text-sm text-muted-foreground">Please sign in with the invited member account to respond.</p>
               )}
 
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  Registered Players ({registrations.length})
-                </p>
-                {registrations.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">No one has registered yet. Be the first!</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {registrations.map((r: any) => {
-                      const name = getPlayerName(r.member);
-                      const partnerName = r.partner ? getPlayerName(r.partner) : null;
-                      const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
-                      const paid = r.status === "paid" || r.status === "waived";
-                      return (
-                        <li key={r.id} className={cn("flex items-center gap-2 text-sm p-2 rounded bg-background/60 border", isMe && "ring-1 ring-primary/40")}>
-                          <span className="font-medium flex-1 truncate">
-                            {name}
-                            {partnerName && <span className="text-muted-foreground"> & {partnerName}</span>}
-                            {isMe && <Badge variant="secondary" className="text-[9px] ml-1.5">You</Badge>}
-                          </span>
-                          <Badge variant={paid ? "default" : "outline"} className="text-[10px]">
-                            {paid ? "Registered" : r.status === "pending_payment" ? "Invited" : r.status === "pending_eft" ? "EFT pending" : r.status}
-                          </Badge>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
+              {(() => {
+                const registered = registrations.filter(
+                  (r: any) => r.status === "paid" || r.status === "waived",
+                );
+                const invited = registrations.filter(
+                  (r: any) => r.status === "pending_payment" || r.status === "pending_eft",
+                );
+
+                const renderRow = (r: any, kind: "registered" | "invited") => {
+                  const name = getPlayerName(r.member);
+                  const partnerName = r.partner ? getPlayerName(r.partner) : null;
+                  const isMe = r.club_member_id === myMemberId || r.partner_member_id === myMemberId;
+                  const myInvite = isMe && kind === "invited";
+                  return (
+                    <li
+                      key={r.id}
+                      onClick={myInvite ? () => {
+                        document.getElementById("tournament-register-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      } : undefined}
+                      className={cn(
+                        "flex items-center gap-2 text-sm p-2 rounded bg-background/60 border",
+                        isMe && "ring-1 ring-primary/40",
+                        myInvite && "cursor-pointer hover:bg-primary/10",
+                      )}
+                    >
+                      <span className="font-medium flex-1 truncate">
+                        {name}
+                        {partnerName && <span className="text-muted-foreground"> & {partnerName}</span>}
+                        {isMe && <Badge variant="secondary" className="text-[9px] ml-1.5">You</Badge>}
+                        {myInvite && <span className="text-[10px] text-primary ml-1.5">· click to register</span>}
+                      </span>
+                      <Badge variant={kind === "registered" ? "default" : "outline"} className="text-[10px]">
+                        {kind === "registered"
+                          ? (r.status === "waived" ? "Entered" : "Registered")
+                          : r.status === "pending_eft" ? "EFT pending" : "Invited"}
+                      </Badge>
+                    </li>
+                  );
+                };
+
+                return (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Registered Players ({registered.length})
+                      </p>
+                      {registered.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">No one has registered yet.</p>
+                      ) : (
+                        <ul className="space-y-1.5">{registered.map((r) => renderRow(r, "registered"))}</ul>
+                      )}
+                    </div>
+
+                    {invited.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                          Invited — Awaiting Payment ({invited.length})
+                        </p>
+                        <ul className="space-y-1.5">{invited.map((r) => renderRow(r, "invited"))}</ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}

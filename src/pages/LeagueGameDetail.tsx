@@ -2136,7 +2136,9 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
-                        <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1">H</span>
+                        <SlotDragHandle side="home" idx={idx} code={pos.homeCode} name={pos.homeName} enabled={!setupDone && !isSubmitted && !!pos.homeCode}>
+                          <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1 block">H</span>
+                        </SlotDragHandle>
                         {!setupDone ? (
                           <>
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}

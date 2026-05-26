@@ -2425,9 +2425,54 @@ export default function LeagueGameDetail() {
                           <tr className="bg-muted/40 font-semibold text-xs">
                             <td colSpan={bestOf} className="p-1 text-right">
                               ORIGINAL PLAYERS (×{displaySummary.opbValue})
+                              {isClubAdmin && (originalCountAdj.home !== 0 || originalCountAdj.away !== 0) && (
+                                <span className="ml-2 text-[10px] text-amber-700 dark:text-amber-300 font-normal">
+                                  (admin adj H:{originalCountAdj.home >= 0 ? `+${originalCountAdj.home}` : originalCountAdj.home}, V:{originalCountAdj.away >= 0 ? `+${originalCountAdj.away}` : originalCountAdj.away})
+                                </span>
+                              )}
                             </td>
-                            <td className="text-center p-1">{displaySummary.homeOriginalCount} = {displaySummary.homeOriginalBonus}</td>
-                            <td className="text-center p-1">{displaySummary.awayOriginalCount} = {displaySummary.awayOriginalBonus}</td>
+                            <td className="text-center p-1">
+                              <div className="flex items-center justify-center gap-1">
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, home: p.home - 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Subtract 1 original player (home)"
+                                  >−</button>
+                                )}
+                                <span>{displaySummary.homeOriginalCount} = {displaySummary.homeOriginalBonus}</span>
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, home: p.home + 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Add 1 original player (home)"
+                                  >+</button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-center p-1">
+                              <div className="flex items-center justify-center gap-1">
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, away: p.away - 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Subtract 1 original player (away)"
+                                  >−</button>
+                                )}
+                                <span>{displaySummary.awayOriginalCount} = {displaySummary.awayOriginalBonus}</span>
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, away: p.away + 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Add 1 original player (away)"
+                                  >+</button>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         )}
                       </>

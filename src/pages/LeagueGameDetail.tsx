@@ -537,27 +537,30 @@ export default function LeagueGameDetail() {
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
-        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
+        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null, currentGame: null };
         const scores = (m.game_scores as any[]) || [];
-        const gamesToWin = bestOf === 5 ? 3 : 2;
-        let hw = 0, aw = 0;
-        for (const s of scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
-        const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
-        // If this saved row has no actual play recorded (no scores, no forfeit),
-        // only treat it as empty when there is no saved setup/result summary yet.
-        // Once a captain explicitly saves setup, those no-score rows ARE the fixture
-        // lineup and must reload exactly as saved, including the opposing side.
-        const hasPlay = scores.length > 0 || !!m.is_forfeit;
+        const currentGame = (m.current_game && typeof m.current_game === "object")
+          ? { home: Number((m.current_game as any).home) || 0, away: Number((m.current_game as any).away) || 0 }
+          : null;
+        // SERVER-AUTHORITATIVE completion: a rubber is only "done" when the DB
+        // row explicitly carries a winner ('home'/'away') or is a forfeit.
+        // Never infer completion from raw score counts — an in-progress 7-3
+        // would otherwise be miscounted as a finished game and hide the
+        // "Mark game" arrow mid-match (CSI006/PCC008 bug).
+        const rowWinner = (m.winner as string | null) || null;
+        const completedFromServer = rowWinner === "home" || rowWinner === "away" || !!m.is_forfeit;
+        const hasPlay = scores.length > 0 || !!m.is_forfeit || !!currentGame;
         const hasSavedFixtureState = existingResultFetched && !!existingResult;
         if (!hasPlay && !hasSavedFixtureState) {
-          return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
+          return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null, currentGame: null };
         }
         return {
           homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
           awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
-          scores, completed: matchDecided || !!m.is_forfeit,
+          scores, completed: completedFromServer,
           isForfeit: !!m.is_forfeit,
           forfeitSide: (m.forfeit_side as "home" | "away" | null) ?? null,
+          currentGame,
         };
       });
 

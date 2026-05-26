@@ -2126,6 +2126,45 @@ export default function LeagueGameDetail() {
       <PageHeader title="League Scorecard" subtitle={`${homeCode} vs ${awayCode}`} />
 
       <div className="px-3 space-y-3 pb-8">
+        {/* LIVE NOW banner — quick-jump to any position currently being marked */}
+        {isLiveNow && (() => {
+          const liveItems: { idx: number; userName?: string; score?: { home: number; away: number } }[] = [];
+          positions.forEach((p, i) => {
+            const lockKey = `${fixtureId}|${i + 1}`;
+            const lock = markerLocks[lockKey];
+            const isFresh = markerLocksFresh.has(lockKey);
+            if (isFresh || p.currentGame) {
+              liveItems.push({ idx: i, userName: lock?.user_name, score: p.currentGame || undefined });
+            }
+          });
+          if (liveItems.length === 0) return null;
+          return (
+            <div className="border border-red-600/50 bg-red-50 dark:bg-red-950/20 rounded-lg p-2 flex items-center gap-2 flex-wrap">
+              <Badge className="bg-red-600 text-white font-bold animate-pulse flex items-center gap-1">
+                <Radio className="w-3 h-3" /> LIVE NOW
+              </Badge>
+              {liveItems.map((it) => (
+                <button
+                  key={it.idx}
+                  onClick={() => setViewingPosition(it.idx)}
+                  className="text-xs px-2 py-1 rounded border border-red-600/40 bg-card hover:bg-red-100 dark:hover:bg-red-950/40 flex items-center gap-1.5"
+                  title={it.userName ? `${it.userName} is marking` : "Live game"}
+                >
+                  <Eye className="w-3 h-3 text-red-600" />
+                  <span className="font-semibold">Pos {it.idx + 1}</span>
+                  {it.score && (
+                    <span className="font-mono tabular-nums text-red-600 font-bold">
+                      {it.score.home}–{it.score.away}
+                    </span>
+                  )}
+                  {it.userName && (
+                    <span className="text-muted-foreground truncate max-w-[100px]">· {it.userName}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
         {/* Header row */}
         <div className="border rounded-lg overflow-hidden text-xs bg-card text-card-foreground">
           <div className="grid grid-cols-2 border-b bg-muted/50">

@@ -5,7 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, Users2 } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, Users2, Eye, Radio } from "lucide-react";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -18,6 +18,7 @@ import type { DateRange } from "react-day-picker";
 // NSA fixtures are now read from the DB (synced via nsa-sync-fixtures edge fn) — no live hook here.
 import { toast } from "sonner";
 import { TeamLogo } from "./TeamLogo";
+import { useFixtureLiveMarkers } from "@/hooks/use-fixture-live-markers";
 
 type Props = {
   platformAssocIds: string[];
@@ -297,6 +298,15 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
 
+  // Live marker presence — surfaces a "View Live" button only while a captain
+  // is actively marking a fixture (heartbeat < 60s).
+  const visibleFixtureIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const list of fixturesByDate.values()) for (const f of list) if (f.id && !f.isTournament) ids.push(f.id);
+    return ids;
+  }, [fixturesByDate]);
+  const { freshFixtureIds: liveFixtureIds } = useFixtureLiveMarkers(visibleFixtureIds);
+
   const filterBar = (
     <div className="flex flex-wrap items-center gap-2 mb-4">
       <Select value={rangeMode} onValueChange={(v) => setRangeMode(v as RangeMode)}>
@@ -528,23 +538,38 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                           : needsAdminMode
                             ? (submitted ? "Edit Results" : "Enter Results")
                             : "Mark Game";
+                        const isLive = !f.isTournament && liveFixtureIds.has(f.id);
                         return (
-                          <Button
-                            size="sm"
-                            variant={inLineup || mine ? "default" : "outline"}
-                            disabled={(f._isLive && !f._hasSnapshot) || blocked}
-                            title={
-                              (f._isLive && !f._hasSnapshot)
-                                ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
-                                : blocked
-                                  ? "Only a club or super admin can enter or edit results for past matches."
-                                  : undefined
-                            }
-                            onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
-                          >
-                            <Pencil className="w-3 h-3 mr-1" />
-                            {label}
-                          </Button>
+                          <>
+                            {isLive && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 animate-pulse"
+                                title="A captain is marking this game live — tap to follow"
+                                onClick={() => navigate(`/league-games/${f.id}?mode=view`)}
+                              >
+                                <Radio className="w-3 h-3 mr-1" />
+                                LIVE · View
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant={inLineup || mine ? "default" : "outline"}
+                              disabled={(f._isLive && !f._hasSnapshot) || blocked}
+                              title={
+                                (f._isLive && !f._hasSnapshot)
+                                  ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
+                                  : blocked
+                                    ? "Only a club or super admin can enter or edit results for past matches."
+                                    : undefined
+                              }
+                              onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
+                            >
+                              <Pencil className="w-3 h-3 mr-1" />
+                              {label}
+                            </Button>
+                          </>
                         );
                       })()}
                     </div>

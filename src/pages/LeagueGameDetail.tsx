@@ -506,6 +506,14 @@ export default function LeagueGameDetail() {
         let hw = 0, aw = 0;
         for (const s of scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
         const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+        // If this saved row has no actual play recorded (no scores, no forfeit),
+        // treat it as empty so the live prefill (captain lineup → current registration
+        // ranks) takes over. Otherwise admin rank changes wouldn't reflect on
+        // unplayed scorecards because of stale auto-seeded rows.
+        const hasPlay = scores.length > 0 || !!m.is_forfeit;
+        if (!hasPlay) {
+          return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
+        }
         return {
           homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
           awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
@@ -514,6 +522,7 @@ export default function LeagueGameDetail() {
           forfeitSide: (m.forfeit_side as "home" | "away" | null) ?? null,
         };
       });
+
       setPositions((prev) => {
         // Don't clobber the position the user is actively marking/editing locally —
         // realtime refresh would otherwise overwrite in-progress scores.

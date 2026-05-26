@@ -2147,7 +2147,7 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
-                        <SlotDragHandle side="home" idx={idx} code={pos.homeCode} name={pos.homeName} enabled={!setupDone && !isSubmitted && !!pos.homeCode}>
+                        <SlotDragHandle side="home" idx={idx} code={pos.homeCode} name={pos.homeName} enabled={canEditLineup && !setupDone && !!pos.homeCode}>
                           <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1 block">H</span>
                         </SlotDragHandle>
                         {!setupDone ? (

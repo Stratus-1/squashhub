@@ -467,6 +467,30 @@ export default function LeagueGameDetail() {
         .then(() => {}, () => {});
     };
   }, [activeMarker, fixtureId, user, activeMember]);
+
+  // ---- Detect takeover: if another user's lock appears on our position, bump us out ----
+  const bumpGraceRef = useRef<number>(0);
+  useEffect(() => {
+    if (activeMarker === null || !fixtureId || !user) return;
+    // Grace period after we start marking, to avoid racing our own first upsert
+    bumpGraceRef.current = Date.now() + 5000;
+  }, [activeMarker, fixtureId, user]);
+  useEffect(() => {
+    if (activeMarker === null || !fixtureId || !user) return;
+    if (Date.now() < bumpGraceRef.current) return;
+    const position = activeMarker + 1;
+    const lockKey = `${fixtureId}|${position}`;
+    const lock = markerLocks[lockKey];
+    if (!lock) return;
+    const fresh = markerLocksFresh.has(lockKey);
+    if (fresh && lock.user_id !== user.id) {
+      toast.error(`${lock.user_name} has taken over marking position ${position}.`, {
+        description: "Returning you to the scorecard.",
+      });
+      setActiveMarker(null);
+      setViewingPosition(activeMarker);
+    }
+  }, [markerLocks, markerLocksFresh, activeMarker, fixtureId, user]);
   // ---- NSA live roster: resolved by team code, no DB mapping needed ----
   // Codes are the contract — the club assigns "CSI006" and gives the same to NSA.
   const { data: nsaHomeTeam } = useNsaTeamByCode(fixture?.home_team_code, !!fixture);

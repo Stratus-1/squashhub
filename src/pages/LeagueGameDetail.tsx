@@ -883,6 +883,12 @@ export default function LeagueGameDetail() {
       const fmt = existingResult.match_format as any;
       if (fmt.scoringFormat) setScoringFormat(fmt.scoringFormat);
       if (fmt.bestOf) setBestOf(fmt.bestOf);
+      if (fmt.originalCountAdjustment) {
+        setOriginalCountAdj({
+          home: Number(fmt.originalCountAdjustment.home) || 0,
+          away: Number(fmt.originalCountAdjustment.away) || 0,
+        });
+      }
     }
   }, [leagueRules, existingResult, fixture, teamRulesByCode]);
 

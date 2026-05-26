@@ -2392,11 +2392,11 @@ export default function LeagueGameDetail() {
                                   <RotateCcw className="w-3 h-3" />
                                 </button>
                               )}
-                              {!isSubmitted && pos.awayCode && (
+                              {canEditLineup && pos.awayCode && (
                                 <button
                                   onClick={() => handleClearSlot(idx, "away")}
                                   className="text-muted-foreground hover:text-destructive"
-                                  title="Remove player from this slot"
+                                  title="Remove player from this game (captain / club admin only)"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>

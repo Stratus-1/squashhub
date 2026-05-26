@@ -270,6 +270,8 @@ export default function LeagueGameDetail() {
     home: Record<string, string>; // code → name
     away: Record<string, string>;
   }>({ home: {}, away: {} });
+  // Reset the excluded pool when switching between fixtures.
+  useEffect(() => { setExcludedFromGame({ home: {}, away: {} }); }, [fixtureId]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const [resumableMarker, setResumableMarker] = useState<number | null>(null);
   const [firstHintVisible, setFirstHintVisible] = useState(true);

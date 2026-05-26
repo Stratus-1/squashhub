@@ -973,6 +973,19 @@ export default function LeagueGameDetail() {
     return s;
   }, [positions]);
 
+  // Helper: drop a code from the excluded-for-this-game pool (used when a
+  // captain re-adds a previously removed player via roster click / drag).
+  const clearFromExcluded = useCallback((side: "home" | "away", code: string) => {
+    const upper = (code || "").toUpperCase();
+    if (!upper) return;
+    setExcludedFromGame((prev) => {
+      if (!prev[side][upper]) return prev;
+      const nextSide = { ...prev[side] };
+      delete nextSide[upper];
+      return { ...prev, [side]: nextSide };
+    });
+  }, []);
+
   // Click a roster player → fill the next empty position on their side
   const handleRosterAssign = useCallback((side: "home" | "away", player: NsaTeamPlayer) => {
     const codeUpper = (player.code || "").toUpperCase();
@@ -995,7 +1008,8 @@ export default function LeagueGameDetail() {
       toast.success(`${fullName} → position ${emptyIdx + 1}`);
       return next;
     });
-  }, [assignedCodes]);
+    clearFromExcluded(side, codeUpper);
+  }, [assignedCodes, clearFromExcluded]);
 
   // Drag a roster player onto a specific H/V slot. If the slot is occupied,
   // the new player overwrites it (the displaced player simply returns to the
@@ -1020,6 +1034,27 @@ export default function LeagueGameDetail() {
       }
       return next;
     });
+    clearFromExcluded(side, codeUpper);
+  }, [clearFromExcluded]);
+
+  // Reorder two filled slots on the same side by swapping their players.
+  // No substitution is implied — both players are already in the lineup, so
+  // the SUB badge / original-player-bonus rules are unaffected.
+  const handleSlotReorder = useCallback((side: "home" | "away", fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const codeKey = side === "home" ? "homeCode" : "awayCode";
+    const nameKey = side === "home" ? "homeName" : "awayName";
+    setPositions((prev) => {
+      const next = prev.map((p) => ({ ...p }));
+      const aCode = next[fromIdx][codeKey];
+      const aName = next[fromIdx][nameKey];
+      const bCode = next[toIdx][codeKey];
+      const bName = next[toIdx][nameKey];
+      next[fromIdx] = { ...next[fromIdx], [codeKey]: bCode, [nameKey]: bName };
+      next[toIdx] = { ...next[toIdx], [codeKey]: aCode, [nameKey]: aName };
+      toast.success(`Position ${fromIdx + 1} ↔ ${toIdx + 1} swapped`);
+      return next;
+    });
   }, []);
 
   const dndSensors = useSensors(
@@ -1030,13 +1065,24 @@ export default function LeagueGameDetail() {
   const handleDragEnd = useCallback((e: DragEndEvent) => {
     const a = e.active?.data.current as any;
     const o = e.over?.data.current as any;
-    if (!a || !o || a.kind !== "roster" || o.kind !== "slot") return;
+    if (!a || !o) return;
+    // Reorder filled slot → another slot on the SAME side
+    if (a.kind === "slot-drag" && o.kind === "slot") {
+      if (a.side !== o.side) {
+        toast.error(`Can't move a ${a.side} player onto the ${o.side} side`);
+        return;
+      }
+      handleSlotReorder(a.side, a.idx, o.idx);
+      return;
+    }
+    // Roster pick → slot
+    if (a.kind !== "roster" || o.kind !== "slot") return;
     if (a.side !== o.side) {
       toast.error(`${a.side === "home" ? "Home" : "Visitor"} player can't go on the ${o.side === "home" ? "home" : "visitor"} side`);
       return;
     }
     handleRosterDrop(o.side, o.idx, a.code, a.name);
-  }, [handleRosterDrop]);
+  }, [handleRosterDrop, handleSlotReorder]);
 
   const buildSwappedPositions = useCallback((rows: PositionEntry[], idx: number, side: "home" | "away", c: SwapCandidate) => {
     const next = rows.map((p) => ({ ...p }));

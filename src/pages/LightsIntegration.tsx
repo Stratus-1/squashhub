@@ -125,6 +125,9 @@ export default function LightsIntegration() {
               One unit drives <strong className="text-white">up to 4 courts</strong>. Built-in energy metering, DIN-rail mount,
               works with any 230V lighting circuit (LED, fluorescent, halide).
             </p>
+            <p className="text-xs text-white/40 mt-2 italic">
+              The Shelly Pro 4PM handles 4 channels at 8 amps per channel. If your lights draw more than 8 amps per circuit, you will need individual Shelly units rated up to 22 amps per channel instead.
+            </p>
           </Card>
 
           <Card className="p-6 bg-white/5 border-white/10 backdrop-blur-md">

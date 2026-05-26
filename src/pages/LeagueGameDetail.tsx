@@ -1145,9 +1145,28 @@ export default function LeagueGameDetail() {
   }, [swapTarget, setupDone, fixtureId, user, positions, queryClient, buildSwappedPositions]);
 
   const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
+    // Capture the player BEFORE clearing so we can park them in the
+    // "Removed for this game" pool — preventing accidental re-selection
+    // from the NSA squad (which would trigger SUB tracking).
+    const pos = positions[idx];
+    const code = side === "home" ? pos?.homeCode : pos?.awayCode;
+    const name = side === "home" ? pos?.homeName : pos?.awayName;
+    const codeUpper = (code || "").toUpperCase();
+    if (codeUpper) {
+      setExcludedFromGame((prev) => ({
+        ...prev,
+        [side]: { ...prev[side], [codeUpper]: name || codeUpper },
+      }));
+    }
     updatePosition(idx, side === "home" ? "homeCode" : "awayCode", "");
     updatePosition(idx, side === "home" ? "homeName" : "awayName", "");
-  }, []);
+  }, [positions]);
+
+  // Restore a previously-excluded player back to the NSA squad pool so the
+  // captain can pick them again. Does NOT auto-place them in a slot.
+  const restoreExcluded = useCallback((side: "home" | "away", code: string) => {
+    clearFromExcluded(side, code);
+  }, [clearFromExcluded]);
 
 
   // ---- Auto-save a single position's scores to DB ----

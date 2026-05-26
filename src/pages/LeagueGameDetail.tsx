@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties, type ReactNode } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -116,6 +116,8 @@ interface PositionEntry {
   completed: boolean;
   isForfeit?: boolean;
   forfeitSide?: "home" | "away" | null;
+  /** In-progress (not-yet-finished) game score. Display-only — never counted as a finished game. */
+  currentGame?: { home: number; away: number } | null;
 }
 
 interface OriginalLineupSnapshot {
@@ -254,6 +256,10 @@ function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label
 export default function LeagueGameDetail() {
   const { fixtureId } = useParams<{ fixtureId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Soft marker locks: { "fixtureId|position": { user_id, user_name, heartbeat_at } }
+  const [markerLocks, setMarkerLocks] = useState<Record<string, { user_id: string; user_name: string; heartbeat_at: string }>>({});
+  const [markerLocksFresh, setMarkerLocksFresh] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();
@@ -385,6 +391,79 @@ export default function LeagueGameDetail() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [fixtureId, queryClient]);
+
+  // ---- Soft marker presence: live map of who is currently marking which position ----
+  useEffect(() => {
+    if (!fixtureId) return;
+    let cancelled = false;
+    const refresh = async () => {
+      const { data } = await supabase
+        .from("league_marker_locks" as any)
+        .select("position, user_id, user_name, heartbeat_at")
+        .eq("fixture_id", fixtureId);
+      if (cancelled) return;
+      const next: Record<string, { user_id: string; user_name: string; heartbeat_at: string }> = {};
+      for (const row of (data || []) as any[]) {
+        next[`${fixtureId}|${row.position}`] = {
+          user_id: row.user_id, user_name: row.user_name, heartbeat_at: row.heartbeat_at,
+        };
+      }
+      setMarkerLocks(next);
+    };
+    refresh();
+    const ch = supabase
+      .channel(`league-marker-locks:${fixtureId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "league_marker_locks", filter: `fixture_id=eq.${fixtureId}` },
+        () => { refresh(); }
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [fixtureId]);
+
+  // Recompute "fresh" lock set (heartbeat < 60s) every 10s so stale locks fade.
+  useEffect(() => {
+    const recompute = () => {
+      const now = Date.now();
+      const fresh = new Set<string>();
+      for (const [k, v] of Object.entries(markerLocks)) {
+        if (now - new Date(v.heartbeat_at).getTime() < 60_000) fresh.add(k);
+      }
+      setMarkerLocksFresh(fresh);
+    };
+    recompute();
+    const id = setInterval(recompute, 10_000);
+    return () => clearInterval(id);
+  }, [markerLocks]);
+
+  // ---- Acquire / heartbeat / release marker lock while actively marking ----
+  useEffect(() => {
+    if (activeMarker === null || !fixtureId || !user) return;
+    const position = activeMarker + 1;
+    const userName = (activeMember as any)?.full_name || user.email || "A captain";
+    let cancelled = false;
+    const upsertLock = async () => {
+      try {
+        await supabase.from("league_marker_locks" as any).upsert({
+          fixture_id: fixtureId, position, user_id: user.id, user_name: userName,
+          heartbeat_at: new Date().toISOString(),
+        } as any, { onConflict: "fixture_id,position" });
+      } catch (e) { console.warn("Lock heartbeat failed", e); }
+    };
+    upsertLock();
+    const id = setInterval(() => { if (!cancelled) upsertLock(); }, 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      supabase.from("league_marker_locks" as any)
+        .delete()
+        .eq("fixture_id", fixtureId)
+        .eq("position", position)
+        .eq("user_id", user.id)
+        .then(() => {}, () => {});
+    };
+  }, [activeMarker, fixtureId, user, activeMember]);
   // ---- NSA live roster: resolved by team code, no DB mapping needed ----
   // Codes are the contract — the club assigns "CSI006" and gives the same to NSA.
   const { data: nsaHomeTeam } = useNsaTeamByCode(fixture?.home_team_code, !!fixture);
@@ -537,27 +616,30 @@ export default function LeagueGameDetail() {
       const loaded = Array.from({ length: targetCount }, (_, i) => {
         const pos = i + 1;
         const m = existingMatches.find((r: any) => r.position === pos);
-        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
+        if (!m) return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null, currentGame: null };
         const scores = (m.game_scores as any[]) || [];
-        const gamesToWin = bestOf === 5 ? 3 : 2;
-        let hw = 0, aw = 0;
-        for (const s of scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
-        const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
-        // If this saved row has no actual play recorded (no scores, no forfeit),
-        // only treat it as empty when there is no saved setup/result summary yet.
-        // Once a captain explicitly saves setup, those no-score rows ARE the fixture
-        // lineup and must reload exactly as saved, including the opposing side.
-        const hasPlay = scores.length > 0 || !!m.is_forfeit;
+        const currentGame = (m.current_game && typeof m.current_game === "object")
+          ? { home: Number((m.current_game as any).home) || 0, away: Number((m.current_game as any).away) || 0 }
+          : null;
+        // SERVER-AUTHORITATIVE completion: a rubber is only "done" when the DB
+        // row explicitly carries a winner ('home'/'away') or is a forfeit.
+        // Never infer completion from raw score counts — an in-progress 7-3
+        // would otherwise be miscounted as a finished game and hide the
+        // "Mark game" arrow mid-match (CSI006/PCC008 bug).
+        const rowWinner = (m.winner as string | null) || null;
+        const completedFromServer = rowWinner === "home" || rowWinner === "away" || !!m.is_forfeit;
+        const hasPlay = scores.length > 0 || !!m.is_forfeit || !!currentGame;
         const hasSavedFixtureState = existingResultFetched && !!existingResult;
         if (!hasPlay && !hasSavedFixtureState) {
-          return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
+          return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null, currentGame: null };
         }
         return {
           homeCode: m.home_player_code || "", homeName: m.home_player_name || "",
           awayCode: m.away_player_code || "", awayName: m.away_player_name || "",
-          scores, completed: matchDecided || !!m.is_forfeit,
+          scores, completed: completedFromServer,
           isForfeit: !!m.is_forfeit,
           forfeitSide: (m.forfeit_side as "home" | "away" | null) ?? null,
+          currentGame,
         };
       });
 
@@ -1139,7 +1221,9 @@ export default function LeagueGameDetail() {
     setSwapTarget(null);
     toast.success(`Player swapped — remember to save setup`);
 
-    // If setup already saved, persist immediately
+    // If setup already saved, persist the player change immediately.
+    // CRITICAL: never include game_scores / winner / games-won here — another
+    // captain may already be marking and those fields would clobber live scores.
     if (setupDone && fixtureId && user) {
       try {
         for (let i = 0; i < updatedPositionsForSave.length; i++) {
@@ -1151,8 +1235,6 @@ export default function LeagueGameDetail() {
             away_player_code: p.awayCode.toUpperCase(),
             home_player_name: p.homeName,
             away_player_name: p.awayName,
-            game_scores: p.scores, home_games_won: 0, away_games_won: 0,
-            winner: null,
           } as any, { onConflict: "fixture_id,position" });
         }
         queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
@@ -1185,20 +1267,28 @@ export default function LeagueGameDetail() {
   }, [clearFromExcluded]);
 
 
-  // ---- Auto-save a single position's scores to DB ----
+  // ---- Auto-save a single position's FINISHED game scores to DB.
+  // Always clears `current_game` (the in-progress rally is over once a game ends).
+  // Only sets `winner` when the rubber is truly decided — never from mid-match counts.
   const persistPositionScores = useCallback(async (posIdx: number, updatedPos: PositionEntry) => {
     if (!fixtureId || !user) return;
     try {
       let hw = 0, aw = 0;
       for (const s of updatedPos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+      const gamesToWin = bestOf === 5 ? 3 : 2;
+      const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+      const explicitWinner = matchDecided ? (hw > aw ? "home" : "away") : null;
       await supabase.from("league_match_results" as any).upsert({
         fixture_id: fixtureId, position: posIdx + 1,
         home_player_code: updatedPos.homeCode.toUpperCase(), away_player_code: updatedPos.awayCode.toUpperCase(),
         home_player_name: updatedPos.homeName, away_player_name: updatedPos.awayName,
         game_scores: updatedPos.scores, home_games_won: hw, away_games_won: aw,
-        winner: hw > aw ? "home" : aw > hw ? "away" : null,
+        winner: updatedPos.isForfeit
+          ? (updatedPos.forfeitSide === "home" ? "away" : "home")
+          : explicitWinner,
         is_forfeit: !!updatedPos.isForfeit,
         forfeit_side: updatedPos.forfeitSide ?? null,
+        current_game: null,
       } as any, { onConflict: "fixture_id,position" });
       // Also update fixture result summary
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
@@ -1208,7 +1298,22 @@ export default function LeagueGameDetail() {
     } catch (err: any) {
       console.error("Auto-save failed:", err);
     }
-  }, [fixtureId, user, queryClient]);
+  }, [fixtureId, user, queryClient, bestOf]);
+
+  // ---- Persist only the IN-PROGRESS rally (e.g. 7-3 in the current game).
+  // Writes to `current_game` column so realtime viewers see live points without
+  // the row ever looking "completed" to the refetch logic.
+  const persistCurrentGame = useCallback(async (posIdx: number, current: { home: number; away: number } | null) => {
+    if (!fixtureId || !user) return;
+    try {
+      await supabase.from("league_match_results" as any)
+        .update({ current_game: current })
+        .eq("fixture_id", fixtureId)
+        .eq("position", posIdx + 1);
+    } catch (err) {
+      console.error("Live-rally save failed:", err);
+    }
+  }, [fixtureId, user]);
 
   // ---- Mark a position as a forfeit (player unavailable) ----
   // Awards the non-forfeiting side 3 clean games (15-0, 15-0, 15-0) and applies a
@@ -1398,6 +1503,15 @@ export default function LeagueGameDetail() {
     const homeOk = !!(pos.homeCode || pos.homeName);
     const awayOk = !!(pos.awayCode || pos.awayName);
     if (!homeOk || !awayOk) { toast.error("Both players required"); return; }
+    // Soft lock check: if another captain is actively marking this position
+    // (heartbeat < 60s), confirm before taking over.
+    const lockKey = `${fixtureId}|${posIdx + 1}`;
+    const existing = markerLocks[lockKey];
+    const isFresh = markerLocksFresh.has(lockKey);
+    if (existing && isFresh && existing.user_id !== user?.id) {
+      const ok = window.confirm(`${existing.user_name} is currently marking position ${posIdx + 1}. Take over?`);
+      if (!ok) return;
+    }
     const config = buildMarkerConfigForPosition(posIdx);
     if (config) clearMarkerStateForSession(getMarkerSessionKeys(config));
     setResumableMarker(null);
@@ -1595,17 +1709,16 @@ export default function LeagueGameDetail() {
               names: (summary as any)._awayPermanentSquadNames as string[],
             },
           };
+      // Final submit: per-position scores are already live-saved via persistPositionScores.
+      // Only re-assert player setup + forfeit state here — NEVER overwrite game_scores
+      // or winner from local state (could clobber another captain's live progress).
       for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode && !pos.homeName && !pos.awayName) continue;
-        let hw = 0, aw = 0;
-        for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
         const { error } = await supabase.from("league_match_results" as any).upsert({
           fixture_id: fixtureId, position: i + 1,
           home_player_code: pos.homeCode.toUpperCase(), away_player_code: pos.awayCode.toUpperCase(),
           home_player_name: pos.homeName, away_player_name: pos.awayName,
-          game_scores: pos.scores, home_games_won: hw, away_games_won: aw,
-          winner: hw > aw ? "home" : aw > hw ? "away" : null,
           is_forfeit: !!pos.isForfeit,
           forfeit_side: pos.forfeitSide ?? null,
         } as any, { onConflict: "fixture_id,position" });
@@ -1692,7 +1805,15 @@ export default function LeagueGameDetail() {
   // (with adminOverride) may re-open. We no longer auto-lock past-date fixtures
   // that have not yet been captured — captains often fill the scorecard the
   // morning after league night.
-  const isSubmitted = isSubmittedLocked && !adminOverride;
+  const isSubmittedReal = isSubmittedLocked && !adminOverride;
+  // ---- View Game (read-only live spectator) ----
+  // Activated explicitly via ?mode=view OR implicitly when the user has no
+  // editing rights on this fixture. All edit controls render disabled and the
+  // page becomes a pure live-follow scorecard via the realtime channel.
+  const isViewMode = (searchParams.get("mode") || "") === "view";
+  const isSubmitted = isSubmittedReal || isViewMode;
+  // ---- LIVE indicator: any position has an in-progress rally or a fresh marker lock ----
+  const isLiveNow = positions.some((p) => !!p.currentGame) || markerLocksFresh.size > 0;
 
   // Scoreboard always shows the live recomputed summary (current rules).
   // Standings reads stored fixture totals — when association rules change,
@@ -1745,15 +1866,17 @@ export default function LeagueGameDetail() {
               if (activeMarker === null) return;
               const current = positions[activeMarker];
               if (!current) return;
-              // Append the in-progress game (only when there are points scored).
-              const inProgress = (cur.a > 0 || cur.b > 0) ? [{ home: cur.a, away: cur.b }] : [];
-              const scores = [...games.map((g) => ({ home: g.a, away: g.b })), ...inProgress];
-              const updated = { ...current, scores, completed: false };
+              // Store the in-progress rally on `currentGame` ONLY — never inside
+              // `scores` (which is reserved for finished games). Local `scores`
+              // stays as the finished games already saved via onProgress.
+              const finishedScores = games.map((g) => ({ home: g.a, away: g.b }));
+              const currentGame = (cur.a > 0 || cur.b > 0) ? { home: cur.a, away: cur.b } : null;
+              const updated: PositionEntry = { ...current, scores: finishedScores, completed: false, currentGame };
               setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });
-              // Debounce DB writes to ~600ms to avoid hammering on rapid points
+              // Debounce DB write of just the in-progress rally to ~600ms.
               if (liveScoreTimerRef.current) clearTimeout(liveScoreTimerRef.current);
               liveScoreTimerRef.current = setTimeout(() => {
-                persistPositionScores(activeMarker, updated);
+                persistCurrentGame(activeMarker, currentGame);
               }, 600);
             }}
           />

@@ -279,6 +279,9 @@ export default function LeagueGameDetail() {
   // Reset the excluded pool when switching between fixtures.
   useEffect(() => { setExcludedFromGame({ home: {}, away: {} }); }, [fixtureId]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  // Read-only spectator view of a position currently being marked by someone else.
+  // Stays in sync via the same realtime channel that feeds `positions`.
+  const [viewingPosition, setViewingPosition] = useState<number | null>(null);
   const [resumableMarker, setResumableMarker] = useState<number | null>(null);
   const [firstHintVisible, setFirstHintVisible] = useState(true);
   useEffect(() => {

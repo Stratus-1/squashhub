@@ -241,6 +241,10 @@ export default function LeagueGameDetail() {
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
   const isClubAdmin = useIsClubAdmin();
+  // Admin manual adjustment to original-player count (e.g. unrecorded sub).
+  // Stored as a signed delta applied on top of the computed count.
+  const [originalCountAdj, setOriginalCountAdj] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
+  const [savingOpbAdj, setSavingOpbAdj] = useState(false);
 
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");

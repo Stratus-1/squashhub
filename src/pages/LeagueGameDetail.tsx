@@ -2017,16 +2017,58 @@ export default function LeagueGameDetail() {
         )}
 
         <DndContext sensors={dndSensors} onDragEnd={handleDragEnd}>
-        {/* NSA Squad roster — click OR drag players onto H/V slots */}
+        {/* NSA Squad roster — click OR drag players onto H/V slots.
+            Players the captain has removed for THIS game are hidden from
+            the squad pool and parked in the "Removed for this game" strip
+            below, so they can't be accidentally re-selected (which would
+            count as a substitution). */}
         {nsaLive && !setupDone && !isSubmitted && (
-          <RosterPanel
-            homeCode={fixture?.home_team_code}
-            awayCode={fixture?.away_team_code}
-            homePlayers={nsaHomeTeam?.players}
-            awayPlayers={nsaAwayTeam?.players}
-            assignedCodes={assignedCodes}
-            onAssign={handleRosterAssign}
-          />
+          <>
+            <RosterPanel
+              homeCode={fixture?.home_team_code}
+              awayCode={fixture?.away_team_code}
+              homePlayers={(nsaHomeTeam?.players || []).filter(p => !excludedFromGame.home[(p.code || "").toUpperCase()])}
+              awayPlayers={(nsaAwayTeam?.players || []).filter(p => !excludedFromGame.away[(p.code || "").toUpperCase()])}
+              assignedCodes={assignedCodes}
+              onAssign={handleRosterAssign}
+            />
+            {(Object.keys(excludedFromGame.home).length > 0 || Object.keys(excludedFromGame.away).length > 0) && (
+              <div className="border border-dashed border-amber-300 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2 text-[11px] space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-200">
+                  <X className="w-3 h-3" />
+                  Removed for this game
+                  <span className="font-normal text-amber-700/80 dark:text-amber-300/80">
+                    — these players won't appear in the squad pool. Click Add back if you change your mind.
+                  </span>
+                </div>
+                {(["home", "away"] as const).map((side) => {
+                  const entries = Object.entries(excludedFromGame[side]);
+                  if (entries.length === 0) return null;
+                  return (
+                    <div key={side} className="flex flex-wrap gap-1 items-center">
+                      <span className="text-[10px] uppercase tracking-wide font-bold text-muted-foreground w-12 shrink-0">
+                        {side === "home" ? "Home" : "Visitors"}
+                      </span>
+                      {entries.map(([code, name]) => (
+                        <button
+                          key={`${side}:${code}`}
+                          type="button"
+                          onClick={() => restoreExcluded(side, code)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px]"
+                          title="Add back to NSA squad pool"
+                        >
+                          <span className="font-mono text-muted-foreground">{code}</span>
+                          <span className="font-medium">{name}</span>
+                          <Undo2 className="w-3 h-3 text-primary" />
+                          <span className="text-primary">Add back</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
 

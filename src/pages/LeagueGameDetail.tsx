@@ -400,6 +400,7 @@ export default function LeagueGameDetail() {
         nameByCode: {} as Record<string, string>,
         clubIdByCode: {} as Record<string, string>,
         captainCodeByCode: {} as Record<string, string>,
+        captainMemberIdByCode: {} as Record<string, string>,
         logoByCode: {} as Record<string, string>,
         ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }>,
       };

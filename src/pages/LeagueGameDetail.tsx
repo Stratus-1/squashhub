@@ -2047,53 +2047,51 @@ export default function LeagueGameDetail() {
             below, so they can't be accidentally re-selected (which would
             count as a substitution). */}
         {nsaLive && !setupDone && !isSubmitted && (
-          <>
-            <RosterPanel
-              homeCode={fixture?.home_team_code}
-              awayCode={fixture?.away_team_code}
-              homePlayers={(nsaHomeTeam?.players || []).filter(p => !excludedFromGame.home[(p.code || "").toUpperCase()])}
-              awayPlayers={(nsaAwayTeam?.players || []).filter(p => !excludedFromGame.away[(p.code || "").toUpperCase()])}
-              assignedCodes={assignedCodes}
-              onAssign={handleRosterAssign}
-            />
-            {(Object.keys(excludedFromGame.home).length > 0 || Object.keys(excludedFromGame.away).length > 0) && (
-              <div className="border border-dashed border-amber-300 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2 text-[11px] space-y-1.5">
-                <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-200">
-                  <X className="w-3 h-3" />
-                  Removed for this game
-                  <span className="font-normal text-amber-700/80 dark:text-amber-300/80">
-                    — these players won't appear in the squad pool. Click Add back if you change your mind.
+          <RosterPanel
+            homeCode={fixture?.home_team_code}
+            awayCode={fixture?.away_team_code}
+            homePlayers={(nsaHomeTeam?.players || []).filter(p => !excludedFromGame.home[(p.code || "").toUpperCase()])}
+            awayPlayers={(nsaAwayTeam?.players || []).filter(p => !excludedFromGame.away[(p.code || "").toUpperCase()])}
+            assignedCodes={assignedCodes}
+            onAssign={handleRosterAssign}
+          />
+        )}
+        {!isSubmitted && (Object.keys(excludedFromGame.home).length > 0 || Object.keys(excludedFromGame.away).length > 0) && (
+          <div className="border border-dashed border-amber-300 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2 text-[11px] space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-200">
+              <X className="w-3 h-3" />
+              Removed for this game
+              <span className="font-normal text-amber-700/80 dark:text-amber-300/80">
+                — click Add back to return the player to the lineup.
+              </span>
+            </div>
+            {(["home", "away"] as const).map((side) => {
+              const entries = Object.entries(excludedFromGame[side]);
+              if (entries.length === 0) return null;
+              return (
+                <div key={side} className="flex flex-wrap gap-1 items-center">
+                  <span className="text-[10px] uppercase tracking-wide font-bold text-muted-foreground w-12 shrink-0">
+                    {side === "home" ? "Home" : "Visitors"}
                   </span>
+                  {entries.map(([code, name]) => (
+                    <button
+                      key={`${side}:${code}`}
+                      type="button"
+                      onClick={() => restoreExcluded(side, code)}
+                      disabled={!canEditLineup}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={canEditLineup ? "Add back to lineup" : "Only the team captain, club admin, or super admin can restore players"}
+                    >
+                      <span className="font-mono text-muted-foreground">{code}</span>
+                      <span className="font-medium">{name}</span>
+                      <Undo2 className="w-3 h-3 text-primary" />
+                      <span className="text-primary">Add back</span>
+                    </button>
+                  ))}
                 </div>
-                {(["home", "away"] as const).map((side) => {
-                  const entries = Object.entries(excludedFromGame[side]);
-                  if (entries.length === 0) return null;
-                  return (
-                    <div key={side} className="flex flex-wrap gap-1 items-center">
-                      <span className="text-[10px] uppercase tracking-wide font-bold text-muted-foreground w-12 shrink-0">
-                        {side === "home" ? "Home" : "Visitors"}
-                      </span>
-                      {entries.map(([code, name]) => (
-                        <button
-                          key={`${side}:${code}`}
-                          type="button"
-                          onClick={() => restoreExcluded(side, code)}
-                          disabled={!canEditLineup}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={canEditLineup ? "Add back to NSA squad pool" : "Only the team captain, club admin, or super admin can restore players"}
-                        >
-                          <span className="font-mono text-muted-foreground">{code}</span>
-                          <span className="font-medium">{name}</span>
-                          <Undo2 className="w-3 h-3 text-primary" />
-                          <span className="text-primary">Add back</span>
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+              );
+            })}
+          </div>
         )}
 
 

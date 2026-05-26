@@ -514,7 +514,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1.5 shrink-0">
+                    <div className="flex flex-col gap-1.5 shrink-0 w-[110px] sm:w-auto">
                       {mine && !f.isTournament && (
                         <Button
                           size="sm"

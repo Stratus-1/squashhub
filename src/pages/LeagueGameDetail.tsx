@@ -511,11 +511,12 @@ export default function LeagueGameDetail() {
         for (const s of scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
         const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
         // If this saved row has no actual play recorded (no scores, no forfeit),
-        // treat it as empty so the live prefill (captain lineup → current registration
-        // ranks) takes over. Otherwise admin rank changes wouldn't reflect on
-        // unplayed scorecards because of stale auto-seeded rows.
+        // only treat it as empty when there is no saved setup/result summary yet.
+        // Once a captain explicitly saves setup, those no-score rows ARE the fixture
+        // lineup and must reload exactly as saved, including the opposing side.
         const hasPlay = scores.length > 0 || !!m.is_forfeit;
-        if (!hasPlay) {
+        const hasSavedFixtureState = existingResultFetched && !!existingResult;
+        if (!hasPlay && !hasSavedFixtureState) {
           return { homeCode: "", homeName: "", awayCode: "", awayName: "", scores: [], completed: false, isForfeit: false, forfeitSide: null };
         }
         return {
@@ -1232,7 +1233,7 @@ export default function LeagueGameDetail() {
       if (!hasOriginalSnapshot(originalLineupSnapshot)) setOriginalLineupSnapshot(setupOriginalSnapshot);
       for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
-        if (!pos.homeCode && !pos.awayCode) continue;
+        if (!pos.homeCode && !pos.awayCode && !pos.homeName && !pos.awayName) continue;
         const { error } = await supabase.from("league_match_results" as any).upsert({
           fixture_id: fixtureId, position: i + 1,
           home_player_code: pos.homeCode.toUpperCase(), away_player_code: pos.awayCode.toUpperCase(),
@@ -1498,7 +1499,7 @@ export default function LeagueGameDetail() {
           };
       for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
-        if (!pos.homeCode && !pos.awayCode) continue;
+        if (!pos.homeCode && !pos.awayCode && !pos.homeName && !pos.awayName) continue;
         let hw = 0, aw = 0;
         for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
         const { error } = await supabase.from("league_match_results" as any).upsert({

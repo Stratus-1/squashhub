@@ -30,7 +30,7 @@ import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
 import { TeamLogo } from "@/components/league-games/TeamLogo";
-import { DndContext, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, useDroppable, useDraggable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 
 /** Droppable wrapper that BECOMES the grid row. Adds drop highlight ring. */
 function DroppableSlotRow({

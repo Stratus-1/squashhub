@@ -2626,6 +2626,56 @@ export default function LeagueGameDetail() {
               <Edit3 className="w-4 h-4 mr-1" />
               {isSubmittedLocked ? "Adjust Final Score (Admin)" : "Enter Final Score Manually (Admin)"}
             </Button>
+
+            {displaySummary.opbEnabled && (() => {
+              const savedAdj = ((existingResult?.match_format as any)?.originalCountAdjustment) || { home: 0, away: 0 };
+              const dirty = (savedAdj.home || 0) !== originalCountAdj.home || (savedAdj.away || 0) !== originalCountAdj.away;
+              if (!dirty) return null;
+              return (
+                <div className="pt-2 border-t border-destructive/20 space-y-2">
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Original-player bonus adjustment pending — Home delta <b>{originalCountAdj.home >= 0 ? `+${originalCountAdj.home}` : originalCountAdj.home}</b>, Away delta <b>{originalCountAdj.away >= 0 ? `+${originalCountAdj.away}` : originalCountAdj.away}</b>. Apply this without re-entering the scorecard.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-amber-500/60 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                    disabled={savingOpbAdj || !fixtureId || !user}
+                    onClick={async () => {
+                      if (!fixtureId || !user) return;
+                      setSavingOpbAdj(true);
+                      try {
+                        const prevMf = (existingResult?.match_format as any) || {};
+                        const { error } = await supabase.from("league_fixture_results" as any).upsert({
+                          fixture_id: fixtureId,
+                          home_total_games: displaySummary.homeTotalGames,
+                          away_total_games: displaySummary.awayTotalGames,
+                          home_bonus_points: displaySummary.homeBonusPoints,
+                          away_bonus_points: displaySummary.awayBonusPoints,
+                          home_penalty_points: displaySummary.homePenaltyPoints,
+                          away_penalty_points: displaySummary.awayPenaltyPoints,
+                          home_total_points: displaySummary.homeTotal,
+                          away_total_points: displaySummary.awayTotal,
+                          winner: displaySummary.winner,
+                          match_format: { ...prevMf, originalCountAdjustment: originalCountAdj },
+                        } as any, { onConflict: "fixture_id" });
+                        if (error) throw error;
+                        toast.success("Original-player bonus adjustment saved");
+                        queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+                        queryClient.invalidateQueries({ queryKey: ["internal-standings"] });
+                      } catch (err: any) {
+                        toast.error(err.message || "Failed to save adjustment");
+                      } finally {
+                        setSavingOpbAdj(false);
+                      }
+                    }}
+                  >
+                    {savingOpbAdj ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Save bonus adjustment
+                  </Button>
+                </div>
+              );
+            })()}
           </div>
         )}
 

@@ -1067,6 +1067,22 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const isInternal = associationInfo?.scope === "internal";
   const associationTenantClubId: string | null = associationInfo?.club_id ?? null;
 
+  // Association-level league rule: allow_multi_team_registration (NSA-style flexibility).
+  // When true, a player may be registered in more than one team within this association.
+  const { data: allowMultiTeam = false } = useQuery({
+    queryKey: ["assoc-allow-multi-team", associationId],
+    queryFn: async () => {
+      if (!associationId) return false;
+      const { data } = await fromExt("league_rules")
+        .select("allow_multi_team_registration")
+        .eq("association_id", associationId)
+        .is("league_id", null)
+        .maybeSingle();
+      return !!(data as any)?.allow_multi_team_registration;
+    },
+    enabled: open && !!associationId,
+  });
+
   // PERMANENT source of truth: active rows in `member_association_affiliations`
   // (mirrors what Edit Profile / Edit Member writes — covers both internal and regional).
   const { data: permanentAffiliatedIds = [] } = useQuery({
@@ -1598,22 +1614,25 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Guard: a member must not appear in more than one TEAM (non-reserves) league.
-      const teamMemberCounts = new Map<string, string[]>(); // memberId → league names
-      for (const lg of leagues) {
-        if (!teamLeagueIds.has(lg.id)) continue;
-        for (const p of (leagueData[lg.id] || [])) {
-          const arr = teamMemberCounts.get(p.club_member_id) || [];
-          arr.push(lg.name);
-          teamMemberCounts.set(p.club_member_id, arr);
+      // Guard: a member must not appear in more than one TEAM (non-reserves) league —
+      // unless the association rule allows multi-team registration (e.g. NSA).
+      if (!allowMultiTeam) {
+        const teamMemberCounts = new Map<string, string[]>(); // memberId → league names
+        for (const lg of leagues) {
+          if (!teamLeagueIds.has(lg.id)) continue;
+          for (const p of (leagueData[lg.id] || [])) {
+            const arr = teamMemberCounts.get(p.club_member_id) || [];
+            arr.push(lg.name);
+            teamMemberCounts.set(p.club_member_id, arr);
+          }
         }
-      }
-      for (const [mid, names] of teamMemberCounts) {
-        if (names.length > 1) {
-          const mname = members.find(m => m.id === mid)?.name || "A player";
-          toast.error(`${mname} is on more than one team (${names.join(", ")}). Remove them from one before saving.`);
-          setSaving(false);
-          return;
+        for (const [mid, names] of teamMemberCounts) {
+          if (names.length > 1) {
+            const mname = members.find(m => m.id === mid)?.name || "A player";
+            toast.error(`${mname} is on more than one team (${names.join(", ")}). Remove them from one before saving.`);
+            setSaving(false);
+            return;
+          }
         }
       }
       const changedLeagues = leagues.filter(l => isLeagueChanged(l.id));

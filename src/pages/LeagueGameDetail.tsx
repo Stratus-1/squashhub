@@ -241,6 +241,10 @@ export default function LeagueGameDetail() {
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
   const isClubAdmin = useIsClubAdmin();
+  // Admin manual adjustment to original-player count (e.g. unrecorded sub).
+  // Stored as a signed delta applied on top of the computed count.
+  const [originalCountAdj, setOriginalCountAdj] = useState<{ home: number; away: number }>({ home: 0, away: 0 });
+  const [savingOpbAdj, setSavingOpbAdj] = useState(false);
 
   // Match format config
   const [scoringFormat, setScoringFormat] = useState<"par11" | "par15">("par11");
@@ -879,6 +883,12 @@ export default function LeagueGameDetail() {
       const fmt = existingResult.match_format as any;
       if (fmt.scoringFormat) setScoringFormat(fmt.scoringFormat);
       if (fmt.bestOf) setBestOf(fmt.bestOf);
+      if (fmt.originalCountAdjustment) {
+        setOriginalCountAdj({
+          home: Number(fmt.originalCountAdjustment.home) || 0,
+          away: Number(fmt.originalCountAdjustment.away) || 0,
+        });
+      }
     }
   }, [leagueRules, existingResult, fixture, teamRulesByCode]);
 
@@ -1418,8 +1428,11 @@ export default function LeagueGameDetail() {
     const awayPermanentSquadNames = (savedSquad?.away?.names && savedSquad.away.names.length > 0)
       ? savedSquad.away.names.map(normalizePlayerName).filter(Boolean)
       : fallbackOriginalNames(awayTeamCode);
-    const homeOriginalCount = countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
-    const awayOriginalCount = countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
+    const homeOriginalCountRaw = countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
+    const awayOriginalCountRaw = countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
+    // Admin manual delta (e.g. recorded player didn't actually play; an unlisted sub stepped in).
+    const homeOriginalCount = Math.max(0, homeOriginalCountRaw + (originalCountAdj.home || 0));
+    const awayOriginalCount = Math.max(0, awayOriginalCountRaw + (originalCountAdj.away || 0));
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 
@@ -1450,7 +1463,7 @@ export default function LeagueGameDetail() {
       _hadSavedSquad: !!(savedSquad?.home?.codes?.length || savedSquad?.away?.codes?.length
         || savedSquad?.home?.names?.length || savedSquad?.away?.names?.length),
     };
-  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult]);
+  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult, originalCountAdj]);
 
   // ---- Submit ----
   const handleSubmit = async () => {
@@ -1510,7 +1523,7 @@ export default function LeagueGameDetail() {
         home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (isClubAdmin && isFixturePast)) ? "ADMIN_OVERRIDE" : null),
         away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (isClubAdmin && isFixturePast)) ? "ADMIN_OVERRIDE" : null),
         submitted_by: user.id, submitted_at: new Date().toISOString(),
-        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot },
+        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot, originalCountAdjustment: originalCountAdj },
       } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
       toast.success("League results submitted!");
@@ -2412,9 +2425,54 @@ export default function LeagueGameDetail() {
                           <tr className="bg-muted/40 font-semibold text-xs">
                             <td colSpan={bestOf} className="p-1 text-right">
                               ORIGINAL PLAYERS (×{displaySummary.opbValue})
+                              {isClubAdmin && (originalCountAdj.home !== 0 || originalCountAdj.away !== 0) && (
+                                <span className="ml-2 text-[10px] text-amber-700 dark:text-amber-300 font-normal">
+                                  (admin adj H:{originalCountAdj.home >= 0 ? `+${originalCountAdj.home}` : originalCountAdj.home}, V:{originalCountAdj.away >= 0 ? `+${originalCountAdj.away}` : originalCountAdj.away})
+                                </span>
+                              )}
                             </td>
-                            <td className="text-center p-1">{displaySummary.homeOriginalCount} = {displaySummary.homeOriginalBonus}</td>
-                            <td className="text-center p-1">{displaySummary.awayOriginalCount} = {displaySummary.awayOriginalBonus}</td>
+                            <td className="text-center p-1">
+                              <div className="flex items-center justify-center gap-1">
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, home: p.home - 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Subtract 1 original player (home)"
+                                  >−</button>
+                                )}
+                                <span>{displaySummary.homeOriginalCount} = {displaySummary.homeOriginalBonus}</span>
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, home: p.home + 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Add 1 original player (home)"
+                                  >+</button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="text-center p-1">
+                              <div className="flex items-center justify-center gap-1">
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, away: p.away - 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Subtract 1 original player (away)"
+                                  >−</button>
+                                )}
+                                <span>{displaySummary.awayOriginalCount} = {displaySummary.awayOriginalBonus}</span>
+                                {isClubAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOriginalCountAdj((p) => ({ ...p, away: p.away + 1 }))}
+                                    className="w-5 h-5 rounded border border-border bg-background hover:bg-muted text-xs leading-none"
+                                    title="Add 1 original player (away)"
+                                  >+</button>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         )}
                       </>
@@ -2568,6 +2626,56 @@ export default function LeagueGameDetail() {
               <Edit3 className="w-4 h-4 mr-1" />
               {isSubmittedLocked ? "Adjust Final Score (Admin)" : "Enter Final Score Manually (Admin)"}
             </Button>
+
+            {displaySummary.opbEnabled && (() => {
+              const savedAdj = ((existingResult?.match_format as any)?.originalCountAdjustment) || { home: 0, away: 0 };
+              const dirty = (savedAdj.home || 0) !== originalCountAdj.home || (savedAdj.away || 0) !== originalCountAdj.away;
+              if (!dirty) return null;
+              return (
+                <div className="pt-2 border-t border-destructive/20 space-y-2">
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Original-player bonus adjustment pending — Home delta <b>{originalCountAdj.home >= 0 ? `+${originalCountAdj.home}` : originalCountAdj.home}</b>, Away delta <b>{originalCountAdj.away >= 0 ? `+${originalCountAdj.away}` : originalCountAdj.away}</b>. Apply this without re-entering the scorecard.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-amber-500/60 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                    disabled={savingOpbAdj || !fixtureId || !user}
+                    onClick={async () => {
+                      if (!fixtureId || !user) return;
+                      setSavingOpbAdj(true);
+                      try {
+                        const prevMf = (existingResult?.match_format as any) || {};
+                        const { error } = await supabase.from("league_fixture_results" as any).upsert({
+                          fixture_id: fixtureId,
+                          home_total_games: displaySummary.homeTotalGames,
+                          away_total_games: displaySummary.awayTotalGames,
+                          home_bonus_points: displaySummary.homeBonusPoints,
+                          away_bonus_points: displaySummary.awayBonusPoints,
+                          home_penalty_points: displaySummary.homePenaltyPoints,
+                          away_penalty_points: displaySummary.awayPenaltyPoints,
+                          home_total_points: displaySummary.homeTotal,
+                          away_total_points: displaySummary.awayTotal,
+                          winner: displaySummary.winner,
+                          match_format: { ...prevMf, originalCountAdjustment: originalCountAdj },
+                        } as any, { onConflict: "fixture_id" });
+                        if (error) throw error;
+                        toast.success("Original-player bonus adjustment saved");
+                        queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+                        queryClient.invalidateQueries({ queryKey: ["internal-standings"] });
+                      } catch (err: any) {
+                        toast.error(err.message || "Failed to save adjustment");
+                      } finally {
+                        setSavingOpbAdj(false);
+                      }
+                    }}
+                  >
+                    {savingOpbAdj ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Save bonus adjustment
+                  </Button>
+                </div>
+              );
+            })()}
           </div>
         )}
 

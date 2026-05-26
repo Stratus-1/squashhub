@@ -1144,7 +1144,9 @@ export default function LeagueGameDetail() {
     setSwapTarget(null);
     toast.success(`Player swapped — remember to save setup`);
 
-    // If setup already saved, persist immediately
+    // If setup already saved, persist the player change immediately.
+    // CRITICAL: never include game_scores / winner / games-won here — another
+    // captain may already be marking and those fields would clobber live scores.
     if (setupDone && fixtureId && user) {
       try {
         for (let i = 0; i < updatedPositionsForSave.length; i++) {
@@ -1156,8 +1158,6 @@ export default function LeagueGameDetail() {
             away_player_code: p.awayCode.toUpperCase(),
             home_player_name: p.homeName,
             away_player_name: p.awayName,
-            game_scores: p.scores, home_games_won: 0, away_games_won: 0,
-            winner: null,
           } as any, { onConflict: "fixture_id,position" });
         }
         queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });

@@ -1523,7 +1523,7 @@ export default function LeagueGameDetail() {
         home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (isClubAdmin && isFixturePast)) ? "ADMIN_OVERRIDE" : null),
         away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (isClubAdmin && isFixturePast)) ? "ADMIN_OVERRIDE" : null),
         submitted_by: user.id, submitted_at: new Date().toISOString(),
-        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot },
+        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot, originalCountAdjustment: originalCountAdj },
       } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
       toast.success("League results submitted!");

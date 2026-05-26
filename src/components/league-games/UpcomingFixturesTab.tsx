@@ -5,7 +5,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, Users2, Eye, Radio } from "lucide-react";
+import { MapPin, Star, Trophy, Pencil, UserCheck, CalendarIcon, Wifi, Check, X, Users2, Eye, Radio, Info } from "lucide-react";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -569,6 +569,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               <Pencil className="w-3 h-3 mr-1" />
                               {label}
                             </Button>
+                            {!isLive && !submitted && !f.isTournament && (
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                                <Info className="w-3 h-3" />
+                                <span>To view live, wait for marker to start</span>
+                              </div>
+                            )}
                           </>
                         );
                       })()}

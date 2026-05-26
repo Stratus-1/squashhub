@@ -400,6 +400,7 @@ export default function LeagueGameDetail() {
         nameByCode: {} as Record<string, string>,
         clubIdByCode: {} as Record<string, string>,
         captainCodeByCode: {} as Record<string, string>,
+        captainMemberIdByCode: {} as Record<string, string>,
         logoByCode: {} as Record<string, string>,
         ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }>,
       };
@@ -452,7 +453,7 @@ export default function LeagueGameDetail() {
           if (k && c) captainCodeByCode[k] = c;
         }
       }
-      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode, ruleByCode };
+      return { nameByCode, clubIdByCode, captainCodeByCode, captainMemberIdByCode, logoByCode, ruleByCode };
     },
   });
   const teamNamesByCode = teamMeta?.nameByCode;
@@ -1878,11 +1879,19 @@ export default function LeagueGameDetail() {
   const awayTeamName = teamNamesByCode?.[awayCode.toUpperCase()] || null;
   const homeCaptainCode = (teamMeta?.captainCodeByCode?.[homeCode.toUpperCase()] || "").toUpperCase();
   const awayCaptainCode = (teamMeta?.captainCodeByCode?.[awayCode.toUpperCase()] || "").toUpperCase();
+  const homeCaptainMemberId = teamMeta?.captainMemberIdByCode?.[homeCode.toUpperCase()] || null;
+  const awayCaptainMemberId = teamMeta?.captainMemberIdByCode?.[awayCode.toUpperCase()] || null;
   const homeClubId = teamMeta?.clubIdByCode?.[homeCode.toUpperCase()];
   const awayClubId = teamMeta?.clubIdByCode?.[awayCode.toUpperCase()];
   const isInternalLeague = !!(homeClubId && awayClubId && homeClubId === awayClubId);
   const homeSigLabel = isInternalLeague ? `${homeTeamName || homeCode} Captain` : "Home Captain";
   const awaySigLabel = isInternalLeague ? `${awayTeamName || awayCode} Captain` : "Away Captain";
+  // Who is allowed to re-order / remove / restore players on this scorecard?
+  // - Platform super-admins & club admins → always (isClubAdmin covers both)
+  // - The team captain of either side (matched by club_member_id)
+  const isHomeCaptain = !!(activeMember?.id && homeCaptainMemberId && activeMember.id === homeCaptainMemberId);
+  const isAwayCaptain = !!(activeMember?.id && awayCaptainMemberId && activeMember.id === awayCaptainMemberId);
+  const canEditLineup = !isSubmitted && (isClubAdmin || isHomeCaptain || isAwayCaptain);
   const isCaptainCode = (code: string | null | undefined, side: "home" | "away") => {
     const c = (code || "").toUpperCase();
     if (!c) return false;
@@ -2069,8 +2078,9 @@ export default function LeagueGameDetail() {
                           key={`${side}:${code}`}
                           type="button"
                           onClick={() => restoreExcluded(side, code)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px]"
-                          title="Add back to NSA squad pool"
+                          disabled={!canEditLineup}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={canEditLineup ? "Add back to NSA squad pool" : "Only the team captain, club admin, or super admin can restore players"}
                         >
                           <span className="font-mono text-muted-foreground">{code}</span>
                           <span className="font-medium">{name}</span>
@@ -2138,7 +2148,7 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
-                        <SlotDragHandle side="home" idx={idx} code={pos.homeCode} name={pos.homeName} enabled={!setupDone && !isSubmitted && !!pos.homeCode}>
+                        <SlotDragHandle side="home" idx={idx} code={pos.homeCode} name={pos.homeName} enabled={canEditLineup && !setupDone && !!pos.homeCode}>
                           <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1 block">H</span>
                         </SlotDragHandle>
                         {!setupDone ? (
@@ -2217,11 +2227,11 @@ export default function LeagueGameDetail() {
                                   <RotateCcw className="w-3 h-3" />
                                 </button>
                               )}
-                              {!isSubmitted && pos.homeCode && (
+                              {canEditLineup && pos.homeCode && (
                                 <button
                                   onClick={() => handleClearSlot(idx, "home")}
                                   className="text-muted-foreground hover:text-destructive"
-                                  title="Remove player from this slot"
+                                  title="Remove player from this game (captain / club admin only)"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -2304,7 +2314,7 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span></span>
-                        <SlotDragHandle side="away" idx={idx} code={pos.awayCode} name={pos.awayName} enabled={!setupDone && !isSubmitted && !!pos.awayCode}>
+                        <SlotDragHandle side="away" idx={idx} code={pos.awayCode} name={pos.awayName} enabled={canEditLineup && !setupDone && !!pos.awayCode}>
                           <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1 block">V</span>
                         </SlotDragHandle>
                         {!setupDone ? (
@@ -2383,11 +2393,11 @@ export default function LeagueGameDetail() {
                                   <RotateCcw className="w-3 h-3" />
                                 </button>
                               )}
-                              {!isSubmitted && pos.awayCode && (
+                              {canEditLineup && pos.awayCode && (
                                 <button
                                   onClick={() => handleClearSlot(idx, "away")}
                                   className="text-muted-foreground hover:text-destructive"
-                                  title="Remove player from this slot"
+                                  title="Remove player from this game (captain / club admin only)"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>

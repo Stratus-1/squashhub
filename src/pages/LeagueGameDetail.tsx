@@ -452,7 +452,7 @@ export default function LeagueGameDetail() {
           if (k && c) captainCodeByCode[k] = c;
         }
       }
-      return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode, ruleByCode };
+      return { nameByCode, clubIdByCode, captainCodeByCode, captainMemberIdByCode, logoByCode, ruleByCode };
     },
   });
   const teamNamesByCode = teamMeta?.nameByCode;

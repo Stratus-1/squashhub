@@ -386,38 +386,18 @@ export default function LeagueGameDetail() {
             };
           }
         }
-        const { data: caps } = await (supabase as any)
-          .from("member_league_registrations")
-          .select("league_id, club_member_id, is_captain")
-          .in("league_id", leagueIds)
-          .eq("is_captain", true);
-        for (const c of (caps || []) as any[]) {
-          const k = leagueIdToCode[c.league_id];
-          if (k) captainMemberIdByCode[k] = c.club_member_id;
-        }
       }
+      // Resolve captain player codes via SECURITY DEFINER RPC so opposing
+      // captains/admins are visible even when RLS would otherwise hide the
+      // other club's registrations / member rows.
       const captainCodeByCode: Record<string, string> = {};
-      const captainIds = Array.from(new Set(Object.values(captainMemberIdByCode)));
-      if (captainIds.length) {
-        const { data: regs } = await (supabase as any)
-          .from("member_league_registrations")
-          .select("club_member_id, league_association_number, ssa_number")
-          .in("club_member_id", captainIds);
-        const codeByMember = new Map<string, string>();
-        for (const r of (regs || []) as any[]) {
-          const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
-          if (code && !codeByMember.has(r.club_member_id)) codeByMember.set(r.club_member_id, code);
-        }
-        const missing = captainIds.filter(id => !codeByMember.has(id));
-        if (missing.length) {
-          const { data: members } = await supabase.from("club_members").select("id, club_member_number").in("id", missing);
-          for (const m of (members || []) as any[]) {
-            if (m.club_member_number) codeByMember.set(m.id, String(m.club_member_number).toUpperCase());
-          }
-        }
-        for (const [k, mid] of Object.entries(captainMemberIdByCode)) {
-          const c = codeByMember.get(mid);
-          if (c) captainCodeByCode[k] = c;
+      if (codes.length) {
+        const { data: capRows } = await (supabase as any)
+          .rpc("get_team_captain_codes", { _team_codes: codes });
+        for (const r of (capRows || []) as any[]) {
+          const k = String(r.team_code || "").toUpperCase();
+          const c = String(r.captain_code || "").toUpperCase();
+          if (k && c) captainCodeByCode[k] = c;
         }
       }
       return { nameByCode, clubIdByCode, captainCodeByCode, logoByCode, ruleByCode };

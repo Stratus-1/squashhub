@@ -3242,12 +3242,43 @@ export type Database = {
           },
         ]
       }
+      league_marker_locks: {
+        Row: {
+          acquired_at: string
+          fixture_id: string
+          heartbeat_at: string
+          id: string
+          position: number
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          acquired_at?: string
+          fixture_id: string
+          heartbeat_at?: string
+          id?: string
+          position: number
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          acquired_at?: string
+          fixture_id?: string
+          heartbeat_at?: string
+          id?: string
+          position?: number
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
       league_match_results: {
         Row: {
           away_games_won: number
           away_player_code: string | null
           away_player_name: string | null
           created_at: string
+          current_game: Json | null
           fixture_id: string
           forfeit_side: string | null
           game_scores: Json | null
@@ -3265,6 +3296,7 @@ export type Database = {
           away_player_code?: string | null
           away_player_name?: string | null
           created_at?: string
+          current_game?: Json | null
           fixture_id: string
           forfeit_side?: string | null
           game_scores?: Json | null
@@ -3282,6 +3314,7 @@ export type Database = {
           away_player_code?: string | null
           away_player_name?: string | null
           created_at?: string
+          current_game?: Json | null
           fixture_id?: string
           forfeit_side?: string | null
           game_scores?: Json | null

@@ -2302,7 +2302,9 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span></span>
-                        <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1">V</span>
+                        <SlotDragHandle side="away" idx={idx} code={pos.awayCode} name={pos.awayName} enabled={!setupDone && !isSubmitted && !!pos.awayCode}>
+                          <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1 block">V</span>
+                        </SlotDragHandle>
                         {!setupDone ? (
                           <>
                             <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}

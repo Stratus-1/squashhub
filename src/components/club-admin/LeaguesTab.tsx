@@ -1073,12 +1073,29 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     queryKey: ["assoc-allow-multi-team", associationId],
     queryFn: async () => {
       if (!associationId) return false;
-      const { data } = await fromExt("league_rules")
+      const { data: directRule, error: directErr } = await fromExt("league_rules")
         .select("allow_multi_team_registration")
         .eq("association_id", associationId)
         .is("league_id", null)
         .maybeSingle();
-      return !!(data as any)?.allow_multi_team_registration;
+      if (directErr) throw directErr;
+      if (directRule) return !!(directRule as any).allow_multi_team_registration;
+
+      const { data: assoc, error: assocErr } = await fromExt("league_associations")
+        .select("platform_association_id")
+        .eq("id", associationId)
+        .maybeSingle();
+      if (assocErr) throw assocErr;
+      const platformAssociationId = (assoc as any)?.platform_association_id;
+      if (!platformAssociationId) return false;
+
+      const { data: inheritedRule, error: inheritedErr } = await fromExt("league_rules")
+        .select("allow_multi_team_registration")
+        .eq("association_id", platformAssociationId)
+        .is("league_id", null)
+        .maybeSingle();
+      if (inheritedErr) throw inheritedErr;
+      return !!(inheritedRule as any)?.allow_multi_team_registration;
     },
     enabled: open && !!associationId,
   });
@@ -1399,8 +1416,8 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
 
   // Add from pool to league. Enforces:
   //  • No duplicate row in the same league.
-  //  • A member can only be in ONE team (non-reserves) league at a time.
-  //    They may additionally appear in any number of reserves lists.
+  //  • Strict associations: a member can only be in ONE team (non-reserves)
+  //    league at a time. Flexible associations (NSA) allow multiple teams.
   const addToLeague = (member: ClubMember, leagueId: string) => {
     const targetIsReserves = !teamLeagueIds.has(leagueId);
     // Already in this exact league? No-op.
@@ -1408,7 +1425,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       toast.info(`${member.name || member.profiles?.name || "Player"} is already in this league.`);
       return;
     }
-    if (!targetIsReserves) {
+    if (!allowMultiTeam && !targetIsReserves) {
       const existingTeamId = findTeamLeagueOfMember(member.id);
       if (existingTeamId && existingTeamId !== leagueId) {
         const existing = leagues.find(l => l.id === existingTeamId);
@@ -1793,7 +1810,7 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {genderMembers.length} eligible • Drag players into leagues or between positions. A member can be in <strong>one team</strong> and <strong>one or more reserves</strong> lists — drag from the pool onto a reserves zone to add them as a reserve even if they're already on a team.</p>
+          <p className="text-xs text-muted-foreground">{totalAllocated} allocated • {genderMembers.length} eligible • Drag players into leagues or between positions. {allowMultiTeam ? <>This association allows players in multiple teams.</> : <>A member can be in <strong>one team</strong> and <strong>one or more reserves</strong> lists.</>} Drag from the pool onto a reserves zone to add them as a reserve even if they're already on a team.</p>
         </DialogHeader>
 
         {!loaded ? (

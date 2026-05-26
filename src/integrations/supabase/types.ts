@@ -5629,6 +5629,13 @@ export type Database = {
         Args: { target_member_id: string }
         Returns: Json
       }
+      get_team_captain_codes: {
+        Args: { _team_codes: string[] }
+        Returns: {
+          captain_code: string
+          team_code: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

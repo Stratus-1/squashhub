@@ -2078,8 +2078,9 @@ export default function LeagueGameDetail() {
                           key={`${side}:${code}`}
                           type="button"
                           onClick={() => restoreExcluded(side, code)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px]"
-                          title="Add back to NSA squad pool"
+                          disabled={!canEditLineup}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={canEditLineup ? "Add back to NSA squad pool" : "Only the team captain, club admin, or super admin can restore players"}
                         >
                           <span className="font-mono text-muted-foreground">{code}</span>
                           <span className="font-medium">{name}</span>

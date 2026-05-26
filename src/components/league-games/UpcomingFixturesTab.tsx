@@ -538,23 +538,38 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                           : needsAdminMode
                             ? (submitted ? "Edit Results" : "Enter Results")
                             : "Mark Game";
+                        const isLive = !f.isTournament && liveFixtureIds.has(f.id);
                         return (
-                          <Button
-                            size="sm"
-                            variant={inLineup || mine ? "default" : "outline"}
-                            disabled={(f._isLive && !f._hasSnapshot) || blocked}
-                            title={
-                              (f._isLive && !f._hasSnapshot)
-                                ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
-                                : blocked
-                                  ? "Only a club or super admin can enter or edit results for past matches."
-                                  : undefined
-                            }
-                            onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
-                          >
-                            <Pencil className="w-3 h-3 mr-1" />
-                            {label}
-                          </Button>
+                          <>
+                            {isLive && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 animate-pulse"
+                                title="A captain is marking this game live — tap to follow"
+                                onClick={() => navigate(`/league-games/${f.id}?mode=view`)}
+                              >
+                                <Radio className="w-3 h-3 mr-1" />
+                                LIVE · View
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant={inLineup || mine ? "default" : "outline"}
+                              disabled={(f._isLive && !f._hasSnapshot) || blocked}
+                              title={
+                                (f._isLive && !f._hasSnapshot)
+                                  ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
+                                  : blocked
+                                    ? "Only a club or super admin can enter or edit results for past matches."
+                                    : undefined
+                              }
+                              onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
+                            >
+                              <Pencil className="w-3 h-3 mr-1" />
+                              {label}
+                            </Button>
+                          </>
                         );
                       })()}
                     </div>

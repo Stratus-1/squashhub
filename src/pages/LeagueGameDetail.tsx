@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2, X, Users } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2, X, Users, GripVertical, Undo2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +30,7 @@ import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 import { NsaPenaltyBadge } from "@/components/nsa/NsaPenaltyBadge";
 import { TeamLogo } from "@/components/league-games/TeamLogo";
-import { DndContext, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, useDroppable, useDraggable, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 
 /** Droppable wrapper that BECOMES the grid row. Adds drop highlight ring. */
 function DroppableSlotRow({
@@ -62,6 +62,48 @@ function DroppableSlotRow({
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * The H/V badge cell, made draggable when the slot is filled & editable so the
+ * captain can re-order positions on the SAME side by dragging onto another
+ * row. Position swaps do NOT count as a substitution because both players are
+ * already in the team's original squad.
+ */
+function SlotDragHandle({
+  side,
+  idx,
+  code,
+  name,
+  enabled,
+  children,
+}: {
+  side: "home" | "away";
+  idx: number;
+  code: string;
+  name: string;
+  enabled: boolean;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `slot-drag:${side}:${idx}`,
+    data: { kind: "slot-drag", side, idx, code, name },
+    disabled: !enabled,
+  });
+  if (!enabled) return <>{children}</>;
+  return (
+    <span
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn("relative cursor-grab active:cursor-grabbing touch-none", isDragging && "opacity-40")}
+      title="Drag onto another position to re-order — no substitution counted"
+      aria-label={`Drag ${name} to re-order`}
+    >
+      {children}
+      <GripVertical className="w-2.5 h-2.5 absolute -right-0.5 top-0 text-primary-foreground/70 pointer-events-none" />
+    </span>
   );
 }
 
@@ -220,6 +262,16 @@ export default function LeagueGameDetail() {
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
+  // Players removed from THIS fixture's lineup by the captain.
+  // They won't reappear in the NSA Squad pool (so they can't be accidentally
+  // re-added and counted as subs). The captain can restore them via the
+  // "Removed for this game" strip below the roster.
+  const [excludedFromGame, setExcludedFromGame] = useState<{
+    home: Record<string, string>; // code → name
+    away: Record<string, string>;
+  }>({ home: {}, away: {} });
+  // Reset the excluded pool when switching between fixtures.
+  useEffect(() => { setExcludedFromGame({ home: {}, away: {} }); }, [fixtureId]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const [resumableMarker, setResumableMarker] = useState<number | null>(null);
   const [firstHintVisible, setFirstHintVisible] = useState(true);
@@ -936,6 +988,19 @@ export default function LeagueGameDetail() {
     return s;
   }, [positions]);
 
+  // Helper: drop a code from the excluded-for-this-game pool (used when a
+  // captain re-adds a previously removed player via roster click / drag).
+  const clearFromExcluded = useCallback((side: "home" | "away", code: string) => {
+    const upper = (code || "").toUpperCase();
+    if (!upper) return;
+    setExcludedFromGame((prev) => {
+      if (!prev[side][upper]) return prev;
+      const nextSide = { ...prev[side] };
+      delete nextSide[upper];
+      return { ...prev, [side]: nextSide };
+    });
+  }, []);
+
   // Click a roster player → fill the next empty position on their side
   const handleRosterAssign = useCallback((side: "home" | "away", player: NsaTeamPlayer) => {
     const codeUpper = (player.code || "").toUpperCase();
@@ -958,7 +1023,8 @@ export default function LeagueGameDetail() {
       toast.success(`${fullName} → position ${emptyIdx + 1}`);
       return next;
     });
-  }, [assignedCodes]);
+    clearFromExcluded(side, codeUpper);
+  }, [assignedCodes, clearFromExcluded]);
 
   // Drag a roster player onto a specific H/V slot. If the slot is occupied,
   // the new player overwrites it (the displaced player simply returns to the
@@ -983,6 +1049,27 @@ export default function LeagueGameDetail() {
       }
       return next;
     });
+    clearFromExcluded(side, codeUpper);
+  }, [clearFromExcluded]);
+
+  // Reorder two filled slots on the same side by swapping their players.
+  // No substitution is implied — both players are already in the lineup, so
+  // the SUB badge / original-player-bonus rules are unaffected.
+  const handleSlotReorder = useCallback((side: "home" | "away", fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const codeKey = side === "home" ? "homeCode" : "awayCode";
+    const nameKey = side === "home" ? "homeName" : "awayName";
+    setPositions((prev) => {
+      const next = prev.map((p) => ({ ...p }));
+      const aCode = next[fromIdx][codeKey];
+      const aName = next[fromIdx][nameKey];
+      const bCode = next[toIdx][codeKey];
+      const bName = next[toIdx][nameKey];
+      next[fromIdx] = { ...next[fromIdx], [codeKey]: bCode, [nameKey]: bName };
+      next[toIdx] = { ...next[toIdx], [codeKey]: aCode, [nameKey]: aName };
+      toast.success(`Position ${fromIdx + 1} ↔ ${toIdx + 1} swapped`);
+      return next;
+    });
   }, []);
 
   const dndSensors = useSensors(
@@ -993,13 +1080,24 @@ export default function LeagueGameDetail() {
   const handleDragEnd = useCallback((e: DragEndEvent) => {
     const a = e.active?.data.current as any;
     const o = e.over?.data.current as any;
-    if (!a || !o || a.kind !== "roster" || o.kind !== "slot") return;
+    if (!a || !o) return;
+    // Reorder filled slot → another slot on the SAME side
+    if (a.kind === "slot-drag" && o.kind === "slot") {
+      if (a.side !== o.side) {
+        toast.error(`Can't move a ${a.side} player onto the ${o.side} side`);
+        return;
+      }
+      handleSlotReorder(a.side, a.idx, o.idx);
+      return;
+    }
+    // Roster pick → slot
+    if (a.kind !== "roster" || o.kind !== "slot") return;
     if (a.side !== o.side) {
       toast.error(`${a.side === "home" ? "Home" : "Visitor"} player can't go on the ${o.side === "home" ? "home" : "visitor"} side`);
       return;
     }
     handleRosterDrop(o.side, o.idx, a.code, a.name);
-  }, [handleRosterDrop]);
+  }, [handleRosterDrop, handleSlotReorder]);
 
   const buildSwappedPositions = useCallback((rows: PositionEntry[], idx: number, side: "home" | "away", c: SwapCandidate) => {
     const next = rows.map((p) => ({ ...p }));
@@ -1062,9 +1160,28 @@ export default function LeagueGameDetail() {
   }, [swapTarget, setupDone, fixtureId, user, positions, queryClient, buildSwappedPositions]);
 
   const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
+    // Capture the player BEFORE clearing so we can park them in the
+    // "Removed for this game" pool — preventing accidental re-selection
+    // from the NSA squad (which would trigger SUB tracking).
+    const pos = positions[idx];
+    const code = side === "home" ? pos?.homeCode : pos?.awayCode;
+    const name = side === "home" ? pos?.homeName : pos?.awayName;
+    const codeUpper = (code || "").toUpperCase();
+    if (codeUpper) {
+      setExcludedFromGame((prev) => ({
+        ...prev,
+        [side]: { ...prev[side], [codeUpper]: name || codeUpper },
+      }));
+    }
     updatePosition(idx, side === "home" ? "homeCode" : "awayCode", "");
     updatePosition(idx, side === "home" ? "homeName" : "awayName", "");
-  }, []);
+  }, [positions]);
+
+  // Restore a previously-excluded player back to the NSA squad pool so the
+  // captain can pick them again. Does NOT auto-place them in a slot.
+  const restoreExcluded = useCallback((side: "home" | "away", code: string) => {
+    clearFromExcluded(side, code);
+  }, [clearFromExcluded]);
 
 
   // ---- Auto-save a single position's scores to DB ----
@@ -1915,16 +2032,58 @@ export default function LeagueGameDetail() {
         )}
 
         <DndContext sensors={dndSensors} onDragEnd={handleDragEnd}>
-        {/* NSA Squad roster — click OR drag players onto H/V slots */}
+        {/* NSA Squad roster — click OR drag players onto H/V slots.
+            Players the captain has removed for THIS game are hidden from
+            the squad pool and parked in the "Removed for this game" strip
+            below, so they can't be accidentally re-selected (which would
+            count as a substitution). */}
         {nsaLive && !setupDone && !isSubmitted && (
-          <RosterPanel
-            homeCode={fixture?.home_team_code}
-            awayCode={fixture?.away_team_code}
-            homePlayers={nsaHomeTeam?.players}
-            awayPlayers={nsaAwayTeam?.players}
-            assignedCodes={assignedCodes}
-            onAssign={handleRosterAssign}
-          />
+          <>
+            <RosterPanel
+              homeCode={fixture?.home_team_code}
+              awayCode={fixture?.away_team_code}
+              homePlayers={(nsaHomeTeam?.players || []).filter(p => !excludedFromGame.home[(p.code || "").toUpperCase()])}
+              awayPlayers={(nsaAwayTeam?.players || []).filter(p => !excludedFromGame.away[(p.code || "").toUpperCase()])}
+              assignedCodes={assignedCodes}
+              onAssign={handleRosterAssign}
+            />
+            {(Object.keys(excludedFromGame.home).length > 0 || Object.keys(excludedFromGame.away).length > 0) && (
+              <div className="border border-dashed border-amber-300 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2 text-[11px] space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-800 dark:text-amber-200">
+                  <X className="w-3 h-3" />
+                  Removed for this game
+                  <span className="font-normal text-amber-700/80 dark:text-amber-300/80">
+                    — these players won't appear in the squad pool. Click Add back if you change your mind.
+                  </span>
+                </div>
+                {(["home", "away"] as const).map((side) => {
+                  const entries = Object.entries(excludedFromGame[side]);
+                  if (entries.length === 0) return null;
+                  return (
+                    <div key={side} className="flex flex-wrap gap-1 items-center">
+                      <span className="text-[10px] uppercase tracking-wide font-bold text-muted-foreground w-12 shrink-0">
+                        {side === "home" ? "Home" : "Visitors"}
+                      </span>
+                      {entries.map(([code, name]) => (
+                        <button
+                          key={`${side}:${code}`}
+                          type="button"
+                          onClick={() => restoreExcluded(side, code)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400 bg-background hover:bg-amber-100 dark:hover:bg-amber-900/40 text-[10px]"
+                          title="Add back to NSA squad pool"
+                        >
+                          <span className="font-mono text-muted-foreground">{code}</span>
+                          <span className="font-medium">{name}</span>
+                          <Undo2 className="w-3 h-3 text-primary" />
+                          <span className="text-primary">Add back</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
 
@@ -1979,7 +2138,9 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span className="p-1 text-center font-bold text-sm border-r row-span-2">{idx + 1}</span>
-                        <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1">H</span>
+                        <SlotDragHandle side="home" idx={idx} code={pos.homeCode} name={pos.homeName} enabled={!setupDone && !isSubmitted && !!pos.homeCode}>
+                          <span className="text-xs font-black text-center bg-primary text-primary-foreground py-1 block">H</span>
+                        </SlotDragHandle>
                         {!setupDone ? (
                           <>
                             <Input value={pos.homeCode} onChange={(e) => updatePosition(idx, "homeCode", e.target.value.toUpperCase())}
@@ -2143,7 +2304,9 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span></span>
-                        <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1">V</span>
+                        <SlotDragHandle side="away" idx={idx} code={pos.awayCode} name={pos.awayName} enabled={!setupDone && !isSubmitted && !!pos.awayCode}>
+                          <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1 block">V</span>
+                        </SlotDragHandle>
                         {!setupDone ? (
                           <>
                             <Input value={pos.awayCode} onChange={(e) => updatePosition(idx, "awayCode", e.target.value.toUpperCase())}

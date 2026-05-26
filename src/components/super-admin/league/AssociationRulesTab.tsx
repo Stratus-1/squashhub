@@ -38,6 +38,7 @@ const DEFAULTS: Partial<LeagueRules> = {
   team_win_bonus_value: 2,
   team_size_mode: "fixed",
   team_size: 4,
+  allow_multi_team_registration: false,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {

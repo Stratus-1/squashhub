@@ -66,31 +66,44 @@ function DroppableSlotRow({
 }
 
 /**
- * Drag handle rendered inside a filled H/V slot. Lets the captain re-order
- * players within the SAME side (e.g. promote position 3 to position 2) by
- * dragging onto another slot. Position swaps do NOT count as a substitution
- * because both players are already in the team's original squad.
+ * The H/V badge cell, made draggable when the slot is filled & editable so the
+ * captain can re-order positions on the SAME side by dragging onto another
+ * row. Position swaps do NOT count as a substitution because both players are
+ * already in the team's original squad.
  */
-function SlotDragHandle({ side, idx, code, name }: { side: "home" | "away"; idx: number; code: string; name: string }) {
+function SlotDragHandle({
+  side,
+  idx,
+  code,
+  name,
+  enabled,
+  children,
+}: {
+  side: "home" | "away";
+  idx: number;
+  code: string;
+  name: string;
+  enabled: boolean;
+  children: ReactNode;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `slot-drag:${side}:${idx}`,
     data: { kind: "slot-drag", side, idx, code, name },
+    disabled: !enabled,
   });
+  if (!enabled) return <>{children}</>;
   return (
-    <button
+    <span
       ref={setNodeRef}
-      type="button"
       {...listeners}
       {...attributes}
-      className={cn(
-        "shrink-0 cursor-grab active:cursor-grabbing touch-none text-muted-foreground/60 hover:text-foreground rounded p-0.5",
-        isDragging && "opacity-40"
-      )}
-      title="Drag to re-order positions"
+      className={cn("relative cursor-grab active:cursor-grabbing touch-none", isDragging && "opacity-40")}
+      title="Drag onto another position to re-order — no substitution counted"
       aria-label={`Drag ${name} to re-order`}
     >
-      <GripVertical className="w-3 h-3" />
-    </button>
+      {children}
+      <GripVertical className="w-2.5 h-2.5 absolute -right-0.5 top-0 text-primary-foreground/70 pointer-events-none" />
+    </span>
   );
 }
 

@@ -1477,6 +1477,15 @@ export default function LeagueGameDetail() {
     const homeOk = !!(pos.homeCode || pos.homeName);
     const awayOk = !!(pos.awayCode || pos.awayName);
     if (!homeOk || !awayOk) { toast.error("Both players required"); return; }
+    // Soft lock check: if another captain is actively marking this position
+    // (heartbeat < 60s), confirm before taking over.
+    const lockKey = `${fixtureId}|${posIdx + 1}`;
+    const existing = markerLocks[lockKey];
+    const isFresh = markerLocksFresh.has(lockKey);
+    if (existing && isFresh && existing.user_id !== user?.id) {
+      const ok = window.confirm(`${existing.user_name} is currently marking position ${posIdx + 1}. Take over?`);
+      if (!ok) return;
+    }
     const config = buildMarkerConfigForPosition(posIdx);
     if (config) clearMarkerStateForSession(getMarkerSessionKeys(config));
     setResumableMarker(null);

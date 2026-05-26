@@ -1960,7 +1960,17 @@ export default function LeagueGameDetail() {
           </div>
           <MarkerScoreboard
             config={markerConfig}
-            initialScores={(positions[activeMarker]?.scores || []).map((s) => ({ a: s.home, b: s.away }))}
+            initialScores={(() => {
+              const pos = positions[activeMarker];
+              const completed = (pos?.scores || []).map((s) => ({ a: s.home, b: s.away }));
+              // Append in-progress current_game so a takeover marker resumes
+              // from the actual live score (e.g. 7-3) instead of 0-0.
+              const cg = pos?.currentGame;
+              if (cg && (cg.home > 0 || cg.away > 0)) {
+                completed.push({ a: cg.home, b: cg.away });
+              }
+              return completed;
+            })()}
             onMatchComplete={handleMarkerComplete}
             onReset={() => setActiveMarker(null)}
             onScratch={() => {

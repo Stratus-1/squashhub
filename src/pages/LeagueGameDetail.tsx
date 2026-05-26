@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2, X, Users, GripVertical, Undo2 } from "lucide-react";
+import { Check, Loader2, Trophy, Play, Edit3, ArrowLeft, Save, ArrowLeftRight, UserX, RotateCcw, Trash2, X, Users, GripVertical, Undo2, Eye, Radio } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -279,6 +279,9 @@ export default function LeagueGameDetail() {
   // Reset the excluded pool when switching between fixtures.
   useEffect(() => { setExcludedFromGame({ home: {}, away: {} }); }, [fixtureId]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  // Read-only spectator view of a position currently being marked by someone else.
+  // Stays in sync via the same realtime channel that feeds `positions`.
+  const [viewingPosition, setViewingPosition] = useState<number | null>(null);
   const [resumableMarker, setResumableMarker] = useState<number | null>(null);
   const [firstHintVisible, setFirstHintVisible] = useState(true);
   useEffect(() => {
@@ -1823,6 +1826,86 @@ export default function LeagueGameDetail() {
 
 
 
+  // ---- Read-only spectator view (live follow another marker) ----
+  if (viewingPosition !== null && positions[viewingPosition]) {
+    const vIdx = viewingPosition;
+    const vPos = positions[vIdx];
+    const lockKey = `${fixtureId}|${vIdx + 1}`;
+    const lock = markerLocks[lockKey];
+    const isLockFresh = markerLocksFresh.has(lockKey);
+    const cur = vPos.currentGame;
+    const gamesToWin = bestOf === 5 ? 3 : 2;
+    let hw = 0, aw = 0;
+    for (const s of vPos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+    return (
+      <div className="bottom-nav-safe">
+        <SEO title="Live View" description="Live spectator view" path={`/league-games/${fixtureId}`} noIndex />
+        <div className="px-4 pt-4 space-y-4 max-w-2xl mx-auto">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setViewingPosition(null)}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </Button>
+            <Badge variant="outline" className="text-xs">
+              Pos {vIdx + 1} · {fixture.home_team_code} vs {fixture.away_team_code}
+            </Badge>
+            {isLockFresh && (
+              <Badge className="text-[10px] bg-red-600 text-white font-bold animate-pulse flex items-center gap-1">
+                <Radio className="w-3 h-3" /> LIVE
+              </Badge>
+            )}
+            <Badge variant="secondary" className="text-[10px]">Viewer · read-only</Badge>
+          </div>
+
+          {lock && isLockFresh && (
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <Radio className="w-3 h-3 text-red-600 animate-pulse" />
+              <span><strong>{lock.user_name}</strong> is marking this game</span>
+            </div>
+          )}
+
+          {/* Player headers */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border rounded-lg p-3 bg-card">
+              <div className="text-[10px] font-mono text-muted-foreground">{fixture.home_team_code}</div>
+              <div className="text-lg font-bold truncate">{vPos.homeName || vPos.homeCode || "—"}</div>
+              <div className="text-3xl font-black tabular-nums mt-2">{cur?.home ?? 0}</div>
+              <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Current game</div>
+              <div className="text-xs mt-2">Games won: <span className="font-bold">{hw}</span></div>
+            </div>
+            <div className="border rounded-lg p-3 bg-card">
+              <div className="text-[10px] font-mono text-muted-foreground">{fixture.away_team_code}</div>
+              <div className="text-lg font-bold truncate">{vPos.awayName || vPos.awayCode || "—"}</div>
+              <div className="text-3xl font-black tabular-nums mt-2">{cur?.away ?? 0}</div>
+              <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Current game</div>
+              <div className="text-xs mt-2">Games won: <span className="font-bold">{aw}</span></div>
+            </div>
+          </div>
+
+          {/* Finished games */}
+          <div className="border rounded-lg p-3 bg-card">
+            <div className="text-xs font-semibold mb-2">Completed games</div>
+            {vPos.scores.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No games finished yet.</div>
+            ) : (
+              <div className="space-y-1">
+                {vPos.scores.map((s, gi) => (
+                  <div key={gi} className="grid grid-cols-3 text-sm">
+                    <span className="text-muted-foreground text-xs">Game {gi + 1}</span>
+                    <span className={cn("text-center font-mono", s.home > s.away && "font-bold")}>{s.home}</span>
+                    <span className={cn("text-center font-mono", s.away > s.home && "font-bold")}>{s.away}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="text-[11px] text-muted-foreground">
+            Auto-updates live. Best of {bestOf}, first to {gamesToWin} games wins.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ---- Active marker fullscreen ----
   if (activeMarker !== null && markerConfig) {
@@ -2546,6 +2629,29 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? awayTotalPts : ""}</span>
                             {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
+                              {(() => {
+                                const lockKey = `${fixtureId}|${idx + 1}`;
+                                const lock = markerLocks[lockKey];
+                                const isLockFresh = markerLocksFresh.has(lockKey);
+                                const showView = isLockFresh && lock && lock.user_id !== user?.id;
+                                if (!showView) return null;
+                                return (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        onClick={() => setViewingPosition(idx)}
+                                        className="bg-red-600 text-white rounded p-0.5 hover:bg-red-700 animate-pulse"
+                                        title={`Live · ${lock.user_name} is marking — tap to view`}
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="max-w-[220px]">
+                                      🔴 LIVE — {lock.user_name} is marking. Tap to follow live.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })()}
                               {!isSubmitted && !pos.completed && (
                                 <>
                                   {hasPlayers && (

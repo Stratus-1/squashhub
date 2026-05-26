@@ -1190,20 +1190,28 @@ export default function LeagueGameDetail() {
   }, [clearFromExcluded]);
 
 
-  // ---- Auto-save a single position's scores to DB ----
+  // ---- Auto-save a single position's FINISHED game scores to DB.
+  // Always clears `current_game` (the in-progress rally is over once a game ends).
+  // Only sets `winner` when the rubber is truly decided — never from mid-match counts.
   const persistPositionScores = useCallback(async (posIdx: number, updatedPos: PositionEntry) => {
     if (!fixtureId || !user) return;
     try {
       let hw = 0, aw = 0;
       for (const s of updatedPos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+      const gamesToWin = bestOf === 5 ? 3 : 2;
+      const matchDecided = hw >= gamesToWin || aw >= gamesToWin;
+      const explicitWinner = matchDecided ? (hw > aw ? "home" : "away") : null;
       await supabase.from("league_match_results" as any).upsert({
         fixture_id: fixtureId, position: posIdx + 1,
         home_player_code: updatedPos.homeCode.toUpperCase(), away_player_code: updatedPos.awayCode.toUpperCase(),
         home_player_name: updatedPos.homeName, away_player_name: updatedPos.awayName,
         game_scores: updatedPos.scores, home_games_won: hw, away_games_won: aw,
-        winner: hw > aw ? "home" : aw > hw ? "away" : null,
+        winner: updatedPos.isForfeit
+          ? (updatedPos.forfeitSide === "home" ? "away" : "home")
+          : explicitWinner,
         is_forfeit: !!updatedPos.isForfeit,
         forfeit_side: updatedPos.forfeitSide ?? null,
+        current_game: null,
       } as any, { onConflict: "fixture_id,position" });
       // Also update fixture result summary
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
@@ -1213,7 +1221,22 @@ export default function LeagueGameDetail() {
     } catch (err: any) {
       console.error("Auto-save failed:", err);
     }
-  }, [fixtureId, user, queryClient]);
+  }, [fixtureId, user, queryClient, bestOf]);
+
+  // ---- Persist only the IN-PROGRESS rally (e.g. 7-3 in the current game).
+  // Writes to `current_game` column so realtime viewers see live points without
+  // the row ever looking "completed" to the refetch logic.
+  const persistCurrentGame = useCallback(async (posIdx: number, current: { home: number; away: number } | null) => {
+    if (!fixtureId || !user) return;
+    try {
+      await supabase.from("league_match_results" as any)
+        .update({ current_game: current })
+        .eq("fixture_id", fixtureId)
+        .eq("position", posIdx + 1);
+    } catch (err) {
+      console.error("Live-rally save failed:", err);
+    }
+  }, [fixtureId, user]);
 
   // ---- Mark a position as a forfeit (player unavailable) ----
   // Awards the non-forfeiting side 3 clean games (15-0, 15-0, 15-0) and applies a

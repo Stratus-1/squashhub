@@ -256,6 +256,12 @@ function SignaturePad({ onSave, label }: { onSave: (data: string) => void; label
 export default function LeagueGameDetail() {
   const { fixtureId } = useParams<{ fixtureId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Soft marker locks: { "fixtureId|position": { user_id, user_name, heartbeat_at } }
+  const [markerLocks, setMarkerLocks] = useState<Record<string, { user_id: string; user_name: string; heartbeat_at: string }>>({});
+  const [markerLocksFresh, setMarkerLocksFresh] = useState<Set<string>>(new Set());
+  // Pending take-over prompt when entering a position already being marked by someone fresh.
+  const [pendingTakeover, setPendingTakeover] = useState<{ posIdx: number; userName: string } | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { activeMember } = useMemberContext();

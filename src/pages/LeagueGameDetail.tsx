@@ -2313,7 +2313,7 @@ export default function LeagueGameDetail() {
                           : { gridTemplateColumns: '28px 24px 72px 1fr 88px' }
                         }>
                         <span></span>
-                        <SlotDragHandle side="away" idx={idx} code={pos.awayCode} name={pos.awayName} enabled={!setupDone && !isSubmitted && !!pos.awayCode}>
+                        <SlotDragHandle side="away" idx={idx} code={pos.awayCode} name={pos.awayName} enabled={canEditLineup && !setupDone && !!pos.awayCode}>
                           <span className="text-xs font-black text-center bg-accent text-accent-foreground py-1 block">V</span>
                         </SlotDragHandle>
                         {!setupDone ? (

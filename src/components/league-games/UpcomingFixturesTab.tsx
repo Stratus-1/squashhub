@@ -298,6 +298,15 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
   const isMyFixture = (f: any) => myTeamCodes.has(f.home_team_code) || myTeamCodes.has(f.away_team_code);
   const isInLineup = (f: any) => myLineupFixtureIds.has(f.id);
 
+  // Live marker presence — surfaces a "View Live" button only while a captain
+  // is actively marking a fixture (heartbeat < 60s).
+  const visibleFixtureIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const list of fixturesByDate.values()) for (const f of list) if (f.id && !f.isTournament) ids.push(f.id);
+    return ids;
+  }, [fixturesByDate]);
+  const { freshFixtureIds: liveFixtureIds } = useFixtureLiveMarkers(visibleFixtureIds);
+
   const filterBar = (
     <div className="flex flex-wrap items-center gap-2 mb-4">
       <Select value={rangeMode} onValueChange={(v) => setRangeMode(v as RangeMode)}>

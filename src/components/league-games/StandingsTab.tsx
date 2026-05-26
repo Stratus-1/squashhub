@@ -296,15 +296,20 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
                           {customName && <span className="ml-2 font-sans font-semibold text-primary">{customName}</span>}
                         </TableCell>
                         <TableCell className="text-center font-bold">{s.total}</TableCell>
-                        {s.weeks.map((w, j) => (
-                          <TableCell key={j} className="text-center text-xs">
-                            {w.value === " " || w.value === "" ? (
-                              <span className="text-muted-foreground/40">·</span>
-                            ) : (
-                              w.value
-                            )}
-                          </TableCell>
-                        ))}
+                        {s.weeks.map((w, j) => {
+                          const v = (w.value ?? "").trim();
+                          // NSA returns "B" for bye / not-yet-played weeks — show as empty
+                          const isEmpty = v === "" || v.toUpperCase() === "B";
+                          return (
+                            <TableCell key={j} className="text-center text-xs">
+                              {isEmpty ? (
+                                <span className="text-muted-foreground/40">·</span>
+                              ) : (
+                                w.value
+                              )}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     );
                   })}

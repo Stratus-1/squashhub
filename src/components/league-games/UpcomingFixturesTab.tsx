@@ -569,6 +569,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               <Pencil className="w-3 h-3 mr-1" />
                               {label}
                             </Button>
+                            {!isLive && !submitted && !f.isTournament && (
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                                <Info className="w-3 h-3" />
+                                <span>To view live, wait for marker to start</span>
+                              </div>
+                            )}
                           </>
                         );
                       })()}

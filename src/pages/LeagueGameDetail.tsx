@@ -1772,15 +1772,17 @@ export default function LeagueGameDetail() {
               if (activeMarker === null) return;
               const current = positions[activeMarker];
               if (!current) return;
-              // Append the in-progress game (only when there are points scored).
-              const inProgress = (cur.a > 0 || cur.b > 0) ? [{ home: cur.a, away: cur.b }] : [];
-              const scores = [...games.map((g) => ({ home: g.a, away: g.b })), ...inProgress];
-              const updated = { ...current, scores, completed: false };
+              // Store the in-progress rally on `currentGame` ONLY — never inside
+              // `scores` (which is reserved for finished games). Local `scores`
+              // stays as the finished games already saved via onProgress.
+              const finishedScores = games.map((g) => ({ home: g.a, away: g.b }));
+              const currentGame = (cur.a > 0 || cur.b > 0) ? { home: cur.a, away: cur.b } : null;
+              const updated: PositionEntry = { ...current, scores: finishedScores, completed: false, currentGame };
               setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });
-              // Debounce DB writes to ~600ms to avoid hammering on rapid points
+              // Debounce DB write of just the in-progress rally to ~600ms.
               if (liveScoreTimerRef.current) clearTimeout(liveScoreTimerRef.current);
               liveScoreTimerRef.current = setTimeout(() => {
-                persistPositionScores(activeMarker, updated);
+                persistCurrentGame(activeMarker, currentGame);
               }, 600);
             }}
           />

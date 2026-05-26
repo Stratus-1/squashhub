@@ -1863,38 +1863,51 @@ export default function LeagueGameDetail() {
             </div>
           )}
 
-          {/* Player headers */}
+          {/* Player headers — color-coded: home = blue, away = amber */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="border rounded-lg p-3 bg-card">
-              <div className="text-[10px] font-mono text-muted-foreground">{fixture.home_team_code}</div>
+            <div className="rounded-lg p-3 bg-card border-l-4 border-l-[hsl(217,91%,55%)] border border-border">
+              <div className="text-[10px] font-mono font-bold text-[hsl(217,91%,45%)]">{fixture.home_team_code}</div>
               <div className="text-lg font-bold truncate">{vPos.homeName || vPos.homeCode || "—"}</div>
-              <div className="text-3xl font-black tabular-nums mt-2">{cur?.home ?? 0}</div>
+              <div className="text-3xl font-black tabular-nums mt-2 text-[hsl(217,91%,45%)]">{cur?.home ?? 0}</div>
               <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Current game</div>
-              <div className="text-xs mt-2">Games won: <span className="font-bold">{hw}</span></div>
+              <div className="text-xs mt-2">Games won: <span className="font-bold text-[hsl(217,91%,45%)]">{hw}</span></div>
             </div>
-            <div className="border rounded-lg p-3 bg-card">
-              <div className="text-[10px] font-mono text-muted-foreground">{fixture.away_team_code}</div>
+            <div className="rounded-lg p-3 bg-card border-r-4 border-r-[hsl(32,95%,50%)] border border-border">
+              <div className="text-[10px] font-mono font-bold text-[hsl(32,95%,42%)]">{fixture.away_team_code}</div>
               <div className="text-lg font-bold truncate">{vPos.awayName || vPos.awayCode || "—"}</div>
-              <div className="text-3xl font-black tabular-nums mt-2">{cur?.away ?? 0}</div>
+              <div className="text-3xl font-black tabular-nums mt-2 text-[hsl(32,95%,42%)]">{cur?.away ?? 0}</div>
               <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Current game</div>
-              <div className="text-xs mt-2">Games won: <span className="font-bold">{aw}</span></div>
+              <div className="text-xs mt-2">Games won: <span className="font-bold text-[hsl(32,95%,42%)]">{aw}</span></div>
             </div>
           </div>
 
           {/* Finished games */}
           <div className="border rounded-lg p-3 bg-card">
-            <div className="text-xs font-semibold mb-2">Completed games</div>
+            <div className="grid grid-cols-3 text-[10px] uppercase tracking-wide font-semibold mb-2 pb-2 border-b">
+              <span className="text-muted-foreground">Completed</span>
+              <span className="text-center text-[hsl(217,91%,45%)]">{fixture.home_team_code}</span>
+              <span className="text-center text-[hsl(32,95%,42%)]">{fixture.away_team_code}</span>
+            </div>
             {vPos.scores.length === 0 ? (
               <div className="text-xs text-muted-foreground">No games finished yet.</div>
             ) : (
               <div className="space-y-1">
-                {vPos.scores.map((s, gi) => (
-                  <div key={gi} className="grid grid-cols-3 text-sm">
-                    <span className="text-muted-foreground text-xs">Game {gi + 1}</span>
-                    <span className={cn("text-center font-mono", s.home > s.away && "font-bold")}>{s.home}</span>
-                    <span className={cn("text-center font-mono", s.away > s.home && "font-bold")}>{s.away}</span>
-                  </div>
-                ))}
+                {vPos.scores.map((s, gi) => {
+                  const homeWon = s.home > s.away;
+                  return (
+                    <div key={gi} className="grid grid-cols-3 text-sm items-center">
+                      <span className="text-muted-foreground text-xs">Game {gi + 1}</span>
+                      <span className={cn(
+                        "text-center font-mono tabular-nums py-0.5 rounded",
+                        homeWon ? "font-bold text-[hsl(217,91%,45%)] bg-[hsl(217,91%,55%)]/10" : "text-muted-foreground"
+                      )}>{s.home}</span>
+                      <span className={cn(
+                        "text-center font-mono tabular-nums py-0.5 rounded",
+                        !homeWon ? "font-bold text-[hsl(32,95%,42%)] bg-[hsl(32,95%,50%)]/10" : "text-muted-foreground"
+                      )}>{s.away}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

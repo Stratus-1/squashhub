@@ -1067,6 +1067,22 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
   const isInternal = associationInfo?.scope === "internal";
   const associationTenantClubId: string | null = associationInfo?.club_id ?? null;
 
+  // Association-level league rule: allow_multi_team_registration (NSA-style flexibility).
+  // When true, a player may be registered in more than one team within this association.
+  const { data: allowMultiTeam = false } = useQuery({
+    queryKey: ["assoc-allow-multi-team", associationId],
+    queryFn: async () => {
+      if (!associationId) return false;
+      const { data } = await fromExt("league_rules")
+        .select("allow_multi_team_registration")
+        .eq("association_id", associationId)
+        .is("league_id", null)
+        .maybeSingle();
+      return !!(data as any)?.allow_multi_team_registration;
+    },
+    enabled: open && !!associationId,
+  });
+
   // PERMANENT source of truth: active rows in `member_association_affiliations`
   // (mirrors what Edit Profile / Edit Member writes — covers both internal and regional).
   const { data: permanentAffiliatedIds = [] } = useQuery({

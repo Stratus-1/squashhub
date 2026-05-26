@@ -570,11 +570,12 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               {label}
                             </Button>
                             {!isLive && !submitted && !f.isTournament && (
-                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                                <Info className="w-3 h-3" />
-                                <span>To view live, wait for marker to start</span>
+                              <div className="flex items-start gap-1 text-[10px] leading-tight text-muted-foreground mt-0.5">
+                                <Info className="w-3 h-3 shrink-0 mt-[1px]" />
+                                <span>Wait for marker to start to view live</span>
                               </div>
                             )}
+
                           </>
                         );
                       })()}

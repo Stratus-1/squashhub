@@ -1719,7 +1719,15 @@ export default function LeagueGameDetail() {
   // (with adminOverride) may re-open. We no longer auto-lock past-date fixtures
   // that have not yet been captured — captains often fill the scorecard the
   // morning after league night.
-  const isSubmitted = isSubmittedLocked && !adminOverride;
+  const isSubmittedReal = isSubmittedLocked && !adminOverride;
+  // ---- View Game (read-only live spectator) ----
+  // Activated explicitly via ?mode=view OR implicitly when the user has no
+  // editing rights on this fixture. All edit controls render disabled and the
+  // page becomes a pure live-follow scorecard via the realtime channel.
+  const isViewMode = (searchParams.get("mode") || "") === "view";
+  const isSubmitted = isSubmittedReal || isViewMode;
+  // ---- LIVE indicator: any position has an in-progress rally or a fresh marker lock ----
+  const isLiveNow = positions.some((p) => !!p.currentGame) || markerLocksFresh.size > 0;
 
   // Scoreboard always shows the live recomputed summary (current rules).
   // Standings reads stored fixture totals — when association rules change,

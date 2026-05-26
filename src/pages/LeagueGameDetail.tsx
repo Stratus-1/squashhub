@@ -393,6 +393,51 @@ export default function LeagueGameDetail() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [fixtureId, queryClient]);
+
+  // ---- Soft marker presence: live map of who is currently marking which position ----
+  useEffect(() => {
+    if (!fixtureId) return;
+    let cancelled = false;
+    const refresh = async () => {
+      const { data } = await supabase
+        .from("league_marker_locks" as any)
+        .select("position, user_id, user_name, heartbeat_at")
+        .eq("fixture_id", fixtureId);
+      if (cancelled) return;
+      const next: Record<string, { user_id: string; user_name: string; heartbeat_at: string }> = {};
+      for (const row of (data || []) as any[]) {
+        next[`${fixtureId}|${row.position}`] = {
+          user_id: row.user_id, user_name: row.user_name, heartbeat_at: row.heartbeat_at,
+        };
+      }
+      setMarkerLocks(next);
+    };
+    refresh();
+    const ch = supabase
+      .channel(`league-marker-locks:${fixtureId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "league_marker_locks", filter: `fixture_id=eq.${fixtureId}` },
+        () => { refresh(); }
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [fixtureId]);
+
+  // Recompute "fresh" lock set (heartbeat < 60s) every 10s so stale locks fade.
+  useEffect(() => {
+    const recompute = () => {
+      const now = Date.now();
+      const fresh = new Set<string>();
+      for (const [k, v] of Object.entries(markerLocks)) {
+        if (now - new Date(v.heartbeat_at).getTime() < 60_000) fresh.add(k);
+      }
+      setMarkerLocksFresh(fresh);
+    };
+    recompute();
+    const id = setInterval(recompute, 10_000);
+    return () => clearInterval(id);
+  }, [markerLocks]);
   // ---- NSA live roster: resolved by team code, no DB mapping needed ----
   // Codes are the contract — the club assigns "CSI006" and gives the same to NSA.
   const { data: nsaHomeTeam } = useNsaTeamByCode(fixture?.home_team_code, !!fixture);

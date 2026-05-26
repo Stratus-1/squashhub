@@ -436,6 +436,34 @@ export default function LeagueGameDetail() {
     const id = setInterval(recompute, 10_000);
     return () => clearInterval(id);
   }, [markerLocks]);
+
+  // ---- Acquire / heartbeat / release marker lock while actively marking ----
+  useEffect(() => {
+    if (activeMarker === null || !fixtureId || !user) return;
+    const position = activeMarker + 1;
+    const userName = (activeMember as any)?.full_name || user.email || "A captain";
+    let cancelled = false;
+    const upsertLock = async () => {
+      try {
+        await supabase.from("league_marker_locks" as any).upsert({
+          fixture_id: fixtureId, position, user_id: user.id, user_name: userName,
+          heartbeat_at: new Date().toISOString(),
+        } as any, { onConflict: "fixture_id,position" });
+      } catch (e) { console.warn("Lock heartbeat failed", e); }
+    };
+    upsertLock();
+    const id = setInterval(() => { if (!cancelled) upsertLock(); }, 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      supabase.from("league_marker_locks" as any)
+        .delete()
+        .eq("fixture_id", fixtureId)
+        .eq("position", position)
+        .eq("user_id", user.id)
+        .then(() => {}, () => {});
+    };
+  }, [activeMarker, fixtureId, user, activeMember]);
   // ---- NSA live roster: resolved by team code, no DB mapping needed ----
   // Codes are the contract — the club assigns "CSI006" and gives the same to NSA.
   const { data: nsaHomeTeam } = useNsaTeamByCode(fixture?.home_team_code, !!fixture);

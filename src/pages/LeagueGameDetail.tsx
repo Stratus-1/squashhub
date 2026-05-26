@@ -116,6 +116,8 @@ interface PositionEntry {
   completed: boolean;
   isForfeit?: boolean;
   forfeitSide?: "home" | "away" | null;
+  /** In-progress (not-yet-finished) game score. Display-only — never counted as a finished game. */
+  currentGame?: { home: number; away: number } | null;
 }
 
 interface OriginalLineupSnapshot {

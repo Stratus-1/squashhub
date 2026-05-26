@@ -1463,7 +1463,7 @@ export default function LeagueGameDetail() {
       _hadSavedSquad: !!(savedSquad?.home?.codes?.length || savedSquad?.away?.codes?.length
         || savedSquad?.home?.names?.length || savedSquad?.away?.names?.length),
     };
-  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult]);
+  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult, originalCountAdj]);
 
   // ---- Submit ----
   const handleSubmit = async () => {

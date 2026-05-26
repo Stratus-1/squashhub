@@ -1428,8 +1428,11 @@ export default function LeagueGameDetail() {
     const awayPermanentSquadNames = (savedSquad?.away?.names && savedSquad.away.names.length > 0)
       ? savedSquad.away.names.map(normalizePlayerName).filter(Boolean)
       : fallbackOriginalNames(awayTeamCode);
-    const homeOriginalCount = countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
-    const awayOriginalCount = countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
+    const homeOriginalCountRaw = countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
+    const awayOriginalCountRaw = countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
+    // Admin manual delta (e.g. recorded player didn't actually play; an unlisted sub stepped in).
+    const homeOriginalCount = Math.max(0, homeOriginalCountRaw + (originalCountAdj.home || 0));
+    const awayOriginalCount = Math.max(0, awayOriginalCountRaw + (originalCountAdj.away || 0));
     const homeOriginalBonus = opbEnabled ? homeOriginalCount * opbValue : 0;
     const awayOriginalBonus = opbEnabled ? awayOriginalCount * opbValue : 0;
 

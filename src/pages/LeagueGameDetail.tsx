@@ -249,6 +249,14 @@ export default function LeagueGameDetail() {
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
+  // Players removed from THIS fixture's lineup by the captain.
+  // They won't reappear in the NSA Squad pool (so they can't be accidentally
+  // re-added and counted as subs). The captain can restore them via the
+  // "Removed for this game" strip below the roster.
+  const [excludedFromGame, setExcludedFromGame] = useState<{
+    home: Record<string, string>; // code → name
+    away: Record<string, string>;
+  }>({ home: {}, away: {} });
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
   const [resumableMarker, setResumableMarker] = useState<number | null>(null);
   const [firstHintVisible, setFirstHintVisible] = useState(true);

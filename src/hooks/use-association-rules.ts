@@ -35,6 +35,9 @@ export interface LeagueRules {
   // Team size: fixed (e.g. NSA = always 4, extras are reserves) or flexible (NIL — grows to however many were allocated)
   team_size_mode: "fixed" | "flexible";
   team_size: number;
+  // NSA-style flexibility: allow a member to be registered in multiple teams
+  // within the same association. NIL = false (strict), NSA = true.
+  allow_multi_team_registration: boolean;
 }
 
 export function useAssociationRules(associationId: string | null | undefined) {

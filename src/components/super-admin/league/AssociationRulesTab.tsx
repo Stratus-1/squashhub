@@ -38,6 +38,7 @@ const DEFAULTS: Partial<LeagueRules> = {
   team_win_bonus_value: 2,
   team_size_mode: "fixed",
   team_size: 4,
+  allow_multi_team_registration: false,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {
@@ -327,6 +328,12 @@ export default function AssociationRulesTab({ associationId }: Props) {
             hint="When off, men cannot sub into a Ladies team and vice versa (unless the target league is Mixed)."
             value={!!form.cross_gender_subs_allowed}
             onChange={(v) => set("cross_gender_subs_allowed", v)}
+          />
+          <ToggleRow
+            label="Allow multi-team registration"
+            hint="NSA-style flexibility: a player can be registered in more than one team in this association (e.g. League 7 and League 8). When off (NIL-style), each player is locked to a single team."
+            value={!!form.allow_multi_team_registration}
+            onChange={(v) => set("allow_multi_team_registration", v)}
           />
         </CardContent>
       </Card>

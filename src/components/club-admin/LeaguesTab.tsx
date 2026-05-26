@@ -1633,6 +1633,15 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
       }
       let totalRowsWritten = 0;
       let totalRowsDeleted = 0;
+
+      // Pre-compute per-league intended state + fetch current DB rows.
+      type Prepared = {
+        league: typeof changedLeagues[number];
+        targetIsReserves: boolean;
+        uniquePlayers: any[];
+        toDeleteMemberIds: string[];
+      };
+      const prepared: Prepared[] = [];
       for (const league of changedLeagues) {
         const targetIsReserves = /reserves?/i.test(league.name);
         const players = leagueData[league.id] || [];
@@ -1642,11 +1651,6 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           seen.add(p.club_member_id);
           return true;
         });
-
-        // NON-DESTRUCTIVE SAVE: diff against the CURRENT DB state (not the
-        // dialog's stale snapshot) so a stale dialog or accidental drag can
-        // never silently wipe a teammate. We only delete members the admin
-        // actually removed; everyone else is upserted in place.
         const { data: dbRows, error: fetchErr } = await fromExt("member_league_registrations")
           .select("id, club_member_id")
           .eq("league_id", league.id);
@@ -1654,24 +1658,32 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
           console.error(`[AllocateLeagues] fetch current rows failed for ${league.name}`, fetchErr);
           throw new Error(`Load failed for "${league.name}": ${fetchErr.message}`);
         }
-
         const dbIds = new Set<string>((dbRows || []).map((r: any) => String(r.club_member_id)));
         const intendedIds = new Set<string>(uniquePlayers.map(p => String(p.club_member_id)));
         const toDeleteMemberIds: string[] = [...dbIds].filter(id => !intendedIds.has(id));
+        prepared.push({ league, targetIsReserves, uniquePlayers, toDeleteMemberIds });
+      }
 
-        if (toDeleteMemberIds.length > 0) {
-          const { error: delErr, count } = await fromExt("member_league_registrations")
-            .delete({ count: "exact" })
-            .eq("league_id", league.id)
-            .in("club_member_id", toDeleteMemberIds);
-          if (delErr) {
-            console.error(`[AllocateLeagues] targeted delete failed for ${league.name}`, delErr);
-            throw new Error(`Delete failed for "${league.name}": ${delErr.message}`);
-          }
-          totalRowsDeleted += count ?? toDeleteMemberIds.length;
-          console.log(`[AllocateLeagues] removed ${count ?? toDeleteMemberIds.length} from ${league.name}`, toDeleteMemberIds);
+      // PASS 1: deletes across ALL changed leagues first. When a member is
+      // MOVED between teams in the same association, the old row must be gone
+      // before the new INSERT runs — otherwise the
+      // enforce_one_team_per_association trigger raises a "duplicate" error.
+      for (const { league, toDeleteMemberIds } of prepared) {
+        if (toDeleteMemberIds.length === 0) continue;
+        const { error: delErr, count } = await fromExt("member_league_registrations")
+          .delete({ count: "exact" })
+          .eq("league_id", league.id)
+          .in("club_member_id", toDeleteMemberIds);
+        if (delErr) {
+          console.error(`[AllocateLeagues] targeted delete failed for ${league.name}`, delErr);
+          throw new Error(`Delete failed for "${league.name}": ${delErr.message}`);
         }
+        totalRowsDeleted += count ?? toDeleteMemberIds.length;
+        console.log(`[AllocateLeagues] removed ${count ?? toDeleteMemberIds.length} from ${league.name}`, toDeleteMemberIds);
+      }
 
+      // PASS 2: upserts + captain updates.
+      for (const { league, targetIsReserves, uniquePlayers } of prepared) {
         if (uniquePlayers.length > 0) {
           const payload = uniquePlayers.map((p, i) => ({
             club_member_id: p.club_member_id,

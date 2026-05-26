@@ -2629,6 +2629,29 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? awayTotalPts : ""}</span>
                             {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
+                              {(() => {
+                                const lockKey = `${fixtureId}|${idx + 1}`;
+                                const lock = markerLocks[lockKey];
+                                const isLockFresh = markerLocksFresh.has(lockKey);
+                                const showView = isLockFresh && lock && lock.user_id !== user?.id;
+                                if (!showView) return null;
+                                return (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        onClick={() => setViewingPosition(idx)}
+                                        className="bg-red-600 text-white rounded p-0.5 hover:bg-red-700 animate-pulse"
+                                        title={`Live · ${lock.user_name} is marking — tap to view`}
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="max-w-[220px]">
+                                      🔴 LIVE — {lock.user_name} is marking. Tap to follow live.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })()}
                               {!isSubmitted && !pos.completed && (
                                 <>
                                   {hasPlayers && (

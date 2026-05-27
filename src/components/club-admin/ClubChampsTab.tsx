@@ -900,12 +900,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     try {
       if (opts?.confirm && !confirm("Send invite notification/email to all invited members now?")) return;
       const { data: regs, error: regErr } = await fromExt("club_champs_registrations")
-        .select("id, club_member_id")
+        .select("id, club_member_id, status, invited_by_admin")
         .eq("champ_id", champId);
       if (regErr) throw regErr;
-      const rows = (regs || []).filter((r: any) => r.club_member_id);
+      // Only notify members who haven't already registered/paid/cancelled.
+      // Skip anyone already paid, waived, registered or cancelled — they don't
+      // need another invite. Also skip rows without a member id.
+      const SKIP_STATUSES = new Set(["paid", "waived", "registered", "active", "cancelled"]);
+      const rows = (regs || []).filter((r: any) =>
+        r.club_member_id && !SKIP_STATUSES.has(String(r.status || "").toLowerCase())
+      );
       if (rows.length === 0) {
-        toast.info("No invitees to notify.");
+        toast.info("No pending invitees to notify — everyone has already registered or cancelled.");
         return;
       }
 

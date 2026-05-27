@@ -121,6 +121,13 @@ const GENDER_LABELS: Record<GenderCategory, string> = {
   mixed: "Mixed",
 };
 
+function memberMatchesTournamentGender(memberGender: string | null | undefined, tournamentGender: GenderCategory) {
+  if (tournamentGender === "mixed") return true;
+  const normalized = String(memberGender || "").toLowerCase();
+  const matchValues = tournamentGender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
+  return matchValues.includes(normalized);
+}
+
 function SortableRow({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {

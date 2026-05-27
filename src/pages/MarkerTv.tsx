@@ -525,7 +525,7 @@ function FixedCourtMode({ subdomain, court }: { subdomain: string; court: string
     );
   }
 
-  return <SubscribedLiveView sessionId={sessionId} />;
+  return <SubscribedLiveView sessionId={sessionId} onExit={() => navigate("/dashboard")} />;
 }
 
 // ============================================================

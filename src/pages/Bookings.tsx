@@ -1116,9 +1116,12 @@ export default function Bookings() {
                   const isBlocked = !!(booking as any)?.is_blocked;
                   const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";
 
-                  // Check if this slot is in the past
+                  // A slot is considered "past" only once it has fully ended — so the
+                  // currently-running slot (e.g. 08:00 at 08:05) is still bookable for
+                  // walk-ups who didn't pre-book.
                   const slotDateTime = new Date(`${dateStr}T${time}:00`);
-                  const isPastSlot = slotDateTime < new Date();
+                  const slotEndDateTime = new Date(slotDateTime.getTime() + slotMinutes * 60000);
+                  const isPastSlot = slotEndDateTime <= new Date();
                   const isPeak = isPeakSlot(selectedDate, time, myClub);
 
                   return (

@@ -154,6 +154,7 @@ function useWakeLock(active: boolean) {
 // Mode 1: Pair-code entry (legacy /tv and /tv/:code)
 // ============================================================
 function PairCodeMode({ initialCode }: { initialCode?: string }) {
+  const navigate = useNavigate();
   const [code, setCode] = useState(initialCode?.toUpperCase() || "");
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);

@@ -5841,6 +5841,7 @@ export type Database = {
         | "general_expense"
         | "association_payable"
         | "tournament_income"
+        | "light_fees_income"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -5997,6 +5998,7 @@ export const Constants = {
         "general_expense",
         "association_payable",
         "tournament_income",
+        "light_fees_income",
       ],
       integration_provider: [
         "strava",

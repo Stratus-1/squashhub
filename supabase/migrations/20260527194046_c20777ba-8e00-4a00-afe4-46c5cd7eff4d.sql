@@ -1,0 +1,1 @@
+ALTER TYPE public.gl_account ADD VALUE IF NOT EXISTS 'light_fees_income';

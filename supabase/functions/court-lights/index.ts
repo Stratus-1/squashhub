@@ -695,7 +695,7 @@ Deno.serve(async (req) => {
           results.push({
             court: court.name,
             action: "off",
-            status: response.ok ? "success" : "error",
+            status: relayOk ? "success" : "error",
             detail: shellyResult,
             fee_charged: feeCharged,
             duration_minutes: durationMinutes,

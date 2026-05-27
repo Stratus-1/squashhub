@@ -468,7 +468,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   }, [nsaFixturesAll]);
   const nsaTeamQueries = useQueries({
     queries: sortedLeagues
-      .map(l => ({ id: l.id, code: l.code }))
+      .map(l => ({ id: l.id, code: (l as any).nsa_team_code || l.code }))
       .filter(l => !!l.code)
       .map(l => {
         const norm = (l.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");

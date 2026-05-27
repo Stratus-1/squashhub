@@ -1374,7 +1374,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       benchMembers={benchForLeague(lg, list)}
       memberMap={memberMap}
       leagueNumberByMember={leagueNumberByMember}
-      fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
+      fixture={leagueIdentityCodes(lg).map(code => nextFixtureByCode.get(code)).find(Boolean) || null}
       canEdit={canEditLeague(lg)}
       canDragPlayers={canEditLeague(lg) || canPullIntoAnyLeague}
       canDragBenchMembers={canEditLeague(lg) || canPullIntoAnyLeague}

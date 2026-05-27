@@ -1099,6 +1099,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const seenMembers = new Set<string>([
       ...basePool.map(p => p.memberId),
       ...cascaded.map(p => p.memberId),
+      ...explicitPulls.map(p => p.memberId),
       ...pulledLadies.map(p => p.memberId),
     ]);
     const thisIdx = listForOrdering.findIndex(l => l.id === lg.id);

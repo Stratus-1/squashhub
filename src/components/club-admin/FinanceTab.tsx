@@ -51,6 +51,7 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   league_fees_income:      { label: "League Fees Income",       type: "IS", category: "Income",  normal: "Cr" },
   national_body_income:    { label: "National Body Fees Income", type: "IS", category: "Income", normal: "Cr" },
   tournament_income:       { label: "Tournament Income",         type: "IS", category: "Income", normal: "Cr" },
+  light_fees_income:       { label: "Light Fees Income",          type: "IS", category: "Income", normal: "Cr" },
   // Expenses
   bar_expense:             { label: "Bar Stock Purchases",       type: "IS", category: "Expense", normal: "Dr" },
   league_fees_expense:     { label: "League Fees Payouts",       type: "IS", category: "Expense", normal: "Dr" },

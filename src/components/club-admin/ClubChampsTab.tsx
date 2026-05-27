@@ -121,6 +121,13 @@ const GENDER_LABELS: Record<GenderCategory, string> = {
   mixed: "Mixed",
 };
 
+function memberMatchesTournamentGender(memberGender: string | null | undefined, tournamentGender: GenderCategory) {
+  if (tournamentGender === "mixed") return true;
+  const normalized = String(memberGender || "").toLowerCase();
+  const matchValues = tournamentGender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
+  return matchValues.includes(normalized);
+}
+
 function SortableRow({ id, children }: { id: string; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -352,9 +359,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     if (gender === "mixed") {
       return members.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
     }
-    const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members
-      .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()))
+      .filter((m) => memberMatchesTournamentGender(m.gender, gender))
       .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members, gender]);
 
@@ -906,17 +912,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       // an admin expanded the audience from a shortlist to "all members") get a
       // registration row and therefore receive the invite. We only insert
       // missing rows — existing rows (paid / cancelled / etc.) are left intact.
-      if (editingChampId === champId && registrationMode === "invite" && selectedPlayerIds.size > 0) {
+      const shouldBackfillOpenAudience = editingChampId === champId && registrationMode === "open";
+      const audienceMemberIds = shouldBackfillOpenAudience
+        ? members.filter((m) => memberMatchesTournamentGender(m.gender, gender)).map((m) => m.id)
+        : Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-"));
+
+      if (editingChampId === champId && audienceMemberIds.length > 0) {
         const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
-        const newRegs = Array.from(selectedPlayerIds)
-          .filter((id) => !id.startsWith("visitor-"))
-          .map((memberId) => ({
-            champ_id: champId,
-            club_member_id: memberId,
-            status: fee > 0 && paymentRequired ? "pending_payment" : "paid",
-            invited_by_admin: false,
-            fee_paid_cents: 0,
-          }));
+        const newRegs = audienceMemberIds.map((memberId) => ({
+          champ_id: champId,
+          club_member_id: memberId,
+          status: fee > 0 && paymentRequired ? "pending_payment" : "paid",
+          invited_by_admin: false,
+          fee_paid_cents: 0,
+        }));
         if (newRegs.length > 0) {
           await fromExt("club_champs_registrations").upsert(newRegs, {
             onConflict: "champ_id,club_member_id",

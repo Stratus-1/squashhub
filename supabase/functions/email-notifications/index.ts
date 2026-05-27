@@ -369,27 +369,33 @@ Deno.serve(async (req) => {
   try {
     const payload = await req.json();
     const targetUserId = String(payload?.targetUserId || "");
+    const payloadEmail = String(payload?.targetEmail || "").trim();
+    const payloadName = String(payload?.targetName || "").trim();
     const title = String(payload?.title || "Notification");
     const body = String(payload?.body || "");
     const notifUrl = String(payload?.url || "/notifications");
     const type = String(payload?.type || "");
     const data = payload?.data ?? null;
 
-    if (!targetUserId) {
-      return new Response(JSON.stringify({ error: "Missing targetUserId" }), {
+    if (!targetUserId && !payloadEmail) {
+      return new Response(JSON.stringify({ error: "Missing recipient" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: profile, error: profileErr } = await supabaseAdmin
-      .from("profiles")
-      .select("email,name")
-      .eq("id", targetUserId)
-      .single();
-    if (profileErr) throw profileErr;
+    let profile: { email?: string | null; name?: string | null } | null = null;
+    if (targetUserId) {
+      const { data: profileData, error: profileErr } = await supabaseAdmin
+        .from("profiles")
+        .select("email,name")
+        .eq("id", targetUserId)
+        .maybeSingle();
+      if (profileErr) throw profileErr;
+      profile = profileData;
+    }
 
-    const email = String(profile?.email || "").trim();
+    const email = String(profile?.email || payloadEmail || "").trim();
     if (!email) {
       return new Response(JSON.stringify({ ok: true, skipped: true, reason: "No email on profile" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -401,7 +407,7 @@ Deno.serve(async (req) => {
 
     const managePrefsUrl = absoluteUrl(siteUrl, "/");
     const mergeVars: Record<string, string> = {
-      name: String((profile as any)?.name || ""),
+      name: String((profile as any)?.name || payloadName || ""),
       email,
       site_url: siteUrl,
       link_url: link,

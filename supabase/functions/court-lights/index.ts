@@ -705,18 +705,19 @@ Deno.serve(async (req) => {
             fee_charged: feeCharged,
             duration_minutes: durationMinutes,
           });
-        } else if (shouldBeOn && existingSession) {
+        } else if (autoOnWanted && existingSession) {
           // Already on, keep going
           results.push({ court: court.name, action: "on", status: "already_active" });
         } else {
-          // Already off, nothing to do
-          results.push({ court: court.name, action: "off", status: "already_off" });
+          // Either no booking, or booking doesn't want auto-on. Nothing to do.
+          results.push({ court: court.name, action: "idle", status: "ok" });
         }
       } catch (relayErr: any) {
         results.push({
           court: court.name,
           device: deviceId,
-          action: shouldBeOn ? "on" : "off",
+          action: autoOnWanted ? "on" : "off",
+
           status: "error",
           detail: relayErr.message,
         });

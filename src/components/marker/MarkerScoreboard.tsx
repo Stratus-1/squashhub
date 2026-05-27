@@ -312,8 +312,14 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
 
       setScoreA(newA);
       setScoreB(newB);
-      // Live point-by-point broadcast (current in-progress game)
-      try { onLiveScore?.(completedGames, { a: newA, b: newB }); } catch {}
+
+      // Check game won before broadcasting live current-game state. A winning
+      // point must be persisted as a finished game only, not re-saved as the
+      // in-progress `current_game` value after the parent clears it.
+      const gameWinner = isGameWon(newA, newB, pointsToWin, config.deuceRule);
+      if (!gameWinner) {
+        try { onLiveScore?.(completedGames, { a: newA, b: newB }); } catch {}
+      }
 
       if (scorer === server) {
         setServeSide((s) => (s === "R" ? "L" : "R"));
@@ -327,8 +333,6 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         { scorer, scoreA: newA, scoreB: newB, server: scorer === server ? server : scorer, serveSide: scorer === server ? (serveSide === "R" ? "L" : "R") : "R" },
       ]);
 
-      // Check game won
-      const gameWinner = isGameWon(newA, newB, pointsToWin, config.deuceRule);
       if (gameWinner) {
         const newGamesA = gameWinner === "a" ? gamesA + 1 : gamesA;
         const newGamesB = gameWinner === "b" ? gamesB + 1 : gamesB;

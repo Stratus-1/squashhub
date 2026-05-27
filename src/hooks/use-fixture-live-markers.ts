@@ -37,6 +37,11 @@ export function useFixtureLiveMarkers(fixtureIds: string[]) {
       setLocks((data || []) as LockRow[]);
     };
     refresh();
+    // Realtime is the fast path, but mobile networks routinely drop the WS
+    // connection silently. Poll every 20s as a safety net so spectators
+    // always see the LIVE button within ~20s of a marker starting, even
+    // if no realtime event ever arrived.
+    const pollId = setInterval(refresh, 20_000);
     const ch = supabase
       .channel(`fixtures-live-markers:${idsKey.slice(0, 60)}`)
       .on(
@@ -48,7 +53,7 @@ export function useFixtureLiveMarkers(fixtureIds: string[]) {
         }
       )
       .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+    return () => { cancelled = true; clearInterval(pollId); supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey]);
 

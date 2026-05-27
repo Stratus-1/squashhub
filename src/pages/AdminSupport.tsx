@@ -248,9 +248,16 @@ export default function AdminSupport() {
             Triage bugs, issues, proposals and problems — then reply in-app or via WhatsApp/email.
           </p>
         </div>
-        <Button asChild variant="ghost" size="sm" className="shrink-0">
-          <Link to="/admin">← Back</Link>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button asChild variant="default" size="sm">
+            <Link to="/support">
+              <MessageCircle className="w-4 h-4 mr-1" /> Open a ticket
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/admin">← Back</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-1">

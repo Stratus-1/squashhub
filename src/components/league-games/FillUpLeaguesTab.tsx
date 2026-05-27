@@ -406,7 +406,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     if (previousFixtures.length === 0 || previousMatchResults.length === 0) return [];
     const leagueByCode = new Map<string, string>();
     for (const lg of sortedLeagues) {
-      if (lg.code) leagueByCode.set(lg.code.toUpperCase(), lg.id);
+      for (const code of leagueIdentityCodes(lg)) leagueByCode.set(code, lg.id);
     }
     const memberByLeagueNumber = new Map<string, string>();
     for (const r of registrations) {
@@ -560,7 +560,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     if (nsaRubberHistory.length === 0) return [];
     const leagueByCode = new Map<string, string>();
     for (const lg of sortedLeagues) {
-      if (lg.code) leagueByCode.set(lg.code.toUpperCase(), lg.id);
+      for (const code of leagueIdentityCodes(lg)) leagueByCode.set(code, lg.id);
     }
     const memberByCode = new Map<string, string>();
     for (const r of registrations) {

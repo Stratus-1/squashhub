@@ -599,14 +599,31 @@ function SubscribedLiveView({ sessionId, onBack, onExit }: { sessionId: string; 
 
   return (
     <div className="relative">
-      <LiveScoreboard state={state} />
-      {onBack && (
+      <LiveScoreboard state={state} onExit={onExit} />
+      {onBack && !onExit && (
         <button
           onClick={onBack}
           className="fixed top-4 right-4 px-3 py-1.5 text-xs bg-background/80 backdrop-blur rounded-lg border hover:bg-muted"
         >
           ← Courts
         </button>
+      )}
+      {onBack && onExit && (
+        <div className="fixed top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={onBack}
+            className="px-3 py-1.5 text-xs bg-background/80 backdrop-blur rounded-lg border hover:bg-muted"
+          >
+            ← Courts
+          </button>
+          <button
+            onClick={onExit}
+            className="px-3 py-1.5 text-xs bg-background/80 backdrop-blur rounded-lg border hover:bg-muted"
+            title="Back to Dashboard"
+          >
+            <Home className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );

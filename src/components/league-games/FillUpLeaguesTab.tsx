@@ -157,7 +157,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     queryKey: ["leagues-with-captain", clubId, associationId || "all"],
     queryFn: async () => {
       let q = fromExt("leagues")
-        .select("id, name, code, captain_member_id, allow_cross_gender_guests, association_id")
+        .select("id, name, code, nsa_team_code, captain_member_id, allow_cross_gender_guests, association_id")
         .eq("club_id", clubId);
       if (associationId) q = q.eq("association_id", associationId);
       const { data, error } = await q;
@@ -175,9 +175,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   // allocated players must show 5 lineup slots in Fill Up, not stop at 4.
   const leagueIds = useMemo(() => sortedLeagues.map(l => l.id), [sortedLeagues]);
   const leagueCodes = useMemo(
-    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
+    () => Array.from(new Set(
+      sortedLeagues
+        .flatMap(l => [l.code, (l as any).nsa_team_code])
+        .filter((c): c is string => !!c)
+    )),
     [sortedLeagues],
   );
+
+  const leagueIdentityCodes = (lg: LeagueRow): string[] =>
+    Array.from(new Set([lg.code, (lg as any).nsa_team_code].filter((c): c is string => !!c).map(c => c.toUpperCase())));
 
   const { data: registrations = [] } = useQuery<RegRow[]>({
     queryKey: ["club-regs", leagueIds.join(",")],

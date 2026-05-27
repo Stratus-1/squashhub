@@ -256,7 +256,7 @@ export function LiveSessionBanner() {
                       onClick={() => setConfirmEndOpen(displaySession.id)}
                     >
                       <ZapOff className="w-3.5 h-3.5" />
-                      End
+                      End Session
                     </Button>
                   </>
                 ) : lightsNotOn ? (

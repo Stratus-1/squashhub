@@ -359,9 +359,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     if (gender === "mixed") {
       return members.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
     }
-    const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members
-      .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()))
+      .filter((m) => memberMatchesTournamentGender(m.gender, gender))
       .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members, gender]);
 

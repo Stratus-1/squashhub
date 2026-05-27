@@ -379,12 +379,21 @@ function CourtPickerMode({ subdomain }: { subdomain: string }) {
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background p-6 lg:p-10">
       <SEO title={`${clubName} — Live Courts | TV`} description="Live courts at the club" />
-      <div className="flex items-center gap-3 mb-8">
-        {clubLogo && <img src={clubLogo} alt="" className="h-10 lg:h-14 w-auto" />}
-        <div>
-          <h1 className="text-2xl lg:text-4xl font-heading font-bold">{clubName}</h1>
-          <p className="text-sm lg:text-base text-muted-foreground">Live courts</p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          {clubLogo && <img src={clubLogo} alt="" className="h-10 lg:h-14 w-auto" />}
+          <div>
+            <h1 className="text-2xl lg:text-4xl font-heading font-bold">{clubName}</h1>
+            <p className="text-sm lg:text-base text-muted-foreground">Live courts</p>
+          </div>
         </div>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-muted rounded-lg hover:bg-muted/80 border"
+        >
+          <Home className="w-4 h-4" />
+          <span className="hidden lg:inline">Dashboard</span>
+        </button>
       </div>
 
       {sessions.length === 0 ? (

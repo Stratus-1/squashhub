@@ -286,7 +286,7 @@ function PairCodeMode({ initialCode }: { initialCode?: string }) {
     );
   }
 
-  return <LiveScoreboard state={state} />;
+  return <LiveScoreboard state={state} onExit={() => navigate("/dashboard")} />;
 }
 
 // ============================================================

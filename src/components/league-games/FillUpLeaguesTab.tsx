@@ -157,7 +157,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     queryKey: ["leagues-with-captain", clubId, associationId || "all"],
     queryFn: async () => {
       let q = fromExt("leagues")
-        .select("id, name, code, captain_member_id, allow_cross_gender_guests, association_id")
+        .select("id, name, code, nsa_team_code, captain_member_id, allow_cross_gender_guests, association_id")
         .eq("club_id", clubId);
       if (associationId) q = q.eq("association_id", associationId);
       const { data, error } = await q;
@@ -175,9 +175,16 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   // allocated players must show 5 lineup slots in Fill Up, not stop at 4.
   const leagueIds = useMemo(() => sortedLeagues.map(l => l.id), [sortedLeagues]);
   const leagueCodes = useMemo(
-    () => sortedLeagues.map(l => l.code).filter((c): c is string => !!c),
+    () => Array.from(new Set(
+      sortedLeagues
+        .flatMap(l => [l.code, (l as any).nsa_team_code])
+        .filter((c): c is string => !!c)
+    )),
     [sortedLeagues],
   );
+
+  const leagueIdentityCodes = (lg: LeagueRow): string[] =>
+    Array.from(new Set([lg.code, (lg as any).nsa_team_code].filter((c): c is string => !!c).map(c => c.toUpperCase())));
 
   const { data: registrations = [] } = useQuery<RegRow[]>({
     queryKey: ["club-regs", leagueIds.join(",")],
@@ -399,7 +406,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     if (previousFixtures.length === 0 || previousMatchResults.length === 0) return [];
     const leagueByCode = new Map<string, string>();
     for (const lg of sortedLeagues) {
-      if (lg.code) leagueByCode.set(lg.code.toUpperCase(), lg.id);
+      for (const code of leagueIdentityCodes(lg)) leagueByCode.set(code, lg.id);
     }
     const memberByLeagueNumber = new Map<string, string>();
     for (const r of registrations) {
@@ -461,7 +468,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   }, [nsaFixturesAll]);
   const nsaTeamQueries = useQueries({
     queries: sortedLeagues
-      .map(l => ({ id: l.id, code: l.code }))
+      .map(l => ({ id: l.id, code: (l as any).nsa_team_code || l.code }))
       .filter(l => !!l.code)
       .map(l => {
         const norm = (l.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -553,7 +560,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     if (nsaRubberHistory.length === 0) return [];
     const leagueByCode = new Map<string, string>();
     for (const lg of sortedLeagues) {
-      if (lg.code) leagueByCode.set(lg.code.toUpperCase(), lg.id);
+      for (const code of leagueIdentityCodes(lg)) leagueByCode.set(code, lg.id);
     }
     const memberByCode = new Map<string, string>();
     for (const r of registrations) {
@@ -939,6 +946,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   const canEditLeague = (lg: LeagueRow): boolean =>
     isCaptainOfLeague(lg) || isSameGroupAsMyCaptainedLeague(lg) || !!amIAdmin;
+
+  const canPullIntoAnyLeague = useMemo(
+    () => !!amIAdmin || myCaptainedLeagues.length > 0,
+    [amIAdmin, myCaptainedLeagues],
+  );
 
   // For members registered in multiple leagues within the same gender group, pick a
   // single "home" league = the WEAKEST team they're registered to (highest league number).
@@ -1362,8 +1374,10 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       benchMembers={benchForLeague(lg, list)}
       memberMap={memberMap}
       leagueNumberByMember={leagueNumberByMember}
-      fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
+      fixture={leagueIdentityCodes(lg).map(code => nextFixtureByCode.get(code)).find(Boolean) || null}
       canEdit={canEditLeague(lg)}
+      canDragPlayers={canEditLeague(lg) || canPullIntoAnyLeague}
+      canDragBenchMembers={canEditLeague(lg) || canPullIntoAnyLeague}
       availableSet={availableSet}
       placementAlerts={placementAlerts}
       onMarkUnavailable={(mid) => markUnavailable.mutate(mid)}

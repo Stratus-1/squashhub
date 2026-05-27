@@ -2,6 +2,7 @@ export type LeagueRow = {
   id: string;
   name: string;
   code: string | null;
+  nsa_team_code?: string | null;
   captain_member_id: string | null;
   allow_cross_gender_guests: boolean | null;
 };

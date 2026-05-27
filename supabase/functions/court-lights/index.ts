@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
             method: "system",
             status: "confirmed",
             confirmed_at: now.toISOString(),
-            description: `Court lights – ${durationMinutes}min on Court ${session.court_id}`,
+            description: `Court lights – ${durationMinutes}min on ${court?.name || `Court ${session.court_id}`}`,
             reference: session.booking_id,
           });
         }

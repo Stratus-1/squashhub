@@ -574,14 +574,14 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           <div className="flex items-center gap-1.5 max-w-full">
             {server === "a" && serveSide === "L" && (
               <Badge
-                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerAName}</p>
             {server === "a" && serveSide === "R" && (
               <Badge
-                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}
@@ -612,14 +612,14 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           <div className="flex items-center gap-1.5 max-w-full">
             {server === "b" && serveSide === "L" && (
               <Badge
-                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >L</Badge>
             )}
             <p className="text-xs font-medium opacity-80 truncate">{playerBName}</p>
             {server === "b" && serveSide === "R" && (
               <Badge
-                className="text-[10px] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+                className="text-base px-3 py-1.5 bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] cursor-pointer hover:opacity-80 active:scale-95 transition-all"
                 onClick={(e) => { e.stopPropagation(); toggleServeSide(); }}
               >R</Badge>
             )}

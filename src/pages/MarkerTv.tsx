@@ -573,11 +573,18 @@ function SubscribedLiveView({ sessionId, onBack, onExit }: { sessionId: string; 
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-6 text-center">
         <SEO title="Match ended | TV" description="" />
         <p className="text-2xl lg:text-4xl font-heading font-bold">Match ended</p>
-        {onBack && (
-          <button onClick={onBack} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90">
-            Back to courts
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button onClick={onBack} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90">
+              Back to courts
+            </button>
+          )}
+          {onExit && (
+            <button onClick={onExit} className="mt-4 px-5 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 border">
+              <Home className="w-4 h-4 inline mr-1" /> Dashboard
+            </button>
+          )}
+        </div>
       </div>
     );
   }

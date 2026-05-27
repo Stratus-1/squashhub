@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     // Fetch the active session (use service role to ensure we can read it)
     const { data: session, error: sessErr } = await supabase
       .from("light_sessions")
-      .select("*, courts(relay_device_id, relay_server, club_id)")
+      .select("*, courts(name, relay_device_id, relay_server, club_id)")
       .eq("id", sessionId)
       .eq("user_id", userId)
       .eq("status", "active")

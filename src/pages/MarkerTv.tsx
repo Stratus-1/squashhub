@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { MarkerCastState } from "@/hooks/use-marker-cast";
-import { Tv, WifiOff, Circle } from "lucide-react";
+import { Tv, WifiOff, Circle, ArrowLeft, Home } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 function formatDuration(seconds: number): string {
@@ -14,7 +14,7 @@ function formatDuration(seconds: number): string {
 // ============================================================
 // Live scoreboard view (shared by all 3 entry modes)
 // ============================================================
-function LiveScoreboard({ state }: { state: MarkerCastState }) {
+function LiveScoreboard({ state, onExit }: { state: MarkerCastState; onExit?: () => void }) {
   const winA = state.matchOver && state.matchWinner === "a";
   const winB = state.matchOver && state.matchWinner === "b";
 
@@ -25,6 +25,16 @@ function LiveScoreboard({ state }: { state: MarkerCastState }) {
       {/* Header */}
       <div className="flex items-center justify-between text-muted-foreground mb-4 lg:mb-6">
         <div className="flex items-center gap-2">
+          {onExit && (
+            <button
+              onClick={onExit}
+              className="mr-1 flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/80 hover:bg-muted text-xs font-medium transition"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Back</span>
+            </button>
+          )}
           {state.clubLogoUrl && (
             <img src={state.clubLogoUrl} alt="" className="h-8 lg:h-10 w-auto" />
           )}
@@ -144,6 +154,7 @@ function useWakeLock(active: boolean) {
 // Mode 1: Pair-code entry (legacy /tv and /tv/:code)
 // ============================================================
 function PairCodeMode({ initialCode }: { initialCode?: string }) {
+  const navigate = useNavigate();
   const [code, setCode] = useState(initialCode?.toUpperCase() || "");
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -275,7 +286,7 @@ function PairCodeMode({ initialCode }: { initialCode?: string }) {
     );
   }
 
-  return <LiveScoreboard state={state} />;
+  return <LiveScoreboard state={state} onExit={() => navigate("/dashboard")} />;
 }
 
 // ============================================================
@@ -289,6 +300,7 @@ interface SessionRow {
 }
 
 function CourtPickerMode({ subdomain }: { subdomain: string }) {
+  const navigate = useNavigate();
   const [clubId, setClubId] = useState<string | null>(null);
   const [clubName, setClubName] = useState<string>("");
   const [clubLogo, setClubLogo] = useState<string | null>(null);
@@ -352,7 +364,7 @@ function CourtPickerMode({ subdomain }: { subdomain: string }) {
 
   // If user picked one, render the live view by piping its state
   if (selectedId) {
-    return <SubscribedLiveView sessionId={selectedId} onBack={() => setSelectedId(null)} />;
+    return <SubscribedLiveView sessionId={selectedId} onBack={() => setSelectedId(null)} onExit={() => navigate("/dashboard")} />;
   }
 
   if (error) {
@@ -367,12 +379,21 @@ function CourtPickerMode({ subdomain }: { subdomain: string }) {
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background p-6 lg:p-10">
       <SEO title={`${clubName} — Live Courts | TV`} description="Live courts at the club" />
-      <div className="flex items-center gap-3 mb-8">
-        {clubLogo && <img src={clubLogo} alt="" className="h-10 lg:h-14 w-auto" />}
-        <div>
-          <h1 className="text-2xl lg:text-4xl font-heading font-bold">{clubName}</h1>
-          <p className="text-sm lg:text-base text-muted-foreground">Live courts</p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          {clubLogo && <img src={clubLogo} alt="" className="h-10 lg:h-14 w-auto" />}
+          <div>
+            <h1 className="text-2xl lg:text-4xl font-heading font-bold">{clubName}</h1>
+            <p className="text-sm lg:text-base text-muted-foreground">Live courts</p>
+          </div>
         </div>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-muted rounded-lg hover:bg-muted/80 border"
+        >
+          <Home className="w-4 h-4" />
+          <span className="hidden lg:inline">Dashboard</span>
+        </button>
       </div>
 
       {sessions.length === 0 ? (
@@ -429,6 +450,7 @@ function CourtPickerMode({ subdomain }: { subdomain: string }) {
 // Auto-subscribes to whichever live session matches
 // ============================================================
 function FixedCourtMode({ subdomain, court }: { subdomain: string; court: string }) {
+  const navigate = useNavigate();
   const [clubId, setClubId] = useState<string | null>(null);
   const [clubName, setClubName] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -512,14 +534,14 @@ function FixedCourtMode({ subdomain, court }: { subdomain: string; court: string
     );
   }
 
-  return <SubscribedLiveView sessionId={sessionId} />;
+  return <SubscribedLiveView sessionId={sessionId} onExit={() => navigate("/dashboard")} />;
 }
 
 // ============================================================
 // Subscribes to a single session and renders the scoreboard
 // (used by picker after selection, and by fixed-court view)
 // ============================================================
-function SubscribedLiveView({ sessionId, onBack }: { sessionId: string; onBack?: () => void }) {
+function SubscribedLiveView({ sessionId, onBack, onExit }: { sessionId: string; onBack?: () => void; onExit?: () => void }) {
   const [state, setState] = useState<MarkerCastState | null>(null);
   const [ended, setEnded] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -561,11 +583,18 @@ function SubscribedLiveView({ sessionId, onBack }: { sessionId: string; onBack?:
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-6 text-center">
         <SEO title="Match ended | TV" description="" />
         <p className="text-2xl lg:text-4xl font-heading font-bold">Match ended</p>
-        {onBack && (
-          <button onClick={onBack} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90">
-            Back to courts
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button onClick={onBack} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90">
+              Back to courts
+            </button>
+          )}
+          {onExit && (
+            <button onClick={onExit} className="mt-4 px-5 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 border">
+              <Home className="w-4 h-4 inline mr-1" /> Dashboard
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -580,14 +609,31 @@ function SubscribedLiveView({ sessionId, onBack }: { sessionId: string; onBack?:
 
   return (
     <div className="relative">
-      <LiveScoreboard state={state} />
-      {onBack && (
+      <LiveScoreboard state={state} onExit={onExit} />
+      {onBack && !onExit && (
         <button
           onClick={onBack}
           className="fixed top-4 right-4 px-3 py-1.5 text-xs bg-background/80 backdrop-blur rounded-lg border hover:bg-muted"
         >
           ← Courts
         </button>
+      )}
+      {onBack && onExit && (
+        <div className="fixed top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={onBack}
+            className="px-3 py-1.5 text-xs bg-background/80 backdrop-blur rounded-lg border hover:bg-muted"
+          >
+            ← Courts
+          </button>
+          <button
+            onClick={onExit}
+            className="px-3 py-1.5 text-xs bg-background/80 backdrop-blur rounded-lg border hover:bg-muted"
+            title="Back to Dashboard"
+          >
+            <Home className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );

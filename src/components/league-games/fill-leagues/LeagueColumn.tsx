@@ -18,6 +18,7 @@ type Props = {
   leagueNumberByMember?: Map<string, string>;
   fixture: FixtureLite | null;
   canEdit: boolean;
+  canDragBenchMembers?: boolean;
   /** memberIds who confirmed availability for this week — render green. */
   availableSet?: Set<string>;
   /** Callback to mark a player unavailable for the whole week. */
@@ -26,7 +27,7 @@ type Props = {
   placementAlerts?: Map<string, string>;
 };
 
-export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, availableSet, onMarkUnavailable, placementAlerts }: Props) {
+export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, canDragBenchMembers, availableSet, onMarkUnavailable, placementAlerts }: Props) {
   const opponentCode = fixture
     ? fixture.home_team_code === league.code
       ? fixture.away_team_code
@@ -164,7 +165,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                   name={mem.name || "Unknown"}
                   rank={b.rank}
                   leagueNumber={leagueNumberByMember?.get(b.memberId) || null}
-                  disabled={!canEdit}
+                  disabled={!canDragBenchMembers}
                   positionLabel={`${i + 1}.`}
                   available={availableSet?.has(b.memberId)}
                   onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(b.memberId) : undefined}

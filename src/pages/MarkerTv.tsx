@@ -441,6 +441,7 @@ function CourtPickerMode({ subdomain }: { subdomain: string }) {
 // Auto-subscribes to whichever live session matches
 // ============================================================
 function FixedCourtMode({ subdomain, court }: { subdomain: string; court: string }) {
+  const navigate = useNavigate();
   const [clubId, setClubId] = useState<string | null>(null);
   const [clubName, setClubName] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);

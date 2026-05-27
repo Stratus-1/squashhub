@@ -1212,14 +1212,14 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       const targetLeague = sortedLeagues.find(l => l.id === row.league_id);
       if (!targetLeague) continue;
       const result = evaluatePlacement(row.club_member_id, targetLeague, row.position);
-      if (result?.reason && (!result.ok || result.warn)) alerts.set(row.club_member_id, result.reason);
+      if (result?.reason && !result.ok) alerts.set(row.club_member_id, result.reason);
     }
     return alerts;
   }, [lineups, sortedLeagues, subRules, latestPlayedByMember, effectiveHomeLeagueByMember, homeLeagueByMember, previousWeekLineups, memberMap]);
 
   // ---------- DnD handlers ----------
 
-  const handleDragEnd = (e: DragEndEvent) => {
+  const handleDragEnd = async (e: DragEndEvent) => {
     setActiveDragId(null);
     const { active, over } = e;
     if (!over) return;
@@ -1249,7 +1249,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       }
 
       const result = evaluatePlacement(memberId, targetLeague, drop.position);
-      if (result?.reason && (!result.ok || result.warn)) {
+      if (result?.reason && !result.ok) {
         toast.error(result.reason, { duration: 10000 });
       }
 
@@ -1281,39 +1281,28 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
         return;
       }
 
-      // Cross-league bench drop = mark "excess" from origin → cascades into target league pool
+      // Cross-league bench drop = pull from origin → target league pool.
+      // Captains are authorised by the TARGET league so they can pull a reserve into
+      // their own team without needing permission over the source league.
       const originLeague = sortedLeagues.find(l => l.id === origin);
-      if (originLeague && !canEditLeague(originLeague)) {
-        toast.error("Only the source league's captain can push players to another league");
+      if (originLeague && !canEditLeague(targetLeague)) {
+        toast.error("Only that league's captain or a club admin can pull players into this pool");
         return;
       }
       if (originLeague) {
-        // Allow cross-league bench-to-bench drops in BOTH directions (pull up or push
-        // down). Hard slot-distance / cross-gender rules are still enforced when the
-        // player is actually placed in a position (see evaluatePlacement). Here we just
-        // make them visible in the target league's Available pool.
-        //
-        // - Push DOWN to the immediately next league = legacy "excess" cascade
-        //   (no cascaded_from_league_id, surfaces via prevLeague.excess waterfall).
-        // - Any other target (pull up, skip leagues, cross-gender) = explicit pull:
-        //   status=excess on origin with cascaded_from_league_id = target.id, which the
-        //   target league's pool picks up directly.
-        const sameGroup = isMensLeague(originLeague.name) && isMensLeague(targetLeague.name)
-          ? sortedLeagues.filter(l => isMensLeague(l.name))
-          : isLadiesLeague(originLeague.name) && isLadiesLeague(targetLeague.name)
-          ? sortedLeagues.filter(l => isLadiesLeague(l.name))
-          : null;
-        const originIdx = sameGroup ? sameGroup.findIndex(l => l.id === originLeague.id) : -1;
-        const targetIdx = sameGroup ? sameGroup.findIndex(l => l.id === targetLeague.id) : -1;
-        const isNaturalCascade = sameGroup && targetIdx === originIdx + 1;
-
-        clearLineupForMember.mutate(memberId);
-        setStatusMut.mutate({
-          league_id: originLeague.id,
-          club_member_id: memberId,
-          status: "excess",
-          cascaded_from_league_id: isNaturalCascade ? null : targetLeague.id,
+        const { error } = await (supabase.rpc as any)("move_player_to_league_pool", {
+          p_club_id: clubId,
+          p_week_start_date: weekStart,
+          p_source_league_id: originLeague.id,
+          p_target_league_id: targetLeague.id,
+          p_club_member_id: memberId,
         });
+        if (error) {
+          toast.error(error.message || "Failed to move player");
+          return;
+        }
+        qc.invalidateQueries({ queryKey: ["lwl", clubId, weekStart] });
+        qc.invalidateQueries({ queryKey: ["lwps", clubId, weekStart] });
         toast.success(`${memberMap.get(memberId)?.name || "Player"} now available in ${targetLeague.code || targetLeague.name}`);
       }
       return;

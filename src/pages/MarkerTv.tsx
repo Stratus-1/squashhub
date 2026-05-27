@@ -300,6 +300,7 @@ interface SessionRow {
 }
 
 function CourtPickerMode({ subdomain }: { subdomain: string }) {
+  const navigate = useNavigate();
   const [clubId, setClubId] = useState<string | null>(null);
   const [clubName, setClubName] = useState<string>("");
   const [clubLogo, setClubLogo] = useState<string | null>(null);

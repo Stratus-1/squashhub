@@ -23,6 +23,7 @@ const navItems = [
   { title: "Leagues", url: "/admin/leagues", icon: Trophy },
   { title: "NSA Import", url: "/admin/nsa-import", icon: Download },
   { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
+  { title: "Support", url: "/admin/support", icon: LifeBuoy },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 

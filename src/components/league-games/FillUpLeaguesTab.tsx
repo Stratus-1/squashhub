@@ -1045,6 +1045,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const cascaded = prevLeague
       ? statuses
           .filter(s => s.league_id === prevLeague.id && s.status === "excess")
+          .filter(s => !(s as any).cascaded_from_league_id) // exclude explicit cross-league pulls
           .filter(s => !baseMemberIds.has(s.club_member_id))
           .map(s => ({
             memberId: s.club_member_id,
@@ -1054,6 +1055,23 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
             cascadedFromCode: prevLeague.code,
           }))
       : [];
+
+    // Explicit cross-league pulls — captain dragged a player from another league
+    // bench (any direction, including UP) into THIS league's available pool.
+    // Surfaces wherever cascaded_from_league_id === this league.
+    const explicitPulls = statuses
+      .filter(s => s.status === "excess" && (s as any).cascaded_from_league_id === lg.id)
+      .filter(s => !baseMemberIds.has(s.club_member_id))
+      .map(s => {
+        const fromLg = sortedLeagues.find(l => l.id === s.league_id);
+        return {
+          memberId: s.club_member_id,
+          rank: null,
+          isPulled: true,
+          isCascaded: true,
+          cascadedFromCode: fromLg?.code || null,
+        };
+      });
 
     const ladiesPoolMemberIds = new Set(
       registrations

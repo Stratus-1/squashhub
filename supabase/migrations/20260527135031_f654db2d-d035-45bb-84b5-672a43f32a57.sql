@@ -1,0 +1,3 @@
+DROP TRIGGER IF EXISTS trg_tournament_reg_pending_eft_ins ON public.club_champs_registrations;
+DROP TRIGGER IF EXISTS trg_tournament_reg_pending_eft_upd ON public.club_champs_registrations;
+DROP FUNCTION IF EXISTS public.tournament_reg_create_pending_eft_tx();

@@ -1212,7 +1212,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       const targetLeague = sortedLeagues.find(l => l.id === row.league_id);
       if (!targetLeague) continue;
       const result = evaluatePlacement(row.club_member_id, targetLeague, row.position);
-      if (result?.reason && (!result.ok || result.warn)) alerts.set(row.club_member_id, result.reason);
+      if (result?.reason && !result.ok) alerts.set(row.club_member_id, result.reason);
     }
     return alerts;
   }, [lineups, sortedLeagues, subRules, latestPlayedByMember, effectiveHomeLeagueByMember, homeLeagueByMember, previousWeekLineups, memberMap]);
@@ -1249,7 +1249,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       }
 
       const result = evaluatePlacement(memberId, targetLeague, drop.position);
-      if (result?.reason && (!result.ok || result.warn)) {
+      if (result?.reason && !result.ok) {
         toast.error(result.reason, { duration: 10000 });
       }
 

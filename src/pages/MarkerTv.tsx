@@ -531,7 +531,7 @@ function FixedCourtMode({ subdomain, court }: { subdomain: string; court: string
 // Subscribes to a single session and renders the scoreboard
 // (used by picker after selection, and by fixed-court view)
 // ============================================================
-function SubscribedLiveView({ sessionId, onBack }: { sessionId: string; onBack?: () => void }) {
+function SubscribedLiveView({ sessionId, onBack, onExit }: { sessionId: string; onBack?: () => void; onExit?: () => void }) {
   const [state, setState] = useState<MarkerCastState | null>(null);
   const [ended, setEnded] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);

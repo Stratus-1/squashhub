@@ -1,0 +1,61 @@
+
+-- Backfill: convert any existing light-fee rows from old 'charge' type to standard 'credit' (positive amount)
+UPDATE public.member_credit_transactions
+SET type = 'credit', amount = abs(amount)
+WHERE type = 'charge'
+  AND (description ILIKE '%court lights%' OR description ILIKE '%light fee%');
+
+-- Replace ledger trigger to match real app conventions:
+--   type='credit' = fee/charge to member (member owes)  -> Dr Debtors / Cr Fee Income
+--   type='debit'  = payment/top-up by member            -> Dr Bank   / Cr Debtors
+CREATE OR REPLACE FUNCTION public.journal_light_fee_on_credit_debit()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_amount numeric;
+  v_ref uuid;
+BEGIN
+  IF NEW.status <> 'confirmed' THEN RETURN NEW; END IF;
+  IF NEW.club_id IS NULL THEN RETURN NEW; END IF;
+
+  v_amount := abs(NEW.amount);
+  IF v_amount = 0 THEN RETURN NEW; END IF;
+
+  -- Light-fee charge to the member
+  IF NEW.type = 'credit'
+     AND NEW.method = 'system'
+     AND (NEW.description ILIKE '%court lights%' OR NEW.description ILIKE '%light fee%') THEN
+    v_ref := gen_random_uuid();
+    INSERT INTO public.club_journal_entries
+      (club_id, club_member_id, account, debit, credit, description, journal_ref, transaction_id, created_at)
+    VALUES
+      (NEW.club_id, NEW.club_member_id, 'debtors',    v_amount, 0, NEW.description, v_ref, NEW.id, now()),
+      (NEW.club_id, NEW.club_member_id, 'fee_income', 0, v_amount, NEW.description, v_ref, NEW.id, now());
+    RETURN NEW;
+  END IF;
+
+  -- Member payment / top-up: clears AR
+  IF NEW.type = 'debit' AND NEW.method IN ('card','eft','cash') THEN
+    v_ref := gen_random_uuid();
+    INSERT INTO public.club_journal_entries
+      (club_id, club_member_id, account, debit, credit, description, journal_ref, transaction_id, created_at)
+    VALUES
+      (NEW.club_id, NEW.club_member_id, 'bank_current', v_amount, 0,
+        COALESCE(NEW.description, 'Member account payment'), v_ref, NEW.id, now()),
+      (NEW.club_id, NEW.club_member_id, 'debtors',      0, v_amount,
+        COALESCE(NEW.description, 'Member account payment'), v_ref, NEW.id, now());
+    RETURN NEW;
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_journal_light_fee ON public.member_credit_transactions;
+CREATE TRIGGER trg_journal_light_fee
+  AFTER INSERT ON public.member_credit_transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.journal_light_fee_on_credit_debit();

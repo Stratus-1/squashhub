@@ -364,7 +364,7 @@ function CourtPickerMode({ subdomain }: { subdomain: string }) {
 
   // If user picked one, render the live view by piping its state
   if (selectedId) {
-    return <SubscribedLiveView sessionId={selectedId} onBack={() => setSelectedId(null)} />;
+    return <SubscribedLiveView sessionId={selectedId} onBack={() => setSelectedId(null)} onExit={() => navigate("/dashboard")} />;
   }
 
   if (error) {

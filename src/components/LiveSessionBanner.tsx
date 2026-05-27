@@ -331,11 +331,12 @@ export function LiveSessionBanner() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
-              <ZapOff className="w-4 h-4" /> End Court Session?
+              <ZapOff className="w-4 h-4" /> End Session?
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This will turn off the lights and end your session. You'll be charged based on actual usage
+            This will turn off the lights and end your booking early (your booking stays on record).
+            You'll be charged based on actual usage
             {displaySession ? ` (${elapsedMin} min · R${currentCost.toFixed(2)} so far)` : ""}.
           </p>
           <DialogFooter className="gap-2 sm:gap-0">

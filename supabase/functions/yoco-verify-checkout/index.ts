@@ -163,6 +163,16 @@ Deno.serve(async (req) => {
           .update({ paid: true, paid_at: new Date().toISOString() })
           .eq("id", regRow.fee_payment_id);
       }
+
+      // Cancel the pending EFT member_credit_transactions row that the
+      // tournament_reg_create_pending_eft_tx trigger created when the invite
+      // was first accepted. Without this the row sits forever in the admin's
+      // "Pending EFT payments" inbox even though the player actually paid by card.
+      await admin
+        .from("member_credit_transactions")
+        .update({ status: "cancelled" })
+        .eq("reference", `TOURN-REG-${session.champ_registration_id}`)
+        .eq("status", "pending");
     }
 
 

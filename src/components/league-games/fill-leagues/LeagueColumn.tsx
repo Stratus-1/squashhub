@@ -18,6 +18,7 @@ type Props = {
   leagueNumberByMember?: Map<string, string>;
   fixture: FixtureLite | null;
   canEdit: boolean;
+  canDragPlayers?: boolean;
   canDragBenchMembers?: boolean;
   /** memberIds who confirmed availability for this week — render green. */
   availableSet?: Set<string>;
@@ -27,7 +28,7 @@ type Props = {
   placementAlerts?: Map<string, string>;
 };
 
-export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, canDragBenchMembers, availableSet, onMarkUnavailable, placementAlerts }: Props) {
+export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, canDragPlayers, canDragBenchMembers, availableSet, onMarkUnavailable, placementAlerts }: Props) {
   const opponentCode = fixture
     ? fixture.home_team_code === league.code
       ? fixture.away_team_code
@@ -116,7 +117,7 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
                         origin={league.id}
                         name={mem.name || "Unknown"}
                         leagueNumber={leagueNumberByMember?.get(mem.id) || null}
-                        disabled={!canEdit}
+                        disabled={!(canDragPlayers ?? canEdit)}
                         available={availableSet?.has(mem.id)}
                         onMarkUnavailable={canEdit && onMarkUnavailable ? () => onMarkUnavailable(mem.id) : undefined}
                         badge={mem.gender?.toLowerCase().startsWith("f") ? { label: "♀", variant: "outline" } : null}

@@ -14,7 +14,7 @@ function formatDuration(seconds: number): string {
 // ============================================================
 // Live scoreboard view (shared by all 3 entry modes)
 // ============================================================
-function LiveScoreboard({ state }: { state: MarkerCastState }) {
+function LiveScoreboard({ state, onExit }: { state: MarkerCastState; onExit?: () => void }) {
   const winA = state.matchOver && state.matchWinner === "a";
   const winB = state.matchOver && state.matchWinner === "b";
 
@@ -25,6 +25,16 @@ function LiveScoreboard({ state }: { state: MarkerCastState }) {
       {/* Header */}
       <div className="flex items-center justify-between text-muted-foreground mb-4 lg:mb-6">
         <div className="flex items-center gap-2">
+          {onExit && (
+            <button
+              onClick={onExit}
+              className="mr-1 flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/80 hover:bg-muted text-xs font-medium transition"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Back</span>
+            </button>
+          )}
           {state.clubLogoUrl && (
             <img src={state.clubLogoUrl} alt="" className="h-8 lg:h-10 w-auto" />
           )}

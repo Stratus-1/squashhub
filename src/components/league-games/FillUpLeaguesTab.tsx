@@ -1045,6 +1045,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const cascaded = prevLeague
       ? statuses
           .filter(s => s.league_id === prevLeague.id && s.status === "excess")
+          .filter(s => !(s as any).cascaded_from_league_id) // exclude explicit cross-league pulls
           .filter(s => !baseMemberIds.has(s.club_member_id))
           .map(s => ({
             memberId: s.club_member_id,
@@ -1054,6 +1055,23 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
             cascadedFromCode: prevLeague.code,
           }))
       : [];
+
+    // Explicit cross-league pulls — captain dragged a player from another league
+    // bench (any direction, including UP) into THIS league's available pool.
+    // Surfaces wherever cascaded_from_league_id === this league.
+    const explicitPulls = statuses
+      .filter(s => s.status === "excess" && (s as any).cascaded_from_league_id === lg.id)
+      .filter(s => !baseMemberIds.has(s.club_member_id))
+      .map(s => {
+        const fromLg = sortedLeagues.find(l => l.id === s.league_id);
+        return {
+          memberId: s.club_member_id,
+          rank: null,
+          isPulled: true,
+          isCascaded: true,
+          cascadedFromCode: fromLg?.code || null,
+        };
+      });
 
     const ladiesPoolMemberIds = new Set(
       registrations
@@ -1081,6 +1099,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     const seenMembers = new Set<string>([
       ...basePool.map(p => p.memberId),
       ...cascaded.map(p => p.memberId),
+      ...explicitPulls.map(p => p.memberId),
       ...pulledLadies.map(p => p.memberId),
     ]);
     const thisIdx = listForOrdering.findIndex(l => l.id === lg.id);
@@ -1129,7 +1148,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       for (const mid of lp.values()) positionedAnywhere.add(mid);
     }
 
-    return [...basePool, ...cascaded, ...pulledLadies, ...byePool]
+    return [...basePool, ...cascaded, ...explicitPulls, ...pulledLadies, ...byePool]
       .filter(p => !unavailableSet.has(p.memberId))
       .filter(p => !positionedAnywhere.has(p.memberId))
       .sort((a, b) => {
@@ -1269,32 +1288,33 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
         return;
       }
       if (originLeague) {
-        // Enforce "1 down" rule: target must be the immediately adjacent lower league
-        // within the same gender group (Men's leagues cascade among Men's; Ladies among Ladies)
+        // Allow cross-league bench-to-bench drops in BOTH directions (pull up or push
+        // down). Hard slot-distance / cross-gender rules are still enforced when the
+        // player is actually placed in a position (see evaluatePlacement). Here we just
+        // make them visible in the target league's Available pool.
+        //
+        // - Push DOWN to the immediately next league = legacy "excess" cascade
+        //   (no cascaded_from_league_id, surfaces via prevLeague.excess waterfall).
+        // - Any other target (pull up, skip leagues, cross-gender) = explicit pull:
+        //   status=excess on origin with cascaded_from_league_id = target.id, which the
+        //   target league's pool picks up directly.
         const sameGroup = isMensLeague(originLeague.name) && isMensLeague(targetLeague.name)
           ? sortedLeagues.filter(l => isMensLeague(l.name))
           : isLadiesLeague(originLeague.name) && isLadiesLeague(targetLeague.name)
           ? sortedLeagues.filter(l => isLadiesLeague(l.name))
-          : sortedLeagues.filter(l => !isMensLeague(l.name) && !isLadiesLeague(l.name));
-        const originIdx = sameGroup.findIndex(l => l.id === originLeague.id);
-        const targetIdx = sameGroup.findIndex(l => l.id === targetLeague.id);
-        if (originIdx === -1 || targetIdx === -1) {
-          toast.error("Players can only cascade within the same gender group");
-          return;
-        }
-        if (targetIdx !== originIdx + 1) {
-          toast.error(`Players can only be pushed to the next league down (${sameGroup[originIdx + 1]?.code || sameGroup[originIdx + 1]?.name || "—"})`);
-          return;
-        }
+          : null;
+        const originIdx = sameGroup ? sameGroup.findIndex(l => l.id === originLeague.id) : -1;
+        const targetIdx = sameGroup ? sameGroup.findIndex(l => l.id === targetLeague.id) : -1;
+        const isNaturalCascade = sameGroup && targetIdx === originIdx + 1;
 
-        // Clear any current lineup for the player (they're being pushed)
         clearLineupForMember.mutate(memberId);
         setStatusMut.mutate({
           league_id: originLeague.id,
           club_member_id: memberId,
           status: "excess",
+          cascaded_from_league_id: isNaturalCascade ? null : targetLeague.id,
         });
-        toast.success(`${memberMap.get(memberId)?.name || "Player"} pushed to ${targetLeague.code || targetLeague.name}`);
+        toast.success(`${memberMap.get(memberId)?.name || "Player"} now available in ${targetLeague.code || targetLeague.name}`);
       }
       return;
     }

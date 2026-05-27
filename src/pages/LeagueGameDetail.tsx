@@ -1865,9 +1865,12 @@ export default function LeagueGameDetail() {
       <div className="bottom-nav-safe">
         <SEO title="Live View" description="Live spectator view" path={`/league-games/${fixtureId}`} noIndex />
         <div className="px-4 pt-4 space-y-4 max-w-2xl mx-auto">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button variant="ghost" size="sm" onClick={() => setViewingPosition(null)}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+              Exit to Dashboard
             </Button>
             <Badge variant="outline" className="text-xs">
               Pos {vIdx + 1} · {fixture.home_team_code} vs {fixture.away_team_code}

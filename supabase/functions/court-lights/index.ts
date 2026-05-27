@@ -524,18 +524,25 @@ Deno.serve(async (req) => {
 
       try {
         if (shouldBeOn && !existingSession) {
-          // Turn ON and create light session
-          const response = await fetch(`${shellyServer}/device/relay/control`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              id: deviceId!,
-              auth_key: authKey,
-              channel: "0",
-              turn: "on",
-            }),
-          });
-          const shellyResult = await response.text();
+          // Turn ON and create light session. If the court has no physical
+          // relay configured (or no Shelly auth key), we still create the
+          // session so usage / billing is tracked.
+          let shellyResult = "no-relay";
+          let relayOk = true;
+          if (hasRelay) {
+            const response = await fetch(`${shellyServer}/device/relay/control`, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({
+                id: deviceId!,
+                auth_key: authKey!,
+                channel: "0",
+                turn: "on",
+              }),
+            });
+            shellyResult = await response.text();
+            relayOk = response.ok;
+          }
 
           if (activeBooking) {
             await supabase.from("light_sessions").insert({
@@ -551,23 +558,29 @@ Deno.serve(async (req) => {
           results.push({
             court: court.name,
             action: "on",
-            status: response.ok ? "success" : "error",
+            status: relayOk ? "success" : "error",
             detail: shellyResult,
             session_created: !!activeBooking,
           });
         } else if (!shouldBeOn && existingSession) {
-          // Turn OFF and close session with fee calculation
-          const response = await fetch(`${shellyServer}/device/relay/control`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              id: deviceId!,
-              auth_key: authKey,
-              channel: "0",
-              turn: "off",
-            }),
-          });
-          const shellyResult = await response.text();
+          // Turn OFF (if a relay exists) and close the session with the fee.
+          let shellyResult = "no-relay";
+          let relayOk = true;
+          if (hasRelay) {
+            const response = await fetch(`${shellyServer}/device/relay/control`, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({
+                id: deviceId!,
+                auth_key: authKey!,
+                channel: "0",
+                turn: "off",
+              }),
+            });
+            shellyResult = await response.text();
+            relayOk = response.ok;
+          }
+
 
           // Calculate fee based on actual usage
           const startedAt = new Date(existingSession.started_at);

@@ -947,6 +947,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
   const canEditLeague = (lg: LeagueRow): boolean =>
     isCaptainOfLeague(lg) || isSameGroupAsMyCaptainedLeague(lg) || !!amIAdmin;
 
+  const canPullIntoAnyLeague = useMemo(
+    () => !!amIAdmin || myCaptainedLeagues.length > 0,
+    [amIAdmin, myCaptainedLeagues],
+  );
+
   // For members registered in multiple leagues within the same gender group, pick a
   // single "home" league = the WEAKEST team they're registered to (highest league number).
   // Reserves can sub UP into stronger leagues, but they don't live there permanently —
@@ -1371,6 +1376,8 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       leagueNumberByMember={leagueNumberByMember}
       fixture={lg.code ? nextFixtureByCode.get(lg.code) || null : null}
       canEdit={canEditLeague(lg)}
+      canDragPlayers={canEditLeague(lg) || canPullIntoAnyLeague}
+      canDragBenchMembers={canEditLeague(lg) || canPullIntoAnyLeague}
       availableSet={availableSet}
       placementAlerts={placementAlerts}
       onMarkUnavailable={(mid) => markUnavailable.mutate(mid)}

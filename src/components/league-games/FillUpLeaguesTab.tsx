@@ -1219,7 +1219,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
 
   // ---------- DnD handlers ----------
 
-  const handleDragEnd = (e: DragEndEvent) => {
+  const handleDragEnd = async (e: DragEndEvent) => {
     setActiveDragId(null);
     const { active, over } = e;
     if (!over) return;

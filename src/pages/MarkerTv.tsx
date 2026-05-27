@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { MarkerCastState } from "@/hooks/use-marker-cast";
-import { Tv, WifiOff, Circle } from "lucide-react";
+import { Tv, WifiOff, Circle, ArrowLeft, Home } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 function formatDuration(seconds: number): string {

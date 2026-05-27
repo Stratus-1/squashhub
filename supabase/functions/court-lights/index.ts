@@ -428,16 +428,17 @@ Deno.serve(async (req) => {
     const todayStr = now.toISOString().slice(0, 10);
     const currentTimeStr = now.toTimeString().slice(0, 5);
 
-    // Get all courts with relays
+    // Load every court — including ones without a physical Shelly relay, so we
+    // can still close light sessions (and charge fees) when their booking has
+    // ended. Courts without a relay simply skip the hardware call.
     const { data: courts, error: courtsErr } = await supabase
       .from("courts")
-      .select("id, name, relay_device_id, relay_server, club_id, clubs(light_fee_per_hour)")
-      .not("relay_device_id", "is", null);
+      .select("id, name, relay_device_id, relay_server, club_id, clubs(light_fee_per_hour)");
 
     if (courtsErr) throw courtsErr;
     if (!courts || courts.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No courts with relays configured" }),
+        JSON.stringify({ message: "No courts configured" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -454,14 +455,19 @@ Deno.serve(async (req) => {
 
     const courtIds = courts.map((c: any) => c.id);
 
-    // Get today's active bookings WITH lights_requested and champs matches
+    // Get today's active bookings and champs matches.
+    // Note: we deliberately do NOT filter bookings by lights_requested here.
+    // Once an active light_session exists for a court (created either by an
+    // automatic on-trigger or a manual turn_on), the booking that covers the
+    // current time is what tells us whether the session should still be
+    // running. Otherwise sessions started manually on bookings that never
+    // flagged lights_requested would never be closed automatically.
     const [{ data: bookings, error: bookErr }, { data: champsMatches, error: champsErr }, { data: activeSessions, error: sessErr }] = await Promise.all([
       supabase
         .from("bookings")
         .select("id, court_id, start_time, end_time, user_id, lights_requested")
         .eq("date", todayStr)
         .eq("status", "active")
-        .eq("lights_requested", true)
         .in("court_id", courtIds),
       supabase
         .from("club_champs_matches")
@@ -471,7 +477,7 @@ Deno.serve(async (req) => {
         .in("court_id", courtIds),
       supabase
         .from("light_sessions")
-        .select("id, booking_id, court_id, user_id, started_at, status")
+        .select("id, booking_id, court_id, user_id, started_at, status, club_id, fee_per_hour")
         .eq("status", "active"),
     ]);
 
@@ -489,13 +495,11 @@ Deno.serve(async (req) => {
     for (const court of courts) {
       const authKey = court.club_id ? secretsMap.get(court.club_id) : undefined;
       const feePerHour = Number((court as any).clubs?.light_fee_per_hour) || 0;
-      if (!authKey) {
-        results.push({ court: court.name, status: "skipped", detail: "No Shelly auth key" });
-        continue;
-      }
+      const hasRelay = !!court.relay_device_id && !!authKey;
 
       const courtBookings = (bookings || []).filter((b: any) => b.court_id === court.id);
       const courtChamps = (champsMatches || []).filter((m: any) => m.court_id === court.id);
+
 
       // Find the active booking that covers the current time
       const activeBooking = courtBookings.find((b: any) => {

@@ -517,13 +517,18 @@ Deno.serve(async (req) => {
         return currentTimeStr >= start && currentTimeStr < endStr;
       });
 
-      const shouldBeOn = !!activeBooking || hasActiveChamps;
+      // Auto-on only when the booker opted in (lights_requested). Champs matches
+      // always auto-on. Auto-off (below) runs regardless so manually started
+      // sessions still close when their booking ends.
+      const autoOnWanted = (!!activeBooking && activeBooking.lights_requested === true) || hasActiveChamps;
+      const shouldBeOn = !!activeBooking || hasActiveChamps; // for off-decision
       const existingSession = activeSessionMap.get(court.id);
       const shellyServer = court.relay_server || "https://shelly-44-eu.shelly.cloud";
       const deviceId = court.relay_device_id;
 
       try {
-        if (shouldBeOn && !existingSession) {
+        if (autoOnWanted && !existingSession) {
+
           // Turn ON and create light session. If the court has no physical
           // relay configured (or no Shelly auth key), we still create the
           // session so usage / billing is tracked.
@@ -700,18 +705,19 @@ Deno.serve(async (req) => {
             fee_charged: feeCharged,
             duration_minutes: durationMinutes,
           });
-        } else if (shouldBeOn && existingSession) {
+        } else if (autoOnWanted && existingSession) {
           // Already on, keep going
           results.push({ court: court.name, action: "on", status: "already_active" });
         } else {
-          // Already off, nothing to do
-          results.push({ court: court.name, action: "off", status: "already_off" });
+          // Either no booking, or booking doesn't want auto-on. Nothing to do.
+          results.push({ court: court.name, action: "idle", status: "ok" });
         }
       } catch (relayErr: any) {
         results.push({
           court: court.name,
           device: deviceId,
-          action: shouldBeOn ? "on" : "off",
+          action: autoOnWanted ? "on" : "off",
+
           status: "error",
           detail: relayErr.message,
         });

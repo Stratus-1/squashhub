@@ -93,9 +93,38 @@ export function LiveSessionBanner() {
       });
       if (resp.error) throw resp.error;
       const result = resp.data;
-      toast.success(`Lights off! R${(result?.fee_charged || 0).toFixed(2)} charged for ${result?.duration_minutes || 0} min`);
+
+      // Also end the booking early so the "Turn On Lights" prompt stops reappearing.
+      // We shorten end_time to "now" (rounded up to the next 5 minutes) without cancelling.
+      if (currentBooking) {
+        try {
+          const n = new Date();
+          n.setSeconds(0, 0);
+          const mins = n.getMinutes();
+          const bump = Math.ceil((mins + 1) / 5) * 5;
+          if (bump >= 60) {
+            n.setHours(n.getHours() + 1);
+            n.setMinutes(0);
+          } else {
+            n.setMinutes(bump);
+          }
+          const hh = String(n.getHours()).padStart(2, "0");
+          const mm = String(n.getMinutes()).padStart(2, "0");
+          await supabase
+            .from("bookings")
+            .update({ end_time: `${hh}:${mm}:00` })
+            .eq("id", currentBooking.id);
+        } catch (e) {
+          console.warn("Failed to shorten booking on session end", e);
+        }
+      }
+
+      toast.success(`Session ended. R${(result?.fee_charged || 0).toFixed(2)} charged for ${result?.duration_minutes || 0} min`);
       refetchSessions();
       queryClient.invalidateQueries({ queryKey: ["my-active-light-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+      setDismissed(true);
     } catch (e: any) {
       toast.error(e.message || "Failed to end session");
     } finally {

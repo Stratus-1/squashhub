@@ -526,7 +526,7 @@ Deno.serve(async (req) => {
         const { data: row, error: rErr } = await adminClient
           .from("member_gobook_credentials")
           .select(
-            "gobook_username, gobook_password_ciphertext, gobook_password_iv, gobook_pin",
+            "gobook_username, gobook_password_ciphertext, gobook_password_iv, gobook_pin, court_manager_membership_number",
           )
           .eq("club_member_id", clubMemberId)
           .maybeSingle();

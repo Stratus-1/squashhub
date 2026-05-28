@@ -770,6 +770,18 @@ export default function Bookings() {
             .match(/(\d+)/)?.[1] || 0,
         );
         const startHour = Number(String(bookingDialog.time).split(":")[0]);
+        const { data: liveConflict } = await (supabase as any)
+          .from("bookings")
+          .select("id, external_booker_name, guest_name, club_member_id")
+          .eq("club_id", myClub.id)
+          .eq("court_id", bookingDialog.courtId)
+          .eq("date", dateStr)
+          .eq("start_time", `${bookingDialog.time}:00`)
+          .eq("status", "active")
+          .maybeSingle();
+        if (liveConflict) {
+          throw new Error("That slot is already booked on GoBook. I refreshed the schedule — please choose another open slot.");
+        }
         const labelA = (activeMember as any)?.name || (activeMember as any)?.full_name || "";
         const labelB = (bookingDialog.opponentId
           ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.name

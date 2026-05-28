@@ -1,91 +1,72 @@
-# Fix concurrent marking + add explicit "View Game" mode
+# Stage 2 — GoBook two-way sync (driven by club settings)
 
-## Root cause of CSI006 / PCC008 "arrow vanished at 7‑3"
+Reuses existing club config:
+- `clubs.uses_gobook` — gates all GoBook behavior (no hardcoded club).
+- `clubs.gobook_url` — base URL for that club's GoBook tenant.
+- `clubs.booking_slot_minutes` — drives slot length (CSIR = 60, hourly only).
 
-Self-inflicted bug in `LeagueGameDetail.tsx`, not a multi-user collision:
+If `uses_gobook=false` nothing in this stage runs. If `booking_slot_minutes <> 60` we skip GoBook calls (GoBook is hourly-only) and surface a one-line config warning to admins.
 
-1. `onLiveScore` (line 1744) debounce-writes the **in-progress** game into `game_scores` (e.g. `{home:7, away:3}`).
-2. Realtime fires → refetch handler (line 540‑558) counts every `home>away` row as a **won** game → `matchDecided=true` → `completed=true`.
-3. Marker arrow is gated on `!pos.completed` (line 2426) → **arrow disappears, captain stuck**.
+## A. Migration
 
-Two captains marking at once amplifies this: `handleSubmit`/`handleSwap` re-upsert every position from local state, wiping live scores.
+`public.bookings`:
+- `source TEXT NOT NULL DEFAULT 'squashhub'` (`squashhub` | `gobook`)
+- `external_id TEXT` — `YYYYMMDD-{slotId}` from GoBook
+- `external_booker_name TEXT`
+- `user_id` → make nullable + CHECK `(user_id IS NOT NULL OR source <> 'squashhub')`
+- Partial unique index on `(club_id, source, external_id) WHERE external_id IS NOT NULL`
 
-## Live sync — does it still work?
+`public.member_gobook_credentials`:
+- `is_sync_source BOOLEAN NOT NULL DEFAULT true` — cron picks any verified, opted-in cred for the club.
 
-**Yes, the realtime channel still fires** (line 366‑387 subscribes to `league_match_results` and `league_fixture_results`). Viewers' `existingMatches` query is invalidated on every change. What "broke" the feel of live sync:
+## B. Edge function `gobook-sync`
 
-- Scores get written but the row sometimes flips to `completed=true` mid-game (bug above), so on a viewer's screen the game looks finished prematurely.
-- There is no dedicated "viewer" mode — non-captains land on the same scorecard with no clue it's updating live. No "LIVE" badge, no marker presence indicator.
+Self-contained (duplicates the small login/decrypt helpers from `gobook-book`).
 
-The fixes below restore real live-follow and make it visible.
+Inputs:
+- `{ club_id, days?=14 }` (manual) or `{ cron: true }` + `X-Cron-Secret` header (cron mode iterates every `uses_gobook=true` club).
 
-## Plan
+Per club:
+1. Load club row. Bail if `uses_gobook=false` or `booking_slot_minutes <> 60`.
+2. Pick a verified `is_sync_source=true` credential (most recently verified). Bail with `no_sync_source` if none.
+3. Resolve courts: `select id, name from courts where club_id=$1 order by id` — map by court number parsed from `name` ("Court 1" → court #1). No hardcoded IDs.
+4. For each date in `[today, today+days)`:
+   - Fetch GoBook grid, parse hourly slots → `{courtNum, hour, bookerName, slotId}`.
+   - Upsert into `bookings` with `source='gobook'`, `external_id`, `start_time=HH:00`, `end_time=(HH+1):00`, `external_booker_name`.
+   - Best-effort link: if `external_booker_name` matches exactly one `club_members.full_name` in that club, set `club_member_id` (+ `user_id` if member is linked).
+   - Delete `source='gobook'` rows for that date whose `external_id` is NOT in the fresh set (cancellations).
+5. Return `{ synced, cancelled, dates, skipped_reason? }`.
 
-### 1. Split in-progress vs finished games (kills the 7‑3 bug)
-- Add `current_game jsonb` to `league_match_results` (`{home, away}` or null).
-- `game_scores` stores **only completed games**.
-- `onLiveScore` → write `current_game` only.
-- `onProgress` → append to `game_scores`, clear `current_game`.
-- Refetch never counts `current_game` toward `matchDecided`.
+## C. Push SquashHub → GoBook
 
-### 2. Server-authoritative `completed`
-Drop the client `home>away` recompute. A position is `completed` only when the DB row has an explicit `winner` ('home'/'away') or `is_forfeit=true`. Keeps the marker arrow visible until the rubber is truly over.
+Only fires when ALL true: `clubs.uses_gobook`, `clubs.booking_slot_minutes=60`, booker has verified `member_gobook_credentials`, new booking `source='squashhub'`, duration = 60 min.
 
-### 3. Stop bulk overwrites
-- `handleSubmit` & `handleSwap` upsert only positions whose **setup fields** (player code/name) changed.
-- Never include `game_scores`, `home_games_won`, `away_games_won`, `winner`, `is_forfeit` in setup-only writes.
+Wire into the existing booking-create flow as fire-and-forget call to `gobook-book` `book` action. Toast shows `Pushed to GoBook ✓` or `GoBook push failed — retry` (manual retry button stays on the booking).
 
-### 4. Soft marker lock — one marker, many viewers (with takeover)
-New table `league_marker_locks` (`fixture_id`, `position`, `user_id`, `user_name`, `heartbeat_at`, unique on `fixture_id,position`).
+## D. UI
 
-- Marker view sends a heartbeat every 20 s and releases on exit.
-- Lock fresh (< 60 s) and not mine → marker arrow swapped for **"Marking: {name}"** badge + **"Take over"** link.
-- Lock stale → silent reclaim.
-- Lock added to `supabase_realtime` publication so badge updates instantly for all viewers.
+- **Bookings page header (any `uses_gobook` club)**: "Sync GoBook" button → calls `gobook-sync`, toast `Synced N · Cancelled M`. If `booking_slot_minutes <> 60`, button is disabled with tooltip "GoBook requires hourly slots".
+- Existing booking cells show a small `GB` badge when `source='gobook'`.
+- No new confirmation modal — push is automatic, toast is the feedback.
 
-### 5. Explicit "View Game" button (new)
-Today everyone lands on the same scorecard with no clear live-spectator mode. Add an explicit second action.
+## E. Schedule (separate `insert` SQL per scheduled-jobs convention)
 
-**Where the buttons live**
+`pg_cron` every 15 min → `net.http_post` to `/functions/v1/gobook-sync` with `{ cron: true }` and `X-Cron-Secret` header. Cron iterates all `uses_gobook=true` clubs.
 
-- **League Games list** (`LeagueGames.tsx`) — for every fixture row, replace the single "Open" button with two:
-  - `▶ Mark` — visible only to captains/admins with edit rights. Opens the scorecard in **mark mode**.
-  - `👁 View Game` — visible to everyone in the club. Opens the scorecard in **read-only live mode**.
-- **League Game Detail header** — same pair of buttons in the top bar so a captain who entered as a viewer can switch to marking (and vice versa) without going back.
-- **Inside the scorecard table** — keep the per-position mark arrow (existing UX), but only render it in mark mode AND when no other captain holds the position lock.
+## Files
 
-**View mode behaviour** (`?mode=view` or default for non-captains)
+- 1 migration (schema only)
+- `supabase/functions/gobook-sync/index.ts` (new)
+- Bookings page component — add "Sync GoBook" button + `GB` badge (gated on `uses_gobook` + `booking_slot_minutes=60`)
+- Booking-create handler — fire-and-forget `gobook-book` call under same gates
+- 1 `insert` call to schedule pg_cron + a `CRON_SECRET` add_secret
 
-- Pulls the same realtime channel — scores tick over as the marker scores points (driven by `current_game` + `game_scores`).
-- Shows a pulsing **🔴 LIVE** badge whenever any position has a `current_game` or a fresh marker lock.
-- Shows the marker presence chip: *"🎙 {Captain Name} marking pos 3 · last activity 4s ago."*
-- All edit controls hidden: no swap, no clear, no manual entry, no submit, no setup save, no NSA-post button. Forfeit/score cells become plain read-only text.
-- Quick stat strip at top: home games · away games · projected points · who's leading.
+## Order
 
-**Mark mode** (today's behaviour, cleaned up)
+1. Migration
+2. `gobook-sync` function + manual test on CSIR
+3. UI button + GB badge
+4. Auto-push on create
+5. Schedule cron
 
-- Captains/admins. All current controls remain. The position-level "Mark" arrow respects the soft lock from §4.
-
-### 6. Don't auto-flip to `'submitted'` mid-session
-Only mark status `'submitted'` when both signatures present, explicit admin override, **or** every playable position has a `winner`. Removes the past-date-fixture auto-submit path that can lock the other captain out.
-
-### 7. Small UX
-- Arrow visible whenever `pos.scores.length > 0 && !pos.winner && !pos.isForfeit` (covers your "arrow stays until match is over").
-- Toast for viewers: *"{Name} took over marking position {N}"* when the lock changes.
-- Reuse this `?mode=view` URL for shareable spectator links.
-
-## Technical notes
-
-- Files touched:
-  - `src/pages/LeagueGameDetail.tsx` (refetch mapping, handleSubmit/handleSwap diff-only, marker view, lock dialog, view-mode gating, LIVE badge).
-  - `src/pages/LeagueGames.tsx` (twin `Mark` / `View Game` buttons).
-  - `src/components/marker/MarkerScoreboard.tsx` (split `onLiveScore` payload to `current_game`).
-  - One migration: `current_game` column + `league_marker_locks` table with club-scoped RLS + add both to `supabase_realtime` publication.
-- No changes to points math or NSA submission.
-- Backwards-compatible: existing rows are healed on the next save; absent `current_game` is treated as null.
-
-## Out of scope
-
-- Per-character collaborative editing.
-- Public unauthenticated spectator URL (view mode still requires club login for now).
-- Changing who can sign / submit a fixture.
+Confirm and I'll start with the migration.

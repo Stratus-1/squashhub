@@ -550,6 +550,11 @@ Deno.serve(async (req) => {
         return json({ error: `Unknown action: ${action}` }, 400);
     }
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    console.error("gobook-book uncaught error:", e);
+    const err = e as Error;
+    return json(
+      { error: err?.message || String(e), stack: err?.stack?.split("\n").slice(0, 5) },
+      500,
+    );
   }
 });

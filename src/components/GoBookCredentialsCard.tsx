@@ -319,31 +319,15 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               placeholder="••••••••"
             />
           </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="gobook-pin" className="text-xs">
-              GoBook booking PIN {meta?.has_pin ? "(saved — leave blank to keep)" : "(required to confirm bookings)"}
-            </Label>
-            <Input
-              id="gobook-pin"
-              type="text"
-              inputMode="numeric"
-              pattern="\d*"
-              autoComplete="off"
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              placeholder={meta?.has_pin ? "••••" : "e.g. 1234"}
-            />
-            <div className="text-[11px] text-muted-foreground mt-1">
-              The same PIN you set on your gobook.co.za profile — GoBook uses it
-              to confirm bookings made on your behalf.
-            </div>
+          <div className="sm:col-span-2 text-xs font-semibold text-foreground -mb-1">
+            Current login details for Court Manager
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="cm-member-no" className="text-xs">
-              Court Manager membership number{" "}
+              Member number{" "}
               {meta?.has_membership_number
                 ? `(saved: ${meta.court_manager_membership_number ?? ""} — leave blank to keep)`
-                : "(required for CSIR bookings)"}
+                : "(required)"}
             </Label>
             <Input
               id="cm-member-no"
@@ -356,9 +340,24 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               }
               placeholder={meta?.has_membership_number ? "••••" : "e.g. 3501"}
             />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="gobook-pin" className="text-xs">
+              PIN {meta?.has_pin ? "(saved — leave blank to keep)" : "(required)"}
+            </Label>
+            <Input
+              id="gobook-pin"
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              autoComplete="off"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder={meta?.has_pin ? "••••" : "e.g. 1234"}
+            />
             <div className="text-[11px] text-muted-foreground mt-1">
-              Your CSIR Court Manager membership number — required so the
-              booking is accepted by Court Manager on the CSIR court.
+              Your Court Manager member number and PIN are used to confirm
+              bookings on the CSIR court.
             </div>
           </div>
 

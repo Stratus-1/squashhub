@@ -761,7 +761,7 @@ export default function Bookings() {
             .match(/(\d+)/)?.[1] || 0,
         );
         const startHour = Number(String(bookingDialog.time).split(":")[0]);
-        const labelA = activeMember?.full_name || "";
+        const labelA = (activeMember as any)?.name || (activeMember as any)?.full_name || "";
         const labelB = (bookingDialog.opponentId
           ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.name
           : null) || bookingDialog.guestName || "";

@@ -1330,13 +1330,20 @@ export default function LeagueGameDetail() {
   // ---- Persist only the IN-PROGRESS rally (e.g. 7-3 in the current game).
   // Writes to `current_game` column so realtime viewers see live points without
   // the row ever looking "completed" to the refetch logic.
-  const persistCurrentGame = useCallback(async (posIdx: number, current: { home: number; away: number } | null) => {
+  const persistCurrentGame = useCallback(async (posIdx: number, current: { home: number; away: number } | null, completedScores: Array<{ home: number; away: number }> = []) => {
     if (!fixtureId || !user) return;
     try {
+      let expectedHomeWins = 0, expectedAwayWins = 0;
+      for (const s of completedScores) { if (s.home > s.away) expectedHomeWins++; else if (s.away > s.home) expectedAwayWins++; }
       await supabase.from("league_match_results" as any)
         .update({ current_game: current })
         .eq("fixture_id", fixtureId)
-        .eq("position", posIdx + 1);
+        .eq("position", posIdx + 1)
+        // Guard against race conditions: if a game has just been finalized,
+        // home_games_won/away_games_won will already have advanced, so this
+        // older in-flight rally write must not bring back the previous point.
+        .eq("home_games_won", expectedHomeWins)
+        .eq("away_games_won", expectedAwayWins);
     } catch (err) {
       console.error("Live-rally save failed:", err);
     }
@@ -2016,7 +2023,7 @@ export default function LeagueGameDetail() {
               // Debounce DB write of just the in-progress rally to ~600ms.
               if (liveScoreTimerRef.current) clearTimeout(liveScoreTimerRef.current);
               liveScoreTimerRef.current = setTimeout(() => {
-                persistCurrentGame(activeMarker, currentGame);
+                persistCurrentGame(activeMarker, currentGame, finishedScores);
               }, 600);
             }}
           />

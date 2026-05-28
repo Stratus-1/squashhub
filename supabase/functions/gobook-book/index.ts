@@ -244,14 +244,14 @@ async function fetchGrid(
   jar: Jar,
   yyyyMmDd: string,
   courtNumber: number | "any" = "any",
-): Promise<{ raw: string; rows: GridRow[]; courtCount: number }> {
+  courtKeyOverride?: string,
+): Promise<{ raw: string; rows: GridRow[]; courtCount: number; urlKey: string }> {
   const dateKey = dateToGoBookKeyDate(yyyyMmDd);
-  // GoBook's grid URL uses 0 for the composite view and 1-4 for the
-  // individual CSIR court tabs. The booking POST still uses the separate
-  // ProviderConsultantId values (472-475), but those do not load the grid.
-  const courtKey = courtNumber === "any"
+  // GoBook has used both 1-4 and ProviderConsultantId-style keys for court tabs
+  // in different contexts, so callers can pass an explicit key to probe both.
+  const courtKey = courtKeyOverride ?? (courtNumber === "any"
     ? "0"
-    : String(courtNumber);
+    : String(courtNumber));
   // key: ServiceId,ProviderId,court,slot,date
   const url =
     `${GOBOOK_BASE}/Bookings/New?key=${SQUASH_SERVICE_ID},${CSIR_PROVIDER_ID},${courtKey},0,${dateKey}&x=${Date.now()}`;
@@ -326,7 +326,7 @@ async function fetchGrid(
     rows.push({ time, startHour, courts });
   }
 
-  return { raw: html, rows, courtCount };
+  return { raw: html, rows, courtCount, urlKey: courtKey };
 }
 
 async function postBooking(

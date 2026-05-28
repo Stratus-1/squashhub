@@ -214,7 +214,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
       )}
 
-      {myReg && myReg.status === "pending_payment" && (
+      {myReg && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">
           <div className="flex items-center gap-2">
             {acceptsCard && paymentGateway === "yoco" && (

@@ -1178,11 +1178,14 @@ export default function Bookings() {
                           onClick={() => {
                             if (isPastSlot && !booking) return;
                             if (booking) { setBookingDetails(booking); return; }
-                            if (usesExternalBooking && externalUrl) {
+                            // For non-GoBook external providers, redirect.
+                            // GoBook clubs book in-app and silently push to GoBook.
+                            if (usesExternalBooking && externalProvider !== "gobook" && externalUrl) {
                               toast.info(`Opening ${externalLabel} to complete your booking…`);
                               openExternalUrl(externalUrl);
                               return;
                             }
+
                             setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >

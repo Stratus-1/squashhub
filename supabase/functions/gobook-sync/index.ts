@@ -343,8 +343,12 @@ async function syncClub(
     const seenExternal = new Set<string>();
     for (const s of slots) {
       if (s.free) continue;
+      // Skip "phantom" booked cells with no booker name — these are blank/disabled
+      // cells (e.g. closed hours) that aren't real bookings.
+      if (!s.bookerName || !s.bookerName.trim()) continue;
       const courtId = courtMap.get(s.courtNumber);
       if (!courtId) continue;
+
       // Identify the slot: name-based, since booked slots have no slotId.
       // Use date + court + hour as a stable composite external_id.
       const external = `${dateKey(dateStr)}-${s.courtNumber}-${

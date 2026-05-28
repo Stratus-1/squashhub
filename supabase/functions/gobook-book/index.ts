@@ -195,6 +195,21 @@ type GridRow = {
   }>;
 };
 
+function extractAvailableSlotId(cell: string): string | null {
+  const inputs = cell.match(/<input\b[^>]*>/gi) ?? [];
+  for (const input of inputs) {
+    if (!/\btype\s*=\s*["']?checkbox["']?/i.test(input)) continue;
+    if (/\bdisabled\b/i.test(input)) continue;
+
+    const quotedValue = input.match(/\bvalue\s*=\s*["']([^"']+)["']/i);
+    if (quotedValue?.[1]) return quotedValue[1];
+
+    const unquotedValue = input.match(/\bvalue\s*=\s*([^\s>]+)/i);
+    if (unquotedValue?.[1]) return unquotedValue[1];
+  }
+  return null;
+}
+
 /**
  * Fetch the booking grid for a date and parse rows. We hit the "Any" court
  * view (court=0) so we see all 4 courts in one shot.
@@ -244,15 +259,13 @@ async function fetchGrid(
     if (courtCount === 0) courtCount = courtCells.length;
 
     const courts = courtCells.map((cell, idx) => {
-      // Free slot: <input type="checkbox" name="..." value="123" />
-      const cbMatch = cell.match(
-        /<input[^>]*type=["']checkbox["'][^>]*value=["']([^"']+)["']/i,
-      );
-      if (cbMatch) {
+      // Free slot: checkbox attributes may arrive in any order from GoBook.
+      const availableSlotId = extractAvailableSlotId(cell);
+      if (availableSlotId) {
         return {
           courtNumber: idx + 1,
           free: true,
-          slotId: cbMatch[1],
+          slotId: availableSlotId,
           bookerName: null,
         };
       }

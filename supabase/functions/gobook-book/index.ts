@@ -438,6 +438,38 @@ Deno.serve(async (req) => {
     }
 
     switch (action) {
+      case "save_extras": {
+        const pinRaw = body.gobook_pin;
+        const pin = pinRaw == null ? null : String(pinRaw).trim();
+        const membershipRaw = body.court_manager_membership_number;
+        const membership = membershipRaw == null
+          ? null
+          : String(membershipRaw).trim();
+        if (pin !== null && pin !== "" && !/^\d{4,8}$/.test(pin)) {
+          return json({ error: "PIN must be 4-8 digits" }, 400);
+        }
+        if (membership !== null && membership !== "" && membership.length > 32) {
+          return json({ error: "Membership number too long" }, 400);
+        }
+        const updateRow: Record<string, unknown> = {};
+        if (pin !== null) updateRow.gobook_pin = pin === "" ? null : pin;
+        if (membership !== null) {
+          updateRow.court_manager_membership_number = membership === ""
+            ? null
+            : membership;
+        }
+        if (Object.keys(updateRow).length === 0) {
+          return json({ ok: true });
+        }
+        const { error: upErr } = await adminClient
+          .from("member_gobook_credentials")
+          .update(updateRow)
+          .eq("club_member_id", clubMemberId);
+        if (upErr) return json({ error: upErr.message }, 500);
+        return json({ ok: true });
+      }
+
+
       case "save_credentials": {
         const username = String(body.gobook_username || "").trim();
         const password = String(body.gobook_password || "");

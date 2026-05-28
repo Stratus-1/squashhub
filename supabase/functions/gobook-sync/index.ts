@@ -246,7 +246,7 @@ async function syncClub(
   // member_gobook_credentials has user_id; join club_members to scope by club.
   const { data: memberRows, error: memErr } = await admin
     .from("club_members")
-    .select("id, full_name, user_id")
+    .select("id, name, user_id")
     .eq("club_id", clubId);
   if (memErr) throw new Error(memErr.message);
   const memberIds = (memberRows ?? []).map((m: any) => m.id);
@@ -291,7 +291,7 @@ async function syncClub(
   // Name → club_member lookup (case-insensitive, exact full_name match)
   const nameMap = new Map<string, { id: string; user_id: string | null }>();
   for (const m of memberRows ?? []) {
-    const key = String((m as any).full_name || "").trim().toLowerCase();
+    const key = String((m as any).name || "").trim().toLowerCase();
     if (!key) continue;
     if (nameMap.has(key)) {
       // ambiguous — drop so we don't mis-link

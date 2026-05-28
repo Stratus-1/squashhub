@@ -23,6 +23,12 @@ const GOBOOK_BASE = "https://www.gobook.co.za";
 const SQUASH_SERVICE_ID = "6";
 const CSIR_PROVIDER_ID = "234";
 const ANY_COURT_CONSULTANT_ID = "476";
+const CSIR_COURT_CONSULTANT_IDS = new Map<number, string>([
+  [1, "472"],
+  [2, "473"],
+  [3, "474"],
+  [4, "475"],
+]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -208,12 +214,6 @@ function extractProviderConsultantId(cell: string, slotId: string | null): strin
   for (const pattern of consultantPatterns) {
     const match = cell.match(pattern);
     if (match?.[1] && match[1] !== "0") return match[1];
-  }
-
-  if (slotId) {
-    const parts = String(slotId).split(/[,_|:-]/).filter(Boolean);
-    const likelyConsultant = parts.find((part) => /^\d+$/.test(part) && part !== slotId);
-    if (likelyConsultant && likelyConsultant !== "0") return likelyConsultant;
   }
 
   return null;

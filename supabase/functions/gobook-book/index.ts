@@ -244,14 +244,14 @@ async function fetchGrid(
   jar: Jar,
   yyyyMmDd: string,
   courtNumber: number | "any" = "any",
-): Promise<{ raw: string; rows: GridRow[]; courtCount: number }> {
+  courtKeyOverride?: string,
+): Promise<{ raw: string; rows: GridRow[]; courtCount: number; urlKey: string }> {
   const dateKey = dateToGoBookKeyDate(yyyyMmDd);
-  // GoBook's grid URL uses 0 for the composite view and 1-4 for the
-  // individual CSIR court tabs. The booking POST still uses the separate
-  // ProviderConsultantId values (472-475), but those do not load the grid.
-  const courtKey = courtNumber === "any"
+  // GoBook has used both 1-4 and ProviderConsultantId-style keys for court tabs
+  // in different contexts, so callers can pass an explicit key to probe both.
+  const courtKey = courtKeyOverride ?? (courtNumber === "any"
     ? "0"
-    : String(courtNumber);
+    : String(courtNumber));
   // key: ServiceId,ProviderId,court,slot,date
   const url =
     `${GOBOOK_BASE}/Bookings/New?key=${SQUASH_SERVICE_ID},${CSIR_PROVIDER_ID},${courtKey},0,${dateKey}&x=${Date.now()}`;
@@ -326,7 +326,7 @@ async function fetchGrid(
     rows.push({ time, startHour, courts });
   }
 
-  return { raw: html, rows, courtCount };
+  return { raw: html, rows, courtCount, urlKey: courtKey };
 }
 
 async function postBooking(
@@ -546,12 +546,20 @@ Deno.serve(async (req) => {
           );
         }
 
-        // When a specific court is requested, prefer that court's own grid —
-        // GoBook's combined ("Any") view sometimes hides slots (e.g. early
-        // morning hours) that the per-court view exposes as bookable.
-        let { rows, courtCount } = courtPref === "any"
-          ? await fetchGrid(jar, date)
-          : await fetchGrid(jar, date, courtPref);
+        const gridAttempts: Array<{ label: string; grid: Awaited<ReturnType<typeof fetchGrid>> }> = [];
+        const tryGrid = async (label: string, gridCourt: number | "any", key?: string) => {
+          const grid = await fetchGrid(jar, date, gridCourt, key);
+          gridAttempts.push({ label: `${label}:${grid.urlKey}`, grid });
+          return grid;
+        };
+
+        // Probe the live GoBook grids that can expose a bookable checkbox. The
+        // local SquashHub grid may be stale, so only a real GoBook checkbox wins.
+        let firstGrid = courtPref === "any"
+          ? await tryGrid("any", "any")
+          : await tryGrid("court-tab", courtPref, String(courtPref));
+        let rows = firstGrid.rows;
+        let courtCount = firstGrid.courtCount;
         let targetRow = rows.find((r) => r.startHour === startHour);
         let chosen = null as
           | { courtNumber: number; slotId: string; providerConsultantId: string | null }
@@ -569,9 +577,28 @@ Deno.serve(async (req) => {
             if (free) chosen = { courtNumber: courtPref as number, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
           }
         }
-        // Fallback: if the per-court view didn't yield a slot, retry combined.
+        // Fallbacks: GoBook sometimes exposes availability only on the combined
+        // grid, and some installations use ProviderConsultantId keys for tabs.
         if (!chosen && courtPref !== "any") {
-          const combined = await fetchGrid(jar, date);
+          const providerKey = CSIR_COURT_CONSULTANT_IDS.get(courtPref);
+          if (providerKey) {
+            const providerGrid = await tryGrid("provider-tab", courtPref, providerKey);
+            const providerRow = providerGrid.rows.find((r) => r.startHour === startHour);
+            const free = providerRow?.courts.length === 1
+              ? providerRow.courts.find((c) => c.free && c.slotId)
+              : providerRow?.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
+            if (free) {
+              rows = providerGrid.rows;
+              courtCount = providerGrid.courtCount;
+              targetRow = providerRow;
+              chosen = { courtNumber: courtPref, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
+            } else if (!targetRow && providerRow) {
+              targetRow = providerRow;
+            }
+          }
+        }
+        if (!chosen && courtPref !== "any") {
+          const combined = await tryGrid("combined", "any");
           const combinedRow = combined.rows.find((r) => r.startHour === startHour);
           const free = combinedRow?.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
           if (free) {
@@ -589,17 +616,26 @@ Deno.serve(async (req) => {
               error:
                 `No grid row found for hour ${startHour}:00. GoBook returned ${rows.length} rows.`,
               available_hours: rows.map((r) => r.startHour),
+              checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
             },
             400,
           );
         }
         if (!chosen) {
+          console.warn("gobook-book no live checkbox", JSON.stringify({
+            date,
+            startHour,
+            courtPref,
+            checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
+            row: targetRow,
+          }).slice(0, 3000));
           return json({
             error: `No free slot at ${startHour}:00 ${
               courtPref === "any" ? "on any court" : `on Court #${courtPref}`
             }`,
             row: targetRow,
             court_count: courtCount,
+            checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
             hint: "GoBook's grid did not expose a bookable checkbox for this slot. The slot may be locked/closed at this hour, already booked, or too close to the current time for online booking.",
           }, 409);
         }
@@ -613,6 +649,15 @@ Deno.serve(async (req) => {
           ConfirmViaEmail: email,
         });
         if (!result.ok) {
+          console.warn("gobook-book insert rejected", JSON.stringify({
+            date,
+            startHour,
+            court: chosen.courtNumber,
+            slot_id: chosen.slotId,
+            provider: chosen.providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(chosen.courtNumber) || ANY_COURT_CONSULTANT_ID,
+            status: result.status,
+            response: result.bodyText.slice(0, 1000),
+          }).slice(0, 3000));
           return json({
             error: `GoBook rejected the booking for ${startHour}:00 on Court #${chosen.courtNumber}`,
             status: result.status,

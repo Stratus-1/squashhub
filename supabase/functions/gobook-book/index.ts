@@ -572,7 +572,7 @@ Deno.serve(async (req) => {
         const result = await postBooking(jar, {
           BookingDate: dateToGoBookBookingDate(date),
           PSSTIds: chosen.slotId,
-          ProviderConsultantId: chosen.providerConsultantId || ANY_COURT_CONSULTANT_ID,
+          ProviderConsultantId: chosen.providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(chosen.courtNumber) || ANY_COURT_CONSULTANT_ID,
           Notes: notes,
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,

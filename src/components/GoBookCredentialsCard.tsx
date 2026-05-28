@@ -100,6 +100,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       toast.success("GoBook login saved and verified");
       setPassword("");
       setUsername("");
+      setPin("");
       qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
     } catch (e) {
       toast.error((e as Error).message || "Failed to save GoBook login");

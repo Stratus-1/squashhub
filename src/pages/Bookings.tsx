@@ -1012,7 +1012,58 @@ export default function Bookings() {
       </div>
 
       {/* External booking deep-link banner (GoBook, Court Manager, etc.) */}
-      {usesExternalBooking && (
+      {usesExternalBooking && externalProvider === "gobook" && (
+        <div className="px-4 mt-3">
+          <Card className={hasGobookCreds ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10"}>
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${hasGobookCreds ? "bg-emerald-500/20" : "bg-amber-500/20"}`}>
+                {hasGobookCreds ? (
+                  <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">
+                  {hasGobookCreds
+                    ? "Two-way sync with GoBook is active"
+                    : "Connect your GoBook account to enable two-way sync"}
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  {hasGobookCreds
+                    ? "Book courts here and we'll push them to GoBook under your account. Bookings made on GoBook also appear in the grid below."
+                    : "Go to My Account → GoBook and enter your GoBook login. Until then, bookings made here won't be pushed to GoBook."}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {!hasGobookCreds && (
+                    <Button size="sm" onClick={() => navigate("/my-account")}>
+                      Add GoBook details
+                    </Button>
+                  )}
+                  {hasGobookCreds && (
+                    <Button
+                      size="sm"
+                      disabled={syncingGobook || ((myClub as any)?.booking_slot_minutes ?? 60) !== 60}
+                      onClick={handleSyncGobook}
+                      title={((myClub as any)?.booking_slot_minutes ?? 60) !== 60 ? "GoBook requires hourly slots" : undefined}
+                    >
+                      {syncingGobook ? "Syncing…" : "Sync GoBook now"}
+                    </Button>
+                  )}
+                  {externalUrl && (
+                    <Button size="sm" variant="outline" onClick={() => openExternalUrl(externalUrl)}>
+                      Open GoBook
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Other external providers (non-GoBook) — still read-only deep-link */}
+      {usesExternalBooking && externalProvider !== "gobook" && (
         <div className="px-4 mt-3">
           <Card className="border-amber-500/40 bg-amber-500/10">
             <CardContent className="p-3 flex items-start gap-3">
@@ -1025,31 +1076,13 @@ export default function Bookings() {
                 </p>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
                   All bookings must be made on{" "}
-                  <span className="font-medium text-foreground">{externalLabel}</span> using your existing credentials.
-                  {externalProvider === "gobook"
-                    ? " Bookings from GoBook are synced into the grid below — tap Sync now to refresh."
-                    : " Bookings made there will not appear on the schedule below."}
+                  <span className="font-medium text-foreground">{externalLabel}</span> using your existing credentials. Bookings made there will not appear on the schedule below.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => openExternalUrl(externalUrl!)}
-                  >
+                  <Button size="sm" onClick={() => openExternalUrl(externalUrl!)}>
                     Open {externalLabel}
                   </Button>
-                  {externalProvider === "gobook" && (myClub as any)?.uses_gobook && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={syncingGobook || ((myClub as any)?.booking_slot_minutes ?? 60) !== 60}
-                      onClick={handleSyncGobook}
-                      title={((myClub as any)?.booking_slot_minutes ?? 60) !== 60 ? "GoBook requires hourly slots" : undefined}
-                    >
-                      {syncingGobook ? "Syncing…" : "Sync GoBook now"}
-                    </Button>
-                  )}
                 </div>
-
               </div>
             </CardContent>
           </Card>

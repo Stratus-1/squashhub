@@ -5815,6 +5815,14 @@ export type Database = {
         Args: { p_club_member_id: string }
         Returns: undefined
       }
+      viewer_is_opposing_captain_for_registration: {
+        Args: {
+          _reg_club_member_id: string
+          _reg_league_id: string
+          _viewer_user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

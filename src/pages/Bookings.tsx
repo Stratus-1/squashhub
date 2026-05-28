@@ -757,6 +757,13 @@ export default function Bookings() {
         ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
         activeMember?.id
       ) {
+        if (myClub?.id) {
+          const { error: syncError } = await supabase.functions.invoke("gobook-sync", {
+            body: { club_id: myClub.id, days: 2 },
+          });
+          if (syncError) throw syncError;
+          await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        }
         const selectedCourt = courtsData?.find((c: any) => c.id === bookingDialog.courtId);
         const courtNum = Number(
           (String(selectedCourt?.name || ""))

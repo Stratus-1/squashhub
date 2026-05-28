@@ -214,14 +214,19 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       )}
 
       {myReg && myReg.status === "pending_payment" && (
-        <div className="flex items-center gap-2 mt-1">
+        <div className="space-y-2 mt-1">
+          <div className="flex items-center gap-2">
+            {acceptsCard && paymentGateway === "yoco" && (
+              <Button size="sm" className="text-xs h-8" onClick={() => launchPayment(myReg.id)}>
+                <CreditCard className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)}
+              </Button>
+            )}
+            {acceptsEft && (
+              <p className="text-[11px] text-muted-foreground">or pay R{entryFee.toFixed(2)} by EFT and the club will mark you paid.</p>
+            )}
+          </div>
           {acceptsCard && paymentGateway === "yoco" && (
-            <Button size="sm" className="text-xs h-8" onClick={() => launchPayment(myReg.id)}>
-              <CreditCard className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)}
-            </Button>
-          )}
-          {acceptsEft && (
-            <p className="text-[11px] text-muted-foreground">or pay R{entryFee.toFixed(2)} by EFT and the club will mark you paid.</p>
+            <FnbPaymentNotice showEftFallback={acceptsEft} />
           )}
         </div>
       )}

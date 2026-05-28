@@ -235,17 +235,23 @@ function extractAvailableSlotId(cell: string): string | null {
 }
 
 /**
- * Fetch the booking grid for a date and parse rows. We hit the "Any" court
- * view (court=0) so we see all 4 courts in one shot.
+ * Fetch the booking grid for a date and parse rows. By default we hit the
+ * "Any" court view (court=0) so we see all 4 courts in one shot. For a final
+ * booking attempt we can fetch a court-specific view, which is more reliable
+ * when GoBook's combined grid omits or shifts court cells.
  */
 async function fetchGrid(
   jar: Jar,
   yyyyMmDd: string,
+  courtNumber: number | "any" = "any",
 ): Promise<{ raw: string; rows: GridRow[]; courtCount: number }> {
   const dateKey = dateToGoBookKeyDate(yyyyMmDd);
+  const courtKey = courtNumber === "any"
+    ? "0"
+    : (CSIR_COURT_CONSULTANT_IDS.get(courtNumber) || String(courtNumber));
   // key: ServiceId,ProviderId,court,slot,date
   const url =
-    `${GOBOOK_BASE}/Bookings/New?key=${SQUASH_SERVICE_ID},${CSIR_PROVIDER_ID},0,0,${dateKey}&x=${Date.now()}`;
+    `${GOBOOK_BASE}/Bookings/New?key=${SQUASH_SERVICE_ID},${CSIR_PROVIDER_ID},${courtKey},0,${dateKey}&x=${Date.now()}`;
   const res = await fetch(url, {
     headers: {
       cookie: cookieHeader(jar),
@@ -286,9 +292,12 @@ async function fetchGrid(
       // Free slot: checkbox attributes may arrive in any order from GoBook.
       const availableSlotId = extractAvailableSlotId(cell);
       const providerConsultantId = extractProviderConsultantId(cell, availableSlotId);
+      const parsedCourtNumber = courtNumber !== "any" && courtCells.length === 1
+        ? courtNumber
+        : idx + 1;
       if (availableSlotId) {
         return {
-          courtNumber: idx + 1,
+          courtNumber: parsedCourtNumber,
           providerConsultantId,
           free: true,
           slotId: availableSlotId,
@@ -303,7 +312,7 @@ async function fetchGrid(
         .replace(/\s+/g, " ")
         .trim();
       return {
-        courtNumber: idx + 1,
+        courtNumber: parsedCourtNumber,
         providerConsultantId,
         free: false,
         slotId: null,

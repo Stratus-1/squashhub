@@ -1567,7 +1567,7 @@ export default function LeagueGameDetail() {
     // game by re-setting current_game after persistPositionScores cleared it.
     if (liveScoreTimerRef.current) { clearTimeout(liveScoreTimerRef.current); liveScoreTimerRef.current = null; }
     const scores = result.games.map((g) => ({ home: g.a, away: g.b }));
-    const updatedPos = { ...positions[activeMarker], scores, completed: true };
+    const updatedPos = { ...positions[activeMarker], scores, completed: true, currentGame: null };
     setPositions((prev) => { const next = [...prev]; next[activeMarker] = updatedPos; return next; });
     // Auto-save to DB
     persistPositionScores(activeMarker, updatedPos);
@@ -1984,7 +1984,7 @@ export default function LeagueGameDetail() {
               if (activeMarker === null) return;
               const current = positions[activeMarker];
               if (current) {
-                const cleared = { ...current, scores: [], completed: false };
+                const cleared = { ...current, scores: [], completed: false, currentGame: null };
                 setPositions((prev) => { const next = [...prev]; next[activeMarker] = cleared; return next; });
                 persistPositionScores(activeMarker, cleared);
               }
@@ -1998,7 +1998,7 @@ export default function LeagueGameDetail() {
               // so the just-cleared current_game can't be re-set to a stale rally.
               if (liveScoreTimerRef.current) { clearTimeout(liveScoreTimerRef.current); liveScoreTimerRef.current = null; }
               // Persist game-by-game so other viewers see live progress.
-              const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })) };
+              const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })), currentGame: null };
               setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });
               persistPositionScores(activeMarker, updated);
             }}

@@ -693,10 +693,20 @@ Deno.serve(async (req) => {
         }
 
         const memberPin = String((row as { gobook_pin?: string | null }).gobook_pin || "").trim();
+        const membershipNumber = String(
+          (row as { court_manager_membership_number?: string | null })
+            .court_manager_membership_number || "",
+        ).trim();
         if (!memberPin) {
           return json({
             error: "GoBook requires a PIN to confirm bookings. Save your GoBook PIN in your account settings and try again.",
             hint: "Open My Account → GoBook Login → enter the PIN you set on gobook.co.za.",
+          }, 400);
+        }
+        if (!membershipNumber) {
+          return json({
+            error: "GoBook requires your CSIR Court Manager membership number. Save it in your account settings and try again.",
+            hint: "Open My Account → GoBook Login → enter your Court Manager membership number.",
           }, 400);
         }
         const result = await postBooking(jar, {
@@ -707,6 +717,7 @@ Deno.serve(async (req) => {
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,
           Pin: memberPin,
+          MembershipNumber: membershipNumber,
         });
         if (!result.ok) {
           console.warn("gobook-book insert rejected", JSON.stringify({

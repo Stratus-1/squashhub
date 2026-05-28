@@ -876,11 +876,14 @@ export default function MyAccount() {
             )}
 
             {payMethod === "card" && (
-              <Card className="p-3 bg-muted/50">
-                <p className="text-xs text-muted-foreground">
-                  Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
-                </p>
-              </Card>
+              <>
+                <Card className="p-3 bg-muted/50">
+                  <p className="text-xs text-muted-foreground">
+                    Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
+                  </p>
+                </Card>
+                <FnbPaymentNotice />
+              </>
             )}
 
             <Button

@@ -23,6 +23,12 @@ const GOBOOK_BASE = "https://www.gobook.co.za";
 const SQUASH_SERVICE_ID = "6";
 const CSIR_PROVIDER_ID = "234";
 const ANY_COURT_CONSULTANT_ID = "476";
+const CSIR_COURT_CONSULTANT_IDS = new Map<number, string>([
+  [1, "472"],
+  [2, "473"],
+  [3, "474"],
+  [4, "475"],
+]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -189,11 +195,29 @@ type GridRow = {
   startHour: number;     // 15
   courts: Array<{
     courtNumber: number;     // 1..4
+    providerConsultantId: string | null;
     free: boolean;
     slotId: string | null;   // PSSTId from the checkbox value
     bookerName: string | null;
   }>;
 };
+
+function extractProviderConsultantId(cell: string, slotId: string | null): string | null {
+  const keyMatch = cell.match(/key=\d+,\d+,(\d+),/i);
+  if (keyMatch?.[1] && keyMatch[1] !== "0") return keyMatch[1];
+
+  const consultantPatterns = [
+    /ProviderConsultantId\s*[=:]\s*["']?(\d+)/i,
+    /providerConsultantId\s*[=:]\s*["']?(\d+)/i,
+    /consultantId\s*[=:]\s*["']?(\d+)/i,
+  ];
+  for (const pattern of consultantPatterns) {
+    const match = cell.match(pattern);
+    if (match?.[1] && match[1] !== "0") return match[1];
+  }
+
+  return null;
+}
 
 function extractAvailableSlotId(cell: string): string | null {
   const inputs = cell.match(/<input\b[^>]*>/gi) ?? [];
@@ -261,9 +285,11 @@ async function fetchGrid(
     const courts = courtCells.map((cell, idx) => {
       // Free slot: checkbox attributes may arrive in any order from GoBook.
       const availableSlotId = extractAvailableSlotId(cell);
+      const providerConsultantId = extractProviderConsultantId(cell, availableSlotId);
       if (availableSlotId) {
         return {
           courtNumber: idx + 1,
+          providerConsultantId,
           free: true,
           slotId: availableSlotId,
           bookerName: null,
@@ -278,6 +304,7 @@ async function fetchGrid(
         .trim();
       return {
         courtNumber: idx + 1,
+        providerConsultantId,
         free: false,
         slotId: null,
         bookerName: text || null,
@@ -519,18 +546,18 @@ Deno.serve(async (req) => {
           );
         }
         let chosen = null as
-          | { courtNumber: number; slotId: string }
+          | { courtNumber: number; slotId: string; providerConsultantId: string | null }
           | null;
         if (courtPref === "any") {
           const free = targetRow.courts.find((c) => c.free && c.slotId);
           if (free) {
-            chosen = { courtNumber: free.courtNumber, slotId: free.slotId! };
+            chosen = { courtNumber: free.courtNumber, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
           }
         } else {
           const c = targetRow.courts.find((c) =>
             c.courtNumber === courtPref && c.free && c.slotId
           );
-          if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId! };
+          if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId!, providerConsultantId: c.providerConsultantId };
         }
         if (!chosen) {
           return json({
@@ -545,7 +572,7 @@ Deno.serve(async (req) => {
         const result = await postBooking(jar, {
           BookingDate: dateToGoBookBookingDate(date),
           PSSTIds: chosen.slotId,
-          ProviderConsultantId: ANY_COURT_CONSULTANT_ID,
+          ProviderConsultantId: chosen.providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(chosen.courtNumber) || ANY_COURT_CONSULTANT_ID,
           Notes: notes,
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,

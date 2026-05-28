@@ -757,8 +757,9 @@ export default function Bookings() {
         ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
         activeMember?.id
       ) {
+        const selectedCourt = courtsData?.find((c: any) => c.id === bookingDialog.courtId);
         const courtNum = Number(
-          ((courts.find((c: any) => c.id === bookingDialog.courtId) as any)?.name || "")
+          (String(selectedCourt?.name || ""))
             .match(/(\d+)/)?.[1] || 0,
         );
         const startHour = Number(String(bookingDialog.time).split(":")[0]);

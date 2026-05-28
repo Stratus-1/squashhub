@@ -1788,6 +1788,7 @@ export default function Bookings() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-heading">Add to Calendar?</DialogTitle>
+            <DialogDescription className="sr-only">Choose whether to share the booking or add it to Google Calendar.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 py-2">
@@ -1893,6 +1894,7 @@ export default function Bookings() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-heading">Transfer to Another Court</DialogTitle>
+            <DialogDescription className="sr-only">Select another court and transfer the active light session.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
             <p className="text-sm text-muted-foreground">
@@ -1932,6 +1934,7 @@ export default function Bookings() {
             <DialogTitle className="font-heading flex items-center gap-2">
               <ZapOff className="w-4 h-4" /> End Court Session?
             </DialogTitle>
+            <DialogDescription className="sr-only">Confirm ending the active court light session.</DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             This will turn off the lights and end your session. You'll be charged based on actual usage.

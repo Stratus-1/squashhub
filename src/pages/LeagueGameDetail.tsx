@@ -367,6 +367,10 @@ export default function LeagueGameDetail() {
       if (error) throw error; return data as any[];
     },
     enabled: !!fixtureId,
+    refetchInterval: () => (
+      markerLocksFresh.size > 0 || positions.some((p) => !!p.currentGame) ? 3_000 : false
+    ),
+    refetchIntervalInBackground: true,
   });
 
   // ---- Live follow: subscribe to realtime score updates for this fixture ----
@@ -414,6 +418,7 @@ export default function LeagueGameDetail() {
       setMarkerLocks(next);
     };
     refresh();
+    const pollId = setInterval(refresh, 20_000);
     const ch = supabase
       .channel(`league-marker-locks:${fixtureId}`)
       .on(
@@ -422,7 +427,7 @@ export default function LeagueGameDetail() {
         () => { refresh(); }
       )
       .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+    return () => { cancelled = true; clearInterval(pollId); supabase.removeChannel(ch); };
   }, [fixtureId]);
 
   // Recompute "fresh" lock set (heartbeat < 60s) every 10s so stale locks fade.

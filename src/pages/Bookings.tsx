@@ -424,6 +424,21 @@ export default function Bookings() {
     }
   };
 
+  // Does the current member have GoBook credentials saved? Drives the banner.
+  const { data: hasGobookCreds } = useQuery({
+    queryKey: ["member-has-gobook-creds", activeMember?.id],
+    enabled: !!activeMember?.id && !!(myClub as any)?.uses_gobook,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("member_gobook_credentials")
+        .select("club_member_id")
+        .eq("club_member_id", activeMember!.id)
+        .maybeSingle();
+      if (error) return false;
+      return !!data;
+    },
+  });
+
 
   // Active light sessions for the current user
   const { data: myActiveLightSessions = [], refetch: refetchSessions } = useQuery({

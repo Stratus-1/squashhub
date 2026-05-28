@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
+import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
@@ -723,12 +724,15 @@ export default function MyAccount() {
             )}
 
             {topUpMethod === "card" && (
-              <Card className="p-3 bg-muted/50">
-                <p className="text-xs text-muted-foreground">
-                  Card payments are processed via {club?.payment_gateway || "the club's payment gateway"}.
-                  Your top-up will be confirmed by the admin after payment is verified.
-                </p>
-              </Card>
+              <>
+                <Card className="p-3 bg-muted/50">
+                  <p className="text-xs text-muted-foreground">
+                    Card payments are processed via {club?.payment_gateway || "the club's payment gateway"}.
+                    Your top-up will be confirmed by the admin after payment is verified.
+                  </p>
+                </Card>
+                <FnbPaymentNotice />
+              </>
             )}
 
             <Button
@@ -872,11 +876,14 @@ export default function MyAccount() {
             )}
 
             {payMethod === "card" && (
-              <Card className="p-3 bg-muted/50">
-                <p className="text-xs text-muted-foreground">
-                  Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
-                </p>
-              </Card>
+              <>
+                <Card className="p-3 bg-muted/50">
+                  <p className="text-xs text-muted-foreground">
+                    Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
+                  </p>
+                </Card>
+                <FnbPaymentNotice />
+              </>
             )}
 
             <Button

@@ -7,6 +7,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { cn } from "@/lib/utils";
 import { ArrowRight, CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
 import { toast } from "sonner";

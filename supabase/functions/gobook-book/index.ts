@@ -350,9 +350,11 @@ async function postBooking(
     MembershipNumber: string;
   },
 ): Promise<{ ok: boolean; status: number; bodyText: string }> {
-  // GoBook validates a member-set PIN and Court Manager membership number on
-  // insert. The exact field names vary by deployment, so we send the common
-  // variants — extras are ignored.
+  // Field names confirmed from GoBook's own /Accounts/ClientRegister HTML +
+  // inline JS: name="PIN", name="PINConfirm", name="MembershipNumber". GoBook
+  // stores these on the linked-provider profile on registration; the booking
+  // insert may either re-read them from the JSON body or look them up
+  // server-side. Sending them with the correct names covers both cases.
   const body: Record<string, unknown> = {
     ServiceId: SQUASH_SERVICE_ID,
     ProviderId: CSIR_PROVIDER_ID,
@@ -362,19 +364,11 @@ async function postBooking(
     ConfirmViaEmail: payload.ConfirmViaEmail,
     ConfirmViaSMS: payload.ConfirmViaSMS,
     Notes: payload.Notes,
-    Pin: payload.Pin,
     PIN: payload.Pin,
-    Pincode: payload.Pin,
-    ClientPin: payload.Pin,
-    ClientPIN: payload.Pin,
-    ConfirmPin: payload.Pin,
-    ConfirmPIN: payload.Pin,
+    PINConfirm: payload.Pin,
     MembershipNumber: payload.MembershipNumber,
-    MembershipNo: payload.MembershipNumber,
-    MemberNumber: payload.MembershipNumber,
-    MemberNo: payload.MembershipNumber,
-    ClientMembershipNumber: payload.MembershipNumber,
   };
+
   const res = await fetch(`${GOBOOK_BASE}/Bookings/Insert`, {
     method: "POST",
     headers: {

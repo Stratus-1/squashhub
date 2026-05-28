@@ -4299,6 +4299,60 @@ export type Database = {
           },
         ]
       }
+      member_gobook_credentials: {
+        Row: {
+          club_member_id: string
+          created_at: string
+          gobook_password_ciphertext: string
+          gobook_password_iv: string
+          gobook_username: string
+          id: string
+          last_verification_status: string | null
+          last_verified_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club_member_id: string
+          created_at?: string
+          gobook_password_ciphertext: string
+          gobook_password_iv: string
+          gobook_username: string
+          id?: string
+          last_verification_status?: string | null
+          last_verified_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club_member_id?: string
+          created_at?: string
+          gobook_password_ciphertext?: string
+          gobook_password_iv?: string
+          gobook_username?: string
+          id?: string
+          last_verification_status?: string | null
+          last_verified_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_gobook_credentials_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_gobook_credentials_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_league_registrations: {
         Row: {
           club_member_id: string

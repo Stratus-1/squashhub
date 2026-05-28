@@ -569,6 +569,8 @@ export type Database = {
           created_at: string
           date: string
           end_time: string
+          external_booker_name: string | null
+          external_id: string | null
           guest_name: string | null
           id: string
           is_friendly: boolean
@@ -576,9 +578,10 @@ export type Database = {
           lights_requested: boolean
           opponent_id: string | null
           opponent_member_id: string | null
+          source: string
           start_time: string
           status: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           challenge_id?: string | null
@@ -588,6 +591,8 @@ export type Database = {
           created_at?: string
           date: string
           end_time: string
+          external_booker_name?: string | null
+          external_id?: string | null
           guest_name?: string | null
           id?: string
           is_friendly?: boolean
@@ -595,9 +600,10 @@ export type Database = {
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null
+          source?: string
           start_time: string
           status?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           challenge_id?: string | null
@@ -607,6 +613,8 @@ export type Database = {
           created_at?: string
           date?: string
           end_time?: string
+          external_booker_name?: string | null
+          external_id?: string | null
           guest_name?: string | null
           id?: string
           is_friendly?: boolean
@@ -614,9 +622,10 @@ export type Database = {
           lights_requested?: boolean
           opponent_id?: string | null
           opponent_member_id?: string | null
+          source?: string
           start_time?: string
           status?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -4307,6 +4316,7 @@ export type Database = {
           gobook_password_iv: string
           gobook_username: string
           id: string
+          is_sync_source: boolean
           last_verification_status: string | null
           last_verified_at: string | null
           updated_at: string
@@ -4319,6 +4329,7 @@ export type Database = {
           gobook_password_iv: string
           gobook_username: string
           id?: string
+          is_sync_source?: boolean
           last_verification_status?: string | null
           last_verified_at?: string | null
           updated_at?: string
@@ -4331,6 +4342,7 @@ export type Database = {
           gobook_password_iv?: string
           gobook_username?: string
           id?: string
+          is_sync_source?: boolean
           last_verification_status?: string | null
           last_verified_at?: string | null
           updated_at?: string

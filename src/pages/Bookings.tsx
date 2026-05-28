@@ -51,7 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { useMyClub, useIsSuperAdmin } from "@/hooks/use-club";
@@ -399,6 +399,31 @@ export default function Bookings() {
   const [terminatingSession, setTerminatingSession] = useState(false);
   const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
   const [confirmEndSession, setConfirmEndSession] = useState<string | null>(null);
+  const [syncingGobook, setSyncingGobook] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSyncGobook = async () => {
+    if (!myClub?.id) return;
+    setSyncingGobook(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gobook-sync", {
+        body: { club_id: myClub.id, days: 14 },
+      });
+      if (error) throw error;
+      const r = data as { synced?: number; cancelled?: number; skipped_reason?: string };
+      if (r?.skipped_reason) {
+        toast.error(`GoBook sync skipped: ${r.skipped_reason.replace(/_/g, " ")}`);
+      } else {
+        toast.success(`GoBook synced — ${r?.synced ?? 0} bookings, ${r?.cancelled ?? 0} cancellations`);
+        await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "GoBook sync failed");
+    } finally {
+      setSyncingGobook(false);
+    }
+  };
+
 
   // Active light sessions for the current user
   const { data: myActiveLightSessions = [], refetch: refetchSessions } = useQuery({
@@ -940,21 +965,32 @@ export default function Bookings() {
                   {(myClub as any)?.name || "Your club"} uses {externalLabel} for court bookings
                 </p>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-                  You can't book a court directly in this app. All bookings must be made on{" "}
-                  <span className="font-medium text-foreground">{externalLabel}</span> using your existing
-                  credentials, and{" "}
-                  <span className="font-medium text-foreground">
-                    bookings made there will not appear on the schedule below
-                  </span>
-                  . The grid is only used for matches and lighting tracked through {(myClub as any)?.name || "the club"}.
+                  All bookings must be made on{" "}
+                  <span className="font-medium text-foreground">{externalLabel}</span> using your existing credentials.
+                  {externalProvider === "gobook"
+                    ? " Bookings from GoBook are synced into the grid below — tap Sync now to refresh."
+                    : " Bookings made there will not appear on the schedule below."}
                 </p>
-                <Button
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => openExternalUrl(externalUrl!)}
-                >
-                  Open {externalLabel}
-                </Button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => openExternalUrl(externalUrl!)}
+                  >
+                    Open {externalLabel}
+                  </Button>
+                  {externalProvider === "gobook" && (myClub as any)?.uses_gobook && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={syncingGobook || ((myClub as any)?.booking_slot_minutes ?? 60) !== 60}
+                      onClick={handleSyncGobook}
+                      title={((myClub as any)?.booking_slot_minutes ?? 60) !== 60 ? "GoBook requires hourly slots" : undefined}
+                    >
+                      {syncingGobook ? "Syncing…" : "Sync GoBook now"}
+                    </Button>
+                  )}
+                </div>
+
               </div>
             </CardContent>
           </Card>

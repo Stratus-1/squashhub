@@ -204,11 +204,16 @@ export function useBookings(date: string, clubId?: string) {
       }
 
       // Fetch profile names as fallback
-      if (userIds.length === 0) return bookings.map((b: any) => ({
-        ...b,
-        player_name: "Unknown",
-        opponent_name: (b as any).guest_name || null,
-      }));
+      if (userIds.length === 0) return bookings.map((b: any) => {
+        const bookerMember = b.club_member_id ? memberMap.get(b.club_member_id) : null;
+        const opponentMember = b.opponent_member_id ? memberMap.get(b.opponent_member_id) : null;
+        return {
+          ...b,
+          player_name: bookerMember?.name || b.external_booker_name || b.guest_name || "Unknown",
+          opponent_name: b.guest_name || opponentMember?.name || null,
+        };
+      });
+
 
       const { data: profiles } = await supabase
         .from("profiles")
@@ -255,12 +260,13 @@ export function useBookings(date: string, clubId?: string) {
 
         return {
           ...b,
-          player_name: bookerMember?.name || getNameByUserId((b as any).user_id) || "Unknown",
+          player_name: bookerMember?.name || getNameByUserId((b as any).user_id) || (b as any).external_booker_name || (b as any).guest_name || "Unknown",
           player_rank: null,
           opponent_name: (b as any).guest_name || opponentMember?.name || getNameByUserId((b as any).opponent_id),
           opponent_rank: null,
           court_name: courtNameMap.get((b as any).court_id) || null,
         };
+
       });
     },
     enabled: !!user,

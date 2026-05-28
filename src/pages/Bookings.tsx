@@ -399,6 +399,31 @@ export default function Bookings() {
   const [terminatingSession, setTerminatingSession] = useState(false);
   const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
   const [confirmEndSession, setConfirmEndSession] = useState<string | null>(null);
+  const [syncingGobook, setSyncingGobook] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSyncGobook = async () => {
+    if (!myClub?.id) return;
+    setSyncingGobook(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gobook-sync", {
+        body: { club_id: myClub.id, days: 14 },
+      });
+      if (error) throw error;
+      const r = data as { synced?: number; cancelled?: number; skipped_reason?: string };
+      if (r?.skipped_reason) {
+        toast.error(`GoBook sync skipped: ${r.skipped_reason.replace(/_/g, " ")}`);
+      } else {
+        toast.success(`GoBook synced — ${r?.synced ?? 0} bookings, ${r?.cancelled ?? 0} cancellations`);
+        await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "GoBook sync failed");
+    } finally {
+      setSyncingGobook(false);
+    }
+  };
+
 
   // Active light sessions for the current user
   const { data: myActiveLightSessions = [], refetch: refetchSessions } = useQuery({

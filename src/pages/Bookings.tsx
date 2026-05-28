@@ -66,6 +66,20 @@ function timeToMinutes(t: string) {
   return hh * 60 + mm;
 }
 
+async function extractFunctionError(data: unknown, error: unknown): Promise<string | null> {
+  if ((data as { error?: string } | null)?.error) return String((data as { error: string }).error);
+  if (!error) return null;
+  const ctx = (error as { context?: Response }).context;
+  if (ctx && typeof ctx.text === "function") {
+    try {
+      const txt = await ctx.clone().text();
+      const parsed = JSON.parse(txt);
+      if (parsed?.error) return String(parsed.error);
+    } catch { /* ignore */ }
+  }
+  return (error as Error).message || "Request failed";
+}
+
 // "John Smith" -> "J. Smith"; single names returned as-is.
 function toInitialSurname(full: string): string {
   const parts = full.trim().split(/\s+/).filter(Boolean);

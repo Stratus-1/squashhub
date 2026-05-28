@@ -622,6 +622,13 @@ Deno.serve(async (req) => {
           );
         }
         if (!chosen) {
+          console.warn("gobook-book no live checkbox", JSON.stringify({
+            date,
+            startHour,
+            courtPref,
+            checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
+            row: targetRow,
+          }).slice(0, 3000));
           return json({
             error: `No free slot at ${startHour}:00 ${
               courtPref === "any" ? "on any court" : `on Court #${courtPref}`
@@ -642,6 +649,15 @@ Deno.serve(async (req) => {
           ConfirmViaEmail: email,
         });
         if (!result.ok) {
+          console.warn("gobook-book insert rejected", JSON.stringify({
+            date,
+            startHour,
+            court: chosen.courtNumber,
+            slot_id: chosen.slotId,
+            provider: chosen.providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(chosen.courtNumber) || ANY_COURT_CONSULTANT_ID,
+            status: result.status,
+            response: result.bodyText.slice(0, 1000),
+          }).slice(0, 3000));
           return json({
             error: `GoBook rejected the booking for ${startHour}:00 on Court #${chosen.courtNumber}`,
             status: result.status,

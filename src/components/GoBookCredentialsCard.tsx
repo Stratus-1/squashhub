@@ -265,6 +265,25 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               placeholder="••••••••"
             />
           </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="gobook-pin" className="text-xs">
+              GoBook booking PIN {meta?.has_pin ? "(saved — leave blank to keep)" : "(required to confirm bookings)"}
+            </Label>
+            <Input
+              id="gobook-pin"
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              autoComplete="off"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder={meta?.has_pin ? "••••" : "e.g. 1234"}
+            />
+            <div className="text-[11px] text-muted-foreground mt-1">
+              The same PIN you set on your gobook.co.za profile — GoBook uses it
+              to confirm bookings made on your behalf.
+            </div>
+          </div>
         </div>
         <Button size="sm" disabled={saving} onClick={save}>
           {saving ? (

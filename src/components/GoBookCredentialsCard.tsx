@@ -276,6 +276,17 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               </AlertDescription>
             </Alert>
           )}
+          {!meta.has_membership_number && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-xs">
+                GoBook also needs your CSIR Court Manager membership number
+                (the number printed on your Court Manager profile, e.g. 3501).
+                Without it, the booking is created but Court Manager rejects
+                it. Add it below and save.
+              </AlertDescription>
+            </Alert>
+          )}
+
         </div>
       ) : null}
 

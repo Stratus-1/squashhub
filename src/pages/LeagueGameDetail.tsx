@@ -367,6 +367,10 @@ export default function LeagueGameDetail() {
       if (error) throw error; return data as any[];
     },
     enabled: !!fixtureId,
+    refetchInterval: () => (
+      markerLocksFresh.size > 0 || positions.some((p) => !!p.currentGame) ? 3_000 : false
+    ),
+    refetchIntervalInBackground: true,
   });
 
   // ---- Live follow: subscribe to realtime score updates for this fixture ----
@@ -414,6 +418,7 @@ export default function LeagueGameDetail() {
       setMarkerLocks(next);
     };
     refresh();
+    const pollId = setInterval(refresh, 20_000);
     const ch = supabase
       .channel(`league-marker-locks:${fixtureId}`)
       .on(
@@ -422,7 +427,7 @@ export default function LeagueGameDetail() {
         () => { refresh(); }
       )
       .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+    return () => { cancelled = true; clearInterval(pollId); supabase.removeChannel(ch); };
   }, [fixtureId]);
 
   // Recompute "fresh" lock set (heartbeat < 60s) every 10s so stale locks fade.
@@ -1330,21 +1335,31 @@ export default function LeagueGameDetail() {
   // ---- Persist only the IN-PROGRESS rally (e.g. 7-3 in the current game).
   // Writes to `current_game` column so realtime viewers see live points without
   // the row ever looking "completed" to the refetch logic.
-  const persistCurrentGame = useCallback(async (posIdx: number, current: { home: number; away: number } | null, _completedScores: Array<{ home: number; away: number }> = []) => {
+  const persistCurrentGame = useCallback(async (posIdx: number, current: { home: number; away: number } | null, completedScores: Array<{ home: number; away: number }> = []) => {
     if (!fixtureId || !user) return;
     try {
-      // Race against game-finalisation is handled by clearTimeout(liveScoreTimerRef)
-      // in onProgress/handleMarkerComplete — no column-equality guard needed
-      // (and home_games_won may be NULL until a game finishes, which would
-      // silently drop every live-rally write).
-      await supabase.from("league_match_results" as any)
-        .update({ current_game: current })
-        .eq("fixture_id", fixtureId)
-        .eq("position", posIdx + 1);
+      // Upsert, not update: if setup rows were not created yet or another
+      // device is joining mid-rubber, the live rally must still materialise on
+      // the team scorecard immediately.
+      const pos = positions[posIdx];
+      let hw = 0, aw = 0;
+      for (const s of completedScores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+      await supabase.from("league_match_results" as any).upsert({
+        fixture_id: fixtureId,
+        position: posIdx + 1,
+        home_player_code: (pos?.homeCode || "").toUpperCase(),
+        away_player_code: (pos?.awayCode || "").toUpperCase(),
+        home_player_name: pos?.homeName || "",
+        away_player_name: pos?.awayName || "",
+        game_scores: completedScores,
+        home_games_won: hw,
+        away_games_won: aw,
+        current_game: current,
+      } as any, { onConflict: "fixture_id,position" });
     } catch (err) {
       console.error("Live-rally save failed:", err);
     }
-  }, [fixtureId, user]);
+  }, [fixtureId, user, positions]);
 
   // ---- Mark a position as a forfeit (player unavailable) ----
   // Awards the non-forfeiting side 3 clean games (15-0, 15-0, 15-0) and applies a
@@ -2433,6 +2448,10 @@ export default function LeagueGameDetail() {
                 const isFirstPlayable = noGamesMarkedYet && positions.findIndex(p => (p.homeCode || p.homeName) && (p.awayCode || p.awayName) && !p.completed) === idx;
                 const hasResumableMarker = resumableMarker === idx;
                 const pr = summary.posResults[idx];
+                const liveGameIndex = pos.scores.length;
+                const displayScores = pos.currentGame
+                  ? [...pos.scores, { home: pos.currentGame.home, away: pos.currentGame.away }]
+                  : pos.scores;
                 // Total points = sum of all individual game scores
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
                 const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
@@ -2555,8 +2574,12 @@ export default function LeagueGameDetail() {
                               )}
                             </span>
                             {Array.from({ length: bestOf }, (_, gi) => (
-                              <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].home > pos.scores[gi].away ? "font-bold" : "text-muted-foreground")}>
-                                {pos.scores[gi]?.home ?? ""}
+                              <span key={gi} className={cn(
+                                "text-center text-xs py-0.5",
+                                displayScores[gi] && displayScores[gi].home > displayScores[gi].away ? "font-bold" : "text-muted-foreground",
+                                gi === liveGameIndex && pos.currentGame && "bg-accent/15 ring-1 ring-accent/40 text-foreground animate-pulse"
+                              )}>
+                                {displayScores[gi]?.home ?? ""}
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
@@ -2721,8 +2744,12 @@ export default function LeagueGameDetail() {
                               )}
                             </span>
                             {Array.from({ length: bestOf }, (_, gi) => (
-                              <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].away > pos.scores[gi].home ? "font-bold" : "text-muted-foreground")}>
-                                {pos.scores[gi]?.away ?? ""}
+                              <span key={gi} className={cn(
+                                "text-center text-xs py-0.5",
+                                displayScores[gi] && displayScores[gi].away > displayScores[gi].home ? "font-bold" : "text-muted-foreground",
+                                gi === liveGameIndex && pos.currentGame && "bg-accent/15 ring-1 ring-accent/40 text-foreground animate-pulse"
+                              )}>
+                                {displayScores[gi]?.away ?? ""}
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.awayWins : ""}</span>

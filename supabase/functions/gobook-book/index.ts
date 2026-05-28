@@ -543,7 +543,7 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { rows, courtCount } = await fetchGrid(jar, date);
+        let { rows, courtCount } = await fetchGrid(jar, date);
         const targetRow = rows.find((r) => r.startHour === startHour);
         if (!targetRow) {
           return json(
@@ -567,6 +567,16 @@ Deno.serve(async (req) => {
             c.courtNumber === courtPref && c.free && c.slotId
           );
           if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId!, providerConsultantId: c.providerConsultantId };
+        }
+        if (!chosen && courtPref !== "any") {
+          const courtGrid = await fetchGrid(jar, date, courtPref);
+          const courtRow = courtGrid.rows.find((r) => r.startHour === startHour);
+          const free = courtRow?.courts.find((c) => c.free && c.slotId);
+          if (free) {
+            rows = courtGrid.rows;
+            courtCount = courtGrid.courtCount;
+            chosen = { courtNumber: courtPref, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
+          }
         }
         if (!chosen) {
           return json({

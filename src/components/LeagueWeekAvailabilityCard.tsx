@@ -62,7 +62,7 @@ export function LeagueWeekAvailabilityCard() {
         fromExt("member_association_affiliations")
           .select("club_member_id", { count: "exact", head: true })
           .eq("club_member_id", memberId!)
-          .eq("is_active", true),
+          .eq("active", true),
         supabase
           .from("club_members")
           .select("plays_league")

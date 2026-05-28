@@ -224,6 +224,15 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               </AlertDescription>
             </Alert>
           )}
+          {!meta.has_pin && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-xs">
+                GoBook also needs the booking PIN you set on your gobook.co.za
+                profile. Without it, GoBook will reject pushed bookings as
+                "Incorrect PIN". Add your PIN below and save.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       ) : null}
 

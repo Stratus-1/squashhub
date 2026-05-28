@@ -291,7 +291,7 @@ async function syncClub(
   // Name → club_member lookup (case-insensitive, exact full_name match)
   const nameMap = new Map<string, { id: string; user_id: string | null }>();
   for (const m of memberRows ?? []) {
-    const key = String((m as any).full_name || "").trim().toLowerCase();
+    const key = String((m as any).name || "").trim().toLowerCase();
     if (!key) continue;
     if (nameMap.has(key)) {
       // ambiguous — drop so we don't mis-link

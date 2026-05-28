@@ -40,7 +40,10 @@ type CredMeta = {
   last_verified_at: string | null;
   last_verification_status: string | null;
   has_pin?: boolean;
+  has_membership_number?: boolean;
+  court_manager_membership_number?: string | null;
 };
+
 
 interface Props {
   clubMemberId: string;
@@ -55,6 +58,8 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
+  const [membershipNumber, setMembershipNumber] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -75,13 +80,48 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
   });
 
   const save = async () => {
-    if (!username.trim() || !password) {
-      toast.error("Enter your GoBook email and password");
-      return;
-    }
     const trimmedPin = pin.trim();
+    const trimmedMembership = membershipNumber.trim();
     if (trimmedPin && !/^\d{4,8}$/.test(trimmedPin)) {
       toast.error("PIN must be 4-8 digits");
+      return;
+    }
+
+    // If login already exists and the user only wants to update the PIN /
+    // membership number, skip the password re-entry.
+    const onlyExtras =
+      meta?.has_credentials && !username.trim() && !password;
+    if (onlyExtras) {
+      if (!trimmedPin && !trimmedMembership) {
+        toast.error("Enter a PIN or membership number to update");
+        return;
+      }
+      setSaving(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("gobook-book", {
+          body: {
+            action: "save_extras",
+            club_member_id: clubMemberId,
+            gobook_pin: trimmedPin || null,
+            court_manager_membership_number: trimmedMembership || null,
+          },
+        });
+        const msg = await extractInvokeError(data, error);
+        if (msg) throw new Error(msg);
+        toast.success("Saved");
+        setPin("");
+        setMembershipNumber("");
+        qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
+      } catch (e) {
+        toast.error((e as Error).message || "Failed to save");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (!username.trim() || !password) {
+      toast.error("Enter your GoBook email and password");
       return;
     }
     setSaving(true);
@@ -93,6 +133,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
           gobook_username: username.trim(),
           gobook_password: password,
           gobook_pin: trimmedPin,
+          court_manager_membership_number: trimmedMembership,
         },
       });
       const msg = await extractInvokeError(data, error);
@@ -101,6 +142,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       setPassword("");
       setUsername("");
       setPin("");
+      setMembershipNumber("");
       qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
     } catch (e) {
       toast.error((e as Error).message || "Failed to save GoBook login");
@@ -108,6 +150,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       setSaving(false);
     }
   };
+
 
   const verify = async () => {
     setVerifying(true);
@@ -233,6 +276,17 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               </AlertDescription>
             </Alert>
           )}
+          {!meta.has_membership_number && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-xs">
+                GoBook also needs your CSIR Court Manager membership number
+                (the number printed on your Court Manager profile, e.g. 3501).
+                Without it, the booking is created but Court Manager rejects
+                it. Add it below and save.
+              </AlertDescription>
+            </Alert>
+          )}
+
         </div>
       ) : null}
 
@@ -284,6 +338,30 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               to confirm bookings made on your behalf.
             </div>
           </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="cm-member-no" className="text-xs">
+              Court Manager membership number{" "}
+              {meta?.has_membership_number
+                ? `(saved: ${meta.court_manager_membership_number ?? ""} — leave blank to keep)`
+                : "(required for CSIR bookings)"}
+            </Label>
+            <Input
+              id="cm-member-no"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              value={membershipNumber}
+              onChange={(e) =>
+                setMembershipNumber(e.target.value.replace(/\s+/g, "").slice(0, 32))
+              }
+              placeholder={meta?.has_membership_number ? "••••" : "e.g. 3501"}
+            />
+            <div className="text-[11px] text-muted-foreground mt-1">
+              Your CSIR Court Manager membership number — required so the
+              booking is accepted by Court Manager on the CSIR court.
+            </div>
+          </div>
+
         </div>
         <Button size="sm" disabled={saving} onClick={save}>
           {saving ? (

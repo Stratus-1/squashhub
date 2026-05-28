@@ -347,10 +347,12 @@ async function postBooking(
     ConfirmViaSMS: boolean;
     ConfirmViaEmail: boolean;
     Pin: string;
+    MembershipNumber: string;
   },
 ): Promise<{ ok: boolean; status: number; bodyText: string }> {
-  // GoBook validates a member-set PIN on insert. The exact field name varies
-  // by deployment, so we send the common variants — extras are ignored.
+  // GoBook validates a member-set PIN and Court Manager membership number on
+  // insert. The exact field names vary by deployment, so we send the common
+  // variants — extras are ignored.
   const body: Record<string, unknown> = {
     ServiceId: SQUASH_SERVICE_ID,
     ProviderId: CSIR_PROVIDER_ID,
@@ -365,6 +367,13 @@ async function postBooking(
     Pincode: payload.Pin,
     ClientPin: payload.Pin,
     ClientPIN: payload.Pin,
+    ConfirmPin: payload.Pin,
+    ConfirmPIN: payload.Pin,
+    MembershipNumber: payload.MembershipNumber,
+    MembershipNo: payload.MembershipNumber,
+    MemberNumber: payload.MembershipNumber,
+    MemberNo: payload.MembershipNumber,
+    ClientMembershipNumber: payload.MembershipNumber,
   };
   const res = await fetch(`${GOBOOK_BASE}/Bookings/Insert`, {
     method: "POST",
@@ -382,6 +391,7 @@ async function postBooking(
   const text = await res.text();
   return { ok: res.ok, status: res.status, bodyText: text };
 }
+
 
 // ---------- Edge function ----------
 Deno.serve(async (req) => {
@@ -428,16 +438,55 @@ Deno.serve(async (req) => {
     }
 
     switch (action) {
+      case "save_extras": {
+        const pinRaw = body.gobook_pin;
+        const pin = pinRaw == null ? null : String(pinRaw).trim();
+        const membershipRaw = body.court_manager_membership_number;
+        const membership = membershipRaw == null
+          ? null
+          : String(membershipRaw).trim();
+        if (pin !== null && pin !== "" && !/^\d{4,8}$/.test(pin)) {
+          return json({ error: "PIN must be 4-8 digits" }, 400);
+        }
+        if (membership !== null && membership !== "" && membership.length > 32) {
+          return json({ error: "Membership number too long" }, 400);
+        }
+        const updateRow: Record<string, unknown> = {};
+        if (pin !== null) updateRow.gobook_pin = pin === "" ? null : pin;
+        if (membership !== null) {
+          updateRow.court_manager_membership_number = membership === ""
+            ? null
+            : membership;
+        }
+        if (Object.keys(updateRow).length === 0) {
+          return json({ ok: true });
+        }
+        const { error: upErr } = await adminClient
+          .from("member_gobook_credentials")
+          .update(updateRow)
+          .eq("club_member_id", clubMemberId);
+        if (upErr) return json({ error: upErr.message }, 500);
+        return json({ ok: true });
+      }
+
+
       case "save_credentials": {
         const username = String(body.gobook_username || "").trim();
         const password = String(body.gobook_password || "");
         const pinRaw = body.gobook_pin;
         const pin = pinRaw == null ? null : String(pinRaw).trim();
+        const membershipRaw = body.court_manager_membership_number;
+        const membership = membershipRaw == null
+          ? null
+          : String(membershipRaw).trim();
         if (!username || !password) {
           return json({ error: "Missing username/password" }, 400);
         }
         if (pin !== null && pin !== "" && !/^\d{4,8}$/.test(pin)) {
           return json({ error: "PIN must be 4-8 digits" }, 400);
+        }
+        if (membership !== null && membership !== "" && membership.length > 32) {
+          return json({ error: "Membership number too long" }, 400);
         }
 
         // Verify with GoBook before saving
@@ -457,9 +506,14 @@ Deno.serve(async (req) => {
           last_verified_at: new Date().toISOString(),
           last_verification_status: "ok",
         };
-        // Only write pin when caller provided it (null = leave existing, ""
-        // = clear). Empty string clears.
+        // Only write fields when caller provided them (null = leave existing,
+        // "" = clear).
         if (pin !== null) upsertRow.gobook_pin = pin === "" ? null : pin;
+        if (membership !== null) {
+          upsertRow.court_manager_membership_number = membership === ""
+            ? null
+            : membership;
+        }
         const { error: upErr } = await adminClient
           .from("member_gobook_credentials")
           .upsert(upsertRow, { onConflict: "club_member_id" });
@@ -480,7 +534,7 @@ Deno.serve(async (req) => {
         const { data, error } = await adminClient
           .from("member_gobook_credentials")
           .select(
-            "gobook_username, last_verified_at, last_verification_status, gobook_pin",
+            "gobook_username, last_verified_at, last_verification_status, gobook_pin, court_manager_membership_number",
           )
           .eq("club_member_id", clubMemberId)
           .maybeSingle();
@@ -491,8 +545,12 @@ Deno.serve(async (req) => {
           last_verified_at: data?.last_verified_at ?? null,
           last_verification_status: data?.last_verification_status ?? null,
           has_pin: !!data?.gobook_pin,
+          has_membership_number: !!data?.court_manager_membership_number,
+          court_manager_membership_number:
+            data?.court_manager_membership_number ?? null,
         });
       }
+
 
       case "verify_credentials":
       case "debug_grid":
@@ -500,7 +558,7 @@ Deno.serve(async (req) => {
         const { data: row, error: rErr } = await adminClient
           .from("member_gobook_credentials")
           .select(
-            "gobook_username, gobook_password_ciphertext, gobook_password_iv, gobook_pin",
+            "gobook_username, gobook_password_ciphertext, gobook_password_iv, gobook_pin, court_manager_membership_number",
           )
           .eq("club_member_id", clubMemberId)
           .maybeSingle();
@@ -667,10 +725,20 @@ Deno.serve(async (req) => {
         }
 
         const memberPin = String((row as { gobook_pin?: string | null }).gobook_pin || "").trim();
+        const membershipNumber = String(
+          (row as { court_manager_membership_number?: string | null })
+            .court_manager_membership_number || "",
+        ).trim();
         if (!memberPin) {
           return json({
             error: "GoBook requires a PIN to confirm bookings. Save your GoBook PIN in your account settings and try again.",
             hint: "Open My Account → GoBook Login → enter the PIN you set on gobook.co.za.",
+          }, 400);
+        }
+        if (!membershipNumber) {
+          return json({
+            error: "GoBook requires your CSIR Court Manager membership number. Save it in your account settings and try again.",
+            hint: "Open My Account → GoBook Login → enter your Court Manager membership number.",
           }, 400);
         }
         const result = await postBooking(jar, {
@@ -681,6 +749,7 @@ Deno.serve(async (req) => {
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,
           Pin: memberPin,
+          MembershipNumber: membershipNumber,
         });
         if (!result.ok) {
           console.warn("gobook-book insert rejected", JSON.stringify({

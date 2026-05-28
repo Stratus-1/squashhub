@@ -374,14 +374,45 @@ async function syncClub(
         user_id: linkedUserId,
       };
 
-      const { error: upErr } = await admin
+      // Check for an existing active booking at this exact slot.
+      const { data: existingSlot } = await admin
         .from("bookings")
-        .upsert(row, { onConflict: "club_id,source,external_id" });
-      if (upErr) {
-        console.error("upsert failed", external, upErr.message);
+        .select("id, source")
+        .eq("club_id", clubId)
+        .eq("court_id", courtId)
+        .eq("date", dateStr)
+        .eq("start_time", row.start_time)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (existingSlot && (existingSlot as any).source !== "gobook") {
+        // Native (or other-source) booking owns this slot — don't clobber.
         continue;
       }
+
+      if (existingSlot) {
+        const { error: updErr } = await admin
+          .from("bookings")
+          .update({
+            external_id: external,
+            external_booker_name: s.bookerName,
+            club_member_id: linkedMemberId,
+            user_id: linkedUserId,
+          })
+          .eq("id", (existingSlot as any).id);
+        if (updErr) {
+          console.error("update failed", external, updErr.message);
+          continue;
+        }
+      } else {
+        const { error: insErr } = await admin.from("bookings").insert(row);
+        if (insErr) {
+          console.error("insert failed", external, insErr.message);
+          continue;
+        }
+      }
       result.synced++;
+
     }
 
     // Cancellations: delete any gobook rows for this date+club not in seen set.

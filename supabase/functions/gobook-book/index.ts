@@ -546,12 +546,20 @@ Deno.serve(async (req) => {
           );
         }
 
-        // When a specific court is requested, prefer that court's own grid —
-        // GoBook's combined ("Any") view sometimes hides slots (e.g. early
-        // morning hours) that the per-court view exposes as bookable.
-        let { rows, courtCount } = courtPref === "any"
-          ? await fetchGrid(jar, date)
-          : await fetchGrid(jar, date, courtPref);
+        const gridAttempts: Array<{ label: string; grid: Awaited<ReturnType<typeof fetchGrid>> }> = [];
+        const tryGrid = async (label: string, gridCourt: number | "any", key?: string) => {
+          const grid = await fetchGrid(jar, date, gridCourt, key);
+          gridAttempts.push({ label: `${label}:${grid.urlKey}`, grid });
+          return grid;
+        };
+
+        // Probe the live GoBook grids that can expose a bookable checkbox. The
+        // local SquashHub grid may be stale, so only a real GoBook checkbox wins.
+        let firstGrid = courtPref === "any"
+          ? await tryGrid("any", "any")
+          : await tryGrid("court-tab", courtPref, String(courtPref));
+        let rows = firstGrid.rows;
+        let courtCount = firstGrid.courtCount;
         let targetRow = rows.find((r) => r.startHour === startHour);
         let chosen = null as
           | { courtNumber: number; slotId: string; providerConsultantId: string | null }
@@ -569,9 +577,28 @@ Deno.serve(async (req) => {
             if (free) chosen = { courtNumber: courtPref as number, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
           }
         }
-        // Fallback: if the per-court view didn't yield a slot, retry combined.
+        // Fallbacks: GoBook sometimes exposes availability only on the combined
+        // grid, and some installations use ProviderConsultantId keys for tabs.
         if (!chosen && courtPref !== "any") {
-          const combined = await fetchGrid(jar, date);
+          const providerKey = CSIR_COURT_CONSULTANT_IDS.get(courtPref);
+          if (providerKey) {
+            const providerGrid = await tryGrid("provider-tab", courtPref, providerKey);
+            const providerRow = providerGrid.rows.find((r) => r.startHour === startHour);
+            const free = providerRow?.courts.length === 1
+              ? providerRow.courts.find((c) => c.free && c.slotId)
+              : providerRow?.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
+            if (free) {
+              rows = providerGrid.rows;
+              courtCount = providerGrid.courtCount;
+              targetRow = providerRow;
+              chosen = { courtNumber: courtPref, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
+            } else if (!targetRow && providerRow) {
+              targetRow = providerRow;
+            }
+          }
+        }
+        if (!chosen && courtPref !== "any") {
+          const combined = await tryGrid("combined", "any");
           const combinedRow = combined.rows.find((r) => r.startHour === startHour);
           const free = combinedRow?.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
           if (free) {
@@ -589,6 +616,7 @@ Deno.serve(async (req) => {
               error:
                 `No grid row found for hour ${startHour}:00. GoBook returned ${rows.length} rows.`,
               available_hours: rows.map((r) => r.startHour),
+              checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
             },
             400,
           );
@@ -600,6 +628,7 @@ Deno.serve(async (req) => {
             }`,
             row: targetRow,
             court_count: courtCount,
+            checked_grids: gridAttempts.map((a) => ({ label: a.label, rows: a.grid.rows.length, court_count: a.grid.courtCount })),
             hint: "GoBook's grid did not expose a bookable checkbox for this slot. The slot may be locked/closed at this hour, already booked, or too close to the current time for online booking.",
           }, 409);
         }

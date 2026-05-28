@@ -39,6 +39,7 @@ type CredMeta = {
   gobook_username: string | null;
   last_verified_at: string | null;
   last_verification_status: string | null;
+  has_pin?: boolean;
 };
 
 interface Props {

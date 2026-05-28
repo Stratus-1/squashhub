@@ -58,6 +58,8 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
+  const [membershipNumber, setMembershipNumber] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [deleting, setDeleting] = useState(false);

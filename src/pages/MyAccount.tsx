@@ -723,12 +723,15 @@ export default function MyAccount() {
             )}
 
             {topUpMethod === "card" && (
-              <Card className="p-3 bg-muted/50">
-                <p className="text-xs text-muted-foreground">
-                  Card payments are processed via {club?.payment_gateway || "the club's payment gateway"}.
-                  Your top-up will be confirmed by the admin after payment is verified.
-                </p>
-              </Card>
+              <>
+                <Card className="p-3 bg-muted/50">
+                  <p className="text-xs text-muted-foreground">
+                    Card payments are processed via {club?.payment_gateway || "the club's payment gateway"}.
+                    Your top-up will be confirmed by the admin after payment is verified.
+                  </p>
+                </Card>
+                <FnbPaymentNotice />
+              </>
             )}
 
             <Button

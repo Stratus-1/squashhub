@@ -9,6 +9,7 @@ import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub, useMyLeagueRegistration } from "@/hooks/use-club";
+import { useAssociationRules } from "@/hooks/use-association-rules";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { IndividualStandingsTab } from "@/components/league-games/IndividualStandingsTab";
@@ -188,9 +189,13 @@ export default function LeagueGames() {
 
   const showSwitcher = associations.length > 1;
 
-  // Hide Fill-Up Leagues for internal/local associations like NIL — captains
-  // place players directly when marking a game (Edit Players on the scorecard).
-  const hideFillUp = (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";
+  // Hide Fill-Up Leagues based on the association's rule (Super Admin → League Rules).
+  // Falls back to the legacy NIL hardcode if no rule row exists yet.
+  const rulesAssocId = selectedAssoc?.platform_association_id || selectedAssoc?.id || null;
+  const { data: selectedAssocRules } = useAssociationRules(rulesAssocId);
+  const hideFillUp = selectedAssocRules
+    ? selectedAssocRules.fill_up_leagues_enabled === false
+    : (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";
 
   // If the active tab is Fill-Up but it's hidden for this association, fall back.
   useEffect(() => {

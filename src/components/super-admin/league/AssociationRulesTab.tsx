@@ -39,6 +39,7 @@ const DEFAULTS: Partial<LeagueRules> = {
   team_size_mode: "fixed",
   team_size: 4,
   allow_multi_team_registration: false,
+  fill_up_leagues_enabled: true,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {
@@ -334,6 +335,20 @@ export default function AssociationRulesTab({ associationId }: Props) {
             hint="NSA-style flexibility: a player can be registered in more than one team in this association (e.g. League 7 and League 8). When off (NIL-style), each player is locked to a single team."
             value={!!form.allow_multi_team_registration}
             onChange={(v) => set("allow_multi_team_registration", v)}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Feature availability</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <ToggleRow
+            label="Fill Up Leagues tab"
+            hint="When on, captains in this association see the weekly Fill Up Leagues drag-and-drop board in League Games. Turn off for associations that don't use weekly team planning (e.g. NIL, Lowveld) — captains place players directly on the scorecard instead."
+            value={form.fill_up_leagues_enabled ?? true}
+            onChange={(v) => set("fill_up_leagues_enabled", v)}
           />
         </CardContent>
       </Card>

@@ -69,11 +69,22 @@ Deno.serve(async (req) => {
       return json({ status: yocoStatus });
     }
 
-    // Mark session completed
-    await admin
+    // Atomically claim the session: only the request that flips status from
+    // a non-completed value to "completed" is allowed to write the credit
+    // transaction. Prevents duplicate top-ups when the success page double-fires.
+    const { data: claimed, error: claimErr } = await admin
       .from("yoco_payment_sessions")
       .update({ status: "completed", completed_at: new Date().toISOString() })
-      .eq("id", session.id);
+      .eq("id", session.id)
+      .neq("status", "completed")
+      .select("id");
+    if (claimErr) {
+      return json({ error: `Failed to claim session: ${claimErr.message}` }, 500);
+    }
+    if (!claimed || claimed.length === 0) {
+      // Another concurrent call already completed it — nothing more to do.
+      return json({ status: "completed", already: true });
+    }
 
     const amount = Number(session.amount);
     const description =
@@ -86,7 +97,7 @@ Deno.serve(async (req) => {
 
     // Record member_credit_transactions (skip for tournament — entry fees are not member-credit ledger items)
     if (session.purpose !== "tournament") {
-      await admin.from("member_credit_transactions").insert({
+      const { error: insErr } = await admin.from("member_credit_transactions").insert({
         club_id: session.club_id,
         club_member_id: session.club_member_id,
         amount,
@@ -97,6 +108,11 @@ Deno.serve(async (req) => {
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
       });
+      // Unique index member_credit_tx_card_ref_uniq guards against duplicates.
+      // 23505 = unique_violation: a row for this (member, checkout_id) already exists, treat as success.
+      if (insErr && (insErr as any).code !== "23505") {
+        console.error("member_credit_transactions insert failed:", insErr);
+      }
     }
 
     // For fee purpose, mark linked fees paid

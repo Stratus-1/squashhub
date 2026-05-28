@@ -415,7 +415,7 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const CRON_SECRET = Deno.env.get("EMAIL_INTERNAL_SECRET")!;
+    const CRON_SECRET = Deno.env.get("CRON_SECRET")!;
 
     const admin = createClient(SUPABASE_URL, SERVICE);
     const body = await req.json().catch(() => ({}));

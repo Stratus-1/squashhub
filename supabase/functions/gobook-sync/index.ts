@@ -454,7 +454,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE);
     const body = await req.json().catch(() => ({}));
-    const days = Math.min(Math.max(Number(body.days) || 14, 1), 30);
+    const days = Math.min(Math.max(Number(body.days) || 7, 1), 60);
 
     // Cron mode
     if (body.cron === true) {

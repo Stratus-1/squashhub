@@ -940,21 +940,32 @@ export default function Bookings() {
                   {(myClub as any)?.name || "Your club"} uses {externalLabel} for court bookings
                 </p>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-                  You can't book a court directly in this app. All bookings must be made on{" "}
-                  <span className="font-medium text-foreground">{externalLabel}</span> using your existing
-                  credentials, and{" "}
-                  <span className="font-medium text-foreground">
-                    bookings made there will not appear on the schedule below
-                  </span>
-                  . The grid is only used for matches and lighting tracked through {(myClub as any)?.name || "the club"}.
+                  All bookings must be made on{" "}
+                  <span className="font-medium text-foreground">{externalLabel}</span> using your existing credentials.
+                  {externalProvider === "gobook"
+                    ? " Bookings from GoBook are synced into the grid below — tap Sync now to refresh."
+                    : " Bookings made there will not appear on the schedule below."}
                 </p>
-                <Button
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => openExternalUrl(externalUrl!)}
-                >
-                  Open {externalLabel}
-                </Button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => openExternalUrl(externalUrl!)}
+                  >
+                    Open {externalLabel}
+                  </Button>
+                  {externalProvider === "gobook" && (myClub as any)?.uses_gobook && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={syncingGobook || ((myClub as any)?.booking_slot_minutes ?? 60) !== 60}
+                      onClick={handleSyncGobook}
+                      title={((myClub as any)?.booking_slot_minutes ?? 60) !== 60 ? "GoBook requires hourly slots" : undefined}
+                    >
+                      {syncingGobook ? "Syncing…" : "Sync GoBook now"}
+                    </Button>
+                  )}
+                </div>
+
               </div>
             </CardContent>
           </Card>

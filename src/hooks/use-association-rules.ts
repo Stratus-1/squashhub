@@ -38,6 +38,8 @@ export interface LeagueRules {
   // NSA-style flexibility: allow a member to be registered in multiple teams
   // within the same association. NIL = false (strict), NSA = true.
   allow_multi_team_registration: boolean;
+  // Feature toggles per association
+  fill_up_leagues_enabled: boolean;
 }
 
 export function useAssociationRules(associationId: string | null | undefined) {

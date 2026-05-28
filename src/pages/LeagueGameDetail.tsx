@@ -1994,6 +1994,9 @@ export default function LeagueGameDetail() {
               if (activeMarker === null) return;
               const current = positions[activeMarker];
               if (!current) return;
+              // A finished game arrived — kill any pending live-rally debounce
+              // so the just-cleared current_game can't be re-set to a stale rally.
+              if (liveScoreTimerRef.current) { clearTimeout(liveScoreTimerRef.current); liveScoreTimerRef.current = null; }
               // Persist game-by-game so other viewers see live progress.
               const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })) };
               setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });

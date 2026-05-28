@@ -27,6 +27,54 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: members = [] } = useClubMembers(clubId);
   const [partnerId, setPartnerId] = useState<string>("");
+  const [showEft, setShowEft] = useState(false);
+
+  const { data: bankDetails } = useQuery({
+    queryKey: ["club-bank-details", clubId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_club_bank_details", { _club_id: clubId });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return (row || null) as null | {
+        bank_name: string | null;
+        bank_account_name: string | null;
+        bank_account_number: string | null;
+        bank_branch_code: string | null;
+        bank_reference: string | null;
+      };
+    },
+    enabled: !!clubId && showEft,
+  });
+
+  const markPendingEft = useMutation({
+    mutationFn: async (regId: string) => {
+      const { error } = await fromExt("club_champs_registrations")
+        .update({ status: "pending_eft" })
+        .eq("id", regId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Marked as paying by EFT — admin will confirm once received.");
+      qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
+      qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+    },
+    onError: (e: any) => toast.error(e.message || "Could not update payment method"),
+  });
+
+  const copyBankDetails = () => {
+    if (!bankDetails) return;
+    const ref = `${champ?.name ? champ.name.slice(0, 20) : "Tournament"}`.replace(/\s+/g, "-");
+    const parts = [
+      bankDetails.bank_name && `Bank: ${bankDetails.bank_name}`,
+      bankDetails.bank_account_name && `Account: ${bankDetails.bank_account_name}`,
+      bankDetails.bank_account_number && `Number: ${bankDetails.bank_account_number}`,
+      bankDetails.bank_branch_code && `Branch: ${bankDetails.bank_branch_code}`,
+      `Reference: ${ref}`,
+      `Amount: R${entryFee.toFixed(2)}`,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(parts.join("\n"));
+    toast.success("Bank details copied");
+  };
 
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
   const paymentRequired = !!champ?.payment_required && entryFee > 0;

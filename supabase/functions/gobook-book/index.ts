@@ -546,18 +546,18 @@ Deno.serve(async (req) => {
           );
         }
         let chosen = null as
-          | { courtNumber: number; slotId: string }
+          | { courtNumber: number; slotId: string; providerConsultantId: string }
           | null;
         if (courtPref === "any") {
-          const free = targetRow.courts.find((c) => c.free && c.slotId);
+          const free = targetRow.courts.find((c) => c.free && c.slotId && c.providerConsultantId);
           if (free) {
-            chosen = { courtNumber: free.courtNumber, slotId: free.slotId! };
+            chosen = { courtNumber: free.courtNumber, slotId: free.slotId!, providerConsultantId: free.providerConsultantId! };
           }
         } else {
           const c = targetRow.courts.find((c) =>
-            c.courtNumber === courtPref && c.free && c.slotId
+            c.courtNumber === courtPref && c.free && c.slotId && c.providerConsultantId
           );
-          if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId! };
+          if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId!, providerConsultantId: c.providerConsultantId! };
         }
         if (!chosen) {
           return json({
@@ -572,7 +572,7 @@ Deno.serve(async (req) => {
         const result = await postBooking(jar, {
           BookingDate: dateToGoBookBookingDate(date),
           PSSTIds: chosen.slotId,
-          ProviderConsultantId: ANY_COURT_CONSULTANT_ID,
+          ProviderConsultantId: chosen.providerConsultantId,
           Notes: notes,
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,

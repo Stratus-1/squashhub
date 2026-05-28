@@ -749,6 +749,50 @@ export default function Bookings() {
         }
       }
 
+      // Silent push to GoBook for clubs that use it.
+      // Fire-and-forget — booking is already saved locally either way.
+      if (
+        (myClub as any)?.uses_gobook &&
+        ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
+        activeMember?.id
+      ) {
+        const courtNum = Number(
+          ((courts.find((c: any) => c.id === bookingDialog.courtId) as any)?.name || "")
+            .match(/(\d+)/)?.[1] || 0,
+        );
+        const startHour = Number(String(bookingDialog.time).split(":")[0]);
+        const labelA = (activeMember as any)?.name || (activeMember as any)?.full_name || "";
+        const labelB = (bookingDialog.opponentId
+          ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.name
+          : null) || bookingDialog.guestName || "";
+        const notes = [labelA, labelB].filter(Boolean).join(" v ").slice(0, 200);
+        supabase.functions
+          .invoke("gobook-book", {
+            body: {
+              action: "book",
+              club_member_id: activeMember.id,
+              date: dateStr,
+              start_hour: startHour,
+              court: courtNum || "any",
+              notes,
+              sms: false,
+              email: false,
+            },
+          })
+          .then(({ error }: any) => {
+            if (error) {
+              console.warn("GoBook push failed", error);
+              toast.warning("Booked in SquashHub, but GoBook push failed");
+            } else {
+              toast.success("Also pushed to GoBook ✓");
+            }
+          })
+          .catch((e: any) => console.warn("GoBook push exception", e));
+      }
+
+
+
+
       const opponent = bookingDialog.opponentId
         ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
         : null;
@@ -1178,11 +1222,14 @@ export default function Bookings() {
                           onClick={() => {
                             if (isPastSlot && !booking) return;
                             if (booking) { setBookingDetails(booking); return; }
-                            if (usesExternalBooking && externalUrl) {
+                            // For non-GoBook external providers, redirect.
+                            // GoBook clubs book in-app and silently push to GoBook.
+                            if (usesExternalBooking && externalProvider !== "gobook" && externalUrl) {
                               toast.info(`Opening ${externalLabel} to complete your booking…`);
                               openExternalUrl(externalUrl);
                               return;
                             }
+
                             setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >

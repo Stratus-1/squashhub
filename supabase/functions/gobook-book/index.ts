@@ -546,18 +546,18 @@ Deno.serve(async (req) => {
           );
         }
         let chosen = null as
-          | { courtNumber: number; slotId: string; providerConsultantId: string }
+          | { courtNumber: number; slotId: string; providerConsultantId: string | null }
           | null;
         if (courtPref === "any") {
-          const free = targetRow.courts.find((c) => c.free && c.slotId && c.providerConsultantId);
+          const free = targetRow.courts.find((c) => c.free && c.slotId);
           if (free) {
-            chosen = { courtNumber: free.courtNumber, slotId: free.slotId!, providerConsultantId: free.providerConsultantId! };
+            chosen = { courtNumber: free.courtNumber, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
           }
         } else {
           const c = targetRow.courts.find((c) =>
-            c.courtNumber === courtPref && c.free && c.slotId && c.providerConsultantId
+            c.courtNumber === courtPref && c.free && c.slotId
           );
-          if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId!, providerConsultantId: c.providerConsultantId! };
+          if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId!, providerConsultantId: c.providerConsultantId };
         }
         if (!chosen) {
           return json({
@@ -572,7 +572,7 @@ Deno.serve(async (req) => {
         const result = await postBooking(jar, {
           BookingDate: dateToGoBookBookingDate(date),
           PSSTIds: chosen.slotId,
-          ProviderConsultantId: chosen.providerConsultantId,
+          ProviderConsultantId: chosen.providerConsultantId || ANY_COURT_CONSULTANT_ID,
           Notes: notes,
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,

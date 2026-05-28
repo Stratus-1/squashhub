@@ -4314,6 +4314,7 @@ export type Database = {
           created_at: string
           gobook_password_ciphertext: string
           gobook_password_iv: string
+          gobook_pin: string | null
           gobook_username: string
           id: string
           is_sync_source: boolean
@@ -4327,6 +4328,7 @@ export type Database = {
           created_at?: string
           gobook_password_ciphertext: string
           gobook_password_iv: string
+          gobook_pin?: string | null
           gobook_username: string
           id?: string
           is_sync_source?: boolean
@@ -4340,6 +4342,7 @@ export type Database = {
           created_at?: string
           gobook_password_ciphertext?: string
           gobook_password_iv?: string
+          gobook_pin?: string | null
           gobook_username?: string
           id?: string
           is_sync_source?: boolean

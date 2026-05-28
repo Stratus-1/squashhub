@@ -751,7 +751,7 @@ export default function Bookings() {
       });
 
       // Mark lights_requested and fee split on the booking
-      if (bookingDialog.lightsOn && user?.id) {
+      if (lightsIntegrationEnabled && bookingDialog.lightsOn && user?.id) {
         try {
           await fromExt("bookings")
             .update({

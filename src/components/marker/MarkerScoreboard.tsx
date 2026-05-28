@@ -31,7 +31,11 @@ interface PersistedState {
  * Derive a unique key for this scoring session so that persisted state
  * for a different rubber/match never bleeds into a new one.
  */
-function loadPersisted(expectedKeys: string[]): PersistedState | null {
+function loadPersisted(
+  expectedKeys: string[],
+  config?: MarkerConfig,
+  initialScores?: Array<{ a: number; b: number }>,
+): PersistedState | null {
   try {
     const raw = localStorage.getItem(MARKER_STATE_KEY);
     if (!raw) return null;
@@ -40,6 +44,22 @@ function loadPersisted(expectedKeys: string[]): PersistedState | null {
     if (!parsed.sessionKey || !expectedKeys.includes(parsed.sessionKey)) {
       localStorage.removeItem(MARKER_STATE_KEY);
       return null;
+    }
+    // Discard stale state if the DB (initialScores) has progressed further
+    // than what's saved locally — e.g. another marker took over and completed
+    // more games while this device was idle. Without this, the original
+    // marker reopening the position would resurrect their old state and
+    // overwrite the real live score.
+    if (config && initialScores && initialScores.length > 0) {
+      const fresh = buildStateFromSavedScores(config, initialScores);
+      const dbCompleted = fresh?.completedGames.length ?? 0;
+      const dbInProgress = (fresh?.scoreA ?? 0) + (fresh?.scoreB ?? 0);
+      const localCompleted = parsed.completedGames?.length ?? 0;
+      const localInProgress = (parsed.scoreA ?? 0) + (parsed.scoreB ?? 0);
+      if (dbCompleted > localCompleted || (dbCompleted === localCompleted && dbInProgress > localInProgress)) {
+        localStorage.removeItem(MARKER_STATE_KEY);
+        return null;
+      }
     }
     return parsed;
   } catch { return null; }

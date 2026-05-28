@@ -209,7 +209,7 @@ export function useBookings(date: string, clubId?: string) {
         const opponentMember = b.opponent_member_id ? memberMap.get(b.opponent_member_id) : null;
         return {
           ...b,
-          player_name: bookerMember?.name || b.external_booker_name || b.guest_name || "Unknown",
+          player_name: bookerMember?.name || b.external_booker_name || b.guest_name || null,
           opponent_name: b.guest_name || opponentMember?.name || null,
         };
       });
@@ -238,8 +238,8 @@ export function useBookings(date: string, clubId?: string) {
         const profile = profileMap.get(id);
         if (profile) return profile.name;
         const member = clubMemberMap.get(id);
-        if (member) return member.name || "Unknown";
-        return "Unknown";
+        if (member) return member.name || null;
+        return null;
       };
 
       // Fetch court names for display
@@ -260,7 +260,7 @@ export function useBookings(date: string, clubId?: string) {
 
         return {
           ...b,
-          player_name: bookerMember?.name || getNameByUserId((b as any).user_id) || (b as any).external_booker_name || (b as any).guest_name || "Unknown",
+          player_name: bookerMember?.name || getNameByUserId((b as any).user_id) || (b as any).external_booker_name || (b as any).guest_name || null,
           player_rank: null,
           opponent_name: (b as any).guest_name || opponentMember?.name || getNameByUserId((b as any).opponent_id),
           opponent_rank: null,
@@ -716,7 +716,7 @@ export function useLadder(clubId?: string) {
         return {
           id: m.id,
           club_member_id: m.id,
-          name: m.name || profile?.name || "Unknown",
+          name: m.name || profile?.name || null,
           avatar_url: (m as any).avatar_url || profile?.avatar_url || null,
           wins: hasLiveStats ? liveStats.wins : profile?.wins ?? 0,
           losses: hasLiveStats ? liveStats.losses : profile?.losses ?? 0,
@@ -815,7 +815,7 @@ export function usePlayerProfile(playerId?: string | null) {
         return {
           id: member.id,
           club_member_id: member.id,
-          name: member.name || member.email || "Unknown",
+          name: member.name || member.email || null,
           email: member.email,
           avatar_url: null,
           wins: 0,
@@ -1274,8 +1274,8 @@ export function useMatches() {
 
       return matches.map((m) => ({
         ...m,
-        player_a_name: profileMap.get(m.player_a) || "Unknown",
-        player_b_name: profileMap.get(m.player_b) || "Unknown",
+        player_a_name: profileMap.get(m.player_a) || null,
+        player_b_name: profileMap.get(m.player_b) || null,
       })) as MatchWithProfiles[];
     },
     enabled: !!user,

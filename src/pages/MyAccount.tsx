@@ -162,6 +162,10 @@ export default function MyAccount() {
     for (const tx of (transactions || [])) {
       const txType = (tx as any).type;
       const amt = Math.abs(Number((tx as any).amount));
+      const txStatus = String((tx as any).status || "").toLowerCase();
+      // Hide rejected/cancelled/failed entries from the member's wallet history —
+      // they were never actually applied and only confuse the member.
+      if (["rejected", "cancelled", "failed", "expired"].includes(txStatus)) continue;
 
       if (txType === "credit") {
         // Fee charged to member → Credit column

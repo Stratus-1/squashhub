@@ -325,15 +325,20 @@ export function TournamentInviteActions({ notification, champId, registrationId,
           </div>
 
           {!isAccepted && !isDeclined && (
-            <div className="flex flex-col sm:flex-row gap-2 mt-3">
-              <Button size="sm" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(true)}>
-                {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : yocoReady && paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                {isPartnerInvite ? "Accept Partner" : paymentRequired && yocoReady ? `Pay & Register ${formatMoney(entryFeeCents)}` : "Accept Invite"}
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(false)}>
-                <XCircle className="w-3 h-3 mr-1" /> Decline
-              </Button>
-            </div>
+            <>
+              <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                <Button size="sm" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(true)}>
+                  {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : yocoReady && paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                  {isPartnerInvite ? "Accept Partner" : paymentRequired && yocoReady ? `Pay & Register ${formatMoney(entryFeeCents)}` : "Accept Invite"}
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(false)}>
+                  <XCircle className="w-3 h-3 mr-1" /> Decline
+                </Button>
+              </div>
+              {yocoReady && paymentRequired && (
+                <FnbPaymentNotice className="mt-2" />
+              )}
+            </>
           )}
         </div>
       </div>

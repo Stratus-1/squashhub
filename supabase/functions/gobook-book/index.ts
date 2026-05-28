@@ -346,9 +346,12 @@ async function postBooking(
     Notes: string;
     ConfirmViaSMS: boolean;
     ConfirmViaEmail: boolean;
+    Pin: string;
   },
 ): Promise<{ ok: boolean; status: number; bodyText: string }> {
-  const body = {
+  // GoBook validates a member-set PIN on insert. The exact field name varies
+  // by deployment, so we send the common variants — extras are ignored.
+  const body: Record<string, unknown> = {
     ServiceId: SQUASH_SERVICE_ID,
     ProviderId: CSIR_PROVIDER_ID,
     ProviderConsultantId: payload.ProviderConsultantId,
@@ -357,6 +360,11 @@ async function postBooking(
     ConfirmViaEmail: payload.ConfirmViaEmail,
     ConfirmViaSMS: payload.ConfirmViaSMS,
     Notes: payload.Notes,
+    Pin: payload.Pin,
+    PIN: payload.Pin,
+    Pincode: payload.Pin,
+    ClientPin: payload.Pin,
+    ClientPIN: payload.Pin,
   };
   const res = await fetch(`${GOBOOK_BASE}/Bookings/Insert`, {
     method: "POST",

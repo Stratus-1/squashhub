@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
+import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();

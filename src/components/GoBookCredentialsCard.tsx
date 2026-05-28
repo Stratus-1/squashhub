@@ -40,7 +40,10 @@ type CredMeta = {
   last_verified_at: string | null;
   last_verification_status: string | null;
   has_pin?: boolean;
+  has_membership_number?: boolean;
+  court_manager_membership_number?: string | null;
 };
+
 
 interface Props {
   clubMemberId: string;

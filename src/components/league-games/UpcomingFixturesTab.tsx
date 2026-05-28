@@ -193,7 +193,6 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
         .from("member_league_registrations")
         .select("is_captain, leagues:league_id (code)")
         .eq("club_member_id", activeMember.id)
-        .eq("active", true)
         .eq("is_captain", true);
       if (error) throw error;
       const codes = new Set<string>();

@@ -1542,22 +1542,37 @@ export default function Bookings() {
                       >
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={cancelBooking.isPending}
-                        onClick={async () => {
-                          try {
-                            await cancelBooking.mutateAsync(String(bookingDetails.id));
-                            toast.success("Booking cancelled");
-                            setBookingDetails(null);
-                          } catch (e: any) {
-                            toast.error(e.message || "Failed to cancel booking");
-                          }
-                        }}
-                      >
-                        {cancelBooking.isPending ? "Cancelling..." : "Cancel"}
-                      </Button>
+                      {(bookingDetails as any).source === 'gobook' ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Button variant="destructive" size="sm" disabled>
+                                Cancel
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[260px] text-xs">
+                            <p>GoBook does not allow cancellation of bookings. Please cancel your booking on Court Manager manually.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={cancelBooking.isPending}
+                          onClick={async () => {
+                            try {
+                              await cancelBooking.mutateAsync(String(bookingDetails.id));
+                              toast.success("Booking cancelled");
+                              setBookingDetails(null);
+                            } catch (e: any) {
+                              toast.error(e.message || "Failed to cancel booking");
+                            }
+                          }}
+                        >
+                          {cancelBooking.isPending ? "Cancelling..." : "Cancel"}
+                        </Button>
+                      )}
                     </>
                   )}
                 </>

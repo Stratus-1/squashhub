@@ -3435,6 +3435,7 @@ export type Database = {
           created_at: string
           cross_gender_subs_allowed: boolean
           enforce_sub_rules: boolean
+          fill_up_leagues_enabled: boolean
           forfeit_allowed: boolean
           games_format: string
           id: string
@@ -3468,6 +3469,7 @@ export type Database = {
           created_at?: string
           cross_gender_subs_allowed?: boolean
           enforce_sub_rules?: boolean
+          fill_up_leagues_enabled?: boolean
           forfeit_allowed?: boolean
           games_format?: string
           id?: string
@@ -3501,6 +3503,7 @@ export type Database = {
           created_at?: string
           cross_gender_subs_allowed?: boolean
           enforce_sub_rules?: boolean
+          fill_up_leagues_enabled?: boolean
           forfeit_allowed?: boolean
           games_format?: string
           id?: string

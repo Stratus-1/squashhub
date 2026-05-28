@@ -194,7 +194,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         </div>
         {myReg && (
           <Badge variant={myReg.status === "paid" || myReg.status === "waived" ? "default" : "outline"} className="text-[10px]">
-            {myReg.status === "paid" ? "Paid" : myReg.status === "waived" ? "Entered" : myReg.status === "pending_payment" ? "Payment due" : myReg.status}
+            {myReg.status === "paid" ? "Paid" : myReg.status === "waived" ? "Entered" : (myReg.status === "pending_payment" || myReg.status === "pending_eft") ? "Payment due" : myReg.status}
           </Badge>
         )}
       </div>

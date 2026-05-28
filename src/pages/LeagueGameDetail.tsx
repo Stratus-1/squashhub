@@ -2438,6 +2438,10 @@ export default function LeagueGameDetail() {
                 const isFirstPlayable = noGamesMarkedYet && positions.findIndex(p => (p.homeCode || p.homeName) && (p.awayCode || p.awayName) && !p.completed) === idx;
                 const hasResumableMarker = resumableMarker === idx;
                 const pr = summary.posResults[idx];
+                const liveGameIndex = pos.scores.length;
+                const displayScores = pos.currentGame
+                  ? [...pos.scores, { home: pos.currentGame.home, away: pos.currentGame.away }]
+                  : pos.scores;
                 // Total points = sum of all individual game scores
                 const homeTotalPts = pos.scores.reduce((sum, s) => sum + s.home, 0);
                 const awayTotalPts = pos.scores.reduce((sum, s) => sum + s.away, 0);
@@ -2560,8 +2564,12 @@ export default function LeagueGameDetail() {
                               )}
                             </span>
                             {Array.from({ length: bestOf }, (_, gi) => (
-                              <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].home > pos.scores[gi].away ? "font-bold" : "text-muted-foreground")}>
-                                {pos.scores[gi]?.home ?? ""}
+                              <span key={gi} className={cn(
+                                "text-center text-xs py-0.5",
+                                displayScores[gi] && displayScores[gi].home > displayScores[gi].away ? "font-bold" : "text-muted-foreground",
+                                gi === liveGameIndex && pos.currentGame && "bg-accent/15 ring-1 ring-accent/40 text-foreground animate-pulse"
+                              )}>
+                                {displayScores[gi]?.home ?? ""}
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.homeWins : ""}</span>
@@ -2726,8 +2734,12 @@ export default function LeagueGameDetail() {
                               )}
                             </span>
                             {Array.from({ length: bestOf }, (_, gi) => (
-                              <span key={gi} className={cn("text-center text-xs py-0.5", pos.scores[gi] && pos.scores[gi].away > pos.scores[gi].home ? "font-bold" : "text-muted-foreground")}>
-                                {pos.scores[gi]?.away ?? ""}
+                              <span key={gi} className={cn(
+                                "text-center text-xs py-0.5",
+                                displayScores[gi] && displayScores[gi].away > displayScores[gi].home ? "font-bold" : "text-muted-foreground",
+                                gi === liveGameIndex && pos.currentGame && "bg-accent/15 ring-1 ring-accent/40 text-foreground animate-pulse"
+                              )}>
+                                {displayScores[gi]?.away ?? ""}
                               </span>
                             ))}
                             <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.awayWins : ""}</span>

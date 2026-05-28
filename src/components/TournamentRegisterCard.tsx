@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Loader2, CreditCard, Check } from "lucide-react";
 import { toast } from "sonner";
+import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 
 interface Props {
   champ: any;

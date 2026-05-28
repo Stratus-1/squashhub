@@ -239,7 +239,7 @@ export function useBookings(date: string, clubId?: string) {
         if (profile) return profile.name;
         const member = clubMemberMap.get(id);
         if (member) return member.name || null;
-        return "Unknown";
+        return null;
       };
 
       // Fetch court names for display

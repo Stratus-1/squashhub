@@ -338,6 +338,30 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               to confirm bookings made on your behalf.
             </div>
           </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="cm-member-no" className="text-xs">
+              Court Manager membership number{" "}
+              {meta?.has_membership_number
+                ? `(saved: ${meta.court_manager_membership_number ?? ""} — leave blank to keep)`
+                : "(required for CSIR bookings)"}
+            </Label>
+            <Input
+              id="cm-member-no"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              value={membershipNumber}
+              onChange={(e) =>
+                setMembershipNumber(e.target.value.replace(/\s+/g, "").slice(0, 32))
+              }
+              placeholder={meta?.has_membership_number ? "••••" : "e.g. 3501"}
+            />
+            <div className="text-[11px] text-muted-foreground mt-1">
+              Your CSIR Court Manager membership number — required so the
+              booking is accepted by Court Manager on the CSIR court.
+            </div>
+          </div>
+
         </div>
         <Button size="sm" disabled={saving} onClick={save}>
           {saving ? (

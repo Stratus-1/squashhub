@@ -443,11 +443,18 @@ Deno.serve(async (req) => {
         const password = String(body.gobook_password || "");
         const pinRaw = body.gobook_pin;
         const pin = pinRaw == null ? null : String(pinRaw).trim();
+        const membershipRaw = body.court_manager_membership_number;
+        const membership = membershipRaw == null
+          ? null
+          : String(membershipRaw).trim();
         if (!username || !password) {
           return json({ error: "Missing username/password" }, 400);
         }
         if (pin !== null && pin !== "" && !/^\d{4,8}$/.test(pin)) {
           return json({ error: "PIN must be 4-8 digits" }, 400);
+        }
+        if (membership !== null && membership !== "" && membership.length > 32) {
+          return json({ error: "Membership number too long" }, 400);
         }
 
         // Verify with GoBook before saving
@@ -467,9 +474,14 @@ Deno.serve(async (req) => {
           last_verified_at: new Date().toISOString(),
           last_verification_status: "ok",
         };
-        // Only write pin when caller provided it (null = leave existing, ""
-        // = clear). Empty string clears.
+        // Only write fields when caller provided them (null = leave existing,
+        // "" = clear).
         if (pin !== null) upsertRow.gobook_pin = pin === "" ? null : pin;
+        if (membership !== null) {
+          upsertRow.court_manager_membership_number = membership === ""
+            ? null
+            : membership;
+        }
         const { error: upErr } = await adminClient
           .from("member_gobook_credentials")
           .upsert(upsertRow, { onConflict: "club_member_id" });
@@ -490,7 +502,7 @@ Deno.serve(async (req) => {
         const { data, error } = await adminClient
           .from("member_gobook_credentials")
           .select(
-            "gobook_username, last_verified_at, last_verification_status, gobook_pin",
+            "gobook_username, last_verified_at, last_verification_status, gobook_pin, court_manager_membership_number",
           )
           .eq("club_member_id", clubMemberId)
           .maybeSingle();
@@ -501,8 +513,12 @@ Deno.serve(async (req) => {
           last_verified_at: data?.last_verified_at ?? null,
           last_verification_status: data?.last_verification_status ?? null,
           has_pin: !!data?.gobook_pin,
+          has_membership_number: !!data?.court_manager_membership_number,
+          court_manager_membership_number:
+            data?.court_manager_membership_number ?? null,
         });
       }
+
 
       case "verify_credentials":
       case "debug_grid":

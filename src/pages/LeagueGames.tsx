@@ -9,6 +9,7 @@ import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub, useMyLeagueRegistration } from "@/hooks/use-club";
+import { useAssociationRules } from "@/hooks/use-association-rules";
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { IndividualStandingsTab } from "@/components/league-games/IndividualStandingsTab";

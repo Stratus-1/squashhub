@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Loader2, CreditCard, Check } from "lucide-react";
+import { Trophy, Loader2, CreditCard, Check, Landmark, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 
@@ -27,6 +27,54 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: members = [] } = useClubMembers(clubId);
   const [partnerId, setPartnerId] = useState<string>("");
+  const [showEft, setShowEft] = useState(false);
+
+  const { data: bankDetails } = useQuery({
+    queryKey: ["club-bank-details", clubId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_club_bank_details", { _club_id: clubId });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return (row || null) as null | {
+        bank_name: string | null;
+        bank_account_name: string | null;
+        bank_account_number: string | null;
+        bank_branch_code: string | null;
+        bank_reference: string | null;
+      };
+    },
+    enabled: !!clubId && showEft,
+  });
+
+  const markPendingEft = useMutation({
+    mutationFn: async (regId: string) => {
+      const { error } = await fromExt("club_champs_registrations")
+        .update({ status: "pending_eft" })
+        .eq("id", regId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Marked as paying by EFT — admin will confirm once received.");
+      qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
+      qc.invalidateQueries({ queryKey: ["tournament-registrations", champ.id] });
+    },
+    onError: (e: any) => toast.error(e.message || "Could not update payment method"),
+  });
+
+  const copyBankDetails = () => {
+    if (!bankDetails) return;
+    const ref = `${champ?.name ? champ.name.slice(0, 20) : "Tournament"}`.replace(/\s+/g, "-");
+    const parts = [
+      bankDetails.bank_name && `Bank: ${bankDetails.bank_name}`,
+      bankDetails.bank_account_name && `Account: ${bankDetails.bank_account_name}`,
+      bankDetails.bank_account_number && `Number: ${bankDetails.bank_account_number}`,
+      bankDetails.bank_branch_code && `Branch: ${bankDetails.bank_branch_code}`,
+      `Reference: ${ref}`,
+      `Amount: R${entryFee.toFixed(2)}`,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(parts.join("\n"));
+    toast.success("Bank details copied");
+  };
 
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
   const paymentRequired = !!champ?.payment_required && entryFee > 0;
@@ -216,16 +264,57 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
       {myReg && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {acceptsCard && paymentGateway === "yoco" && (
               <Button size="sm" className="text-xs h-8" onClick={() => launchPayment(myReg.id)}>
-                <CreditCard className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)}
+                <CreditCard className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)} by card
               </Button>
             )}
             {acceptsEft && (
-              <p className="text-[11px] text-muted-foreground">or pay R{entryFee.toFixed(2)} by EFT and the club will mark you paid.</p>
+              <Button
+                size="sm"
+                variant={myReg.status === "pending_eft" ? "default" : "outline"}
+                className="text-xs h-8"
+                onClick={() => {
+                  setShowEft(true);
+                  if (myReg.status !== "pending_eft") markPendingEft.mutate(myReg.id);
+                }}
+              >
+                <Landmark className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)} by EFT
+              </Button>
             )}
           </div>
+
+          {acceptsEft && (showEft || myReg.status === "pending_eft") && (
+            <Card className="p-3 bg-muted/50 space-y-1">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
+                {bankDetails && (
+                  <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1" onClick={copyBankDetails}>
+                    <Copy className="w-3 h-3" /> Copy
+                  </Button>
+                )}
+              </div>
+              {!bankDetails ? (
+                <p className="text-xs text-muted-foreground">
+                  Bank details not yet captured by the club. Please contact your club admin to arrange EFT — they will mark you paid once received.
+                </p>
+              ) : (
+                <>
+                  {bankDetails.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {bankDetails.bank_name}</p>}
+                  {bankDetails.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {bankDetails.bank_account_name}</p>}
+                  {bankDetails.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {bankDetails.bank_account_number}</p>}
+                  {bankDetails.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {bankDetails.bank_branch_code}</p>}
+                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {(champ?.name || "Tournament").slice(0, 20)}</p>
+                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Amount:</span> R{entryFee.toFixed(2)}</p>
+                </>
+              )}
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 pt-1">
+                After making your EFT, the club admin will confirm receipt and mark your entry as paid.
+              </p>
+            </Card>
+          )}
+
           {acceptsCard && paymentGateway === "yoco" && (
             <FnbPaymentNotice showEftFallback={acceptsEft} />
           )}

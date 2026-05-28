@@ -198,7 +198,7 @@ type GridRow = {
 function extractAvailableSlotId(cell: string): string | null {
   const inputs = cell.match(/<input\b[^>]*>/gi) ?? [];
   for (const input of inputs) {
-    if (!/\btype\s*=\s*["']?checkbox["']?/i.test(input)) continue;
+    if (!/\btype\s*=\s*(?:["']checkbox["']|checkbox)(?=\s|>|\/)/i.test(input)) continue;
     if (/\bdisabled\b/i.test(input)) continue;
 
     const quotedValue = input.match(/\bvalue\s*=\s*["']([^"']+)["']/i);
@@ -550,6 +550,16 @@ Deno.serve(async (req) => {
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,
         });
+        if (!result.ok) {
+          return json({
+            error: `GoBook rejected the booking for ${startHour}:00 on Court #${chosen.courtNumber}`,
+            status: result.status,
+            court: chosen.courtNumber,
+            slot_id: chosen.slotId,
+            gobook_response: result.bodyText.slice(0, 1000),
+          }, 409);
+        }
+
         return json({
           ok: result.ok,
           status: result.status,

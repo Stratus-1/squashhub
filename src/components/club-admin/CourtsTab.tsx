@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, AlertCircle, Info } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const RELAY_DEVICES = [
@@ -522,6 +522,24 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
             onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))}
             placeholder="e.g. CourtSide Bookings"
           />
+        </div>
+      )}
+
+      {enabled && form.provider === "gobook" && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex gap-2">
+          <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-[11px] text-muted-foreground">
+              Your club uses{" "}
+              <a href="https://www.gobook.co.za" target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">GoBook</a>{" "}
+              for court bookings. SquashHub syncs with GoBook so members can book courts here.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Members must first register directly on{" "}
+              <a href="https://www.gobook.co.za" target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">GoBook</a>{" "}
+              and then go to <strong>My Account</strong> on this app to save their GoBook credentials. Once linked, they can make bookings through SquashHub.
+            </p>
+          </div>
         </div>
       )}
 

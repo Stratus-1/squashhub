@@ -1,0 +1,1 @@
+DELETE FROM public.bookings WHERE source='gobook' AND (external_booker_name IS NULL OR trim(external_booker_name)='');

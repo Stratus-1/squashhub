@@ -416,8 +416,7 @@ const TILE_STYLES: Record<string, { ring: string; icon: string; glow: string; ho
 function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigate }: QuickAccessProps) {
   const home: Tile[] = [
     { title: "Stats",    url: "/analytics", icon: BarChart3,  color: "sky" },
-    { title: "Bookings", url: "/bookings",  icon: Calendar,   color: "blue" },
-    { title: "Courts",   url: "/bookings",  icon: LayoutGrid, color: "cyan" },
+    { title: "Court Bookings", url: "/bookings", icon: Calendar, color: "blue" },
   ];
 
   const activities: Tile[] = [

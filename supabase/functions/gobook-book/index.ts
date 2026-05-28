@@ -347,10 +347,12 @@ async function postBooking(
     ConfirmViaSMS: boolean;
     ConfirmViaEmail: boolean;
     Pin: string;
+    MembershipNumber: string;
   },
 ): Promise<{ ok: boolean; status: number; bodyText: string }> {
-  // GoBook validates a member-set PIN on insert. The exact field name varies
-  // by deployment, so we send the common variants — extras are ignored.
+  // GoBook validates a member-set PIN and Court Manager membership number on
+  // insert. The exact field names vary by deployment, so we send the common
+  // variants — extras are ignored.
   const body: Record<string, unknown> = {
     ServiceId: SQUASH_SERVICE_ID,
     ProviderId: CSIR_PROVIDER_ID,
@@ -365,6 +367,13 @@ async function postBooking(
     Pincode: payload.Pin,
     ClientPin: payload.Pin,
     ClientPIN: payload.Pin,
+    ConfirmPin: payload.Pin,
+    ConfirmPIN: payload.Pin,
+    MembershipNumber: payload.MembershipNumber,
+    MembershipNo: payload.MembershipNumber,
+    MemberNumber: payload.MembershipNumber,
+    MemberNo: payload.MembershipNumber,
+    ClientMembershipNumber: payload.MembershipNumber,
   };
   const res = await fetch(`${GOBOOK_BASE}/Bookings/Insert`, {
     method: "POST",
@@ -382,6 +391,7 @@ async function postBooking(
   const text = await res.text();
   return { ok: res.ok, status: res.status, bodyText: text };
 }
+
 
 // ---------- Edge function ----------
 Deno.serve(async (req) => {

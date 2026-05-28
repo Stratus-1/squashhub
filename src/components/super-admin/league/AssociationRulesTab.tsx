@@ -39,6 +39,7 @@ const DEFAULTS: Partial<LeagueRules> = {
   team_size_mode: "fixed",
   team_size: 4,
   allow_multi_team_registration: false,
+  fill_up_leagues_enabled: true,
 };
 
 export default function AssociationRulesTab({ associationId }: Props) {

@@ -346,9 +346,12 @@ async function postBooking(
     Notes: string;
     ConfirmViaSMS: boolean;
     ConfirmViaEmail: boolean;
+    Pin: string;
   },
 ): Promise<{ ok: boolean; status: number; bodyText: string }> {
-  const body = {
+  // GoBook validates a member-set PIN on insert. The exact field name varies
+  // by deployment, so we send the common variants — extras are ignored.
+  const body: Record<string, unknown> = {
     ServiceId: SQUASH_SERVICE_ID,
     ProviderId: CSIR_PROVIDER_ID,
     ProviderConsultantId: payload.ProviderConsultantId,
@@ -357,6 +360,11 @@ async function postBooking(
     ConfirmViaEmail: payload.ConfirmViaEmail,
     ConfirmViaSMS: payload.ConfirmViaSMS,
     Notes: payload.Notes,
+    Pin: payload.Pin,
+    PIN: payload.Pin,
+    Pincode: payload.Pin,
+    ClientPin: payload.Pin,
+    ClientPIN: payload.Pin,
   };
   const res = await fetch(`${GOBOOK_BASE}/Bookings/Insert`, {
     method: "POST",
@@ -423,8 +431,13 @@ Deno.serve(async (req) => {
       case "save_credentials": {
         const username = String(body.gobook_username || "").trim();
         const password = String(body.gobook_password || "");
+        const pinRaw = body.gobook_pin;
+        const pin = pinRaw == null ? null : String(pinRaw).trim();
         if (!username || !password) {
           return json({ error: "Missing username/password" }, 400);
+        }
+        if (pin !== null && pin !== "" && !/^\d{4,8}$/.test(pin)) {
+          return json({ error: "PIN must be 4-8 digits" }, 400);
         }
 
         // Verify with GoBook before saving
@@ -435,17 +448,21 @@ Deno.serve(async (req) => {
         }
 
         const { ciphertext, iv } = await encryptPassword(password);
+        const upsertRow: Record<string, unknown> = {
+          club_member_id: clubMemberId,
+          user_id: userId,
+          gobook_username: username,
+          gobook_password_ciphertext: ciphertext,
+          gobook_password_iv: iv,
+          last_verified_at: new Date().toISOString(),
+          last_verification_status: "ok",
+        };
+        // Only write pin when caller provided it (null = leave existing, ""
+        // = clear). Empty string clears.
+        if (pin !== null) upsertRow.gobook_pin = pin === "" ? null : pin;
         const { error: upErr } = await adminClient
           .from("member_gobook_credentials")
-          .upsert({
-            club_member_id: clubMemberId,
-            user_id: userId,
-            gobook_username: username,
-            gobook_password_ciphertext: ciphertext,
-            gobook_password_iv: iv,
-            last_verified_at: new Date().toISOString(),
-            last_verification_status: "ok",
-          }, { onConflict: "club_member_id" });
+          .upsert(upsertRow, { onConflict: "club_member_id" });
         if (upErr) return json({ error: upErr.message }, 500);
         return json({ ok: true, verified: true });
       }
@@ -463,7 +480,7 @@ Deno.serve(async (req) => {
         const { data, error } = await adminClient
           .from("member_gobook_credentials")
           .select(
-            "gobook_username, last_verified_at, last_verification_status",
+            "gobook_username, last_verified_at, last_verification_status, gobook_pin",
           )
           .eq("club_member_id", clubMemberId)
           .maybeSingle();
@@ -473,6 +490,7 @@ Deno.serve(async (req) => {
           gobook_username: data?.gobook_username ?? null,
           last_verified_at: data?.last_verified_at ?? null,
           last_verification_status: data?.last_verification_status ?? null,
+          has_pin: !!data?.gobook_pin,
         });
       }
 
@@ -482,7 +500,7 @@ Deno.serve(async (req) => {
         const { data: row, error: rErr } = await adminClient
           .from("member_gobook_credentials")
           .select(
-            "gobook_username, gobook_password_ciphertext, gobook_password_iv",
+            "gobook_username, gobook_password_ciphertext, gobook_password_iv, gobook_pin",
           )
           .eq("club_member_id", clubMemberId)
           .maybeSingle();
@@ -648,6 +666,13 @@ Deno.serve(async (req) => {
           }, 409);
         }
 
+        const memberPin = String((row as { gobook_pin?: string | null }).gobook_pin || "").trim();
+        if (!memberPin) {
+          return json({
+            error: "GoBook requires a PIN to confirm bookings. Save your GoBook PIN in your account settings and try again.",
+            hint: "Open My Account → GoBook Login → enter the PIN you set on gobook.co.za.",
+          }, 400);
+        }
         const result = await postBooking(jar, {
           BookingDate: dateToGoBookBookingDate(date),
           PSSTIds: chosen.slotId,
@@ -655,6 +680,7 @@ Deno.serve(async (req) => {
           Notes: notes,
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,
+          Pin: memberPin,
         });
         if (!result.ok) {
           console.warn("gobook-book insert rejected", JSON.stringify({

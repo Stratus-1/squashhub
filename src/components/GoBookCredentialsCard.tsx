@@ -39,6 +39,7 @@ type CredMeta = {
   gobook_username: string | null;
   last_verified_at: string | null;
   last_verification_status: string | null;
+  has_pin?: boolean;
 };
 
 interface Props {
@@ -53,6 +54,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
   const qc = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -77,6 +79,11 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       toast.error("Enter your GoBook email and password");
       return;
     }
+    const trimmedPin = pin.trim();
+    if (trimmedPin && !/^\d{4,8}$/.test(trimmedPin)) {
+      toast.error("PIN must be 4-8 digits");
+      return;
+    }
     setSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke("gobook-book", {
@@ -85,6 +92,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
           club_member_id: clubMemberId,
           gobook_username: username.trim(),
           gobook_password: password,
+          gobook_pin: trimmedPin,
         },
       });
       const msg = await extractInvokeError(data, error);
@@ -92,6 +100,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       toast.success("GoBook login saved and verified");
       setPassword("");
       setUsername("");
+      setPin("");
       qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
     } catch (e) {
       toast.error((e as Error).message || "Failed to save GoBook login");
@@ -215,6 +224,15 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               </AlertDescription>
             </Alert>
           )}
+          {!meta.has_pin && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-xs">
+                GoBook also needs the booking PIN you set on your gobook.co.za
+                profile. Without it, GoBook will reject pushed bookings as
+                "Incorrect PIN". Add your PIN below and save.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       ) : null}
 
@@ -246,6 +264,25 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
             />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="gobook-pin" className="text-xs">
+              GoBook booking PIN {meta?.has_pin ? "(saved — leave blank to keep)" : "(required to confirm bookings)"}
+            </Label>
+            <Input
+              id="gobook-pin"
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              autoComplete="off"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder={meta?.has_pin ? "••••" : "e.g. 1234"}
+            />
+            <div className="text-[11px] text-muted-foreground mt-1">
+              The same PIN you set on your gobook.co.za profile — GoBook uses it
+              to confirm bookings made on your behalf.
+            </div>
           </div>
         </div>
         <Button size="sm" disabled={saving} onClick={save}>

@@ -264,16 +264,57 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
       {myReg && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {acceptsCard && paymentGateway === "yoco" && (
               <Button size="sm" className="text-xs h-8" onClick={() => launchPayment(myReg.id)}>
-                <CreditCard className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)}
+                <CreditCard className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)} by card
               </Button>
             )}
             {acceptsEft && (
-              <p className="text-[11px] text-muted-foreground">or pay R{entryFee.toFixed(2)} by EFT and the club will mark you paid.</p>
+              <Button
+                size="sm"
+                variant={myReg.status === "pending_eft" ? "default" : "outline"}
+                className="text-xs h-8"
+                onClick={() => {
+                  setShowEft(true);
+                  if (myReg.status !== "pending_eft") markPendingEft.mutate(myReg.id);
+                }}
+              >
+                <Landmark className="w-3 h-3 mr-1" /> Pay R{entryFee.toFixed(2)} by EFT
+              </Button>
             )}
           </div>
+
+          {acceptsEft && (showEft || myReg.status === "pending_eft") && (
+            <Card className="p-3 bg-muted/50 space-y-1">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Bank Details</p>
+                {bankDetails && (
+                  <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1" onClick={copyBankDetails}>
+                    <Copy className="w-3 h-3" /> Copy
+                  </Button>
+                )}
+              </div>
+              {!bankDetails ? (
+                <p className="text-xs text-muted-foreground">
+                  Bank details not yet captured by the club. Please contact your club admin to arrange EFT — they will mark you paid once received.
+                </p>
+              ) : (
+                <>
+                  {bankDetails.bank_name && <p className="text-xs"><span className="text-muted-foreground">Bank:</span> {bankDetails.bank_name}</p>}
+                  {bankDetails.bank_account_name && <p className="text-xs"><span className="text-muted-foreground">Account:</span> {bankDetails.bank_account_name}</p>}
+                  {bankDetails.bank_account_number && <p className="text-xs"><span className="text-muted-foreground">Number:</span> {bankDetails.bank_account_number}</p>}
+                  {bankDetails.bank_branch_code && <p className="text-xs"><span className="text-muted-foreground">Branch:</span> {bankDetails.bank_branch_code}</p>}
+                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Reference:</span> {(champ?.name || "Tournament").slice(0, 20)}</p>
+                  <p className="text-xs font-semibold"><span className="text-muted-foreground">Amount:</span> R{entryFee.toFixed(2)}</p>
+                </>
+              )}
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 pt-1">
+                After making your EFT, the club admin will confirm receipt and mark your entry as paid.
+              </p>
+            </Card>
+          )}
+
           {acceptsCard && paymentGateway === "yoco" && (
             <FnbPaymentNotice showEftFallback={acceptsEft} />
           )}

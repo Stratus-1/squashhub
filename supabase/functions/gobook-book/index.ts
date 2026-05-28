@@ -571,7 +571,9 @@ Deno.serve(async (req) => {
         if (!chosen && courtPref !== "any") {
           const courtGrid = await fetchGrid(jar, date, courtPref);
           const courtRow = courtGrid.rows.find((r) => r.startHour === startHour);
-          const free = courtRow?.courts.find((c) => c.free && c.slotId);
+          const free = courtRow?.courts.length === 1
+            ? courtRow.courts.find((c) => c.free && c.slotId)
+            : courtRow?.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
           if (free) {
             rows = courtGrid.rows;
             courtCount = courtGrid.courtCount;

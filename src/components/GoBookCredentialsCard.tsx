@@ -79,6 +79,11 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       toast.error("Enter your GoBook email and password");
       return;
     }
+    const trimmedPin = pin.trim();
+    if (trimmedPin && !/^\d{4,8}$/.test(trimmedPin)) {
+      toast.error("PIN must be 4-8 digits");
+      return;
+    }
     setSaving(true);
     try {
       const { data, error } = await supabase.functions.invoke("gobook-book", {
@@ -87,6 +92,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
           club_member_id: clubMemberId,
           gobook_username: username.trim(),
           gobook_password: password,
+          gobook_pin: trimmedPin,
         },
       });
       const msg = await extractInvokeError(data, error);

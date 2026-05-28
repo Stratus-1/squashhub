@@ -666,6 +666,13 @@ Deno.serve(async (req) => {
           }, 409);
         }
 
+        const memberPin = String((row as { gobook_pin?: string | null }).gobook_pin || "").trim();
+        if (!memberPin) {
+          return json({
+            error: "GoBook requires a PIN to confirm bookings. Save your GoBook PIN in your account settings and try again.",
+            hint: "Open My Account → GoBook Login → enter the PIN you set on gobook.co.za.",
+          }, 400);
+        }
         const result = await postBooking(jar, {
           BookingDate: dateToGoBookBookingDate(date),
           PSSTIds: chosen.slotId,
@@ -673,6 +680,7 @@ Deno.serve(async (req) => {
           Notes: notes,
           ConfirmViaSMS: sms,
           ConfirmViaEmail: email,
+          Pin: memberPin,
         });
         if (!result.ok) {
           console.warn("gobook-book insert rejected", JSON.stringify({

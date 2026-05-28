@@ -4311,6 +4311,7 @@ export type Database = {
       member_gobook_credentials: {
         Row: {
           club_member_id: string
+          court_manager_membership_number: string | null
           created_at: string
           gobook_password_ciphertext: string
           gobook_password_iv: string
@@ -4325,6 +4326,7 @@ export type Database = {
         }
         Insert: {
           club_member_id: string
+          court_manager_membership_number?: string | null
           created_at?: string
           gobook_password_ciphertext: string
           gobook_password_iv: string
@@ -4339,6 +4341,7 @@ export type Database = {
         }
         Update: {
           club_member_id?: string
+          court_manager_membership_number?: string | null
           created_at?: string
           gobook_password_ciphertext?: string
           gobook_password_iv?: string

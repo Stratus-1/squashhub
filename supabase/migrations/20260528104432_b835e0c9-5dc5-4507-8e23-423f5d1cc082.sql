@@ -1,0 +1,1 @@
+ALTER TABLE public.member_gobook_credentials ADD COLUMN IF NOT EXISTS court_manager_membership_number TEXT;

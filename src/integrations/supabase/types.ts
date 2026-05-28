@@ -5640,6 +5640,16 @@ export type Database = {
       get_club_analytics:
         | { Args: { days_back?: number }; Returns: Json }
         | { Args: { days_back?: number; p_club_id?: string }; Returns: Json }
+      get_club_bank_details: {
+        Args: { _club_id: string }
+        Returns: {
+          bank_account_name: string
+          bank_account_number: string
+          bank_branch_code: string
+          bank_name: string
+          bank_reference: string
+        }[]
+      }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
       get_clubs_with_admins: {
         Args: never

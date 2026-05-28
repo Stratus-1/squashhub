@@ -38,6 +38,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -1350,6 +1351,7 @@ export default function Bookings() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-heading">Booking Details</DialogTitle>
+            <DialogDescription className="sr-only">Court booking details, players, time, and light session information.</DialogDescription>
           </DialogHeader>
           {bookingDetails && (
             <div className="space-y-3 py-2">
@@ -1551,6 +1553,7 @@ export default function Bookings() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-heading">Book Court</DialogTitle>
+            <DialogDescription className="sr-only">Confirm the selected court, time, opponent, guest, visitor, and lights options.</DialogDescription>
             <p className="text-xs text-muted-foreground">Booking as <span className="font-medium text-foreground">{activeMember?.name || me?.name || "You"}</span></p>
           </DialogHeader>
           {bookingDialog && (

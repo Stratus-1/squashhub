@@ -80,13 +80,48 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
   });
 
   const save = async () => {
-    if (!username.trim() || !password) {
-      toast.error("Enter your GoBook email and password");
-      return;
-    }
     const trimmedPin = pin.trim();
+    const trimmedMembership = membershipNumber.trim();
     if (trimmedPin && !/^\d{4,8}$/.test(trimmedPin)) {
       toast.error("PIN must be 4-8 digits");
+      return;
+    }
+
+    // If login already exists and the user only wants to update the PIN /
+    // membership number, skip the password re-entry.
+    const onlyExtras =
+      meta?.has_credentials && !username.trim() && !password;
+    if (onlyExtras) {
+      if (!trimmedPin && !trimmedMembership) {
+        toast.error("Enter a PIN or membership number to update");
+        return;
+      }
+      setSaving(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("gobook-book", {
+          body: {
+            action: "save_extras",
+            club_member_id: clubMemberId,
+            gobook_pin: trimmedPin || null,
+            court_manager_membership_number: trimmedMembership || null,
+          },
+        });
+        const msg = await extractInvokeError(data, error);
+        if (msg) throw new Error(msg);
+        toast.success("Saved");
+        setPin("");
+        setMembershipNumber("");
+        qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
+      } catch (e) {
+        toast.error((e as Error).message || "Failed to save");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (!username.trim() || !password) {
+      toast.error("Enter your GoBook email and password");
       return;
     }
     setSaving(true);
@@ -98,6 +133,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
           gobook_username: username.trim(),
           gobook_password: password,
           gobook_pin: trimmedPin,
+          court_manager_membership_number: trimmedMembership,
         },
       });
       const msg = await extractInvokeError(data, error);
@@ -106,6 +142,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       setPassword("");
       setUsername("");
       setPin("");
+      setMembershipNumber("");
       qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
     } catch (e) {
       toast.error((e as Error).message || "Failed to save GoBook login");
@@ -113,6 +150,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       setSaving(false);
     }
   };
+
 
   const verify = async () => {
     setVerifying(true);

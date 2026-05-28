@@ -543,42 +543,52 @@ Deno.serve(async (req) => {
           );
         }
 
-        let { rows, courtCount } = await fetchGrid(jar, date);
-        const targetRow = rows.find((r) => r.startHour === startHour);
+        // When a specific court is requested, prefer that court's own grid —
+        // GoBook's combined ("Any") view sometimes hides slots (e.g. early
+        // morning hours) that the per-court view exposes as bookable.
+        let { rows, courtCount } = courtPref === "any"
+          ? await fetchGrid(jar, date)
+          : await fetchGrid(jar, date, courtPref);
+        let targetRow = rows.find((r) => r.startHour === startHour);
+        let chosen = null as
+          | { courtNumber: number; slotId: string; providerConsultantId: string | null }
+          | null;
+        if (targetRow) {
+          if (courtPref === "any") {
+            const free = targetRow.courts.find((c) => c.free && c.slotId);
+            if (free) {
+              chosen = { courtNumber: free.courtNumber, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
+            }
+          } else {
+            const free = targetRow.courts.length === 1
+              ? targetRow.courts.find((c) => c.free && c.slotId)
+              : targetRow.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
+            if (free) chosen = { courtNumber: courtPref as number, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
+          }
+        }
+        // Fallback: if the per-court view didn't yield a slot, retry combined.
+        if (!chosen && courtPref !== "any") {
+          const combined = await fetchGrid(jar, date);
+          const combinedRow = combined.rows.find((r) => r.startHour === startHour);
+          const free = combinedRow?.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
+          if (free) {
+            rows = combined.rows;
+            courtCount = combined.courtCount;
+            targetRow = combinedRow;
+            chosen = { courtNumber: courtPref, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
+          } else if (!targetRow) {
+            targetRow = combinedRow;
+          }
+        }
         if (!targetRow) {
           return json(
             {
               error:
                 `No grid row found for hour ${startHour}:00. GoBook returned ${rows.length} rows.`,
+              available_hours: rows.map((r) => r.startHour),
             },
             400,
           );
-        }
-        let chosen = null as
-          | { courtNumber: number; slotId: string; providerConsultantId: string | null }
-          | null;
-        if (courtPref === "any") {
-          const free = targetRow.courts.find((c) => c.free && c.slotId);
-          if (free) {
-            chosen = { courtNumber: free.courtNumber, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
-          }
-        } else {
-          const c = targetRow.courts.find((c) =>
-            c.courtNumber === courtPref && c.free && c.slotId
-          );
-          if (c) chosen = { courtNumber: c.courtNumber, slotId: c.slotId!, providerConsultantId: c.providerConsultantId };
-        }
-        if (!chosen && courtPref !== "any") {
-          const courtGrid = await fetchGrid(jar, date, courtPref);
-          const courtRow = courtGrid.rows.find((r) => r.startHour === startHour);
-          const free = courtRow?.courts.length === 1
-            ? courtRow.courts.find((c) => c.free && c.slotId)
-            : courtRow?.courts.find((c) => c.courtNumber === courtPref && c.free && c.slotId);
-          if (free) {
-            rows = courtGrid.rows;
-            courtCount = courtGrid.courtCount;
-            chosen = { courtNumber: courtPref, slotId: free.slotId!, providerConsultantId: free.providerConsultantId };
-          }
         }
         if (!chosen) {
           return json({
@@ -587,6 +597,7 @@ Deno.serve(async (req) => {
             }`,
             row: targetRow,
             court_count: courtCount,
+            hint: "GoBook's grid did not expose a bookable checkbox for this slot. The slot may be locked/closed at this hour, already booked, or too close to the current time for online booking.",
           }, 409);
         }
 

@@ -246,11 +246,12 @@ async function fetchGrid(
   courtNumber: number | "any" = "any",
 ): Promise<{ raw: string; rows: GridRow[]; courtCount: number }> {
   const dateKey = dateToGoBookKeyDate(yyyyMmDd);
-  // GoBook's grid URL uses the ProviderConsultantId in the 3rd key slot
-  // (0 = "Any" composite view, 472-475 = individual CSIR courts).
+  // GoBook's grid URL uses 0 for the composite view and 1-4 for the
+  // individual CSIR court tabs. The booking POST still uses the separate
+  // ProviderConsultantId values (472-475), but those do not load the grid.
   const courtKey = courtNumber === "any"
     ? "0"
-    : (CSIR_COURT_CONSULTANT_IDS.get(courtNumber) || "0");
+    : String(courtNumber);
   // key: ServiceId,ProviderId,court,slot,date
   const url =
     `${GOBOOK_BASE}/Bookings/New?key=${SQUASH_SERVICE_ID},${CSIR_PROVIDER_ID},${courtKey},0,${dateKey}&x=${Date.now()}`;

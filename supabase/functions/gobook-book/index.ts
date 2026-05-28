@@ -8,7 +8,7 @@
 //   debug_grid           { club_member_id, date (YYYY-MM-DD), court? }     -> parsed grid for inspection
 //   book                 { club_member_id, date (YYYY-MM-DD), start_hour (0-23), court? (1..4 or "any"), notes?, sms?, email? }
 //
-// Defaults: ServiceId=6 (Squash), ProviderId=234 (CSIR), ProviderConsultantId=476 ("Any" court).
+// Defaults: ServiceId=6 (Squash), ProviderId=234 (CSIR), ProviderConsultantId=0 ("Any" court).
 // Time slots are hourly (00:00-01:00 ... 23:00-24:00) on a 4-court grid.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
@@ -22,12 +22,12 @@ const corsHeaders = {
 const GOBOOK_BASE = "https://www.gobook.co.za";
 const SQUASH_SERVICE_ID = "6";
 const CSIR_PROVIDER_ID = "234";
-const ANY_COURT_CONSULTANT_ID = "476";
+const ANY_COURT_CONSULTANT_ID = "0";
 const CSIR_COURT_CONSULTANT_IDS = new Map<number, string>([
-  [1, "472"],
-  [2, "473"],
-  [3, "474"],
-  [4, "475"],
+  [1, "476"],
+  [2, "477"],
+  [3, "478"],
+  [4, "479"],
 ]);
 
 function json(body: unknown, status = 200) {
@@ -226,10 +226,18 @@ function extractAvailableSlotId(cell: string): string | null {
     if (/\bdisabled\b/i.test(input)) continue;
 
     const quotedValue = input.match(/\bvalue\s*=\s*["']([^"']+)["']/i);
-    if (quotedValue?.[1]) return quotedValue[1];
+    if (quotedValue?.[1]) return quotedValue[1].replace(/^PSST/i, "");
 
     const unquotedValue = input.match(/\bvalue\s*=\s*([^\s>]+)/i);
-    if (unquotedValue?.[1]) return unquotedValue[1];
+    if (unquotedValue?.[1]) return unquotedValue[1].replace(/^PSST/i, "");
+
+    // GoBook's current grid exposes bookable slots as id='PSST087309'
+    // without a value attribute. Its submit script strips the PSST prefix.
+    const quotedId = input.match(/\bid\s*=\s*["']PSST([^"']+)["']/i);
+    if (quotedId?.[1]) return quotedId[1];
+
+    const unquotedId = input.match(/\bid\s*=\s*PSST([^\s>]+)/i);
+    if (unquotedId?.[1]) return unquotedId[1];
   }
   return null;
 }

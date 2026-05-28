@@ -182,7 +182,7 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [scratchConfirmText, setScratchConfirmText] = useState("");
 
   const sessionKey = getMarkerSessionKey(config);
-  const persisted = useRef<PersistedState | null>(loadPersisted(getMarkerSessionKeys(config))).current;
+  const persisted = useRef<PersistedState | null>(loadPersisted(getMarkerSessionKeys(config), config, initialScores)).current;
   const savedState = persisted ? null : buildStateFromSavedScores(config, initialScores);
 
   const [scoreA, setScoreA] = useState(persisted?.scoreA ?? savedState?.scoreA ?? 0);

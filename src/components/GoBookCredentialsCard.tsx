@@ -9,6 +9,31 @@ import { Loader2, Shield, CheckCircle2, Trash2, ExternalLink } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Extract a useful error message from a supabase.functions.invoke failure.
+// On non-2xx, supabase-js sets `error` (FunctionsHttpError) and leaves `data`
+// null — the response body has to be read off `error.context`.
+async function extractInvokeError(
+  data: unknown,
+  error: unknown,
+): Promise<string | null> {
+  if ((data as { error?: string } | null)?.error) {
+    return (data as { error: string }).error;
+  }
+  if (!error) return null;
+  const ctx = (error as { context?: Response }).context;
+  if (ctx && typeof ctx.text === "function") {
+    try {
+      const txt = await ctx.clone().text();
+      try {
+        const parsed = JSON.parse(txt);
+        if (parsed?.error) return String(parsed.error);
+      } catch { /* not JSON */ }
+      if (txt) return txt.slice(0, 300);
+    } catch { /* ignore */ }
+  }
+  return (error as Error).message || "Request failed";
+}
+
 type CredMeta = {
   has_credentials: boolean;
   gobook_username: string | null;
@@ -62,9 +87,8 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
           gobook_password: password,
         },
       });
-      if (error) throw error;
-      const payload = data as { error?: string; ok?: boolean };
-      if (payload?.error) throw new Error(payload.error);
+      const msg = await extractInvokeError(data, error);
+      if (msg) throw new Error(msg);
       toast.success("GoBook login saved and verified");
       setPassword("");
       setUsername("");
@@ -82,9 +106,8 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       const { data, error } = await supabase.functions.invoke("gobook-book", {
         body: { action: "verify_credentials", club_member_id: clubMemberId },
       });
-      if (error) throw error;
-      const payload = data as { error?: string; ok?: boolean };
-      if (payload?.error) throw new Error(payload.error);
+      const msg = await extractInvokeError(data, error);
+      if (msg) throw new Error(msg);
       toast.success("GoBook login is working");
       qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
     } catch (e) {
@@ -102,9 +125,8 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
       const { data, error } = await supabase.functions.invoke("gobook-book", {
         body: { action: "delete_credentials", club_member_id: clubMemberId },
       });
-      if (error) throw error;
-      const payload = data as { error?: string };
-      if (payload?.error) throw new Error(payload.error);
+      const msg = await extractInvokeError(data, error);
+      if (msg) throw new Error(msg);
       toast.success("GoBook login removed");
       qc.invalidateQueries({ queryKey: ["gobook-cred-meta", clubMemberId] });
     } catch (e) {

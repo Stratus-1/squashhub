@@ -1562,6 +1562,10 @@ export default function LeagueGameDetail() {
 
   const handleMarkerComplete = useCallback((result: { games: GameScore[]; winnerId: "a" | "b"; durationSeconds: number }) => {
     if (activeMarker === null) return;
+    // Cancel any pending debounced live-rally write so a stale rally
+    // (e.g. 4-10 just before an 11-4 winner) cannot clobber the finalised
+    // game by re-setting current_game after persistPositionScores cleared it.
+    if (liveScoreTimerRef.current) { clearTimeout(liveScoreTimerRef.current); liveScoreTimerRef.current = null; }
     const scores = result.games.map((g) => ({ home: g.a, away: g.b }));
     const updatedPos = { ...positions[activeMarker], scores, completed: true };
     setPositions((prev) => { const next = [...prev]; next[activeMarker] = updatedPos; return next; });
@@ -1990,6 +1994,9 @@ export default function LeagueGameDetail() {
               if (activeMarker === null) return;
               const current = positions[activeMarker];
               if (!current) return;
+              // A finished game arrived — kill any pending live-rally debounce
+              // so the just-cleared current_game can't be re-set to a stale rally.
+              if (liveScoreTimerRef.current) { clearTimeout(liveScoreTimerRef.current); liveScoreTimerRef.current = null; }
               // Persist game-by-game so other viewers see live progress.
               const updated = { ...current, scores: games.map((g) => ({ home: g.a, away: g.b })) };
               setPositions((prev) => { const next = [...prev]; next[activeMarker] = updated; return next; });

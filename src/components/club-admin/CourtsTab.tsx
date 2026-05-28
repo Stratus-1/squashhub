@@ -525,6 +525,24 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
         </div>
       )}
 
+      {enabled && form.provider === "gobook" && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex gap-2">
+          <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-[11px] text-muted-foreground">
+              Your club uses{" "}
+              <a href="https://www.gobook.co.za" target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">GoBook</a>{" "}
+              for court bookings. SquashHub syncs with GoBook so members can book courts here.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Members must first register directly on{" "}
+              <a href="https://www.gobook.co.za" target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">GoBook</a>{" "}
+              and then go to <strong>My Account</strong> on this app to save their GoBook credentials. Once linked, they can make bookings through SquashHub.
+            </p>
+          </div>
+        </div>
+      )}
+
       {enabled && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 flex gap-2">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />

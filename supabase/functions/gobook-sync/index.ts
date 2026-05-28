@@ -246,7 +246,7 @@ async function syncClub(
   // member_gobook_credentials has user_id; join club_members to scope by club.
   const { data: memberRows, error: memErr } = await admin
     .from("club_members")
-    .select("id, full_name, user_id")
+    .select("id, name, user_id")
     .eq("club_id", clubId);
   if (memErr) throw new Error(memErr.message);
   const memberIds = (memberRows ?? []).map((m: any) => m.id);

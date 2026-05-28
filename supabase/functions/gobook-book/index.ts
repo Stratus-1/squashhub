@@ -431,8 +431,13 @@ Deno.serve(async (req) => {
       case "save_credentials": {
         const username = String(body.gobook_username || "").trim();
         const password = String(body.gobook_password || "");
+        const pinRaw = body.gobook_pin;
+        const pin = pinRaw == null ? null : String(pinRaw).trim();
         if (!username || !password) {
           return json({ error: "Missing username/password" }, 400);
+        }
+        if (pin !== null && pin !== "" && !/^\d{4,8}$/.test(pin)) {
+          return json({ error: "PIN must be 4-8 digits" }, 400);
         }
 
         // Verify with GoBook before saving
@@ -443,17 +448,21 @@ Deno.serve(async (req) => {
         }
 
         const { ciphertext, iv } = await encryptPassword(password);
+        const upsertRow: Record<string, unknown> = {
+          club_member_id: clubMemberId,
+          user_id: userId,
+          gobook_username: username,
+          gobook_password_ciphertext: ciphertext,
+          gobook_password_iv: iv,
+          last_verified_at: new Date().toISOString(),
+          last_verification_status: "ok",
+        };
+        // Only write pin when caller provided it (null = leave existing, ""
+        // = clear). Empty string clears.
+        if (pin !== null) upsertRow.gobook_pin = pin === "" ? null : pin;
         const { error: upErr } = await adminClient
           .from("member_gobook_credentials")
-          .upsert({
-            club_member_id: clubMemberId,
-            user_id: userId,
-            gobook_username: username,
-            gobook_password_ciphertext: ciphertext,
-            gobook_password_iv: iv,
-            last_verified_at: new Date().toISOString(),
-            last_verification_status: "ok",
-          }, { onConflict: "club_member_id" });
+          .upsert(upsertRow, { onConflict: "club_member_id" });
         if (upErr) return json({ error: upErr.message }, 500);
         return json({ ok: true, verified: true });
       }
@@ -471,7 +480,7 @@ Deno.serve(async (req) => {
         const { data, error } = await adminClient
           .from("member_gobook_credentials")
           .select(
-            "gobook_username, last_verified_at, last_verification_status",
+            "gobook_username, last_verified_at, last_verification_status, gobook_pin",
           )
           .eq("club_member_id", clubMemberId)
           .maybeSingle();
@@ -481,6 +490,7 @@ Deno.serve(async (req) => {
           gobook_username: data?.gobook_username ?? null,
           last_verified_at: data?.last_verified_at ?? null,
           last_verification_status: data?.last_verification_status ?? null,
+          has_pin: !!data?.gobook_pin,
         });
       }
 

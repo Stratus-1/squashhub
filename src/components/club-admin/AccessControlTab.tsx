@@ -34,6 +34,8 @@ const FACE_PROVIDERS = [
 
 export function AccessControlTab({ club, clubId }: { club: Club; clubId: string }) {
   const { data: secrets } = useClubSecrets(clubId);
+  const updateSecrets = useUpdateClubSecrets();
+
   const [form, setForm] = useState({
     access_control_type: "none" as AccessType,
     access_control_api_key: "",
@@ -48,7 +50,6 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     fluss_api_token: "",
     fluss_default_device_id: "",
   });
-
 
 
   const [faceEnrolmentRequired, setFaceEnrolmentRequired] = useState(false);

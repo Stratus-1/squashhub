@@ -667,8 +667,8 @@ export default function Dashboard() {
             <Trophy className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">Club Tournaments</span>
           </Button>
-          {/* My Account & My Profile moved to bottom nav on mobile; still shown here on desktop */}
-          <Button variant="outline" className="hidden sm:flex flex-col h-auto py-3 gap-1.5 border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
+          {/* My Profile still desktop-only; My Account shown on all viewports per request */}
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
             <Wallet className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Account</span>
           </Button>

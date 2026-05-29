@@ -1,0 +1,2 @@
+ALTER TABLE public.club_events DROP CONSTRAINT club_events_invite_scope_check;
+ALTER TABLE public.club_events ADD CONSTRAINT club_events_invite_scope_check CHECK (invite_scope = ANY (ARRAY['all','category','league','selected','none']));

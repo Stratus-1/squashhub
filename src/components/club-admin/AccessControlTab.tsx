@@ -107,7 +107,10 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         zk_area_id: form.zk_area_id || null,
         zk_door_group: form.zk_door_group || null,
         zk_webhook_secret: form.zk_webhook_secret || null,
+        fluss_api_token: form.fluss_api_token || null,
+        fluss_default_device_id: form.fluss_default_device_id || null,
       } as any);
+
 
       if (form.access_control_type === "face_recognition") {
         await fromExt("clubs").update({ face_enrolment_required: faceEnrolmentRequired }).eq("id", clubId);

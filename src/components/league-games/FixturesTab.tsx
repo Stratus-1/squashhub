@@ -671,6 +671,14 @@ function RoundCard({
 
           {isAdmin ? (
             <>
+              <div className="flex justify-end gap-2">
+                {draft && (
+                  <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>Discard changes</Button>
+                )}
+                <Button size="sm" onClick={() => saveFixtures.mutate()} disabled={saveFixtures.isPending}>
+                  {saveFixtures.isPending ? "Saving…" : "Save fixtures"}
+                </Button>
+              </div>
               <FixtureEditorTable
                 fixtures={list}
                 teams={teams}

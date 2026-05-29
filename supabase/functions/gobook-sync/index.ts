@@ -200,6 +200,7 @@ type SyncResult = {
   cancelled: number;
   dates: string[];
   skipped_reason?: string;
+  diagnostics?: Record<string, unknown>;
 };
 
 function parseCourtNumber(name: string): number | null {

@@ -309,10 +309,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
 
   // Determine members to invite based on scope
+  const getInviteeIds = async (): Promise<string[]> => {
+    if (!clubId) return [];
     if (form.invite_scope === "none") return [];
     if (form.invite_scope === "selected") {
       return form.selected_member_ids;
-    }
     }
     if (form.invite_scope === "all") {
       const { data } = await supabase.from("club_members").select("id").eq("club_id", clubId);

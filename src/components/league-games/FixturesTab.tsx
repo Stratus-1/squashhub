@@ -89,10 +89,12 @@ export function FixturesTab({ clubId, associationId }: Props) {
         created_by: activeMember?.id ?? null,
       };
       if (r.id) {
-        // Capture previous start to detect a time shift we should cascade.
+        // Capture previous defaults to detect a time shift we should cascade.
         const prev = (rounds ?? []).find((x) => x.id === r.id);
         const prevStart = prev?.start_time ? String(prev.start_time).slice(0, 5) : null;
+        const prevEnd = prev?.end_time ? String(prev.end_time).slice(0, 5) : null;
         const newStart = r.start_time ? String(r.start_time).slice(0, 5) : null;
+        const newEndDefault = r.end_time ? String(r.end_time).slice(0, 5) : null;
 
         const { error } = await fromExt("league_rounds").update(payload).eq("id", r.id);
         if (error) throw error;
@@ -100,7 +102,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
         // Cascade round time edits onto all fixtures and linked court bookings.
         // Also cancel stale duplicate bookings left by previous fixture re-saves,
         // so the court grid cannot keep showing the old time.
-        if (prevStart && newStart && prevStart !== newStart) {
+        if (newStart && (prevStart !== newStart || prevEnd !== newEndDefault || Number(prev?.slot_minutes) !== Number(r.slot_minutes))) {
           const { data: fixtures } = await fromExt("platform_league_fixtures")
             .select("id, start_time, booking_id, fixture_date, court_id, away_team_code")
             .eq("round_id", r.id);
@@ -110,11 +112,12 @@ export function FixturesTab({ clubId, associationId }: Props) {
           const bookingIds = playableFixtures.map((f) => f.booking_id).filter(Boolean) as string[];
           const [h, m] = newStart.split(":").map(Number);
           const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
-          const newEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}:00`;
+          const computedEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+          const newEnd = `${newEndDefault ?? computedEnd}:00`;
 
           if (playableFixtures.length > 0) {
             const { error: fxErr } = await fromExt("platform_league_fixtures")
-              .update({ start_time: newStart })
+              .update({ start_time: newStart, end_time: newEndDefault ?? computedEnd })
               .in("id", playableFixtures.map((f) => f.id));
             if (fxErr) throw fxErr;
           }

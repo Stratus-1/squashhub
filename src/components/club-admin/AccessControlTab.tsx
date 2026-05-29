@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook } from "lucide-react";
+import { AlertCircle, KeyRound, ScanFace, CreditCard, Lock, HelpCircle, Copy, Webhook, DoorOpen } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,8 +18,10 @@ const ACCESS_METHODS = [
   { value: "tap_card", label: "Tap Card / Fob", icon: CreditCard, description: "RFID / NFC card readers (HID, Salto, Paxton, etc.)" },
   { value: "pin", label: "PIN Code", icon: KeyRound, description: "Keypad entry with member-specific PINs" },
   { value: "face_recognition", label: "Face Recognition", icon: ScanFace, description: "Biometric facial recognition for court access" },
+  { value: "remote_trigger", label: "Remote Door Trigger (Fluss+)", icon: DoorOpen, description: "WiFi relay opens the gate/door on demand from the SquashHub app" },
   { value: "other", label: "Other", icon: HelpCircle, description: "Custom system — contact SquashHub for integration" },
 ] as const;
+
 
 type AccessType = typeof ACCESS_METHODS[number]["value"];
 

@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
       .insert({
         club_id: newClub.id,
         user_id: userId,
-        role: "captain",
+        role: "admin",
         name: normalizedUserName || "",
         email: normalizedUserEmail || null,
       })

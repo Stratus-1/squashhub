@@ -1380,12 +1380,14 @@ export default function ClubAuth() {
                     value={visitorHomeClubMode === "other" ? "__other__" : (visitorHomeClub || "")}
                     onValueChange={(v) => {
                       if (v === "__other__") {
-                        setVisitorHomeClubMode("other");
-                        setVisitorHomeClub("");
-                      } else {
-                        setVisitorHomeClubMode("picker");
-                        setVisitorHomeClub(v);
-                      }
+                    <SelectContent className="max-h-72">
+                      {(allClubsForVisitorPicker || []).map((c) => (
+                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                      ))}
+                      <SelectItem value="No club">No club (independent)</SelectItem>
+                      <SelectItem value="__other__">Other (type in)</SelectItem>
+                    </SelectContent>
+
                     }}
                   >
                     <SelectTrigger id="visitor-home-club">

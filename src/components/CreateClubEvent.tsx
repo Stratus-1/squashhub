@@ -463,7 +463,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   date: firstDate,
                   start_time: slotStartTime,
                   end_time: slotEndTime,
-                  user_id: bm.user_id || user.id,
+                  user_id: user.id,
                   club_member_id: bm.id,
                   guest_name: form.title,
                   lights_requested: form.lights_auto_on,

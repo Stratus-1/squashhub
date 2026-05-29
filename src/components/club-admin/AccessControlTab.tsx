@@ -34,8 +34,6 @@ const FACE_PROVIDERS = [
 
 export function AccessControlTab({ club, clubId }: { club: Club; clubId: string }) {
   const { data: secrets } = useClubSecrets(clubId);
-  const updateSecrets = useUpdateClubSecrets();
-
   const [form, setForm] = useState({
     access_control_type: "none" as AccessType,
     access_control_api_key: "",
@@ -46,6 +44,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     zk_password: "",
     zk_area_id: "",
     zk_door_group: "",
+    zk_webhook_secret: "",
+    fluss_api_token: "",
+    fluss_default_device_id: "",
+  });
+
     zk_webhook_secret: "",
   });
 

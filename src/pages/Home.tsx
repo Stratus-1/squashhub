@@ -45,13 +45,15 @@ interface TenantPublic {
   nsa_club_id: string | null;
   chairman_member_id: string | null;
 }
-
 const PROBLEMS = [
   { icon: Calendar, label: "Manual bookings and double-ups" },
   { icon: Users, label: "Disorganized leagues and fixtures" },
   { icon: AlertCircle, label: "Time-consuming admin" },
   { icon: BarChart3, label: "Poor payment tracking" },
   { icon: Trophy, label: "Low member engagement" },
+  { icon: Lightbulb, label: "Court lights left on, wasted electricity" },
+  { icon: ScanFace, label: "No access control on courts" },
+];
 ];
 
 const FEATURES = [

@@ -392,6 +392,19 @@ function RoundCard({
   const saveFixtures = useMutation({
     mutationFn: async () => {
       // Replace strategy: delete existing, insert new (carry-through edits & auto-gen alike)
+      const { data: existingFixtures, error: existingErr } = await fromExt("platform_league_fixtures")
+        .select("booking_id")
+        .eq("round_id", round.id);
+      if (existingErr) throw existingErr;
+      const existingBookingIds = (existingFixtures ?? []).map((f: any) => f.booking_id).filter(Boolean);
+      if (existingBookingIds.length > 0) {
+        const { error: cancelErr } = await supabase
+          .from("bookings")
+          .update({ status: "cancelled" })
+          .in("id", existingBookingIds);
+        if (cancelErr) throw cancelErr;
+      }
+
       const { error: delErr } = await fromExt("platform_league_fixtures").delete().eq("round_id", round.id);
       if (delErr) throw delErr;
 

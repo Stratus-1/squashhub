@@ -1067,7 +1067,7 @@ export default function Bookings() {
                       Add GoBook details
                     </Button>
                   )}
-                  {hasGobookCreds && (
+                  {hasGobookCreds && (isMemberAdmin || isSuperAdmin) && (
                     <Button
                       size="sm"
                       disabled={syncingGobook || ((myClub as any)?.booking_slot_minutes ?? 60) !== 60}
@@ -1077,6 +1077,7 @@ export default function Bookings() {
                       {syncingGobook ? "Syncing…" : "Sync GoBook now"}
                     </Button>
                   )}
+
                   {externalUrl && (
                     <Button size="sm" variant="outline" onClick={() => openExternalUrl(externalUrl)}>
                       Open GoBook

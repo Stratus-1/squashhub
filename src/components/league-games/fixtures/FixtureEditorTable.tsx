@@ -50,8 +50,64 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
     ]);
   };
 
+  const [bulkStart, setBulkStart] = useState("18:00");
+  const [bulkEnd, setBulkEnd] = useState("20:00");
+  const [bulkMode, setBulkMode] = useState<"empty" | "all">("empty");
+
+  const applyBulkTimes = () => {
+    const next = fixtures.map((f) => {
+      if (f.away_team_code === "__BYE__") return f;
+      const patch: Partial<EditableFixture> = {};
+      if (bulkMode === "all" || !f.start_time) patch.start_time = bulkStart || null;
+      if (bulkMode === "all" || !f.end_time) patch.end_time = bulkEnd || null;
+      return { ...f, ...patch };
+    });
+    onChange(next);
+  };
+
+  const playableCount = fixtures.filter((f) => f.away_team_code !== "__BYE__").length;
+
   return (
-    <div className="rounded-md border overflow-x-auto">
+    <div className="space-y-2">
+      {playableCount > 0 && (
+        <div className="flex flex-wrap items-end gap-2 rounded-md border bg-muted/20 p-2">
+          <div>
+            <Label className="text-[11px] text-muted-foreground">Default start</Label>
+            <Input
+              type="time"
+              className="h-8 w-28"
+              value={bulkStart}
+              onChange={(e) => setBulkStart(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground">Default end</Label>
+            <Input
+              type="time"
+              className="h-8 w-28"
+              value={bulkEnd}
+              onChange={(e) => setBulkEnd(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground">Apply to</Label>
+            <Select value={bulkMode} onValueChange={(v) => setBulkMode(v as "empty" | "all")}>
+              <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="empty">Empty times only</SelectItem>
+                <SelectItem value="all">All fixtures (overwrite)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="sm" variant="secondary" onClick={applyBulkTimes}>
+            Apply to {bulkMode === "all" ? "all" : "empty"}
+          </Button>
+          <span className="text-[11px] text-muted-foreground ml-auto self-center">
+            Set defaults here, then tweak individual rows below.
+          </span>
+        </div>
+      )}
+      <div className="rounded-md border overflow-x-auto">
       <table className="w-full text-xs">
         <thead className="bg-muted/50">
           <tr className="text-left">

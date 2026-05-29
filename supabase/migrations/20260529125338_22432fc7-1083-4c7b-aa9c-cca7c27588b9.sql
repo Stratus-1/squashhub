@@ -1,0 +1,1 @@
+ALTER TABLE public.platform_league_fixtures ADD COLUMN IF NOT EXISTS end_time time without time zone;

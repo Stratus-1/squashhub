@@ -129,16 +129,15 @@ function extractInput(html: string, name: string): string | null {
 async function gobookLogin(email: string, password: string): Promise<Jar> {
   const jar: Jar = new Map();
 
-  // GET the login page to receive antiforgery token + initial cookies
-  const getRes = await fetch(`${GOBOOK_BASE}/Home/Login`, {
+  // The login form lives on `/` (the old /Home/Login GET now returns 404).
+  // GET it first so we pick up the ASP.NET session cookie before posting.
+  const getRes = await fetch(`${GOBOOK_BASE}/`, {
     headers: { "User-Agent": "SquashHub/1.0 (+squashhub.co.za)" },
   });
   jarFromHeaders(getRes.headers, jar);
   const loginHtml = await getRes.text();
   const token = extractInput(loginHtml, "__RequestVerificationToken");
 
-  // POST the form. ASP.NET MVC commonly uses "Email" + "Password"; we send both
-  // common shapes so this works whether GoBook uses Email or UserName.
   const form = new URLSearchParams();
   if (token) form.set("__RequestVerificationToken", token);
   form.set("Email", email);
@@ -152,31 +151,19 @@ async function gobookLogin(email: string, password: string): Promise<Jar> {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-      "Referer": `${GOBOOK_BASE}/Home/Login`,
+      "Referer": `${GOBOOK_BASE}/`,
       cookie: cookieHeader(jar),
     },
     body: form.toString(),
   });
   jarFromHeaders(postRes.headers, jar);
 
-  // Verify by fetching Dashboard — if not logged in we get redirected to /Home/Login
-  const check = await fetch(`${GOBOOK_BASE}/Dashboard`, {
-    redirect: "manual",
-    headers: {
-      cookie: cookieHeader(jar),
-      "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-    },
-  });
-  jarFromHeaders(check.headers, jar);
-  const loc = check.headers.get("location") || "";
-  if (check.status >= 300 && check.status < 400 && /Login/i.test(loc)) {
+  // A successful login returns a 302 + sets a non-empty GoBookSession (or
+  // .ASPXAUTH) cookie. 200 means the form was re-rendered with errors. An
+  // empty/cleared session cookie also means failure.
+  const sessionVal = jar.get("GoBookSession") || jar.get(".ASPXAUTH") || "";
+  if (postRes.status === 200 || !sessionVal) {
     throw new Error("GoBook login failed (credentials rejected)");
-  }
-  if (check.status === 200) {
-    const dashHtml = await check.text();
-    if (/<form[^>]*action=["'][^"']*\/Home\/Login/i.test(dashHtml)) {
-      throw new Error("GoBook login failed (still on login page)");
-    }
   }
   return jar;
 }

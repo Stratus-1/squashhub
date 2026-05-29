@@ -382,36 +382,39 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .select("id, instance_date");
       if (instError) throw instError;
 
-      // Invite members - create RSVPs for both event-level and first instance
+      // Invite members - create RSVPs for both event-level and first instance.
+      // RSVP inserts can be heavy (members × instances) and fire DB triggers per row,
+      // so we run them in the background and let the dialog close as soon as the
+      // event + bookings are saved.
       const inviteeIds = await getInviteeIds();
 
-      // Build all RSVP rows up-front, then run inserts in parallel (chunked).
-      const rsvpJobs: any[] = [];
-
       if (inviteeIds.length > 0) {
-        const eventRsvpRows = inviteeIds.map((mid) => ({
-          event_id: eventId,
-          club_member_id: mid,
-          status: "invited",
-        }));
-        for (let i = 0; i < eventRsvpRows.length; i += 500) {
-          rsvpJobs.push(fromExt("club_event_rsvps").insert(eventRsvpRows.slice(i, i + 500)));
-        }
-
-        if (instances && instances.length > 0) {
-          // Flatten all (instance × member) rows into one big array, then chunk.
-          const allInstanceRows: any[] = [];
-          for (const inst of instances) {
-            for (const mid of inviteeIds) {
-              allInstanceRows.push({ instance_id: inst.id, club_member_id: mid, status: "invited" });
+        (async () => {
+          try {
+            const eventRsvpRows = inviteeIds.map((mid) => ({
+              event_id: eventId,
+              club_member_id: mid,
+              status: "invited",
+            }));
+            for (let i = 0; i < eventRsvpRows.length; i += 500) {
+              await fromExt("club_event_rsvps").insert(eventRsvpRows.slice(i, i + 500));
             }
+            if (instances && instances.length > 0) {
+              const allInstanceRows: any[] = [];
+              for (const inst of instances) {
+                for (const mid of inviteeIds) {
+                  allInstanceRows.push({ instance_id: inst.id, club_member_id: mid, status: "invited" });
+                }
+              }
+              for (let i = 0; i < allInstanceRows.length; i += 500) {
+                await fromExt("club_event_instance_rsvps").insert(allInstanceRows.slice(i, i + 500));
+              }
+            }
+            queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-counts"] });
+          } catch (rsvpErr) {
+            console.warn("[CreateClubEvent] RSVP insert failed (non-blocking):", rsvpErr);
           }
-          for (let i = 0; i < allInstanceRows.length; i += 1000) {
-            rsvpJobs.push(
-              fromExt("club_event_instance_rsvps").insert(allInstanceRows.slice(i, i + 1000))
-            );
-          }
-        }
+        })();
       }
 
       // Create court bookings — split across booking members (max 1hr each)
@@ -478,9 +481,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         }
       }
 
-      // Wait for RSVPs + bookings in parallel (these block the success toast
-      // because the user expects to see the event populated immediately).
-      await Promise.all([...rsvpJobs, ...bookingJobs].map((j) => Promise.resolve(j)));
+      // Wait for bookings only — RSVPs run in background above so the dialog
+      // can close quickly even with hundreds of invitees.
+      await Promise.all(bookingJobs.map((j) => Promise.resolve(j)));
+
 
       // Notifications — fire-and-forget. Each row triggers email + web-push
       // delivery functions, so we don't make the user wait for ~200 trigger

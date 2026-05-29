@@ -264,7 +264,7 @@ function RoundCard({
     queryKey: ["round-fixtures", round.id],
     queryFn: async () => {
       const { data, error } = await fromExt("platform_league_fixtures")
-        .select("id, home_team_code, away_team_code, court_id, start_time, fixture_date")
+        .select("id, home_team_code, away_team_code, court_id, start_time, end_time, fixture_date")
         .eq("round_id", round.id)
         .order("fixture_date", { ascending: true })
         .order("start_time", { ascending: true });

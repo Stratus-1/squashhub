@@ -440,19 +440,24 @@ export default function Bookings() {
   };
 
   // Does the current member have GoBook credentials saved? Drives the banner.
-  const { data: hasGobookCreds } = useQuery({
-    queryKey: ["member-has-gobook-creds", activeMember?.id],
+  const { data: gobookCredInfo } = useQuery({
+    queryKey: ["member-gobook-cred-info", activeMember?.id],
     enabled: !!activeMember?.id && !!(myClub as any)?.uses_gobook,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("member_gobook_credentials")
-        .select("club_member_id")
+        .select("club_member_id, last_verification_status, last_verified_at, is_sync_source")
         .eq("club_member_id", activeMember!.id)
         .maybeSingle();
-      if (error) return false;
-      return !!data;
+      if (error) return null;
+      return data;
     },
+    refetchInterval: 60_000,
   });
+  const hasGobookCreds = !!gobookCredInfo;
+  const gobookCredsInvalid =
+    !!gobookCredInfo && gobookCredInfo.last_verification_status === "invalid";
+
 
 
   // Active light sessions for the current user

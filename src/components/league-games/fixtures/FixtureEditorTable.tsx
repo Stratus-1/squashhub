@@ -88,7 +88,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-1 text-xs font-medium text-amber-700 dark:text-amber-400" colSpan={3}>
+                  <td className="p-1 text-xs font-medium text-amber-700 dark:text-amber-400" colSpan={4}>
                     BYE — no match this round
                   </td>
                   <td className="p-1 text-right">

@@ -149,29 +149,34 @@ export default function ClubAuth() {
     staleTime: 60_000,
   });
 
-  // Distinct home clubs already used by past visitors at THIS club.
-  // Keeps the dropdown short and consistent across registrations.
+  // Home-club options for the visitor sign-up dropdown.
+  // Sources: (1) curated `club_visitor_home_clubs` rows the admin maintains,
+  // (2) names already in use by existing visitors at THIS club (backward compat).
   const { data: allClubsForVisitorPicker } = useQuery({
     queryKey: ["visitor-home-clubs-picker", club?.id],
     enabled: !!club?.id,
     queryFn: async () => {
-      const [visitorsRes, memberVisitorsRes] = await Promise.all([
+      const [curatedRes, visitorsRes, memberVisitorsRes] = await Promise.all([
+        fromExt("club_visitor_home_clubs").select("name").eq("club_id", club!.id),
         fromExt("club_visitors").select("home_club_name").eq("club_id", club!.id),
         fromExt("club_members").select("home_club_name").eq("club_id", club!.id).eq("role", "visitor"),
       ]);
-      const names = new Set<string>();
-      for (const r of (visitorsRes.data || []) as any[]) {
-        const n = (r.home_club_name || "").trim();
-        if (n && n.toLowerCase() !== "no club" && n.toLowerCase() !== "club visitor") names.add(n);
-      }
-      for (const r of (memberVisitorsRes.data || []) as any[]) {
-        const n = (r.home_club_name || "").trim();
-        if (n && n.toLowerCase() !== "no club" && n.toLowerCase() !== "club visitor") names.add(n);
-      }
-      return Array.from(names).sort((a, b) => a.localeCompare(b)).map((name) => ({ id: name, name }));
+      const map = new Map<string, string>();
+      const push = (n: any) => {
+        const v = (n || "").toString().trim();
+        if (!v) return;
+        const lk = v.toLowerCase();
+        if (lk === "no club" || lk === "club visitor" || lk === "visitor") return;
+        if (!map.has(lk)) map.set(lk, v);
+      };
+      for (const r of (curatedRes.data || []) as any[]) push(r.name);
+      for (const r of (visitorsRes.data || []) as any[]) push(r.home_club_name);
+      for (const r of (memberVisitorsRes.data || []) as any[]) push(r.home_club_name);
+      return Array.from(map.values()).sort((a, b) => a.localeCompare(b)).map((name) => ({ id: name, name }));
     },
     staleTime: 60_000,
   });
+
 
 
 

@@ -384,7 +384,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const inviteeIds = await getInviteeIds();
 
       // Build all RSVP rows up-front, then run inserts in parallel (chunked).
-      const rsvpJobs: Promise<any>[] = [];
+      const rsvpJobs: any[] = [];
 
       if (inviteeIds.length > 0) {
         const eventRsvpRows = inviteeIds.map((mid) => ({
@@ -418,7 +418,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
       const totalMinutes = endMinutes - startMinutes;
 
-      const bookingJobs: Promise<any>[] = [];
+      const bookingJobs: any[] = [];
 
       if (form.is_club_booking) {
         for (const cid of form.court_ids) {

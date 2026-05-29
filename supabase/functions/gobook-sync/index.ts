@@ -338,12 +338,18 @@ async function syncClub(
     result.dates.push(dateStr);
 
     let slots: GridSlot[];
+    let diag: { htmlLen: number; rowCount: number; finalUrl: string };
     try {
-      slots = await fetchGrid(jar, dateStr);
+      const r = await fetchGrid(jar, dateStr);
+      slots = r.slots;
+      diag = { htmlLen: r.htmlLen, rowCount: r.rowCount, finalUrl: r.finalUrl };
     } catch (e) {
       console.error("fetchGrid failed", dateStr, e);
       continue;
     }
+    const bookedCount = slots.filter((s) => !s.free && s.bookerName?.trim()).length;
+    const freeCount = slots.filter((s) => s.free).length;
+    (result.diagnostics ||= {} as any)[dateStr] = { ...diag, slots: slots.length, booked: bookedCount, free: freeCount };
 
     const seenExternal = new Set<string>();
     for (const s of slots) {

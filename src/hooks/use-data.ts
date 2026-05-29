@@ -441,7 +441,18 @@ export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?
       const { data, error } = await query;
       if (error) throw error;
 
-      // Map court names & opponent names (check profiles first, then club_members)
+      // Resolve court names from the courts table (court IDs differ per club,
+      // so a hardcoded id===1 check mislabels everything outside the first club).
+      const courtIds = [...new Set((data as any[]).map((b) => b.court_id).filter(Boolean))] as number[];
+      const courtNameMap = new Map<number, string>();
+      if (courtIds.length > 0) {
+        const { data: courts } = await (supabase as any)
+          .from("courts")
+          .select("id,name")
+          .in("id", courtIds);
+        (courts || []).forEach((c: any) => courtNameMap.set(c.id, c.name));
+      }
+
       // Resolve opponent names: prioritise club_members (member identity), fallback to profiles
       const opponentMemberIds = [...new Set((data as any[]).map((b) => b.opponent_member_id).filter(Boolean))] as string[];
       const opponentUserIds = [...new Set((data as any[]).map((b) => b.opponent_id).filter(Boolean))] as string[];
@@ -478,7 +489,7 @@ export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?
           const profileName = b.opponent_id ? opponentProfileMap.get(b.opponent_id)?.name : null;
           return {
             ...b,
-            court_name: b.court_id === 1 ? "Court 1" : "Court 2",
+            court_name: courtNameMap.get(b.court_id) || `Court ${b.court_id}`,
             opponent_name: b.guest_name || memberName || profileName || (b.opponent_id ? "Unknown" : null),
             opponent_rank: null,
           };

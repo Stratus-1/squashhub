@@ -478,7 +478,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
       // Wait for RSVPs + bookings in parallel (these block the success toast
       // because the user expects to see the event populated immediately).
-      await Promise.all([...rsvpJobs, ...bookingJobs]);
+      await Promise.all([...rsvpJobs, ...bookingJobs].map((j) => Promise.resolve(j)));
 
       // Notifications — fire-and-forget. Each row triggers email + web-push
       // delivery functions, so we don't make the user wait for ~200 trigger

@@ -376,6 +376,70 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           </div>
         )}
 
+        {isFluss && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
+              <DoorOpen className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-foreground">Fluss+ Remote Trigger</p>
+                <p>
+                  Fluss+ is a WiFi relay (made in South Africa) that opens your gate or door on demand.
+                  SquashHub triggers the device when a member with an active booking taps "Open court".
+                </p>
+                <p>
+                  Get your <strong>API token</strong> and <strong>device IDs</strong> from your Fluss
+                  account at <a href="https://fluss.io" target="_blank" rel="noreferrer" className="underline">fluss.io</a>.
+                  Trigger-only — Fluss does not track who walked through; the booking is the audit record.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1 md:col-span-2">
+                <Label>Fluss API Token</Label>
+                <Input
+                  type="password"
+                  value={form.fluss_api_token}
+                  onChange={e => setForm(p => ({ ...p, fluss_api_token: e.target.value }))}
+                  placeholder="Bearer token from your Fluss account"
+                />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <Label>Default Device ID</Label>
+                <Input
+                  value={form.fluss_default_device_id}
+                  onChange={e => setForm(p => ({ ...p, fluss_default_device_id: e.target.value }))}
+                  placeholder="e.g. front-gate"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Used when a court doesn't have its own Fluss device. Set per-court device IDs in
+                  <strong> Courts → Edit court</strong> to map specific Fluss+ relays to each court.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!form.fluss_api_token || !form.fluss_default_device_id}
+              onClick={async () => {
+                try {
+                  const { error } = await supabase.functions.invoke("fluss-trigger", {
+                    body: { club_id: clubId, device_id: form.fluss_default_device_id },
+                  });
+                  if (error) throw error;
+                  toast.success("Trigger sent to Fluss");
+                } catch (err: any) {
+                  toast.error(err.message || "Trigger failed");
+                }
+              }}
+            >
+              Test trigger (default device)
+            </Button>
+          </div>
+        )}
+
+
         {isOther && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex gap-3">
             <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />

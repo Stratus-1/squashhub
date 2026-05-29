@@ -165,8 +165,10 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const needsApi = ["tap_card", "pin"].includes(form.access_control_type);
   const isFaceRec = form.access_control_type === "face_recognition";
   const isOther = form.access_control_type === "other";
+  const isFluss = form.access_control_type === "remote_trigger";
   const isSimple = ["none", "key"].includes(form.access_control_type);
   const providerInfo = FACE_PROVIDERS.find(p => p.value === form.access_provider);
+
 
   return (
     <div className="space-y-6 mt-4">

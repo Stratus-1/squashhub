@@ -48,6 +48,7 @@ const RECURRENCE_OPTIONS = [
 ];
 
 const REMINDER_OPTIONS = [
+  { value: "0", label: "No reminder" },
   { value: "24", label: "24 hours before" },
   { value: "48", label: "48 hours before" },
   { value: "72", label: "72 hours before" },
@@ -310,6 +311,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   // Determine members to invite based on scope
   const getInviteeIds = async (): Promise<string[]> => {
     if (!clubId) return [];
+    if (form.invite_scope === "none") return [];
     if (form.invite_scope === "selected") {
       return form.selected_member_ids;
     }
@@ -463,7 +465,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   end_time: slotEndTime,
                   user_id: bm.user_id || user.id,
                   club_member_id: bm.id,
-                  guest_name: `${form.title}${bm.name ? ` (${bm.name})` : ""}`,
+                  guest_name: form.title,
                   lights_requested: form.lights_auto_on,
                   status: "active",
                   club_id: clubId || null,
@@ -745,7 +747,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 end_time: slotEndTime,
                 user_id: bm.user_id || user.id,
                 club_member_id: bm.id,
-                guest_name: `${form.title}${bm.name ? ` (${bm.name})` : ""}`,
+                guest_name: form.title,
                 lights_requested: form.lights_auto_on,
                 status: "active",
                 club_id: clubId || null,
@@ -1142,6 +1144,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     <SelectItem value="category">By Fee Category</SelectItem>
                     <SelectItem value="league">By League</SelectItem>
                     <SelectItem value="selected">Selected Members</SelectItem>
+                    <SelectItem value="none">No invitation</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

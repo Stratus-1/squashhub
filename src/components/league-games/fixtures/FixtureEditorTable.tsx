@@ -238,6 +238,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
       <div className="p-2 border-t bg-muted/30">
         <Button size="sm" variant="outline" onClick={add}>+ Add fixture</Button>
       </div>
+      </div>
     </div>
   );
 }

@@ -451,11 +451,17 @@ function RoundCard({
         for (let i = 0; i < inserted.length; i++) {
           const f = inserted[i];
           if (!f.court_id || !f.start_time) continue;
-          // compute end time
-          const [h, m] = String(f.start_time).split(":").map(Number);
-          const startMin = h * 60 + m;
-          const endMin = startMin + round.slot_minutes;
-          const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+          // Prefer per-fixture end_time; fall back to start + round slot_minutes
+          let endTime: string;
+          const fxEnd = (f as any).end_time as string | null | undefined;
+          if (fxEnd) {
+            endTime = String(fxEnd).slice(0, 5);
+          } else {
+            const [h, m] = String(f.start_time).split(":").map(Number);
+            const startMin = h * 60 + m;
+            const endMin = startMin + round.slot_minutes;
+            endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+          }
           const homeName = teams.find((t) => t.code === list[i].home_team_code)?.name?.trim();
           const awayName = teams.find((t) => t.code === list[i].away_team_code)?.name?.trim();
           const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";

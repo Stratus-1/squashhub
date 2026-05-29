@@ -132,7 +132,10 @@ type GridSlot = {
   free: boolean;
 };
 
-async function fetchGrid(jar: Jar, yyyyMmDd: string): Promise<GridSlot[]> {
+async function fetchGrid(
+  jar: Jar,
+  yyyyMmDd: string,
+): Promise<{ slots: GridSlot[]; htmlLen: number; rowCount: number; finalUrl: string }> {
   const url =
     `${GOBOOK_BASE}/Bookings/New?key=${SQUASH_SERVICE_ID},${CSIR_PROVIDER_ID},0,0,${
       dateKey(yyyyMmDd)
@@ -147,12 +150,14 @@ async function fetchGrid(jar: Jar, yyyyMmDd: string): Promise<GridSlot[]> {
   const html = await res.text();
 
   const out: GridSlot[] = [];
+  let rowCount = 0;
   const trRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
   let trMatch: RegExpExecArray | null;
   while ((trMatch = trRe.exec(html)) !== null) {
     const inner = trMatch[1];
     const timeMatch = inner.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
     if (!timeMatch) continue;
+    rowCount++;
     const startHour = Number(timeMatch[1]);
 
     const cells: string[] = [];
@@ -162,14 +167,13 @@ async function fetchGrid(jar: Jar, yyyyMmDd: string): Promise<GridSlot[]> {
     if (cells.length < 2) continue;
 
     cells.slice(1).forEach((cell, idx) => {
-      const cb = cell.match(
-        /<input[^>]*type=["']checkbox["'][^>]*value=["']([^"']+)["']/i,
-      );
-      if (cb) {
+      const hasCheckbox = /<input[^>]*type=["']checkbox["']/i.test(cell);
+      const valMatch = cell.match(/<input[^>]*\bvalue=["']([^"']+)["']/i);
+      if (hasCheckbox && valMatch) {
         out.push({
           startHour,
           courtNumber: idx + 1,
-          slotId: cb[1],
+          slotId: valMatch[1],
           bookerName: null,
           free: true,
         });
@@ -190,7 +194,7 @@ async function fetchGrid(jar: Jar, yyyyMmDd: string): Promise<GridSlot[]> {
       });
     });
   }
-  return out;
+  return { slots: out, htmlLen: html.length, rowCount, finalUrl: res.url };
 }
 
 // ---------- Sync logic ----------

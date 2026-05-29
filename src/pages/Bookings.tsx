@@ -1090,6 +1090,33 @@ export default function Bookings() {
         </div>
       )}
 
+      {/* GoBook credentials invalid — last sync attempt failed for this member */}
+      {usesExternalBooking && externalProvider === "gobook" && gobookCredsInvalid && (
+        <div className="px-4 mt-2">
+          <Card className="border-destructive/50 bg-destructive/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-destructive">
+                  Your saved GoBook login is no longer valid
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  The last sync attempt with your GoBook credentials failed. Bookings in
+                  the grid may be out of date until you re-enter your password under
+                  My Account → GoBook. No GoBook bookings will be cancelled while the
+                  login is invalid.
+                </p>
+                <div className="mt-2">
+                  <Button size="sm" variant="destructive" onClick={() => navigate("/my-account")}>
+                    Fix GoBook login
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Other external providers (non-GoBook) — still read-only deep-link */}
       {usesExternalBooking && externalProvider !== "gobook" && (
         <div className="px-4 mt-3">

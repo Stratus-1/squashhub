@@ -149,19 +149,30 @@ export default function ClubAuth() {
     staleTime: 60_000,
   });
 
-  // All known clubs (for visitor home-club picker — prevents duplicate typed variants)
+  // Distinct home clubs already used by past visitors at THIS club.
+  // Keeps the dropdown short and consistent across registrations.
   const { data: allClubsForVisitorPicker } = useQuery({
-    queryKey: ["all-clubs-visitor-picker"],
+    queryKey: ["visitor-home-clubs-picker", club?.id],
+    enabled: !!club?.id,
     queryFn: async () => {
-      const { data, error } = await fromExt("clubs")
-        .select("id, name, tenant_type")
-        .neq("tenant_type", "association")
-        .order("name");
-      if (error) throw error;
-      return (data || []) as Array<{ id: string; name: string }>;
+      const [visitorsRes, memberVisitorsRes] = await Promise.all([
+        fromExt("club_visitors").select("home_club_name").eq("club_id", club!.id),
+        fromExt("club_members").select("home_club_name").eq("club_id", club!.id).eq("role", "visitor"),
+      ]);
+      const names = new Set<string>();
+      for (const r of (visitorsRes.data || []) as any[]) {
+        const n = (r.home_club_name || "").trim();
+        if (n && n.toLowerCase() !== "no club" && n.toLowerCase() !== "club visitor") names.add(n);
+      }
+      for (const r of (memberVisitorsRes.data || []) as any[]) {
+        const n = (r.home_club_name || "").trim();
+        if (n && n.toLowerCase() !== "no club" && n.toLowerCase() !== "club visitor") names.add(n);
+      }
+      return Array.from(names).sort((a, b) => a.localeCompare(b)).map((name) => ({ id: name, name }));
     },
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
   });
+
 
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -404,11 +404,39 @@ function RoundCard({
         .eq("round_id", round.id);
       if (existingErr) throw existingErr;
       const existingBookingIds = (existingFixtures ?? []).map((f: any) => f.booking_id).filter(Boolean);
-      if (existingBookingIds.length > 0) {
+
+      // Also catch older/stale league bookings that may not be linked by booking_id anymore
+      // after a previous replace-save, otherwise the court grid can keep showing old times.
+      const roundEndDate = round.end_date || round.round_date;
+      const [{ data: namedBookings, error: namedErr }, { data: exactNamedBookings, error: exactNamedErr }] = await Promise.all([
+        supabase
+          .from("bookings")
+          .select("id")
+          .eq("club_id", clubId)
+          .gte("date", round.round_date)
+          .lte("date", roundEndDate)
+          .eq("status", "active")
+          .like("guest_name", `${round.name} - %`),
+        supabase
+          .from("bookings")
+          .select("id")
+          .eq("club_id", clubId)
+          .gte("date", round.round_date)
+          .lte("date", roundEndDate)
+          .eq("status", "active")
+          .eq("guest_name", round.name),
+      ]);
+      if (namedErr) throw namedErr;
+      if (exactNamedErr) throw exactNamedErr;
+      const staleBookingIds = [...(namedBookings ?? []), ...(exactNamedBookings ?? [])].map((b: any) => b.id).filter(Boolean);
+      const bookingIdsToCancel = [...new Set([...existingBookingIds, ...staleBookingIds])];
+      const shouldSyncBookings = autoCreateBookings || bookingIdsToCancel.length > 0;
+
+      if (bookingIdsToCancel.length > 0) {
         const { error: cancelErr } = await supabase
           .from("bookings")
           .update({ status: "cancelled" })
-          .in("id", existingBookingIds);
+          .in("id", bookingIdsToCancel);
         if (cancelErr) throw cancelErr;
       }
 
@@ -442,14 +470,15 @@ function RoundCard({
           end_time: isBye ? null : (f.end_time ?? null),
         };
       });
-      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, end_time, fixture_date");
+      const { data: inserted, error } = await fromExt("platform_league_fixtures")
+        .insert(rows)
+        .select("id, court_id, start_time, end_time, fixture_date, home_team_code, away_team_code");
       if (error) throw error;
 
-      if (autoCreateBookings && inserted) {
+      if (shouldSyncBookings && inserted) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        for (let i = 0; i < inserted.length; i++) {
-          const f = inserted[i];
+        for (const f of inserted) {
           if (!f.court_id || !f.start_time) continue;
           // Prefer per-fixture end_time; fall back to start + round slot_minutes
           let endTime: string;
@@ -462,8 +491,8 @@ function RoundCard({
             const endMin = startMin + round.slot_minutes;
             endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
           }
-          const homeName = teams.find((t) => t.code === list[i].home_team_code)?.name?.trim();
-          const awayName = teams.find((t) => t.code === list[i].away_team_code)?.name?.trim();
+          const homeName = teams.find((t) => t.code === (f as any).home_team_code)?.name?.trim();
+          const awayName = teams.find((t) => t.code === (f as any).away_team_code)?.name?.trim();
           const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
           const guestName = matchup ? `${round.name} - ${matchup}` : round.name;
           const { data: booking, error: bErr } = await supabase

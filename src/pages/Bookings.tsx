@@ -1236,7 +1236,11 @@ export default function Bookings() {
                   // League fixture bookings also use guest_name as the title (e.g. "Round 1 - Baobabs vs Cobras").
                   const rawGuestName = (booking as any)?.guest_name ? String((booking as any).guest_name) : "";
                   const isLeagueBooking = /\bleague\b|\bround\s*\d/i.test(rawGuestName);
-                  const isEventBooking = (!!(booking as any)?.is_club_booking && !!rawGuestName) || isLeagueBooking;
+                  // Event bookings created by CreateClubEvent use a "Club — Title" guest_name.
+                  // The em-dash separator is our reliable marker since `is_club_booking`
+                  // is not a real column on the bookings table.
+                  const looksLikeEventTitle = rawGuestName.includes(" — ");
+                  const isEventBooking = (!!(booking as any)?.is_club_booking && !!rawGuestName) || isLeagueBooking || looksLikeEventTitle;
                   // Normalise league fixture titles to a consistent compact format:
                   //   "<League ordinal> R<round> · Team A vs Team B"
                   // Source guest_names vary: "League - A vs B", "2nd League round 1 - A vs B", etc.

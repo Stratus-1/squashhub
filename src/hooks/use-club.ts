@@ -491,7 +491,7 @@ export function useCreateClub() {
       const { error: memErr } = await fromExt("club_members").insert({
         club_id: newClub.id,
         user_id: user!.id,
-        role: "captain",
+        role: "admin",
       });
       if (memErr) throw memErr;
 

@@ -42,6 +42,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
         away_team_code: teams[1]?.code ?? teams[0]?.code ?? "",
         court_id: courts[0]?.id ?? null,
         start_time: "18:00",
+        end_time: "20:00",
         fixture_date: defaultDate ?? null,
       },
     ]);

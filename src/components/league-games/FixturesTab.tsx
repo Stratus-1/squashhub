@@ -439,9 +439,10 @@ function RoundCard({
           status: isBye ? "bye" : "scheduled",
           court_id: isBye ? null : f.court_id,
           start_time: isBye ? null : f.start_time,
+          end_time: isBye ? null : (f.end_time ?? null),
         };
       });
-      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, fixture_date");
+      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, end_time, fixture_date");
       if (error) throw error;
 
       if (autoCreateBookings && inserted) {

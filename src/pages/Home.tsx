@@ -14,7 +14,7 @@ import { SEO } from "@/components/SEO";
 import {
   Building2, ChevronRight, Landmark, Check,
   AlertCircle, Calendar, Trophy, Users, BarChart3, Mail, Menu, Zap,
-  Lightbulb, ScanFace,
+  Lightbulb, ScanFace, Phone, MessageCircle,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
@@ -742,6 +742,25 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">
               Need help? We'll get back to you shortly and help you get set up.
             </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <a
+                href="tel:+27833759003"
+                className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors"
+              >
+                <Phone className="w-4 h-4" />
+                Call us on 083 375 9003
+              </a>
+              <span className="hidden sm:inline text-muted-foreground">·</span>
+              <a
+                href="https://wa.me/27833759003"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium text-[#25D366] hover:opacity-80 transition-opacity"
+              >
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp us on 083 375 9003
+              </a>
+            </div>
           </div>
           <ContactForm />
         </div>
@@ -762,6 +781,18 @@ export default function Home() {
           © {new Date().getFullYear()} SquashHub · A product of Stratus Software Solutions (Pty) Ltd / Proudly designed by JLT Digital
         </div>
       </footer>
+
+      {/* Floating WhatsApp button */}
+      <a
+        href="https://wa.me/27833759003"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] text-white px-4 py-3 shadow-lg hover:opacity-90 transition-opacity"
+        aria-label="Chat on WhatsApp"
+      >
+        <MessageCircle className="w-5 h-5" />
+        <span className="text-sm font-semibold hidden sm:inline">WhatsApp Us</span>
+      </a>
     </div>
   );
 }

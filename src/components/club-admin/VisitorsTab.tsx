@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Trash2, Search, Pencil } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Trash2, Search, Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Visitor {
@@ -30,6 +31,18 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const [editing, setEditing] = useState<Visitor | null>(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Add Visitor dialog state
+  const [addOpen, setAddOpen] = useState(false);
+  const [addFirstName, setAddFirstName] = useState("");
+  const [addLastName, setAddLastName] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addCategory, setAddCategory] = useState("Men");
+  const [addMemberNumber, setAddMemberNumber] = useState("");
+  const [addHomeClubMode, setAddHomeClubMode] = useState<"picker" | "other">("picker");
+  const [addHomeClub, setAddHomeClub] = useState("");
+  const [addSaving, setAddSaving] = useState(false);
 
   const { data: visitors = [], isLoading } = useQuery({
     queryKey: ["club-visitors", clubId],
@@ -65,6 +78,16 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       return [...registeredVisitors, ...visitorMembers] as Visitor[];
     },
   });
+
+  // Distinct home clubs already used — drives the dropdown
+  const homeClubOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const v of visitors) {
+      const n = (v.home_club_name || "").trim();
+      if (n && n.toLowerCase() !== "no club" && n.toLowerCase() !== "club visitor") set.add(n);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [visitors]);
 
   const filtered = visitors.filter((v) => {
     const term = search.toLowerCase();
@@ -130,6 +153,53 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     }
   };
 
+  const resetAddForm = () => {
+    setAddFirstName("");
+    setAddLastName("");
+    setAddEmail("");
+    setAddPhone("");
+    setAddCategory("Men");
+    setAddMemberNumber("");
+    setAddHomeClubMode("picker");
+    setAddHomeClub("");
+  };
+
+  const submitAdd = async () => {
+    const first = addFirstName.trim();
+    const last = addLastName.trim();
+    const home = addHomeClub.trim();
+    if (!first || !last) {
+      toast.error("First and last name are required");
+      return;
+    }
+    if (!home) {
+      toast.error("Select a home club (or 'No club')");
+      return;
+    }
+    setAddSaving(true);
+    try {
+      const { error } = await fromExt("club_visitors").insert({
+        club_id: clubId,
+        first_name: first,
+        last_name: last,
+        email: addEmail.trim() || null,
+        phone: addPhone.trim() || null,
+        home_club_name: home,
+        member_number: addMemberNumber.trim() || null,
+        category: addCategory,
+      });
+      if (error) throw error;
+      toast.success(`${first} ${last} added as visitor`);
+      resetAddForm();
+      setAddOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to add visitor");
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -140,9 +210,14 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-        Visitors registered for tournaments, competitions, and linked visitor accounts.
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+          Visitors registered for tournaments, competitions, and linked visitor accounts.
+        </p>
+        <Button size="sm" onClick={() => setAddOpen(true)} className="shrink-0">
+          <UserPlus className="w-4 h-4 mr-1.5" /> Add Visitor
+        </Button>
+      </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -213,6 +288,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         </div>
       )}
 
+      {/* Edit home club dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
@@ -239,6 +315,99 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
             <Button onClick={saveEdit} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add visitor dialog */}
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) resetAddForm(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add visitor</DialogTitle>
+            <DialogDescription className="text-xs">
+              Register a visitor for tournaments, leagues, or club play.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="av-first" className="text-xs">First name *</Label>
+                <Input id="av-first" value={addFirstName} onChange={(e) => setAddFirstName(e.target.value)} maxLength={50} />
+              </div>
+              <div>
+                <Label htmlFor="av-last" className="text-xs">Last name *</Label>
+                <Input id="av-last" value={addLastName} onChange={(e) => setAddLastName(e.target.value)} maxLength={50} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="av-email" className="text-xs">Email</Label>
+                <Input id="av-email" type="email" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} maxLength={100} />
+              </div>
+              <div>
+                <Label htmlFor="av-phone" className="text-xs">Phone</Label>
+                <Input id="av-phone" type="tel" value={addPhone} onChange={(e) => setAddPhone(e.target.value)} maxLength={20} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="av-category" className="text-xs">Category</Label>
+                <Select value={addCategory} onValueChange={setAddCategory}>
+                  <SelectTrigger id="av-category"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Men">Men</SelectItem>
+                    <SelectItem value="Ladies">Ladies</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="av-membernum" className="text-xs">Member # at home club</Label>
+                <Input id="av-membernum" value={addMemberNumber} onChange={(e) => setAddMemberNumber(e.target.value)} maxLength={20} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="av-home-club" className="text-xs">Home club *</Label>
+              <Select
+                value={addHomeClubMode === "other" ? "__other__" : (addHomeClub || "")}
+                onValueChange={(v) => {
+                  if (v === "__other__") {
+                    setAddHomeClubMode("other");
+                    setAddHomeClub("");
+                  } else {
+                    setAddHomeClubMode("picker");
+                    setAddHomeClub(v);
+                  }
+                }}
+              >
+                <SelectTrigger id="av-home-club"><SelectValue placeholder="Select home club" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {homeClubOptions.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                  <SelectItem value="No club">No club (independent)</SelectItem>
+                  <SelectItem value="__other__">Other (type in)</SelectItem>
+                </SelectContent>
+              </Select>
+              {addHomeClubMode === "other" && (
+                <Input
+                  className="mt-2"
+                  placeholder="Type club name"
+                  value={addHomeClub}
+                  onChange={(e) => setAddHomeClub(e.target.value)}
+                  maxLength={100}
+                />
+              )}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                The list shows home clubs you've already added. Pick one to keep things consistent.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={addSaving}>Cancel</Button>
+            <Button onClick={submitAdd} disabled={addSaving}>
+              {addSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-1.5" />}
+              Add visitor
             </Button>
           </DialogFooter>
         </DialogContent>

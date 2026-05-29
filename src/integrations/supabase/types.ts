@@ -2157,6 +2157,8 @@ export type Database = {
           bank_reference: string | null
           club_id: string
           created_at: string
+          fluss_api_token: string | null
+          fluss_default_device_id: string | null
           id: string
           payment_gateway_credentials: Json | null
           payment_gateway_secret_key: string | null
@@ -2188,6 +2190,8 @@ export type Database = {
           bank_reference?: string | null
           club_id: string
           created_at?: string
+          fluss_api_token?: string | null
+          fluss_default_device_id?: string | null
           id?: string
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
@@ -2219,6 +2223,8 @@ export type Database = {
           bank_reference?: string | null
           club_id?: string
           created_at?: string
+          fluss_api_token?: string | null
+          fluss_default_device_id?: string | null
           id?: string
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
@@ -2622,6 +2628,7 @@ export type Database = {
       courts: {
         Row: {
           club_id: string | null
+          fluss_device_id: string | null
           id: number
           name: string
           relay_device_id: string | null
@@ -2629,6 +2636,7 @@ export type Database = {
         }
         Insert: {
           club_id?: string | null
+          fluss_device_id?: string | null
           id?: number
           name: string
           relay_device_id?: string | null
@@ -2636,6 +2644,7 @@ export type Database = {
         }
         Update: {
           club_id?: string | null
+          fluss_device_id?: string | null
           id?: number
           name?: string
           relay_device_id?: string | null

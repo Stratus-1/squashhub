@@ -14,6 +14,7 @@ import { SEO } from "@/components/SEO";
 import {
   Building2, ChevronRight, Landmark, Check,
   AlertCircle, Calendar, Trophy, Users, BarChart3, Mail, Menu, Zap,
+  Lightbulb, ScanFace,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
@@ -44,13 +45,14 @@ interface TenantPublic {
   nsa_club_id: string | null;
   chairman_member_id: string | null;
 }
-
 const PROBLEMS = [
   { icon: Calendar, label: "Manual bookings and double-ups" },
   { icon: Users, label: "Disorganized leagues and fixtures" },
   { icon: AlertCircle, label: "Time-consuming admin" },
   { icon: BarChart3, label: "Poor payment tracking" },
   { icon: Trophy, label: "Low member engagement" },
+  { icon: Lightbulb, label: "Court lights left on, wasted electricity" },
+  { icon: ScanFace, label: "No access control on courts" },
 ];
 
 const FEATURES = [

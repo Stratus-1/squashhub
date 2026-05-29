@@ -117,6 +117,28 @@ async function gobookLogin(email: string, password: string): Promise<Jar> {
     body: form.toString(),
   });
   jarFromHeaders(postRes.headers, jar);
+  console.log("gobook login POST status", postRes.status, "loc", postRes.headers.get("location"), "cookies", [...jar.keys()].join(","));
+
+  // Verify session by fetching Dashboard
+  const check = await fetch(`${GOBOOK_BASE}/Dashboard`, {
+    redirect: "manual",
+    headers: {
+      cookie: cookieHeader(jar),
+      "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+    },
+  });
+  jarFromHeaders(check.headers, jar);
+  const loc = check.headers.get("location") || "";
+  console.log("gobook dashboard status", check.status, "loc", loc);
+  if (check.status >= 300 && check.status < 400 && /Login/i.test(loc)) {
+    throw new Error("login_rejected");
+  }
+  if (check.status === 200) {
+    const dashHtml = await check.text();
+    if (/<form[^>]*action=["'][^"']*\/Home\/Login/i.test(dashHtml)) {
+      throw new Error("login_still_on_login_page");
+    }
+  }
   return jar;
 }
 

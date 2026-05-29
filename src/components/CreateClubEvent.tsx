@@ -383,30 +383,31 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       // Invite members - create RSVPs for both event-level and first instance
       const inviteeIds = await getInviteeIds();
 
-      // Event-level RSVPs (backwards compat)
+      // Build all RSVP rows up-front, then run inserts in parallel (chunked).
+      const rsvpJobs: any[] = [];
+
       if (inviteeIds.length > 0) {
-        const rsvpRows = inviteeIds.map((mid) => ({
+        const eventRsvpRows = inviteeIds.map((mid) => ({
           event_id: eventId,
           club_member_id: mid,
           status: "invited",
         }));
-        for (let i = 0; i < rsvpRows.length; i += 500) {
-          const chunk = rsvpRows.slice(i, i + 500);
-          await fromExt("club_event_rsvps").insert(chunk);
+        for (let i = 0; i < eventRsvpRows.length; i += 500) {
+          rsvpJobs.push(fromExt("club_event_rsvps").insert(eventRsvpRows.slice(i, i + 500)));
         }
-      }
 
-      // Instance-level RSVPs for each instance
-      if (inviteeIds.length > 0 && instances && instances.length > 0) {
-        for (const inst of instances) {
-          const instRsvpRows = inviteeIds.map((mid: string) => ({
-            instance_id: inst.id,
-            club_member_id: mid,
-            status: "invited",
-          }));
-          for (let i = 0; i < instRsvpRows.length; i += 500) {
-            const chunk = instRsvpRows.slice(i, i + 500);
-            await fromExt("club_event_instance_rsvps").insert(chunk);
+        if (instances && instances.length > 0) {
+          // Flatten all (instance × member) rows into one big array, then chunk.
+          const allInstanceRows: any[] = [];
+          for (const inst of instances) {
+            for (const mid of inviteeIds) {
+              allInstanceRows.push({ instance_id: inst.id, club_member_id: mid, status: "invited" });
+            }
+          }
+          for (let i = 0; i < allInstanceRows.length; i += 1000) {
+            rsvpJobs.push(
+              fromExt("club_event_instance_rsvps").insert(allInstanceRows.slice(i, i + 1000))
+            );
           }
         }
       }
@@ -417,23 +418,24 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
       const totalMinutes = endMinutes - startMinutes;
 
+      const bookingJobs: any[] = [];
+
       if (form.is_club_booking) {
-        // Admin club booking: single booking per court under club name
         for (const cid of form.court_ids) {
-          await supabase.from("bookings").insert({
-            court_id: cid,
-            date: firstDate,
-            start_time: form.start_time + ":00",
-            end_time: form.end_time + ":00",
-            user_id: user.id,
-            guest_name: `${club?.name || "Club"} — ${form.title}`,
-            lights_requested: form.lights_auto_on,
-            status: "active",
-          });
+          bookingJobs.push(
+            supabase.from("bookings").insert({
+              court_id: cid,
+              date: firstDate,
+              start_time: form.start_time + ":00",
+              end_time: form.end_time + ":00",
+              user_id: user.id,
+              guest_name: `${club?.name || "Club"} — ${form.title}`,
+              lights_requested: form.lights_auto_on,
+              status: "active",
+            })
+          );
         }
       } else {
-        // Member bookings: distribute across courts × hour-sessions
-        // e.g. 3 courts × 2hr = 6 bookings, each assigned to a different member
         const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
         const totalSessionsNeeded = hourSessionsPerCourt * form.court_ids.length;
         const bookingMembers = form.booking_member_ids
@@ -453,18 +455,20 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
               const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
 
-              await supabase.from("bookings").insert({
-                court_id: cid,
-                date: firstDate,
-                start_time: slotStartTime,
-                end_time: slotEndTime,
-                user_id: bm.user_id || user.id,
-                club_member_id: bm.id,
-                guest_name: `${form.title}${bm.name ? ` (${bm.name})` : ""}`,
-                lights_requested: form.lights_auto_on,
-                status: "active",
-                club_id: clubId || null,
-              } as any);
+              bookingJobs.push(
+                supabase.from("bookings").insert({
+                  court_id: cid,
+                  date: firstDate,
+                  start_time: slotStartTime,
+                  end_time: slotEndTime,
+                  user_id: bm.user_id || user.id,
+                  club_member_id: bm.id,
+                  guest_name: `${form.title}${bm.name ? ` (${bm.name})` : ""}`,
+                  lights_requested: form.lights_auto_on,
+                  status: "active",
+                  club_id: clubId || null,
+                } as any)
+              );
               offsetMin = slotEnd;
               memberIdx++;
             }
@@ -472,32 +476,44 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         }
       }
 
-      // Send notifications (best-effort, don't block event creation)
+      // Wait for RSVPs + bookings in parallel (these block the success toast
+      // because the user expects to see the event populated immediately).
+      await Promise.all([...rsvpJobs, ...bookingJobs]);
+
+      // Notifications — fire-and-forget. Each row triggers email + web-push
+      // delivery functions, so we don't make the user wait for ~200 trigger
+      // executions. Errors are non-blocking.
       if (inviteeIds.length > 0) {
-        try {
-          const { data: memberData } = await supabase
-            .from("club_members")
-            .select("id, user_id")
-            .in("id", inviteeIds);
-          const recurrenceText = form.recurrence === "once"
-            ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
-            : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
-          const notifRows = (memberData || []).map((m) => ({
-            user_id: m.user_id || "00000000-0000-0000-0000-000000000000",
-            club_member_id: m.id,
-            title: `📅 ${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event Invitation`,
-            message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}. Please confirm or decline.`,
-            type: "booking",
-            url: `/events`,
-            data: JSON.stringify({ event_id: eventId }),
-          }));
-          if (notifRows.length > 0) {
-            await fromExt("notifications").insert(notifRows);
+        (async () => {
+          try {
+            const { data: memberData } = await supabase
+              .from("club_members")
+              .select("id, user_id")
+              .in("id", inviteeIds);
+            const recurrenceText = form.recurrence === "once"
+              ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
+              : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
+            const notifRows = (memberData || []).map((m) => ({
+              user_id: m.user_id || "00000000-0000-0000-0000-000000000000",
+              club_member_id: m.id,
+              title: `📅 ${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event Invitation`,
+              message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}. Please confirm or decline.`,
+              type: "booking",
+              url: `/events`,
+              data: JSON.stringify({ event_id: eventId }),
+            }));
+            if (notifRows.length > 0) {
+              // Chunk so a single insert doesn't kick off 200 triggers at once.
+              for (let i = 0; i < notifRows.length; i += 50) {
+                await fromExt("notifications").insert(notifRows.slice(i, i + 50));
+              }
+            }
+          } catch (notifErr) {
+            console.warn("[CreateClubEvent] Notification insert failed (non-blocking):", notifErr);
           }
-        } catch (notifErr) {
-          console.warn("[CreateClubEvent] Notification insert failed (non-blocking):", notifErr);
-        }
+        })();
       }
+
 
       return eventId;
     },

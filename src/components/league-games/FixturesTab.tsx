@@ -687,6 +687,8 @@ function RoundCard({
                 defaultDate={round.round_date}
                 minDate={round.round_date}
                 maxDate={round.end_date || round.round_date}
+                defaultStart={round.start_time as any}
+                defaultEnd={(round as any).end_time}
               />
               <div className="flex justify-end gap-2">
                 {draft && (

@@ -54,7 +54,6 @@ const PROBLEMS = [
   { icon: Lightbulb, label: "Court lights left on, wasted electricity" },
   { icon: ScanFace, label: "No access control on courts" },
 ];
-];
 
 const FEATURES = [
   { title: "Court Bookings", desc: "Real-time availability, no conflicts" },

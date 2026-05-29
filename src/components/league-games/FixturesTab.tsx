@@ -97,46 +97,46 @@ export function FixturesTab({ clubId, associationId }: Props) {
         const { error } = await fromExt("league_rounds").update(payload).eq("id", r.id);
         if (error) throw error;
 
-        // Cascade time shift onto fixtures (and their bookings) that still
-        // sit on the round's previous start time.
+        // Cascade round time edits onto all fixtures and linked court bookings.
+        // Also cancel stale duplicate bookings left by previous fixture re-saves,
+        // so the court grid cannot keep showing the old time.
         if (prevStart && newStart && prevStart !== newStart) {
-          const toMin = (t: string) => {
-            const [h, m] = t.split(":").map(Number);
-            return h * 60 + m;
-          };
-          const delta = toMin(newStart) - toMin(prevStart);
           const { data: fixtures } = await fromExt("platform_league_fixtures")
-            .select("id, start_time, booking_id")
+            .select("id, start_time, booking_id, fixture_date, court_id, away_team_code")
             .eq("round_id", r.id);
-          for (const f of (fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null }>) {
-            if (!f.start_time) continue;
-            const fxStart = String(f.start_time).slice(0, 5);
-            // Only shift fixtures still aligned to the old round start.
-            if (fxStart !== prevStart) continue;
-            const newFxStart = newStart;
-            await fromExt("platform_league_fixtures")
-              .update({ start_time: newFxStart })
-              .eq("id", f.id);
-            if (f.booking_id) {
-              const { data: bk } = await supabase
+          const playableFixtures = ((fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null; fixture_date: string | null; court_id: number | null; away_team_code: string }>).filter(
+            (f) => f.away_team_code !== "__BYE__" && f.court_id && f.fixture_date,
+          );
+          const bookingIds = playableFixtures.map((f) => f.booking_id).filter(Boolean) as string[];
+          const [h, m] = newStart.split(":").map(Number);
+          const endMin = h * 60 + m + Number(r.slot_minutes || prev?.slot_minutes || 120);
+          const newEnd = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}:00`;
+
+          if (playableFixtures.length > 0) {
+            const { error: fxErr } = await fromExt("platform_league_fixtures")
+              .update({ start_time: newStart })
+              .in("id", playableFixtures.map((f) => f.id));
+            if (fxErr) throw fxErr;
+          }
+
+          if (bookingIds.length > 0) {
+            const { error: bErr } = await supabase
+              .from("bookings")
+              .update({ start_time: `${newStart}:00`, end_time: newEnd })
+              .in("id", bookingIds);
+            if (bErr) throw bErr;
+
+            for (const f of playableFixtures) {
+              const stale = await supabase
                 .from("bookings")
-                .select("start_time, end_time")
-                .eq("id", f.booking_id)
-                .maybeSingle();
-              if (bk) {
-                const shift = (t: string) => {
-                  const [h, m] = t.split(":").map(Number);
-                  const total = h * 60 + m + delta;
-                  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}:00`;
-                };
-                await supabase
-                  .from("bookings")
-                  .update({
-                    start_time: shift(String(bk.start_time).slice(0, 5)),
-                    end_time: shift(String(bk.end_time).slice(0, 5)),
-                  })
-                  .eq("id", f.booking_id);
-              }
+                .update({ status: "cancelled" })
+                .eq("club_id", clubId)
+                .eq("date", f.fixture_date!)
+                .eq("court_id", f.court_id!)
+                .eq("status", "active")
+                .like("guest_name", `${r.name} - %`)
+                .neq("id", f.booking_id || "00000000-0000-0000-0000-000000000000");
+              if (stale.error) throw stale.error;
             }
           }
         }

@@ -89,8 +89,57 @@ export function FixturesTab({ clubId, associationId }: Props) {
         created_by: activeMember?.id ?? null,
       };
       if (r.id) {
+        // Capture previous start to detect a time shift we should cascade.
+        const prev = (rounds ?? []).find((x) => x.id === r.id);
+        const prevStart = prev?.start_time ? String(prev.start_time).slice(0, 5) : null;
+        const newStart = r.start_time ? String(r.start_time).slice(0, 5) : null;
+
         const { error } = await fromExt("league_rounds").update(payload).eq("id", r.id);
         if (error) throw error;
+
+        // Cascade time shift onto fixtures (and their bookings) that still
+        // sit on the round's previous start time.
+        if (prevStart && newStart && prevStart !== newStart) {
+          const toMin = (t: string) => {
+            const [h, m] = t.split(":").map(Number);
+            return h * 60 + m;
+          };
+          const delta = toMin(newStart) - toMin(prevStart);
+          const { data: fixtures } = await fromExt("platform_league_fixtures")
+            .select("id, start_time, booking_id")
+            .eq("round_id", r.id);
+          for (const f of (fixtures ?? []) as Array<{ id: string; start_time: string | null; booking_id: string | null }>) {
+            if (!f.start_time) continue;
+            const fxStart = String(f.start_time).slice(0, 5);
+            // Only shift fixtures still aligned to the old round start.
+            if (fxStart !== prevStart) continue;
+            const newFxStart = newStart;
+            await fromExt("platform_league_fixtures")
+              .update({ start_time: newFxStart })
+              .eq("id", f.id);
+            if (f.booking_id) {
+              const { data: bk } = await supabase
+                .from("bookings")
+                .select("start_time, end_time")
+                .eq("id", f.booking_id)
+                .maybeSingle();
+              if (bk) {
+                const shift = (t: string) => {
+                  const [h, m] = t.split(":").map(Number);
+                  const total = h * 60 + m + delta;
+                  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}:00`;
+                };
+                await supabase
+                  .from("bookings")
+                  .update({
+                    start_time: shift(String(bk.start_time).slice(0, 5)),
+                    end_time: shift(String(bk.end_time).slice(0, 5)),
+                  })
+                  .eq("id", f.booking_id);
+              }
+            }
+          }
+        }
       } else {
         const { error } = await fromExt("league_rounds").insert(payload);
         if (error) throw error;
@@ -98,10 +147,12 @@ export function FixturesTab({ clubId, associationId }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["league-rounds", associationId] });
+      qc.invalidateQueries({ queryKey: ["round-fixtures"] });
       toast.success("Round saved");
     },
     onError: (e: any) => toast.error(e.message ?? "Save failed"),
   });
+
 
   const deleteRound = useMutation({
     mutationFn: async (id: string) => {

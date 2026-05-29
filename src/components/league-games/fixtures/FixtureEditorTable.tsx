@@ -23,9 +23,34 @@ type Props = {
   defaultDate?: string;
   minDate?: string;
   maxDate?: string;
+  defaultStart?: string | null;
+  defaultEnd?: string | null;
 };
 
-export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultDate, minDate, maxDate }: Props) {
+export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultDate, minDate, maxDate, defaultStart, defaultEnd }: Props) {
+  // Derive sensible defaults from existing fixtures (most common time), then fall back to round/league defaults.
+  const derived = (() => {
+    const pick = (vals: (string | null | undefined)[]) => {
+      const counts = new Map<string, number>();
+      for (const v of vals) {
+        if (!v) continue;
+        const k = String(v).slice(0, 5);
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+      let best: string | null = null;
+      let bestN = 0;
+      for (const [k, n] of counts) if (n > bestN) { best = k; bestN = n; }
+      return best;
+    };
+    const playable = fixtures.filter((f) => f.away_team_code !== "__BYE__");
+    const fallbackStart = defaultStart ? String(defaultStart).slice(0, 5) : null;
+    const fallbackEnd = defaultEnd ? String(defaultEnd).slice(0, 5) : null;
+    return {
+      start: pick(playable.map((f) => f.start_time)) ?? fallbackStart ?? "18:00",
+      end: pick(playable.map((f) => f.end_time)) ?? fallbackEnd ?? "20:00",
+    };
+  })();
+
   const update = (idx: number, patch: Partial<EditableFixture>) => {
     const next = [...fixtures];
     next[idx] = { ...next[idx], ...patch };
@@ -43,15 +68,15 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
         home_team_code: teams[0]?.code ?? "",
         away_team_code: teams[1]?.code ?? teams[0]?.code ?? "",
         court_id: courts[0]?.id ?? null,
-        start_time: "18:00",
-        end_time: "20:00",
+        start_time: derived.start,
+        end_time: derived.end,
         fixture_date: defaultDate ?? null,
       },
     ]);
   };
 
-  const [bulkStart, setBulkStart] = useState("18:00");
-  const [bulkEnd, setBulkEnd] = useState("20:00");
+  const [bulkStart, setBulkStart] = useState(derived.start);
+  const [bulkEnd, setBulkEnd] = useState(derived.end);
   const [bulkMode, setBulkMode] = useState<"empty" | "all">("empty");
 
   const applyBulkTimes = () => {

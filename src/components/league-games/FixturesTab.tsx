@@ -335,11 +335,17 @@ function RoundCard({
       toast.error("Couldn't generate fixtures — check the time window and slot length.");
       return;
     }
+    const addMinutes = (hhmm: string, mins: number) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      const total = h * 60 + m + mins;
+      return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+    };
     const generated: EditableFixture[] = slots.map((s) => ({
       home_team_code: s.home,
       away_team_code: s.away,
       court_id: s.courtId,
       start_time: s.startTime,
+      end_time: addMinutes(s.startTime, round.slot_minutes),
       fixture_date: s.date,
     }));
 
@@ -348,6 +354,7 @@ function RoundCard({
       away_team_code: "__BYE__",
       court_id: null,
       start_time: null,
+      end_time: null,
       fixture_date: bye.date,
     }));
 

@@ -188,9 +188,42 @@ Deno.serve(async (req) => {
       // Non-fatal — tenant creation already succeeded.
     }
 
+    // Notify all Super Admins (platform admins) of the new tenant registration.
+    try {
+      const { data: superAdmins } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (superAdmins && superAdmins.length > 0) {
+        const tenantLabel = normalizedTenantType === "association" ? "association" : "club";
+        const rows = superAdmins.map((sa: { user_id: string }) => ({
+          user_id: sa.user_id,
+          title: `New ${tenantLabel} registered`,
+          message: `${normalizedClubName} (${normalizedSubdomain}) was just registered by ${normalizedUserName || normalizedUserEmail || "a new user"}.`,
+          type: "club_registered",
+          url: "/super-admin/clubs",
+          data: {
+            club_id: newClub.id,
+            club_name: normalizedClubName,
+            subdomain: normalizedSubdomain,
+            tenant_type: normalizedTenantType,
+            founder_name: normalizedUserName,
+            founder_email: normalizedUserEmail,
+          },
+        }));
+        const { error: notifErr } = await supabaseAdmin.from("notifications").insert(rows);
+        if (notifErr) console.error("Failed to notify super admins:", notifErr);
+      }
+    } catch (notifySetupErr) {
+      console.error("Super admin notify error:", notifySetupErr);
+      // Non-fatal.
+    }
+
     return new Response(JSON.stringify({ club: { ...newClub, club_captain_member_id: captainMember.id } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (err) {
     console.error("create-club error:", err);
     return new Response(JSON.stringify({ error: err.message }), {

@@ -48,6 +48,7 @@ const RECURRENCE_OPTIONS = [
 ];
 
 const REMINDER_OPTIONS = [
+  { value: "0", label: "No reminder" },
   { value: "24", label: "24 hours before" },
   { value: "48", label: "48 hours before" },
   { value: "72", label: "72 hours before" },

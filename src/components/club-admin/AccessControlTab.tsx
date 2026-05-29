@@ -49,8 +49,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     fluss_default_device_id: "",
   });
 
-    zk_webhook_secret: "",
-  });
+
 
   const [faceEnrolmentRequired, setFaceEnrolmentRequired] = useState(false);
   const [testing, setTesting] = useState(false);

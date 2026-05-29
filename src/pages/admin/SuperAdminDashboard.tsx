@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Building2, Users, CreditCard, Activity } from "lucide-react";
+import { Building2, Users, CreditCard, Activity, Sparkles } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { Link } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
 
 export default function SuperAdminDashboard() {
   const { data: clubs } = useQuery({
@@ -52,6 +54,39 @@ export default function SuperAdminDashboard() {
     },
   });
 
+  const { data: recentClubs } = useQuery({
+    queryKey: ["sa-recent-clubs"],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("id, name, subdomain, tenant_type, created_at, created_by")
+        .gte("created_at", since.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const founderIds = (recentClubs ?? []).map((c) => c.created_by).filter(Boolean) as string[];
+
+  const { data: founders } = useQuery({
+    queryKey: ["sa-recent-club-founders", founderIds.sort().join(",")],
+    enabled: founderIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .in("id", founderIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const founderMap = new Map((founders ?? []).map((f) => [f.id, f]));
+
   const stats = [
     { label: "Total Clubs", value: clubs ?? "—", icon: Building2, color: "text-primary" },
     { label: "Registered Users", value: users ?? "—", icon: Users, color: "text-blue-500" },
@@ -83,6 +118,49 @@ export default function SuperAdminDashboard() {
           </Card>
         ))}
       </div>
+
+      <Card className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 backdrop-blur-md rounded-2xl p-5 text-white">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-400" />
+            <h3 className="text-base font-semibold">Recently Registered Clubs (last 30 days)</h3>
+          </div>
+          <Link to="/super-admin/clubs" className="text-xs text-white/60 hover:text-white">
+            View all →
+          </Link>
+        </div>
+        {recentClubs && recentClubs.length > 0 ? (
+          <div className="divide-y divide-white/10">
+            {recentClubs.map((c) => {
+              const f = c.created_by ? founderMap.get(c.created_by) : null;
+              return (
+                <div key={c.id} className="py-2.5 flex items-center justify-between gap-4 text-[13px]">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">
+                      {c.name}
+                      <span className="ml-2 text-white/40 font-normal">/{c.subdomain}</span>
+                      <span className="ml-2 text-[11px] uppercase tracking-wide text-white/40">
+                        {c.tenant_type}
+                      </span>
+                    </div>
+                    {f && (
+                      <div className="text-white/50 text-xs truncate">
+                        Founder: {f.name || "—"} {f.email ? `· ${f.email}` : ""}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-white/50 text-xs whitespace-nowrap">
+                    {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-white/50">No new clubs in the last 30 days.</p>
+        )}
+      </Card>
     </div>
   );
 }
+

@@ -417,28 +417,34 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         })();
       }
 
-      // Create court bookings — split across booking members (max 1hr each)
-      const firstDate = instanceDates[0];
+      // Create court bookings for every event instance. Build one bulk insert
+      // instead of many per-booking requests so recurring events don't appear
+      // to hang after the first week/court.
       const startMinutes = parseInt(form.start_time.split(":")[0]) * 60 + parseInt(form.start_time.split(":")[1]);
       const endMinutes = parseInt(form.end_time.split(":")[0]) * 60 + parseInt(form.end_time.split(":")[1]);
       const totalMinutes = endMinutes - startMinutes;
 
-      const bookingJobs: any[] = [];
+      const bookingRows: any[] = [];
+      const eventBookingTitle = form.is_club_booking
+        ? `${club?.name || "Club"} — ${form.title.trim()}`
+        : form.title.trim();
 
       if (form.is_club_booking) {
-        for (const cid of form.court_ids) {
-          bookingJobs.push(
-            supabase.from("bookings").insert({
+        for (const date of instanceDates) {
+          for (const cid of form.court_ids) {
+            bookingRows.push({
               court_id: cid,
-              date: firstDate,
+              date,
               start_time: form.start_time + ":00",
               end_time: form.end_time + ":00",
               user_id: user.id,
-              guest_name: `${club?.name || "Club"} — ${form.title}`,
+              guest_name: eventBookingTitle,
               lights_requested: form.lights_auto_on,
               status: "active",
-            })
-          );
+              club_id: clubId,
+              source: "club_event",
+            });
+          }
         }
       } else {
         const hourSessionsPerCourt = Math.ceil(totalMinutes / 60);
@@ -450,40 +456,41 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
         if (bookingMembers.length > 0) {
           const slotMinutes = Math.min(60, Math.ceil(totalMinutes / hourSessionsPerCourt));
-          let memberIdx = 0;
+          for (const date of instanceDates) {
+            let memberIdx = 0;
+            for (const cid of form.court_ids) {
+              let offsetMin = 0;
+              while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
+                const bm = bookingMembers[memberIdx];
+                const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
+                const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
+                const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
 
-          for (const cid of form.court_ids) {
-            let offsetMin = 0;
-            while (offsetMin < totalMinutes && memberIdx < bookingMembers.length) {
-              const bm = bookingMembers[memberIdx];
-              const slotEnd = Math.min(offsetMin + slotMinutes, totalMinutes);
-              const slotStartTime = `${String(Math.floor((startMinutes + offsetMin) / 60)).padStart(2, "0")}:${String((startMinutes + offsetMin) % 60).padStart(2, "0")}:00`;
-              const slotEndTime = `${String(Math.floor((startMinutes + slotEnd) / 60)).padStart(2, "0")}:${String((startMinutes + slotEnd) % 60).padStart(2, "0")}:00`;
-
-              bookingJobs.push(
-                supabase.from("bookings").insert({
+                bookingRows.push({
                   court_id: cid,
-                  date: firstDate,
+                  date,
                   start_time: slotStartTime,
                   end_time: slotEndTime,
                   user_id: user.id,
                   club_member_id: bm.id,
-                  guest_name: form.title,
+                  guest_name: eventBookingTitle,
                   lights_requested: form.lights_auto_on,
                   status: "active",
-                  club_id: clubId || null,
-                } as any)
-              );
-              offsetMin = slotEnd;
-              memberIdx++;
+                  club_id: clubId,
+                  source: "club_event",
+                });
+                offsetMin = slotEnd;
+                memberIdx++;
+              }
             }
           }
         }
       }
 
-      // Wait for bookings only — RSVPs run in background above so the dialog
-      // can close quickly even with hundreds of invitees.
-      await Promise.all(bookingJobs.map((j) => Promise.resolve(j)));
+      if (bookingRows.length > 0) {
+        const { error: bookingError } = await supabase.from("bookings").insert(bookingRows as any);
+        if (bookingError) throw bookingError;
+      }
 
 
       // Notifications — fire-and-forget. Each row triggers email + web-push

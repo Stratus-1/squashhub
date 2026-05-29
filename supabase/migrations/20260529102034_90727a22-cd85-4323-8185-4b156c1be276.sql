@@ -1,0 +1,2 @@
+ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS bookings_source_chk;
+ALTER TABLE public.bookings ADD CONSTRAINT bookings_source_chk CHECK (source = ANY (ARRAY['squashhub'::text, 'gobook'::text, 'club_event'::text]));

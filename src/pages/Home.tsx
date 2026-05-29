@@ -781,6 +781,18 @@ export default function Home() {
           © {new Date().getFullYear()} SquashHub · A product of Stratus Software Solutions (Pty) Ltd / Proudly designed by JLT Digital
         </div>
       </footer>
+
+      {/* Floating WhatsApp button */}
+      <a
+        href="https://wa.me/27833759003"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] text-white px-4 py-3 shadow-lg hover:opacity-90 transition-opacity"
+        aria-label="Chat on WhatsApp"
+      >
+        <MessageCircle className="w-5 h-5" />
+        <span className="text-sm font-semibold hidden sm:inline">WhatsApp Us</span>
+      </a>
     </div>
   );
 }

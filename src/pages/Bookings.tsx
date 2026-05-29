@@ -440,19 +440,24 @@ export default function Bookings() {
   };
 
   // Does the current member have GoBook credentials saved? Drives the banner.
-  const { data: hasGobookCreds } = useQuery({
-    queryKey: ["member-has-gobook-creds", activeMember?.id],
+  const { data: gobookCredInfo } = useQuery({
+    queryKey: ["member-gobook-cred-info", activeMember?.id],
     enabled: !!activeMember?.id && !!(myClub as any)?.uses_gobook,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("member_gobook_credentials")
-        .select("club_member_id")
+        .select("club_member_id, last_verification_status, last_verified_at, is_sync_source")
         .eq("club_member_id", activeMember!.id)
         .maybeSingle();
-      if (error) return false;
-      return !!data;
+      if (error) return null;
+      return data;
     },
+    refetchInterval: 60_000,
   });
+  const hasGobookCreds = !!gobookCredInfo;
+  const gobookCredsInvalid =
+    !!gobookCredInfo && gobookCredInfo.last_verification_status === "invalid";
+
 
 
   // Active light sessions for the current user
@@ -1062,7 +1067,7 @@ export default function Bookings() {
                       Add GoBook details
                     </Button>
                   )}
-                  {hasGobookCreds && (
+                  {hasGobookCreds && (isMemberAdmin || isSuperAdmin) && (
                     <Button
                       size="sm"
                       disabled={syncingGobook || ((myClub as any)?.booking_slot_minutes ?? 60) !== 60}
@@ -1072,11 +1077,39 @@ export default function Bookings() {
                       {syncingGobook ? "Syncing…" : "Sync GoBook now"}
                     </Button>
                   )}
+
                   {externalUrl && (
                     <Button size="sm" variant="outline" onClick={() => openExternalUrl(externalUrl)}>
                       Open GoBook
                     </Button>
                   )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* GoBook credentials invalid — last sync attempt failed for this member */}
+      {usesExternalBooking && externalProvider === "gobook" && gobookCredsInvalid && (
+        <div className="px-4 mt-2">
+          <Card className="border-destructive/50 bg-destructive/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-destructive">
+                  Your saved GoBook login is no longer valid
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  The last sync attempt with your GoBook credentials failed. Bookings in
+                  the grid may be out of date until you re-enter your password under
+                  My Account → GoBook. No GoBook bookings will be cancelled while the
+                  login is invalid.
+                </p>
+                <div className="mt-2">
+                  <Button size="sm" variant="destructive" onClick={() => navigate("/my-account")}>
+                    Fix GoBook login
+                  </Button>
                 </div>
               </div>
             </CardContent>

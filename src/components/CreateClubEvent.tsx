@@ -1138,12 +1138,12 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 <Label className="text-xs font-medium">Invite</Label>
                 <Select value={form.invite_scope} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope: v, invite_scope_id: "", selected_member_ids: [] }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
                     <SelectItem value="all">All Members</SelectItem>
                     <SelectItem value="category">By Fee Category</SelectItem>
                     <SelectItem value="league">By League</SelectItem>
                     <SelectItem value="selected">Selected Members</SelectItem>
                     <SelectItem value="none">No invitation</SelectItem>
-                    <SelectItem value="selected">Selected Members</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

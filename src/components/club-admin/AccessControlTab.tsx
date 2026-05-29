@@ -68,9 +68,11 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         zk_username: s.zk_username || "",
         zk_password: s.zk_password || "",
         zk_area_id: s.zk_area_id || "",
-        zk_door_group: s.zk_door_group || "",
         zk_webhook_secret: s.zk_webhook_secret || "",
+        fluss_api_token: s.fluss_api_token || "",
+        fluss_default_device_id: s.fluss_default_device_id || "",
       });
+
     }
   }, [secrets]);
 

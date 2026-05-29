@@ -91,7 +91,9 @@ function extractInput(html: string, name: string): string | null {
 
 async function gobookLogin(email: string, password: string): Promise<Jar> {
   const jar: Jar = new Map();
-  const getRes = await fetch(`${GOBOOK_BASE}/Home/Login`, {
+  // The login form lives on `/` (the old /Home/Login GET now 404s). GET it
+  // first so we pick up the ASP.NET session cookie before posting.
+  const getRes = await fetch(`${GOBOOK_BASE}/`, {
     headers: { "User-Agent": "SquashHub/1.0 (+squashhub.co.za)" },
   });
   jarFromHeaders(getRes.headers, jar);
@@ -111,33 +113,20 @@ async function gobookLogin(email: string, password: string): Promise<Jar> {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-      "Referer": `${GOBOOK_BASE}/Home/Login`,
+      "Referer": `${GOBOOK_BASE}/`,
       cookie: cookieHeader(jar),
     },
     body: form.toString(),
   });
   jarFromHeaders(postRes.headers, jar);
-  console.log("gobook login POST status", postRes.status, "loc", postRes.headers.get("location"), "cookies", [...jar.keys()].join(","));
+  const sessionVal = jar.get("GoBookSession") || jar.get(".ASPXAUTH") || "";
+  console.log("gobook login POST status", postRes.status, "loc", postRes.headers.get("location"), "session", sessionVal ? "set" : "empty");
 
-  // Verify session by fetching Dashboard
-  const check = await fetch(`${GOBOOK_BASE}/Dashboard`, {
-    redirect: "manual",
-    headers: {
-      cookie: cookieHeader(jar),
-      "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-    },
-  });
-  jarFromHeaders(check.headers, jar);
-  const loc = check.headers.get("location") || "";
-  console.log("gobook dashboard status", check.status, "loc", loc);
-  if (check.status >= 300 && check.status < 400 && /Login/i.test(loc)) {
+  // A successful login on this site returns a 302 + sets a non-empty
+  // GoBookSession (or .ASPXAUTH) cookie. 200 means the form was re-rendered
+  // (credentials rejected). An empty/cleared session cookie also means failure.
+  if (postRes.status === 200 || !sessionVal) {
     throw new Error("login_rejected");
-  }
-  if (check.status === 200) {
-    const dashHtml = await check.text();
-    if (/<form[^>]*action=["'][^"']*\/Home\/Login/i.test(dashHtml)) {
-      throw new Error("login_still_on_login_page");
-    }
   }
   return jar;
 }

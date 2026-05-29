@@ -57,7 +57,8 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
             <th className="p-2">Home</th>
             <th className="p-2">Away</th>
             <th className="p-2">Court</th>
-            <th className="p-2">Time</th>
+            <th className="p-2">Start</th>
+            <th className="p-2">End</th>
             <th className="p-2 w-10"></th>
           </tr>
         </thead>

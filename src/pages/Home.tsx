@@ -14,7 +14,7 @@ import { SEO } from "@/components/SEO";
 import {
   Building2, ChevronRight, Landmark, Check,
   AlertCircle, Calendar, Trophy, Users, BarChart3, Mail, Menu, Zap,
-  Lightbulb, ScanFace,
+  Lightbulb, ScanFace, Phone, MessageCircle,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";

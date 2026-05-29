@@ -152,6 +152,14 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                     onChange={(e) => update(i, { start_time: e.target.value || null })}
                   />
                 </td>
+                <td className="p-1">
+                  <Input
+                    type="time"
+                    className="h-8"
+                    value={f.end_time ?? ""}
+                    onChange={(e) => update(i, { end_time: e.target.value || null })}
+                  />
+                </td>
                 <td className="p-1 text-right">
                   <Button size="icon" variant="ghost" onClick={() => remove(i)}>
                     <Trash2 className="h-3.5 w-3.5" />

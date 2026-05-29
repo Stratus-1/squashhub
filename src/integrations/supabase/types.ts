@@ -4834,6 +4834,7 @@ export type Database = {
           court_id: number | null
           created_at: string
           division: string
+          end_time: string | null
           external_id: string | null
           fixture_date: string
           game_scores: string | null
@@ -4859,6 +4860,7 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           division: string
+          end_time?: string | null
           external_id?: string | null
           fixture_date: string
           game_scores?: string | null
@@ -4884,6 +4886,7 @@ export type Database = {
           court_id?: number | null
           created_at?: string
           division?: string
+          end_time?: string | null
           external_id?: string | null
           fixture_date?: string
           game_scores?: string | null

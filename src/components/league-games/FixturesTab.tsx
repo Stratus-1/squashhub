@@ -264,7 +264,7 @@ function RoundCard({
     queryKey: ["round-fixtures", round.id],
     queryFn: async () => {
       const { data, error } = await fromExt("platform_league_fixtures")
-        .select("id, home_team_code, away_team_code, court_id, start_time, fixture_date")
+        .select("id, home_team_code, away_team_code, court_id, start_time, end_time, fixture_date")
         .eq("round_id", round.id)
         .order("fixture_date", { ascending: true })
         .order("start_time", { ascending: true });
@@ -335,11 +335,17 @@ function RoundCard({
       toast.error("Couldn't generate fixtures — check the time window and slot length.");
       return;
     }
+    const addMinutes = (hhmm: string, mins: number) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      const total = h * 60 + m + mins;
+      return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+    };
     const generated: EditableFixture[] = slots.map((s) => ({
       home_team_code: s.home,
       away_team_code: s.away,
       court_id: s.courtId,
       start_time: s.startTime,
+      end_time: addMinutes(s.startTime, round.slot_minutes),
       fixture_date: s.date,
     }));
 
@@ -348,6 +354,7 @@ function RoundCard({
       away_team_code: "__BYE__",
       court_id: null,
       start_time: null,
+      end_time: null,
       fixture_date: bye.date,
     }));
 
@@ -432,9 +439,10 @@ function RoundCard({
           status: isBye ? "bye" : "scheduled",
           court_id: isBye ? null : f.court_id,
           start_time: isBye ? null : f.start_time,
+          end_time: isBye ? null : (f.end_time ?? null),
         };
       });
-      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, fixture_date");
+      const { data: inserted, error } = await fromExt("platform_league_fixtures").insert(rows).select("id, court_id, start_time, end_time, fixture_date");
       if (error) throw error;
 
       if (autoCreateBookings && inserted) {
@@ -443,11 +451,17 @@ function RoundCard({
         for (let i = 0; i < inserted.length; i++) {
           const f = inserted[i];
           if (!f.court_id || !f.start_time) continue;
-          // compute end time
-          const [h, m] = String(f.start_time).split(":").map(Number);
-          const startMin = h * 60 + m;
-          const endMin = startMin + round.slot_minutes;
-          const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+          // Prefer per-fixture end_time; fall back to start + round slot_minutes
+          let endTime: string;
+          const fxEnd = (f as any).end_time as string | null | undefined;
+          if (fxEnd) {
+            endTime = String(fxEnd).slice(0, 5);
+          } else {
+            const [h, m] = String(f.start_time).split(":").map(Number);
+            const startMin = h * 60 + m;
+            const endMin = startMin + round.slot_minutes;
+            endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+          }
           const homeName = teams.find((t) => t.code === list[i].home_team_code)?.name?.trim();
           const awayName = teams.find((t) => t.code === list[i].away_team_code)?.name?.trim();
           const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";

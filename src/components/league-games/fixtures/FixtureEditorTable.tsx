@@ -9,6 +9,7 @@ export type EditableFixture = {
   away_team_code: string;
   court_id: number | null;
   start_time: string | null; // HH:mm
+  end_time?: string | null;  // HH:mm
   fixture_date?: string | null; // yyyy-MM-dd
 };
 
@@ -41,6 +42,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
         away_team_code: teams[1]?.code ?? teams[0]?.code ?? "",
         court_id: courts[0]?.id ?? null,
         start_time: "18:00",
+        end_time: "20:00",
         fixture_date: defaultDate ?? null,
       },
     ]);
@@ -55,7 +57,8 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
             <th className="p-2">Home</th>
             <th className="p-2">Away</th>
             <th className="p-2">Court</th>
-            <th className="p-2">Time</th>
+            <th className="p-2">Start</th>
+            <th className="p-2">End</th>
             <th className="p-2 w-10"></th>
           </tr>
         </thead>
@@ -85,7 +88,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-1 text-xs font-medium text-amber-700 dark:text-amber-400" colSpan={3}>
+                  <td className="p-1 text-xs font-medium text-amber-700 dark:text-amber-400" colSpan={4}>
                     BYE — no match this round
                   </td>
                   <td className="p-1 text-right">
@@ -149,6 +152,14 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
                     onChange={(e) => update(i, { start_time: e.target.value || null })}
                   />
                 </td>
+                <td className="p-1">
+                  <Input
+                    type="time"
+                    className="h-8"
+                    value={f.end_time ?? ""}
+                    onChange={(e) => update(i, { end_time: e.target.value || null })}
+                  />
+                </td>
                 <td className="p-1 text-right">
                   <Button size="icon" variant="ghost" onClick={() => remove(i)}>
                     <Trash2 className="h-3.5 w-3.5" />
@@ -159,7 +170,7 @@ export function FixtureEditorTable({ fixtures, teams, courts, onChange, defaultD
           })}
           {!fixtures.length && (
             <tr>
-              <td colSpan={6} className="p-3 text-center text-muted-foreground">
+              <td colSpan={7} className="p-3 text-center text-muted-foreground">
                 No fixtures yet — add manually or auto-distribute.
               </td>
             </tr>

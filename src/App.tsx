@@ -77,6 +77,8 @@ import { useMyRoles } from "@/hooks/use-data";
 import { useMyClub } from "@/hooks/use-club";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Unsubscribe from "./pages/Unsubscribe";
+
 import Sla from "./pages/Sla";
 import LightsIntegration from "./pages/LightsIntegration";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -324,7 +326,9 @@ function AppRoutes() {
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/tournaments" element={<Tournaments />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/lights" element={<LightsIntegration />} />
+        <Route path="/unsubscribe" element={<Unsubscribe />} />
+
         <Route path="/sla" element={<Sla />} />
         <Route path="/lights" element={<LightsIntegration />} />
         <Route path="/auth" element={<AuthGate />} />

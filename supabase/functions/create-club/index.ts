@@ -214,11 +214,50 @@ Deno.serve(async (req) => {
         }));
         const { error: notifErr } = await supabaseAdmin.from("notifications").insert(rows);
         if (notifErr) console.error("Failed to notify super admins:", notifErr);
+
+        // Email each super admin (look up their email from profiles).
+        const adminIds = superAdmins.map((sa: { user_id: string }) => sa.user_id);
+        const { data: adminProfiles } = await supabaseAdmin
+          .from("profiles")
+          .select("id, email")
+          .in("id", adminIds);
+
+        const recipients = (adminProfiles ?? [])
+          .map((p: { id: string; email: string | null }) => p.email)
+          .filter((e): e is string => !!e);
+
+        const registeredAt = new Date().toLocaleString("en-ZA", {
+          timeZone: "Africa/Johannesburg",
+        });
+        const adminUrl = "https://squashhub.co.za/super-admin/clubs";
+
+        await Promise.all(
+          recipients.map((email) =>
+            supabaseAdmin.functions.invoke("send-transactional-email", {
+              body: {
+                templateName: "new-club-registered",
+                recipientEmail: email,
+                idempotencyKey: `new-club-${newClub.id}-${email}`,
+                templateData: {
+                  clubName: normalizedClubName,
+                  subdomain: normalizedSubdomain,
+                  tenantType: tenantLabel,
+                  founderName: normalizedUserName,
+                  founderEmail: normalizedUserEmail,
+                  registeredAt,
+                  adminUrl,
+                },
+              },
+            }).catch((e) => console.error("send-transactional-email failed:", e))
+          )
+        );
       }
     } catch (notifySetupErr) {
       console.error("Super admin notify error:", notifySetupErr);
       // Non-fatal.
     }
+
+
 
     return new Response(JSON.stringify({ club: { ...newClub, club_captain_member_id: captainMember.id } }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

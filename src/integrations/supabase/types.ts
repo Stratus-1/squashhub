@@ -841,6 +841,7 @@ export type Database = {
           entries_locked: boolean
           entry_fee_cents: number
           gender: string
+          group_durations: Json
           id: string
           invite_methods: string[]
           match_duration_minutes: number
@@ -855,6 +856,7 @@ export type Database = {
           registration_mode: string
           registration_opens_at: string | null
           round_format: string
+          scoring_mode: string
           source_league_id: string | null
           source_league_ids: string[]
           start_date: string
@@ -873,6 +875,7 @@ export type Database = {
           entries_locked?: boolean
           entry_fee_cents?: number
           gender: string
+          group_durations?: Json
           id?: string
           invite_methods?: string[]
           match_duration_minutes?: number
@@ -887,6 +890,7 @@ export type Database = {
           registration_mode?: string
           registration_opens_at?: string | null
           round_format?: string
+          scoring_mode?: string
           source_league_id?: string | null
           source_league_ids?: string[]
           start_date: string
@@ -905,6 +909,7 @@ export type Database = {
           entries_locked?: boolean
           entry_fee_cents?: number
           gender?: string
+          group_durations?: Json
           id?: string
           invite_methods?: string[]
           match_duration_minutes?: number
@@ -919,6 +924,7 @@ export type Database = {
           registration_mode?: string
           registration_opens_at?: string | null
           round_format?: string
+          scoring_mode?: string
           source_league_id?: string | null
           source_league_ids?: string[]
           start_date?: string
@@ -1025,6 +1031,8 @@ export type Database = {
           scheduled_date: string | null
           scheduled_time: string | null
           score: string | null
+          side_a_points: number | null
+          side_b_points: number | null
           status: string
           updated_at: string
           winner_member_id: string | null
@@ -1047,6 +1055,8 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time?: string | null
           score?: string | null
+          side_a_points?: number | null
+          side_b_points?: number | null
           status?: string
           updated_at?: string
           winner_member_id?: string | null
@@ -1069,6 +1079,8 @@ export type Database = {
           scheduled_date?: string | null
           scheduled_time?: string | null
           score?: string | null
+          side_a_points?: number | null
+          side_b_points?: number | null
           status?: string
           updated_at?: string
           winner_member_id?: string | null

@@ -140,39 +140,11 @@ export default function Auth() {
       return;
     }
 
-    // Create the club immediately via edge function (before email verification)
-    if (userId) {
-      try {
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const res = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/create-club`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", apikey: anonKey },
-            body: JSON.stringify({
-              userId,
-              clubName: club,
-              subdomain: sub,
-              userName: name,
-              userEmail: email,
-              tenantType,
-            }),
-          }
-        );
-        const result = await res.json();
-        if (!res.ok) {
-          toast.error(result.error || "Failed to create club");
-          setLoading(false);
-          return;
-        }
-      } catch (err: any) {
-        console.error("Club creation failed:", err);
-        toast.error("Failed to create club. Please try again.");
-        setLoading(false);
-        return;
-      }
-    }
+    // NOTE: The tenant (club/association) is provisioned in AuthCallback after
+    // email verification, when the user has a valid session. Calling create-club
+    // here would 401 because email-verification-required signups don't return a
+    // session, so there's no bearer token to authorise the edge function.
+
 
     setSignupDone(true);
     setLoading(false);

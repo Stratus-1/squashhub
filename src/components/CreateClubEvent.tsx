@@ -618,6 +618,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       invite_scope: e.invite_scope || "all",
       invite_scope_id: e.invite_scope_id || "",
       selected_member_ids: [],
+      notify_push: true,
+      notify_email: true,
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],

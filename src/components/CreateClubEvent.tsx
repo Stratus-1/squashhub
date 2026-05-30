@@ -498,7 +498,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       // Notifications — fire-and-forget. Each row triggers email + web-push
       // delivery functions, so we don't make the user wait for ~200 trigger
       // executions. Errors are non-blocking.
-      if (inviteeIds.length > 0) {
+      if (inviteeIds.length > 0 && (form.notify_push || form.notify_email)) {
         (async () => {
           try {
             const { data: memberData } = await supabase
@@ -515,7 +515,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}. Please confirm or decline.`,
               type: "booking",
               url: `/events`,
-              data: JSON.stringify({ event_id: eventId }),
+              data: JSON.stringify({
+                event_id: eventId,
+                suppress_email: form.notify_email ? "false" : "true",
+                suppress_push: form.notify_push ? "false" : "true",
+              }),
             }));
             if (notifRows.length > 0) {
               // Chunk so a single insert doesn't kick off 200 triggers at once.

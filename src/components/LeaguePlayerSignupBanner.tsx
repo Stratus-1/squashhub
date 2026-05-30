@@ -28,7 +28,7 @@ export function LeaguePlayerSignupBanner({ clubSubdomain, clubName }: Props) {
             NSA league player{clubName ? ` at ${clubName}` : ""}?
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            <span className="font-semibold text-amber-700 dark:text-amber-400">Free forever.</span>{" "}
+            <span className="font-semibold text-amber-700 dark:text-amber-400">Players join for free.</span>{" "}
             Sign up in 30 seconds with your NSA number →
           </div>
         </div>

@@ -121,7 +121,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
     }
 
     if (!username.trim() || !password) {
-      toast.error("Enter your GoBook email and password");
+      toast.error("Enter your GoBook username and password");
       return;
     }
     setSaving(true);

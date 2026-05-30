@@ -41,6 +41,7 @@ import ResetPassword from "./pages/ResetPassword";
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
 import MatchMarker from "./pages/MatchMarker";
+import BellsMarker from "./pages/BellsMarker";
 import MarkerTv from "./pages/MarkerTv";
 import AddMatchResult from "./pages/AddMatchResult";
 import PlayerProfile from "./pages/PlayerProfile";
@@ -340,6 +341,7 @@ function AppRoutes() {
         <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
         <Route path="/match-tracker/:bookingId" element={<ProtectedRoute><MatchTracker /></ProtectedRoute>} />
         <Route path="/match-marker" element={<ProtectedRoute><MatchMarker /></ProtectedRoute>} />
+        <Route path="/bells-marker/:matchId" element={<ProtectedRoute><BellsMarker /></ProtectedRoute>} />
         <Route path="/tv" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain" element={<MarkerTv />} />
         <Route path="/tv/club/:subdomain/court/:court" element={<MarkerTv />} />

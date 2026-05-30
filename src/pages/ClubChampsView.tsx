@@ -93,6 +93,7 @@ export default function ClubChampsView() {
 
   // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
   const byeHandling: string = (champ as any)?.bye_handling || "no_match";
+  const isBells: boolean = (champ as any)?.scoring_mode === "time_capped_points";
 
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
@@ -106,6 +107,7 @@ export default function ClubChampsView() {
 
     const computeFor = (memberId: string) => {
       let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0, byes = 0;
+      let pointsFor = 0, pointsAgainst = 0;
       groupByes.forEach((m: any) => {
         if (m.bye_member_id === memberId || m.player_a_member_id === memberId) byes++;
       });
@@ -114,6 +116,20 @@ export default function ClubChampsView() {
         const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
         if (!isA && !isB) return;
         played++;
+
+        // Bells: cumulative points-for / points-against from side_a/b_points.
+        if (isBells) {
+          const a = Number(m.side_a_points) || 0;
+          const b = Number(m.side_b_points) || 0;
+          if (isA) { pointsFor += a; pointsAgainst += b; }
+          else     { pointsFor += b; pointsAgainst += a; }
+          // Wins/losses are still informational (higher points when bell rang).
+          if (a > b) { if (isA) won++; else lost++; }
+          else if (b > a) { if (isB) won++; else lost++; }
+          return;
+        }
+
+        // Standard: win/loss + per-game points from game_scores.
         if (m.winner_member_id === memberId || (isDoubles && (
           (isA && m.winner_member_id === m.player_a_member_id) ||
           (isB && m.winner_member_id === m.player_b_member_id)
@@ -133,11 +149,10 @@ export default function ClubChampsView() {
           } catch { /* ignore */ }
         }
       });
-      return { played, won, lost, gamesWon, gamesLost, byes };
+      return { played, won, lost, gamesWon, gamesLost, byes, pointsFor, pointsAgainst };
     };
 
     const buildRow = (stats: ReturnType<typeof computeFor>) => {
-      // Walkover bye = win + points (treat like a played win). Other modes ignore byes.
       const byeWins = byeHandling === "walkover_win" ? stats.byes : 0;
       const totalPlayed = stats.played + byeWins;
       const totalWon = stats.won + byeWins;
@@ -146,6 +161,8 @@ export default function ClubChampsView() {
         played: totalPlayed,
         won: totalWon,
         gameDiff: stats.gamesWon - stats.gamesLost,
+        pointsDiff: stats.pointsFor - stats.pointsAgainst,
+        // Standard tournament points (used for ranking in standard mode).
         points: totalWon * 2 + (totalPlayed - totalWon - stats.lost),
       };
     };
@@ -198,8 +215,17 @@ export default function ClubChampsView() {
       } as any);
     });
 
+    // Bells: rank by points scored only (per user spec); other tiebreaks shown for info.
+    if (isBells) {
+      return rows.sort((a: any, b: any) =>
+        b.pointsFor - a.pointsFor ||
+        b.pointsDiff - a.pointsDiff ||
+        b.played - a.played,
+      );
+    }
     return rows.sort((a: any, b: any) => b.points - a.points || b.gameDiff - a.gameDiff || b.won - a.won);
   };
+
 
   const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();
 
@@ -635,8 +661,8 @@ export default function ClubChampsView() {
                               <th className="pb-2 font-medium text-center">P</th>
                               <th className="pb-2 font-medium text-center">W</th>
                               <th className="pb-2 font-medium text-center">L</th>
-                              <th className="pb-2 font-medium text-center">GD</th>
-                              <th className="pb-2 font-medium text-center">Pts</th>
+                              <th className="pb-2 font-medium text-center" title={isBells ? "Points For" : "Game Difference"}>{isBells ? "PF" : "GD"}</th>
+                              <th className="pb-2 font-medium text-center" title={isBells ? "Points Against" : "Tournament Points"}>{isBells ? "PA" : "Pts"}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -649,8 +675,17 @@ export default function ClubChampsView() {
                                   <td className="py-2 text-center">{s.played}</td>
                                   <td className="py-2 text-center">{s.won}</td>
                                   <td className="py-2 text-center">{s.lost}</td>
-                                  <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
-                                  <td className="py-2 text-center font-semibold">{s.points}</td>
+                                  {isBells ? (
+                                    <>
+                                      <td className="py-2 text-center font-semibold">{s.pointsFor}</td>
+                                      <td className="py-2 text-center text-muted-foreground">{s.pointsAgainst}</td>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
+                                      <td className="py-2 text-center font-semibold">{s.points}</td>
+                                    </>
+                                  )}
                                 </tr>
                               );
                             })}
@@ -729,8 +764,8 @@ export default function ClubChampsView() {
                     <th className="pb-2 font-medium text-center">P</th>
                     <th className="pb-2 font-medium text-center">W</th>
                     <th className="pb-2 font-medium text-center">L</th>
-                    <th className="pb-2 font-medium text-center">GD</th>
-                    <th className="pb-2 font-medium text-center">Pts</th>
+                    <th className="pb-2 font-medium text-center" title={isBells ? "Points For" : "Game Difference"}>{isBells ? "PF" : "GD"}</th>
+                    <th className="pb-2 font-medium text-center" title={isBells ? "Points Against" : "Tournament Points"}>{isBells ? "PA" : "Pts"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -743,8 +778,17 @@ export default function ClubChampsView() {
                         <td className="py-2 text-center">{s.played}</td>
                         <td className="py-2 text-center">{s.won}</td>
                         <td className="py-2 text-center">{s.lost}</td>
-                        <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
-                        <td className="py-2 text-center font-semibold">{s.points}</td>
+                        {isBells ? (
+                          <>
+                            <td className="py-2 text-center font-semibold">{s.pointsFor}</td>
+                            <td className="py-2 text-center text-muted-foreground">{s.pointsAgainst}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
+                            <td className="py-2 text-center font-semibold">{s.points}</td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}

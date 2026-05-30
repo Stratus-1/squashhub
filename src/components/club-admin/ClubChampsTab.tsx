@@ -196,6 +196,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(30);
+  const [scoringMode, setScoringMode] = useState<"standard" | "time_capped_points">("standard");
+  const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
   const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
@@ -683,6 +685,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
+            scoring_mode: scoringMode,
+            group_durations: groupDurations,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -715,6 +719,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
+            scoring_mode: scoringMode,
+            group_durations: groupDurations,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -1041,6 +1047,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime("18:00");
     setEndTime("20:00");
     setMatchDuration(30);
+    setScoringMode("standard");
+    setGroupDurations({});
     setRoundFormat("single_round_robin");
     setByeHandling("no_match");
     setSelectedCourtIds(new Set());
@@ -1074,6 +1082,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setStartTime(champ.start_time?.slice(0, 5) || "18:00");
     setEndTime(champ.end_time?.slice(0, 5) || "20:00");
     setMatchDuration(champ.match_duration_minutes || 30);
+    setScoringMode(((champ as any).scoring_mode as any) || "standard");
+    setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setRoundFormat((champ.round_format as any) || "single_round_robin");
     setByeHandling((champ.bye_handling as any) || "no_match");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
@@ -1962,6 +1972,61 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </Select>
               </div>
             </div>
+
+            {/* Bells (time-capped) scoring — doubles only */}
+            {isDoubles && (
+              <div className="rounded-lg border p-3 bg-muted/30 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Scoring format</Label>
+                  <Select value={scoringMode} onValueChange={(v) => setScoringMode(v as any)}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard — best-of games, win/loss</SelectItem>
+                      <SelectItem value="time_capped_points">Bells — time-capped, ranked by points scored</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {scoringMode === "time_capped_points"
+                      ? "Each game is played until the bell rings at the time cap. Standings rank pairs by total points scored across the round-robin."
+                      : "Traditional best-of games. Standings rank by wins."}
+                  </p>
+                </div>
+
+                {scoringMode === "time_capped_points" && numGroups > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium">Time cap per league (minutes)</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                      {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => (
+                        <div key={gn} className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-16 shrink-0">League {gn}</span>
+                          <Input
+                            type="number"
+                            min={5}
+                            max={120}
+                            placeholder={String(matchDuration)}
+                            value={groupDurations[String(gn)] ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setGroupDurations((prev) => {
+                                const next = { ...prev };
+                                if (v === "") delete next[String(gn)];
+                                else next[String(gn)] = Math.max(1, Number(v));
+                                return next;
+                              });
+                            }}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Leave blank to fall back to the default Match Duration above.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-3 bg-muted/30">
               <div>

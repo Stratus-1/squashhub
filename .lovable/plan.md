@@ -1,72 +1,50 @@
-# Stage 2 — GoBook two-way sync (driven by club settings)
+# Bells Doubles Tournament Format
 
-Reuses existing club config:
-- `clubs.uses_gobook` — gates all GoBook behavior (no hardcoded club).
-- `clubs.gobook_url` — base URL for that club's GoBook tenant.
-- `clubs.booking_slot_minutes` — drives slot length (CSIR = 60, hourly only).
+A new scoring mode for the existing tournament module. Pairs play time-capped round-robin games inside a "league" (group); standings = total points scored across all games.
 
-If `uses_gobook=false` nothing in this stage runs. If `booking_slot_minutes <> 60` we skip GoBook calls (GoBook is hourly-only) and surface a one-line config warning to admins.
+## Concept recap
 
-## A. Migration
+- **Entry**: members sign up, pick a preferred partner. Admin confirms or overrides → list of doubles pairs.
+- **Allocation**: admin distributes pairs across Leagues (1, 2, 3…). Each league has its **own time cap** (e.g. 30 / 25 / 20 min).
+- **Play**: round-robin inside each league. A bell ends the game at the cap; the score at that moment is recorded.
+- **Standings**: total points scored across all games (per your answer). No win/loss column needed for ranking.
+- **Scoring entry**: a match marker / referee enters scores live on the night (uses existing Match Marker module).
 
-`public.bookings`:
-- `source TEXT NOT NULL DEFAULT 'squashhub'` (`squashhub` | `gobook`)
-- `external_id TEXT` — `YYYYMMDD-{slotId}` from GoBook
-- `external_booker_name TEXT`
-- `user_id` → make nullable + CHECK `(user_id IS NOT NULL OR source <> 'squashhub')`
-- Partial unique index on `(club_id, source, external_id) WHERE external_id IS NOT NULL`
+## Schema additions (one migration, additive only — nothing existing breaks)
 
-`public.member_gobook_credentials`:
-- `is_sync_source BOOLEAN NOT NULL DEFAULT true` — cron picks any verified, opted-in cred for the club.
+`club_champs`:
+- `scoring_mode text default 'standard'` — `'standard'` (current win-based) or `'time_capped_points'` (bells)
+- `group_durations jsonb default '{}'` — `{"1": 30, "2": 25, "3": 20}` overrides the champ-wide `match_duration_minutes` per league/group
 
-## B. Edge function `gobook-sync`
+`club_champs_matches`:
+- `side_a_points int` — points scored by Player A + Partner A when bell rang
+- `side_b_points int` — points scored by Player B + Partner B
+- (existing `score` text stays for backwards compat; new bells UI writes the two int columns and a derived `"15-12"` into `score`)
 
-Self-contained (duplicates the small login/decrypt helpers from `gobook-book`).
+## UI changes
 
-Inputs:
-- `{ club_id, days?=14 }` (manual) or `{ cron: true }` + `X-Cron-Secret` header (cron mode iterates every `uses_gobook=true` club).
+1. **Create Tournament wizard** (`Tournaments.tsx` create flow) — new "Format" choice: *Standard knockout/round-robin* vs *Bells (time-capped, points-for)*. Bells locks `match_type = 'doubles'`.
+2. **Pair allocation step** — when `scoring_mode = 'time_capped_points'`, show a "Time cap per league" input next to each group/league header. Saves to `group_durations`.
+3. **Match marker dialog** for bells matches — replace the games-to-3/5 panel with: live countdown using that group's duration, two big point counters (Side A / Side B), a "Bell" button that locks the score, and a save.
+4. **Standings table** — when `scoring_mode = 'time_capped_points'`, columns become: *Pair · Games Played · Points For · Points Against · Diff*, sorted by Points For desc. (We compute & show Against/Diff but rank by Points For only, per your choice.)
+5. **Partner picker on signup** — registration form already supports `partner_mode = 'players'`. We surface a "Preferred partner" dropdown to the signing-up member; admin sees pending pairs in the existing Finalize Setup dialog and can override (that dialog already exists — `FinalizeTournamentSetupDialog.tsx`).
 
-Per club:
-1. Load club row. Bail if `uses_gobook=false` or `booking_slot_minutes <> 60`.
-2. Pick a verified `is_sync_source=true` credential (most recently verified). Bail with `no_sync_source` if none.
-3. Resolve courts: `select id, name from courts where club_id=$1 order by id` — map by court number parsed from `name` ("Court 1" → court #1). No hardcoded IDs.
-4. For each date in `[today, today+days)`:
-   - Fetch GoBook grid, parse hourly slots → `{courtNum, hour, bookerName, slotId}`.
-   - Upsert into `bookings` with `source='gobook'`, `external_id`, `start_time=HH:00`, `end_time=(HH+1):00`, `external_booker_name`.
-   - Best-effort link: if `external_booker_name` matches exactly one `club_members.full_name` in that club, set `club_member_id` (+ `user_id` if member is linked).
-   - Delete `source='gobook'` rows for that date whose `external_id` is NOT in the fresh set (cancellations).
-5. Return `{ synced, cancelled, dates, skipped_reason? }`.
+## Out of scope (won't change)
 
-## C. Push SquashHub → GoBook
+- League allocation rules / sub eligibility (different module).
+- Existing standard tournaments — completely unaffected; only new champs with `scoring_mode = 'time_capped_points'` see the bells UI.
+- No new tables — all additive columns.
 
-Only fires when ALL true: `clubs.uses_gobook`, `clubs.booking_slot_minutes=60`, booker has verified `member_gobook_credentials`, new booking `source='squashhub'`, duration = 60 min.
+## Files touched
 
-Wire into the existing booking-create flow as fire-and-forget call to `gobook-book` `book` action. Toast shows `Pushed to GoBook ✓` or `GoBook push failed — retry` (manual retry button stays on the booking).
+```
+supabase migration                              (additive columns)
+src/pages/Tournaments.tsx                       (format toggle in wizard, standings split)
+src/components/tournaments/CreateChampDialog... (format + group durations)
+src/components/tournaments/AllocatePairsDialog  (per-group time cap inputs)
+src/components/tournaments/StandingsTable       (bells variant)
+src/pages/MatchMarker.tsx                       (bells timer + 2-counter mode when match is bells)
+src/components/tournaments/FinalizeTournamentSetupDialog.tsx  (already handles swaps — no change)
+```
 
-## D. UI
-
-- **Bookings page header (any `uses_gobook` club)**: "Sync GoBook" button → calls `gobook-sync`, toast `Synced N · Cancelled M`. If `booking_slot_minutes <> 60`, button is disabled with tooltip "GoBook requires hourly slots".
-- Existing booking cells show a small `GB` badge when `source='gobook'`.
-- No new confirmation modal — push is automatic, toast is the feedback.
-
-## E. Schedule (separate `insert` SQL per scheduled-jobs convention)
-
-`pg_cron` every 15 min → `net.http_post` to `/functions/v1/gobook-sync` with `{ cron: true }` and `X-Cron-Secret` header. Cron iterates all `uses_gobook=true` clubs.
-
-## Files
-
-- 1 migration (schema only)
-- `supabase/functions/gobook-sync/index.ts` (new)
-- Bookings page component — add "Sync GoBook" button + `GB` badge (gated on `uses_gobook` + `booking_slot_minutes=60`)
-- Booking-create handler — fire-and-forget `gobook-book` call under same gates
-- 1 `insert` call to schedule pg_cron + a `CRON_SECRET` add_secret
-
-## Order
-
-1. Migration
-2. `gobook-sync` function + manual test on CSIR
-3. UI button + GB badge
-4. Auto-push on create
-5. Schedule cron
-
-Confirm and I'll start with the migration.
+Estimated 1 migration + ~6 frontend file edits. No edge functions needed.

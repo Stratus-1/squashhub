@@ -160,8 +160,9 @@ export default function AuthCallback() {
         } else {
           navigate("/auth", { replace: true });
         }
-      } catch (e: any) {
-        toast.error(e.message || "Auth callback failed");
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Auth callback failed";
+        toast.error(message);
         navigate("/auth", { replace: true });
       } finally {
         setLoading(false);

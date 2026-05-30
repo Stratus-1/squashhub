@@ -87,7 +87,7 @@ import { SuperAdminMenu } from "@/components/SuperAdminMenu";
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       const fe = friendlyError(error);
       // Only auto-toast permission errors globally; let individual mutations
       // continue to handle their own non-permission errors as before.
@@ -241,7 +241,7 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const { subdomain: clubSubdomain, club: clubFromHost, isLoading: clubLoading } = useClubContext();
   const location = useLocation();
-  const backgroundLocation = (location.state as any)?.backgroundLocation as typeof location | undefined;
+  const backgroundLocation = (location.state as { backgroundLocation?: typeof location } | null)?.backgroundLocation;
   const routeLocation = backgroundLocation || location;
   const isAdminRoute = (routeLocation.pathname || "/").startsWith("/admin");
   const isTvRoute = (routeLocation.pathname || "/").startsWith("/tv");
@@ -357,7 +357,7 @@ function AppRoutes() {
         <Route path="/register-club" element={<ProtectedRoute><RegisterClub /></ProtectedRoute>} />
         <Route path="/settings" element={
           <ProtectedRoute>
-            {(clubFromHost as any)?.tenant_type === "association"
+            {clubFromHost?.tenant_type === "association"
               ? <Navigate to={associationSettingsRedirect} replace />
               : <Settings />}
           </ProtectedRoute>

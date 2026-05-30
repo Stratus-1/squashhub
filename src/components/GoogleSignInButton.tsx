@@ -45,8 +45,9 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
       if (result.redirected) return;
 
       window.location.href = redirect.toString();
-    } catch (e: any) {
-      toast.error(e?.message || "Google sign-in failed");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Google sign-in failed";
+      toast.error(message);
       setLoading(false);
     }
   };

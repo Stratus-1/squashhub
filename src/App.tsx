@@ -319,6 +319,7 @@ function AppRoutes() {
               : <Home />
         } />
         <Route path="/index" element={<Navigate to="/" replace />} />
+        <Route path="/index.html" element={<Navigate to="/" replace />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />

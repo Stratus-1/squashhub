@@ -494,6 +494,78 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         if (bookingError) throw bookingError;
       }
 
+      // Push bookings to GoBook if the club uses it. This mirrors the per-slot
+      // booking flow on the Bookings page so events created via this wizard
+      // also reach gobook.co.za (otherwise they only exist locally).
+      try {
+        const { data: clubInfo } = await fromExt("clubs")
+          .select("uses_gobook, booking_slot_minutes")
+          .eq("id", clubId)
+          .maybeSingle();
+        if (
+          clubInfo?.uses_gobook &&
+          (clubInfo.booking_slot_minutes ?? 60) === 60 &&
+          bookingRows.length > 0
+        ) {
+          const courtNumberById = new Map<number, number>();
+          for (const c of (courts || [])) {
+            const n = Number(String((c as any).name || "").match(/(\d+)/)?.[1] || 0);
+            courtNumberById.set((c as any).id, n);
+          }
+          const notesBase = form.title.trim().slice(0, 200);
+          let attempted = 0;
+          const failures: string[] = [];
+          for (const row of bookingRows) {
+            const memberIdForPush = form.is_club_booking
+              ? (activeMember?.id || null)
+              : (row.club_member_id || null);
+            if (!memberIdForPush) {
+              failures.push(`${row.date} ${row.start_time}: no member to book under`);
+              continue;
+            }
+            const startH = parseInt(String(row.start_time).split(":")[0]);
+            const endH = parseInt(String(row.end_time).split(":")[0]);
+            const courtNum = courtNumberById.get(row.court_id) || 0;
+            for (let h = startH; h < endH; h++) {
+              attempted++;
+              try {
+                const { data: gbData, error: gbErr } = await supabase.functions.invoke("gobook-book", {
+                  body: {
+                    action: "book",
+                    club_member_id: memberIdForPush,
+                    date: row.date,
+                    start_hour: h,
+                    court: courtNum || "any",
+                    notes: notesBase,
+                    sms: false,
+                    email: false,
+                  },
+                });
+                const msg = (gbData && (gbData as any).error) || gbErr?.message;
+                if (msg) failures.push(`${row.date} ${String(h).padStart(2, "0")}:00 court ${courtNum || "any"}: ${msg}`);
+              } catch (e: any) {
+                failures.push(`${row.date} ${String(h).padStart(2, "0")}:00 court ${courtNum || "any"}: ${e?.message || "unknown"}`);
+              }
+            }
+          }
+          if (attempted > 0) {
+            if (failures.length === 0) {
+              toast.success(`Pushed ${attempted} booking${attempted === 1 ? "" : "s"} to GoBook.`);
+            } else if (failures.length < attempted) {
+              toast.warning(`GoBook: ${attempted - failures.length}/${attempted} pushed. ${failures.length} failed — check GoBook credentials.`);
+              console.warn("[CreateClubEvent] GoBook push failures:", failures);
+            } else {
+              toast.error(`Event saved locally, but GoBook rejected all ${attempted} bookings. Check GoBook credentials in My Account.`);
+              console.warn("[CreateClubEvent] GoBook push failures:", failures);
+            }
+          }
+        }
+      } catch (gbWrapErr) {
+        console.warn("[CreateClubEvent] GoBook push wrapper failed (non-blocking):", gbWrapErr);
+        toast.warning("Event saved, but pushing to GoBook failed. Please verify on gobook.co.za.");
+      }
+
+
 
       // Notifications — fire-and-forget. Each row triggers email + web-push
       // delivery functions, so we don't make the user wait for ~200 trigger

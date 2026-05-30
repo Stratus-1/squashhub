@@ -1150,6 +1150,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               </div>
 
               </div>
+          )}
+
 
           {/* STEP 3: Invites & Light Fees */}
           {step === 3 && (

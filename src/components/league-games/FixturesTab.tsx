@@ -401,55 +401,70 @@ function RoundCard({
 
   const saveFixtures = useMutation({
     mutationFn: async () => {
-      // Replace strategy: delete existing, insert new (carry-through edits & auto-gen alike)
+      // ─────────────────────────────────────────────────────────────
+      // Non-destructive save (protects captain-submitted scorecards):
+      //  • Existing fixtures are UPDATED in place — fixture_id stays
+      //    stable so league_fixture_results / lineups stay linked.
+      //  • Draft rows without an id are matched to an existing fixture
+      //    by (home_team_code, away_team_code) and updated; otherwise
+      //    inserted as new.
+      //  • Existing fixtures missing from the draft are deleted only
+      //    if they have NO saved results, lineups or match rubbers.
+      //    If any do, the save aborts with a clear error.
+      // ─────────────────────────────────────────────────────────────
+
       const { data: existingFixtures, error: existingErr } = await fromExt("platform_league_fixtures")
-        .select("booking_id")
+        .select("id, home_team_code, away_team_code, booking_id, fixture_date, court_id, start_time, end_time")
         .eq("round_id", round.id);
       if (existingErr) throw existingErr;
-      const existingBookingIds = (existingFixtures ?? []).map((f: any) => f.booking_id).filter(Boolean);
+      type ExRow = { id: string; home_team_code: string; away_team_code: string; booking_id: string | null; fixture_date: string | null; court_id: number | null; start_time: string | null; end_time: string | null };
+      const existing = (existingFixtures ?? []) as ExRow[];
 
-      // Also catch older/stale league bookings that may not be linked by booking_id anymore
-      // after a previous replace-save, otherwise the court grid can keep showing old times.
-      const roundEndDate = round.end_date || round.round_date;
-      const [{ data: namedBookings, error: namedErr }, { data: exactNamedBookings, error: exactNamedErr }] = await Promise.all([
-        supabase
-          .from("bookings")
-          .select("id")
-          .eq("club_id", clubId)
-          .gte("date", round.round_date)
-          .lte("date", roundEndDate)
-          .eq("status", "active")
-          .like("guest_name", `${round.name} - %`),
-        supabase
-          .from("bookings")
-          .select("id")
-          .eq("club_id", clubId)
-          .gte("date", round.round_date)
-          .lte("date", roundEndDate)
-          .eq("status", "active")
-          .eq("guest_name", round.name),
-      ]);
-      if (namedErr) throw namedErr;
-      if (exactNamedErr) throw exactNamedErr;
-      const staleBookingIds = [...(namedBookings ?? []), ...(exactNamedBookings ?? [])].map((b: any) => b.id).filter(Boolean);
-      const bookingIdsToCancel = [...new Set([...existingBookingIds, ...staleBookingIds])];
-      const shouldSyncBookings = autoCreateBookings || bookingIdsToCancel.length > 0;
+      // Match draft rows to existing fixtures.
+      const usedExistingIds = new Set<string>();
+      const matchedPairs: { draft: EditableFixture; existingRow: ExRow }[] = [];
+      const toInsert: EditableFixture[] = [];
 
-      if (bookingIdsToCancel.length > 0) {
-        const { error: cancelErr } = await supabase
-          .from("bookings")
-          .update({ status: "cancelled" })
-          .in("id", bookingIdsToCancel);
-        if (cancelErr) throw cancelErr;
+      for (const d of list) {
+        if (d.id) {
+          const row = existing.find((e) => e.id === d.id && !usedExistingIds.has(e.id));
+          if (row) { matchedPairs.push({ draft: d, existingRow: row }); usedExistingIds.add(row.id); continue; }
+        }
+        const pairMatch = existing.find(
+          (e) => !usedExistingIds.has(e.id)
+            && e.home_team_code === d.home_team_code
+            && e.away_team_code === d.away_team_code,
+        );
+        if (pairMatch) { matchedPairs.push({ draft: d, existingRow: pairMatch }); usedExistingIds.add(pairMatch.id); }
+        else { toInsert.push(d); }
       }
 
-      const { error: delErr } = await fromExt("platform_league_fixtures").delete().eq("round_id", round.id);
-      if (delErr) throw delErr;
+      const toDelete = existing.filter((e) => !usedExistingIds.has(e.id));
 
-      if (!list.length) return;
+      // GUARD: refuse to drop fixtures that have any saved results / lineups / rubbers.
+      if (toDelete.length) {
+        const ids = toDelete.map((e) => e.id);
+        const [{ data: resRows }, { data: lineupRows }, { data: matchRows }] = await Promise.all([
+          fromExt("league_fixture_results").select("fixture_id").in("fixture_id", ids),
+          fromExt("league_fixture_lineups").select("fixture_id").in("fixture_id", ids),
+          fromExt("league_match_results").select("fixture_id").in("fixture_id", ids),
+        ]);
+        const protectedIds = new Set<string>([
+          ...((resRows ?? []) as any[]).map((r) => r.fixture_id),
+          ...((lineupRows ?? []) as any[]).map((r) => r.fixture_id),
+          ...((matchRows ?? []) as any[]).map((r) => r.fixture_id),
+        ]);
+        const blocked = toDelete.filter((e) => protectedIds.has(e.id));
+        if (blocked.length) {
+          const labels = blocked.map((e) => `${e.home_team_code} vs ${e.away_team_code}`).join(", ");
+          throw new Error(
+            `${blocked.length} fixture(s) have saved scorecards or lineups and cannot be removed: ${labels}. ` +
+            `Edit those fixtures in place instead, or clear their saved results first.`,
+          );
+        }
+      }
 
-      // platform_league_fixtures.association_id FKs to platform_league_associations(id).
-      // Auto-create + link the platform association if needed.
+      // Ensure platform association linkage (needed for inserts).
       const { data: platformAssocId, error: linkErr } = await supabase.rpc(
         "ensure_platform_association_for_league" as any,
         { _association_id: round.association_id },
@@ -457,64 +472,111 @@ function RoundCard({
       if (linkErr) throw linkErr;
       if (!platformAssocId) throw new Error("Could not link league to platform association.");
 
-      const rows = list.map((f) => {
-        const isBye = f.away_team_code === "__BYE__";
-        return {
-          association_id: platformAssocId,
-          round_id: round.id,
-          fixture_date: f.fixture_date || round.round_date,
-          venue_name: round.venue_name || "Home",
-          home_team_code: f.home_team_code,
-          away_team_code: f.away_team_code,
-          division: f.home_team_code,
-          status: isBye ? "bye" : "scheduled",
-          court_id: isBye ? null : f.court_id,
-          start_time: isBye ? null : f.start_time,
-          end_time: isBye ? null : (f.end_time ?? null),
-        };
-      });
-      const { data: inserted, error } = await fromExt("platform_league_fixtures")
-        .insert(rows)
-        .select("id, court_id, start_time, end_time, fixture_date, home_team_code, away_team_code");
-      if (error) throw error;
+      // 1) Delete safe (no-result) unmatched fixtures + cancel their bookings.
+      const bookingIdsToCancel = toDelete.map((e) => e.booking_id).filter(Boolean) as string[];
+      if (bookingIdsToCancel.length) {
+        const { error: cancelErr } = await supabase
+          .from("bookings").update({ status: "cancelled" }).in("id", bookingIdsToCancel);
+        if (cancelErr) throw cancelErr;
+      }
+      if (toDelete.length) {
+        const { error: delErr } = await fromExt("platform_league_fixtures")
+          .delete().in("id", toDelete.map((e) => e.id));
+        if (delErr) throw delErr;
+      }
 
-      if (shouldSyncBookings && inserted) {
+      // 2) In-place UPDATE for matched fixtures (id and saved results survive).
+      type ActiveRow = { id: string; court_id: number | null; start_time: string | null; end_time: string | null; fixture_date: string | null; home_team_code: string; away_team_code: string; booking_id: string | null };
+      const updatedRows: ActiveRow[] = [];
+      for (const { draft: d, existingRow } of matchedPairs) {
+        const isBye = d.away_team_code === "__BYE__";
+        const patch = {
+          fixture_date: d.fixture_date || round.round_date,
+          home_team_code: d.home_team_code,
+          away_team_code: d.away_team_code,
+          division: d.home_team_code,
+          status: isBye ? "bye" : "scheduled",
+          court_id: isBye ? null : d.court_id,
+          start_time: isBye ? null : d.start_time,
+          end_time: isBye ? null : (d.end_time ?? null),
+        };
+        const { error: upErr } = await fromExt("platform_league_fixtures").update(patch).eq("id", existingRow.id);
+        if (upErr) throw upErr;
+        updatedRows.push({ ...existingRow, ...patch });
+      }
+
+      // 3) INSERT brand-new fixtures.
+      let insertedRows: ActiveRow[] = [];
+      if (toInsert.length) {
+        const rows = toInsert.map((f) => {
+          const isBye = f.away_team_code === "__BYE__";
+          return {
+            association_id: platformAssocId,
+            round_id: round.id,
+            fixture_date: f.fixture_date || round.round_date,
+            venue_name: round.venue_name || "Home",
+            home_team_code: f.home_team_code,
+            away_team_code: f.away_team_code,
+            division: f.home_team_code,
+            status: isBye ? "bye" : "scheduled",
+            court_id: isBye ? null : f.court_id,
+            start_time: isBye ? null : f.start_time,
+            end_time: isBye ? null : (f.end_time ?? null),
+          };
+        });
+        const { data: inserted, error } = await fromExt("platform_league_fixtures")
+          .insert(rows)
+          .select("id, court_id, start_time, end_time, fixture_date, home_team_code, away_team_code, booking_id");
+        if (error) throw error;
+        insertedRows = (inserted ?? []) as any;
+      }
+
+      // 4) Booking sync: update existing bookings in place, create new ones where needed.
+      const allActive = [...updatedRows, ...insertedRows];
+      if (autoCreateBookings && allActive.length) {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        for (const f of inserted) {
-          if (!f.court_id || !f.start_time) continue;
-          // Prefer per-fixture end_time; fall back to start + round slot_minutes
-          let endTime: string;
-          const fxEnd = (f as any).end_time as string | null | undefined;
-          if (fxEnd) {
-            endTime = String(fxEnd).slice(0, 5);
-          } else {
-            const [h, m] = String(f.start_time).split(":").map(Number);
-            const startMin = h * 60 + m;
-            const endMin = startMin + round.slot_minutes;
-            endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
-          }
-          const homeName = teams.find((t) => t.code === (f as any).home_team_code)?.name?.trim();
-          const awayName = teams.find((t) => t.code === (f as any).away_team_code)?.name?.trim();
-          const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
-          const guestName = matchup ? `${round.name} - ${matchup}` : round.name;
-          const { data: booking, error: bErr } = await supabase
-            .from("bookings")
-            .insert({
-              court_id: f.court_id,
-              user_id: user.id,
-              date: (f as any).fixture_date || round.round_date,
-              start_time: String(f.start_time).slice(0, 5),
-              end_time: endTime,
-              status: "active",
-              is_friendly: false,
-              club_id: clubId,
-              guest_name: guestName,
-            })
-            .select("id")
-            .single();
-          if (!bErr && booking) {
-            await fromExt("platform_league_fixtures").update({ booking_id: booking.id }).eq("id", f.id);
+        if (user) {
+          for (const f of allActive) {
+            if (!f.court_id || !f.start_time) continue;
+            let endTime: string;
+            if (f.end_time) {
+              endTime = String(f.end_time).slice(0, 5);
+            } else {
+              const [h, m] = String(f.start_time).split(":").map(Number);
+              const startMin = h * 60 + m;
+              const endMin = startMin + round.slot_minutes;
+              endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
+            }
+            const homeName = teams.find((t) => t.code === f.home_team_code)?.name?.trim();
+            const awayName = teams.find((t) => t.code === f.away_team_code)?.name?.trim();
+            const matchup = homeName && awayName ? `${homeName} vs ${awayName}` : "";
+            const guestName = matchup ? `${round.name} - ${matchup}` : round.name;
+            const startStr = String(f.start_time).slice(0, 5);
+
+            if (f.booking_id) {
+              await supabase.from("bookings").update({
+                court_id: f.court_id,
+                date: f.fixture_date || round.round_date,
+                start_time: `${startStr}:00`,
+                end_time: `${endTime}:00`,
+                guest_name: guestName,
+                status: "active",
+              }).eq("id", f.booking_id);
+            } else {
+              const { data: booking, error: bErr } = await supabase
+                .from("bookings")
+                .insert({
+                  court_id: f.court_id, user_id: user.id,
+                  date: f.fixture_date || round.round_date,
+                  start_time: `${startStr}:00`, end_time: `${endTime}:00`,
+                  status: "active", is_friendly: false,
+                  club_id: clubId, guest_name: guestName,
+                })
+                .select("id").single();
+              if (!bErr && booking) {
+                await fromExt("platform_league_fixtures").update({ booking_id: booking.id }).eq("id", f.id);
+              }
+            }
           }
         }
       }

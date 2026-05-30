@@ -87,6 +87,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     invite_scope: "all",
     invite_scope_id: "",
     selected_member_ids: [] as string[],
+    notify_push: true,
+    notify_email: true,
     light_fee_split: "creator",
     is_club_booking: false,
     booking_member_ids: [] as string[],
@@ -496,7 +498,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       // Notifications — fire-and-forget. Each row triggers email + web-push
       // delivery functions, so we don't make the user wait for ~200 trigger
       // executions. Errors are non-blocking.
-      if (inviteeIds.length > 0) {
+      if (inviteeIds.length > 0 && (form.notify_push || form.notify_email)) {
         (async () => {
           try {
             const { data: memberData } = await supabase
@@ -513,7 +515,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}. Please confirm or decline.`,
               type: "booking",
               url: `/events`,
-              data: JSON.stringify({ event_id: eventId }),
+              data: JSON.stringify({
+                event_id: eventId,
+                suppress_email: form.notify_email ? "false" : "true",
+                suppress_push: form.notify_push ? "false" : "true",
+              }),
             }));
             if (notifRows.length > 0) {
               // Chunk so a single insert doesn't kick off 200 triggers at once.
@@ -616,6 +622,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       invite_scope: e.invite_scope || "all",
       invite_scope_id: e.invite_scope_id || "",
       selected_member_ids: [],
+      notify_push: true,
+      notify_email: true,
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],
@@ -800,6 +808,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       invite_scope: "all",
       invite_scope_id: "",
       selected_member_ids: selfId ? [selfId] : [],
+      notify_push: true,
+      notify_email: true,
       light_fee_split: "creator",
       is_club_booking: false,
       booking_member_ids: selfId ? [selfId] : [],
@@ -1139,8 +1149,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </div>
               </div>
 
-            </div>
+              </div>
           )}
+
 
           {/* STEP 3: Invites & Light Fees */}
           {step === 3 && (
@@ -1159,6 +1170,39 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Notification channels */}
+              {form.invite_scope !== "none" && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label className="text-xs font-medium">Notify invitees via</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="notify-push" className="text-xs font-normal cursor-pointer">
+                      Push notification
+                    </Label>
+                    <Switch
+                      id="notify-push"
+                      checked={form.notify_push}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, notify_push: v }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="notify-email" className="text-xs font-normal cursor-pointer">
+                      Email invite
+                    </Label>
+                    <Switch
+                      id="notify-email"
+                      checked={form.notify_email}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, notify_email: v }))}
+                    />
+                  </div>
+                  {!form.notify_push && !form.notify_email && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Invitees will still see the event in-app but won't be notified.
+                    </p>
+                  )}
+                </div>
+              )}
+
 
               {form.invite_scope === "category" && (
                 <div className="space-y-1.5">

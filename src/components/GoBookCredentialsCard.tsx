@@ -310,11 +310,11 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               data-1p-ignore="true"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="The email you use on gobook.co.za"
+              placeholder="The username you use on gobook.co.za"
             />
             <div className="text-[11px] text-muted-foreground mt-1">
-              This must be the exact email you use to sign in at gobook.co.za —
-              not your SquashHub email if they differ.
+              This must be the exact username you use to sign in at gobook.co.za
+              — not your SquashHub email.
             </div>
           </div>
           <div>

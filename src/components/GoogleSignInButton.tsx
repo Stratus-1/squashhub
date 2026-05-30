@@ -1,0 +1,81 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { lovable } from "@/integrations/lovable/index";
+import { toast } from "sonner";
+import { getClubSubdomain } from "@/lib/subdomain";
+
+interface Props {
+  label?: string;
+  className?: string;
+  /** If true, preserves the current club subdomain in the post-OAuth redirect. */
+  preserveClub?: boolean;
+}
+
+/**
+ * "Continue with Google" button using Lovable Cloud managed Google OAuth.
+ *
+ * Notes:
+ *  - Does NOT touch email/password flow, family-account switching, or club_members.
+ *  - On success, Google authenticates the auth.users account exactly like
+ *    email/password does. MemberContext / account switcher handles the rest.
+ *  - When called on a tenant subdomain (/c/:sub or club=sub), the redirect_uri
+ *    includes ?club=<sub> so AuthCallback keeps the user on their tenant.
+ */
+export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true }: Props) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const sub = preserveClub ? getClubSubdomain() : null;
+      const callback = new URL("/auth/callback", window.location.origin);
+      if (sub) callback.searchParams.set("club", sub);
+
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: callback.toString(),
+        extraParams: { prompt: "select_account" },
+      });
+
+      if (result.redirected) return; // browser navigates to Google
+      if (result.error) {
+        toast.error(result.error.message || "Google sign-in failed");
+        setLoading(false);
+        return;
+      }
+      // Tokens received without redirect — session is already set.
+      window.location.href = callback.toString();
+    } catch (e: any) {
+      toast.error(e?.message || "Google sign-in failed");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleClick}
+      disabled={loading}
+      className={`w-full gap-2 bg-white text-black hover:bg-white/90 border-input ${className || ""}`}
+    >
+      <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/>
+      </svg>
+      {loading ? "Redirecting…" : label}
+    </Button>
+  );
+}
+
+export function GoogleAuthDivider({ text = "or" }: { text?: string }) {
+  return (
+    <div className="relative my-1">
+      <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+      <div className="relative flex justify-center text-[11px] uppercase tracking-wider">
+        <span className="bg-card px-2 text-muted-foreground">{text}</span>
+      </div>
+    </div>
+  );
+}

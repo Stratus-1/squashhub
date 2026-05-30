@@ -15,6 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.png";
 import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
+import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 
 export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth();

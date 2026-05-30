@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getClubSubdomain } from "@/lib/subdomain";
 
@@ -12,14 +12,15 @@ interface Props {
 }
 
 /**
- * "Continue with Google" button using Lovable Cloud managed Google OAuth.
+ * "Continue with Google" button using Supabase-direct Google OAuth (BYO credentials).
  *
- * Notes:
- *  - Does NOT touch email/password flow, family-account switching, or club_members.
- *  - On success, Google authenticates the auth.users account exactly like
- *    email/password does. MemberContext / account switcher handles the rest.
- *  - When called on a tenant subdomain (/c/:sub or club=sub), the redirect_uri
- *    includes ?club=<sub> so AuthCallback keeps the user on their tenant.
+ * Production domains (squashhub.co.za, *.squashhub.co.za) are served from Vercel,
+ * which can't proxy Lovable's /~oauth/* broker. Supabase's /auth/v1/callback works
+ * from any origin, so we use that flow everywhere.
+ *
+ * GCP config:
+ *  - Authorized redirect URI: https://bzbuppwzljadulwntjys.supabase.co/auth/v1/callback
+ *  - Client ID + Secret pasted into Cloud → Auth Settings → Google provider.
  */
 export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true }: Props) {
   const [loading, setLoading] = useState(false);
@@ -31,19 +32,20 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
       const callback = new URL("/auth/callback", window.location.origin);
       if (sub) callback.searchParams.set("club", sub);
 
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: callback.toString(),
-        extraParams: { prompt: "select_account" },
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callback.toString(),
+          queryParams: { prompt: "select_account" },
+        },
       });
 
-      if (result.redirected) return; // browser navigates to Google
-      if (result.error) {
-        toast.error(result.error.message || "Google sign-in failed");
+      if (error) {
+        toast.error(error.message || "Google sign-in failed");
         setLoading(false);
         return;
       }
-      // Tokens received without redirect — session is already set.
-      window.location.href = callback.toString();
+      // Browser is redirecting to Google.
     } catch (e: any) {
       toast.error(e?.message || "Google sign-in failed");
       setLoading(false);

@@ -940,7 +940,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           if (!bookerId) return null;
 
           const [h, min] = m.time!.split(":").map(Number);
-          const endMins = h * 60 + min + matchDuration;
+          // Bells: each league has its own time cap (group_durations[league]).
+          const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
+          const cap = isBellsMode
+            ? (Number(groupDurations[String(m.groupNum)]) || matchDuration)
+            : matchDuration;
+          const endMins = h * 60 + min + cap;
           const endH = Math.floor(endMins / 60);
           const endM = endMins % 60;
           const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;

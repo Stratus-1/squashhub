@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { Button } from "@/components/ui/button";
@@ -784,6 +785,10 @@ export default function ClubAuth() {
 
                 <TabsContent value="login">
                   <Card className="p-6">
+                    <div className="space-y-4 mb-4">
+                      <GoogleSignInButton />
+                      <GoogleAuthDivider />
+                    </div>
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div>
                         <Label htmlFor="login-email-assoc">Email</Label>
@@ -854,6 +859,10 @@ export default function ClubAuth() {
           {/* ─── LOG IN ─── */}
           <TabsContent value="login">
             <Card className="p-6">
+              <div className="space-y-4 mb-4">
+                <GoogleSignInButton />
+                <GoogleAuthDivider />
+              </div>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <Label htmlFor="login-email">Email</Label>

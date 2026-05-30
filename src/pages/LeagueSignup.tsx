@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { useQuery } from "@tanstack/react-query";
@@ -228,6 +229,10 @@ export default function LeagueSignup() {
         </div>
 
         <Card className="p-5 md:p-6 space-y-5">
+          <div className="space-y-4">
+            <GoogleSignInButton label="Continue with Google" preserveClub={false} />
+            <GoogleAuthDivider />
+          </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Step 1 — find */}
             <div className="space-y-3">

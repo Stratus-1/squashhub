@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.png";
+import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
 
 export default function Auth() {
   const { signIn, signUp, resetPassword } = useAuth();
@@ -237,7 +238,11 @@ export default function Auth() {
 
           <TabsContent value="login">
             <Card className="p-6">
-              <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-4">
+                <GoogleSignInButton />
+                <GoogleAuthDivider />
+              </div>
+              <form onSubmit={handleLogin} className="space-y-4 mt-4">
                 <div>
                   <Label htmlFor="login-email">Email</Label>
                   <Input id="login-email" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />

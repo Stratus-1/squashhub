@@ -228,6 +228,10 @@ export default function LeagueSignup() {
         </div>
 
         <Card className="p-5 md:p-6 space-y-5">
+          <div className="space-y-4">
+            <GoogleSignInButton label="Continue with Google" preserveClub={false} />
+            <GoogleAuthDivider />
+          </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Step 1 — find */}
             <div className="space-y-3">

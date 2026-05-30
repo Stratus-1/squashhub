@@ -784,6 +784,10 @@ export default function ClubAuth() {
 
                 <TabsContent value="login">
                   <Card className="p-6">
+                    <div className="space-y-4 mb-4">
+                      <GoogleSignInButton />
+                      <GoogleAuthDivider />
+                    </div>
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div>
                         <Label htmlFor="login-email-assoc">Email</Label>
@@ -854,6 +858,10 @@ export default function ClubAuth() {
           {/* ─── LOG IN ─── */}
           <TabsContent value="login">
             <Card className="p-6">
+              <div className="space-y-4 mb-4">
+                <GoogleSignInButton />
+                <GoogleAuthDivider />
+              </div>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <Label htmlFor="login-email">Email</Label>

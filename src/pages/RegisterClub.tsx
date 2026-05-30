@@ -161,6 +161,10 @@ export default function RegisterClub() {
         )}
 
         <Card className="p-6">
+          <div className="space-y-4 mb-4">
+            <GoogleSignInButton label="Continue with Google to register" preserveClub={false} />
+            <GoogleAuthDivider />
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Club Name *</Label>

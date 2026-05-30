@@ -304,7 +304,7 @@ export function LineupSwapDialog({
           ) : (
             <div className="max-h-[50vh] overflow-y-auto border rounded-md divide-y">
               {filtered.map((c) => {
-                const isCurrent = c.code.toUpperCase() === currentCode.toUpperCase();
+                const isCurrent = !!currentCode && c.code.toUpperCase() === currentCode.toUpperCase();
                 const elsewhere = c.inUse && !(c.inUse.side === side && c.inUse.position === position);
                 return (
                   <button

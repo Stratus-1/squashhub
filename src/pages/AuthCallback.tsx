@@ -32,13 +32,49 @@ export default function AuthCallback() {
           // Only do the sign-out + redirect flow for tenant OWNERS (not members)
           const isTenantOwner = registrationType === "club_owner" || registrationType === "association_owner";
           if (clubSubdomain && isTenantOwner) {
+            const clubName = (meta.club_name as string) || "";
+            const tenantType = registrationType === "association_owner" ? "association" : "club";
+
+            // Idempotent provisioning: only call create-club if this user doesn't
+            // already own a club at this subdomain. This heals signups where the
+            // initial provisioning attempt failed (e.g. previous unauthenticated path).
+            const { data: existingClub } = await supabase
+              .from("clubs")
+              .select("id")
+              .eq("subdomain", clubSubdomain)
+              .maybeSingle();
+
+            let provisioned = !!existingClub;
+            if (!existingClub) {
+              const { error: provErr } = await supabase.functions.invoke("create-club", {
+                body: {
+                  clubName,
+                  subdomain: clubSubdomain,
+                  userName: (meta.name as string) || "",
+                  userEmail: user.email,
+                  tenantType,
+                },
+              });
+              if (provErr) {
+                console.error("[AuthCallback] create-club failed:", provErr);
+                toast.error(
+                  "Email verified, but we couldn't create your " +
+                    tenantType +
+                    " automatically. Please contact support."
+                );
+                // Do NOT clear metadata — leaving it allows a retry on next login.
+                navigate("/auth", { replace: true });
+                return;
+              }
+              provisioned = true;
+            }
+
             // Clear club metadata so it doesn't re-trigger
             await supabase.auth.updateUser({
               data: { club_name: null, club_subdomain: null, club_registration_type: null },
             });
 
             // Send registration confirmation email (fire-and-forget)
-            const clubName = meta.club_name as string | undefined;
             const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
             const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
             if (projectId && anonKey && clubName) {
@@ -58,7 +94,7 @@ export default function AuthCallback() {
             }
 
             toast.success(
-              registrationType === "association_owner"
+              tenantType === "association"
                 ? "Email verified! Your association is ready."
                 : "Email verified! Your club is ready."
             );
@@ -74,6 +110,7 @@ export default function AuthCallback() {
             }
             return;
           }
+
 
           // For club members, preserve club context via query param
           if (clubSubdomain && !isTenantOwner) {

@@ -87,6 +87,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     invite_scope: "all",
     invite_scope_id: "",
     selected_member_ids: [] as string[],
+    notify_push: true,
+    notify_email: true,
     light_fee_split: "creator",
     is_club_booking: false,
     booking_member_ids: [] as string[],

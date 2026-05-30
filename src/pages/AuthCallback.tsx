@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getClubSubdomain } from "@/lib/subdomain";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -25,13 +26,14 @@ export default function AuthCallback() {
         if (data.session) {
           const user = data.session.user;
           const meta = user.user_metadata || {};
-          const clubSubdomain = meta.club_subdomain as string | undefined;
+          const metadataClubSubdomain = meta.club_subdomain as string | undefined;
+          const oauthReturnClub = getClubSubdomain();
           const registrationType = meta.club_registration_type as string | undefined;
 
           // If this user signed up with club/association registration metadata, redirect to their tenant
           // Only do the sign-out + redirect flow for tenant OWNERS (not members)
           const isTenantOwner = registrationType === "club_owner" || registrationType === "association_owner";
-          if (clubSubdomain && isTenantOwner) {
+          if (metadataClubSubdomain && isTenantOwner) {
             const clubName = (meta.club_name as string) || "";
             const tenantType = registrationType === "association_owner" ? "association" : "club";
 
@@ -41,7 +43,7 @@ export default function AuthCallback() {
             const { data: existingClub } = await supabase
               .from("clubs")
               .select("id")
-              .eq("subdomain", clubSubdomain)
+              .eq("subdomain", metadataClubSubdomain)
               .maybeSingle();
 
             let provisioned = !!existingClub;
@@ -49,7 +51,7 @@ export default function AuthCallback() {
               const { error: provErr } = await supabase.functions.invoke("create-club", {
                 body: {
                   clubName,
-                  subdomain: clubSubdomain,
+                  subdomain: metadataClubSubdomain,
                   userName: (meta.name as string) || "",
                   userEmail: user.email,
                   tenantType,
@@ -87,7 +89,7 @@ export default function AuthCallback() {
                     to: user.email,
                     name: meta.name || "",
                     clubName,
-                    clubAdminUrl: `${window.location.origin}/c/${clubSubdomain}/club-admin`,
+                    clubAdminUrl: `${window.location.origin}/c/${metadataClubSubdomain}/club-admin`,
                   }),
                 }
               ).catch((err) => console.warn("Registration email failed:", err));
@@ -103,19 +105,20 @@ export default function AuthCallback() {
             const isPreview = window.location.hostname.includes("lovable.app") || window.location.hostname === "localhost";
             if (isPreview) {
               await supabase.auth.signOut({ scope: "local" });
-              navigate(`/c/${clubSubdomain}/auth`, { replace: true });
+              navigate(`/c/${metadataClubSubdomain}/auth`, { replace: true });
             } else {
               await supabase.auth.signOut({ scope: "local" });
-              window.location.href = `https://${clubSubdomain}.squashhub.co.za/auth`;
+              window.location.href = `https://${metadataClubSubdomain}.squashhub.co.za/auth`;
             }
             return;
           }
 
 
           // For club members, preserve club context via query param
-          if (clubSubdomain && !isTenantOwner) {
+          const memberRedirectClub = oauthReturnClub || metadataClubSubdomain;
+          if (memberRedirectClub && !isTenantOwner) {
             // Provision the member at the association tenant if applicable
-            if (registrationType === "association_member") {
+            if (registrationType === "association_member" && metadataClubSubdomain) {
               const homeClubId = (meta.home_club_id as string) || null;
               const homeClubName = (meta.home_club_name as string) || null;
               try {
@@ -123,7 +126,7 @@ export default function AuthCallback() {
                   "provision-association-member",
                   {
                     body: {
-                      associationSubdomain: clubSubdomain,
+                      associationSubdomain: metadataClubSubdomain,
                       homeClubId,
                       homeClubName,
                     },
@@ -150,15 +153,16 @@ export default function AuthCallback() {
                 home_club_subdomain: null,
               },
             });
-            navigate(`/?club=${encodeURIComponent(clubSubdomain)}`, { replace: true });
+            navigate(`/?club=${encodeURIComponent(memberRedirectClub)}`, { replace: true });
           } else {
             navigate("/", { replace: true });
           }
         } else {
           navigate("/auth", { replace: true });
         }
-      } catch (e: any) {
-        toast.error(e.message || "Auth callback failed");
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Auth callback failed";
+        toast.error(message);
         navigate("/auth", { replace: true });
       } finally {
         setLoading(false);

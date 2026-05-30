@@ -121,7 +121,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
     }
 
     if (!username.trim() || !password) {
-      toast.error("Enter your GoBook email and password");
+      toast.error("Enter your GoBook username and password");
       return;
     }
     setSaving(true);
@@ -295,7 +295,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <Label htmlFor="gobook-user" className="text-xs">
-              GoBook email
+              GoBook username
             </Label>
             <Input
               id="gobook-user"
@@ -310,11 +310,11 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
               data-1p-ignore="true"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="The email you use on gobook.co.za"
+              placeholder="The username you use on gobook.co.za"
             />
             <div className="text-[11px] text-muted-foreground mt-1">
-              This must be the exact email you use to sign in at gobook.co.za —
-              not your SquashHub email if they differ.
+              This must be the exact username you use to sign in at gobook.co.za
+              — not your SquashHub email.
             </div>
           </div>
           <div>

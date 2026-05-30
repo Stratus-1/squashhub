@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getClubSubdomain } from "@/lib/subdomain";
+import { getTenantAwareAuthRedirect } from "@/lib/site";
 
 interface Props {
   label?: string;
@@ -29,7 +30,12 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
     setLoading(true);
     try {
       const sub = preserveClub ? getClubSubdomain() : null;
-      const callback = new URL("/auth/callback", window.location.origin);
+      // Route OAuth callback through the production root so the redirect URL is
+      // in Supabase's allowlist. The bootstrap in index.html bounces back to
+      // the tenant subdomain (preserving the ?code= param) for the callback.
+      const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
+      if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
+      // Keep ?club= too so AuthCallback can resolve the tenant on the subdomain.
       if (sub) callback.searchParams.set("club", sub);
 
       const { error } = await supabase.auth.signInWithOAuth({

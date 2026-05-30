@@ -163,7 +163,11 @@ async function gobookLogin(email: string, password: string): Promise<Jar> {
   // empty/cleared session cookie also means failure.
   const sessionVal = jar.get("GoBookSession") || jar.get(".ASPXAUTH") || "";
   if (postRes.status === 200 || !sessionVal) {
-    throw new Error("GoBook login failed (credentials rejected)");
+    // Echo back the exact username we sent so the user can spot browser
+    // autofill mistakes (e.g. SquashHub email instead of their GoBook email).
+    throw new Error(
+      `GoBook rejected the login for "${email}". Double-check the email/username and password you use on gobook.co.za — your browser may have autofilled the wrong email.`,
+    );
   }
   return jar;
 }

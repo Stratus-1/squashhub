@@ -299,12 +299,23 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
             </Label>
             <Input
               id="gobook-user"
-              type="email"
+              name="gobook-login-email-xx"
+              type="text"
               autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-form-type="other"
+              data-lpignore="true"
+              data-1p-ignore="true"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="The email you use on gobook.co.za"
             />
+            <div className="text-[11px] text-muted-foreground mt-1">
+              This must be the exact email you use to sign in at gobook.co.za —
+              not your SquashHub email if they differ.
+            </div>
           </div>
           <div>
             <Label htmlFor="gobook-pw" className="text-xs">
@@ -312,8 +323,12 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
             </Label>
             <Input
               id="gobook-pw"
+              name="gobook-login-pw-xx"
               type="password"
               autoComplete="new-password"
+              data-form-type="other"
+              data-lpignore="true"
+              data-1p-ignore="true"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"

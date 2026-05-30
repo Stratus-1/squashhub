@@ -196,6 +196,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
   const [matchDuration, setMatchDuration] = useState(30);
+  const [scoringMode, setScoringMode] = useState<"standard" | "time_capped_points">("standard");
+  const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
   const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());

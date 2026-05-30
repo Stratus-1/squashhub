@@ -1171,6 +1171,39 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 </Select>
               </div>
 
+              {/* Notification channels */}
+              {form.invite_scope !== "none" && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label className="text-xs font-medium">Notify invitees via</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="notify-push" className="text-xs font-normal cursor-pointer">
+                      Push notification
+                    </Label>
+                    <Switch
+                      id="notify-push"
+                      checked={form.notify_push}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, notify_push: v }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="notify-email" className="text-xs font-normal cursor-pointer">
+                      Email invite
+                    </Label>
+                    <Switch
+                      id="notify-email"
+                      checked={form.notify_email}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, notify_email: v }))}
+                    />
+                  </div>
+                  {!form.notify_push && !form.notify_email && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Invitees will still see the event in-app but won't be notified.
+                    </p>
+                  )}
+                </div>
+              )}
+
+
               {form.invite_scope === "category" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Category</Label>

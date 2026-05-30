@@ -41,6 +41,7 @@ import ResetPassword from "./pages/ResetPassword";
 import StravaCallback from "./pages/StravaCallback";
 import MatchTracker from "./pages/MatchTracker";
 import MatchMarker from "./pages/MatchMarker";
+import BellsMarker from "./pages/BellsMarker";
 import MarkerTv from "./pages/MarkerTv";
 import AddMatchResult from "./pages/AddMatchResult";
 import PlayerProfile from "./pages/PlayerProfile";

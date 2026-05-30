@@ -295,7 +295,7 @@ export function GoBookCredentialsCard({ clubMemberId }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>
             <Label htmlFor="gobook-user" className="text-xs">
-              GoBook email
+              GoBook username
             </Label>
             <Input
               id="gobook-user"

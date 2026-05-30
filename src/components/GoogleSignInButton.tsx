@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
 import { getClubSubdomain } from "@/lib/subdomain";
 
@@ -29,23 +29,22 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
     setLoading(true);
     try {
       const sub = preserveClub ? getClubSubdomain() : null;
-      const callback = new URL("/auth/callback", window.location.origin);
-      if (sub) callback.searchParams.set("club", sub);
+      const redirect = new URL(window.location.origin);
+      if (sub) redirect.searchParams.set("club", sub);
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: callback.toString(),
-          queryParams: { prompt: "select_account" },
-        },
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: redirect.toString(),
+        extraParams: { prompt: "select_account" },
       });
 
-      if (error) {
-        toast.error(error.message || "Google sign-in failed");
+      if (result.error) {
+        toast.error(result.error.message || "Google sign-in failed");
         setLoading(false);
         return;
       }
-      // Browser is redirecting to Google.
+      if (result.redirected) return;
+
+      window.location.href = redirect.toString();
     } catch (e: any) {
       toast.error(e?.message || "Google sign-in failed");
       setLoading(false);

@@ -613,37 +613,117 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
-    const usedSlots = new Set<number>();
-    for (const match of allMatches) {
-      // Bye placeholders don't get a court / slot.
-      if (match.isBye) continue;
-      const playersA = getPlayersForEntity(match.entityA);
-      const playersB = getPlayersForEntity(match.entityB);
-      const allPlayers = [...playersA, ...playersB];
+    const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
 
-      for (let si = 0; si < allSlots.length; si++) {
-        if (usedSlots.has(si)) continue;
-        const slot = allSlots[si];
-        if (allPlayers.every((pid) => canScheduleOn(pid, slot.date))) {
-          match.date = slot.date;
-          match.time = slot.time;
-          match.courtId = slot.courtId;
-          usedSlots.add(si);
-          allPlayers.forEach((pid) => entityLastDate.set(pid, slot.date));
-          break;
+    if (isBellsMode) {
+      // Bells: single-day, per-league time caps, auto-distribute courts across leagues,
+      // rotate pairs across their league's assigned courts as the schedule progresses.
+      const startDateOnly = format(new Date(startDate), "yyyy-MM-dd");
+      const capFor = (gn: number) =>
+        Number(groupDurations[String(gn)]) || matchDuration;
+
+      const byLeague = new Map<number, MatchDef[]>();
+      for (const m of allMatches) {
+        if (m.isBye) continue;
+        if (!byLeague.has(m.groupNum)) byLeague.set(m.groupNum, []);
+        byLeague.get(m.groupNum)!.push(m);
+      }
+      const leagues = Array.from(byLeague.keys()).sort((a, b) => a - b);
+
+      if (leagues.length > 0 && courtIds.length > 0) {
+        // Weight courts by (matches × cap) so longer/larger leagues get more courts.
+        const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
+        const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+        let allocs = leagues.map((_, i) =>
+          Math.max(1, Math.floor((weights[i] / totalW) * courtIds.length))
+        );
+        let sum = allocs.reduce((a, b) => a + b, 0);
+        // Trim excess from the largest allocation (never below 1).
+        while (sum > courtIds.length) {
+          let idx = 0;
+          for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
+          if (allocs[idx] <= 1) break;
+          allocs[idx]--; sum--;
+        }
+        // Hand out remaining courts to the league with the highest load per court.
+        while (sum < courtIds.length) {
+          let best = 0; let bestVal = -Infinity;
+          for (let i = 0; i < leagues.length; i++) {
+            const v = weights[i] / allocs[i];
+            if (v > bestVal) { bestVal = v; best = i; }
+          }
+          allocs[best]++; sum++;
+        }
+        // If we have more leagues than courts, the trim loop leaves some at 1
+        // and others starved — fall back to one court per league, leagues share.
+        let cursor = 0;
+        const leagueCourts = new Map<number, number[]>();
+        leagues.forEach((gn, i) => {
+          if (cursor >= courtIds.length) {
+            // Share courts cyclically when court pool is too small.
+            leagueCourts.set(gn, [courtIds[i % courtIds.length]]);
+          } else {
+            leagueCourts.set(
+              gn,
+              courtIds.slice(cursor, cursor + allocs[i])
+            );
+            cursor += allocs[i];
+          }
+        });
+
+        // Assign date / time / court for each match. Pairs naturally rotate across
+        // their league's courts because match index advances both court and round.
+        for (const gn of leagues) {
+          const cap = capFor(gn);
+          const lCourts = leagueCourts.get(gn)!;
+          const lMatches = byLeague.get(gn)!;
+          lMatches.forEach((m, idx) => {
+            const round = Math.floor(idx / lCourts.length);
+            const courtIdx = idx % lCourts.length;
+            const t = startMins + round * cap;
+            const h = Math.floor(t / 60);
+            const mm = t % 60;
+            m.date = startDateOnly;
+            m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+            m.courtId = lCourts[courtIdx];
+          });
+        }
+      }
+    } else {
+      const usedSlots = new Set<number>();
+      for (const match of allMatches) {
+        // Bye placeholders don't get a court / slot.
+        if (match.isBye) continue;
+        const playersA = getPlayersForEntity(match.entityA);
+        const playersB = getPlayersForEntity(match.entityB);
+        const allPlayers = [...playersA, ...playersB];
+
+        for (let si = 0; si < allSlots.length; si++) {
+          if (usedSlots.has(si)) continue;
+          const slot = allSlots[si];
+          if (allPlayers.every((pid) => canScheduleOn(pid, slot.date))) {
+            match.date = slot.date;
+            match.time = slot.time;
+            match.courtId = slot.courtId;
+            usedSlots.add(si);
+            allPlayers.forEach((pid) => entityLastDate.set(pid, slot.date));
+            break;
+          }
         }
       }
     }
 
     const playableMatches = allMatches.filter((m) => !m.isBye);
+    // Bells mode schedules every match by construction — treat slots as sufficient.
+    const effectiveTotalSlots = isBellsMode ? playableMatches.length : totalSlots;
     return {
       allMatches,
-      totalSlots,
+      totalSlots: effectiveTotalSlots,
       totalMatches: playableMatches.length,
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -860,7 +940,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           if (!bookerId) return null;
 
           const [h, min] = m.time!.split(":").map(Number);
-          const endMins = h * 60 + min + matchDuration;
+          // Bells: each league has its own time cap (group_durations[league]).
+          const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
+          const cap = isBellsMode
+            ? (Number(groupDurations[String(m.groupNum)]) || matchDuration)
+            : matchDuration;
+          const endMins = h * 60 + min + cap;
           const endH = Math.floor(endMins / 60);
           const endM = endMins % 60;
           const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;

@@ -94,10 +94,14 @@ export default function Tournaments() {
   const renderMatchRow = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
+    const isBells = champ?.scoring_mode === "time_capped_points";
     const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
     const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
+    const markRoute = isBells
+      ? `/bells-marker/${m.id}`
+      : `/match-marker?source=tournament&matchId=${m.id}`;
 
     return (
       <div
@@ -124,6 +128,7 @@ export default function Tournaments() {
               {champ.name}
             </Badge>
           )}
+          {isBells && <Badge variant="secondary" className="text-[10px] shrink-0">Bells</Badge>}
           {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
           {today && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
@@ -133,14 +138,15 @@ export default function Tournaments() {
           className="h-7 px-2 gap-1 shrink-0"
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/match-marker?source=tournament&matchId=${m.id}`);
+            navigate(markRoute);
           }}
         >
-          <Gavel className="w-3 h-3" /> Mark
+          <Gavel className="w-3 h-3" /> {isBells ? "Bell" : "Mark"}
         </Button>
       </div>
     );
   };
+
 
   return (
     <div className="bottom-nav-safe">

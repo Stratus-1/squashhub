@@ -714,14 +714,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
 
     const playableMatches = allMatches.filter((m) => !m.isBye);
+    // Bells mode schedules every match by construction — treat slots as sufficient.
+    const effectiveTotalSlots = isBellsMode ? playableMatches.length : totalSlots;
     return {
       allMatches,
-      totalSlots,
+      totalSlots: effectiveTotalSlots,
       totalMatches: playableMatches.length,
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations]);
 
   // Create/update champ
   const createChamp = useMutation({

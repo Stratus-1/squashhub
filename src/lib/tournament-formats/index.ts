@@ -1,26 +1,31 @@
 import { BellsFormat } from "./bells";
+import { StandardFormat } from "./standard";
 import type { TournamentFormat } from "./types";
 
 export * from "./types";
-export { BellsFormat };
+export { BellsFormat, StandardFormat };
 
 /**
  * Registry of pluggable tournament formats. Keyed by the value persisted
- * in `club_champs.scoring_mode`. `'standard'` is intentionally absent —
- * the existing Club Champs code paths are the implicit default until
- * Phase 2 extracts them into their own strategy.
+ * in `club_champs.scoring_mode`. Standard is the fallback for legacy
+ * rows where `scoring_mode` is null/empty/unknown.
  */
 const REGISTRY: Record<string, TournamentFormat> = {
+  [StandardFormat.key]: StandardFormat,
   [BellsFormat.key]: BellsFormat,
 };
 
-/** Look up a format strategy. Returns undefined for `'standard'` / unknown. */
-export function getTournamentFormat(scoringMode: string | null | undefined): TournamentFormat | undefined {
-  if (!scoringMode) return undefined;
-  return REGISTRY[scoringMode];
+/**
+ * Look up a format strategy. Always returns a strategy — falls back to
+ * `StandardFormat` for null/unknown values so call sites never need to
+ * branch on "did I get one?".
+ */
+export function getTournamentFormat(scoringMode: string | null | undefined): TournamentFormat {
+  if (scoringMode && REGISTRY[scoringMode]) return REGISTRY[scoringMode];
+  return StandardFormat;
 }
 
-/** All registered non-standard formats (for admin pickers). */
+/** All registered formats (for admin pickers). */
 export function listTournamentFormats(): TournamentFormat[] {
   return Object.values(REGISTRY);
 }

@@ -168,8 +168,8 @@ export function TournamentInviteActions({ notification, champId, registrationId,
 
   useEffect(() => {
     const pending = getPendingYocoSession();
-    const sid = searchParams.get("yoco_session") || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
     const cancelled = searchParams.get("yoco_cancelled");
+    const sid = searchParams.get("yoco_session") || cancelled || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
     const ctx = searchParams.get("ctx");
     const yocoReg = searchParams.get("yoco_registration");
     if ((ctx && ctx !== "tournament") || (!sid && !cancelled) || (resolvedRegistrationId && yocoReg && yocoReg !== resolvedRegistrationId)) return;
@@ -184,7 +184,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
           const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
           if (error) throw error;
           status = data?.status || "";
-          if (["completed", "failed", "expired"].includes(status)) break;
+          if (["completed", "failed", "expired", "cancelled"].includes(status)) break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         if (status === "completed") {
@@ -203,6 +203,9 @@ export function TournamentInviteActions({ notification, champId, registrationId,
         } else if (status === "expired") {
           clearPendingYocoSession(sid || undefined);
           toast.error("Payment expired. Your invite will stay open.");
+        } else if (status === "cancelled") {
+          clearPendingYocoSession(sid || undefined);
+          toast.info("Payment cancelled — your invite will stay open.");
         } else if (cancelled) {
           toast.info("Payment returned without a final result yet. Your invite will stay open while we keep checking.");
         }

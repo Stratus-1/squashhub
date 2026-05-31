@@ -271,6 +271,34 @@ export default function MyAccount() {
     })();
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!clubMemberId || !clubId) return;
+    let stopped = false;
+    let runs = 0;
+    const reconcile = async () => {
+      while (!stopped && runs < 12) {
+        runs += 1;
+        try {
+          const { data } = await supabase.functions.invoke("yoco-verify-checkout", { body: {} });
+          if (data?.status === "completed") {
+            clearPendingYocoSession();
+            toast.success("Card payment received — thank you!");
+            queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+            queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+            return;
+          }
+        } catch {
+          // No recent pending Yoco session or user not ready yet.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+      }
+    };
+    void reconcile();
+    return () => {
+      stopped = true;
+    };
+  }, [clubMemberId, clubId, queryClient]);
+
   const pendingTopUps = (transactions || []).filter(
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );

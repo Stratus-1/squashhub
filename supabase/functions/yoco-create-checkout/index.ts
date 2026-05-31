@@ -107,9 +107,10 @@ Deno.serve(async (req) => {
       return json({ error: sessErr?.message || "Could not create session" }, 500);
     }
 
-    const successUrl = appendParam(return_url, "yoco_session", session.id);
-    const cancelUrl = appendParam(return_url, "yoco_session", session.id);
-    const failureUrl = appendParam(return_url, "yoco_session", session.id);
+    const paymentReturnUrl = `${SUPABASE_URL}/functions/v1/yoco-payment-return?target=${encodeURIComponent(return_url)}&yoco_session=${encodeURIComponent(session.id)}`;
+    const successUrl = paymentReturnUrl;
+    const cancelUrl = paymentReturnUrl;
+    const failureUrl = paymentReturnUrl;
 
     // Call Yoco
     const yocoResp = await fetch(YOCO_API, {

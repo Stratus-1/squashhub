@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trophy, Loader2, CreditCard, Check, Landmark, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
-import { buildYocoReturnUrl, openYocoCheckout } from "@/lib/yoco-native-checkout";
+import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 
 interface Props {
   champ: any;
@@ -100,24 +100,36 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const verifiedRef = useRef<string | null>(null);
   useEffect(() => {
-    const sid = searchParams.get("yoco_session");
+    const pending = getPendingYocoSession();
+    const sid = searchParams.get("yoco_session") || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
     const ctx = searchParams.get("ctx");
-    if (ctx !== "tournament" || !sid || verifiedRef.current === sid) return;
+    if ((ctx && ctx !== "tournament") || !sid || verifiedRef.current === sid) return;
     verifiedRef.current = sid;
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
-        if (error) throw error;
-        if (data?.status === "completed") {
+        let status = "";
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
+          if (error) throw error;
+          status = data?.status || "";
+          if (["completed", "failed", "expired"].includes(status)) break;
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+        if (status === "completed") {
+          clearPendingYocoSession(sid);
           toast.success("Entry fee paid — you're registered!");
           refetch();
-        } else if (data?.status === "failed") {
+        } else if (status === "failed") {
+          clearPendingYocoSession(sid);
           toast.error(
             "Your bank declined the card. Enable Online / Internet Purchases in your FNB or Absa app, then try again — or use Google Pay / EFT.",
             { duration: 12000 },
           );
-        } else if (["cancelled", "expired"].includes(data?.status)) {
-          toast.error(`Payment ${data.status}.`);
+        } else if (status === "expired") {
+          clearPendingYocoSession(sid);
+          toast.error("Payment expired.");
+        } else {
+          toast.info("Payment still processing. I'll keep checking when you open this page again.");
         }
       } catch (e: any) {
         toast.error(e.message || "Could not verify payment");
@@ -169,6 +181,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         },
       });
       if (error) throw error;
+      if (data?.session_id) rememberPendingYocoSession(data.session_id, window.location.pathname);
       if (data?.redirect_url) await openYocoCheckout(data.redirect_url);
     } catch (e: any) {
       toast.error(e.message || "Could not start payment");

@@ -226,6 +226,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
   const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
+  // Controls WHEN invites go out: 'manual' (admin clicks Send later — default),
+  // 'now' (prompt on save), or 'scheduled' (admin gets a reminder for the chosen date).
+  const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
+  const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [showInvitePreview, setShowInvitePreview] = useState(false);
 

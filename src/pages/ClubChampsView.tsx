@@ -625,8 +625,9 @@ export default function ClubChampsView() {
                               <th className="pb-2 font-medium text-center">P</th>
                               <th className="pb-2 font-medium text-center">W</th>
                               <th className="pb-2 font-medium text-center">L</th>
-                              <th className="pb-2 font-medium text-center" title={isBells ? "Points For" : "Game Difference"}>{isBells ? "PF" : "GD"}</th>
-                              <th className="pb-2 font-medium text-center" title={isBells ? "Points Against" : "Tournament Points"}>{isBells ? "PA" : "Pts"}</th>
+                              {standingsColumns.map((col) => (
+                                <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>

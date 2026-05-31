@@ -101,12 +101,13 @@ export function AdminManualScoreDialog({ open, onOpenChange, fixtureId, homeCode
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 text-destructive" />
-            Admin: Manual Final Score
+            Manual Final Score
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Enter total points directly. This will mark the fixture as <b>submitted</b> and overwrite the standings — bypassing rubber-by-rubber entry and captain signatures.
+            Enter total points directly. This will mark the fixture as <b>submitted</b> and overwrite the standings — bypassing rubber-by-rubber entry and captain signatures. Use for catch-up fixtures.
           </DialogDescription>
         </DialogHeader>
+
 
         <div className="space-y-3 py-2">
           <div className="grid grid-cols-2 gap-3">

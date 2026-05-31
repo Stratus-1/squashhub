@@ -28,18 +28,25 @@ Deno.serve((req) => {
 
 function buildSafeRedirect(target: string, sessionId: string | null) {
   const parsed = new URL(target);
-  const allowedHttpsHosts = [
+  const allowedSuffixes = [
     "squashhub.co.za",
     "squashhub.lovable.app",
-    "84cdc7bd-c950-4776-9fb1-c29f6232816d.lovableproject.com",
-    "id-preview--84cdc7bd-c950-4776-9fb1-c29f6232816d.lovable.app",
+    "lovableproject.com",
+    "lovable.app",
   ];
+  const host = parsed.hostname.toLowerCase();
+  const hostAllowed = allowedSuffixes.some(
+    (s) => host === s || host.endsWith("." + s),
+  );
 
   const isAllowed =
     parsed.protocol === "gbsquash:" ||
-    (parsed.protocol === "https:" && allowedHttpsHosts.includes(parsed.hostname));
+    (parsed.protocol === "https:" && hostAllowed);
 
-  if (!isAllowed) throw new Error("Unsafe return target");
+  if (!isAllowed) {
+    console.error("yoco-payment-return rejected target", { target, host, protocol: parsed.protocol });
+    throw new Error("Unsafe return target");
+  }
   if (sessionId) parsed.searchParams.set("yoco_session", sessionId);
   return parsed.toString();
 }

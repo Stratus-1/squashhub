@@ -213,13 +213,9 @@ export default function ClubChampsView() {
       } as any);
     });
 
-    // Bells: rank by points scored only (per user spec); other tiebreaks shown for info.
-    if (isBells) {
-      return rows.sort((a: any, b: any) =>
-        b.pointsFor - a.pointsFor ||
-        b.pointsDiff - a.pointsDiff ||
-        b.played - a.played,
-      );
+    // Format-specific ranking when a strategy is registered, otherwise standard.
+    if (tournamentFormat) {
+      return rows.sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
     }
     return rows.sort((a: any, b: any) => b.points - a.points || b.gameDiff - a.gameDiff || b.won - a.won);
   };

@@ -118,35 +118,7 @@ export default function ClubChampsView() {
         if (m.bye_member_id === memberId || m.player_a_member_id === memberId) stats.byes++;
       });
       groupMatches.forEach((m: any) => {
-        // Strategy-driven path: any registered format owns its own scoring math.
-        if (tournamentFormat) {
-          tournamentFormat.applyMatchToStats(stats, m, memberId, isDoubles);
-          return;
-        }
-
-        // Standard (no strategy registered yet): win/loss + per-game points from game_scores.
-        const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
-        const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
-        if (!isA && !isB) return;
-        stats.played++;
-        if (m.winner_member_id === memberId || (isDoubles && (
-          (isA && m.winner_member_id === m.player_a_member_id) ||
-          (isB && m.winner_member_id === m.player_b_member_id)
-        ))) {
-          stats.won++;
-        } else {
-          stats.lost++;
-        }
-        if (m.game_scores) {
-          try {
-            const gs = JSON.parse(m.game_scores);
-            const sets = gs.sets || [];
-            sets.forEach((s: any) => {
-              if (isA) { stats.gamesWon += s.a || 0; stats.gamesLost += s.b || 0; }
-              else { stats.gamesWon += s.b || 0; stats.gamesLost += s.a || 0; }
-            });
-          } catch { /* ignore */ }
-        }
+        tournamentFormat.applyMatchToStats(stats, m, memberId, isDoubles);
       });
       return stats;
     };

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { cn } from "@/lib/utils";
-import { buildYocoReturnUrl, openYocoCheckout } from "@/lib/yoco-native-checkout";
+import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import { ArrowRight, CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -162,40 +162,49 @@ export function TournamentInviteActions({ notification, champId, registrationId,
       },
     });
     if (error) throw error;
+    if (data?.session_id) rememberPendingYocoSession(data.session_id, window.location.pathname);
     if (data?.redirect_url) await openYocoCheckout(data.redirect_url);
   };
 
   useEffect(() => {
-    const sid = searchParams.get("yoco_session");
+    const pending = getPendingYocoSession();
+    const sid = searchParams.get("yoco_session") || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
     const cancelled = searchParams.get("yoco_cancelled");
     const ctx = searchParams.get("ctx");
     const yocoReg = searchParams.get("yoco_registration");
-    if (ctx !== "tournament" || (!sid && !cancelled) || (resolvedRegistrationId && yocoReg && yocoReg !== resolvedRegistrationId)) return;
+    if ((ctx && ctx !== "tournament") || (!sid && !cancelled) || (resolvedRegistrationId && yocoReg && yocoReg !== resolvedRegistrationId)) return;
     const token = sid || cancelled || "";
     if (verifiedRef.current === token) return;
     verifiedRef.current = token;
 
     (async () => {
       try {
-        if (cancelled) {
-          toast.info("Payment cancelled — your invite will stay open.");
-          return;
+        let status = "";
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
+          if (error) throw error;
+          status = data?.status || "";
+          if (["completed", "failed", "expired"].includes(status)) break;
+          await new Promise((resolve) => setTimeout(resolve, 1500));
         }
-        const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
-        if (error) throw error;
-        if (data?.status === "completed") {
+        if (status === "completed") {
+          clearPendingYocoSession(sid || undefined);
           await markNotificationRead();
           await refetchRegistration();
           invalidateNotifications();
           toast.success("Entry paid — tournament registration confirmed.");
           onResolved?.();
-        } else if (data?.status === "failed") {
+        } else if (status === "failed") {
+          clearPendingYocoSession(sid || undefined);
           toast.error(
             "Your bank declined the card. Enable Online / Internet Purchases in your FNB or Absa app, then try again — or use Google Pay / EFT. Your invite stays open.",
             { duration: 12000 },
           );
-        } else if (["cancelled", "expired"].includes(data?.status)) {
-          toast.error(`Payment ${data.status}. Your invite will stay open.`);
+        } else if (status === "expired") {
+          clearPendingYocoSession(sid || undefined);
+          toast.error("Payment expired. Your invite will stay open.");
+        } else if (cancelled) {
+          toast.info("Payment returned without a final result yet. Your invite will stay open while we keep checking.");
         }
       } catch (e: any) {
         toast.error(e.message || "Could not verify payment");

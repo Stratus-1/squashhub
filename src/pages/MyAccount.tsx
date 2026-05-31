@@ -25,6 +25,7 @@ import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCar
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
+import { buildYocoReturnUrl, openYocoCheckout } from "@/lib/yoco-native-checkout";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
@@ -276,7 +277,7 @@ export default function MyAccount() {
     if (club?.payment_gateway !== "yoco") {
       throw new Error("Yoco is not configured for this club.");
     }
-    const return_url = `${window.location.origin}/my-account`;
+    const return_url = buildYocoReturnUrl("/my-account");
     const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
       body: {
         club_id: clubId,
@@ -292,7 +293,7 @@ export default function MyAccount() {
     if ((data as any)?.error) throw new Error((data as any).error);
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Yoco did not return a redirect URL");
-    window.location.href = redirect;
+    await openYocoCheckout(redirect);
   };
 
 

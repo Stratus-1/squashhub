@@ -14,6 +14,7 @@ import { useHasPermission } from "@/hooks/use-club-permissions";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getTournamentFormat } from "@/lib/tournament-formats";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
@@ -93,7 +94,8 @@ export default function ClubChampsView() {
 
   // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
   const byeHandling: string = (champ as any)?.bye_handling || "no_match";
-  const isBells: boolean = (champ as any)?.scoring_mode === "time_capped_points";
+  const tournamentFormat = getTournamentFormat((champ as any)?.scoring_mode);
+  const isBells: boolean = tournamentFormat?.key === "time_capped_points";
 
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
@@ -106,50 +108,46 @@ export default function ClubChampsView() {
     );
 
     const computeFor = (memberId: string) => {
-      let played = 0, won = 0, lost = 0, gamesWon = 0, gamesLost = 0, byes = 0;
-      let pointsFor = 0, pointsAgainst = 0;
+      const stats = {
+        played: 0, won: 0, lost: 0,
+        gamesWon: 0, gamesLost: 0, byes: 0,
+        pointsFor: 0, pointsAgainst: 0,
+      };
       groupByes.forEach((m: any) => {
-        if (m.bye_member_id === memberId || m.player_a_member_id === memberId) byes++;
+        if (m.bye_member_id === memberId || m.player_a_member_id === memberId) stats.byes++;
       });
       groupMatches.forEach((m: any) => {
-        const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
-        const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
-        if (!isA && !isB) return;
-        played++;
-
-        // Bells: cumulative points-for / points-against from side_a/b_points.
-        if (isBells) {
-          const a = Number(m.side_a_points) || 0;
-          const b = Number(m.side_b_points) || 0;
-          if (isA) { pointsFor += a; pointsAgainst += b; }
-          else     { pointsFor += b; pointsAgainst += a; }
-          // Wins/losses are still informational (higher points when bell rang).
-          if (a > b) { if (isA) won++; else lost++; }
-          else if (b > a) { if (isB) won++; else lost++; }
+        // Strategy-driven path: any registered format owns its own scoring math.
+        if (tournamentFormat) {
+          tournamentFormat.applyMatchToStats(stats, m, memberId, isDoubles);
           return;
         }
 
-        // Standard: win/loss + per-game points from game_scores.
+        // Standard (no strategy registered yet): win/loss + per-game points from game_scores.
+        const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
+        const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
+        if (!isA && !isB) return;
+        stats.played++;
         if (m.winner_member_id === memberId || (isDoubles && (
           (isA && m.winner_member_id === m.player_a_member_id) ||
           (isB && m.winner_member_id === m.player_b_member_id)
         ))) {
-          won++;
+          stats.won++;
         } else {
-          lost++;
+          stats.lost++;
         }
         if (m.game_scores) {
           try {
             const gs = JSON.parse(m.game_scores);
             const sets = gs.sets || [];
             sets.forEach((s: any) => {
-              if (isA) { gamesWon += s.a || 0; gamesLost += s.b || 0; }
-              else { gamesWon += s.b || 0; gamesLost += s.a || 0; }
+              if (isA) { stats.gamesWon += s.a || 0; stats.gamesLost += s.b || 0; }
+              else { stats.gamesWon += s.b || 0; stats.gamesLost += s.a || 0; }
             });
           } catch { /* ignore */ }
         }
       });
-      return { played, won, lost, gamesWon, gamesLost, byes, pointsFor, pointsAgainst };
+      return stats;
     };
 
     const buildRow = (stats: ReturnType<typeof computeFor>) => {

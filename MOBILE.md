@@ -125,3 +125,5 @@ Note: this Android project targets Java/Kotlin 21, so build with a compatible JD
 ---
 
 See [docs/ANDROID_API_REFERENCE.md](docs/ANDROID_API_REFERENCE.md) for the full Android dashboard screens + API reference.
+
+See [docs/ANDROID_ROLES.md](docs/ANDROID_ROLES.md) for how Android should resolve user roles (super admin / club admin / captain / member / visitor) on login.

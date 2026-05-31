@@ -980,7 +980,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return { id: champId };
     },
     onSuccess: async (data: any) => {
-      toast.success(awaitingPlayerPairs ? "Tournament saved — players can now register and choose partners." : editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
+      const savedShellMsg = partnerMode === "admin"
+        ? "Tournament saved — open registrations, then edit the tournament to form pairs & generate the schedule."
+        : "Tournament saved — players can now register and choose partners.";
+      toast.success(awaitingPlayerPairs ? savedShellMsg : editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       qc.invalidateQueries({ queryKey: ["club-champ-entries"] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches"] });

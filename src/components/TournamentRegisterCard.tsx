@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trophy, Loader2, CreditCard, Check, Landmark, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
+import { buildYocoReturnUrl, openYocoCheckout } from "@/lib/yoco-native-checkout";
 
 interface Props {
   champ: any;
@@ -155,7 +156,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const launchPayment = async (regId: string) => {
     try {
-      const return_url = `${window.location.origin}${window.location.pathname}?ctx=tournament`;
+      const return_url = buildYocoReturnUrl(`${window.location.pathname}?ctx=tournament`);
       const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
         body: {
           club_id: clubId,
@@ -168,7 +169,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         },
       });
       if (error) throw error;
-      if (data?.redirect_url) window.location.href = data.redirect_url;
+      if (data?.redirect_url) await openYocoCheckout(data.redirect_url);
     } catch (e: any) {
       toast.error(e.message || "Could not start payment");
     }

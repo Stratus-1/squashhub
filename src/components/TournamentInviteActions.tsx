@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { cn } from "@/lib/utils";
+import { buildYocoReturnUrl, openYocoCheckout } from "@/lib/yoco-native-checkout";
 import { ArrowRight, CalendarClock, CheckCircle, CreditCard, Loader2, Trophy, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -148,7 +149,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
     returnParams.set("ctx", "tournament");
     returnParams.set("yoco_registration", registration.id);
     if (notification?.id) returnParams.set("notificationId", notification.id);
-    const return_url = `${window.location.origin}${window.location.pathname}?${returnParams.toString()}`;
+    const return_url = buildYocoReturnUrl(`${window.location.pathname}?${returnParams.toString()}`);
     const { data, error } = await supabase.functions.invoke("yoco-create-checkout", {
       body: {
         club_id: champ.club_id,
@@ -161,7 +162,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
       },
     });
     if (error) throw error;
-    if (data?.redirect_url) window.location.href = data.redirect_url;
+    if (data?.redirect_url) await openYocoCheckout(data.redirect_url);
   };
 
   useEffect(() => {

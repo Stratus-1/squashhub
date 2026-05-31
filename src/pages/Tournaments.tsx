@@ -142,7 +142,7 @@ export default function Tournaments() {
             navigate(markRoute);
           }}
         >
-          <Gavel className="w-3 h-3" /> {isBells ? "Bell" : "Mark"}
+          <Gavel className="w-3 h-3" /> {tournamentFormat?.key === "time_capped_points" ? "Bell" : "Mark"}
         </Button>
       </div>
     );

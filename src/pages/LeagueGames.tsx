@@ -36,16 +36,24 @@ export default function LeagueGames() {
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(activeMember?.id);
   const clubId = clubData?.club?.id;
 
-  // Fetch club's configured squash week start day (Wed=3 by default) — used as fallback
-  const { data: clubWeekDow } = useQuery({
-    queryKey: ["club-week-dow", clubId],
+  // Fetch club's configured squash week start day + fill-up-leagues toggle.
+  const { data: clubSettings } = useQuery({
+    queryKey: ["club-league-settings", clubId],
     queryFn: async () => {
-      if (!clubId) return 3;
-      const { data } = await supabase.from("clubs").select("league_week_start_dow").eq("id", clubId).maybeSingle();
-      return data?.league_week_start_dow ?? 3;
+      if (!clubId) return { league_week_start_dow: 3, fill_up_leagues_enabled: true };
+      const { data } = await supabase
+        .from("clubs")
+        .select("league_week_start_dow, fill_up_leagues_enabled")
+        .eq("id", clubId)
+        .maybeSingle();
+      return {
+        league_week_start_dow: data?.league_week_start_dow ?? 3,
+        fill_up_leagues_enabled: data?.fill_up_leagues_enabled ?? true,
+      };
     },
     enabled: !!clubId,
   });
+  const clubWeekDow = clubSettings?.league_week_start_dow ?? 3;
 
   // Get club's league associations (with scope + per-league week start + external link)
   const { data: clubAssociations } = useQuery({

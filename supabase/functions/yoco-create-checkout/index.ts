@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     }
 
     const successUrl = appendParam(return_url, "yoco_session", session.id);
-    const cancelUrl = appendParam(return_url, "yoco_cancelled", session.id);
+    const cancelUrl = appendParam(return_url, "yoco_session", session.id);
     const failureUrl = appendParam(return_url, "yoco_session", session.id);
 
     // Call Yoco

@@ -3119,11 +3119,13 @@ export default function LeagueGameDetail() {
           </div>
         )}
 
-        {isClubAdmin && (
+        {(isClubAdmin || isHomeCaptain || isAwayCaptain) && (
           <div className="rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-3 space-y-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-destructive">Admin tools</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-destructive">
+              {isClubAdmin ? "Admin tools" : "Captain shortcut"}
+            </div>
             <p className="text-[11px] text-muted-foreground leading-snug">
-              Skip the rubber-by-rubber workflow and enter the final total points directly. Use this for results imported from outside (e.g. NSA scrape) or to correct a finalized fixture.
+              Skip the rubber-by-rubber workflow and enter the final total points directly. Useful for catch-up fixtures or results imported from outside (e.g. NSA scrape).
             </p>
             <Button
               size="sm"
@@ -3132,8 +3134,9 @@ export default function LeagueGameDetail() {
               onClick={() => setAdminManualOpen(true)}
             >
               <Edit3 className="w-4 h-4 mr-1" />
-              {isSubmittedLocked ? "Adjust Final Score (Admin)" : "Enter Final Score Manually (Admin)"}
+              {isSubmittedLocked ? "Adjust Final Score" : "Enter Final Score Manually"}
             </Button>
+
 
             {displaySummary.opbEnabled && (() => {
               const savedAdj = ((existingResult?.match_format as any)?.originalCountAdjustment) || { home: 0, away: 0 };

@@ -120,3 +120,8 @@ This repo includes a helper task that bundles both into one folder:
 Upload those files in Play Console for the corresponding release (same versionCode) to improve Java/Kotlin deobfuscation and native crash/ANR symbolication.
 
 Note: this Android project targets Java/Kotlin 21, so build with a compatible JDK (Android Studio’s embedded JDK is usually easiest). If your shell `java -version` is Java 25, Gradle 8.x may fail with “Unsupported class file major version 69” — set `JAVA_HOME` to a JDK 21–24 before running `./gradlew`.
+
+
+---
+
+See [docs/ANDROID_API_REFERENCE.md](docs/ANDROID_API_REFERENCE.md) for the full Android dashboard screens + API reference.

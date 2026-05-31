@@ -222,8 +222,8 @@ export default function MyAccount() {
   const yocoVerifiedRef = useRef<string | null>(null);
   useEffect(() => {
     const pending = getPendingYocoSession();
-    const sid = searchParams.get("yoco_session") || (pending?.returnPath === "/my-account" ? pending.sessionId : null);
     const cancelled = searchParams.get("yoco_cancelled");
+    const sid = searchParams.get("yoco_session") || cancelled || (pending?.returnPath === "/my-account" ? pending.sessionId : null);
     if (!sid || yocoVerifiedRef.current === sid) return;
     yocoVerifiedRef.current = sid;
     (async () => {
@@ -235,7 +235,7 @@ export default function MyAccount() {
           });
           if (error) throw error;
           status = data?.status || "";
-          if (["completed", "failed", "expired"].includes(status)) break;
+          if (["completed", "failed", "expired", "cancelled"].includes(status)) break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         if (status === "completed") {
@@ -252,6 +252,9 @@ export default function MyAccount() {
         } else if (status === "expired") {
           clearPendingYocoSession(sid);
           toast.error("Payment expired. No charge was made.");
+        } else if (status === "cancelled") {
+          clearPendingYocoSession(sid);
+          toast.info("Card payment cancelled.");
         } else if (cancelled) {
           toast.info("Card payment returned without a final result yet. I'll keep checking when you open this page again.");
         } else {

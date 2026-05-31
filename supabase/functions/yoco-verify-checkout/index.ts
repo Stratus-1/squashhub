@@ -24,16 +24,32 @@ Deno.serve(async (req) => {
     if (userErr || !userData.user) return json({ error: "Unauthorized" }, 401);
     const userId = userData.user.id;
 
-    const { session_id } = await req.json().catch(() => ({}));
-    if (!session_id) return json({ error: "Missing session_id" }, 400);
+    const { session_id = null } = await req.json().catch(() => ({}));
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    let { data: session } = await admin
-      .from("yoco_payment_sessions")
-      .select("*")
-      .eq("id", session_id)
-      .maybeSingle();
+    let session: any | null = null;
+    if (session_id) {
+      const { data } = await admin
+        .from("yoco_payment_sessions")
+        .select("*")
+        .eq("id", session_id)
+        .maybeSingle();
+      session = data;
+    } else {
+      const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const { data } = await admin
+        .from("yoco_payment_sessions")
+        .select("*")
+        .eq("user_id", userId)
+        .in("status", ["created", "processing", "started"])
+        .gte("created_at", since)
+        .not("yoco_checkout_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      session = data;
+    }
     if (!session) return json({ error: "Session not found" }, 404);
     if (session.user_id !== userId) return json({ error: "Forbidden" }, 403);
 

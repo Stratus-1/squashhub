@@ -25,7 +25,7 @@ import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCar
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
-import { buildYocoReturnUrl, openYocoCheckout } from "@/lib/yoco-native-checkout";
+import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
@@ -221,42 +221,51 @@ export default function MyAccount() {
   // Verify Yoco checkout when redirected back from Yoco
   const yocoVerifiedRef = useRef<string | null>(null);
   useEffect(() => {
-    const sid = searchParams.get("yoco_session");
+    const pending = getPendingYocoSession();
     const cancelled = searchParams.get("yoco_cancelled");
-    if (cancelled) {
-      toast.info("Card payment cancelled.");
-      const next = new URLSearchParams(searchParams);
-      next.delete("yoco_cancelled");
-      setSearchParams(next, { replace: true });
-      return;
-    }
+    const sid = searchParams.get("yoco_session") || cancelled || (pending?.returnPath === "/my-account" ? pending.sessionId : null);
     if (!sid || yocoVerifiedRef.current === sid) return;
     yocoVerifiedRef.current = sid;
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", {
-          body: { session_id: sid },
-        });
-        if (error) throw error;
-        if (data?.status === "completed") {
+        let status = "";
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", {
+            body: { session_id: sid },
+          });
+          if (error) throw error;
+          status = data?.status || "";
+          if (["completed", "failed", "expired", "cancelled"].includes(status)) break;
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+        if (status === "completed") {
+          clearPendingYocoSession(sid);
           toast.success("Card payment received — thank you!");
           queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
           queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
-        } else if (data?.status === "failed") {
+        } else if (status === "failed") {
+          clearPendingYocoSession(sid);
           toast.error(
             "Your bank declined this card payment. Open your banking app and enable Online / Internet Purchases (FNB: My Cards → Card Limits; Absa: Manage Cards), then try again — or use Google Pay / EFT. No charge was made.",
             { duration: 12000 },
           );
-        } else if (["cancelled", "expired"].includes(data?.status)) {
-          toast.error(`Payment ${data.status}. No charge was made.`);
+        } else if (status === "expired") {
+          clearPendingYocoSession(sid);
+          toast.error("Payment expired. No charge was made.");
+        } else if (status === "cancelled") {
+          clearPendingYocoSession(sid);
+          toast.info("Card payment cancelled.");
+        } else if (cancelled) {
+          toast.info("Card payment returned without a final result yet. I'll keep checking when you open this page again.");
         } else {
-          toast.info("Payment still processing. Refresh in a moment.");
+          toast.info("Payment still processing. I'll keep checking when you open this page again.");
         }
       } catch (e: any) {
         toast.error(e.message || "Could not verify card payment");
       } finally {
         const next = new URLSearchParams(searchParams);
         next.delete("yoco_session");
+        next.delete("yoco_cancelled");
         setSearchParams(next, { replace: true });
       }
     })();
@@ -293,6 +302,7 @@ export default function MyAccount() {
     if ((data as any)?.error) throw new Error((data as any).error);
     const redirect = (data as any)?.redirect_url;
     if (!redirect) throw new Error("Yoco did not return a redirect URL");
+    rememberPendingYocoSession((data as any).session_id, "/my-account");
     await openYocoCheckout(redirect);
   };
 

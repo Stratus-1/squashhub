@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
 
     const successUrl = appendParam(return_url, "yoco_session", session.id);
     const cancelUrl = appendParam(return_url, "yoco_cancelled", session.id);
+    const failureUrl = appendParam(return_url, "yoco_session", session.id);
 
     // Call Yoco
     const yocoResp = await fetch(YOCO_API, {
@@ -122,7 +123,7 @@ Deno.serve(async (req) => {
         currency: "ZAR",
         successUrl,
         cancelUrl,
-        failureUrl: cancelUrl,
+        failureUrl,
         metadata: {
           session_id: session.id,
           club_id,

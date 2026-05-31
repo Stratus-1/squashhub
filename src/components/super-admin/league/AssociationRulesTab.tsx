@@ -339,19 +339,7 @@ export default function AssociationRulesTab({ associationId }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Feature availability</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <ToggleRow
-            label="Fill Up Leagues tab"
-            hint="When on, captains in this association see the weekly Fill Up Leagues drag-and-drop board in League Games. Turn off for associations that don't use weekly team planning (e.g. NIL, Lowveld) — captains place players directly on the scorecard instead."
-            value={form.fill_up_leagues_enabled ?? true}
-            onChange={(v) => set("fill_up_leagues_enabled", v)}
-          />
-        </CardContent>
-      </Card>
+      {/* "Fill Up Leagues tab" toggle moved to Club Admin → Leagues so each club decides whether their captains use weekly team planning. */}
 
       <div className="flex justify-end">
         <Button

@@ -345,7 +345,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   const isDoubles = matchType === "doubles";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationMode === "invite";
-  const awaitingPlayerPairs = isDoubles && partnerMode === "players" && doublesPairs.length === 0;
+  // Defer pair formation until registrations are in:
+  //  - players self-pair mode: always wait for confirmed pairs
+  //  - admin-pair mode on NEW tournaments: save the shell first, form pairs later by editing
+  const awaitingPlayerPairs =
+    isDoubles &&
+    doublesPairs.length === 0 &&
+    (partnerMode === "players" || (partnerMode === "admin" && !editingChampId));
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection

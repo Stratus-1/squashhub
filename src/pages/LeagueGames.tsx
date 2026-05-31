@@ -9,7 +9,7 @@ import { SEO } from "@/components/SEO";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useMyClub, useMyLeagueRegistration } from "@/hooks/use-club";
-import { useAssociationRules } from "@/hooks/use-association-rules";
+
 import { UpcomingFixturesTab } from "@/components/league-games/UpcomingFixturesTab";
 import { StandingsTab } from "@/components/league-games/StandingsTab";
 import { IndividualStandingsTab } from "@/components/league-games/IndividualStandingsTab";
@@ -36,16 +36,24 @@ export default function LeagueGames() {
   const { data: myPrimaryLeagueReg } = useMyLeagueRegistration(activeMember?.id);
   const clubId = clubData?.club?.id;
 
-  // Fetch club's configured squash week start day (Wed=3 by default) — used as fallback
-  const { data: clubWeekDow } = useQuery({
-    queryKey: ["club-week-dow", clubId],
+  // Fetch club's configured squash week start day + fill-up-leagues toggle.
+  const { data: clubSettings } = useQuery({
+    queryKey: ["club-league-settings", clubId],
     queryFn: async () => {
-      if (!clubId) return 3;
-      const { data } = await supabase.from("clubs").select("league_week_start_dow").eq("id", clubId).maybeSingle();
-      return data?.league_week_start_dow ?? 3;
+      if (!clubId) return { league_week_start_dow: 3, fill_up_leagues_enabled: true };
+      const { data } = await supabase
+        .from("clubs")
+        .select("league_week_start_dow, fill_up_leagues_enabled")
+        .eq("id", clubId)
+        .maybeSingle();
+      return {
+        league_week_start_dow: data?.league_week_start_dow ?? 3,
+        fill_up_leagues_enabled: data?.fill_up_leagues_enabled ?? true,
+      };
     },
     enabled: !!clubId,
   });
+  const clubWeekDow = clubSettings?.league_week_start_dow ?? 3;
 
   // Get club's league associations (with scope + per-league week start + external link)
   const { data: clubAssociations } = useQuery({
@@ -189,12 +197,10 @@ export default function LeagueGames() {
 
   const showSwitcher = associations.length > 1;
 
-  // Hide Fill-Up Leagues based on the association's rule (Super Admin → League Rules).
-  // Falls back to the legacy NIL hardcode if no rule row exists yet.
-  const rulesAssocId = selectedAssoc?.platform_association_id || selectedAssoc?.id || null;
-  const { data: selectedAssocRules } = useAssociationRules(rulesAssocId);
-  const hideFillUp = selectedAssocRules
-    ? selectedAssocRules.fill_up_leagues_enabled === false
+  // Hide Fill-Up Leagues based on the CLUB's setting (Club Admin → Leagues).
+  // Falls back to the legacy NIL hardcode only if the club row is still loading.
+  const hideFillUp = clubSettings
+    ? clubSettings.fill_up_leagues_enabled === false
     : (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";
 
   // If the active tab is Fill-Up but it's hidden for this association, fall back.

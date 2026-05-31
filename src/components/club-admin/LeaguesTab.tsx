@@ -31,51 +31,73 @@ function FillTopDownSettings({ clubId }: { clubId: string }) {
   const { data: club } = useQuery({
     queryKey: ["club-fill-settings", clubId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("fill_top_down_enabled, league_week_start_dow").eq("id", clubId).maybeSingle();
+      const { data, error } = await supabase.from("clubs").select("fill_top_down_enabled, league_week_start_dow, fill_up_leagues_enabled").eq("id", clubId).maybeSingle();
       if (error) throw error;
       return data;
     },
     enabled: !!clubId,
   });
 
-  const update = async (patch: { fill_top_down_enabled?: boolean; league_week_start_dow?: number }) => {
+  const update = async (patch: { fill_top_down_enabled?: boolean; league_week_start_dow?: number; fill_up_leagues_enabled?: boolean }) => {
     const { error } = await supabase.from("clubs").update(patch).eq("id", clubId);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["club-fill-settings", clubId] });
+    qc.invalidateQueries({ queryKey: ["club-league-settings", clubId] });
     toast.success("Saved");
   };
 
+  const fillUpEnabled = club?.fill_up_leagues_enabled ?? true;
+
   return (
-    <Card className="p-3 mt-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={!!club?.fill_top_down_enabled}
-            onCheckedChange={(v) => update({ fill_top_down_enabled: !!v })}
-          />
-          <span className="text-sm font-medium">Fill up league teams from top down</span>
-        </label>
-        {club?.fill_top_down_enabled && (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Squash week starts:</span>
-            <Select
-              value={String(club?.league_week_start_dow ?? 3)}
-              onValueChange={(v) => update({ league_week_start_dow: Number(v) })}
-            >
-              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {DOW_LABELS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+    <Card className="p-3 mt-2 space-y-3">
+      {/* Show / hide the Fill Up Leagues tab entirely for this club's captains */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <div className="text-sm font-medium">Show "Fill Up Leagues" tab in League Games</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            When on, your captains see the weekly Fill Up Leagues drag-and-drop board in League Games.
+            Turn off if your club doesn't do weekly team planning (e.g. NIL / Lowveld style) — captains then place players directly on the scorecard instead.
+          </p>
+        </div>
+        <Switch
+          checked={fillUpEnabled}
+          onCheckedChange={(v) => update({ fill_up_leagues_enabled: v })}
+        />
       </div>
-      <p className="text-xs text-muted-foreground mt-2">
-        When enabled, captains use <strong>Fill Up Leagues</strong> to assign players top-down. Excess players cascade to the next league. The ±2 position rule is enforced against the previous week's snapshot.
-      </p>
-      <p className="md:hidden text-xs text-muted-foreground mt-2 rounded-md border border-border bg-muted/40 px-2.5 py-2">
-        On mobile: weekly team planning happens in <strong>League Games → Fill Up Leagues</strong>. Press and hold a player for a moment, then drag. The admin <strong>Allocate</strong> dialog is still desktop-first.
-      </p>
+
+      {fillUpEnabled && (
+        <div className="pt-3 border-t border-border space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={!!club?.fill_top_down_enabled}
+                onCheckedChange={(v) => update({ fill_top_down_enabled: !!v })}
+              />
+              <span className="text-sm font-medium">Fill up league teams from top down</span>
+            </label>
+            {club?.fill_top_down_enabled && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Squash week starts:</span>
+                <Select
+                  value={String(club?.league_week_start_dow ?? 3)}
+                  onValueChange={(v) => update({ league_week_start_dow: Number(v) })}
+                >
+                  <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DOW_LABELS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            When enabled, captains use <strong>Fill Up Leagues</strong> to assign players top-down. Excess players cascade to the next league. The ±2 position rule is enforced against the previous week's snapshot.
+          </p>
+          <p className="md:hidden text-xs text-muted-foreground rounded-md border border-border bg-muted/40 px-2.5 py-2">
+            On mobile: weekly team planning happens in <strong>League Games → Fill Up Leagues</strong>. Press and hold a player for a moment, then drag. The admin <strong>Allocate</strong> dialog is still desktop-first.
+          </p>
+        </div>
+      )}
     </Card>
   );
 }

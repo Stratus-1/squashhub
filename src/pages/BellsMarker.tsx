@@ -223,7 +223,7 @@ export default function BellsMarker() {
         <p className="text-sm text-muted-foreground">
           This match isn't a Bells (time-capped) tournament match. Use the standard match marker instead.
         </p>
-        <Button onClick={() => navigate(`/match-marker?source=tournament&matchId=${match.id}`)}>
+        <Button onClick={() => navigate(getTournamentFormat(champ?.scoring_mode).markerRoute(match.id))}>
           Open Match Marker
         </Button>
       </div>

@@ -24,6 +24,10 @@ export const BellsFormat: TournamentFormat = {
     return `/bells-marker/${matchId}`;
   },
 
+  markerLabel: "Bell",
+
+  badge: { label: "Bells", variant: "secondary" },
+
   getTimeCapMinutes(champ: ChampLike, groupNumber) {
     if (!champ) return null;
     const map = (champ.group_durations || {}) as Record<string, number>;
@@ -69,6 +73,23 @@ export const BellsFormat: TournamentFormat = {
       b.played - a.played
     );
   },
+
+  standingsColumns: [
+    {
+      key: "pointsFor",
+      label: "PF",
+      title: "Points For",
+      cellClassName: "font-semibold",
+      render: (row) => `${row.pointsFor}`,
+    },
+    {
+      key: "pointsAgainst",
+      label: "PA",
+      title: "Points Against",
+      cellClassName: "text-muted-foreground",
+      render: (row) => `${row.pointsAgainst}`,
+    },
+  ],
 
   formatScore(pointsA, pointsB) {
     return `${pointsA}-${pointsB}`;

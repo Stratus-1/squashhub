@@ -100,9 +100,7 @@ export default function Tournaments() {
     const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
-    const markRoute = tournamentFormat
-      ? tournamentFormat.markerRoute(m.id)
-      : `/match-marker?source=tournament&matchId=${m.id}`;
+    const markRoute = tournamentFormat.markerRoute(m.id);
 
     return (
       <div
@@ -129,7 +127,11 @@ export default function Tournaments() {
               {champ.name}
             </Badge>
           )}
-          {tournamentFormat?.key === "time_capped_points" && <Badge variant="secondary" className="text-[10px] shrink-0">Bells</Badge>}
+          {tournamentFormat.badge && (
+            <Badge variant={tournamentFormat.badge.variant ?? "secondary"} className="text-[10px] shrink-0">
+              {tournamentFormat.badge.label}
+            </Badge>
+          )}
           {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
           {today && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
@@ -142,7 +144,7 @@ export default function Tournaments() {
             navigate(markRoute);
           }}
         >
-          <Gavel className="w-3 h-3" /> {tournamentFormat?.key === "time_capped_points" ? "Bell" : "Mark"}
+          <Gavel className="w-3 h-3" /> {tournamentFormat.markerLabel}
         </Button>
       </div>
     );

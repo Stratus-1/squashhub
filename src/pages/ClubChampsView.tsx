@@ -95,7 +95,8 @@ export default function ClubChampsView() {
   // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
   const byeHandling: string = (champ as any)?.bye_handling || "no_match";
   const tournamentFormat = getTournamentFormat((champ as any)?.scoring_mode);
-  const isBells: boolean = tournamentFormat?.key === "time_capped_points";
+  const standingsColumns = tournamentFormat.standingsColumns;
+
 
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
@@ -117,35 +118,7 @@ export default function ClubChampsView() {
         if (m.bye_member_id === memberId || m.player_a_member_id === memberId) stats.byes++;
       });
       groupMatches.forEach((m: any) => {
-        // Strategy-driven path: any registered format owns its own scoring math.
-        if (tournamentFormat) {
-          tournamentFormat.applyMatchToStats(stats, m, memberId, isDoubles);
-          return;
-        }
-
-        // Standard (no strategy registered yet): win/loss + per-game points from game_scores.
-        const isA = m.player_a_member_id === memberId || (isDoubles && m.partner_a_member_id === memberId);
-        const isB = m.player_b_member_id === memberId || (isDoubles && m.partner_b_member_id === memberId);
-        if (!isA && !isB) return;
-        stats.played++;
-        if (m.winner_member_id === memberId || (isDoubles && (
-          (isA && m.winner_member_id === m.player_a_member_id) ||
-          (isB && m.winner_member_id === m.player_b_member_id)
-        ))) {
-          stats.won++;
-        } else {
-          stats.lost++;
-        }
-        if (m.game_scores) {
-          try {
-            const gs = JSON.parse(m.game_scores);
-            const sets = gs.sets || [];
-            sets.forEach((s: any) => {
-              if (isA) { stats.gamesWon += s.a || 0; stats.gamesLost += s.b || 0; }
-              else { stats.gamesWon += s.b || 0; stats.gamesLost += s.a || 0; }
-            });
-          } catch { /* ignore */ }
-        }
+        tournamentFormat.applyMatchToStats(stats, m, memberId, isDoubles);
       });
       return stats;
     };
@@ -213,11 +186,8 @@ export default function ClubChampsView() {
       } as any);
     });
 
-    // Format-specific ranking when a strategy is registered, otherwise standard.
-    if (tournamentFormat) {
-      return rows.sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
-    }
-    return rows.sort((a: any, b: any) => b.points - a.points || b.gameDiff - a.gameDiff || b.won - a.won);
+    // Strategy-driven ranking.
+    return rows.sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
   };
 
 
@@ -655,8 +625,9 @@ export default function ClubChampsView() {
                               <th className="pb-2 font-medium text-center">P</th>
                               <th className="pb-2 font-medium text-center">W</th>
                               <th className="pb-2 font-medium text-center">L</th>
-                              <th className="pb-2 font-medium text-center" title={isBells ? "Points For" : "Game Difference"}>{isBells ? "PF" : "GD"}</th>
-                              <th className="pb-2 font-medium text-center" title={isBells ? "Points Against" : "Tournament Points"}>{isBells ? "PA" : "Pts"}</th>
+                              {standingsColumns.map((col) => (
+                                <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>
@@ -669,17 +640,9 @@ export default function ClubChampsView() {
                                   <td className="py-2 text-center">{s.played}</td>
                                   <td className="py-2 text-center">{s.won}</td>
                                   <td className="py-2 text-center">{s.lost}</td>
-                                  {isBells ? (
-                                    <>
-                                      <td className="py-2 text-center font-semibold">{s.pointsFor}</td>
-                                      <td className="py-2 text-center text-muted-foreground">{s.pointsAgainst}</td>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
-                                      <td className="py-2 text-center font-semibold">{s.points}</td>
-                                    </>
-                                  )}
+                                  {standingsColumns.map((col) => (
+                                    <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
+                                  ))}
                                 </tr>
                               );
                             })}
@@ -758,8 +721,9 @@ export default function ClubChampsView() {
                     <th className="pb-2 font-medium text-center">P</th>
                     <th className="pb-2 font-medium text-center">W</th>
                     <th className="pb-2 font-medium text-center">L</th>
-                    <th className="pb-2 font-medium text-center" title={isBells ? "Points For" : "Game Difference"}>{isBells ? "PF" : "GD"}</th>
-                    <th className="pb-2 font-medium text-center" title={isBells ? "Points Against" : "Tournament Points"}>{isBells ? "PA" : "Pts"}</th>
+                    {standingsColumns.map((col) => (
+                      <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -772,17 +736,9 @@ export default function ClubChampsView() {
                         <td className="py-2 text-center">{s.played}</td>
                         <td className="py-2 text-center">{s.won}</td>
                         <td className="py-2 text-center">{s.lost}</td>
-                        {isBells ? (
-                          <>
-                            <td className="py-2 text-center font-semibold">{s.pointsFor}</td>
-                            <td className="py-2 text-center text-muted-foreground">{s.pointsAgainst}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
-                            <td className="py-2 text-center font-semibold">{s.points}</td>
-                          </>
-                        )}
+                        {standingsColumns.map((col) => (
+                          <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
+                        ))}
                       </tr>
                     );
                   })}

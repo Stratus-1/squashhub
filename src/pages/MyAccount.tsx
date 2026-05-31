@@ -241,7 +241,12 @@ export default function MyAccount() {
           toast.success("Card payment received — thank you!");
           queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
           queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
-        } else if (["cancelled", "failed", "expired"].includes(data?.status)) {
+        } else if (data?.status === "failed") {
+          toast.error(
+            "Your bank declined this card payment. Open your banking app and enable Online / Internet Purchases (FNB: My Cards → Card Limits; Absa: Manage Cards), then try again — or use Google Pay / EFT. No charge was made.",
+            { duration: 12000 },
+          );
+        } else if (["cancelled", "expired"].includes(data?.status)) {
           toast.error(`Payment ${data.status}. No charge was made.`);
         } else {
           toast.info("Payment still processing. Refresh in a moment.");

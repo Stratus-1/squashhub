@@ -188,7 +188,12 @@ export function TournamentInviteActions({ notification, champId, registrationId,
           invalidateNotifications();
           toast.success("Entry paid — tournament registration confirmed.");
           onResolved?.();
-        } else if (["cancelled", "failed", "expired"].includes(data?.status)) {
+        } else if (data?.status === "failed") {
+          toast.error(
+            "Your bank declined the card. Enable Online / Internet Purchases in your FNB or Absa app, then try again — or use Google Pay / EFT. Your invite stays open.",
+            { duration: 12000 },
+          );
+        } else if (["cancelled", "expired"].includes(data?.status)) {
           toast.error(`Payment ${data.status}. Your invite will stay open.`);
         }
       } catch (e: any) {

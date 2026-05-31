@@ -7,10 +7,10 @@ interface FnbPaymentNoticeProps {
 }
 
 /**
- * FNB-specific warning shown next to Yoco/card payment buttons.
- * FNB's 3D Secure and fraud rules frequently decline Yoco card payments,
- * Google Pay and Apple Pay unless the cardholder has enabled the right
- * settings in the FNB App.
+ * Bank-specific warning shown next to Yoco / card payment buttons.
+ * FNB **and Absa** both block Yoco card payments, Google Pay and Apple Pay
+ * by default unless the cardholder enables online purchases in their
+ * banking app. (Component name kept for backwards compatibility.)
  */
 export const FnbPaymentNotice = ({ className, showEftFallback = true }: FnbPaymentNoticeProps) => {
   return (
@@ -24,14 +24,22 @@ export const FnbPaymentNotice = ({ className, showEftFallback = true }: FnbPayme
         <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
         <div className="space-y-1 text-foreground">
           <p className="font-semibold text-amber-700 dark:text-amber-400">
-            FNB clients — please read before paying by card
+            FNB &amp; Absa clients — please read before paying by card
           </p>
           <p className="text-muted-foreground">
-            FNB often blocks Yoco, Google Pay and Apple Pay by default. If your card is declined,
-            open the <strong>FNB App → My Cards → Card Limits</strong> and enable{" "}
-            <strong>Online Purchases</strong> and <strong>Tap-to-Pay / Digital Wallet</strong>,
-            then try again.
+            FNB and Absa often block Yoco, Google Pay and Apple Pay by default. If your card is
+            declined, enable online purchases first:
           </p>
+          <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
+            <li>
+              <strong>FNB App</strong> → My Cards → Card Limits → enable{" "}
+              <strong>Online Purchases</strong> and <strong>Tap-to-Pay / Digital Wallet</strong>.
+            </li>
+            <li>
+              <strong>Absa Banking App / Online Banking</strong> → Manage Cards → enable{" "}
+              <strong>Internet Purchases</strong> (and Digital Wallet for Google / Apple Pay).
+            </li>
+          </ul>
           {showEftFallback && (
             <p className="text-muted-foreground">
               Still struggling? Use <strong>EFT</strong> instead — it always works and the club

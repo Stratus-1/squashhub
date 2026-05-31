@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
 
 /**
  * Bells doubles scorer.
@@ -46,14 +47,13 @@ export default function BellsMarker() {
   });
 
   const champ = match?.champ;
-  const isBells = champ?.scoring_mode === "time_capped_points";
+  const format = getTournamentFormat(champ?.scoring_mode);
+  const isBells = format?.key === BellsFormat.key;
 
-  // Per-league time cap fallback
+  // Per-league time cap fallback (delegated to format strategy)
   const capMinutes = useMemo(() => {
     if (!champ) return 30;
-    const map = (champ.group_durations || {}) as Record<string, number>;
-    const fromGroup = map[String(match?.group_number)];
-    return Number(fromGroup) > 0 ? Number(fromGroup) : champ.match_duration_minutes || 30;
+    return BellsFormat.getTimeCapMinutes(champ, match?.group_number) ?? 30;
   }, [champ, match?.group_number]);
 
   const [pointsA, setPointsA] = useState(0);
@@ -137,14 +137,9 @@ export default function BellsMarker() {
     if (!match) return;
     setSaving(true);
     try {
-      // Winner = whoever scored more points (tie = no winner)
-      const winnerMemberId =
-        pointsA > pointsB
-          ? match.player_a_member_id
-          : pointsB > pointsA
-            ? match.player_b_member_id
-            : null;
-      const scoreStr = `${pointsA}-${pointsB}`;
+      // Winner + score string come from the format strategy
+      const winnerMemberId = BellsFormat.resolveWinnerMemberId(match, pointsA, pointsB);
+      const scoreStr = BellsFormat.formatScore(pointsA, pointsB);
       const { data: auth } = await supabase.auth.getUser();
 
       const { error } = await fromExt("club_champs_matches")

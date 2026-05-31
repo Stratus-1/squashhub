@@ -95,7 +95,8 @@ export default function ClubChampsView() {
   // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
   const byeHandling: string = (champ as any)?.bye_handling || "no_match";
   const tournamentFormat = getTournamentFormat((champ as any)?.scoring_mode);
-  const isBells: boolean = tournamentFormat?.key === "time_capped_points";
+  const standingsColumns = tournamentFormat.standingsColumns;
+
 
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);

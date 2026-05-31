@@ -110,7 +110,12 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         if (data?.status === "completed") {
           toast.success("Entry fee paid — you're registered!");
           refetch();
-        } else if (["cancelled", "failed", "expired"].includes(data?.status)) {
+        } else if (data?.status === "failed") {
+          toast.error(
+            "Your bank declined the card. Enable Online / Internet Purchases in your FNB or Absa app, then try again — or use Google Pay / EFT.",
+            { duration: 12000 },
+          );
+        } else if (["cancelled", "expired"].includes(data?.status)) {
           toast.error(`Payment ${data.status}.`);
         }
       } catch (e: any) {

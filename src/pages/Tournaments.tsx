@@ -17,6 +17,7 @@ import { format, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
+import { getTournamentFormat } from "@/lib/tournament-formats";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
@@ -94,13 +95,13 @@ export default function Tournaments() {
   const renderMatchRow = (m: any) => {
     const champ = champs.find((c: any) => c.id === m.champ_id);
     const isDoubles = champ?.match_type === "doubles";
-    const isBells = champ?.scoring_mode === "time_capped_points";
+    const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
     const teamA = isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a);
     const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
-    const markRoute = isBells
-      ? `/bells-marker/${m.id}`
+    const markRoute = tournamentFormat
+      ? tournamentFormat.markerRoute(m.id)
       : `/match-marker?source=tournament&matchId=${m.id}`;
 
     return (
@@ -128,7 +129,7 @@ export default function Tournaments() {
               {champ.name}
             </Badge>
           )}
-          {isBells && <Badge variant="secondary" className="text-[10px] shrink-0">Bells</Badge>}
+          {tournamentFormat?.key === "time_capped_points" && <Badge variant="secondary" className="text-[10px] shrink-0">Bells</Badge>}
           {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
           {today && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
@@ -141,7 +142,7 @@ export default function Tournaments() {
             navigate(markRoute);
           }}
         >
-          <Gavel className="w-3 h-3" /> {isBells ? "Bell" : "Mark"}
+          <Gavel className="w-3 h-3" /> {tournamentFormat?.key === "time_capped_points" ? "Bell" : "Mark"}
         </Button>
       </div>
     );

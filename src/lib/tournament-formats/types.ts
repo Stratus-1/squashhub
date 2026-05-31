@@ -1,13 +1,14 @@
 /**
  * TournamentFormat — pluggable scoring/standings strategy.
  *
- * Phase 1 of the generalised tournament wizard: each tournament format
- * (Bells, Club Champs, Knockout, Swiss, …) implements this interface so
- * UI surfaces (marker, standings, route picker) read a strategy instead
- * of hard-coding `if (scoring_mode === 'time_capped_points')` everywhere.
+ * Phase 1 carved out a registry for non-default formats (Bells).
+ * Phase 2 promotes Standard into its own strategy so every UI surface
+ * (marker route, marker label, standings columns, badges) reads from
+ * the strategy instead of hard-coding `if (scoring_mode === '…')`.
  *
- * Only the surface area Bells actually needs is in here today; extend as
- * new formats land.
+ * Extend this interface as new formats land — but keep additions
+ * optional or supply defaults for both Standard and Bells so existing
+ * call sites don't have to fan out.
  */
 
 export type StandingsStats = {
@@ -53,6 +54,25 @@ export type MatchLike = {
   [key: string]: any;
 };
 
+/** Trailing standings column (after the universal P / W / L columns). */
+export type StandingsColumn = {
+  key: string;
+  /** Short header label (e.g. "GD", "PF"). */
+  label: string;
+  /** Tooltip / aria title (e.g. "Game Difference"). */
+  title?: string;
+  /** Cell text for one row. */
+  render(row: StandingsRow): string;
+  /** Optional cell tailwind classes appended to `py-2 text-center`. */
+  cellClassName?: string;
+};
+
+/** Small badge shown next to a match (e.g. "Bells"). */
+export type FormatBadge = {
+  label: string;
+  variant?: "default" | "secondary" | "outline" | "destructive";
+};
+
 export interface TournamentFormat {
   /** Stable key persisted in club_champs.scoring_mode. */
   readonly key: string;
@@ -66,6 +86,12 @@ export interface TournamentFormat {
 
   /** Route to send a user to when they tap "Mark / Score" on a match. */
   markerRoute(matchId: string): string;
+
+  /** Button label on the marker CTA (e.g. "Mark", "Bell"). */
+  readonly markerLabel: string;
+
+  /** Optional badge to render next to a match in list views. */
+  readonly badge?: FormatBadge;
 
   /**
    * Per-match time cap in minutes (Bells uses group_durations[group_number]
@@ -83,6 +109,9 @@ export interface TournamentFormat {
 
   /** Final sort comparator for standings rows. */
   rankStandings(a: StandingsRow, b: StandingsRow): number;
+
+  /** Trailing columns (after P/W/L) shown in standings tables. */
+  readonly standingsColumns: readonly StandingsColumn[];
 
   /** Pretty score string for a finished match (e.g. "15-12"). */
   formatScore(pointsA: number, pointsB: number): string;

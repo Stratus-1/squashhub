@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: session } = await admin
+    let { data: session } = await admin
       .from("yoco_payment_sessions")
       .select("*")
       .eq("id", session_id)
@@ -50,24 +50,60 @@ Deno.serve(async (req) => {
     const secretKey = (secrets?.payment_gateway_credentials as any)?.secret_key;
     if (!secretKey) return json({ error: "Yoco key not configured" }, 400);
 
-    const resp = await fetch(
-      `https://payments.yoco.com/api/checkouts/${session.yoco_checkout_id}`,
-      { headers: { Authorization: `Bearer ${secretKey}` } },
-    );
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      return json({ error: `Yoco verify failed [${resp.status}]: ${JSON.stringify(data)}` }, 502);
-    }
+    // Yoco statuses: created, processing, completed, cancelled, failed, expired.
+    // Mobile/browser returns are not always reliable after 3DS. If the app asks
+    // about an older pending session, also reconcile the user's latest recent
+    // pending sessions and complete whichever Yoco now says is paid.
+    const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const { data: recentSessions = [] } = await admin
+      .from("yoco_payment_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("club_id", session.club_id)
+      .eq("club_member_id", session.club_member_id)
+      .in("status", ["created", "processing", "cancelled", "failed", "expired"])
+      .gte("created_at", since)
+      .not("yoco_checkout_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(8);
 
-    const yocoStatus: string = data?.status || "";
-    // Yoco statuses: created, processing, completed, cancelled, failed, expired
-    if (yocoStatus !== "completed") {
+    const sessionsToCheck = [session, ...recentSessions.filter((s: any) => s.id !== session.id)];
+    let requestedStatus = "created";
+    let completedSession: any | null = null;
+
+    for (const candidate of sessionsToCheck) {
+      const resp = await fetch(
+        `https://payments.yoco.com/api/checkouts/${candidate.yoco_checkout_id}`,
+        { headers: { Authorization: `Bearer ${secretKey}` } },
+      );
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error("Yoco verify failed", candidate.id, resp.status, data);
+        if (candidate.id === session.id) {
+          return json({ error: `Yoco verify failed [${resp.status}]: ${JSON.stringify(data)}` }, 502);
+        }
+        continue;
+      }
+
+      const yocoStatus: string = data?.status || "created";
+      console.log("Yoco checkout status", { session_id: candidate.id, checkout_id: candidate.yoco_checkout_id, status: yocoStatus });
+
+      if (candidate.id === session.id) requestedStatus = yocoStatus;
+      if (yocoStatus === "completed") {
+        completedSession = candidate;
+        break;
+      }
+
       await admin
         .from("yoco_payment_sessions")
-        .update({ status: yocoStatus === "completed" ? "completed" : (["cancelled","failed","expired"].includes(yocoStatus) ? yocoStatus : "created") })
-        .eq("id", session.id);
-      return json({ status: yocoStatus });
+        .update({ status: ["processing", "cancelled", "failed", "expired"].includes(yocoStatus) ? yocoStatus : "created" })
+        .eq("id", candidate.id);
     }
+
+    if (!completedSession) {
+      return json({ status: requestedStatus });
+    }
+    session = completedSession;
 
     // Atomically claim the session: only the request that flips status from
     // a non-completed value to "completed" is allowed to write the credit

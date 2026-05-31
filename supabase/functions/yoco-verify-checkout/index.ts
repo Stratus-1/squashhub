@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .eq("club_id", session.club_id)
       .eq("club_member_id", session.club_member_id)
-      .in("status", ["created", "processing", "cancelled", "failed", "expired"])
+      .in("status", ["created", "processing", "started", "cancelled", "failed", "expired"])
       .gte("created_at", since)
       .not("yoco_checkout_id", "is", null)
       .order("created_at", { ascending: false })
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
 
       await admin
         .from("yoco_payment_sessions")
-        .update({ status: ["processing", "cancelled", "failed", "expired"].includes(yocoStatus) ? yocoStatus : "created" })
+        .update({ status: ["processing", "started", "cancelled", "failed", "expired"].includes(yocoStatus) ? yocoStatus : "created" })
         .eq("id", candidate.id);
     }
 

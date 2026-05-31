@@ -226,6 +226,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft">>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
   const [inviteMethods, setInviteMethods] = useState<Set<"app" | "email">>(new Set(["app"]));
+  // Controls WHEN invites go out: 'manual' (admin clicks Send later — default),
+  // 'now' (prompt on save), or 'scheduled' (admin gets a reminder for the chosen date).
+  const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
+  const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [showInvitePreview, setShowInvitePreview] = useState(false);
 
@@ -977,12 +981,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
 
-      // For newly-created invite-mode tournaments, prompt admin to send invites now
+      // For newly-created invite-mode tournaments, decide what to do with invites
+      // based on the admin's chosen timing.
       const isNewInvite = !editingChampId && awaitingPlayerPairs && registrationMode === "invite";
       const inviteeCount = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-")).length;
       if (isNewInvite && inviteeCount > 0 && data?.id) {
-        if (confirm(`Tournament created with ${inviteeCount} invitee${inviteeCount === 1 ? "" : "s"}.\n\nSend invite notification/email now? (You can also send later from the edit dialog.)`)) {
-          await sendChampInvites(data.id);
+        if (inviteTiming === "now") {
+          if (confirm(`Tournament created with ${inviteeCount} invitee${inviteeCount === 1 ? "" : "s"}.\n\nSend invite notification/email now?`)) {
+            await sendChampInvites(data.id);
+          }
+        } else if (inviteTiming === "scheduled" && inviteScheduledAt) {
+          const when = new Date(inviteScheduledAt);
+          toast.info(`Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Send / Re-send invites”.`, { duration: 8000 });
+        } else {
+          toast.info(`Tournament saved. Open the edit dialog and click “Send / Re-send invites” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
         }
       }
 
@@ -1150,6 +1162,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(["card"]));
     setPaymentRequired(true);
     setInviteMethods(new Set(["app"]));
+    setInviteTiming("manual");
+    setInviteScheduledAt("");
     setDescription("");
     setEditingChampId(null);
   };
@@ -1573,6 +1587,60 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 Choose how invited members are notified. Pick both for maximum reach.
               </p>
             </div>
+
+            {/* Invite send timing */}
+            <div className="space-y-2">
+              <Label className="text-sm">When to send invites</Label>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="invite-timing"
+                    checked={inviteTiming === "manual"}
+                    onChange={() => setInviteTiming("manual")}
+                  />
+                  Manual — I'll trigger later
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="invite-timing"
+                    checked={inviteTiming === "now"}
+                    onChange={() => setInviteTiming("now")}
+                  />
+                  Send immediately on save
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="invite-timing"
+                    checked={inviteTiming === "scheduled"}
+                    onChange={() => setInviteTiming("scheduled")}
+                  />
+                  Schedule for date
+                </label>
+              </div>
+              {inviteTiming === "scheduled" && (
+                <div className="flex flex-col gap-1">
+                  <Input
+                    type="datetime-local"
+                    value={inviteScheduledAt}
+                    onChange={(e) => setInviteScheduledAt(e.target.value)}
+                    className="max-w-xs h-8 text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use “Send / Re-send invites” when ready.
+                  </p>
+                </div>
+              )}
+              {inviteTiming === "manual" && (
+                <p className="text-xs text-muted-foreground">
+                  Tournament is saved without notifying anyone. Open the edit dialog and click “Send / Re-send invites” when you're ready.
+                </p>
+              )}
+            </div>
+
+
 
             {/* Tournament description / invite body */}
             <div className="space-y-2">

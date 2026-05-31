@@ -2428,6 +2428,7 @@ export type Database = {
           face_enrolment_required: boolean
           fee_reminder_days_before: number | null
           fill_top_down_enabled: boolean
+          fill_up_leagues_enabled: boolean
           free_tier_until: string | null
           gobook_url: string | null
           honesty_bar_enabled: boolean
@@ -2489,6 +2490,7 @@ export type Database = {
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
+          fill_up_leagues_enabled?: boolean
           free_tier_until?: string | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean
@@ -2550,6 +2552,7 @@ export type Database = {
           face_enrolment_required?: boolean
           fee_reminder_days_before?: number | null
           fill_top_down_enabled?: boolean
+          fill_up_leagues_enabled?: boolean
           free_tier_until?: string | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean

@@ -1863,7 +1863,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           <CardHeader>
             <CardTitle>Form Doubles Pairs — {GENDER_LABELS[gender]}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {doublesPairs.length} pair{doublesPairs.length !== 1 ? "s" : ""} formed. Select two players to create each pair.
+              Do this once registrations have closed so you know who's actually playing. {doublesPairs.length} pair{doublesPairs.length !== 1 ? "s" : ""} formed.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">

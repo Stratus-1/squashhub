@@ -981,12 +981,20 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
 
-      // For newly-created invite-mode tournaments, prompt admin to send invites now
+      // For newly-created invite-mode tournaments, decide what to do with invites
+      // based on the admin's chosen timing.
       const isNewInvite = !editingChampId && awaitingPlayerPairs && registrationMode === "invite";
       const inviteeCount = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-")).length;
       if (isNewInvite && inviteeCount > 0 && data?.id) {
-        if (confirm(`Tournament created with ${inviteeCount} invitee${inviteeCount === 1 ? "" : "s"}.\n\nSend invite notification/email now? (You can also send later from the edit dialog.)`)) {
-          await sendChampInvites(data.id);
+        if (inviteTiming === "now") {
+          if (confirm(`Tournament created with ${inviteeCount} invitee${inviteeCount === 1 ? "" : "s"}.\n\nSend invite notification/email now?`)) {
+            await sendChampInvites(data.id);
+          }
+        } else if (inviteTiming === "scheduled" && inviteScheduledAt) {
+          const when = new Date(inviteScheduledAt);
+          toast.info(`Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Send / Re-send invites”.`, { duration: 8000 });
+        } else {
+          toast.info(`Tournament saved. Open the edit dialog and click “Send / Re-send invites” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
         }
       }
 

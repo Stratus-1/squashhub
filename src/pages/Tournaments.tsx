@@ -100,9 +100,7 @@ export default function Tournaments() {
     const teamB = isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b);
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const today = matchDate && isToday(matchDate);
-    const markRoute = tournamentFormat
-      ? tournamentFormat.markerRoute(m.id)
-      : `/match-marker?source=tournament&matchId=${m.id}`;
+    const markRoute = tournamentFormat.markerRoute(m.id);
 
     return (
       <div

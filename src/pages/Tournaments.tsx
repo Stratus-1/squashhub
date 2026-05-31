@@ -129,7 +129,7 @@ export default function Tournaments() {
               {champ.name}
             </Badge>
           )}
-          {isBells && <Badge variant="secondary" className="text-[10px] shrink-0">Bells</Badge>}
+          {tournamentFormat?.key === "time_capped_points" && <Badge variant="secondary" className="text-[10px] shrink-0">Bells</Badge>}
           {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
           {today && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>

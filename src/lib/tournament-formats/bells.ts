@@ -24,6 +24,10 @@ export const BellsFormat: TournamentFormat = {
     return `/bells-marker/${matchId}`;
   },
 
+  markerLabel: "Bell",
+
+  badge: { label: "Bells", variant: "secondary" },
+
   getTimeCapMinutes(champ: ChampLike, groupNumber) {
     if (!champ) return null;
     const map = (champ.group_durations || {}) as Record<string, number>;

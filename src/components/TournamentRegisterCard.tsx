@@ -101,7 +101,8 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const verifiedRef = useRef<string | null>(null);
   useEffect(() => {
     const pending = getPendingYocoSession();
-    const sid = searchParams.get("yoco_session") || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
+    const cancelled = searchParams.get("yoco_cancelled");
+    const sid = searchParams.get("yoco_session") || cancelled || (pending?.returnPath === window.location.pathname ? pending.sessionId : null);
     const ctx = searchParams.get("ctx");
     if ((ctx && ctx !== "tournament") || !sid || verifiedRef.current === sid) return;
     verifiedRef.current = sid;
@@ -112,7 +113,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           const { data, error } = await supabase.functions.invoke("yoco-verify-checkout", { body: { session_id: sid } });
           if (error) throw error;
           status = data?.status || "";
-          if (["completed", "failed", "expired"].includes(status)) break;
+          if (["completed", "failed", "expired", "cancelled"].includes(status)) break;
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         if (status === "completed") {
@@ -128,6 +129,9 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
         } else if (status === "expired") {
           clearPendingYocoSession(sid);
           toast.error("Payment expired.");
+        } else if (status === "cancelled") {
+          clearPendingYocoSession(sid);
+          toast.info("Payment cancelled.");
         } else {
           toast.info("Payment still processing. I'll keep checking when you open this page again.");
         }
@@ -136,6 +140,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       } finally {
         const next = new URLSearchParams(searchParams);
         next.delete("yoco_session");
+        next.delete("yoco_cancelled");
         next.delete("ctx");
         setSearchParams(next, { replace: true });
       }

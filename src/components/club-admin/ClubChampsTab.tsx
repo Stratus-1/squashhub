@@ -25,6 +25,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { Users as UsersIcon } from "lucide-react";
+import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
 
 interface ClubChampsTabProps {
   clubId: string;

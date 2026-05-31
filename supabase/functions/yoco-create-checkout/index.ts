@@ -82,6 +82,14 @@ Deno.serve(async (req) => {
     if (!secretKey) {
       return json({ error: "Yoco secret key not configured" }, 400);
     }
+    if (!secretKey.startsWith("sk_live_")) {
+      console.error("Yoco secret key mode mismatch", {
+        club_id,
+        expected: "sk_live_",
+        actual_prefix: secretKey.slice(0, 8),
+      });
+      return json({ error: "Yoco live secret key required. Please save the sk_live_ key for this club." }, 400);
+    }
 
     const defaultDesc =
       purpose === "topup" ? "Wallet top-up" :

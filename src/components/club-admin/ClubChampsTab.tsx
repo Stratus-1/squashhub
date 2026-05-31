@@ -345,7 +345,13 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   const isDoubles = matchType === "doubles";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationMode === "invite";
-  const awaitingPlayerPairs = isDoubles && partnerMode === "players" && doublesPairs.length === 0;
+  // Defer pair formation until registrations are in:
+  //  - players self-pair mode: always wait for confirmed pairs
+  //  - admin-pair mode on NEW tournaments: save the shell first, form pairs later by editing
+  const awaitingPlayerPairs =
+    isDoubles &&
+    doublesPairs.length === 0 &&
+    (partnerMode === "players" || (partnerMode === "admin" && !editingChampId));
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
     return selfPairInviteSelection
@@ -974,7 +980,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return { id: champId };
     },
     onSuccess: async (data: any) => {
-      toast.success(awaitingPlayerPairs ? "Tournament saved — players can now register and choose partners." : editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
+      const savedShellMsg = partnerMode === "admin"
+        ? "Tournament saved — open registrations, then edit the tournament to form pairs & generate the schedule."
+        : "Tournament saved — players can now register and choose partners.";
+      toast.success(awaitingPlayerPairs ? savedShellMsg : editingChampId ? "Tournament updated & rescheduled!" : "Tournament created with all matches scheduled!");
       qc.invalidateQueries({ queryKey: ["club-champs"] });
       qc.invalidateQueries({ queryKey: ["club-champ-entries"] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
@@ -1857,7 +1866,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           <CardHeader>
             <CardTitle>Form Doubles Pairs — {GENDER_LABELS[gender]}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {doublesPairs.length} pair{doublesPairs.length !== 1 ? "s" : ""} formed. Select two players to create each pair.
+              Do this once registrations have closed so you know who's actually playing. {doublesPairs.length} pair{doublesPairs.length !== 1 ? "s" : ""} formed.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -736,17 +736,9 @@ export default function ClubChampsView() {
                         <td className="py-2 text-center">{s.played}</td>
                         <td className="py-2 text-center">{s.won}</td>
                         <td className="py-2 text-center">{s.lost}</td>
-                        {isBells ? (
-                          <>
-                            <td className="py-2 text-center font-semibold">{s.pointsFor}</td>
-                            <td className="py-2 text-center text-muted-foreground">{s.pointsAgainst}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="py-2 text-center text-xs text-muted-foreground">{s.gameDiff > 0 ? `+${s.gameDiff}` : s.gameDiff}</td>
-                            <td className="py-2 text-center font-semibold">{s.points}</td>
-                          </>
-                        )}
+                        {standingsColumns.map((col) => (
+                          <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
+                        ))}
                       </tr>
                     );
                   })}

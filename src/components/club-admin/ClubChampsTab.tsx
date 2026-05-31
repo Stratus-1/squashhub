@@ -1588,6 +1588,60 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </p>
             </div>
 
+            {/* Invite send timing */}
+            <div className="space-y-2">
+              <Label className="text-sm">When to send invites</Label>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="invite-timing"
+                    checked={inviteTiming === "manual"}
+                    onChange={() => setInviteTiming("manual")}
+                  />
+                  Manual — I'll trigger later
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="invite-timing"
+                    checked={inviteTiming === "now"}
+                    onChange={() => setInviteTiming("now")}
+                  />
+                  Send immediately on save
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="invite-timing"
+                    checked={inviteTiming === "scheduled"}
+                    onChange={() => setInviteTiming("scheduled")}
+                  />
+                  Schedule for date
+                </label>
+              </div>
+              {inviteTiming === "scheduled" && (
+                <div className="flex flex-col gap-1">
+                  <Input
+                    type="datetime-local"
+                    value={inviteScheduledAt}
+                    onChange={(e) => setInviteScheduledAt(e.target.value)}
+                    className="max-w-xs h-8 text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You'll get a reminder near this time. Automated send-out isn't wired up yet — use “Send / Re-send invites” when ready.
+                  </p>
+                </div>
+              )}
+              {inviteTiming === "manual" && (
+                <p className="text-xs text-muted-foreground">
+                  Tournament is saved without notifying anyone. Open the edit dialog and click “Send / Re-send invites” when you're ready.
+                </p>
+              )}
+            </div>
+
+
+
             {/* Tournament description / invite body */}
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">

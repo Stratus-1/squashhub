@@ -199,8 +199,6 @@ export default function LeagueGames() {
 
   // Hide Fill-Up Leagues based on the CLUB's setting (Club Admin → Leagues).
   // Falls back to the legacy NIL hardcode only if the club row is still loading.
-  const rulesAssocId = selectedAssoc?.platform_association_id || selectedAssoc?.id || null;
-  const { data: selectedAssocRules } = useAssociationRules(rulesAssocId);
   const hideFillUp = clubSettings
     ? clubSettings.fill_up_leagues_enabled === false
     : (selectedAssoc?.abbreviation || "").toUpperCase() === "NIL";

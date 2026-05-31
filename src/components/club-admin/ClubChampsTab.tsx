@@ -25,6 +25,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { Users as UsersIcon } from "lucide-react";
+import { getTournamentFormat, listTournamentFormats } from "@/lib/tournament-formats";
 
 interface ClubChampsTabProps {
   clubId: string;
@@ -2058,59 +2059,72 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
-            {/* Bells (time-capped) scoring — doubles only */}
-            {isDoubles && (
-              <div className="rounded-lg border p-3 bg-muted/30 space-y-3">
-                <div>
-                  <Label className="text-sm font-medium">Scoring format</Label>
-                  <Select value={scoringMode} onValueChange={(v) => setScoringMode(v as any)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Standard — best-of games, win/loss</SelectItem>
-                      <SelectItem value="time_capped_points">Bells — time-capped, ranked by points scored</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    {scoringMode === "time_capped_points"
-                      ? "Each game is played until the bell rings at the time cap. Standings rank pairs by total points scored across the round-robin."
-                      : "Traditional best-of games. Standings rank by wins."}
+            {/* Scoring format — driven by the tournament-format registry */}
+            <div className="rounded-lg border p-3 bg-muted/30 space-y-3">
+              <div>
+                <Label className="text-sm font-medium">Scoring format</Label>
+                <Select
+                  value={scoringMode}
+                  onValueChange={(v) => {
+                    const fmt = getTournamentFormat(v);
+                    setScoringMode(v as any);
+                    // Format-driven match-type lock (Bells requires doubles).
+                    if (fmt.requiresDoubles && matchType !== "doubles") {
+                      setMatchType("doubles");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {listTournamentFormats().map((fmt) => (
+                      <SelectItem key={fmt.key} value={fmt.key}>{fmt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {getTournamentFormat(scoringMode).description}
+                </p>
+                {getTournamentFormat(scoringMode).requiresDoubles && !isDoubles && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                    This format requires doubles — match type will be set to Doubles.
                   </p>
-                </div>
-
-                {scoringMode === "time_capped_points" && numGroups > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium">Time cap per league (minutes)</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                      {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => (
-                        <div key={gn} className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground w-16 shrink-0">League {gn}</span>
-                          <Input
-                            type="number"
-                            min={5}
-                            max={120}
-                            placeholder={String(matchDuration)}
-                            value={groupDurations[String(gn)] ?? ""}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setGroupDurations((prev) => {
-                                const next = { ...prev };
-                                if (v === "") delete next[String(gn)];
-                                else next[String(gn)] = Math.max(1, Number(v));
-                                return next;
-                              });
-                            }}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Leave blank to fall back to the default Match Duration above.
-                    </p>
-                  </div>
                 )}
               </div>
-            )}
+
+              {scoringMode === "time_capped_points" && numGroups > 0 && (
+                <div>
+                  <Label className="text-sm font-medium">Time cap per league (minutes)</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                    {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => (
+                      <div key={gn} className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-16 shrink-0">League {gn}</span>
+                        <Input
+                          type="number"
+                          min={5}
+                          max={120}
+                          placeholder={String(matchDuration)}
+                          value={groupDurations[String(gn)] ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setGroupDurations((prev) => {
+                              const next = { ...prev };
+                              if (v === "") delete next[String(gn)];
+                              else next[String(gn)] = Math.max(1, Number(v));
+                              return next;
+                            });
+                          }}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Leave blank to fall back to the default Match Duration above.
+                  </p>
+                </div>
+              )}
+            </div>
+
 
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border p-3 bg-muted/30">

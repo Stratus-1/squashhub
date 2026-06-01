@@ -317,7 +317,7 @@ function AppRoutes() {
             ? <ClubLanding hostClub={clubFromHost} />
             : user
               ? <Dashboard />
-              : <Auth />
+              : <Home />
         } />
         <Route path="/welcome" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />

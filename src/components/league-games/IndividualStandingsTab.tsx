@@ -110,7 +110,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
 
   // Fetch fixtures + per-rubber results for our team codes for the season
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["individual-standings", assocIdToUse, seasonYear, myCodes.join(",")],
+    queryKey: ["individual-standings", assocIdToUse, seasonYear, myCodes.join(","), selectedLeagueNum],
     enabled: !!assocIdToUse && myCodes.length > 0,
     staleTime: 30 * 1000,
     queryFn: async () => {

@@ -3,6 +3,7 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
+import { registerServiceWorker } from "@/lib/pwa-register";
 
 // Initialize theme from localStorage before render.
 // Default to LIGHT mode for the in-app experience (white background, dark text
@@ -15,17 +16,8 @@ if (savedTheme === "dark") {
 
 void initDeepLinks();
 
-// PWA fully removed — unregister any service workers from previous versions
-// and clear caches so existing installs stop serving stale content.
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .getRegistrations()
-    .then((regs) => regs.forEach((reg) => void reg.unregister()))
-    .catch(() => {});
-  if ("caches" in window) {
-    caches.keys().then((keys) => keys.forEach((k) => void caches.delete(k))).catch(() => {});
-  }
-}
+// Register the PWA service worker (no-op in iframe / preview / native).
+registerServiceWorker();
 
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider>

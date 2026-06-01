@@ -94,17 +94,42 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
     },
   });
 
-  // Fetch fixtures + per-rubber results for our team codes for the season
+  // Strip " round N" / " week N" suffix to get tier name, then extract ordinal: "1st League round 1" → "1"
+  const parseLeagueNumFromRoundName = (name: string | null | undefined): string | null => {
+    if (!name) return null;
+    const stripped = name.replace(/\s+(round|week|wk|rd)\s*\d+\s*$/i, "").trim();
+    const m = stripped.match(/(\d+)\s*(?:st|nd|rd|th)?\s*league/i);
+    return m ? m[1] : null;
+  };
+
+  // Fetch fixtures + per-rubber results for our team codes for the season.
+  // Also derives a team_code → league number map from league_rounds so we can
+  // filter by "League 1", "League 2", etc. (groups Men/Ladies/Mixed of same rank).
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["individual-standings", assocIdToUse, seasonYear, myCodes.join(","), selectedLeagueNum],
+    queryKey: ["individual-standings", assocIdToUse, associationId, seasonYear, myCodes.join(","), selectedLeagueNum],
     enabled: !!assocIdToUse && myCodes.length > 0,
     staleTime: 30 * 1000,
     queryFn: async () => {
       const yearStart = `${seasonYear}-01-01`;
       const yearEnd = `${seasonYear}-12-31`;
+
+      // 1. Rounds → roundId → leagueNum
+      const { data: rounds } = await supabase
+        .from("league_rounds")
+        .select("id, name")
+        .eq("association_id", associationId)
+        .gte("round_date", yearStart)
+        .lte("round_date", yearEnd);
+      const roundToLeagueNum = new Map<string, string>();
+      (rounds || []).forEach((r: any) => {
+        const n = parseLeagueNumFromRoundName(r.name);
+        if (n) roundToLeagueNum.set(r.id, n);
+      });
+
+      // 2. Fixtures (include round_id so we can map → leagueNum)
       const { data: fixtures, error: fxErr } = await supabase
         .from("platform_league_fixtures")
-        .select("id, fixture_date, home_team_code, away_team_code")
+        .select("id, fixture_date, home_team_code, away_team_code, round_id")
         .eq("association_id", assocIdToUse!)
         .gte("fixture_date", yearStart)
         .lte("fixture_date", yearEnd);
@@ -115,10 +140,27 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
         const a = (f.away_team_code || "").toUpperCase();
         return myCodes.includes(h) || myCodes.includes(a);
       });
-      const fixtureIds = ours.map((f: any) => f.id);
-      if (fixtureIds.length === 0) return [] as PlayerRow[];
 
-      // Page in groups of 500 to avoid URL length limits
+      // Derive code→leagueNum from ours fixtures (whichever team plays in a numbered round
+      // belongs to that league). Also collect distinct leagueNums for the dropdown.
+      const codeToLeagueNum = new Map<string, string>();
+      const leagueNumsSet = new Set<string>();
+      ours.forEach((f: any) => {
+        const num = f.round_id ? roundToLeagueNum.get(f.round_id) : null;
+        if (!num) return;
+        leagueNumsSet.add(num);
+        const h = (f.home_team_code || "").toUpperCase();
+        const a = (f.away_team_code || "").toUpperCase();
+        if (h) codeToLeagueNum.set(h, num);
+        if (a) codeToLeagueNum.set(a, num);
+      });
+
+      const fixtureIds = ours.map((f: any) => f.id);
+      if (fixtureIds.length === 0) {
+        return { rows: [] as PlayerRow[], leagueNums: [] as string[] };
+      }
+
+      // 3. Rubbers (page in 500s to avoid URL length limits)
       const chunks: string[][] = [];
       for (let i = 0; i < fixtureIds.length; i += 500) chunks.push(fixtureIds.slice(i, i + 500));
       const rubbers: any[] = [];
@@ -143,7 +185,6 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
 
       const agg = new Map<string, PlayerRow>();
       for (const r of rubbers) {
-        // Only count rubbers with a recorded outcome
         if (!r.winner) continue;
         const fx = fxById.get(r.fixture_id);
         if (!fx) continue;
@@ -211,7 +252,6 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
       }
 
       const rows = Array.from(agg.values());
-      // Sort: diff DESC, then ladder_position ASC (nulls last), then name
       rows.sort((a, b) => {
         if (b.diff !== a.diff) return b.diff - a.diff;
         const la = a.ladder_position ?? Number.POSITIVE_INFINITY;
@@ -219,7 +259,8 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
         if (la !== lb) return la - lb;
         return a.name.localeCompare(b.name);
       });
-      return rows;
+      const leagueNums = Array.from(leagueNumsSet).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+      return { rows, leagueNums };
     },
   });
 

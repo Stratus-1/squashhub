@@ -1783,9 +1783,9 @@ export default function LeagueGameDetail() {
         home_penalty_points: summary.homePenaltyPoints, away_penalty_points: summary.awayPenaltyPoints,
         home_total_points: summary.homeTotal, away_total_points: summary.awayTotal,
         winner: summary.winner,
-        status: (adminOverride || (isClubAdmin && isFixtureTodayOrPast) || (homeSig && awaySig)) ? "submitted" : "draft",
-        home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (isClubAdmin && isFixtureTodayOrPast)) ? "ADMIN_OVERRIDE" : null),
-        away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (isClubAdmin && isFixtureTodayOrPast)) ? "ADMIN_OVERRIDE" : null),
+        status: (adminOverride || (isClubAdmin && isFixtureSameDayOrPast) || (homeSig && awaySig)) ? "submitted" : "draft",
+        home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (isClubAdmin && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
+        away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (isClubAdmin && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
         submitted_by: user.id, submitted_at: new Date().toISOString(),
         match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot, originalCountAdjustment: originalCountAdj },
       } as any, { onConflict: "fixture_id" });

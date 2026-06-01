@@ -3140,6 +3140,18 @@ export default function LeagueGameDetail() {
               {isSubmittedLocked ? "Adjust Final Score" : "Enter Final Score Manually"}
             </Button>
 
+            {isClubAdmin && fixtureId && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => setLadderPreviewOpen(true)}
+              >
+                <Trophy className="w-4 h-4 mr-1" />
+                Preview ladder impact
+              </Button>
+            )}
+
 
             {displaySummary.opbEnabled && (() => {
               const savedAdj = ((existingResult?.match_format as any)?.originalCountAdjustment) || { home: 0, away: 0 };

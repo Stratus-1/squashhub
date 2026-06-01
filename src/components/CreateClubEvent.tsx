@@ -341,6 +341,26 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (!form.title.trim()) throw new Error("Title is required");
       if (form.court_ids.length === 0) throw new Error("Select at least one court");
 
+      // Enforce per-member monthly event cap (admins exempt)
+      if (!isAdmin && !editingEventId) {
+        const maxPerMonth = Number((club as any)?.max_member_events_per_month ?? 2);
+        if (maxPerMonth <= 0) {
+          throw new Error("Members are not allowed to create events at this club. Please contact an admin.");
+        }
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const { count } = await (supabase as any)
+          .from("club_events")
+          .select("id", { count: "exact", head: true })
+          .eq("club_id", clubId)
+          .eq("created_by", user.id)
+          .neq("status", "cancelled")
+          .gte("created_at", monthStart);
+        if ((count ?? 0) >= maxPerMonth) {
+          throw new Error(`Monthly event limit reached (max ${maxPerMonth} per month). Please ask an admin to create more.`);
+        }
+      }
+
       const dayOfWeek = new Date(form.event_date + "T00:00:00").getDay();
 
       // Create event

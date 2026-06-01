@@ -36,6 +36,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
     max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
     max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
+    max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,
   });
 
   useEffect(() => {
@@ -47,8 +48,9 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
       max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
       max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
+      max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,
     });
-  }, [club.id, club.booking_slot_minutes, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, (club as any).max_bookings_per_day]);
+  }, [club.id, club.booking_slot_minutes, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, (club as any).max_bookings_per_day, (club as any).max_member_events_per_month]);
 
   const handleSaveRules = async () => {
     try {
@@ -61,6 +63,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         peak_weekend_end: rulesForm.peak_weekend_end,
         max_peak_bookings_per_day: rulesForm.max_peak_bookings_per_day,
         max_bookings_per_day: rulesForm.max_bookings_per_day,
+        max_member_events_per_month: rulesForm.max_member_events_per_month,
       } as any);
       toast.success("Booking rules saved");
     } catch (err: any) {
@@ -203,6 +206,21 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* 4. Member-created events */}
+          <div className="space-y-1 rounded-lg border p-3 bg-muted/30">
+            <Label className="text-xs font-semibold">4. Member-created events / sessions</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number" min={0} max={50} step={1}
+                className="h-8 text-xs w-24"
+                value={rulesForm.max_member_events_per_month}
+                onChange={e => setRulesForm(p => ({ ...p, max_member_events_per_month: Math.max(0, parseInt(e.target.value) || 0) }))}
+              />
+              <span className="text-[11px] text-muted-foreground">events per member, per calendar month</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Set to 0 to block members from creating events (admins are always exempt).</p>
           </div>
 
           <Button size="sm" onClick={handleSaveRules} disabled={updateClub.isPending}>

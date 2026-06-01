@@ -532,11 +532,19 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         const needsAdminMode = !f.isTournament && (isPast || submitted);
                         const canEnter = isClubAdmin || isSuperAdmin;
                         const blocked = needsAdminMode && !canEnter;
+                        const isCaptain = isCaptainOfFixture(f);
+                        // Set Up & Mark restricted to: captain of one of the teams,
+                        // members assigned to play, members in that league, or admins.
+                        // Everyone else gets a View-only button.
+                        const canSetupAndMark = mine || inLineup || isCaptain || canEnter;
+                        const viewOnly = !canSetupAndMark && !f.isTournament;
                         const label = f.isTournament
                           ? "Tournament"
                           : needsAdminMode
                             ? (submitted ? "Edit Results" : "Enter Results")
-                            : "Set Up and Mark Game";
+                            : viewOnly
+                              ? "View Game"
+                              : "Set Up and Mark Game";
                         const isLive = !f.isTournament && liveFixtureIds.has(f.id);
                         return (
                           <>
@@ -554,7 +562,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                             )}
                             <Button
                               size="sm"
-                              variant={inLineup || mine ? "default" : "outline"}
+                              variant={viewOnly ? "outline" : (inLineup || mine ? "default" : "outline")}
                               disabled={(f._isLive && !f._hasSnapshot) || blocked}
                               className="whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
                               title={
@@ -562,15 +570,25 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                                   ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
                                   : blocked
                                     ? "Only a club or super admin can enter or edit results for past matches."
-                                    : undefined
+                                    : viewOnly
+                                      ? "Only the captain or members in this league can set up and mark this game."
+                                      : undefined
                               }
-                              onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
+                              onClick={() =>
+                                navigate(
+                                  f.isTournament
+                                    ? `/club-champs/${f.champId}`
+                                    : viewOnly
+                                      ? `/league-games/${f.id}?mode=view`
+                                      : `/league-games/${f.id}`
+                                )
+                              }
                             >
-                              <Pencil className="w-3 h-3 mr-1 shrink-0" />
+                              {viewOnly ? <Eye className="w-3 h-3 mr-1 shrink-0" /> : <Pencil className="w-3 h-3 mr-1 shrink-0" />}
                               {label}
                             </Button>
 
-                            {!isLive && !submitted && !f.isTournament && !isPast && (
+                            {!isLive && !submitted && !f.isTournament && !isPast && canSetupAndMark && (
                               <div className="flex items-start gap-1 text-[10px] leading-tight text-muted-foreground mt-0.5">
                                 <Info className="w-3 h-3 shrink-0 mt-[1px]" />
                                 <span>Wait for marker to start to view live</span>

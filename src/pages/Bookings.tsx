@@ -107,9 +107,10 @@ function formatTimeDisplay(t: string) {
 
 function buildTimeSlots(stepMinutes: number) {
   const slots: string[] = [];
-  const start = 5 * 60;
+  // 40-min slots start at 07:00 (per club ops). 30/60-min stay 05:00–22:00.
+  const step = stepMinutes === 60 ? 60 : stepMinutes === 40 ? 40 : 30;
+  const start = step === 40 ? 7 * 60 : 5 * 60;
   const end = 22 * 60;
-  const step = stepMinutes === 60 ? 60 : 30;
   for (let m = start; m < end; m += step) {
     slots.push(minutesToTime(m));
   }
@@ -296,7 +297,7 @@ export default function Bookings() {
     guestName: string;
     playerMode: "none" | "member" | "guest" | "visitor";
     isFriendly: boolean;
-    duration: 30 | 60;
+    duration: 30 | 40 | 60;
     lightsOn: boolean;
     lightFeeSplit: "booker" | "shared";
   } | null>(null);
@@ -347,7 +348,8 @@ export default function Bookings() {
   const usesExternalBooking = !!externalProvider && externalProvider !== "none" && !!externalUrl;
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
-  const slotMinutes: 30 | 60 = ((myClub as any)?.booking_slot_minutes === 60 ? 60 : 30) as 30 | 60;
+  const rawSlot = Number((myClub as any)?.booking_slot_minutes);
+  const slotMinutes: 30 | 40 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
   const maxBookingsPerDay = Math.max(1, Number((myClub as any)?.max_bookings_per_day ?? 4));
   const dynamicTimeSlots = useMemo(() => buildTimeSlots(slotMinutes), [slotMinutes]);
@@ -1668,7 +1670,7 @@ export default function Bookings() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Duration</Label>
                 <div className="flex gap-1.5">
-                  {(slotMinutes === 30 ? ([30, 60] as const) : ([60] as const)).map((d) => (
+                  {(slotMinutes === 30 ? ([30, 60] as const) : slotMinutes === 40 ? ([40] as const) : ([60] as const)).map((d) => (
                     <Button
                       key={d}
                       size="sm"

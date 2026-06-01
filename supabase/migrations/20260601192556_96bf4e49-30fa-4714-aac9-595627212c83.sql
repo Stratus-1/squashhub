@@ -1,0 +1,1 @@
+DELETE FROM public.member_credit_transactions WHERE id IN ('18f978f8-4418-401e-8efc-812cfbe100df','bc8b4f1d-cfc4-49d4-b11a-324d77d2eac8');

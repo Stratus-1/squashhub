@@ -1735,6 +1735,11 @@ export default function LeagueGameDetail() {
     if (!fixtureId || !user) return;
     setSubmitting(true);
     try {
+      // Allow admins to finalize on or after the fixture date even without
+      // both captain signatures (signatures often aren't captured live).
+      const _fxDateStr: string | undefined = (fixture as any)?.fixture_date;
+      const _todayStr = format(new Date(), "yyyy-MM-dd");
+      const isFixtureSameDayOrPast = !!_fxDateStr && _fxDateStr <= _todayStr;
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);

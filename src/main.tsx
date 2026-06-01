@@ -4,6 +4,12 @@ import App from "./App.tsx";
 import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
 import { registerServiceWorker } from "@/lib/pwa-register";
+import { isStandalone, markInstalled } from "@/lib/pwa-detect";
+
+// If the app launched in standalone mode, remember that this device has
+// it installed. We use this later to detect uninstall + browser reopen.
+if (isStandalone()) markInstalled();
+
 
 // Initialize theme from localStorage before render.
 // Default to LIGHT mode for the in-app experience (white background, dark text

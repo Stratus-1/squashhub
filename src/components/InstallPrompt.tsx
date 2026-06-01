@@ -6,6 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { useClubContext } from "@/contexts/ClubContext";
 import { getDecision, setDecision, shouldAsk } from "@/lib/permission-cache";
+import {
+  isStandalone as detectStandalone,
+  wasInstalled,
+  handleReinstallSignal,
+  recordInstalled,
+} from "@/lib/pwa-detect";
+
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -16,15 +23,6 @@ function isIos(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
   return /iPhone|iPad|iPod/i.test(ua) || (/Mac/i.test(ua) && "ontouchend" in document);
-}
-
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    // iOS Safari
-    (window.navigator as any).standalone === true
-  );
 }
 
 export function InstallPrompt() {
@@ -39,11 +37,16 @@ export function InstallPrompt() {
   useEffect(() => {
     if (!allowedHost) return;
     if (Capacitor.isNativePlatform()) return;
-    if (isStandalone()) return;
+    // Already running as installed PWA — never show install card.
+    if (detectStandalone()) return;
 
     // Android / Chromium
     const onBip = (e: Event) => {
       e.preventDefault();
+      // Browser only fires this when app is NOT installed. If we had a
+      // cached "installed/granted" state, the user uninstalled — wipe
+      // the stale flags so we can prompt them again.
+      handleReinstallSignal();
       setDeferred(e as BeforeInstallPromptEvent);
       if (shouldAsk("install-prompt-android")) {
         // Slight delay so it doesn't fight with auth UX
@@ -51,6 +54,13 @@ export function InstallPrompt() {
       }
     };
     window.addEventListener("beforeinstallprompt", onBip);
+
+    // iOS — no `beforeinstallprompt`. If we previously cached "installed"
+    // but we are clearly not running standalone, the user uninstalled —
+    // reset the cached prompt decision so the A2HS hint can show again.
+    if (isIos() && wasInstalled() && !detectStandalone()) {
+      handleReinstallSignal();
+    }
 
     // iOS — no event, show our own A2HS hint after a few seconds.
     if (isIos() && shouldAsk("install-prompt-ios")) {
@@ -70,13 +80,13 @@ export function InstallPrompt() {
   // Listen for actual installation
   useEffect(() => {
     const onInstalled = () => {
-      setDecision("install-prompt-android", "granted");
-      setDecision("install-prompt-ios", "granted");
+      recordInstalled();
       setShow(false);
     };
     window.addEventListener("appinstalled", onInstalled);
     return () => window.removeEventListener("appinstalled", onInstalled);
   }, []);
+
 
   if (!allowedHost || !show) return null;
 

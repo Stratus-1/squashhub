@@ -900,16 +900,18 @@ export default function ClubAuth() {
                 {/* Registration links — kept inside the Sign In card so they're
                     legible against the card background, not the court image. */}
                 <div className="pt-3 mt-1 border-t border-border/60 space-y-1.5 text-center">
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">Already a member without a login? </span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("existing")}
-                      className="text-primary font-medium hover:underline"
-                    >
-                      Register existing membership
-                    </button>
-                  </p>
+                  {!hideExistingMembershipLink && (
+                    <p className="text-xs">
+                      <span className="text-muted-foreground">Already a member without a login? </span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("existing")}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        Register existing membership
+                      </button>
+                    </p>
+                  )}
                   <p className="text-xs">
                     <span className="text-muted-foreground">Not a member yet? </span>
                     <button

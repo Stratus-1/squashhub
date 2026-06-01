@@ -2213,6 +2213,46 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
             </div>
           </div>
 
+          {scope === "internal" && (
+            <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="affects-ladder" className="text-sm font-medium cursor-pointer">
+                      Affects club ladder
+                    </Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground">
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-xs">
+                            When <strong>ON</strong>, internal league rubbers from this association can leapfrog the club ladder: if a lower-ranked winner beats a higher-ranked loser, the winner takes the loser's slot and everyone between shifts down one rank. Subs and external players are ignored — only originally-registered club members count.
+                            <br /><br />
+                            Admins review and apply changes from the "Preview ladder impact" button on each fixture.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {affectsLadder
+                      ? "Internal league results will offer a ladder-impact preview on each fixture."
+                      : "Results from this association have no effect on the club ladder."}
+                  </p>
+                </div>
+                <Switch
+                  id="affects-ladder"
+                  checked={affectsLadder}
+                  onCheckedChange={setAffectsLadder}
+                />
+              </div>
+            </div>
+          )}
+
           <Button onClick={handleSave} className="w-full" disabled={!name.trim()}>Save Changes</Button>
         </div>
       </DialogContent>

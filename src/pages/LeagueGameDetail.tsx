@@ -1841,16 +1841,15 @@ export default function LeagueGameDetail() {
   const fixtureDateStr: string | undefined = (fixture as any)?.fixture_date;
   const fixtureStartTime: string | undefined = (fixture as any)?.start_time;
   const isFixturePast = (() => {
+    // Date-only check: a fixture is only "overdue" once its scheduled day has
+    // fully passed. Same-day matches (even past start time) are never
+    // overdue — captains routinely capture scores during/after the night.
     if (!fixtureDateStr) return false;
     const today = format(new Date(), "yyyy-MM-dd");
-    if (fixtureDateStr < today) return true;
-    if (fixtureDateStr === today && fixtureStartTime) {
-      const now = new Date();
-      const hhmm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
-      return fixtureStartTime <= hhmm;
-    }
-    return false;
+    return fixtureDateStr < today;
   })();
+  // Suppress unused warning — kept in case we reintroduce same-day grace logic.
+  void fixtureStartTime;
   // Captains can edit until results are submitted. Once submitted, only admins
   // (with adminOverride) may re-open. We no longer auto-lock past-date fixtures
   // that have not yet been captured — captains often fill the scorecard the

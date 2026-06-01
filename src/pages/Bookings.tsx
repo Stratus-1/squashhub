@@ -297,7 +297,7 @@ export default function Bookings() {
     guestName: string;
     playerMode: "none" | "member" | "guest" | "visitor";
     isFriendly: boolean;
-    duration: 30 | 60;
+    duration: 30 | 40 | 60;
     lightsOn: boolean;
     lightFeeSplit: "booker" | "shared";
   } | null>(null);

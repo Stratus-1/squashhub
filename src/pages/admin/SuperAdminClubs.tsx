@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
 import { Building2, Search, Users, Pencil, Trash2, ExternalLink, Globe } from "lucide-react";
 
@@ -22,6 +23,7 @@ type Club = {
   logo_url: string | null;
   tenant_type: string;
   created_at: string;
+  booking_slot_minutes?: number | null;
   member_count?: number;
 };
 
@@ -29,7 +31,7 @@ export default function SuperAdminClubs() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [editClub, setEditClub] = useState<Club | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "" });
+  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "", booking_slot_minutes: 30 });
   const [deleteConfirm, setDeleteConfirm] = useState<Club | null>(null);
 
   const { data: clubs = [], isLoading } = useQuery({
@@ -37,7 +39,7 @@ export default function SuperAdminClubs() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at")
+        .select("id, name, subdomain, address, email, phone, logo_url, tenant_type, created_at, booking_slot_minutes")
         .order("created_at", { ascending: false })
         .range(0, 49999);
       if (error) throw error;
@@ -71,7 +73,7 @@ export default function SuperAdminClubs() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string }) => {
+    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string; booking_slot_minutes: number }) => {
       const { error } = await supabase
         .from("clubs")
         .update({
@@ -80,6 +82,7 @@ export default function SuperAdminClubs() {
           email: club.email || null,
           phone: club.phone || null,
           address: club.address || null,
+          booking_slot_minutes: club.booking_slot_minutes,
         })
         .eq("id", club.id);
       if (error) throw error;
@@ -115,6 +118,7 @@ export default function SuperAdminClubs() {
       email: club.email || "",
       phone: club.phone || "",
       address: club.address || "",
+      booking_slot_minutes: club.booking_slot_minutes ?? 30,
     });
   };
 
@@ -253,6 +257,20 @@ export default function SuperAdminClubs() {
             <div>
               <Label>Address</Label>
               <Input value={editForm.address} onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Court booking slot length</Label>
+              <Select
+                value={String(editForm.booking_slot_minutes)}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, booking_slot_minutes: parseInt(v, 10) }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30-minute slots</SelectItem>
+                  <SelectItem value="40">40-minute slots (starts 07:00)</SelectItem>
+                  <SelectItem value="60">60-minute slots (full hours)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

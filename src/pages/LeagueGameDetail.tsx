@@ -3278,6 +3278,14 @@ export default function LeagueGameDetail() {
           }}
         />
       )}
+
+      {isClubAdmin && fixtureId && (
+        <LadderImpactPreview
+          open={ladderPreviewOpen}
+          onOpenChange={setLadderPreviewOpen}
+          fixtureId={fixtureId}
+        />
+      )}
     </div>
   );
 }

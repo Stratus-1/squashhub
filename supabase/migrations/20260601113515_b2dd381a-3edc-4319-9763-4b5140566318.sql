@@ -1,0 +1,2 @@
+ALTER TABLE public.clubs DROP CONSTRAINT IF EXISTS clubs_booking_slot_minutes_check;
+ALTER TABLE public.clubs ADD CONSTRAINT clubs_booking_slot_minutes_check CHECK (booking_slot_minutes = ANY (ARRAY[30, 40, 60]));

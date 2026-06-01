@@ -28,12 +28,13 @@ function LiveScoreboard({ state, onExit }: { state: MarkerCastState; onExit?: ()
           {onExit && (
             <button
               onClick={onExit}
-              className="mr-1 flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/80 hover:bg-muted text-xs font-medium transition"
+              className="mr-1 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background text-foreground border border-border shadow-sm hover:bg-muted text-xs font-semibold transition"
               title="Back to Dashboard"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Back</span>
+              <span>Back</span>
             </button>
+
           )}
           {state.clubLogoUrl && (
             <img src={state.clubLogoUrl} alt="" className="h-8 lg:h-10 w-auto" />

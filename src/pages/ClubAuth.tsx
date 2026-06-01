@@ -127,6 +127,8 @@ export default function ClubAuth() {
   // NSC-specific: hide the member/league number field on existing-member signup
   // so members only need email + cell phone (numbers are issued by the club).
   const hideMemberNumberField = (subdomain || "").toLowerCase() === "nsc";
+  // HSC onboards all members through the "new member" flow to capture full details.
+  const hideExistingMembershipLink = (subdomain || "").toLowerCase() === "hsc";
   // CSIR-specific: members were imported with their NSA league number only.
   // They register using League Number + Email + Phone + Password — no email verification.
   const useLeagueNumberSignup = (subdomain || "").toLowerCase() === "csir";
@@ -898,16 +900,18 @@ export default function ClubAuth() {
                 {/* Registration links — kept inside the Sign In card so they're
                     legible against the card background, not the court image. */}
                 <div className="pt-3 mt-1 border-t border-border/60 space-y-1.5 text-center">
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">Already a member without a login? </span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("existing")}
-                      className="text-primary font-medium hover:underline"
-                    >
-                      Register existing membership
-                    </button>
-                  </p>
+                  {!hideExistingMembershipLink && (
+                    <p className="text-xs">
+                      <span className="text-muted-foreground">Already a member without a login? </span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("existing")}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        Register existing membership
+                      </button>
+                    </p>
+                  )}
                   <p className="text-xs">
                     <span className="text-muted-foreground">Not a member yet? </span>
                     <button

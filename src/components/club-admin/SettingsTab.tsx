@@ -99,10 +99,10 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
     const logo = c.logo_url || "";
     const disclaimer = form.email_disclaimer || "";
 
-    const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5;">
+    const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5; border-collapse: collapse;">
   <tr>
-    ${logo ? `<td style="padding-right: 16px; vertical-align: middle;"><img src="${logo}" alt="${name}" style="display: block; max-width: 160px; max-height: 90px; width: auto; height: auto; object-fit: contain;" /></td>` : ""}
-    <td style="vertical-align: top; border-left: 3px solid #1E3A5F; padding-left: 16px;">
+    ${logo ? `<td width="1" style="width: 1px; padding: 0 12px 0 0; vertical-align: middle; white-space: nowrap;"><img src="${logo}" alt="${name}" style="display: block; max-width: 160px; max-height: 90px; width: auto; height: auto; object-fit: contain;" /></td>` : ""}
+    <td style="vertical-align: top; border-left: 3px solid #1E3A5F; padding-left: 12px; width: 100%;">
       ${contact ? `<div style="font-weight: 700; font-size: 14px; color: #0f172a;">${contact}</div>` : ""}
       <div style="font-weight: 600; color: #1E3A5F; margin-top: 2px;">${name}</div>
       ${phone ? `<div style="margin-top: 6px;">📞 <a href="tel:${phone}" style="color: #1f2937; text-decoration: none;">${phone}</a></div>` : ""}

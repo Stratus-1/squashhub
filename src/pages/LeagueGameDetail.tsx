@@ -1791,7 +1791,9 @@ export default function LeagueGameDetail() {
       toast.success("League results submitted!");
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
-      navigate("/league-games");
+      if (window.history.length > 1) navigate(-1);
+      else navigate("/league-games");
+
     } catch (err: any) {
       toast.error(err.message || "Failed to submit");
     } finally {
@@ -3195,7 +3197,22 @@ export default function LeagueGameDetail() {
         </p>
       </div>
 
-      <BackToDashboard />
+      <div className="px-4 py-4 mt-4">
+        <Button
+          variant="outline"
+          className="w-full h-10 text-sm"
+          onClick={() => {
+            // Prefer browser history so admin returns to the same league
+            // (e.g. the 3rd league standings they were drilling into).
+            if (window.history.length > 1) navigate(-1);
+            else navigate("/league-games");
+          }}
+        >
+          <ChevronLeft className="w-4 h-4 mr-1.5" />
+          Back
+        </Button>
+      </div>
+
 
       {swapTarget && (
         <LineupSwapDialog

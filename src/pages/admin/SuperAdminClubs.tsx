@@ -73,7 +73,7 @@ export default function SuperAdminClubs() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string }) => {
+    mutationFn: async (club: { id: string; name: string; subdomain: string; email: string; phone: string; address: string; booking_slot_minutes: number }) => {
       const { error } = await supabase
         .from("clubs")
         .update({
@@ -82,6 +82,7 @@ export default function SuperAdminClubs() {
           email: club.email || null,
           phone: club.phone || null,
           address: club.address || null,
+          booking_slot_minutes: club.booking_slot_minutes,
         })
         .eq("id", club.id);
       if (error) throw error;

@@ -34,6 +34,14 @@ export default function MatchMarker() {
     } catch {}
   }, [config]);
 
+  // Hold the PWA update poller + add a beforeunload guard while scoring.
+  useEffect(() => {
+    if (!config) return;
+    setScoringActive(true);
+    return () => setScoringActive(false);
+  }, [config]);
+
+
   const startConfig = (c: MarkerConfig) => {
     try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}
     setConfig(c);

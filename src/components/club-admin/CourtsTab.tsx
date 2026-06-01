@@ -208,6 +208,21 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             </div>
           </div>
 
+          {/* 4. Member-created events */}
+          <div className="space-y-1 rounded-lg border p-3 bg-muted/30">
+            <Label className="text-xs font-semibold">4. Member-created events / sessions</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number" min={0} max={50} step={1}
+                className="h-8 text-xs w-24"
+                value={rulesForm.max_member_events_per_month}
+                onChange={e => setRulesForm(p => ({ ...p, max_member_events_per_month: Math.max(0, parseInt(e.target.value) || 0) }))}
+              />
+              <span className="text-[11px] text-muted-foreground">events per member, per calendar month</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Set to 0 to block members from creating events (admins are always exempt).</p>
+          </div>
+
           <Button size="sm" onClick={handleSaveRules} disabled={updateClub.isPending}>
             {updateClub.isPending ? "Saving..." : "Save Booking Rules"}
           </Button>

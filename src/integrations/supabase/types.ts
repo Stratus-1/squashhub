@@ -2439,6 +2439,7 @@ export type Database = {
           light_fee_per_hour: number | null
           lights_integration_enabled: boolean
           logo_url: string | null
+          max_bookings_per_day: number
           max_peak_bookings_per_day: number
           member_fee_annual: number | null
           member_fee_due_month: number | null
@@ -2501,6 +2502,7 @@ export type Database = {
           light_fee_per_hour?: number | null
           lights_integration_enabled?: boolean
           logo_url?: string | null
+          max_bookings_per_day?: number
           max_peak_bookings_per_day?: number
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
@@ -2563,6 +2565,7 @@ export type Database = {
           light_fee_per_hour?: number | null
           lights_integration_enabled?: boolean
           logo_url?: string | null
+          max_bookings_per_day?: number
           max_peak_bookings_per_day?: number
           member_fee_annual?: number | null
           member_fee_due_month?: number | null

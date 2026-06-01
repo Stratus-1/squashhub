@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { setScoringActive } from "@/lib/scoring-lock";
 
 export default function MatchMarker() {
   const [config, setConfig] = useState<MarkerConfig | null>(() => {

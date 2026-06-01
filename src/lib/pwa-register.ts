@@ -48,13 +48,23 @@ export function registerServiceWorker(): void {
       registerSW({
         immediate: true,
         onRegisteredSW(_swUrl, registration) {
-          // Poll every 60s for a new SW (per project's aggressive update memory).
+          // Poll every 60s for a new SW (per project's aggressive update memory),
+          // but skip while live scoring is in progress so a new SW cannot
+          // activate / reload the page mid-rally.
           if (registration) {
             setInterval(() => {
-              registration.update().catch(() => {});
+              import("./scoring-lock")
+                .then(({ isScoringActive }) => {
+                  if (isScoringActive()) return;
+                  registration.update().catch(() => {});
+                })
+                .catch(() => {
+                  registration.update().catch(() => {});
+                });
             }, 60_000);
           }
         },
+
         onNeedRefresh() {
           // autoUpdate=true: workbox will skipWaiting/clientsClaim itself.
         },

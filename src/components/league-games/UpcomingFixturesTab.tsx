@@ -518,11 +518,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1"
+                          className="gap-1 whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
                           onClick={() => navigate(`/league-games?tab=leagues`)}
                           title="Set this week's lineup for your league"
                         >
-                          <Users2 className="w-3 h-3" />
+                          <Users2 className="w-3 h-3 shrink-0" />
                           Fill Up Team
                         </Button>
                       )}
@@ -544,11 +544,11 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 animate-pulse"
+                                className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 animate-pulse whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
                                 title="A captain is marking this game live — tap to follow"
                                 onClick={() => navigate(`/league-games/${f.id}?mode=view`)}
                               >
-                                <Radio className="w-3 h-3 mr-1" />
+                                <Radio className="w-3 h-3 mr-1 shrink-0" />
                                 LIVE · View
                               </Button>
                             )}
@@ -556,6 +556,7 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               size="sm"
                               variant={inLineup || mine ? "default" : "outline"}
                               disabled={(f._isLive && !f._hasSnapshot) || blocked}
+                              className="whitespace-normal text-left h-auto py-1.5 text-xs leading-tight"
                               title={
                                 (f._isLive && !f._hasSnapshot)
                                   ? "This fixture isn't in our database yet — import the latest snapshot to enable scoring."
@@ -565,9 +566,10 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                               }
                               onClick={() => navigate(f.isTournament ? `/club-champs/${f.champId}` : `/league-games/${f.id}`)}
                             >
-                              <Pencil className="w-3 h-3 mr-1" />
+                              <Pencil className="w-3 h-3 mr-1 shrink-0" />
                               {label}
                             </Button>
+
                             {!isLive && !submitted && !f.isTournament && !isPast && (
                               <div className="flex items-start gap-1 text-[10px] leading-tight text-muted-foreground mt-0.5">
                                 <Info className="w-3 h-3 shrink-0 mt-[1px]" />

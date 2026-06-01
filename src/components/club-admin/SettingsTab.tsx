@@ -101,7 +101,7 @@ export function SettingsTab({ club, clubId }: { club: Club; clubId: string }) {
 
     const html = `<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5;">
   <tr>
-    ${logo ? `<td style="padding-right: 16px; vertical-align: top;"><img src="${logo}" alt="${name}" style="width: 72px; height: 72px; object-fit: contain;" /></td>` : ""}
+    ${logo ? `<td style="padding-right: 16px; vertical-align: middle;"><img src="${logo}" alt="${name}" style="display: block; max-width: 160px; max-height: 90px; width: auto; height: auto; object-fit: contain;" /></td>` : ""}
     <td style="vertical-align: top; border-left: 3px solid #1E3A5F; padding-left: 16px;">
       ${contact ? `<div style="font-weight: 700; font-size: 14px; color: #0f172a;">${contact}</div>` : ""}
       <div style="font-weight: 600; color: #1E3A5F; margin-top: 2px;">${name}</div>

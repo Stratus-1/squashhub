@@ -312,7 +312,6 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
             {leagueOptions.map((o) => (
               <SelectItem key={o.num} value={o.num}>
                 {o.label}
-                {o.sublabel ? ` · ${o.sublabel}` : ""}
               </SelectItem>
             ))}
           </SelectContent>

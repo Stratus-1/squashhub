@@ -74,20 +74,6 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   // Filter for league selection (by league number: "1", "2", ... or "ALL")
   const [selectedLeagueNum, setSelectedLeagueNum] = useState<string>("ALL");
 
-  // Map: team code (upper) -> league number string ("1", "2"...) parsed from league name
-  const codeToLeagueNum = useMemo(() => {
-    const ordinalRx = /(\d+)\s*(?:st|nd|rd|th)?\s*league/i;
-    const m = new Map<string, string>();
-    clubLeagues.forEach((l) => {
-      const match = (l.name || "").match(ordinalRx);
-      if (!match) return;
-      const num = match[1];
-      if (l.code) m.set(l.code.toUpperCase(), num);
-      if (l.nsa_team_code) m.set(l.nsa_team_code.toUpperCase(), num);
-    });
-    return m;
-  }, [clubLeagues]);
-
   // Fetch club members (for name + ladder + member-number → player-code mapping)
   const { data: members = [] } = useQuery({
     queryKey: ["individual-standings-members", clubId],

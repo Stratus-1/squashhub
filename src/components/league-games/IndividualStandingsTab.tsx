@@ -255,31 +255,32 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
     };
   }, [assocIdToUse, queryClient]);
 
-  const teamOptions = useMemo(() => {
-    // Build {code, label, order} keyed by team code, ordered by league rank (1st, 2nd, 3rd…)
+  // League options grouped by league number (1, 2, 3...) — collapses Men's/Ladies/Mixed
+  // of the same rank into a single entry so "League 1" includes all teams playing at rank 1.
+  const leagueOptions = useMemo(() => {
     const ordinalRx = /(\d+)\s*(?:st|nd|rd|th)?\s*league/i;
-    const map = new Map<string, { code: string; label: string; order: number }>();
+    const byNum = new Map<string, { genders: Set<string>; codes: Set<string> }>();
     clubLeagues.forEach((l) => {
       const m = (l.name || "").match(ordinalRx);
-      const order = m ? parseInt(m[1], 10) : Number.POSITIVE_INFINITY;
-      const num = m ? `${m[1]}` : null;
-      const gender = /ladies|women/i.test(l.name || "") ? "L"
-        : /mixed/i.test(l.name || "") ? "M"
-        : /men/i.test(l.name || "") ? "" : "";
-      const label = num ? `League ${num}${gender ? ` (${gender})` : ""}` : l.name || l.code || "";
-      const add = (code: string | null) => {
-        if (!code) return;
-        const k = code.toUpperCase();
-        const existing = map.get(k);
-        if (!existing || order < existing.order) map.set(k, { code: k, label, order });
-      };
-      add(l.code);
-      add(l.nsa_team_code);
+      if (!m) return;
+      const num = m[1];
+      const gender = /ladies|women/i.test(l.name || "") ? "Ladies"
+        : /mixed/i.test(l.name || "") ? "Mixed"
+        : /men/i.test(l.name || "") ? "Men" : "";
+      const entry = byNum.get(num) || { genders: new Set<string>(), codes: new Set<string>() };
+      if (gender) entry.genders.add(gender);
+      if (l.code) entry.codes.add(l.code.toUpperCase());
+      if (l.nsa_team_code) entry.codes.add(l.nsa_team_code.toUpperCase());
+      byNum.set(num, entry);
     });
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.order !== b.order) return a.order - b.order;
-      return a.code.localeCompare(b.code);
-    });
+    return Array.from(byNum.entries())
+      .map(([num, e]) => ({
+        num,
+        label: `League ${num}`,
+        sublabel: Array.from(e.genders).sort().join(" · "),
+        count: e.codes.size,
+      }))
+      .sort((a, b) => parseInt(a.num, 10) - parseInt(b.num, 10));
   }, [clubLeagues]);
 
   const rows = data || [];
@@ -287,15 +288,16 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={selectedTeamCode} onValueChange={setSelectedTeamCode}>
-          <SelectTrigger className="h-8 w-[200px] text-xs">
+        <Select value={selectedLeagueNum} onValueChange={setSelectedLeagueNum}>
+          <SelectTrigger className="h-8 w-[220px] text-xs">
             <SelectValue placeholder="All leagues" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All leagues</SelectItem>
-            {teamOptions.map((o) => (
-              <SelectItem key={o.code} value={o.code}>
-                {o.label} · {o.code}
+            {leagueOptions.map((o) => (
+              <SelectItem key={o.num} value={o.num}>
+                {o.label}
+                {o.sublabel ? ` · ${o.sublabel}` : ""}
               </SelectItem>
             ))}
           </SelectContent>

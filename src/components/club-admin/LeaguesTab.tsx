@@ -2113,12 +2113,13 @@ function EditAssociationDialog({ association, open, onOpenChange }: { associatio
   const [abbreviation, setAbbreviation] = useState(association.abbreviation || "");
   const [scope, setScope] = useState<"internal" | "region">(((association.scope as any) === "national" ? "region" : (association.scope as any)) || "region");
   const [membersPayDirectly, setMembersPayDirectly] = useState<boolean>(!!(association as any).members_pay_directly);
+  const [affectsLadder, setAffectsLadder] = useState<boolean>(!!(association as any).affects_ladder);
 
   const isPlatformLinked = !!association.platform_association_id;
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    const payload: any = { name, abbreviation, scope, members_pay_directly: membersPayDirectly };
+    const payload: any = { name, abbreviation, scope, members_pay_directly: membersPayDirectly, affects_ladder: scope === "internal" ? affectsLadder : false };
     const { error } = await fromExt("league_associations").update(payload).eq("id", association.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Association updated");

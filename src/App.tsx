@@ -13,6 +13,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { DesktopShell } from "@/components/DesktopShell";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { NotificationListener } from "@/components/NotificationListener";
 import { NotificationActionModal } from "@/components/NotificationActionModal";
 import { NativePushListener } from "@/components/NativePushListener";
@@ -316,8 +317,9 @@ function AppRoutes() {
             ? <ClubLanding hostClub={clubFromHost} />
             : user
               ? <Dashboard />
-              : <Home />
+              : <Auth />
         } />
+        <Route path="/welcome" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/events" element={<Events />} />
@@ -396,6 +398,7 @@ function AppRoutes() {
       {user && !isTvRoute && <OfflineBanner />}
       {user && !isTvRoute && <LiveSessionBanner />}
       {user && <PushNotificationPrompt />}
+      <InstallPrompt />
       {user && <NotificationListener />}
       {user && <NotificationActionModal />}
       {user && <NativePushListener />}

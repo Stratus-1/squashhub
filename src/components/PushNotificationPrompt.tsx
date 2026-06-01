@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAppPushNotifications } from "@/hooks/use-app-push-notifications";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { getDecision, setDecision, shouldAsk } from "@/lib/permission-cache";
 
 export function PushNotificationPrompt() {
   const { user } = useAuth();
@@ -12,28 +13,29 @@ export function PushNotificationPrompt() {
   const [dismissed, setDismissed] = useState(false);
   const [show, setShow] = useState(false);
 
+  // Reflect actual browser/native permission back into our device cache so
+  // we never re-prompt across reloads / installs / app updates.
+  useEffect(() => {
+    if (permission === "granted") setDecision("notifications", "granted");
+    else if (permission === "denied") setDecision("notifications", "denied");
+  }, [permission]);
+
   // Auto-subscribe on first visit if permission hasn't been asked yet
   useEffect(() => {
     if (!user || isSubscribed || loading || permission === "denied" || permission === "unsupported") return;
+    if (!shouldAsk("notifications")) return;
 
-    const autoSubscribed = localStorage.getItem("push-auto-subscribed");
+    const autoSubscribed = getDecision("notifications") !== null;
     if (autoSubscribed) {
-      // Already attempted auto-subscribe; fall back to manual prompt
-      const dismissedAt = localStorage.getItem("push-prompt-dismissed");
-      if (dismissedAt) {
-        const daysSince = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
-        if (daysSince < 7) return;
-      }
       const timer = setTimeout(() => setShow(true), 3000);
       return () => clearTimeout(timer);
     }
 
     // Auto-subscribe after a short delay
     const timer = setTimeout(async () => {
-      localStorage.setItem("push-auto-subscribed", "1");
       const success = await subscribe();
+      setDecision("notifications", success ? "granted" : "dismissed");
       if (!success) {
-        // If user denied or it failed, show the manual prompt later
         setShow(true);
       }
     }, 1500);
@@ -43,11 +45,12 @@ export function PushNotificationPrompt() {
   const handleDismiss = () => {
     setDismissed(true);
     setShow(false);
-    localStorage.setItem("push-prompt-dismissed", Date.now().toString());
+    setDecision("notifications", "dismissed");
   };
 
   const handleEnable = async () => {
     const success = await subscribe();
+    setDecision("notifications", success ? "granted" : "denied");
     if (success) {
       setShow(false);
     }

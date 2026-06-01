@@ -258,6 +258,20 @@ export default function SuperAdminClubs() {
               <Label>Address</Label>
               <Input value={editForm.address} onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))} />
             </div>
+            <div>
+              <Label>Court booking slot length</Label>
+              <Select
+                value={String(editForm.booking_slot_minutes)}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, booking_slot_minutes: parseInt(v, 10) }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30-minute slots</SelectItem>
+                  <SelectItem value="40">40-minute slots (starts 07:00)</SelectItem>
+                  <SelectItem value="60">60-minute slots (full hours)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditClub(null)}>Cancel</Button>

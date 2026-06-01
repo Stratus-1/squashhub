@@ -117,6 +117,7 @@ export default function SuperAdminClubs() {
       email: club.email || "",
       phone: club.phone || "",
       address: club.address || "",
+      booking_slot_minutes: club.booking_slot_minutes ?? 30,
     });
   };
 

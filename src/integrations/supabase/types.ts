@@ -2996,10 +2996,92 @@ export type Database = {
         }
         Relationships: []
       }
+      ladder_adjustment_log: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          association_id: string | null
+          batch_id: string
+          club_id: string
+          club_member_id: string
+          fixture_id: string | null
+          id: string
+          new_position: number
+          old_position: number | null
+          reason: string
+          round_id: string | null
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          association_id?: string | null
+          batch_id: string
+          club_id: string
+          club_member_id: string
+          fixture_id?: string | null
+          id?: string
+          new_position: number
+          old_position?: number | null
+          reason: string
+          round_id?: string | null
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          association_id?: string | null
+          batch_id?: string
+          club_id?: string
+          club_member_id?: string
+          fixture_id?: string | null
+          id?: string
+          new_position?: number
+          old_position?: number | null
+          reason?: string
+          round_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_adjustment_log_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "ladder_adjustment_log_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_adjustment_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_adjustment_log_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_delegates_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_adjustment_log_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_associations: {
         Row: {
           abbreviation: string | null
           active: boolean
+          affects_ladder: boolean
           club_id: string
           contact_email: string | null
           contact_phone: string | null
@@ -3026,6 +3108,7 @@ export type Database = {
         Insert: {
           abbreviation?: string | null
           active?: boolean
+          affects_ladder?: boolean
           club_id: string
           contact_email?: string | null
           contact_phone?: string | null
@@ -3052,6 +3135,7 @@ export type Database = {
         Update: {
           abbreviation?: string | null
           active?: boolean
+          affects_ladder?: boolean
           club_id?: string
           contact_email?: string | null
           contact_phone?: string | null
@@ -5655,6 +5739,16 @@ export type Database = {
       admin_reorder_ladder: {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
+      }
+      apply_ladder_adjustments: {
+        Args: {
+          _adjustments: Json
+          _association_id: string
+          _club_id: string
+          _fixture_id: string
+          _summary?: string
+        }
+        Returns: string
       }
       assign_role_to_member: {
         Args: { _club_id: string; _member_id: string; _role_name: string }

@@ -174,7 +174,7 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
           won: boolean,
         ) => {
           if (!code) return;
-          if (selectedTeamCode !== "ALL" && teamCode !== selectedTeamCode) return;
+          if (selectedLeagueNum !== "ALL" && codeToLeagueNum.get(teamCode) !== selectedLeagueNum) return;
           const key = code.toUpperCase();
           const existing = agg.get(key);
           const member = members.find(

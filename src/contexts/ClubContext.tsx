@@ -44,8 +44,13 @@ export function ClubProvider({ children }: { children: ReactNode }) {
   const { data: club = null, isLoading } = useQuery({
     queryKey: ["club-by-subdomain", subdomain],
     queryFn: async () => {
+      // Select all club columns so super-admins / non-members viewing a tenant
+      // via subdomain still see complete settings (booking slot minutes, peak
+      // hour windows, fee config, etc.). Previously this query only pulled a
+      // handful of fields, which caused admin forms to reset to defaults after
+      // every save because the updated values weren't in the cached row.
       const { data, error } = await fromExt("clubs")
-        .select("id, name, subdomain, address, email, phone, payment_gateway, payment_gateway_public_key, logo_url, chairman_member_id, secretary_member_id, club_captain_member_id, honesty_bar_enabled, face_enrolment_required, tenant_type, mixed_ladder_enabled, challenge_levels_up")
+        .select("*")
         .eq("subdomain", subdomain!)
         .maybeSingle();
       if (error) throw error;

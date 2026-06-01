@@ -107,9 +107,10 @@ function formatTimeDisplay(t: string) {
 
 function buildTimeSlots(stepMinutes: number) {
   const slots: string[] = [];
-  const start = 5 * 60;
+  // 40-min slots start at 07:00 (per club ops). 30/60-min stay 05:00–22:00.
+  const step = stepMinutes === 60 ? 60 : stepMinutes === 40 ? 40 : 30;
+  const start = step === 40 ? 7 * 60 : 5 * 60;
   const end = 22 * 60;
-  const step = stepMinutes === 60 ? 60 : 30;
   for (let m = start; m < end; m += step) {
     slots.push(minutesToTime(m));
   }

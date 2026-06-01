@@ -6,6 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { useClubContext } from "@/contexts/ClubContext";
 import { getDecision, setDecision, shouldAsk } from "@/lib/permission-cache";
+import {
+  isStandalone as detectStandalone,
+  wasInstalled,
+  handleReinstallSignal,
+  recordInstalled,
+} from "@/lib/pwa-detect";
+
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;

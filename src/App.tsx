@@ -23,6 +23,7 @@ import { OutboxSync } from "@/components/OutboxSync";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { FeedbackFab } from "@/components/FeedbackFab";
 import { LiveSessionBanner } from "@/components/LiveSessionBanner";
+import { isStandalone } from "@/lib/pwa-detect";
 
 import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
 import Home from "./pages/Home";
@@ -280,6 +281,19 @@ function AppRoutes() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  // PWA gate: when the app is launched as an installed PWA (standalone /
+  // home-screen icon) and the user is NOT signed in, force the login
+  // screen — no marketing, no public routes. Browsers still get the
+  // normal experience.
+  const standalone = isStandalone();
+  if (standalone && !user) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
+        {clubSubdomain ? <ClubAuth /> : <Auth />}
       </div>
     );
   }

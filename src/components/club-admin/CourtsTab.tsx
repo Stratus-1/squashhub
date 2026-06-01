@@ -35,6 +35,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
     peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
     peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
     max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+    max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
   });
 
   useEffect(() => {
@@ -45,8 +46,9 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       peak_weekend_start: (club.peak_weekend_start ?? "08:00:00").slice(0, 5),
       peak_weekend_end: (club.peak_weekend_end ?? "12:00:00").slice(0, 5),
       max_peak_bookings_per_day: club.max_peak_bookings_per_day ?? 1,
+      max_bookings_per_day: (club as any).max_bookings_per_day ?? 4,
     });
-  }, [club.id, club.booking_slot_minutes, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day]);
+  }, [club.id, club.booking_slot_minutes, club.peak_weekday_start, club.peak_weekday_end, club.peak_weekend_start, club.peak_weekend_end, club.max_peak_bookings_per_day, (club as any).max_bookings_per_day]);
 
   const handleSaveRules = async () => {
     try {
@@ -58,6 +60,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
         peak_weekend_start: rulesForm.peak_weekend_start,
         peak_weekend_end: rulesForm.peak_weekend_end,
         max_peak_bookings_per_day: rulesForm.max_peak_bookings_per_day,
+        max_bookings_per_day: rulesForm.max_bookings_per_day,
       } as any);
       toast.success("Booking rules saved");
     } catch (err: any) {

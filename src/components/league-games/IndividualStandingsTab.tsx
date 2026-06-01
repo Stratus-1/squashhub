@@ -242,12 +242,30 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
   }, [assocIdToUse, queryClient]);
 
   const teamOptions = useMemo(() => {
-    const set = new Set<string>();
+    // Build {code, label, order} keyed by team code, ordered by league rank (1st, 2nd, 3rd…)
+    const ordinalRx = /(\d+)\s*(?:st|nd|rd|th)?\s*league/i;
+    const map = new Map<string, { code: string; label: string; order: number }>();
     clubLeagues.forEach((l) => {
-      if (l.code) set.add(l.code.toUpperCase());
-      if (l.nsa_team_code) set.add(l.nsa_team_code.toUpperCase());
+      const m = (l.name || "").match(ordinalRx);
+      const order = m ? parseInt(m[1], 10) : Number.POSITIVE_INFINITY;
+      const num = m ? `${m[1]}` : null;
+      const gender = /ladies|women/i.test(l.name || "") ? "L"
+        : /mixed/i.test(l.name || "") ? "M"
+        : /men/i.test(l.name || "") ? "" : "";
+      const label = num ? `League ${num}${gender ? ` (${gender})` : ""}` : l.name || l.code || "";
+      const add = (code: string | null) => {
+        if (!code) return;
+        const k = code.toUpperCase();
+        const existing = map.get(k);
+        if (!existing || order < existing.order) map.set(k, { code: k, label, order });
+      };
+      add(l.code);
+      add(l.nsa_team_code);
     });
-    return Array.from(set).sort();
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.code.localeCompare(b.code);
+    });
   }, [clubLeagues]);
 
   const rows = data || [];
@@ -257,13 +275,13 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
       <div className="flex flex-wrap items-center gap-2">
         <Select value={selectedTeamCode} onValueChange={setSelectedTeamCode}>
           <SelectTrigger className="h-8 w-[200px] text-xs">
-            <SelectValue placeholder="All teams" />
+            <SelectValue placeholder="All leagues" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All my teams</SelectItem>
-            {teamOptions.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
+            <SelectItem value="ALL">All leagues</SelectItem>
+            {teamOptions.map((o) => (
+              <SelectItem key={o.code} value={o.code}>
+                {o.label} · {o.code}
               </SelectItem>
             ))}
           </SelectContent>

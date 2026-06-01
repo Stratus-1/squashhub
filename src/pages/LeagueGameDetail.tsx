@@ -1735,6 +1735,11 @@ export default function LeagueGameDetail() {
     if (!fixtureId || !user) return;
     setSubmitting(true);
     try {
+      // Allow admins to finalize on or after the fixture date even without
+      // both captain signatures (signatures often aren't captured live).
+      const _fxDateStr: string | undefined = (fixture as any)?.fixture_date;
+      const _todayStr = format(new Date(), "yyyy-MM-dd");
+      const isFixtureSameDayOrPast = !!_fxDateStr && _fxDateStr <= _todayStr;
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);
@@ -1783,9 +1788,9 @@ export default function LeagueGameDetail() {
         home_penalty_points: summary.homePenaltyPoints, away_penalty_points: summary.awayPenaltyPoints,
         home_total_points: summary.homeTotal, away_total_points: summary.awayTotal,
         winner: summary.winner,
-        status: (adminOverride || (isClubAdmin && isFixturePast) || (homeSig && awaySig)) ? "submitted" : "draft",
-        home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (isClubAdmin && isFixturePast)) ? "ADMIN_OVERRIDE" : null),
-        away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (isClubAdmin && isFixturePast)) ? "ADMIN_OVERRIDE" : null),
+        status: (adminOverride || (isClubAdmin && isFixtureSameDayOrPast) || (homeSig && awaySig)) ? "submitted" : "draft",
+        home_captain_signature: homeSig || (existingResult as any)?.home_captain_signature || ((adminOverride || (isClubAdmin && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
+        away_captain_signature: awaySig || (existingResult as any)?.away_captain_signature || ((adminOverride || (isClubAdmin && isFixtureSameDayOrPast)) ? "ADMIN_OVERRIDE" : null),
         submitted_by: user.id, submitted_at: new Date().toISOString(),
         match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot, permanentSquadSnapshot, originalCountAdjustment: originalCountAdj },
       } as any, { onConflict: "fixture_id" });

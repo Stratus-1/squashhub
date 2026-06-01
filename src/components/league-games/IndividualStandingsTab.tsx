@@ -282,35 +282,23 @@ export function IndividualStandingsTab({ clubId, associationId, platformAssocId,
     };
   }, [assocIdToUse, queryClient]);
 
-  // League options grouped by league number (1, 2, 3...) — collapses Men's/Ladies/Mixed
-  // of the same rank into a single entry so "League 1" includes all teams playing at rank 1.
-  const leagueOptions = useMemo(() => {
-    const ordinalRx = /(\d+)\s*(?:st|nd|rd|th)?\s*league/i;
-    const byNum = new Map<string, { genders: Set<string>; codes: Set<string> }>();
-    clubLeagues.forEach((l) => {
-      const m = (l.name || "").match(ordinalRx);
-      if (!m) return;
-      const num = m[1];
-      const gender = /ladies|women/i.test(l.name || "") ? "Ladies"
-        : /mixed/i.test(l.name || "") ? "Mixed"
-        : /men/i.test(l.name || "") ? "Men" : "";
-      const entry = byNum.get(num) || { genders: new Set<string>(), codes: new Set<string>() };
-      if (gender) entry.genders.add(gender);
-      if (l.code) entry.codes.add(l.code.toUpperCase());
-      if (l.nsa_team_code) entry.codes.add(l.nsa_team_code.toUpperCase());
-      byNum.set(num, entry);
-    });
-    return Array.from(byNum.entries())
-      .map(([num, e]) => ({
-        num,
-        label: `League ${num}`,
-        sublabel: Array.from(e.genders).sort().join(" · "),
-        count: e.codes.size,
-      }))
-      .sort((a, b) => parseInt(a.num, 10) - parseInt(b.num, 10));
-  }, [clubLeagues]);
+  // League options derived from the fetched fixtures (rounds tell us which
+  // teams play in each "Nth League") so the dropdown stays accurate even
+  // when teams have custom names like "Cobras" or "Fungi".
+  const rows = data?.rows ?? [];
+  const leagueNums = data?.leagueNums ?? [];
+  const leagueOptions = useMemo(
+    () => leagueNums.map((num) => ({ num, label: `League ${num}` })),
+    [leagueNums],
+  );
 
-  const rows = data || [];
+  // If the currently selected league disappears (e.g. season change), reset.
+  useEffect(() => {
+    if (selectedLeagueNum !== "ALL" && leagueNums.length > 0 && !leagueNums.includes(selectedLeagueNum)) {
+      setSelectedLeagueNum("ALL");
+    }
+  }, [leagueNums, selectedLeagueNum]);
+
 
   return (
     <div className="space-y-4">

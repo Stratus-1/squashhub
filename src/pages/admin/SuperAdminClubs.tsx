@@ -30,7 +30,7 @@ export default function SuperAdminClubs() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [editClub, setEditClub] = useState<Club | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "" });
+  const [editForm, setEditForm] = useState({ name: "", subdomain: "", email: "", phone: "", address: "", booking_slot_minutes: 30 });
   const [deleteConfirm, setDeleteConfirm] = useState<Club | null>(null);
 
   const { data: clubs = [], isLoading } = useQuery({

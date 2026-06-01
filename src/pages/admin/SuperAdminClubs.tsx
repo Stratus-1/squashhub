@@ -23,6 +23,7 @@ type Club = {
   logo_url: string | null;
   tenant_type: string;
   created_at: string;
+  booking_slot_minutes?: number | null;
   member_count?: number;
 };
 

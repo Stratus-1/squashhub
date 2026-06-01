@@ -1271,20 +1271,24 @@ export default function Bookings() {
         >
           {dynamicTimeSlots.map((time, idx) => {
             const isHour = time.endsWith(":00");
+            // For 40-min clubs, slots don't align to the hour, so label every
+            // row and skip the hourly separator rule to avoid drift.
+            const showTimeLabel = slotMinutes === 40 ? true : isHour;
+            const showHourSeparator = slotMinutes !== 40 && isHour && idx !== 0;
             return (
               <div
                 key={time}
                 className={cn(
                   "gap-x-1.5",
-                  isHour && idx !== 0 && "pt-1.5 mt-1.5 border-t border-border/40"
+                  showHourSeparator && "pt-1.5 mt-1.5 border-t border-border/40"
                 )}
                 style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}
               >
                 <div className={cn(
                   "text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",
-                  isHour ? "text-foreground/70" : "text-muted-foreground/40"
+                  showTimeLabel ? "text-foreground/70" : "text-muted-foreground/40"
                 )}>
-                  {isHour ? formatTimeDisplay(time) : ""}
+                  {showTimeLabel ? formatTimeDisplay(time) : ""}
                 </div>
                 {courts.map((courtId) => {
                   const booking = getBooking(courtId, time);

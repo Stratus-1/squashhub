@@ -129,3 +129,5 @@ See [docs/ANDROID_API_REFERENCE.md](docs/ANDROID_API_REFERENCE.md) for the full 
 See [docs/ANDROID_ROLES.md](docs/ANDROID_ROLES.md) for how Android should resolve user roles (super admin / club admin / captain / member / visitor) on login.
 
 See [docs/ANDROID_GOOGLE_SIGNIN.md](docs/ANDROID_GOOGLE_SIGNIN.md) for native Google Sign-In setup (GCP clients, SHA-1, `signInWithIdToken`).
+
+- [Android — Booking flow](docs/ANDROID_BOOKING_FLOW.md)

@@ -25,6 +25,7 @@ import { RosterPanel } from "@/components/league-games/RosterPanel";
 import { useNsaTeam, useNsaTeamByCode, type NsaTeamPlayer } from "@/hooks/use-nsa";
 import { NsaSubmitDialog } from "@/components/league-games/NsaSubmitDialog";
 import { AdminManualScoreDialog } from "@/components/league-games/AdminManualScoreDialog";
+import { LadderImpactPreview } from "@/components/league-games/LadderImpactPreview";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Send } from "lucide-react";
 import { useAssociationRules } from "@/hooks/use-association-rules";
@@ -265,6 +266,7 @@ export default function LeagueGameDetail() {
   const { activeMember } = useMemberContext();
   const [nsaDialogOpen, setNsaDialogOpen] = useState(false);
   const [adminManualOpen, setAdminManualOpen] = useState(false);
+  const [ladderPreviewOpen, setLadderPreviewOpen] = useState(false);
 
   const [positions, setPositions] = useState<PositionEntry[]>(emptyPositions());
   const [setupDone, setSetupDone] = useState(false);
@@ -3138,6 +3140,18 @@ export default function LeagueGameDetail() {
               {isSubmittedLocked ? "Adjust Final Score" : "Enter Final Score Manually"}
             </Button>
 
+            {isClubAdmin && fixtureId && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => setLadderPreviewOpen(true)}
+              >
+                <Trophy className="w-4 h-4 mr-1" />
+                Preview ladder impact
+              </Button>
+            )}
+
 
             {displaySummary.opbEnabled && (() => {
               const savedAdj = ((existingResult?.match_format as any)?.originalCountAdjustment) || { home: 0, away: 0 };
@@ -3262,6 +3276,14 @@ export default function LeagueGameDetail() {
             queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
             queryClient.invalidateQueries({ queryKey: ["internal-standings"] });
           }}
+        />
+      )}
+
+      {isClubAdmin && fixtureId && (
+        <LadderImpactPreview
+          open={ladderPreviewOpen}
+          onOpenChange={setLadderPreviewOpen}
+          fixtureId={fixtureId}
         />
       )}
     </div>

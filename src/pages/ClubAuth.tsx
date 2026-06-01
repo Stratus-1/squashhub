@@ -127,6 +127,8 @@ export default function ClubAuth() {
   // NSC-specific: hide the member/league number field on existing-member signup
   // so members only need email + cell phone (numbers are issued by the club).
   const hideMemberNumberField = (subdomain || "").toLowerCase() === "nsc";
+  // HSC onboards all members through the "new member" flow to capture full details.
+  const hideExistingMembershipLink = (subdomain || "").toLowerCase() === "hsc";
   // CSIR-specific: members were imported with their NSA league number only.
   // They register using League Number + Email + Phone + Password — no email verification.
   const useLeagueNumberSignup = (subdomain || "").toLowerCase() === "csir";

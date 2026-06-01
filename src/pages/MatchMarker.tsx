@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { setScoringActive } from "@/lib/scoring-lock";
 
 export default function MatchMarker() {
   const [config, setConfig] = useState<MarkerConfig | null>(() => {
@@ -32,6 +33,14 @@ export default function MatchMarker() {
       else localStorage.removeItem(MARKER_CONFIG_KEY);
     } catch {}
   }, [config]);
+
+  // Hold the PWA update poller + add a beforeunload guard while scoring.
+  useEffect(() => {
+    if (!config) return;
+    setScoringActive(true);
+    return () => setScoringActive(false);
+  }, [config]);
+
 
   const startConfig = (c: MarkerConfig) => {
     try { localStorage.removeItem(MARKER_STATE_KEY); } catch {}

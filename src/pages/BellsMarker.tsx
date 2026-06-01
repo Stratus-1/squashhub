@@ -13,6 +13,7 @@ import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check } 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
+import { setScoringActive } from "@/lib/scoring-lock";
 
 /**
  * Bells doubles scorer.
@@ -73,6 +74,14 @@ export default function BellsMarker() {
     setFinished(match.status === "completed");
     setRunning(false);
   }, [match, capMinutes]);
+
+  // Hold the PWA update poller while a Bells match is live (not finished).
+  useEffect(() => {
+    if (finished) return;
+    setScoringActive(true);
+    return () => setScoringActive(false);
+  }, [finished]);
+
 
   // Countdown
   useEffect(() => {

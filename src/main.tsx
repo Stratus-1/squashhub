@@ -5,6 +5,7 @@ import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
 import { registerServiceWorker } from "@/lib/pwa-register";
 import { isStandalone, markInstalled } from "@/lib/pwa-detect";
+import { applyDynamicManifest } from "@/lib/dynamic-manifest";
 
 // If the app launched in standalone mode, remember that this device has
 // it installed. We use this later to detect uninstall + browser reopen.
@@ -24,6 +25,10 @@ void initDeepLinks();
 
 // Register the PWA service worker (no-op in iframe / preview / native).
 registerServiceWorker();
+
+// Swap the manifest to a per-tenant version so the home-screen label shows
+// the club name (e.g. "Highveld Squash Club") instead of "SquashHub".
+void applyDynamicManifest();
 
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider>

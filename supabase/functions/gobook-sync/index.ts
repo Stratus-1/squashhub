@@ -304,19 +304,41 @@ async function syncClub(
     return result;
   }
 
-  // Name → club_member lookup (case-insensitive, exact full_name match)
+  // Name → club_member lookup. GoBook labels vary: "Willem Pretorius",
+  // "W Pretorius", "W. Pretorius", "Pretorius W", etc. Index each member
+  // under several normalised keys so the sync links the booking row to its
+  // owner — which is what enables the Cancel button on the grid.
   const nameMap = new Map<string, { id: string; user_id: string | null }>();
-  for (const m of memberRows ?? []) {
-    const key = String((m as any).name || "").trim().toLowerCase();
-    if (!key) continue;
-    if (nameMap.has(key)) {
-      // ambiguous — drop so we don't mis-link
-      nameMap.set(key, { id: "", user_id: null });
+  const addKey = (key: string, val: { id: string; user_id: string | null }) => {
+    const k = key.trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
+    if (!k) return;
+    const existing = nameMap.get(k);
+    if (existing) {
+      if (existing.id && existing.id !== val.id) {
+        nameMap.set(k, { id: "", user_id: null });
+      }
     } else {
-      nameMap.set(key, {
-        id: (m as any).id,
-        user_id: (m as any).user_id ?? null,
-      });
+      nameMap.set(k, val);
+    }
+  };
+  for (const m of memberRows ?? []) {
+    const full = String((m as any).name || "").trim();
+    if (!full) continue;
+    const val = { id: (m as any).id as string, user_id: (m as any).user_id ?? null };
+    const parts = full.split(/\s+/).filter(Boolean);
+    const first = parts[0] || "";
+    const last = parts.length > 1 ? parts[parts.length - 1] : "";
+    addKey(full, val);
+    if (first && last) {
+      const initial = first.charAt(0);
+      addKey(`${first} ${last}`, val);
+      addKey(`${initial} ${last}`, val);
+      addKey(`${initial}. ${last}`, val);
+      addKey(`${initial}.${last}`, val);
+      addKey(`${last} ${first}`, val);
+      addKey(`${last} ${initial}`, val);
+      addKey(`${last}, ${first}`, val);
+      addKey(`${last}, ${initial}`, val);
     }
   }
 
@@ -379,7 +401,13 @@ async function syncClub(
       seenExternal.add(external);
 
       const link = s.bookerName
-        ? nameMap.get(s.bookerName.trim().toLowerCase())
+        ? nameMap.get(
+            s.bookerName
+              .trim()
+              .toLowerCase()
+              .replace(/\./g, "")
+              .replace(/\s+/g, " "),
+          )
         : undefined;
       const linkedMemberId = link && link.id ? link.id : null;
       const linkedUserId = link && link.id ? link.user_id : null;

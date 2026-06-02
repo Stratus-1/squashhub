@@ -419,6 +419,7 @@ export default function Bookings() {
   const [confirmEndSession, setConfirmEndSession] = useState<string | null>(null);
   const [syncingGobook, setSyncingGobook] = useState(false);
   const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [cancellingGobook, setCancellingGobook] = useState(false);
   const queryClient = useQueryClient();
 
   const handleSyncGobook = async () => {

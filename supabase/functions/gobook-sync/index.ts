@@ -401,7 +401,13 @@ async function syncClub(
       seenExternal.add(external);
 
       const link = s.bookerName
-        ? nameMap.get(s.bookerName.trim().toLowerCase())
+        ? nameMap.get(
+            s.bookerName
+              .trim()
+              .toLowerCase()
+              .replace(/\./g, "")
+              .replace(/\s+/g, " "),
+          )
         : undefined;
       const linkedMemberId = link && link.id ? link.id : null;
       const linkedUserId = link && link.id ? link.user_id : null;

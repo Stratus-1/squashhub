@@ -725,6 +725,7 @@ export default function Bookings() {
           description: "This can take 10–20 seconds. Please don't close this window.",
         })
       : null;
+    let bookingSucceeded = false;
     try {
       const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
       if (!isOnline) {

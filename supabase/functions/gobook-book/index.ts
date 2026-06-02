@@ -671,55 +671,70 @@ Deno.serve(async (req) => {
           // depending on GoBook's locale; try a few permutations.
           const normalizedDate = date.replaceAll("/", "-");
           const [y, m, d] = normalizedDate.split("-");
+          const shortMonth = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m)-1];
+          const longMonth = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(m)-1];
           const datePatterns = [
             `${y}/${m}/${d}`,
             `${d}/${m}/${y}`,
             `${y}-${m}-${d}`,
             `${d}-${m}-${y}`,
-            `${Number(d)} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m)-1]} ${y}`,
+            `${Number(d)} ${shortMonth} ${y}`,
+            `${Number(d)} ${longMonth} ${y}`,
+            `${String(d).padStart(2,"0")} ${shortMonth} ${y}`,
+            `${String(d).padStart(2,"0")} ${longMonth} ${y}`,
+            `${shortMonth} ${Number(d)}, ${y}`,
+            `${longMonth} ${Number(d)}, ${y}`,
             `${Number(d)}/${Number(m)}/${y}`,
-          ];
+            `${Number(d)}-${Number(m)}-${y}`,
+          ].map((p) => p.toLowerCase());
           const hourStr = String(startHour).padStart(2, "0");
-          const timePatterns = [`${hourStr}:00`, `${hourStr}h00`, `${startHour}:00`];
+          const timePatterns = [`${hourStr}:00`, `${hourStr}h00`, `${startHour}:00`, `${startHour}h00`];
           const courtPatterns = [
-            `Court ${court}`,
-            `Court${court}`,
-            `Court #${court}`,
-            `Court No ${court}`,
-            `Court No. ${court}`,
-            `Crt ${court}`,
-            `Squash ${court}`,
+            `court ${court}`,
+            `court${court}`,
+            `court #${court}`,
+            `court no ${court}`,
+            `court no. ${court}`,
+            `crt ${court}`,
+            `squash ${court}`,
+            `squash court ${court}`,
             `#${court}`,
+            `( ${court} )`,
+            `(${court})`,
           ];
 
           // Pull every bid candidate with a window of surrounding HTML to match against.
           const bidRegex = /bid=(\d+)/gi;
-          const candidates: Array<{ bid: string; score: number; snippet: string }> = [];
+          const candidates: Array<{ bid: string; score: number; snippet: string; hasDate: boolean; hasTime: boolean; hasCourt: boolean }> = [];
           const seen = new Set<string>();
           let mm: RegExpExecArray | null;
           while ((mm = bidRegex.exec(myHtml)) !== null) {
             const bid = mm[1];
             if (seen.has(bid)) continue;
             seen.add(bid);
-            const start = Math.max(0, mm.index - 1500);
-            const end = Math.min(myHtml.length, mm.index + 1500);
+            const start = Math.max(0, mm.index - 2000);
+            const end = Math.min(myHtml.length, mm.index + 2000);
             const snippet = myHtml.slice(start, end);
             const lower = snippet.toLowerCase();
-            const hasDate = datePatterns.some((p) => snippet.includes(p));
-            const hasTime = timePatterns.some((p) => snippet.includes(p));
-            const hasCourt = courtPatterns.some((p) => lower.includes(p.toLowerCase()));
+            const hasDate = datePatterns.some((p) => lower.includes(p));
+            const hasTime = timePatterns.some((p) => lower.includes(p));
+            const hasCourt = courtPatterns.some((p) => lower.includes(p));
             const cancelled = /cancel(led)?/i.test(snippet);
-            const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 5 : 0);
-            candidates.push({ bid, score, snippet: snippet.slice(0, 400) });
+            const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 8 : 0);
+            candidates.push({ bid, score, snippet: snippet.slice(0, 400), hasDate, hasTime, hasCourt });
           }
           candidates.sort((a, b) => b.score - a.score);
 
+          // Accept a candidate if it matches time + (court OR date) — GoBook's
+          // MyBookings rows always include all three, but the date label
+          // wording sometimes drifts (locale, "Tomorrow", etc.).
           const best = candidates[0];
-          if (!best || best.score < 5) {
+          const acceptable = !!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5;
+          if (!acceptable) {
             return json({
               error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled or may not belong to your GoBook account.`,
               candidates: candidates.slice(0, 5),
-              my_bookings_preview: myHtml.slice(0, 1500),
+              my_bookings_preview: myHtml.slice(0, 2500),
             }, 404);
           }
 

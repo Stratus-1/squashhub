@@ -835,37 +835,23 @@ Deno.serve(async (req) => {
 
           const bookingId = best.bid;
 
-          // GoBook's UI first opens the booking details screen, then posts the
-          // cancellation. Fetch the details page before Maintain so any
-          // session state/cookies/anti-forgery token set by that page are present.
-          const detailsRes = await fetch(`${GOBOOK_BASE}/Bookings/Details?bid=${bookingId}`, {
-            headers: {
-              cookie: cookieHeader(jar),
-              "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-              "Referer": `${GOBOOK_BASE}/MyBookings`,
-            },
-            redirect: "follow",
-          });
-          jarFromHeaders(detailsRes.headers, jar);
-          const detailsHtml = await detailsRes.text();
-          const maintainToken = extractInput(detailsHtml, "__RequestVerificationToken");
-
-          // STEP 2 — POST Maintain with FocusedControl=Cancel.
+          // GoBook's real cancel request (captured from the browser) posts
+          // directly to /Bookings/Maintain from /Bookings/Client with
+          // BookingId as a STRING, ClientNotes set to the booker's name, and
+          // no anti-forgery token.
           const payload: Record<string, string> = {
-            BookingId: bookingId,
+            BookingId: String(bookingId),
             ClientNotes: String(body.client_notes || "Cancelled via SquashHub"),
             FocusedControl: "Cancel",
           };
-          if (maintainToken) payload.__RequestVerificationToken = maintainToken;
           const cancelRes = await fetch(`${GOBOOK_BASE}/Bookings/Maintain`, {
             method: "POST",
             headers: {
-              "Content-Type": "application/json; charset=utf-8",
-              "Accept": "application/json, text/javascript, */*; q=0.01",
+              "Content-Type": "application/json; charset=UTF-8",
+              "Accept": "*/*",
               "X-Requested-With": "XMLHttpRequest",
-              "Referer": `${GOBOOK_BASE}/Bookings/Details?bid=${bookingId}`,
+              "Referer": `${GOBOOK_BASE}/Bookings/Client`,
               "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-              ...(maintainToken ? { "RequestVerificationToken": maintainToken } : {}),
               cookie: cookieHeader(jar),
             },
             body: JSON.stringify(payload),

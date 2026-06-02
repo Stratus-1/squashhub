@@ -815,6 +815,7 @@ export default function Bookings() {
       const opponentMemberId = bookingDialog.opponentId
         ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.memberId || null
         : null;
+      let gobookMirror: { court: number; externalId: string; externalBookerName: string | null } | null = null;
 
       if (
         (myClub as any)?.uses_gobook &&
@@ -865,6 +866,14 @@ export default function Bookings() {
         });
         const msg = await extractFunctionError(data, error);
         if (msg) throw new Error(`GoBook booking failed: ${msg}`);
+        const bookedCourt = Number((data as any)?.court || courtNum || 0);
+        if (bookedCourt) {
+          gobookMirror = {
+            court: bookedCourt,
+            externalId: `${dateStr.replace(/-/g, "")}-${bookedCourt}-${String(startHour).padStart(2, "0")}`,
+            externalBookerName: labelA || null,
+          };
+        }
       }
 
       const created = await createBooking.mutateAsync({
@@ -878,6 +887,9 @@ export default function Bookings() {
         guestName: bookingDialog.guestName || null,
         clubMemberId: activeMember?.id || null,
         opponentMemberId,
+        source: gobookMirror ? "gobook" : "squashhub",
+        externalId: gobookMirror?.externalId ?? null,
+        externalBookerName: gobookMirror?.externalBookerName ?? null,
       });
 
       // Mark lights_requested and fee split on the booking
@@ -1684,7 +1696,7 @@ export default function Bookings() {
                       >
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
-                      {(bookingDetails as any).source === 'gobook' ? (() => {
+                      {((bookingDetails as any).source === 'gobook' || ((myClub as any)?.uses_gobook && ((myClub as any)?.booking_slot_minutes ?? 60) === 60)) ? (() => {
                         const bd: any = bookingDetails;
                         const ownsBooking = !!activeMember?.id && bd.club_member_id === activeMember.id;
                         const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();

@@ -311,6 +311,9 @@ export function useCreateBooking() {
       guestName,
       clubMemberId,
       opponentMemberId,
+      source,
+      externalId,
+      externalBookerName,
     }: {
       bookingId?: string;
       courtId: number;
@@ -323,44 +326,49 @@ export function useCreateBooking() {
       guestName?: string | null;
       clubMemberId?: string | null;
       opponentMemberId?: string | null;
+      source?: string | null;
+      externalId?: string | null;
+      externalBookerName?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
 
       // Auto-merge: only merge an adjacent booking when it's the SAME opponent
       // and same friendly flag (otherwise we'd overwrite the original opponent name).
-      const { data: adjacent } = await supabase
-        .from("bookings")
-        .select("id, start_time, end_time, opponent_id, opponent_member_id, guest_name, is_friendly, challenge_id")
-        .eq("court_id", courtId)
-        .eq("date", date)
-        .eq("user_id", user.id)
-        .eq("status", "active") as any;
-
-      const sameOpponent = (b: any) =>
-        (b.opponent_id ?? null) === (opponentId ?? null)
-        && (b.opponent_member_id ?? null) === (opponentMemberId ?? null)
-        && (b.guest_name ?? null) === (guestName ?? null)
-        && !!b.is_friendly === !!isFriendly
-        && (b.challenge_id ?? null) === (challengeId ?? null);
-
-      const existingMerge = (adjacent || []).find((b: any) =>
-        (b.end_time === startTime || b.start_time === endTime) && sameOpponent(b)
-      );
-
-      if (existingMerge) {
-        const newStart = existingMerge.start_time <= startTime ? existingMerge.start_time : startTime;
-        const newEnd = existingMerge.end_time >= endTime ? existingMerge.end_time : endTime;
-        const { data, error } = await supabase
+      if (source !== "gobook") {
+        const { data: adjacent } = await supabase
           .from("bookings")
-          .update({
-            start_time: newStart,
-            end_time: newEnd,
-          } as any)
-          .eq("id", existingMerge.id)
-          .select()
-          .single();
-        if (error) throw error;
-        return data;
+          .select("id, start_time, end_time, opponent_id, opponent_member_id, guest_name, is_friendly, challenge_id")
+          .eq("court_id", courtId)
+          .eq("date", date)
+          .eq("user_id", user.id)
+          .eq("status", "active") as any;
+
+        const sameOpponent = (b: any) =>
+          (b.opponent_id ?? null) === (opponentId ?? null)
+          && (b.opponent_member_id ?? null) === (opponentMemberId ?? null)
+          && (b.guest_name ?? null) === (guestName ?? null)
+          && !!b.is_friendly === !!isFriendly
+          && (b.challenge_id ?? null) === (challengeId ?? null);
+
+        const existingMerge = (adjacent || []).find((b: any) =>
+          (b.end_time === startTime || b.start_time === endTime) && sameOpponent(b)
+        );
+
+        if (existingMerge) {
+          const newStart = existingMerge.start_time <= startTime ? existingMerge.start_time : startTime;
+          const newEnd = existingMerge.end_time >= endTime ? existingMerge.end_time : endTime;
+          const { data, error } = await supabase
+            .from("bookings")
+            .update({
+              start_time: newStart,
+              end_time: newEnd,
+            } as any)
+            .eq("id", existingMerge.id)
+            .select()
+            .single();
+          if (error) throw error;
+          return data;
+        }
       }
 
       const id = bookingId || crypto.randomUUID();
@@ -379,6 +387,9 @@ export function useCreateBooking() {
           is_friendly: !!isFriendly,
           challenge_id: challengeId ?? null,
           guest_name: guestName ?? null,
+          source: source ?? "squashhub",
+          external_id: externalId ?? null,
+          external_booker_name: externalBookerName ?? null,
         } as any, { onConflict: "id" })
         .select()
         .single();

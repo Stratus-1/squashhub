@@ -444,27 +444,37 @@ export default function Bookings() {
   };
 
   // Does the current member have GoBook credentials saved? Drives the banner.
-  const { data: gobookCredInfo } = useQuery({
+  const { data: gobookCredInfo, isLoading: gobookCredInfoLoading } = useQuery({
     queryKey: ["member-gobook-cred-info", activeMember?.id, user?.id],
     enabled: (!!activeMember?.id || !!user?.id) && !!(myClub as any)?.uses_gobook,
     queryFn: async () => {
-      // RLS allows reads where user_id = auth.uid(). Prefer the active member's
-      // row, but fall back to any cred owned by the current user so the banner
-      // recognizes saved credentials even when account context differs.
-      let q = supabase
-        .from("member_gobook_credentials")
-        .select("club_member_id, user_id, last_verification_status, last_verified_at, is_sync_source");
+      // Use the GoBook backend helper first because it uses the same member
+      // ownership check as saving/booking credentials. This avoids the Courts
+      // banner showing the setup prompt while the direct table read is blocked
+      // or still settling after sign-in.
       if (activeMember?.id) {
-        const { data } = await q.eq("club_member_id", activeMember.id).maybeSingle();
-        if (data) return data;
+        const { data, error } = await supabase.functions.invoke("gobook-book", {
+          body: { action: "get_credentials_meta", club_member_id: activeMember.id },
+        });
+        if (!error && (data as any)?.has_credentials) {
+          return {
+            club_member_id: activeMember.id,
+            user_id: user?.id ?? null,
+            last_verification_status: (data as any).last_verification_status ?? null,
+            last_verified_at: (data as any).last_verified_at ?? null,
+            is_sync_source: true,
+          };
+        }
       }
       if (user?.id) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("member_gobook_credentials")
           .select("club_member_id, user_id, last_verification_status, last_verified_at, is_sync_source")
           .eq("user_id", user.id)
+          .eq("is_sync_source", true)
           .limit(1)
           .maybeSingle();
+        if (error) throw error;
         return data ?? null;
       }
       return null;

@@ -412,17 +412,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
     const clubMemberId = body.club_member_id as string | undefined;
+    let authenticatedMemberName: string | null = null;
 
     if (clubMemberId) {
       const { data: cm, error: cmErr } = await adminClient
         .from("club_members")
-        .select("id, user_id")
+        .select("id, user_id, name")
         .eq("id", clubMemberId)
         .maybeSingle();
       if (cmErr) return json({ error: cmErr.message }, 500);
       if (!cm || cm.user_id !== userId) {
         return json({ error: "Not your member record" }, 403);
       }
+      authenticatedMemberName = String(cm.name || "").trim() || null;
     }
 
     switch (action) {

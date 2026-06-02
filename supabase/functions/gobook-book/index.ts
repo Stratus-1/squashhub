@@ -7,9 +7,12 @@
 //   verify_credentials   { club_member_id }
 //   debug_grid           { club_member_id, date (YYYY-MM-DD), court? }     -> parsed grid for inspection
 //   book                 { club_member_id, date (YYYY-MM-DD), start_hour (0-23), court? (1..4 or "any"), notes?, sms?, email? }
+//   debug_my_bookings    { club_member_id }                                -> raw /MyBookings HTML preview (discovery)
+//   cancel               { club_member_id, date (YYYY-MM-DD), start_hour (0-23), court (1..4) }
 //
 // Defaults: ServiceId=6 (Squash), ProviderId=234 (CSIR), ProviderConsultantId=0 ("Any" court).
 // Time slots are hourly (00:00-01:00 ... 23:00-24:00) on a 4-court grid.
+// GoBook restriction: bookings cannot be cancelled within ~1 hour of start time.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
@@ -539,6 +542,8 @@ Deno.serve(async (req) => {
 
       case "verify_credentials":
       case "debug_grid":
+      case "debug_my_bookings":
+      case "cancel":
       case "book": {
         const { data: row, error: rErr } = await adminClient
           .from("member_gobook_credentials")
@@ -597,6 +602,155 @@ Deno.serve(async (req) => {
             rows,
             raw_html_preview: raw.slice(0, 2000),
           });
+        }
+
+        if (action === "debug_my_bookings") {
+          const paths = [
+            "/MyBookings",
+            "/Bookings/MyBookings",
+            "/Bookings",
+            "/Bookings/Index",
+            "/Home/MyBookings",
+          ];
+          const probes: Array<{ path: string; status: number; finalUrl: string; preview: string }> = [];
+          for (const p of paths) {
+            const r = await fetch(`${GOBOOK_BASE}${p}`, {
+              headers: {
+                cookie: cookieHeader(jar),
+                "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+              },
+              redirect: "follow",
+            });
+            jarFromHeaders(r.headers, jar);
+            const txt = await r.text();
+            probes.push({
+              path: p,
+              status: r.status,
+              finalUrl: r.url,
+              preview: txt.slice(0, 4000),
+            });
+          }
+          return json({ ok: true, probes });
+        }
+
+        if (action === "cancel") {
+          const date = String(body.date || "").trim();
+          const startHour = Number(body.start_hour);
+          const court = Number(body.court);
+          if (!date || Number.isNaN(startHour) || Number.isNaN(court)) {
+            return json({ error: "date, start_hour and court are required" }, 400);
+          }
+
+          // Refuse anything within 1 hour of start (GoBook also blocks this server-side).
+          const startMs = new Date(`${date.replaceAll("/", "-")}T${String(startHour).padStart(2, "0")}:00:00+02:00`).getTime();
+          if (!Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000) {
+            return json({
+              error: "GoBook does not allow cancellation within 1 hour of the booking start time. Please cancel directly on gobook.co.za if it's an emergency.",
+            }, 400);
+          }
+
+          // Find the slotId for the booked cell by re-fetching the grid for that
+          // date and locating the booker's row+court. Booked cells expose a
+          // checkbox with the PSSTId so the owner can untick to cancel.
+          const courtKey = String(court);
+          const grids = [
+            await fetchGrid(jar, date, court, courtKey),
+            await fetchGrid(jar, date, "any"),
+          ];
+          let slotId: string | null = null;
+          let providerConsultantId: string | null = null;
+          for (const g of grids) {
+            const row = g.rows.find((r) => r.startHour === startHour);
+            if (!row) continue;
+            const cell = row.courts.length === 1
+              ? row.courts[0]
+              : row.courts.find((c) => c.courtNumber === court);
+            if (cell?.slotId) {
+              slotId = cell.slotId;
+              providerConsultantId = cell.providerConsultantId;
+              break;
+            }
+          }
+          if (!slotId) {
+            return json({
+              error: `Couldn't find a cancellable slot for ${startHour}:00 on Court #${court}. The booking may already be cancelled, may not belong to your GoBook account, or may be inside the 1-hour cancellation window.`,
+            }, 404);
+          }
+
+          // POST to /Bookings/Delete (GoBook's standard cancel endpoint). The
+          // checkbox value (PSSTId) identifies the slot to cancel.
+          const form = new URLSearchParams();
+          form.set("ServiceId", SQUASH_SERVICE_ID);
+          form.set("ProviderId", CSIR_PROVIDER_ID);
+          form.set("ProviderConsultantId", providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(court) || ANY_COURT_CONSULTANT_ID);
+          form.set("BookingDate", dateToGoBookBookingDate(date));
+          form.set("PSSTIds", slotId);
+
+          // Try the JSON endpoint first (matches Insert), then form fallback.
+          const attempts: Array<{ url: string; status: number; ok: boolean; body: string }> = [];
+          const tryEndpoints = [
+            { url: `${GOBOOK_BASE}/Bookings/Delete`, json: true },
+            { url: `${GOBOOK_BASE}/Bookings/Cancel`, json: true },
+            { url: `${GOBOOK_BASE}/Bookings/Delete`, json: false },
+            { url: `${GOBOOK_BASE}/Bookings/Cancel`, json: false },
+          ];
+          let success = false;
+          for (const ep of tryEndpoints) {
+            const res = await fetch(ep.url, {
+              method: "POST",
+              headers: ep.json
+                ? {
+                  "Content-Type": "application/json; charset=utf-8",
+                  "Accept": "application/json, text/javascript, */*; q=0.01",
+                  "X-Requested-With": "XMLHttpRequest",
+                  "Referer": `${GOBOOK_BASE}/MyBookings`,
+                  "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+                  cookie: cookieHeader(jar),
+                }
+                : {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  "X-Requested-With": "XMLHttpRequest",
+                  "Referer": `${GOBOOK_BASE}/MyBookings`,
+                  "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+                  cookie: cookieHeader(jar),
+                },
+              body: ep.json
+                ? JSON.stringify({
+                  ServiceId: SQUASH_SERVICE_ID,
+                  ProviderId: CSIR_PROVIDER_ID,
+                  ProviderConsultantId: providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(court) || ANY_COURT_CONSULTANT_ID,
+                  BookingDate: dateToGoBookBookingDate(date),
+                  PSSTIds: slotId,
+                })
+                : form.toString(),
+            });
+            jarFromHeaders(res.headers, jar);
+            const txt = await res.text();
+            attempts.push({ url: ep.url, status: res.status, ok: res.ok, body: txt.slice(0, 500) });
+            if (res.ok && !/error|invalid|failed/i.test(txt)) {
+              success = true;
+              break;
+            }
+          }
+
+          if (!success) {
+            return json({
+              error: "GoBook rejected the cancellation. It may be inside the 1-hour cancel window, already cancelled, or not owned by your account.",
+              attempts,
+              slot_id: slotId,
+            }, 409);
+          }
+
+          // Mirror the cancellation locally so the UI updates immediately.
+          await adminClient
+            .from("bookings")
+            .delete()
+            .eq("source", "gobook")
+            .eq("date", date)
+            .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
+            .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`);
+
+          return json({ ok: true, slot_id: slotId, attempts });
         }
 
         // book

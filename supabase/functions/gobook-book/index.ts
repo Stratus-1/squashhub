@@ -779,11 +779,22 @@ Deno.serve(async (req) => {
               combinedParts.push(html);
             }
           }
-          myHtml = combinedParts.join("\n<!--gobook-split-->\n");
+          const decodeBookingMarkup = (html: string) => {
+            const entityDecoded = html
+              .replace(/&quot;|&#34;|&#x22;/gi, '"')
+              .replace(/&#39;|&#x27;/gi, "'")
+              .replace(/&amp;/gi, "&");
+            try {
+              return `${entityDecoded}\n${decodeURIComponent(entityDecoded)}`;
+            } catch {
+              return entityDecoded;
+            }
+          };
+          myHtml = combinedParts.map(decodeBookingMarkup).join("\n<!--gobook-split-->\n");
 
 
           // Pull every bid candidate with a window of surrounding HTML to match against.
-          const bidRegex = /(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/gi;
+          const bidRegex = /(?:bid\s*[=:?&]\s*|bookingid["'\s:=,]+|bookingid\s*[=:]\s*|booking(?:id)?[,(:\s'"]+|\/Bookings\/Details\/?(?:\?bid=|\?BookingId=)?)(\d+)/gi;
           const candidates: Array<{ bid: string; score: number; snippet: string; hasDate: boolean; hasTime: boolean; hasCourt: boolean }> = [];
           const seen = new Set<string>();
           let mm: RegExpExecArray | null;
@@ -815,7 +826,7 @@ Deno.serve(async (req) => {
           let rowMatch: RegExpExecArray | null;
           while ((rowMatch = rowRegex.exec(myHtml)) !== null) {
             const rowHtml = rowMatch[1];
-            const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|booking(?:id)?[,(\s'"]+|\/Bookings\/Details\/?)(\d+)/i);
+            const bidMatch = rowHtml.match(/(?:bid\s*[=:?&]\s*|bookingid["'\s:=,]+|bookingid\s*[=:]\s*|booking(?:id)?[,(:\s'"]+|\/Bookings\/Details\/?(?:\?bid=|\?BookingId=)?)(\d+)/i);
             if (!bidMatch?.[1] || rowSeen.has(bidMatch[1])) continue;
             const lower = plain(rowHtml);
             if (/\bcancelled\b/i.test(lower)) continue;

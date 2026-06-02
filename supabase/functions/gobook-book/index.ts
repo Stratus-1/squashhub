@@ -741,6 +741,32 @@ Deno.serve(async (req) => {
             }, 409);
           }
 
+          // Verify with GoBook: re-fetch the grid and confirm the slot is now
+          // free (or at least no longer booked by this user). We only mirror
+          // the cancel locally once GoBook itself says the slot is bookable.
+          let verified = false;
+          let verifyCell: unknown = null;
+          for (let attempt = 0; attempt < 3 && !verified; attempt++) {
+            // small backoff — GoBook can lag a beat after Delete returns 200
+            if (attempt > 0) await new Promise((r) => setTimeout(r, 600));
+            const vg = await fetchGrid(jar, date, court, String(court));
+            const vRow = vg.rows.find((r) => r.startHour === startHour);
+            const vCell = vRow?.courts.length === 1
+              ? vRow.courts[0]
+              : vRow?.courts.find((c) => c.courtNumber === court);
+            verifyCell = vCell ?? null;
+            if (vCell?.free) verified = true;
+          }
+
+          if (!verified) {
+            return json({
+              error: "GoBook accepted the cancel request but the slot still shows as booked when we re-checked. Please refresh gobook.co.za to confirm.",
+              attempts,
+              slot_id: slotId,
+              verify_cell: verifyCell,
+            }, 502);
+          }
+
           // Mirror the cancellation locally so the UI updates immediately.
           await adminClient
             .from("bookings")
@@ -750,7 +776,7 @@ Deno.serve(async (req) => {
             .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
             .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`);
 
-          return json({ ok: true, slot_id: slotId, attempts });
+          return json({ ok: true, verified: true, slot_id: slotId, attempts });
         }
 
         // book

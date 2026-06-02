@@ -1157,6 +1157,33 @@ export default function Bookings() {
                       Open GoBook
                     </Button>
                   )}
+                  {hasGobookCreds && isSuperAdmin && activeMember?.id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        const t = toast.loading("Fetching GoBook /MyBookings…");
+                        try {
+                          const { data, error } = await supabase.functions.invoke("gobook-book", {
+                            body: { action: "debug_my_bookings", club_member_id: activeMember.id },
+                          });
+                          toast.dismiss(t);
+                          if (error || (data as any)?.error) {
+                            throw new Error((data as any)?.error || error?.message || "Debug failed");
+                          }
+                          console.log("[gobook debug_my_bookings]", data);
+                          const probes = (data as any)?.probes || [];
+                          const ok = probes.find((p: any) => p.status === 200);
+                          toast.success(`Got ${probes.length} probes — see console (${ok ? ok.path + " 200" : "no 200"})`);
+                        } catch (e: any) {
+                          toast.dismiss(t);
+                          toast.error(e?.message || "Debug failed");
+                        }
+                      }}
+                    >
+                      Debug GoBook
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>

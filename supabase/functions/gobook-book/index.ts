@@ -666,13 +666,26 @@ Deno.serve(async (req) => {
           const myHtml = await myRes.text();
 
           // Parse each "block" of MyBookings as the HTML chunk surrounding a
-          // Details?bid=NNN link and look for date + hour + court match.
-          // Date appears as "2026/06/03" or "03/06/2026" or "Wed 03 Jun 2026"
-          // depending on GoBook's locale; try a few permutations.
+          // booking id link/field and look for date + hour + court match.
+          // GoBook changes this markup often, so normalise punctuation/entities
+          // before matching dates like "Wed, 03 Jun 2026" or "2026/06/03".
           const normalizedDate = date.replaceAll("/", "-");
           const [y, m, d] = normalizedDate.split("-");
           const shortMonth = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m)-1];
           const longMonth = ["January","February","March","April","May","June","July","August","September","October","November","December"][Number(m)-1];
+          const compact = (value: string) => value
+            .toLowerCase()
+            .replace(/&nbsp;|&#160;/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/[^a-z0-9]+/g, "");
+          const plain = (value: string) => value
+            .toLowerCase()
+            .replace(/&nbsp;|&#160;/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
           const datePatterns = [
             `${y}/${m}/${d}`,
             `${d}/${m}/${y}`,
@@ -684,27 +697,23 @@ Deno.serve(async (req) => {
             `${String(d).padStart(2,"0")} ${longMonth} ${y}`,
             `${shortMonth} ${Number(d)}, ${y}`,
             `${longMonth} ${Number(d)}, ${y}`,
+            `${shortMonth} ${Number(d)} ${y}`,
+            `${longMonth} ${Number(d)} ${y}`,
             `${Number(d)}/${Number(m)}/${y}`,
             `${Number(d)}-${Number(m)}-${y}`,
-          ].map((p) => p.toLowerCase());
+          ].map(compact);
           const hourStr = String(startHour).padStart(2, "0");
-          const timePatterns = [`${hourStr}:00`, `${hourStr}h00`, `${startHour}:00`, `${startHour}h00`];
-          const courtPatterns = [
-            `court ${court}`,
-            `court${court}`,
-            `court #${court}`,
-            `court no ${court}`,
-            `court no. ${court}`,
-            `crt ${court}`,
-            `squash ${court}`,
-            `squash court ${court}`,
-            `#${court}`,
-            `( ${court} )`,
-            `(${court})`,
-          ];
+          const hasTimeMatch = (text: string) => new RegExp(`(^|\\D)0?${startHour}\\s*(?::|h)\\s*00(\\D|$)`, "i").test(text);
+          const hasCourtMatch = (text: string) => {
+            const escapedCourt = String(court).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            return new RegExp(`\\bcourt\\s*(?:no\\.?|number|#)?\\s*${escapedCourt}\\b`, "i").test(text)
+              || new RegExp(`\\bcrt\\s*${escapedCourt}\\b`, "i").test(text)
+              || new RegExp(`\\bsquash(?:\\s+court)?\\s*${escapedCourt}\\b`, "i").test(text)
+              || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text);
+          };
 
           // Pull every bid candidate with a window of surrounding HTML to match against.
-          const bidRegex = /bid=(\d+)/gi;
+          const bidRegex = /(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/gi;
           const candidates: Array<{ bid: string; score: number; snippet: string; hasDate: boolean; hasTime: boolean; hasCourt: boolean }> = [];
           const seen = new Set<string>();
           let mm: RegExpExecArray | null;
@@ -715,10 +724,11 @@ Deno.serve(async (req) => {
             const start = Math.max(0, mm.index - 2000);
             const end = Math.min(myHtml.length, mm.index + 2000);
             const snippet = myHtml.slice(start, end);
-            const lower = snippet.toLowerCase();
-            const hasDate = datePatterns.some((p) => lower.includes(p));
-            const hasTime = timePatterns.some((p) => lower.includes(p));
-            const hasCourt = courtPatterns.some((p) => lower.includes(p));
+            const lower = plain(snippet);
+            const compactSnippet = compact(snippet);
+            const hasDate = datePatterns.some((p) => compactSnippet.includes(p));
+            const hasTime = hasTimeMatch(lower);
+            const hasCourt = hasCourtMatch(lower);
             const cancelled = /cancel(led)?/i.test(snippet);
             const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 8 : 0);
             candidates.push({ bid, score, snippet: snippet.slice(0, 400), hasDate, hasTime, hasCourt });

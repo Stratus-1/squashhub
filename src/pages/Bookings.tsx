@@ -966,8 +966,8 @@ export default function Bookings() {
     } finally {
       if (progressToastId !== null) {
         toast.dismiss(progressToastId);
-        if (usingGobook) {
-          toast.success("Booking submitted to GoBook");
+        if (usingGobook && bookingSucceeded) {
+          toast.success("Booking confirmed on GoBook");
         }
       }
       setSubmittingBooking(false);

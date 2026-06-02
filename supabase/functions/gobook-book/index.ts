@@ -787,52 +787,11 @@ Deno.serve(async (req) => {
           const best = candidates[0];
           const acceptable = !!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5;
           if (!acceptable) {
-            const bookingId = String(body.booking_id || "").trim();
-            let liveSlotFree = false;
-            const gridProbes: Array<{ label: string; rowFound: boolean; courtFound: boolean; free?: boolean; bookerName?: string | null }> = [];
-            const inspectGrid = async (label: string, gridCourt: number | "any", key?: string) => {
-              const grid = await fetchGrid(jar, date, gridCourt, key);
-              const row = grid.rows.find((r) => r.startHour === startHour);
-              const slot = row?.courts.find((c) => c.courtNumber === court);
-              gridProbes.push({ label: `${label}:${grid.urlKey}`, rowFound: !!row, courtFound: !!slot, free: slot?.free, bookerName: slot?.bookerName });
-              if (slot?.free) liveSlotFree = true;
-            };
-            try {
-              await inspectGrid("combined", "any");
-              if (!liveSlotFree) await inspectGrid("court-tab", court, String(court));
-              const providerKey = CSIR_COURT_CONSULTANT_IDS.get(court);
-              if (!liveSlotFree && providerKey) await inspectGrid("provider-tab", court, providerKey);
-            } catch (e) {
-              console.warn("gobook cancel stale-check grid failed", (e as Error).message);
-            }
-
-            if (liveSlotFree) {
-              if (bookingId) {
-                await adminClient
-                  .from("bookings")
-                  .update({ status: "cancelled" })
-                  .eq("id", bookingId)
-                  .eq("source", "gobook")
-                  .eq("club_member_id", clubMemberId);
-              } else {
-                await adminClient
-                  .from("bookings")
-                  .update({ status: "cancelled" })
-                  .eq("source", "gobook")
-                  .eq("date", date)
-                  .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
-                  .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`)
-                  .eq("club_member_id", clubMemberId);
-              }
-              return json({ ok: true, verified: true, stale_local: true, checked_grids: gridProbes });
-            }
-
             return json({
-              error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled or may not belong to your GoBook account.`,
+              error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled on GoBook, or the GoBook page format may have changed — please cancel directly on gobook.co.za and let us know.`,
               candidates: candidates.slice(0, 5),
               checked_pages: pageProbes,
-              checked_grids: gridProbes,
-              my_bookings_preview: myHtml.slice(0, 2500),
+              my_bookings_preview: myHtml.slice(0, 4000),
             }, 404);
           }
 

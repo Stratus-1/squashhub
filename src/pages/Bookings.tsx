@@ -1730,7 +1730,7 @@ export default function Bookings() {
                       </Button>
                       {(bookingDetails as any).source === 'gobook' ? (() => {
                         const bd: any = bookingDetails;
-                        const ownsBooking = !!activeMember?.id && bd.club_member_id === activeMember.id;
+                        const ownsBooking = !!activeMember?.id && (bd.club_member_id === activeMember.id || nameMatchesActiveMember);
                         const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
                         const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
                         const disabledReason = !hasGobookCreds

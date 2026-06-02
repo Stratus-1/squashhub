@@ -649,125 +649,151 @@ Deno.serve(async (req) => {
             }, 400);
           }
 
-          // Find the slotId for the booked cell by re-fetching the grid for that
-          // date and locating the booker's row+court. Booked cells expose a
-          // checkbox with the PSSTId so the owner can untick to cancel.
-          const courtKey = String(court);
-          const grids = [
-            await fetchGrid(jar, date, court, courtKey),
-            await fetchGrid(jar, date, "any"),
+          // STEP 1 — find the BookingId (bid) for this booking by scraping
+          // MyBookings. GoBook's real cancel endpoint is POST /Bookings/Maintain
+          // with JSON { BookingId, ClientNotes, FocusedControl: "Cancel" } and
+          // BookingId is the numeric id surfaced in MyBookings rows as
+          // Details?bid=NNNNNNN (also used by Maintain links).
+          const myRes = await fetch(`${GOBOOK_BASE}/MyBookings`, {
+            headers: {
+              cookie: cookieHeader(jar),
+              "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+              "Referer": `${GOBOOK_BASE}/`,
+            },
+            redirect: "follow",
+          });
+          jarFromHeaders(myRes.headers, jar);
+          const myHtml = await myRes.text();
+
+          // Parse each "block" of MyBookings as the HTML chunk surrounding a
+          // Details?bid=NNN link and look for date + hour + court match.
+          // Date appears as "2026/06/03" or "03/06/2026" or "Wed 03 Jun 2026"
+          // depending on GoBook's locale; try a few permutations.
+          const isoDate = dateToGoBookKeyDate(date); // e.g. 2026-06-03
+          const [y, m, d] = isoDate.split("-");
+          const datePatterns = [
+            `${y}/${m}/${d}`,
+            `${d}/${m}/${y}`,
+            `${y}-${m}-${d}`,
+            `${d}-${m}-${y}`,
+            `${Number(d)} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(m)-1]} ${y}`,
+            `${Number(d)}/${Number(m)}/${y}`,
           ];
-          let slotId: string | null = null;
-          let providerConsultantId: string | null = null;
-          for (const g of grids) {
-            const row = g.rows.find((r) => r.startHour === startHour);
-            if (!row) continue;
-            const cell = row.courts.length === 1
-              ? row.courts[0]
-              : row.courts.find((c) => c.courtNumber === court);
-            if (cell?.slotId) {
-              slotId = cell.slotId;
-              providerConsultantId = cell.providerConsultantId;
-              break;
-            }
+          const hourStr = String(startHour).padStart(2, "0");
+          const timePatterns = [`${hourStr}:00`, `${hourStr}h00`, `${startHour}:00`];
+          const courtPatterns = [
+            `Court ${court}`,
+            `Court${court}`,
+            `Court #${court}`,
+            `Court No ${court}`,
+            `Court No. ${court}`,
+            `Crt ${court}`,
+            `Squash ${court}`,
+            `#${court}`,
+          ];
+
+          // Pull every bid candidate with a window of surrounding HTML to match against.
+          const bidRegex = /bid=(\d+)/gi;
+          const candidates: Array<{ bid: string; score: number; snippet: string }> = [];
+          const seen = new Set<string>();
+          let mm: RegExpExecArray | null;
+          while ((mm = bidRegex.exec(myHtml)) !== null) {
+            const bid = mm[1];
+            if (seen.has(bid)) continue;
+            seen.add(bid);
+            const start = Math.max(0, mm.index - 1500);
+            const end = Math.min(myHtml.length, mm.index + 1500);
+            const snippet = myHtml.slice(start, end);
+            const lower = snippet.toLowerCase();
+            const hasDate = datePatterns.some((p) => snippet.includes(p));
+            const hasTime = timePatterns.some((p) => snippet.includes(p));
+            const hasCourt = courtPatterns.some((p) => lower.includes(p.toLowerCase()));
+            const cancelled = /cancel(led)?/i.test(snippet);
+            const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 5 : 0);
+            candidates.push({ bid, score, snippet: snippet.slice(0, 400) });
           }
-          if (!slotId) {
+          candidates.sort((a, b) => b.score - a.score);
+
+          const best = candidates[0];
+          if (!best || best.score < 5) {
             return json({
-              error: `Couldn't find a cancellable slot for ${startHour}:00 on Court #${court}. The booking may already be cancelled, may not belong to your GoBook account, or may be inside the 1-hour cancellation window.`,
+              error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled or may not belong to your GoBook account.`,
+              candidates: candidates.slice(0, 5),
+              my_bookings_preview: myHtml.slice(0, 1500),
             }, 404);
           }
 
-          // POST to /Bookings/Delete (GoBook's standard cancel endpoint). The
-          // checkbox value (PSSTId) identifies the slot to cancel.
-          const form = new URLSearchParams();
-          form.set("ServiceId", SQUASH_SERVICE_ID);
-          form.set("ProviderId", CSIR_PROVIDER_ID);
-          form.set("ProviderConsultantId", providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(court) || ANY_COURT_CONSULTANT_ID);
-          form.set("BookingDate", dateToGoBookBookingDate(date));
-          form.set("PSSTIds", slotId);
+          const bookingId = best.bid;
 
-          // Try the JSON endpoint first (matches Insert), then form fallback.
-          const attempts: Array<{ url: string; status: number; ok: boolean; body: string }> = [];
-          const tryEndpoints = [
-            { url: `${GOBOOK_BASE}/Bookings/Delete`, json: true },
-            { url: `${GOBOOK_BASE}/Bookings/Cancel`, json: true },
-            { url: `${GOBOOK_BASE}/Bookings/Delete`, json: false },
-            { url: `${GOBOOK_BASE}/Bookings/Cancel`, json: false },
-          ];
-          let success = false;
-          for (const ep of tryEndpoints) {
-            const res = await fetch(ep.url, {
-              method: "POST",
-              headers: ep.json
-                ? {
-                  "Content-Type": "application/json; charset=utf-8",
-                  "Accept": "application/json, text/javascript, */*; q=0.01",
-                  "X-Requested-With": "XMLHttpRequest",
-                  "Referer": `${GOBOOK_BASE}/MyBookings`,
-                  "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-                  cookie: cookieHeader(jar),
-                }
-                : {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                  "X-Requested-With": "XMLHttpRequest",
-                  "Referer": `${GOBOOK_BASE}/MyBookings`,
-                  "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-                  cookie: cookieHeader(jar),
-                },
-              body: ep.json
-                ? JSON.stringify({
-                  ServiceId: SQUASH_SERVICE_ID,
-                  ProviderId: CSIR_PROVIDER_ID,
-                  ProviderConsultantId: providerConsultantId || CSIR_COURT_CONSULTANT_IDS.get(court) || ANY_COURT_CONSULTANT_ID,
-                  BookingDate: dateToGoBookBookingDate(date),
-                  PSSTIds: slotId,
-                })
-                : form.toString(),
+          // STEP 2 — POST Maintain with FocusedControl=Cancel.
+          const payload = {
+            BookingId: bookingId,
+            ClientNotes: String(body.client_notes || "Cancelled via SquashHub"),
+            FocusedControl: "Cancel",
+          };
+          const cancelRes = await fetch(`${GOBOOK_BASE}/Bookings/Maintain`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+              "Accept": "application/json, text/javascript, */*; q=0.01",
+              "X-Requested-With": "XMLHttpRequest",
+              "Referer": `${GOBOOK_BASE}/Bookings/Details?bid=${bookingId}`,
+              "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+              cookie: cookieHeader(jar),
+            },
+            body: JSON.stringify(payload),
+          });
+          jarFromHeaders(cancelRes.headers, jar);
+          const cancelBody = await cancelRes.text();
+
+          if (!cancelRes.ok) {
+            return json({
+              error: "GoBook rejected the cancellation.",
+              status: cancelRes.status,
+              response: cancelBody.slice(0, 1000),
+              booking_id: bookingId,
+            }, 502);
+          }
+
+          // STEP 3 — verify by re-fetching MyBookings; the same bid should now
+          // be marked Cancelled (or the row removed).
+          let verified = false;
+          let verifyPreview = "";
+          for (let attempt = 0; attempt < 3 && !verified; attempt++) {
+            if (attempt > 0) await new Promise((r) => setTimeout(r, 700));
+            const vRes = await fetch(`${GOBOOK_BASE}/MyBookings`, {
+              headers: {
+                cookie: cookieHeader(jar),
+                "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+                "Referer": `${GOBOOK_BASE}/`,
+              },
+              redirect: "follow",
             });
-            jarFromHeaders(res.headers, jar);
-            const txt = await res.text();
-            attempts.push({ url: ep.url, status: res.status, ok: res.ok, body: txt.slice(0, 500) });
-            if (res.ok && !/error|invalid|failed/i.test(txt)) {
-              success = true;
+            jarFromHeaders(vRes.headers, jar);
+            const vHtml = await vRes.text();
+            const idx = vHtml.indexOf(`bid=${bookingId}`);
+            if (idx === -1) {
+              verified = true; // row gone entirely
               break;
             }
-          }
-
-          if (!success) {
-            return json({
-              error: "GoBook rejected the cancellation. It may be inside the 1-hour cancel window, already cancelled, or not owned by your account.",
-              attempts,
-              slot_id: slotId,
-            }, 409);
-          }
-
-          // Verify with GoBook: re-fetch the grid and confirm the slot is now
-          // free (or at least no longer booked by this user). We only mirror
-          // the cancel locally once GoBook itself says the slot is bookable.
-          let verified = false;
-          let verifyCell: unknown = null;
-          for (let attempt = 0; attempt < 3 && !verified; attempt++) {
-            // small backoff — GoBook can lag a beat after Delete returns 200
-            if (attempt > 0) await new Promise((r) => setTimeout(r, 600));
-            const vg = await fetchGrid(jar, date, court, String(court));
-            const vRow = vg.rows.find((r) => r.startHour === startHour);
-            const vCell = vRow?.courts.length === 1
-              ? vRow.courts[0]
-              : vRow?.courts.find((c) => c.courtNumber === court);
-            verifyCell = vCell ?? null;
-            if (vCell?.free) verified = true;
+            const window2 = vHtml.slice(Math.max(0, idx - 800), Math.min(vHtml.length, idx + 800));
+            verifyPreview = window2.slice(0, 600);
+            if (/cancel(led)?/i.test(window2)) {
+              verified = true;
+              break;
+            }
           }
 
           if (!verified) {
             return json({
-              error: "GoBook accepted the cancel request but the slot still shows as booked when we re-checked. Please refresh gobook.co.za to confirm.",
-              attempts,
-              slot_id: slotId,
-              verify_cell: verifyCell,
+              error: "GoBook accepted the cancel request but the booking still appears active when we re-checked. Please refresh gobook.co.za to confirm.",
+              booking_id: bookingId,
+              response: cancelBody.slice(0, 500),
+              verify_preview: verifyPreview,
             }, 502);
           }
 
-          // Mirror the cancellation locally so the UI updates immediately.
+          // Mirror the cancellation locally.
           await adminClient
             .from("bookings")
             .delete()
@@ -776,7 +802,7 @@ Deno.serve(async (req) => {
             .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
             .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`);
 
-          return json({ ok: true, verified: true, slot_id: slotId, attempts });
+          return json({ ok: true, verified: true, booking_id: bookingId, match_score: best.score });
         }
 
         // book

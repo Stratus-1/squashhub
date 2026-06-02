@@ -445,16 +445,29 @@ export default function Bookings() {
 
   // Does the current member have GoBook credentials saved? Drives the banner.
   const { data: gobookCredInfo } = useQuery({
-    queryKey: ["member-gobook-cred-info", activeMember?.id],
-    enabled: !!activeMember?.id && !!(myClub as any)?.uses_gobook,
+    queryKey: ["member-gobook-cred-info", activeMember?.id, user?.id],
+    enabled: (!!activeMember?.id || !!user?.id) && !!(myClub as any)?.uses_gobook,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // RLS allows reads where user_id = auth.uid(). Prefer the active member's
+      // row, but fall back to any cred owned by the current user so the banner
+      // recognizes saved credentials even when account context differs.
+      let q = supabase
         .from("member_gobook_credentials")
-        .select("club_member_id, last_verification_status, last_verified_at, is_sync_source")
-        .eq("club_member_id", activeMember!.id)
-        .maybeSingle();
-      if (error) return null;
-      return data;
+        .select("club_member_id, user_id, last_verification_status, last_verified_at, is_sync_source");
+      if (activeMember?.id) {
+        const { data } = await q.eq("club_member_id", activeMember.id).maybeSingle();
+        if (data) return data;
+      }
+      if (user?.id) {
+        const { data } = await supabase
+          .from("member_gobook_credentials")
+          .select("club_member_id, user_id, last_verification_status, last_verified_at, is_sync_source")
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle();
+        return data ?? null;
+      }
+      return null;
     },
     refetchInterval: 60_000,
   });

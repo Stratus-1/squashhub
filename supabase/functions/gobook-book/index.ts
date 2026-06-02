@@ -826,7 +826,7 @@ Deno.serve(async (req) => {
           let rowMatch: RegExpExecArray | null;
           while ((rowMatch = rowRegex.exec(myHtml)) !== null) {
             const rowHtml = rowMatch[1];
-            const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|booking(?:id)?[,(\s'"]+|\/Bookings\/Details\/?)(\d+)/i);
+            const bidMatch = rowHtml.match(/(?:bid\s*[=:?&]\s*|bookingid["'\s:=,]+|bookingid\s*[=:]\s*|booking(?:id)?[,(:\s'"]+|\/Bookings\/Details\/?(?:\?bid=|\?BookingId=)?)(\d+)/i);
             if (!bidMatch?.[1] || rowSeen.has(bidMatch[1])) continue;
             const lower = plain(rowHtml);
             if (/\bcancelled\b/i.test(lower)) continue;

@@ -560,7 +560,9 @@ export default function Bookings() {
   });
 
   const allCourtBookings = useMemo(() => {
-    const normalBookings = (bookings as any[] | undefined) || [];
+    const normalBookings = ((bookings as any[] | undefined) || []).filter(
+      (b: any) => !b.status || b.status === "active"
+    );
     const merged = new Map<string, any>();
 
     for (const b of normalBookings) {

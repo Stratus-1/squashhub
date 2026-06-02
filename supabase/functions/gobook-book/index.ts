@@ -826,6 +826,7 @@ Deno.serve(async (req) => {
             return json({
               error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled or may not belong to your GoBook account.`,
               candidates: candidates.slice(0, 5),
+              checked_pages: pageProbes,
               checked_grids: gridProbes,
               my_bookings_preview: myHtml.slice(0, 2500),
             }, 404);

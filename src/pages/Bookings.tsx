@@ -715,6 +715,16 @@ export default function Bookings() {
       }
     }
 
+    setSubmittingBooking(true);
+    const usingGobook =
+      !!(myClub as any)?.uses_gobook &&
+      ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
+      !!activeMember?.id;
+    const progressToastId = usingGobook
+      ? toast.loading("Submitting booking to GoBook…", {
+          description: "This can take 10–20 seconds. Please don't close this window.",
+        })
+      : null;
     try {
       const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
       if (!isOnline) {

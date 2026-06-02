@@ -899,11 +899,11 @@ Deno.serve(async (req) => {
           let verifyPreview = "";
           for (let attempt = 0; attempt < 3 && !verified; attempt++) {
             if (attempt > 0) await new Promise((r) => setTimeout(r, 700));
-            const vRes = await fetch(`${GOBOOK_BASE}/MyBookings`, {
+            const vRes = await fetch(`${GOBOOK_BASE}/Bookings/ClientUpcoming`, {
               headers: {
                 cookie: cookieHeader(jar),
                 "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-                "Referer": `${GOBOOK_BASE}/`,
+                "Referer": `${GOBOOK_BASE}/Bookings/Client`,
               },
               redirect: "follow",
             });

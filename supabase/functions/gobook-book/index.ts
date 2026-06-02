@@ -654,16 +654,36 @@ Deno.serve(async (req) => {
           // with JSON { BookingId, ClientNotes, FocusedControl: "Cancel" } and
           // BookingId is the numeric id surfaced in MyBookings rows as
           // Details?bid=NNNNNNN (also used by Maintain links).
-          const myRes = await fetch(`${GOBOOK_BASE}/MyBookings`, {
-            headers: {
-              cookie: cookieHeader(jar),
-              "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-              "Referer": `${GOBOOK_BASE}/`,
-            },
-            redirect: "follow",
-          });
-          jarFromHeaders(myRes.headers, jar);
-          const myHtml = await myRes.text();
+          const bookingPagePaths = [
+            "/Bookings",
+            "/Bookings/Index",
+            "/MyBookings",
+            "/Bookings/MyBookings",
+            "/Home/MyBookings",
+            "/Accounts/Bookings",
+          ];
+          let myHtml = "";
+          const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number }> = [];
+          for (const path of bookingPagePaths) {
+            const myRes = await fetch(`${GOBOOK_BASE}${path}`, {
+              headers: {
+                cookie: cookieHeader(jar),
+                "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+                "Referer": `${GOBOOK_BASE}/`,
+              },
+              redirect: "follow",
+            });
+            jarFromHeaders(myRes.headers, jar);
+            const html = await myRes.text();
+            const probeCompact = compact(html);
+            const probePlain = plain(html);
+            const hasAccepted = /accepted/i.test(probePlain);
+            const hasCourt = hasCourtMatch(probePlain);
+            const hasDate = datePatterns.some((p) => probeCompact.includes(p));
+            pageProbes.push({ path, status: myRes.status, finalUrl: myRes.url, hasAccepted, hasCourt, hasDate, htmlLen: html.length });
+            if (!myHtml || (hasAccepted && hasCourt && hasDate)) myHtml = html;
+            if (hasAccepted && hasCourt && hasDate) break;
+          }
 
           // Parse each "block" of MyBookings as the HTML chunk surrounding a
           // booking id link/field and look for date + hour + court match.

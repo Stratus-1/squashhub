@@ -1650,9 +1650,10 @@ export default function Bookings() {
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {bookingDetails && (() => {
-              const isBooker = bookingDetails.user_id === user?.id;
+              const isBooker = bookingDetails.user_id === user?.id || (!!activeMember?.id && (bookingDetails as any).club_member_id === activeMember.id);
               const isOpponent = !!(user?.id && (bookingDetails as any).opponent_id === user.id);
               const isAdmin = isMemberAdmin;
+              const isGoBookBooking = (bookingDetails as any).source === 'gobook';
               const bookingDateStr = String(bookingDetails.date);
               const endTimeStr = String(bookingDetails.end_time || "23:59:59").slice(0, 5);
               const bookingEnd = new Date(`${bookingDateStr}T${endTimeStr}`);
@@ -1682,7 +1683,6 @@ export default function Bookings() {
                     </Button>
                   )}
                   {isBooker && (
-                    <>
                       <Button
                         variant="outline"
                         size="sm"
@@ -1703,9 +1703,12 @@ export default function Bookings() {
                       >
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
-                      {(bookingDetails as any).source === 'gobook' ? (() => {
+                  )}
+                  {(isBooker || isGoBookBooking) && (
+                    <>
+                      {isGoBookBooking ? (() => {
                         const bd: any = bookingDetails;
-                        const ownsBooking = !!activeMember?.id && bd.club_member_id === activeMember.id;
+                        const ownsBooking = !!activeMember?.id && (!bd.club_member_id || bd.club_member_id === activeMember.id);
                         const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
                         const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
                         const disabledReason = !hasGobookCreds

@@ -7,9 +7,12 @@
 //   verify_credentials   { club_member_id }
 //   debug_grid           { club_member_id, date (YYYY-MM-DD), court? }     -> parsed grid for inspection
 //   book                 { club_member_id, date (YYYY-MM-DD), start_hour (0-23), court? (1..4 or "any"), notes?, sms?, email? }
+//   debug_my_bookings    { club_member_id }                                -> raw /MyBookings HTML preview (discovery)
+//   cancel               { club_member_id, date (YYYY-MM-DD), start_hour (0-23), court (1..4) }
 //
 // Defaults: ServiceId=6 (Squash), ProviderId=234 (CSIR), ProviderConsultantId=0 ("Any" court).
 // Time slots are hourly (00:00-01:00 ... 23:00-24:00) on a 4-court grid.
+// GoBook restriction: bookings cannot be cancelled within ~1 hour of start time.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 

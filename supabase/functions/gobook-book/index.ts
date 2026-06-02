@@ -412,17 +412,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
     const clubMemberId = body.club_member_id as string | undefined;
+    let authenticatedMemberName: string | null = null;
 
     if (clubMemberId) {
       const { data: cm, error: cmErr } = await adminClient
         .from("club_members")
-        .select("id, user_id")
+        .select("id, user_id, name")
         .eq("id", clubMemberId)
         .maybeSingle();
       if (cmErr) return json({ error: cmErr.message }, 500);
       if (!cm || cm.user_id !== userId) {
         return json({ error: "Not your member record" }, 403);
       }
+      authenticatedMemberName = String(cm.name || "").trim() || null;
     }
 
     switch (action) {
@@ -750,7 +752,9 @@ Deno.serve(async (req) => {
             const hasDate = datePatterns.some((p) => compactSnippet.includes(p));
             const hasTime = hasTimeMatch(lower);
             const hasCourt = hasCourtMatch(lower);
-            const cancelled = /cancel(led)?/i.test(snippet);
+            // Active rows include a "Cancel" button/link, so only treat the row
+            // as already cancelled when the status text says cancelled/canceled.
+            const cancelled = /\bcancell?ed\b/i.test(snippet);
             const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 8 : 0);
             candidates.push({ bid, score, snippet: snippet.slice(0, 400), hasDate, hasTime, hasCourt });
           }
@@ -766,7 +770,7 @@ Deno.serve(async (req) => {
             const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|booking(?:id)?[,(\s'"]+|\/Bookings\/Details\/?)(\d+)/i);
             if (!bidMatch?.[1] || rowSeen.has(bidMatch[1])) continue;
             const lower = plain(rowHtml);
-            if (/cancelled/i.test(lower)) continue;
+            if (/\bcancell?ed\b/i.test(lower)) continue;
             const compactRow = compact(rowHtml);
             const hasDate = datePatterns.some((p) => compactRow.includes(p));
             const hasTime = hasTimeMatch(lower);
@@ -841,7 +845,7 @@ Deno.serve(async (req) => {
           // no anti-forgery token.
           const payload: Record<string, string> = {
             BookingId: String(bookingId),
-            ClientNotes: String(body.client_notes || "Cancelled via SquashHub"),
+            ClientNotes: String(body.client_notes || authenticatedMemberName || "Cancelled via SquashHub"),
             FocusedControl: "Cancel",
           };
           const cancelRes = await fetch(`${GOBOOK_BASE}/Bookings/Maintain`, {
@@ -891,7 +895,7 @@ Deno.serve(async (req) => {
             }
             const window2 = vHtml.slice(Math.max(0, idx - 800), Math.min(vHtml.length, idx + 800));
             verifyPreview = window2.slice(0, 600);
-            if (/cancel(led)?/i.test(window2)) {
+            if (/\bcancell?ed\b/i.test(window2)) {
               verified = true;
               break;
             }

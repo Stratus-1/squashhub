@@ -1111,7 +1111,9 @@ export default function Bookings() {
           <Card className={hasGobookCreds ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10"}>
             <CardContent className="p-3 flex items-start gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${hasGobookCreds ? "bg-emerald-500/20" : "bg-amber-500/20"}`}>
-                {hasGobookCreds ? (
+                {gobookCredInfoLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-amber-600 dark:text-amber-400" />
+                ) : hasGobookCreds ? (
                   <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -1119,17 +1121,21 @@ export default function Bookings() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">
-                  {hasGobookCreds
+                  {gobookCredInfoLoading
+                    ? "Checking your GoBook connection…"
+                    : hasGobookCreds
                     ? "Two-way sync with GoBook is active"
                     : "Connect your GoBook account to enable two-way sync"}
                 </p>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-                  {hasGobookCreds
+                  {gobookCredInfoLoading
+                    ? "Please wait while SquashHub checks your saved GoBook login."
+                    : hasGobookCreds
                     ? "Book courts here and we'll push them to GoBook under your account. Bookings made on GoBook also appear in the grid below."
                     : "Go to My Account → GoBook and enter your GoBook login. Until then, bookings made here won't be pushed to GoBook."}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {!hasGobookCreds && (
+                  {!gobookCredInfoLoading && !hasGobookCreds && (
                     <Button size="sm" onClick={() => navigate("/my-account")}>
                       Add GoBook details
                     </Button>

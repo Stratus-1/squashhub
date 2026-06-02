@@ -1898,7 +1898,6 @@ export default function Bookings() {
                 ? ((myClub as any)?.uses_gobook ? "Submitting to GoBook…" : "Booking…")
                 : "Confirm Booking"}
             </Button>
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

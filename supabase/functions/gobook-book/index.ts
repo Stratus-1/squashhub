@@ -701,16 +701,21 @@ Deno.serve(async (req) => {
               || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text);
           };
 
-          // GoBook's /Bookings/Client page is just an accordion shell; the
-          // actual bookings table is lazy-loaded via AJAX into #UpcomingBookings
-          // (and #PastBookings). We probe the known partials directly so we
-          // can read the real <tr> rows that contain the BookingId.
+          // GoBook's /Bookings/Client page is mostly an accordion shell; the
+          // bookings table is loaded by its inline scripts. Start with the shell
+          // and discover the real AJAX URLs from its own script instead of only
+          // relying on hard-coded guesses.
           const bookingPagePaths = [
+            "/Bookings/Client",
+            "/Bookings/ClientUpcoming",
+            "/Bookings/ClientPast",
+            "/Bookings/GetClientBookings",
+            "/Bookings/GetBookings",
+            "/Bookings/List",
             "/Bookings/UpcomingBookings",
             "/Bookings/Upcoming",
             "/Bookings/PastBookings",
             "/Bookings/Past",
-            "/Bookings/Client",
             "/Bookings",
             "/Bookings/Index",
             "/MyBookings",
@@ -721,7 +726,35 @@ Deno.serve(async (req) => {
           let myHtml = "";
           const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number; hasBid: boolean }> = [];
           const combinedParts: string[] = [];
-          for (const path of bookingPagePaths) {
+          const addBookingPath = (raw: string | null | undefined) => {
+            if (!raw) return;
+            let path = raw.replace(/&amp;/g, "&").trim();
+            if (!path || /^(?:javascript:|#|mailto:)/i.test(path)) return;
+            if (/^https?:\/\//i.test(path)) {
+              try {
+                const u = new URL(path);
+                if (u.origin !== GOBOOK_BASE) return;
+                path = `${u.pathname}${u.search}`;
+              } catch {
+                return;
+              }
+            }
+            if (!path.startsWith("/")) path = `/${path}`;
+            if (!/book/i.test(path) || /\.(?:css|js|png|jpg|jpeg|gif|ico)(?:\?|$)/i.test(path)) return;
+            if (!bookingPagePaths.includes(path)) bookingPagePaths.push(path);
+          };
+          const discoverBookingPaths = (html: string) => {
+            for (const re of [
+              /\b(?:url|href|action)\s*[:=]\s*["']([^"']*book[^"']*)["']/gi,
+              /\.(?:load|get|post)\s*\(\s*["']([^"']*book[^"']*)["']/gi,
+              /["'](\/[^"']*book[^"']*)["']/gi,
+            ]) {
+              let match: RegExpExecArray | null;
+              while ((match = re.exec(html)) !== null) addBookingPath(match[1]);
+            }
+          };
+          for (let i = 0; i < bookingPagePaths.length; i++) {
+            const path = bookingPagePaths[i];
             const myRes = await fetch(`${GOBOOK_BASE}${path}`, {
               headers: {
                 cookie: cookieHeader(jar),
@@ -734,6 +767,7 @@ Deno.serve(async (req) => {
             });
             jarFromHeaders(myRes.headers, jar);
             const html = await myRes.text();
+            discoverBookingPaths(html);
             const probeCompact = compact(html);
             const probePlain = plain(html);
             const hasAccepted = /accepted/i.test(probePlain);

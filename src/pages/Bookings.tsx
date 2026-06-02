@@ -1344,7 +1344,7 @@ export default function Bookings() {
                         <motion.div
                           whileTap={isPastSlot && !booking ? undefined : { scale: 0.97 }}
                           className={cn(
-                            "relative h-10 rounded-lg flex items-center justify-center text-xs transition-all border",
+                            "relative h-10 min-w-0 overflow-hidden rounded-lg flex items-center justify-center text-xs transition-all border",
                             isPastSlot && !booking
                               ? "bg-muted/40 border-border/30 cursor-not-allowed opacity-50"
                               : booking
@@ -1376,7 +1376,7 @@ export default function Bookings() {
                             </span>
                           )}
                           {booking ? (
-                            <div className="px-1.5 min-w-0 text-center leading-tight">
+                            <div className="px-1.5 w-full min-w-0 text-center leading-tight">
                               <p className={cn(
                                 "font-semibold text-[11px] truncate",
                                 isBlocked

@@ -2760,8 +2760,8 @@ export default function LeagueGameDetail() {
                                 {displayScores[gi]?.away ?? ""}
                               </span>
                             ))}
-                            <span className="text-center text-xs font-bold py-0.5">{pos.completed ? pr.awayWins : ""}</span>
-                            <span className="text-center text-xs font-bold py-0.5 text-primary">{pos.completed ? awayTotalPts : ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5">{(pos.completed || pos.scores.length > 0) ? pr.awayWins : ""}</span>
+                            <span className="text-center text-xs font-bold py-0.5 text-primary">{(pos.completed || pos.scores.length > 0) ? awayTotalPts : ""}</span>
                             {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
                               {(() => {

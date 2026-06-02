@@ -738,11 +738,12 @@ Deno.serve(async (req) => {
           // a far-right action cell, so also score whole <tr> rows rather than
           // only a small window around the id.
           const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+          const rowSeen = new Set<string>();
           let rowMatch: RegExpExecArray | null;
           while ((rowMatch = rowRegex.exec(myHtml)) !== null) {
             const rowHtml = rowMatch[1];
-            const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/i);
-            if (!bidMatch?.[1] || seen.has(bidMatch[1])) continue;
+            const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|booking(?:id)?[,(\s'"]+|\/Bookings\/Details\/?)(\d+)/i);
+            if (!bidMatch?.[1] || rowSeen.has(bidMatch[1])) continue;
             const lower = plain(rowHtml);
             if (/cancelled/i.test(lower)) continue;
             const compactRow = compact(rowHtml);
@@ -752,7 +753,7 @@ Deno.serve(async (req) => {
             const accepted = /accepted/i.test(lower);
             const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 3 : 0) + (accepted ? 2 : 0);
             candidates.push({ bid: bidMatch[1], score, snippet: lower.slice(0, 400), hasDate, hasTime, hasCourt });
-            seen.add(bidMatch[1]);
+            rowSeen.add(bidMatch[1]);
           }
           candidates.sort((a, b) => b.score - a.score);
 

@@ -700,9 +700,27 @@ Deno.serve(async (req) => {
               || new RegExp(`\\bsquash(?:\\s+court)?\\s*${escapedCourt}\\b`, "i").test(text)
               || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text);
           };
+          const extractBookingIds = (html: string): string[] => {
+            const ids = new Set<string>();
+            const patterns = [
+              /\bBookingId\b["'\s:=]+["']?(\d{4,})/gi,
+              /\bbooking[_-]?id\b["'\s:=]+["']?(\d{4,})/gi,
+              /\bbid\s*=\s*["']?(\d{4,})/gi,
+              /\/Bookings\/(?:Details|Maintain)\/?(?:\?bid=)?(\d{4,})/gi,
+              /\b(?:Maintain|CancelBooking|Details)\s*\(\s*["']?(\d{4,})/gi,
+              /\bdata-(?:booking-id|bid)\s*=\s*["'](\d{4,})["']/gi,
+            ];
+            for (const pattern of patterns) {
+              let match: RegExpExecArray | null;
+              while ((match = pattern.exec(html)) !== null) ids.add(match[1]);
+            }
+            return [...ids];
+          };
 
           const bookingPagePaths = [
             "/Bookings/Client",
+            "/Bookings/ClientUpcoming",
+            "/Bookings/ClientPast",
             "/Bookings",
             "/Bookings/Index",
             "/MyBookings",
@@ -711,6 +729,7 @@ Deno.serve(async (req) => {
             "/Accounts/Bookings",
           ];
           let myHtml = "";
+          const allBookingHtml = [] as Array<{ path: string; html: string }>;
           const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number }> = [];
           for (const path of bookingPagePaths) {
             const myRes = await fetch(`${GOBOOK_BASE}${path}`, {
@@ -729,12 +748,18 @@ Deno.serve(async (req) => {
             const hasCourt = hasCourtMatch(probePlain);
             const hasDate = datePatterns.some((p) => probeCompact.includes(p));
             pageProbes.push({ path, status: myRes.status, finalUrl: myRes.url, hasAccepted, hasCourt, hasDate, htmlLen: html.length });
+            if (myRes.ok && extractBookingIds(html).length > 0) {
+              allBookingHtml.push({ path, html });
+            }
             if (!myHtml || (hasAccepted && hasCourt && hasDate)) myHtml = html;
             if (hasAccepted && hasCourt && hasDate) break;
           }
+          if (allBookingHtml.length > 0) {
+            myHtml = allBookingHtml.map((p) => `<!-- ${p.path} -->\n${p.html}`).join("\n");
+          }
 
           // Pull every bid candidate with a window of surrounding HTML to match against.
-          const bidRegex = /(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/gi;
+          const bidRegex = /(?:bid=|booking[_-]?id["'\s:=]+|bookingid=|bookingid["'\s:=]+|\/Bookings\/(?:Details|Maintain)\/?(?:\?bid=)?)(\d+)/gi;
           const candidates: Array<{ bid: string; score: number; snippet: string; hasDate: boolean; hasTime: boolean; hasCourt: boolean }> = [];
           const seen = new Set<string>();
           let mm: RegExpExecArray | null;
@@ -874,11 +899,11 @@ Deno.serve(async (req) => {
           let verifyPreview = "";
           for (let attempt = 0; attempt < 3 && !verified; attempt++) {
             if (attempt > 0) await new Promise((r) => setTimeout(r, 700));
-            const vRes = await fetch(`${GOBOOK_BASE}/MyBookings`, {
+            const vRes = await fetch(`${GOBOOK_BASE}/Bookings/ClientUpcoming`, {
               headers: {
                 cookie: cookieHeader(jar),
                 "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-                "Referer": `${GOBOOK_BASE}/`,
+                "Referer": `${GOBOOK_BASE}/Bookings/Client`,
               },
               redirect: "follow",
             });

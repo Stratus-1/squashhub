@@ -961,6 +961,14 @@ export default function Bookings() {
       }
 
       toast.error(err.message || "Failed to book");
+    } finally {
+      if (progressToastId !== null) {
+        toast.dismiss(progressToastId);
+        if (usingGobook) {
+          toast.success("Booking submitted to GoBook");
+        }
+      }
+      setSubmittingBooking(false);
     }
   };
 

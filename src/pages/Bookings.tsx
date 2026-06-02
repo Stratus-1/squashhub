@@ -815,13 +815,13 @@ export default function Bookings() {
       const opponentMemberId = bookingDialog.opponentId
         ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.memberId || null
         : null;
+      let gobookMirror: { court: number; externalId: string; externalBookerName: string | null } | null = null;
 
       if (
         (myClub as any)?.uses_gobook &&
         ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
         activeMember?.id
       ) {
-        let gobookMirror: { court: number; externalId: string; externalBookerName: string | null } | null = null;
         if (myClub?.id) {
           const { error: syncError } = await supabase.functions.invoke("gobook-sync", {
             body: { club_id: myClub.id, days: 2 },
@@ -870,7 +870,7 @@ export default function Bookings() {
         if (bookedCourt) {
           gobookMirror = {
             court: bookedCourt,
-            externalId: `${dateStr.replaceAll("-", "")}-${bookedCourt}-${String(startHour).padStart(2, "0")}`,
+            externalId: `${dateStr.replace(/-/g, "")}-${bookedCourt}-${String(startHour).padStart(2, "0")}`,
             externalBookerName: labelA || null,
           };
         }

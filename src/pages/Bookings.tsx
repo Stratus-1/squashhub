@@ -444,27 +444,37 @@ export default function Bookings() {
   };
 
   // Does the current member have GoBook credentials saved? Drives the banner.
-  const { data: gobookCredInfo } = useQuery({
+  const { data: gobookCredInfo, isLoading: gobookCredInfoLoading } = useQuery({
     queryKey: ["member-gobook-cred-info", activeMember?.id, user?.id],
     enabled: (!!activeMember?.id || !!user?.id) && !!(myClub as any)?.uses_gobook,
     queryFn: async () => {
-      // RLS allows reads where user_id = auth.uid(). Prefer the active member's
-      // row, but fall back to any cred owned by the current user so the banner
-      // recognizes saved credentials even when account context differs.
-      let q = supabase
-        .from("member_gobook_credentials")
-        .select("club_member_id, user_id, last_verification_status, last_verified_at, is_sync_source");
+      // Use the GoBook backend helper first because it uses the same member
+      // ownership check as saving/booking credentials. This avoids the Courts
+      // banner showing the setup prompt while the direct table read is blocked
+      // or still settling after sign-in.
       if (activeMember?.id) {
-        const { data } = await q.eq("club_member_id", activeMember.id).maybeSingle();
-        if (data) return data;
+        const { data, error } = await supabase.functions.invoke("gobook-book", {
+          body: { action: "get_credentials_meta", club_member_id: activeMember.id },
+        });
+        if (!error && (data as any)?.has_credentials) {
+          return {
+            club_member_id: activeMember.id,
+            user_id: user?.id ?? null,
+            last_verification_status: (data as any).last_verification_status ?? null,
+            last_verified_at: (data as any).last_verified_at ?? null,
+            is_sync_source: true,
+          };
+        }
       }
       if (user?.id) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("member_gobook_credentials")
           .select("club_member_id, user_id, last_verification_status, last_verified_at, is_sync_source")
           .eq("user_id", user.id)
+          .eq("is_sync_source", true)
           .limit(1)
           .maybeSingle();
+        if (error) throw error;
         return data ?? null;
       }
       return null;
@@ -1101,7 +1111,9 @@ export default function Bookings() {
           <Card className={hasGobookCreds ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10"}>
             <CardContent className="p-3 flex items-start gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${hasGobookCreds ? "bg-emerald-500/20" : "bg-amber-500/20"}`}>
-                {hasGobookCreds ? (
+                {gobookCredInfoLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-amber-600 dark:text-amber-400" />
+                ) : hasGobookCreds ? (
                   <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -1109,17 +1121,21 @@ export default function Bookings() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">
-                  {hasGobookCreds
+                  {gobookCredInfoLoading
+                    ? "Checking your GoBook connection…"
+                    : hasGobookCreds
                     ? "Two-way sync with GoBook is active"
                     : "Connect your GoBook account to enable two-way sync"}
                 </p>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-                  {hasGobookCreds
+                  {gobookCredInfoLoading
+                    ? "Please wait while SquashHub checks your saved GoBook login."
+                    : hasGobookCreds
                     ? "Book courts here and we'll push them to GoBook under your account. Bookings made on GoBook also appear in the grid below."
                     : "Go to My Account → GoBook and enter your GoBook login. Until then, bookings made here won't be pushed to GoBook."}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {!hasGobookCreds && (
+                  {!gobookCredInfoLoading && !hasGobookCreds && (
                     <Button size="sm" onClick={() => navigate("/my-account")}>
                       Add GoBook details
                     </Button>

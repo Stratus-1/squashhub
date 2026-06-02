@@ -729,6 +729,7 @@ Deno.serve(async (req) => {
             "/Accounts/Bookings",
           ];
           let myHtml = "";
+          const allBookingHtml = [] as Array<{ path: string; html: string }>;
           const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number }> = [];
           for (const path of bookingPagePaths) {
             const myRes = await fetch(`${GOBOOK_BASE}${path}`, {
@@ -747,12 +748,18 @@ Deno.serve(async (req) => {
             const hasCourt = hasCourtMatch(probePlain);
             const hasDate = datePatterns.some((p) => probeCompact.includes(p));
             pageProbes.push({ path, status: myRes.status, finalUrl: myRes.url, hasAccepted, hasCourt, hasDate, htmlLen: html.length });
+            if (myRes.ok && extractBookingIds(html).length > 0) {
+              allBookingHtml.push({ path, html });
+            }
             if (!myHtml || (hasAccepted && hasCourt && hasDate)) myHtml = html;
             if (hasAccepted && hasCourt && hasDate) break;
           }
+          if (allBookingHtml.length > 0) {
+            myHtml = allBookingHtml.map((p) => `<!-- ${p.path} -->\n${p.html}`).join("\n");
+          }
 
           // Pull every bid candidate with a window of surrounding HTML to match against.
-          const bidRegex = /(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/gi;
+          const bidRegex = /(?:bid=|booking[_-]?id["'\s:=]+|bookingid=|bookingid["'\s:=]+|\/Bookings\/(?:Details|Maintain)\/?(?:\?bid=)?)(\d+)/gi;
           const candidates: Array<{ bid: string; score: number; snippet: string; hasDate: boolean; hasTime: boolean; hasCourt: boolean }> = [];
           const seen = new Set<string>();
           let mm: RegExpExecArray | null;

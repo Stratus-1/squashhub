@@ -1376,7 +1376,7 @@ export default function Bookings() {
                             </span>
                           )}
                           {booking ? (
-                            <div className="px-1.5 min-w-0 text-center leading-tight">
+                            <div className="px-1.5 w-full min-w-0 text-center leading-tight">
                               <p className={cn(
                                 "font-semibold text-[11px] truncate",
                                 isBlocked

@@ -733,6 +733,27 @@ Deno.serve(async (req) => {
             const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 8 : 0);
             candidates.push({ bid, score, snippet: snippet.slice(0, 400), hasDate, hasTime, hasCourt });
           }
+
+          // GoBook's Upcoming Bookings table sometimes places the booking id in
+          // a far-right action cell, so also score whole <tr> rows rather than
+          // only a small window around the id.
+          const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+          let rowMatch: RegExpExecArray | null;
+          while ((rowMatch = rowRegex.exec(myHtml)) !== null) {
+            const rowHtml = rowMatch[1];
+            const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/i);
+            if (!bidMatch?.[1] || seen.has(bidMatch[1])) continue;
+            const lower = plain(rowHtml);
+            if (/cancelled/i.test(lower)) continue;
+            const compactRow = compact(rowHtml);
+            const hasDate = datePatterns.some((p) => compactRow.includes(p));
+            const hasTime = hasTimeMatch(lower);
+            const hasCourt = hasCourtMatch(lower);
+            const accepted = /accepted/i.test(lower);
+            const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 3 : 0) + (accepted ? 2 : 0);
+            candidates.push({ bid: bidMatch[1], score, snippet: lower.slice(0, 400), hasDate, hasTime, hasCourt });
+            seen.add(bidMatch[1]);
+          }
           candidates.sort((a, b) => b.score - a.score);
 
           // Accept a candidate if it matches time + (court OR date) — GoBook's
@@ -742,19 +763,6 @@ Deno.serve(async (req) => {
           const acceptable = !!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5;
           if (!acceptable) {
             const bookingId = String(body.booking_id || "").trim();
-            let confirmedLocalBooking = false;
-            if (bookingId) {
-              const { data: localBooking } = await adminClient
-                .from("bookings")
-                .select("id, court_id, date, start_time, source, club_member_id")
-                .eq("id", bookingId)
-                .eq("source", "gobook")
-                .eq("club_member_id", clubMemberId)
-                .eq("date", date)
-                .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
-                .maybeSingle();
-              confirmedLocalBooking = !!localBooking;
-            }
             let liveSlotFree = false;
             const gridProbes: Array<{ label: string; rowFound: boolean; courtFound: boolean; free?: boolean; bookerName?: string | null }> = [];
             const inspectGrid = async (label: string, gridCourt: number | "any", key?: string) => {
@@ -773,7 +781,7 @@ Deno.serve(async (req) => {
               console.warn("gobook cancel stale-check grid failed", (e as Error).message);
             }
 
-            if (liveSlotFree || confirmedLocalBooking) {
+            if (liveSlotFree) {
               if (bookingId) {
                 await adminClient
                   .from("bookings")

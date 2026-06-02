@@ -1754,6 +1754,7 @@ export default function Bookings() {
                                   body: {
                                     action: "cancel",
                                     club_member_id: activeMember.id,
+                                     booking_id: bd.id,
                                     date: String(bd.date),
                                     start_hour: startHour,
                                     court: courtNum,
@@ -1762,7 +1763,7 @@ export default function Bookings() {
                                 toast.dismiss(t);
                                 const msg = await extractFunctionError(data, error);
                                 if (msg) throw new Error(`GoBook cancellation failed: ${msg}`);
-                                toast.success("Booking cancelled on GoBook");
+                                 toast.success((data as any)?.stale_local ? "Stale booking removed" : "Booking cancelled on GoBook");
                                 setBookingDetails(null);
                                 queryClient.invalidateQueries({ queryKey: ["bookings"] });
                                 queryClient.invalidateQueries({ queryKey: ["my-bookings"] });

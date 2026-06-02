@@ -700,9 +700,27 @@ Deno.serve(async (req) => {
               || new RegExp(`\\bsquash(?:\\s+court)?\\s*${escapedCourt}\\b`, "i").test(text)
               || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text);
           };
+          const extractBookingIds = (html: string): string[] => {
+            const ids = new Set<string>();
+            const patterns = [
+              /\bBookingId\b["'\s:=]+["']?(\d{4,})/gi,
+              /\bbooking[_-]?id\b["'\s:=]+["']?(\d{4,})/gi,
+              /\bbid\s*=\s*["']?(\d{4,})/gi,
+              /\/Bookings\/(?:Details|Maintain)\/?(?:\?bid=)?(\d{4,})/gi,
+              /\b(?:Maintain|CancelBooking|Details)\s*\(\s*["']?(\d{4,})/gi,
+              /\bdata-(?:booking-id|bid)\s*=\s*["'](\d{4,})["']/gi,
+            ];
+            for (const pattern of patterns) {
+              let match: RegExpExecArray | null;
+              while ((match = pattern.exec(html)) !== null) ids.add(match[1]);
+            }
+            return [...ids];
+          };
 
           const bookingPagePaths = [
             "/Bookings/Client",
+            "/Bookings/ClientUpcoming",
+            "/Bookings/ClientPast",
             "/Bookings",
             "/Bookings/Index",
             "/MyBookings",

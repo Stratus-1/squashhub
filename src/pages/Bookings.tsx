@@ -1708,7 +1708,8 @@ export default function Bookings() {
                     <>
                       {isGoBookBooking ? (() => {
                         const bd: any = bookingDetails;
-                        const ownsBooking = !!activeMember?.id && (!bd.club_member_id || bd.club_member_id === activeMember.id);
+                        const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+                        const ownsBooking = !!cancelMemberId && (!bd.club_member_id || bd.club_member_id === cancelMemberId || bd.club_member_id === activeMember?.id);
                         const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
                         const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
                         const disabledReason = !hasGobookCreds
@@ -1738,7 +1739,7 @@ export default function Bookings() {
                             size="sm"
                             disabled={cancellingGobook}
                             onClick={async () => {
-                              if (!activeMember?.id) return;
+                              if (!cancelMemberId) return;
                               const startHour = Number(String(bd.start_time || "00").slice(0, 2));
                               const courtName = String(
                                 bd.court?.name
@@ -1758,8 +1759,9 @@ export default function Bookings() {
                                 const { data, error } = await supabase.functions.invoke("gobook-book", {
                                   body: {
                                     action: "cancel",
-                                    club_member_id: activeMember.id,
+                                    club_member_id: cancelMemberId,
                                      booking_id: bd.id,
+                                    client_notes: bd.external_booker_name || bd.player_name || "Cancelled via SquashHub",
                                     date: String(bd.date),
                                     start_hour: startHour,
                                     court: courtNum,

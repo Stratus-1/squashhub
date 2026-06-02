@@ -834,8 +834,7 @@ Deno.serve(async (req) => {
                   .from("bookings")
                   .update({ status: "cancelled" })
                   .eq("id", bookingId)
-                  .eq("source", "gobook")
-                  .eq("club_member_id", clubMemberId);
+                  .eq("source", "gobook");
               } else {
                 await adminClient
                   .from("bookings")
@@ -843,8 +842,7 @@ Deno.serve(async (req) => {
                   .eq("source", "gobook")
                   .eq("date", date)
                   .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
-                  .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`)
-                  .eq("club_member_id", clubMemberId);
+                  .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`);
               }
               return json({ ok: true, verified: true, stale_local: true, checked_grids: gridProbes });
             }

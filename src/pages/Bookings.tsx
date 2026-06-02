@@ -1730,7 +1730,13 @@ export default function Bookings() {
                             onClick={async () => {
                               if (!activeMember?.id) return;
                               const startHour = Number(String(bd.start_time || "00").slice(0, 2));
-                              const courtName = String(bd.court?.name || courts.find((c: any) => c.id === bd.court_id)?.name || "");
+                              const courtName = String(
+                                bd.court?.name
+                                || bd.court_name
+                                || (courtsData || []).find((c: any) => c.id === bd.court_id)?.name
+                                || getCourtName(bd.court_id)
+                                || ""
+                              );
                               const courtNum = Number((courtName.match(/(\d+)/) || [])[1]);
                               if (!courtNum) {
                                 toast.error("Couldn't determine the GoBook court number for this booking.");

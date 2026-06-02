@@ -542,6 +542,8 @@ Deno.serve(async (req) => {
 
       case "verify_credentials":
       case "debug_grid":
+      case "debug_my_bookings":
+      case "cancel":
       case "book": {
         const { data: row, error: rErr } = await adminClient
           .from("member_gobook_credentials")

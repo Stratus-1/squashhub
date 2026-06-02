@@ -1696,7 +1696,7 @@ export default function Bookings() {
                       >
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
-                      {(bookingDetails as any).source === 'gobook' ? (() => {
+                      {((bookingDetails as any).source === 'gobook' || ((myClub as any)?.uses_gobook && ((myClub as any)?.booking_slot_minutes ?? 60) === 60)) ? (() => {
                         const bd: any = bookingDetails;
                         const ownsBooking = !!activeMember?.id && bd.club_member_id === activeMember.id;
                         const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();

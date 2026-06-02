@@ -701,7 +701,15 @@ Deno.serve(async (req) => {
               || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text);
           };
 
+          // GoBook's /Bookings/Client page is just an accordion shell; the
+          // actual bookings table is lazy-loaded via AJAX into #UpcomingBookings
+          // (and #PastBookings). We probe the known partials directly so we
+          // can read the real <tr> rows that contain the BookingId.
           const bookingPagePaths = [
+            "/Bookings/UpcomingBookings",
+            "/Bookings/Upcoming",
+            "/Bookings/PastBookings",
+            "/Bookings/Past",
             "/Bookings/Client",
             "/Bookings",
             "/Bookings/Index",
@@ -711,13 +719,16 @@ Deno.serve(async (req) => {
             "/Accounts/Bookings",
           ];
           let myHtml = "";
-          const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number }> = [];
+          const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number; hasBid: boolean }> = [];
+          const combinedParts: string[] = [];
           for (const path of bookingPagePaths) {
             const myRes = await fetch(`${GOBOOK_BASE}${path}`, {
               headers: {
                 cookie: cookieHeader(jar),
                 "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-                "Referer": `${GOBOOK_BASE}/`,
+                "Referer": `${GOBOOK_BASE}/Bookings/Client`,
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "text/html, */*; q=0.01",
               },
               redirect: "follow",
             });
@@ -728,10 +739,14 @@ Deno.serve(async (req) => {
             const hasAccepted = /accepted/i.test(probePlain);
             const hasCourt = hasCourtMatch(probePlain);
             const hasDate = datePatterns.some((p) => probeCompact.includes(p));
-            pageProbes.push({ path, status: myRes.status, finalUrl: myRes.url, hasAccepted, hasCourt, hasDate, htmlLen: html.length });
-            if (!myHtml || (hasAccepted && hasCourt && hasDate)) myHtml = html;
-            if (hasAccepted && hasCourt && hasDate) break;
+            const hasBid = /(bid=|bookingid|\/Bookings\/Details)/i.test(html);
+            pageProbes.push({ path, status: myRes.status, finalUrl: myRes.url, hasAccepted, hasCourt, hasDate, htmlLen: html.length, hasBid });
+            if (myRes.status === 200 && hasBid) {
+              combinedParts.push(html);
+            }
           }
+          myHtml = combinedParts.join("\n<!--gobook-split-->\n");
+
 
           // Pull every bid candidate with a window of surrounding HTML to match against.
           const bidRegex = /(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/gi;

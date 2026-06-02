@@ -750,7 +750,10 @@ Deno.serve(async (req) => {
             const hasDate = datePatterns.some((p) => compactSnippet.includes(p));
             const hasTime = hasTimeMatch(lower);
             const hasCourt = hasCourtMatch(lower);
-            const cancelled = /cancel(led)?/i.test(snippet);
+            // Only penalize when the row shows the past-tense status "Cancelled"
+            // (double-L). Plain "Cancel" appears on every active row as the
+            // action button and must not disqualify a real booking.
+            const cancelled = /\bcancelled\b/i.test(plain(snippet));
             const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 8 : 0);
             candidates.push({ bid, score, snippet: snippet.slice(0, 400), hasDate, hasTime, hasCourt });
           }
@@ -766,7 +769,7 @@ Deno.serve(async (req) => {
             const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|booking(?:id)?[,(\s'"]+|\/Bookings\/Details\/?)(\d+)/i);
             if (!bidMatch?.[1] || rowSeen.has(bidMatch[1])) continue;
             const lower = plain(rowHtml);
-            if (/cancelled/i.test(lower)) continue;
+            if (/\bcancelled\b/i.test(lower)) continue;
             const compactRow = compact(rowHtml);
             const hasDate = datePatterns.some((p) => compactRow.includes(p));
             const hasTime = hasTimeMatch(lower);
@@ -891,7 +894,7 @@ Deno.serve(async (req) => {
             }
             const window2 = vHtml.slice(Math.max(0, idx - 800), Math.min(vHtml.length, idx + 800));
             verifyPreview = window2.slice(0, 600);
-            if (/cancel(led)?/i.test(window2)) {
+            if (/\bcancelled\b/i.test(plain(window2))) {
               verified = true;
               break;
             }

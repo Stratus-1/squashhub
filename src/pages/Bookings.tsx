@@ -418,6 +418,7 @@ export default function Bookings() {
   const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
   const [confirmEndSession, setConfirmEndSession] = useState<string | null>(null);
   const [syncingGobook, setSyncingGobook] = useState(false);
+  const [submittingBooking, setSubmittingBooking] = useState(false);
   const queryClient = useQueryClient();
 
   const handleSyncGobook = async () => {

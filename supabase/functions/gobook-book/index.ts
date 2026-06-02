@@ -787,6 +787,12 @@ Deno.serve(async (req) => {
           const best = candidates[0];
           const acceptable = !!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5;
           if (!acceptable) {
+            console.log("gobook cancel: no match", JSON.stringify({
+              date, startHour, court,
+              pageProbes,
+              top_candidates: candidates.slice(0, 8),
+              preview: myHtml.slice(0, 8000),
+            }));
             return json({
               error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled on GoBook, or the GoBook page format may have changed — please cancel directly on gobook.co.za and let us know.`,
               candidates: candidates.slice(0, 5),

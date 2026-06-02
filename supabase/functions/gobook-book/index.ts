@@ -669,8 +669,8 @@ Deno.serve(async (req) => {
           // Details?bid=NNN link and look for date + hour + court match.
           // Date appears as "2026/06/03" or "03/06/2026" or "Wed 03 Jun 2026"
           // depending on GoBook's locale; try a few permutations.
-          const isoDate = dateToGoBookKeyDate(date); // e.g. 2026-06-03
-          const [y, m, d] = isoDate.split("-");
+          const normalizedDate = date.replaceAll("/", "-");
+          const [y, m, d] = normalizedDate.split("-");
           const datePatterns = [
             `${y}/${m}/${d}`,
             `${d}/${m}/${y}`,
@@ -725,12 +725,28 @@ Deno.serve(async (req) => {
 
           const bookingId = best.bid;
 
+          // GoBook's UI first opens the booking details screen, then posts the
+          // cancellation. Fetch the details page before Maintain so any
+          // session state/cookies/anti-forgery token set by that page are present.
+          const detailsRes = await fetch(`${GOBOOK_BASE}/Bookings/Details?bid=${bookingId}`, {
+            headers: {
+              cookie: cookieHeader(jar),
+              "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+              "Referer": `${GOBOOK_BASE}/MyBookings`,
+            },
+            redirect: "follow",
+          });
+          jarFromHeaders(detailsRes.headers, jar);
+          const detailsHtml = await detailsRes.text();
+          const maintainToken = extractInput(detailsHtml, "__RequestVerificationToken");
+
           // STEP 2 — POST Maintain with FocusedControl=Cancel.
-          const payload = {
+          const payload: Record<string, string> = {
             BookingId: bookingId,
             ClientNotes: String(body.client_notes || "Cancelled via SquashHub"),
             FocusedControl: "Cancel",
           };
+          if (maintainToken) payload.__RequestVerificationToken = maintainToken;
           const cancelRes = await fetch(`${GOBOOK_BASE}/Bookings/Maintain`, {
             method: "POST",
             headers: {
@@ -739,6 +755,7 @@ Deno.serve(async (req) => {
               "X-Requested-With": "XMLHttpRequest",
               "Referer": `${GOBOOK_BASE}/Bookings/Details?bid=${bookingId}`,
               "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+              ...(maintainToken ? { "RequestVerificationToken": maintainToken } : {}),
               cookie: cookieHeader(jar),
             },
             body: JSON.stringify(payload),

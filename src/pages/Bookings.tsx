@@ -1893,8 +1893,11 @@ export default function Bookings() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setBookingDialog(null)}>Cancel</Button>
-            <Button onClick={handleBook} disabled={createBooking.isPending || createChallenge.isPending}>
-              {createBooking.isPending || createChallenge.isPending ? "Booking..." : "Confirm Booking"}
+            <Button onClick={handleBook} disabled={submittingBooking || createBooking.isPending || createChallenge.isPending}>
+              {submittingBooking || createBooking.isPending || createChallenge.isPending
+                ? ((myClub as any)?.uses_gobook ? "Submitting to GoBook…" : "Booking…")
+                : "Confirm Booking"}
+            </Button>
             </Button>
           </DialogFooter>
         </DialogContent>

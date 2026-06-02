@@ -418,6 +418,7 @@ export default function Bookings() {
   const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
   const [confirmEndSession, setConfirmEndSession] = useState<string | null>(null);
   const [syncingGobook, setSyncingGobook] = useState(false);
+  const [submittingBooking, setSubmittingBooking] = useState(false);
   const queryClient = useQueryClient();
 
   const handleSyncGobook = async () => {
@@ -714,6 +715,17 @@ export default function Bookings() {
       }
     }
 
+    setSubmittingBooking(true);
+    const usingGobook =
+      !!(myClub as any)?.uses_gobook &&
+      ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
+      !!activeMember?.id;
+    const progressToastId = usingGobook
+      ? toast.loading("Submitting booking to GoBook…", {
+          description: "This can take 10–20 seconds. Please don't close this window.",
+        })
+      : null;
+    let bookingSucceeded = false;
     try {
       const isOnline = typeof navigator === "undefined" ? true : navigator.onLine;
       if (!isOnline) {
@@ -899,6 +911,7 @@ export default function Bookings() {
         opponentEmail: opponent?.email || null,
       });
 
+      bookingSucceeded = true;
       setBookingDialog(null);
     } catch (err: any) {
       const msg = String(err?.message || "");
@@ -950,6 +963,14 @@ export default function Bookings() {
       }
 
       toast.error(err.message || "Failed to book");
+    } finally {
+      if (progressToastId !== null) {
+        toast.dismiss(progressToastId);
+        if (usingGobook && bookingSucceeded) {
+          toast.success("Booking confirmed on GoBook");
+        }
+      }
+      setSubmittingBooking(false);
     }
   };
 
@@ -1872,8 +1893,10 @@ export default function Bookings() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setBookingDialog(null)}>Cancel</Button>
-            <Button onClick={handleBook} disabled={createBooking.isPending || createChallenge.isPending}>
-              {createBooking.isPending || createChallenge.isPending ? "Booking..." : "Confirm Booking"}
+            <Button onClick={handleBook} disabled={submittingBooking || createBooking.isPending || createChallenge.isPending}>
+              {submittingBooking || createBooking.isPending || createChallenge.isPending
+                ? ((myClub as any)?.uses_gobook ? "Submitting to GoBook…" : "Booking…")
+                : "Confirm Booking"}
             </Button>
           </DialogFooter>
         </DialogContent>

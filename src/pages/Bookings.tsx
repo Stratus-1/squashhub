@@ -1650,7 +1650,32 @@ export default function Bookings() {
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {bookingDetails && (() => {
-              const isBooker = bookingDetails.user_id === user?.id;
+              // Match GoBook bookings to the active member by name as a
+              // fallback — the GoBook sync sometimes can't link booker labels
+              // like "W Pretorius" to the full member name "Willem Pretorius".
+              const normaliseName = (s: string) =>
+                s.toLowerCase().replace(/\./g, "").replace(/\s+/g, " ").trim();
+              const nameMatchesActiveMember = (() => {
+                const ext = (bookingDetails as any).external_booker_name;
+                if (!ext || !activeMember?.name) return false;
+                const a = normaliseName(String(ext));
+                const b = normaliseName(String((activeMember as any).name));
+                if (!a || !b) return false;
+                if (a === b) return true;
+                const aParts = a.split(" ").filter(Boolean);
+                const bParts = b.split(" ").filter(Boolean);
+                const aLast = aParts[aParts.length - 1];
+                const bLast = bParts[bParts.length - 1];
+                if (!aLast || !bLast || aLast !== bLast) return false;
+                const aFirst = aParts[0] || "";
+                const bFirst = bParts[0] || "";
+                // "W Pretorius" vs "Willem Pretorius" -> match on initial + surname
+                return aFirst.charAt(0) === bFirst.charAt(0);
+              })();
+              const isBooker =
+                bookingDetails.user_id === user?.id ||
+                (!!activeMember?.id && (bookingDetails as any).club_member_id === activeMember.id) ||
+                nameMatchesActiveMember;
               const isOpponent = !!(user?.id && (bookingDetails as any).opponent_id === user.id);
               const isAdmin = isMemberAdmin;
               const bookingDateStr = String(bookingDetails.date);

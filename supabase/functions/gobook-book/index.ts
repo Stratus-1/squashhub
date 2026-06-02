@@ -702,6 +702,7 @@ Deno.serve(async (req) => {
           };
 
           const bookingPagePaths = [
+            "/Bookings/Client",
             "/Bookings",
             "/Bookings/Index",
             "/MyBookings",

@@ -821,6 +821,7 @@ export default function Bookings() {
         ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
         activeMember?.id
       ) {
+        let gobookMirror: { court: number; externalId: string; externalBookerName: string | null } | null = null;
         if (myClub?.id) {
           const { error: syncError } = await supabase.functions.invoke("gobook-sync", {
             body: { club_id: myClub.id, days: 2 },
@@ -865,6 +866,14 @@ export default function Bookings() {
         });
         const msg = await extractFunctionError(data, error);
         if (msg) throw new Error(`GoBook booking failed: ${msg}`);
+        const bookedCourt = Number((data as any)?.court || courtNum || 0);
+        if (bookedCourt) {
+          gobookMirror = {
+            court: bookedCourt,
+            externalId: `${dateStr.replaceAll("-", "")}-${bookedCourt}-${String(startHour).padStart(2, "0")}`,
+            externalBookerName: labelA || null,
+          };
+        }
       }
 
       const created = await createBooking.mutateAsync({
@@ -878,6 +887,9 @@ export default function Bookings() {
         guestName: bookingDialog.guestName || null,
         clubMemberId: activeMember?.id || null,
         opponentMemberId,
+        source: gobookMirror ? "gobook" : "squashhub",
+        externalId: gobookMirror?.externalId ?? null,
+        externalBookerName: gobookMirror?.externalBookerName ?? null,
       });
 
       // Mark lights_requested and fee split on the booking

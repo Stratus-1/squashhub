@@ -911,6 +911,7 @@ export default function Bookings() {
         opponentEmail: opponent?.email || null,
       });
 
+      bookingSucceeded = true;
       setBookingDialog(null);
     } catch (err: any) {
       const msg = String(err?.message || "");

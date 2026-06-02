@@ -742,6 +742,19 @@ Deno.serve(async (req) => {
           const acceptable = !!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5;
           if (!acceptable) {
             const bookingId = String(body.booking_id || "").trim();
+            let confirmedLocalBooking = false;
+            if (bookingId) {
+              const { data: localBooking } = await adminClient
+                .from("bookings")
+                .select("id, court_id, date, start_time, source, club_member_id")
+                .eq("id", bookingId)
+                .eq("source", "gobook")
+                .eq("club_member_id", clubMemberId)
+                .eq("date", date)
+                .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
+                .maybeSingle();
+              confirmedLocalBooking = !!localBooking;
+            }
             let liveSlotFree = false;
             const gridProbes: Array<{ label: string; rowFound: boolean; courtFound: boolean; free?: boolean; bookerName?: string | null }> = [];
             const inspectGrid = async (label: string, gridCourt: number | "any", key?: string) => {
@@ -760,7 +773,7 @@ Deno.serve(async (req) => {
               console.warn("gobook cancel stale-check grid failed", (e as Error).message);
             }
 
-            if (liveSlotFree) {
+            if (liveSlotFree || confirmedLocalBooking) {
               if (bookingId) {
                 await adminClient
                   .from("bookings")

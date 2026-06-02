@@ -184,6 +184,13 @@ function dateToGoBookBookingDate(yyyyMmDd: string): string {
   return yyyyMmDd.replaceAll("-", "/");
 }
 
+function compactName(value: string | null | undefined): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
 type GridRow = {
   time: string;          // "15:00-16:00"
   startHour: number;     // 15

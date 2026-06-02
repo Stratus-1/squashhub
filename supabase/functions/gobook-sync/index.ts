@@ -310,7 +310,7 @@ async function syncClub(
   // owner — which is what enables the Cancel button on the grid.
   const nameMap = new Map<string, { id: string; user_id: string | null }>();
   const addKey = (key: string, val: { id: string; user_id: string | null }) => {
-    const k = key.trim().toLowerCase().replace(/\s+/g, " ");
+    const k = key.trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ");
     if (!k) return;
     const existing = nameMap.get(k);
     if (existing) {

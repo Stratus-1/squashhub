@@ -701,21 +701,8 @@ Deno.serve(async (req) => {
               || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text);
           };
 
-          // GoBook's /Bookings/Client page is mostly an accordion shell; the
-          // bookings table is loaded by its inline scripts. Start with the shell
-          // and discover the real AJAX URLs from its own script instead of only
-          // relying on hard-coded guesses.
           const bookingPagePaths = [
             "/Bookings/Client",
-            "/Bookings/ClientUpcoming",
-            "/Bookings/ClientPast",
-            "/Bookings/GetClientBookings",
-            "/Bookings/GetBookings",
-            "/Bookings/List",
-            "/Bookings/UpcomingBookings",
-            "/Bookings/Upcoming",
-            "/Bookings/PastBookings",
-            "/Bookings/Past",
             "/Bookings",
             "/Bookings/Index",
             "/MyBookings",
@@ -724,77 +711,30 @@ Deno.serve(async (req) => {
             "/Accounts/Bookings",
           ];
           let myHtml = "";
-          const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number; hasBid: boolean }> = [];
-          const combinedParts: string[] = [];
-          const addBookingPath = (raw: string | null | undefined) => {
-            if (!raw) return;
-            let path = raw.replace(/&amp;/g, "&").trim();
-            if (!path || /^(?:javascript:|#|mailto:)/i.test(path)) return;
-            if (/^https?:\/\//i.test(path)) {
-              try {
-                const u = new URL(path);
-                if (u.origin !== GOBOOK_BASE) return;
-                path = `${u.pathname}${u.search}`;
-              } catch {
-                return;
-              }
-            }
-            if (!path.startsWith("/")) path = `/${path}`;
-            if (!/book/i.test(path) || /\.(?:css|js|png|jpg|jpeg|gif|ico)(?:\?|$)/i.test(path)) return;
-            if (!bookingPagePaths.includes(path)) bookingPagePaths.push(path);
-          };
-          const discoverBookingPaths = (html: string) => {
-            for (const re of [
-              /\b(?:url|href|action)\s*[:=]\s*["']([^"']*book[^"']*)["']/gi,
-              /\.(?:load|get|post)\s*\(\s*["']([^"']*book[^"']*)["']/gi,
-              /["'](\/[^"']*book[^"']*)["']/gi,
-            ]) {
-              let match: RegExpExecArray | null;
-              while ((match = re.exec(html)) !== null) addBookingPath(match[1]);
-            }
-          };
-          for (let i = 0; i < bookingPagePaths.length; i++) {
-            const path = bookingPagePaths[i];
+          const pageProbes: Array<{ path: string; status: number; finalUrl: string; hasAccepted: boolean; hasCourt: boolean; hasDate: boolean; htmlLen: number }> = [];
+          for (const path of bookingPagePaths) {
             const myRes = await fetch(`${GOBOOK_BASE}${path}`, {
               headers: {
                 cookie: cookieHeader(jar),
                 "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
-                "Referer": `${GOBOOK_BASE}/Bookings/Client`,
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept": "text/html, */*; q=0.01",
+                "Referer": `${GOBOOK_BASE}/`,
               },
               redirect: "follow",
             });
             jarFromHeaders(myRes.headers, jar);
             const html = await myRes.text();
-            discoverBookingPaths(html);
             const probeCompact = compact(html);
             const probePlain = plain(html);
             const hasAccepted = /accepted/i.test(probePlain);
             const hasCourt = hasCourtMatch(probePlain);
             const hasDate = datePatterns.some((p) => probeCompact.includes(p));
-            const hasBid = /(bid=|bookingid|\/Bookings\/Details)/i.test(html);
-            pageProbes.push({ path, status: myRes.status, finalUrl: myRes.url, hasAccepted, hasCourt, hasDate, htmlLen: html.length, hasBid });
-            if (myRes.status === 200 && hasBid) {
-              combinedParts.push(html);
-            }
+            pageProbes.push({ path, status: myRes.status, finalUrl: myRes.url, hasAccepted, hasCourt, hasDate, htmlLen: html.length });
+            if (!myHtml || (hasAccepted && hasCourt && hasDate)) myHtml = html;
+            if (hasAccepted && hasCourt && hasDate) break;
           }
-          const decodeBookingMarkup = (html: string) => {
-            const entityDecoded = html
-              .replace(/&quot;|&#34;|&#x22;/gi, '"')
-              .replace(/&#39;|&#x27;/gi, "'")
-              .replace(/&amp;/gi, "&");
-            try {
-              return `${entityDecoded}\n${decodeURIComponent(entityDecoded)}`;
-            } catch {
-              return entityDecoded;
-            }
-          };
-          myHtml = combinedParts.map(decodeBookingMarkup).join("\n<!--gobook-split-->\n");
-
 
           // Pull every bid candidate with a window of surrounding HTML to match against.
-          const bidRegex = /(?:bid\s*[=:?&]\s*|bookingid["'\s:=,]+|bookingid\s*[=:]\s*|booking(?:id)?[,(:\s'"]+|\/Bookings\/Details\/?(?:\?bid=|\?BookingId=)?)(\d+)/gi;
+          const bidRegex = /(?:bid=|bookingid["'\s:=]+|bookingid=|\/Bookings\/Details\/?)(\d+)/gi;
           const candidates: Array<{ bid: string; score: number; snippet: string; hasDate: boolean; hasTime: boolean; hasCourt: boolean }> = [];
           const seen = new Set<string>();
           let mm: RegExpExecArray | null;
@@ -810,10 +750,7 @@ Deno.serve(async (req) => {
             const hasDate = datePatterns.some((p) => compactSnippet.includes(p));
             const hasTime = hasTimeMatch(lower);
             const hasCourt = hasCourtMatch(lower);
-            // Only penalize when the row shows the past-tense status "Cancelled"
-            // (double-L). Plain "Cancel" appears on every active row as the
-            // action button and must not disqualify a real booking.
-            const cancelled = /\bcancelled\b/i.test(plain(snippet));
+            const cancelled = /cancel(led)?/i.test(snippet);
             const score = (hasDate ? 4 : 0) + (hasTime ? 3 : 0) + (hasCourt ? 2 : 0) - (cancelled ? 8 : 0);
             candidates.push({ bid, score, snippet: snippet.slice(0, 400), hasDate, hasTime, hasCourt });
           }
@@ -826,10 +763,10 @@ Deno.serve(async (req) => {
           let rowMatch: RegExpExecArray | null;
           while ((rowMatch = rowRegex.exec(myHtml)) !== null) {
             const rowHtml = rowMatch[1];
-            const bidMatch = rowHtml.match(/(?:bid\s*[=:?&]\s*|bookingid["'\s:=,]+|bookingid\s*[=:]\s*|booking(?:id)?[,(:\s'"]+|\/Bookings\/Details\/?(?:\?bid=|\?BookingId=)?)(\d+)/i);
+            const bidMatch = rowHtml.match(/(?:bid=|bookingid["'\s:=]+|bookingid=|booking(?:id)?[,(\s'"]+|\/Bookings\/Details\/?)(\d+)/i);
             if (!bidMatch?.[1] || rowSeen.has(bidMatch[1])) continue;
             const lower = plain(rowHtml);
-            if (/\bcancelled\b/i.test(lower)) continue;
+            if (/cancelled/i.test(lower)) continue;
             const compactRow = compact(rowHtml);
             const hasDate = datePatterns.some((p) => compactRow.includes(p));
             const hasTime = hasTimeMatch(lower);
@@ -847,17 +784,52 @@ Deno.serve(async (req) => {
           const best = candidates[0];
           const acceptable = !!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5;
           if (!acceptable) {
-            console.log("gobook cancel: no match", JSON.stringify({
-              date, startHour, court,
-              pageProbes,
-              top_candidates: candidates.slice(0, 8),
-              preview: myHtml.slice(0, 8000),
-            }));
+            const bookingId = String(body.booking_id || "").trim();
+            let liveSlotFree = false;
+            const gridProbes: Array<{ label: string; rowFound: boolean; courtFound: boolean; free?: boolean; bookerName?: string | null }> = [];
+            const inspectGrid = async (label: string, gridCourt: number | "any", key?: string) => {
+              const grid = await fetchGrid(jar, date, gridCourt, key);
+              const row = grid.rows.find((r) => r.startHour === startHour);
+              const slot = row?.courts.find((c) => c.courtNumber === court);
+              gridProbes.push({ label: `${label}:${grid.urlKey}`, rowFound: !!row, courtFound: !!slot, free: slot?.free, bookerName: slot?.bookerName });
+              if (slot?.free) liveSlotFree = true;
+            };
+            try {
+              await inspectGrid("combined", "any");
+              if (!liveSlotFree) await inspectGrid("court-tab", court, String(court));
+              const providerKey = CSIR_COURT_CONSULTANT_IDS.get(court);
+              if (!liveSlotFree && providerKey) await inspectGrid("provider-tab", court, providerKey);
+            } catch (e) {
+              console.warn("gobook cancel stale-check grid failed", (e as Error).message);
+            }
+
+            if (liveSlotFree) {
+              if (bookingId) {
+                await adminClient
+                  .from("bookings")
+                  .update({ status: "cancelled" })
+                  .eq("id", bookingId)
+                  .eq("source", "gobook")
+                  .eq("club_member_id", clubMemberId);
+              } else {
+                await adminClient
+                  .from("bookings")
+                  .update({ status: "cancelled" })
+                  .eq("source", "gobook")
+                  .eq("date", date)
+                  .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
+                  .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`)
+                  .eq("club_member_id", clubMemberId);
+              }
+              return json({ ok: true, verified: true, stale_local: true, checked_grids: gridProbes });
+            }
+
             return json({
-              error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled on GoBook, or the GoBook page format may have changed — please cancel directly on gobook.co.za and let us know.`,
+              error: `Couldn't find a matching GoBook booking for ${date} ${hourStr}:00 on Court #${court}. The booking may already be cancelled or may not belong to your GoBook account.`,
               candidates: candidates.slice(0, 5),
               checked_pages: pageProbes,
-              my_bookings_preview: myHtml.slice(0, 4000),
+              checked_grids: gridProbes,
+              my_bookings_preview: myHtml.slice(0, 2500),
             }, 404);
           }
 
@@ -919,7 +891,7 @@ Deno.serve(async (req) => {
             }
             const window2 = vHtml.slice(Math.max(0, idx - 800), Math.min(vHtml.length, idx + 800));
             verifyPreview = window2.slice(0, 600);
-            if (/\bcancelled\b/i.test(plain(window2))) {
+            if (/cancel(led)?/i.test(window2)) {
               verified = true;
               break;
             }

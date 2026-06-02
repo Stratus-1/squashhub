@@ -1485,12 +1485,24 @@ export default function LeagueGameDetail() {
       for (let i = 0; i < positions.length; i++) {
         const pos = positions[i];
         if (!pos.homeCode && !pos.awayCode && !pos.homeName && !pos.awayName) continue;
+        // Compute winner + games-won from scores so a setup-save never wipes
+        // out a previously-decided rubber's winner column (which would hide
+        // the per-row G/P totals on the scorecard).
+        let hw = 0, aw = 0;
+        for (const s of pos.scores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+        const gamesToWin = bestOf === 5 ? 3 : 2;
+        const decided = hw >= gamesToWin || aw >= gamesToWin;
+        const computedWinner = pos.isForfeit
+          ? (pos.forfeitSide === "home" ? "away" : "home")
+          : (decided ? (hw > aw ? "home" : "away") : null);
         const { error } = await supabase.from("league_match_results" as any).upsert({
           fixture_id: fixtureId, position: i + 1,
           home_player_code: pos.homeCode.toUpperCase(), away_player_code: pos.awayCode.toUpperCase(),
           home_player_name: pos.homeName, away_player_name: pos.awayName,
-          game_scores: pos.scores.length > 0 ? pos.scores : [], home_games_won: 0, away_games_won: 0,
-          winner: null,
+          game_scores: pos.scores.length > 0 ? pos.scores : [], home_games_won: hw, away_games_won: aw,
+          winner: computedWinner,
+          is_forfeit: !!pos.isForfeit,
+          forfeit_side: pos.forfeitSide ?? null,
         } as any, { onConflict: "fixture_id,position" });
         if (error) throw error;
       }

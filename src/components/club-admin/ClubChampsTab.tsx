@@ -559,7 +559,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const t = setTimeout(() => {
       void (async () => {
         await saveDraftRef.current();
-        await saveEntriesDraftRef.current();
+        // NOTE: do NOT autosave entries here. saveEntriesDraft does a
+        // delete-then-insert on club_champs_entries; if it fires while pairs
+        // are still loading (or partially loaded), it can wipe the real
+        // pair list. Entries persist only on manual Save or Generate.
       })();
     }, 600);
     return () => clearTimeout(t);

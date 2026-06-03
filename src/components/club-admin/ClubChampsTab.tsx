@@ -392,6 +392,61 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       .sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
   }, [members]);
 
+  // Autosave the current wizard settings to club_champs as a draft.
+  // Only touches the settings row — never matches/entries/registrations.
+  // No-ops until we have the minimum required fields (name + dates).
+  const saveDraft = async () => {
+    if (!clubId) return;
+    if (!startDate || !endDate) return;
+    const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
+    const payload: Record<string, any> = {
+      name: champName || defaultName,
+      gender,
+      match_type: matchType,
+      num_groups: numGroups,
+      enable_playoffs: enablePlayoffs,
+      start_date: startDate,
+      end_date: endDate,
+      play_days: Array.from(playDays),
+      start_time: startTime,
+      end_time: endTime,
+      match_duration_minutes: matchDuration,
+      scoring_mode: scoringMode,
+      group_durations: groupDurations,
+      round_format: roundFormat,
+      bye_handling: byeHandling,
+      source_league_id: Array.from(sourceLeagueIds)[0] || null,
+      source_league_ids: Array.from(sourceLeagueIds),
+      registration_mode: registrationMode,
+      partner_mode: partnerMode,
+      registration_opens_at: registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
+      registration_closes_at: registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+      entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
+      payment_methods: Array.from(paymentMethods),
+      payment_required: paymentRequired,
+      invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+      include_visitors: includeVisitors,
+      visitor_clubs: Array.from(selectedVisitorClubs),
+      description: description.trim() || null,
+    };
+    try {
+      if (editingChampId) {
+        await fromExt("club_champs").update(payload).eq("id", editingChampId);
+      } else {
+        const { data, error } = await fromExt("club_champs")
+          .insert({ club_id: clubId, status: "planning", ...payload })
+          .select("id")
+          .single();
+        if (error) throw error;
+        if (data?.id) setEditingChampId(data.id);
+      }
+      qc.invalidateQueries({ queryKey: ["club-champs"] });
+    } catch (e) {
+      // Silent — don't block navigation on autosave failure
+      console.warn("Tournament autosave failed:", e);
+    }
+  };
+
   const goToStep = (s: WizardStep) => {
     if (s === "players" && (step === "category" || step === "registration")) {
       // Don't override if league pre-fill already set the player list
@@ -422,7 +477,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
     setStep(s);
+    // Persist current settings whenever the user advances or jumps steps.
+    void saveDraft();
   };
+
+
 
   // Helper to strip "visitor-" prefix for DB inserts
   const toDbId = (id: string) => id.replace(/^visitor-/, "");
@@ -2347,7 +2406,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       {/* Navigation */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => stepIdx === 0 ? setShowWizard(false) : setStep(activeSteps[stepIdx - 1])}>
+        <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
           <ChevronLeft className="w-4 h-4 mr-1" /> {stepIdx === 0 ? "Cancel" : "Back"}
         </Button>
         {step === "review" ? (

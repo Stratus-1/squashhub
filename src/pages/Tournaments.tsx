@@ -77,9 +77,13 @@ export default function Tournaments() {
   });
 
   const today = format(new Date(), "yyyy-MM-dd");
-  const upcomingMatches = allMatches.filter(
-    (m: any) => m.status === "scheduled" && (!m.scheduled_date || m.scheduled_date >= today),
-  );
+  const upcomingMatches = allMatches
+    .filter((m: any) => m.status === "scheduled" && (!m.scheduled_date || m.scheduled_date >= today))
+    .sort((a: any, b: any) => {
+      const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
+      const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
+      return aKey.localeCompare(bKey);
+    });
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));

@@ -2446,7 +2446,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   const groupMatches = schedulePreview.allMatches.filter((m) => m.groupNum === gi + 1);
                   return (
                     <div key={gi}>
-                      <h4 className="font-medium mb-2">Group {gi + 1}</h4>
+                      <h4 className="font-medium mb-2">League {gi + 1}</h4>
                       <div className="text-xs space-y-1">
                         {groupMatches.map((m, mi) => (
                           <div key={mi} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">

@@ -409,8 +409,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Only touches the settings row — never matches/entries/registrations.
   // No-ops until we have the minimum required fields (name + dates).
   const saveDraft = async () => {
-    if (!clubId) return;
-    if (!startDate || !endDate) return;
+    if (!clubId) return editingChampId;
+    if (!startDate || !endDate) return editingChampId;
     const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
     const payload: Record<string, any> = {
       name: champName || defaultName,
@@ -455,11 +455,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           .single();
         if (error) throw error;
         if (data?.id) setEditingChampId(data.id);
+        return data?.id || editingChampId;
       }
       qc.invalidateQueries({ queryKey: ["club-champs"] });
+      return editingChampId;
     } catch (e) {
       // Silent — don't block navigation on autosave failure
       console.warn("Tournament autosave failed:", e);
+      return editingChampId;
     }
   };
 
@@ -472,23 +475,27 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     try {
       if (isDoubles) {
         if (doublesPairs.length === 0) return;
-        const rows = doublesPairs.map((pair) => ({
-          champ_id: champIdToUse,
-          club_member_id: toDbId(pair.player1Id),
-          partner_member_id: toDbId(pair.player2Id),
-          group_number: (pairGroupAssignments.get(pair.id) ?? 0) + 1,
-        }));
+        const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
+          groupPairs.map((pair) => ({
+            champ_id: champIdToUse,
+            club_member_id: toDbId(pair.player1Id),
+            partner_member_id: toDbId(pair.player2Id),
+            group_number: gi + 1,
+          }))
+        );
         await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
         await fromExt("club_champs_entries").insert(rows);
       } else {
         if (selectedPlayerIds.size === 0) return;
-        const rows = Array.from(selectedPlayerIds)
-          .filter((id) => !id.startsWith("visitor-"))
-          .map((id) => ({
+        const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
+          groupPlayers
+          .filter((p) => !p.id.startsWith("visitor-"))
+          .map((p) => ({
             champ_id: champIdToUse,
-            club_member_id: toDbId(id),
-            group_number: (groupAssignments.get(id) ?? 0) + 1,
-          }));
+            club_member_id: toDbId(p.id),
+            group_number: gi + 1,
+          }))
+        );
         if (rows.length === 0) return;
         await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
         await fromExt("club_champs_entries").insert(rows);
@@ -504,9 +511,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return;
     }
     try {
-      await saveDraft();
-      await new Promise((r) => setTimeout(r, 0));
-      await saveEntriesDraft();
+      const savedChampId = await saveDraft();
+      await saveEntriesDraft(savedChampId || undefined);
       toast.success("Progress saved");
     } catch {
       toast.error("Could not save progress");
@@ -525,6 +531,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
     if (s === "groups") {
       if (isDoubles) {
+        if (pairGroupAssignments.size > 0) { setStep(s); void saveDraft(); return; }
         // Auto-seed pair group assignments via snake draft
         const newMap = new Map<string, number>();
         doublesPairs.forEach((p, i) => {
@@ -534,6 +541,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         });
         setPairGroupAssignments(newMap);
       } else {
+        if (groupAssignments.size > 0) { setStep(s); void saveDraft(); return; }
         const newMap = new Map<string, number>();
         selectedPlayers.forEach((p, i) => {
           const cycle = Math.floor(i / numGroups);

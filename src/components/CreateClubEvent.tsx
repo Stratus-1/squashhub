@@ -345,7 +345,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (form.court_ids.length === 0) throw new Error("Select at least one court");
 
       // Enforce per-member monthly event cap (admins exempt)
-      if (!isAdmin && !editingEventId) {
+      if (!adminBypass && !editingEventId) {
         const maxPerMonth = Number((club as any)?.max_member_events_per_month ?? 2);
         if (maxPerMonth <= 0) {
           throw new Error("Members are not allowed to create events at this club. Please contact an admin.");

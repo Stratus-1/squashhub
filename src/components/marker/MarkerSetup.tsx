@@ -618,6 +618,10 @@ export function MarkerSetup({ onStart }: Props) {
     if (src === "tournament" && tournamentMatches.length > 0) {
       const exists = tournamentMatches.find((m) => m.id === matchId);
       if (exists) {
+        if (exists.scoringMode === "time_capped_points") {
+          navigate(`/bells-marker/${matchId}`, { replace: true });
+          return;
+        }
         setSource("tournament");
         setSelectedSourceId(matchId);
         searchParams.delete("source");

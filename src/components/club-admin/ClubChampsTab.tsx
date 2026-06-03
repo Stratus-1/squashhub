@@ -488,6 +488,25 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     void saveDraft();
   };
 
+  // Debounced autosave: persist wizard settings as the admin edits any field.
+  const saveDraftRef = useRef(saveDraft);
+  useEffect(() => { saveDraftRef.current = saveDraft; });
+  useEffect(() => {
+    if (!showWizard) return;
+    if (!clubId || !startDate || !endDate) return;
+    const t = setTimeout(() => { void saveDraftRef.current(); }, 600);
+    return () => clearTimeout(t);
+  }, [
+    showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
+    startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode,
+    groupDurations, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
+    partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
+    paymentMethods, paymentRequired, inviteMethods, includeVisitors,
+    selectedVisitorClubs, description,
+  ]);
+
+
+
 
 
   // Helper to strip "visitor-" prefix for DB inserts

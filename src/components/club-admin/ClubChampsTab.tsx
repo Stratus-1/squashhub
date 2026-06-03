@@ -2924,6 +2924,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   );
                 })}
               </div>
+            )}
+
             {!awaitingPlayerPairs && schedulePreview && (
               <>
                 <Separator />

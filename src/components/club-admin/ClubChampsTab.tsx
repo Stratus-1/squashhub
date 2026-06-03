@@ -1423,6 +1423,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setIncludeVisitors(!!champ.include_visitors);
     setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
+    const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];
+    setDaySchedules(Array.isArray(loadedDay) ? loadedDay : []);
+    setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
 
     const { data: entries } = await fromExt("club_champs_entries")

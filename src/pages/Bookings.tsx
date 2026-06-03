@@ -1737,56 +1737,63 @@ export default function Bookings() {
                           );
                         }
                         return (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={cancellingGobook}
-                            onClick={async () => {
-                              if (!cancelMemberId) return;
-                              const startHour = Number(String(bd.start_time || "00").slice(0, 2));
-                              const courtName = String(
-                                bd.court?.name
-                                || bd.court_name
-                                || (courtsData || []).find((c: any) => c.id === bd.court_id)?.name
-                                || getCourtName(bd.court_id)
-                                || ""
-                              );
-                              const courtNum = Number((courtName.match(/(\d+)/) || [])[1]);
-                              if (!courtNum) {
-                                toast.error("Couldn't determine the GoBook court number for this booking.");
-                                return;
-                              }
-                              setCancellingGobook(true);
-                              const t = toast.loading("Cancelling on GoBook… 5–15 seconds");
-                              try {
-                                const { data, error } = await supabase.functions.invoke("gobook-book", {
-                                  body: {
-                                    action: "cancel",
-                                    club_member_id: cancelMemberId,
-                                     booking_id: bd.id,
-                                    client_notes: bd.external_booker_name || bd.player_name || "Cancelled via SquashHub",
-                                    date: String(bd.date),
-                                    start_hour: startHour,
-                                    court: courtNum,
-                                  },
-                                });
-                                toast.dismiss(t);
-                                const msg = await extractFunctionError(data, error);
-                                if (msg) throw new Error(`GoBook cancellation failed: ${msg}`);
-                                 toast.success((data as any)?.stale_local ? "Stale booking removed" : "Booking cancelled on GoBook");
-                                setBookingDetails(null);
-                                queryClient.invalidateQueries({ queryKey: ["bookings"] });
-                                queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
-                              } catch (e: any) {
-                                toast.dismiss(t);
-                                toast.error(e?.message || "Failed to cancel booking on GoBook");
-                              } finally {
-                                setCancellingGobook(false);
-                              }
-                            }}
-                          >
-                            {cancellingGobook ? "Cancelling…" : "Cancel"}
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={cancellingGobook}
+                                onClick={async () => {
+                                  if (!cancelMemberId) return;
+                                  const startHour = Number(String(bd.start_time || "00").slice(0, 2));
+                                  const courtName = String(
+                                    bd.court?.name
+                                    || bd.court_name
+                                    || (courtsData || []).find((c: any) => c.id === bd.court_id)?.name
+                                    || getCourtName(bd.court_id)
+                                    || ""
+                                  );
+                                  const courtNum = Number((courtName.match(/(\d+)/) || [])[1]);
+                                  if (!courtNum) {
+                                    toast.error("Couldn't determine the GoBook court number for this booking.");
+                                    return;
+                                  }
+                                  setCancellingGobook(true);
+                                  const t = toast.loading("Cancelling on GoBook… 5–15 seconds");
+                                  try {
+                                    const { data, error } = await supabase.functions.invoke("gobook-book", {
+                                      body: {
+                                        action: "cancel",
+                                        club_member_id: cancelMemberId,
+                                         booking_id: bd.id,
+                                        client_notes: bd.external_booker_name || bd.player_name || "Cancelled via SquashHub",
+                                        date: String(bd.date),
+                                        start_hour: startHour,
+                                        court: courtNum,
+                                      },
+                                    });
+                                    toast.dismiss(t);
+                                    const msg = await extractFunctionError(data, error);
+                                    if (msg) throw new Error(`GoBook cancellation failed: ${msg}`);
+                                     toast.success((data as any)?.stale_local ? "Stale booking removed" : "Booking cancelled on GoBook");
+                                    setBookingDetails(null);
+                                    queryClient.invalidateQueries({ queryKey: ["bookings"] });
+                                    queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+                                  } catch (e: any) {
+                                    toast.dismiss(t);
+                                    toast.error(e?.message || "Failed to cancel booking on GoBook");
+                                  } finally {
+                                    setCancellingGobook(false);
+                                  }
+                                }}
+                              >
+                                {cancellingGobook ? "Cancelling…" : "Cancel"}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[280px] text-xs">
+                              <p>Before cancelling, click <strong>Sync GoBook now</strong> at the top of the page to ensure the booking is synced.</p>
+                            </TooltipContent>
+                          </Tooltip>
                         );
                       })() : (
                         <Button

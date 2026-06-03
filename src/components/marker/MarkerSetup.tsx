@@ -362,6 +362,7 @@ export function MarkerSetup({ onStart }: Props) {
             ...m,
             champName: champ?.name || "Tournament",
             matchType: champ?.match_type || "singles",
+            scoringMode: champ?.scoring_mode || null,
             playerAName: pA?.name || "Player A",
             playerBName: pB?.name || "Player B",
             playerANumber: pA?.club_member_number || "",

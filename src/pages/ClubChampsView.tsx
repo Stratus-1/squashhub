@@ -886,9 +886,17 @@ export default function ClubChampsView() {
                       {m.court && <Badge variant="outline" className="text-[10px]">{m.court.name}</Badge>}
                       <Badge
                         variant={completed ? "default" : "secondary"}
-                        className={cn("text-[10px]", completed && "bg-primary")}
+                        className={cn(
+                          "text-[10px]",
+                          completed && "bg-primary",
+                          m.status === "in_progress" && "bg-red-500 text-white animate-pulse",
+                        )}
                       >
-                        {completed ? (winnerIsA ? `${getPlayerName(m.player_a)} won` : winnerIsB ? `${getPlayerName(m.player_b)} won` : "Completed") : m.status}
+                        {completed
+                          ? (winnerIsA ? `${getPlayerName(m.player_a)} won` : winnerIsB ? `${getPlayerName(m.player_b)} won` : "Completed")
+                          : m.status === "in_progress"
+                            ? `LIVE ${m.side_a_points ?? 0}-${m.side_b_points ?? 0}`
+                            : m.status}
                       </Badge>
                     </div>
                   );

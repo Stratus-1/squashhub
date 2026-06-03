@@ -332,6 +332,88 @@ export default function Tournaments() {
                           </div>
                         </div>
                       )}
+
+                      {(() => {
+                        const champMatches = allMatches.filter((m: any) => m.champ_id === champ.id);
+                        if (champMatches.length === 0) return null;
+                        const groups = Array.from(
+                          new Set(champMatches.map((m: any) => m.group_number ?? 0)),
+                        ).sort((a: any, b: any) => a - b);
+                        return (
+                          <div className="mt-4">
+                            <Separator className="mb-3" />
+                            <div className="flex items-center gap-2 mb-2">
+                              <Calendar className="w-3.5 h-3.5 text-primary" />
+                              <p className="text-xs font-semibold">Schedule</p>
+                            </div>
+                            <div className="space-y-3">
+                              {groups.map((g: any) => {
+                                const rows = champMatches.filter(
+                                  (m: any) => (m.group_number ?? 0) === g,
+                                );
+                                return (
+                                  <div key={g}>
+                                    <p className="text-[11px] font-semibold text-muted-foreground mb-1">
+                                      League {g}
+                                    </p>
+                                    <div className="space-y-1">
+                                      {rows.map((m: any) => {
+                                        const teamA = isDoubles
+                                          ? getTeam(m.player_a, m.partner_a)
+                                          : getName(m.player_a);
+                                        const teamB = isDoubles
+                                          ? getTeam(m.player_b, m.partner_b)
+                                          : getName(m.player_b);
+                                        const isMine =
+                                          memberId &&
+                                          [
+                                            m.player_a_member_id,
+                                            m.player_b_member_id,
+                                            m.partner_a_member_id,
+                                            m.partner_b_member_id,
+                                          ].includes(memberId);
+                                        return (
+                                          <div
+                                            key={m.id}
+                                            className={cn(
+                                              "flex items-center gap-2 text-[11px] p-1.5 rounded",
+                                              isMine
+                                                ? "bg-primary/10 border border-primary/20"
+                                                : "bg-muted/40",
+                                            )}
+                                          >
+                                            <span className="text-muted-foreground w-20 shrink-0">
+                                              {m.scheduled_date
+                                                ? format(new Date(m.scheduled_date), "EEE dd MMM")
+                                                : "TBD"}
+                                            </span>
+                                            <span className="text-muted-foreground w-10 shrink-0">
+                                              {m.scheduled_time?.slice(0, 5) || ""}
+                                            </span>
+                                            {m.court && (
+                                              <Badge variant="outline" className="text-[10px] shrink-0">
+                                                {m.court.name}
+                                              </Badge>
+                                            )}
+                                            <span className="font-medium truncate">
+                                              {teamA} vs {teamB}
+                                            </span>
+                                            {m.status === "completed" && (
+                                              <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">
+                                                Done
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 );

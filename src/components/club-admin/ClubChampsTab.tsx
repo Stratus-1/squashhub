@@ -2082,10 +2082,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       {/* ── STEP: GROUPS ── */}
       {step === "groups" && (
         <Card>
-          <CardHeader><CardTitle>Number of Groups</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Number of Leagues</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Divide {entityCount} {isDoubles ? "pairs" : "players"} into how many groups?</Label>
+              <Label>Divide {entityCount} {isDoubles ? "pairs" : "players"} into how many leagues?</Label>
               <Select value={String(numGroups)} onValueChange={(v) => {
                 const n = Number(v);
                 setNumGroups(n);
@@ -2110,23 +2110,26 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <SelectTrigger className="w-32 mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: Math.floor(entityCount / 2) }, (_, i) => i + 1).map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n} group{n > 1 ? "s" : ""}</SelectItem>
+                    <SelectItem key={n} value={String(n)}>{n} league{n > 1 ? "s" : ""}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <Separator />
             <p className="text-xs text-muted-foreground">
-              {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Drag the handle to reorder within a group, or use the dropdown to move between groups.
+              {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Drag a row into another league to move it, drag within a league to reorder, or use the dropdown.
             </p>
-            <div className="space-y-4">
-              {isDoubles ? (
-                (groups as DoublePair[][]).map((g, gi) => (
-                  <div key={gi} className="border rounded-lg p-3">
-                    <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} pairs)</span></h4>
-                    <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handlePairDragEnd(gi)}>
+            <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
+              <div className="space-y-4">
+                {isDoubles ? (
+                  (groups as DoublePair[][]).map((g, gi) => (
+                    <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
+                      <h4 className="font-medium text-sm mb-2">League {gi + 1} <span className="text-muted-foreground font-normal">({g.length} pairs)</span></h4>
                       <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-1">
+                          {g.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground italic py-2">Drop pairs here</p>
+                          )}
                           {g.map((pair) => (
                             <SortableRow key={pair.id} id={pair.id}>
                               <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -2142,7 +2145,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
+                                    <SelectItem key={i} value={String(i)}>League {i + 1}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -2150,16 +2153,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           ))}
                         </div>
                       </SortableContext>
-                    </DndContext>
-                  </div>
-                ))
-              ) : (
-                (groups as ClubMember[][]).map((g, gi) => (
-                  <div key={gi} className="border rounded-lg p-3">
-                    <h4 className="font-medium text-sm mb-2">Group {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
-                    <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handlePlayerDragEnd(gi)}>
+                    </DroppableLeague>
+                  ))
+                ) : (
+                  (groups as ClubMember[][]).map((g, gi) => (
+                    <DroppableLeague key={gi} id={`league-${gi}`} className="border rounded-lg p-3 min-h-[60px] transition-colors">
+                      <h4 className="font-medium text-sm mb-2">League {gi + 1} <span className="text-muted-foreground font-normal">({g.length} players)</span></h4>
                       <SortableContext items={g.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-1">
+                          {g.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground italic py-2">Drop players here</p>
+                          )}
                           {g.map((p) => (
                             <SortableRow key={p.id} id={p.id}>
                               <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
@@ -2175,7 +2179,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                                 <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: numGroups }, (_, i) => (
-                                    <SelectItem key={i} value={String(i)}>Group {i + 1}</SelectItem>
+                                    <SelectItem key={i} value={String(i)}>League {i + 1}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
@@ -2183,14 +2187,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                           ))}
                         </div>
                       </SortableContext>
-                    </DndContext>
-                  </div>
-                ))
-              )}
-            </div>
+                    </DroppableLeague>
+                  ))
+                )}
+              </div>
+            </DndContext>
           </CardContent>
         </Card>
       )}
+
 
       {/* ── STEP: SCHEDULE ── */}
       {step === "schedule" && (

@@ -155,6 +155,13 @@ function SortableRow({ id, children }: { id: string; children: React.ReactNode }
   );
 }
 
+function DroppableLeague({ id, children, className }: { id: string; children: React.ReactNode; className?: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className={cn(className, isOver && "ring-2 ring-primary/60 bg-primary/5")}>{children}</div>
+  );
+}
+
 export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();

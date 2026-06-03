@@ -716,34 +716,36 @@ export default function Bookings() {
       ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)
       : null;
 
-    // 1. Enforce total-per-day cap
-    const myTotal = bookingsFor(activeMember?.id, user?.id).length;
-    if (myTotal >= maxBookingsPerDay) {
-      toast.error(`Daily booking limit reached (max ${maxBookingsPerDay} per day).`);
-      return;
-    }
-    if (opp) {
-      const oppTotal = bookingsFor((opp as any).memberId, (opp as any).id).length;
-      if (oppTotal >= maxBookingsPerDay) {
-        toast.error(`${(opp as any).name || "Your opponent"} has reached the daily booking limit (max ${maxBookingsPerDay} per day).`);
+    // 1. Enforce total-per-day cap (skipped for club admins / delegates / super-admins)
+    if (!isFullAdmin) {
+      const myTotal = bookingsFor(activeMember?.id, user?.id).length;
+      if (myTotal >= maxBookingsPerDay) {
+        toast.error(`Daily booking limit reached (max ${maxBookingsPerDay} per day).`);
         return;
       }
-    }
-
-    // 2. Enforce peak-hour cap
-    if (isPeakSlot(selectedDate, bookingDialog.time, myClub)) {
-      const peakCountFor = (memberId?: string | null, userId?: string | null) =>
-        bookingsFor(memberId, userId).filter((b: any) =>
-          isPeakSlot(selectedDate, String(b.start_time || ""), myClub)
-        ).length;
-
-      if (peakCountFor(activeMember?.id, user?.id) >= maxPeakPerDay) {
-        toast.error(`Peak-hour limit reached (max ${maxPeakPerDay} per day).`);
-        return;
+      if (opp) {
+        const oppTotal = bookingsFor((opp as any).memberId, (opp as any).id).length;
+        if (oppTotal >= maxBookingsPerDay) {
+          toast.error(`${(opp as any).name || "Your opponent"} has reached the daily booking limit (max ${maxBookingsPerDay} per day).`);
+          return;
+        }
       }
-      if (opp && peakCountFor((opp as any).memberId, (opp as any).id) >= maxPeakPerDay) {
-        toast.error(`${(opp as any).name || "Your opponent"} has already reached the peak-hour limit (max ${maxPeakPerDay} per day).`);
-        return;
+
+      // 2. Enforce peak-hour cap
+      if (isPeakSlot(selectedDate, bookingDialog.time, myClub)) {
+        const peakCountFor = (memberId?: string | null, userId?: string | null) =>
+          bookingsFor(memberId, userId).filter((b: any) =>
+            isPeakSlot(selectedDate, String(b.start_time || ""), myClub)
+          ).length;
+
+        if (peakCountFor(activeMember?.id, user?.id) >= maxPeakPerDay) {
+          toast.error(`Peak-hour limit reached (max ${maxPeakPerDay} per day).`);
+          return;
+        }
+        if (opp && peakCountFor((opp as any).memberId, (opp as any).id) >= maxPeakPerDay) {
+          toast.error(`${(opp as any).name || "Your opponent"} has already reached the peak-hour limit (max ${maxPeakPerDay} per day).`);
+          return;
+        }
       }
     }
 

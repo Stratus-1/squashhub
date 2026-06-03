@@ -335,7 +335,20 @@ export default function Tournaments() {
 
                       {(() => {
                         const champMatches = allMatches.filter((m: any) => m.champ_id === champ.id);
-                        if (champMatches.length === 0) return null;
+                        if (champMatches.length === 0) {
+                          return (
+                            <div className="mt-4">
+                              <Separator className="mb-3" />
+                              <div className="flex items-center gap-2 mb-1">
+                                <Calendar className="w-3.5 h-3.5 text-primary" />
+                                <p className="text-xs font-semibold">Schedule</p>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                Schedule not generated yet. The admin will publish dates, times and courts shortly.
+                              </p>
+                            </div>
+                          );
+                        }
                         const groups = Array.from(
                           new Set(champMatches.map((m: any) => m.group_number ?? 0)),
                         ).sort((a: any, b: any) => a - b);

@@ -793,6 +793,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+            include_visitors: includeVisitors,
+            visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
           })
           .eq("id", editingChampId);

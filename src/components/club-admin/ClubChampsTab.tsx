@@ -565,7 +565,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [
     showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode,
-    groupDurations, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
+    groupDurations, courtRotationMinutes, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,

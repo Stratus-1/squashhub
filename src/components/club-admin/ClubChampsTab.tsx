@@ -409,8 +409,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   // Only touches the settings row — never matches/entries/registrations.
   // No-ops until we have the minimum required fields (name + dates).
   const saveDraft = async () => {
-    if (!clubId) return;
-    if (!startDate || !endDate) return;
+    if (!clubId) return editingChampId;
+    if (!startDate || !endDate) return editingChampId;
     const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
     const payload: Record<string, any> = {
       name: champName || defaultName,
@@ -455,11 +455,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           .single();
         if (error) throw error;
         if (data?.id) setEditingChampId(data.id);
+        qc.invalidateQueries({ queryKey: ["club-champs"] });
+        return data?.id || editingChampId;
       }
       qc.invalidateQueries({ queryKey: ["club-champs"] });
+      return editingChampId;
     } catch (e) {
       // Silent — don't block navigation on autosave failure
       console.warn("Tournament autosave failed:", e);
+      return editingChampId;
     }
   };
 
@@ -472,29 +476,40 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     try {
       if (isDoubles) {
         if (doublesPairs.length === 0) return;
-        const rows = doublesPairs.map((pair) => ({
-          champ_id: champIdToUse,
-          club_member_id: toDbId(pair.player1Id),
-          partner_member_id: toDbId(pair.player2Id),
-          group_number: (pairGroupAssignments.get(pair.id) ?? 0) + 1,
-        }));
-        await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
-        await fromExt("club_champs_entries").insert(rows);
+        const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
+          groupPairs.map((pair, orderIndex) => ({
+            champ_id: champIdToUse,
+            club_member_id: toDbId(pair.player1Id),
+            partner_member_id: toDbId(pair.player2Id),
+            group_number: gi + 1,
+            order_index: orderIndex,
+          }))
+        );
+        const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+        if (deleteErr) throw deleteErr;
+        const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
+        if (insertErr) throw insertErr;
       } else {
         if (selectedPlayerIds.size === 0) return;
-        const rows = Array.from(selectedPlayerIds)
-          .filter((id) => !id.startsWith("visitor-"))
-          .map((id) => ({
+        const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
+          groupPlayers
+          .filter((p) => !p.id.startsWith("visitor-"))
+          .map((p, orderIndex) => ({
             champ_id: champIdToUse,
-            club_member_id: toDbId(id),
-            group_number: (groupAssignments.get(id) ?? 0) + 1,
-          }));
+            club_member_id: toDbId(p.id),
+            group_number: gi + 1,
+            order_index: orderIndex,
+          }))
+        );
         if (rows.length === 0) return;
-        await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
-        await fromExt("club_champs_entries").insert(rows);
+        const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+        if (deleteErr) throw deleteErr;
+        const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
+        if (insertErr) throw insertErr;
       }
     } catch (e) {
       console.warn("Tournament entries draft save failed:", e);
+      throw e;
     }
   };
 
@@ -504,9 +519,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       return;
     }
     try {
-      await saveDraft();
-      await new Promise((r) => setTimeout(r, 0));
-      await saveEntriesDraft();
+      const savedChampId = await saveDraft();
+      await saveEntriesDraft(savedChampId || undefined);
       toast.success("Progress saved");
     } catch {
       toast.error("Could not save progress");
@@ -517,7 +531,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const goToStep = (s: WizardStep) => {
     if (s === "players" && (step === "category" || step === "registration")) {
       // Don't override if league pre-fill already set the player list
-      if (!isDoubles && !hasLeagueSelection) {
+      if (!isDoubles && !hasLeagueSelection && selectedPlayerIds.size === 0) {
         const memberIds = genderMembers.map((m) => m.id);
         const visitorIds = filteredVisitors.map((v) => `visitor-${v.id}`);
         setSelectedPlayerIds(new Set([...memberIds, ...visitorIds]));
@@ -525,6 +539,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
     if (s === "groups") {
       if (isDoubles) {
+        if (pairGroupAssignments.size > 0) { setStep(s); void saveDraft(); return; }
         // Auto-seed pair group assignments via snake draft
         const newMap = new Map<string, number>();
         doublesPairs.forEach((p, i) => {
@@ -534,6 +549,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         });
         setPairGroupAssignments(newMap);
       } else {
+        if (groupAssignments.size > 0) { setStep(s); void saveDraft(); return; }
         const newMap = new Map<string, number>();
         selectedPlayers.forEach((p, i) => {
           const cycle = Math.floor(i / numGroups);
@@ -1131,25 +1147,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // Create entries
       if (isDoubles) {
-        const entries = doublesPairs.flatMap((pair) => {
-          const gi = pairGroupAssignments.get(pair.id) ?? 0;
-          return [
-            {
+        const entries = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
+          groupPairs.map((pair, orderIndex) => ({
               champ_id: champId,
               club_member_id: toDbId(pair.player1Id),
               partner_member_id: toDbId(pair.player2Id),
               group_number: gi + 1,
-            },
-          ];
-        });
+              order_index: orderIndex,
+          }))
+        );
         const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
         if (entryErr) throw entryErr;
       } else {
         const entries = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
-          groupPlayers.map((p) => ({
+          groupPlayers.map((p, orderIndex) => ({
             champ_id: champId,
             club_member_id: toDbId(p.id),
             group_number: gi + 1,
+            order_index: orderIndex,
           }))
         );
         const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
@@ -1431,12 +1446,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(30);
     setScoringMode("standard");
     setGroupDurations({});
+    setCourtRotationMinutes(null);
     setRoundFormat("single_round_robin");
     setByeHandling("no_match");
     setSelectedCourtIds(new Set());
+    setSelectedPlayerIds(new Set());
     setGroupAssignments(new Map());
+    setPlayerOrder([]);
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
+    setPairOrder([]);
     setSourceLeagueIds(new Set());
     setRegistrationMode("open");
     setPartnerMode("admin");
@@ -1496,7 +1515,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
-      .eq("champ_id", champ.id);
+      .eq("champ_id", champ.id)
+      .order("group_number", { ascending: true })
+      .order("order_index", { ascending: true })
+      .order("created_at", { ascending: true });
 
     // Also load admin-invited registrations so invite-mode tournaments
     // (where entries haven't been locked yet) still show their invitees.
@@ -1514,6 +1536,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           player2Id: e.partner_member_id,
         }));
         setDoublesPairs(pairs);
+        setPairOrder(pairs.map((p) => p.id));
         const assignments = new Map<string, number>();
         pairs.forEach((p, i) => {
           const entry = entries[i];
@@ -1522,6 +1545,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         setPairGroupAssignments(assignments);
       } else {
         setSelectedPlayerIds(new Set(entries.map((e: any) => e.club_member_id)));
+        setPlayerOrder(entries.map((e: any) => e.club_member_id));
         const assignments = new Map<string, number>();
         entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
         setGroupAssignments(assignments);

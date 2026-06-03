@@ -675,6 +675,13 @@ Deno.serve(async (req) => {
             .replace(/<[^>]*>/g, " ")
             .replace(/\s+/g, " ")
             .trim();
+          const localNow = new Date(Date.now() + 2 * 60 * 60 * 1000);
+          const localToday = localNow.toISOString().slice(0, 10);
+          const localTomorrow = new Date(localNow.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const relativeDatePatterns = [
+            normalizedDate === localToday ? "today" : "",
+            normalizedDate === localTomorrow ? "tomorrow" : "",
+          ].filter(Boolean);
           const datePatterns = [
             `${y}/${m}/${d}`,
             `${y}/${Number(m)}/${Number(d)}`,
@@ -700,6 +707,19 @@ Deno.serve(async (req) => {
             `${longMonth} ${String(d).padStart(2,"0")} ${y}`,
             `${Number(d)}/${Number(m)}/${y}`,
             `${Number(d)}-${Number(m)}-${y}`,
+            `${Number(d)} ${shortMonth}`,
+            `${Number(d)} ${longMonth}`,
+            `${String(d).padStart(2,"0")} ${shortMonth}`,
+            `${String(d).padStart(2,"0")} ${longMonth}`,
+            `${shortMonth} ${Number(d)}`,
+            `${longMonth} ${Number(d)}`,
+            `${shortMonth} ${String(d).padStart(2,"0")}`,
+            `${longMonth} ${String(d).padStart(2,"0")}`,
+            `${Number(d)}/${Number(m)}`,
+            `${String(d).padStart(2,"0")}/${String(m).padStart(2,"0")}`,
+            `${Number(m)}/${Number(d)}`,
+            `${String(m).padStart(2,"0")}/${String(d).padStart(2,"0")}`,
+            ...relativeDatePatterns,
           ].map(compact);
           const hourStr = String(startHour).padStart(2, "0");
           const hasTimeMatch = (text: string) => new RegExp(`(^|\\D)0?${startHour}\\s*(?::|h)\\s*00(\\D|$)`, "i").test(text)

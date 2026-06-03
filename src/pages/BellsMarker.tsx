@@ -168,6 +168,8 @@ export default function BellsMarker() {
 
   const saveResult = async () => {
     if (!match) return;
+    // Cancel any pending live-score sync so it cannot overwrite status back to in_progress
+    if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
     setSaving(true);
     try {
       // Winner + score string come from the format strategy

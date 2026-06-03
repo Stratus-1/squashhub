@@ -810,12 +810,54 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const totalSlots = allSlots.length;
     const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
 
+    // Build round-robin matches
+    const allMatches: MatchDef[] = [];
+    const fmt = roundFormat === "double_round_robin" ? "double" : "single";
+    const ingestRounds = (gi: number, ids: string[]) => {
+      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
+      rounds.forEach((roundMatches, ri) => {
+        roundMatches.forEach(([a, b, leg]) => {
+          allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
+        });
+        const byeId = byesPerRound[ri];
+        if (byeId && byeHandling !== "no_match") {
+          allMatches.push({
+            groupNum: gi + 1, roundNum: ri + 1,
+            entityA: byeId, entityB: byeId, leg: null,
+            isBye: true, byeEntityId: byeId,
+          });
+        }
+      });
+    };
+    if (isDoubles) {
+      (groups as DoublePair[][]).forEach((groupPairs, gi) => {
+        ingestRounds(gi, groupPairs.map((p) => p.id));
+      });
+    } else {
+      (groups as ClubMember[][]).forEach((groupPlayers, gi) => {
+        ingestRounds(gi, groupPlayers.map((p) => p.id));
+      });
+    }
+
+    // Scheduling with 2-day gap per entity
+    const entityLastDate = new Map<string, string>();
+    const canScheduleOn = (entityId: string, dateStr: string): boolean => {
+      const last = entityLastDate.get(entityId);
+      if (!last) return true;
+      const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 2;
+    };
+    const getPlayersForEntity = (entityId: string): string[] => {
+      if (!isDoubles) return [entityId];
+      const pair = doublesPairs.find((p) => p.id === entityId);
+      return pair ? [pair.player1Id, pair.player2Id] : [entityId];
+    };
+
     const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
 
     if (isBellsMode) {
-      // Bells: single-day, per-league time caps, auto-distribute courts across leagues,
-      // rotate pairs across their league's assigned courts as the schedule progresses.
-      const startDateOnly = format(new Date(startDate), "yyyy-MM-dd");
+      // Bells: per-league time caps; auto-distribute courts across leagues, then
+      // walk each league's matches through the available sessions, rotating courts.
       const capFor = (gn: number) =>
         Number(groupDurations[String(gn)]) || matchDuration;
 
@@ -828,21 +870,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const leagues = Array.from(byLeague.keys()).sort((a, b) => a - b);
 
       if (leagues.length > 0 && courtIds.length > 0) {
-        // Weight courts by (matches × cap) so longer/larger leagues get more courts.
         const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
         const totalW = weights.reduce((a, b) => a + b, 0) || 1;
         let allocs = leagues.map((_, i) =>
           Math.max(1, Math.floor((weights[i] / totalW) * courtIds.length))
         );
         let sum = allocs.reduce((a, b) => a + b, 0);
-        // Trim excess from the largest allocation (never below 1).
         while (sum > courtIds.length) {
           let idx = 0;
           for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
           if (allocs[idx] <= 1) break;
           allocs[idx]--; sum--;
         }
-        // Hand out remaining courts to the league with the highest load per court.
         while (sum < courtIds.length) {
           let best = 0; let bestVal = -Infinity;
           for (let i = 0; i < leagues.length; i++) {
@@ -851,45 +890,46 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           }
           allocs[best]++; sum++;
         }
-        // If we have more leagues than courts, the trim loop leaves some at 1
-        // and others starved — fall back to one court per league, leagues share.
         let cursor = 0;
         const leagueCourts = new Map<number, number[]>();
         leagues.forEach((gn, i) => {
           if (cursor >= courtIds.length) {
-            // Share courts cyclically when court pool is too small.
             leagueCourts.set(gn, [courtIds[i % courtIds.length]]);
           } else {
-            leagueCourts.set(
-              gn,
-              courtIds.slice(cursor, cursor + allocs[i])
-            );
+            leagueCourts.set(gn, courtIds.slice(cursor, cursor + allocs[i]));
             cursor += allocs[i];
           }
         });
 
-        // Assign date / time / court for each match. Pairs naturally rotate across
-        // their league's courts because match index advances both court and round.
+        // Walk each league's matches across sessions. Within a session, fit as many
+        // rounds as the time cap allows on the league's allocated (in-session) courts.
         for (const gn of leagues) {
           const cap = capFor(gn);
           const lCourts = leagueCourts.get(gn)!;
           const lMatches = byLeague.get(gn)!;
-          lMatches.forEach((m, idx) => {
-            const round = Math.floor(idx / lCourts.length);
-            const courtIdx = idx % lCourts.length;
-            const t = startMins + round * cap;
-            const h = Math.floor(t / 60);
-            const mm = t % 60;
-            m.date = startDateOnly;
-            m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-            m.courtId = lCourts[courtIdx];
-          });
+          let mIdx = 0;
+          for (const s of sessions) {
+            if (mIdx >= lMatches.length) break;
+            const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
+            if (sessionLCourts.length === 0) continue;
+            const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
+            for (let r = 0; r < roundsPossible && mIdx < lMatches.length; r++) {
+              for (let ci = 0; ci < sessionLCourts.length && mIdx < lMatches.length; ci++) {
+                const m = lMatches[mIdx++];
+                const t = s.startMin + r * cap;
+                const h = Math.floor(t / 60);
+                const mm = t % 60;
+                m.date = s.date;
+                m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                m.courtId = sessionLCourts[ci];
+              }
+            }
+          }
         }
       }
     } else {
       const usedSlots = new Set<number>();
       for (const match of allMatches) {
-        // Bye placeholders don't get a court / slot.
         if (match.isBye) continue;
         const playersA = getPlayersForEntity(match.entityA);
         const playersB = getPlayersForEntity(match.entityB);

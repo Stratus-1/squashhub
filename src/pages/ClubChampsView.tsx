@@ -755,10 +755,11 @@ export default function ClubChampsView() {
     return groupNumbers.map((gn: number) => {
       const standings = getGroupStandings(gn);
       const groupMatches = matches.filter((m: any) => m.group_number === gn);
+      const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
 
       return (
         <Card key={gn}>
-          <CardHeader><CardTitle className="text-lg">Group {gn}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">League {gn}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -769,7 +770,14 @@ export default function ClubChampsView() {
                     <th className="pb-2 font-medium text-center">P</th>
                     <th className="pb-2 font-medium text-center">W</th>
                     <th className="pb-2 font-medium text-center">L</th>
-                    {standingsColumns.map((col) => (
+                    {isBells ? (
+                      <>
+                        {Array.from({ length: maxGames }).map((_, gi) => (
+                          <th key={`g${gi}`} className="pb-2 font-medium text-center" title={`Game ${gi + 1} points`}>G{gi + 1}</th>
+                        ))}
+                        <th className="pb-2 font-medium text-center" title="Total points scored">Total</th>
+                      </>
+                    ) : standingsColumns.map((col) => (
                       <th key={col.key} className="pb-2 font-medium text-center" title={col.title}>{col.label}</th>
                     ))}
                   </tr>
@@ -784,7 +792,19 @@ export default function ClubChampsView() {
                         <td className="py-2 text-center">{s.played}</td>
                         <td className="py-2 text-center">{s.won}</td>
                         <td className="py-2 text-center">{s.lost}</td>
-                        {standingsColumns.map((col) => (
+                        {isBells ? (
+                          <>
+                            {Array.from({ length: maxGames }).map((_, gi) => {
+                              const v = s.gamePoints?.[gi];
+                              return (
+                                <td key={`g${gi}`} className="py-2 text-center tabular-nums">
+                                  {v == null ? <span className="text-muted-foreground">–</span> : v}
+                                </td>
+                              );
+                            })}
+                            <td className="py-2 text-center font-semibold tabular-nums">{s.pointsFor}</td>
+                          </>
+                        ) : standingsColumns.map((col) => (
                           <td key={col.key} className={cn("py-2 text-center", col.cellClassName)}>{col.render(s)}</td>
                         ))}
                       </tr>

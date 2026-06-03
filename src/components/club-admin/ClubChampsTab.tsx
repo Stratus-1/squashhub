@@ -1562,8 +1562,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       case "groups":
         return numGroups >= 1 && numGroups <= Math.floor(entityCount / 2);
       case "schedule":
-        if (awaitingPlayerPairs) return startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0;
-        return startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
+        if (awaitingPlayerPairs) return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0;
+        return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
       case "review": return true;
       default: return false;
     }

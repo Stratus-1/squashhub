@@ -74,12 +74,16 @@ export default function Tournaments() {
       return data || [];
     },
     enabled: champIds.length > 0,
+    refetchInterval: 10000,
   });
 
   const today = format(new Date(), "yyyy-MM-dd");
   const upcomingMatches = allMatches
-    .filter((m: any) => m.status === "scheduled" && (!m.scheduled_date || m.scheduled_date >= today))
+    .filter((m: any) => (m.status === "scheduled" || m.status === "in_progress") && (!m.scheduled_date || m.scheduled_date >= today))
     .sort((a: any, b: any) => {
+      // Live matches float to the top
+      if (a.status === "in_progress" && b.status !== "in_progress") return -1;
+      if (b.status === "in_progress" && a.status !== "in_progress") return 1;
       const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
       const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
       return aKey.localeCompare(bKey);
@@ -139,7 +143,12 @@ export default function Tournaments() {
             </Badge>
           )}
           {m.court && <Badge variant="outline" className="text-[10px] shrink-0">{m.court.name}</Badge>}
-          {today && <Badge className="text-[10px] shrink-0">Today</Badge>}
+          {m.status === "in_progress" && (
+            <Badge className="text-[10px] shrink-0 bg-red-600 hover:bg-red-600 text-white gap-1 animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-white" /> LIVE {m.side_a_points ?? 0}-{m.side_b_points ?? 0}
+            </Badge>
+          )}
+          {today && m.status !== "in_progress" && <Badge className="text-[10px] shrink-0">Today</Badge>}
         </button>
         <Button
           size="sm"

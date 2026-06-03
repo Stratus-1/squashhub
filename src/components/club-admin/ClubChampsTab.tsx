@@ -485,8 +485,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             order_index: orderIndex,
           }))
         );
-        await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
-        await fromExt("club_champs_entries").insert(rows);
+        const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+        if (deleteErr) throw deleteErr;
+        const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
+        if (insertErr) throw insertErr;
       } else {
         if (selectedPlayerIds.size === 0) return;
         const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
@@ -500,11 +502,14 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           }))
         );
         if (rows.length === 0) return;
-        await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
-        await fromExt("club_champs_entries").insert(rows);
+        const { error: deleteErr } = await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+        if (deleteErr) throw deleteErr;
+        const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
+        if (insertErr) throw insertErr;
       }
     } catch (e) {
       console.warn("Tournament entries draft save failed:", e);
+      throw e;
     }
   };
 

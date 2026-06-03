@@ -9,7 +9,7 @@ import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check } from "lucide-react";
+import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, Info } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";

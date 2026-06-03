@@ -325,7 +325,7 @@ export function MarkerSetup({ onStart }: Props) {
 
       const { data: champs } = await supabase
         .from("club_champs")
-        .select("id, name, club_id, match_type")
+        .select("id, name, club_id, match_type, scoring_mode")
         .in("id", champIds)
         .eq("club_id", clubId);
 
@@ -362,6 +362,7 @@ export function MarkerSetup({ onStart }: Props) {
             ...m,
             champName: champ?.name || "Tournament",
             matchType: champ?.match_type || "singles",
+            scoringMode: champ?.scoring_mode || null,
             playerAName: pA?.name || "Player A",
             playerBName: pB?.name || "Player B",
             playerANumber: pA?.club_member_number || "",
@@ -617,6 +618,10 @@ export function MarkerSetup({ onStart }: Props) {
     if (src === "tournament" && tournamentMatches.length > 0) {
       const exists = tournamentMatches.find((m) => m.id === matchId);
       if (exists) {
+        if (exists.scoringMode === "time_capped_points") {
+          navigate(`/bells-marker/${matchId}`, { replace: true });
+          return;
+        }
         setSource("tournament");
         setSelectedSourceId(matchId);
         searchParams.delete("source");
@@ -717,7 +722,13 @@ export function MarkerSetup({ onStart }: Props) {
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => setSelectedSourceId(m.id)}
+                      onClick={() => {
+                        if (m.scoringMode === "time_capped_points") {
+                          navigate(`/bells-marker/${m.id}`);
+                          return;
+                        }
+                        setSelectedSourceId(m.id);
+                      }}
                       className={`w-full text-left rounded-lg border p-3 transition-colors ${
                         isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
                       }`}

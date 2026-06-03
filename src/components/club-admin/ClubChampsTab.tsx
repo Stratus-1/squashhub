@@ -1499,12 +1499,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
-    const { data: champMatches } = await fromExt("club_champs_matches")
-      .select("court_id")
-      .eq("champ_id", champ.id);
-    if (champMatches) {
-      const courtIds = new Set(champMatches.map((m: any) => m.court_id).filter(Boolean) as number[]);
-      setSelectedCourtIds(courtIds);
+    const savedCourtIds = (champ as any).court_ids as number[] | null;
+    if (Array.isArray(savedCourtIds) && savedCourtIds.length > 0) {
+      setSelectedCourtIds(new Set(savedCourtIds));
+    } else {
+      const { data: champMatches } = await fromExt("club_champs_matches")
+        .select("court_id")
+        .eq("champ_id", champ.id);
+      if (champMatches) {
+        const courtIds = new Set(champMatches.map((m: any) => m.court_id).filter(Boolean) as number[]);
+        setSelectedCourtIds(courtIds);
+      }
     }
 
     // Open the wizard at step 1 so admin can review/edit every step.

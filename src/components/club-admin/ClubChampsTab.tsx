@@ -873,66 +873,95 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const leagues = Array.from(byLeague.keys()).sort((a, b) => a - b);
 
       if (leagues.length > 0 && courtIds.length > 0) {
-        const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
-        const totalW = weights.reduce((a, b) => a + b, 0) || 1;
-        let allocs = leagues.map((_, i) =>
-          Math.max(1, Math.floor((weights[i] / totalW) * courtIds.length))
-        );
-        let sum = allocs.reduce((a, b) => a + b, 0);
-        while (sum > courtIds.length) {
-          let idx = 0;
-          for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
-          if (allocs[idx] <= 1) break;
-          allocs[idx]--; sum--;
-        }
-        while (sum < courtIds.length) {
-          let best = 0; let bestVal = -Infinity;
-          for (let i = 0; i < leagues.length; i++) {
-            const v = weights[i] / allocs[i];
-            if (v > bestVal) { bestVal = v; best = i; }
-          }
-          allocs[best]++; sum++;
-        }
-        let cursor = 0;
-        const leagueCourts = new Map<number, number[]>();
-        leagues.forEach((gn, i) => {
-          if (cursor >= courtIds.length) {
-            leagueCourts.set(gn, [courtIds[i % courtIds.length]]);
-          } else {
-            leagueCourts.set(gn, courtIds.slice(cursor, cursor + allocs[i]));
-            cursor += allocs[i];
-          }
-        });
+        const caps = leagues.map(capFor);
+        const allSameCap = caps.every((c) => c === caps[0]);
+        const rotateMin = Number(courtRotationMinutes) > 0 ? Number(courtRotationMinutes) : 0;
 
-        // Walk each league's matches across sessions. Within a session, fit as many
-        // rounds as the time cap allows on the league's allocated (in-session) courts.
-        for (const gn of leagues) {
-          const cap = capFor(gn);
-          const lCourts = leagueCourts.get(gn)!;
-          const lMatches = byLeague.get(gn)!;
-          let mIdx = 0;
+        // ─── Rotation mode ──────────────────────────────────────────────────
+        // When the admin has enabled court rotation AND all leagues share the
+        // same time cap, run synchronised rounds: every league plays one match
+        // per round, and the court assignment for each league shifts every
+        // `rotateMin` minutes so teams visibly cycle across the courts.
+        if (rotateMin > 0 && allSameCap && courtIds.length >= leagues.length) {
+          const cap = caps[0];
+          const mIdx = new Map<number, number>(leagues.map((gn) => [gn, 0]));
           for (const s of sessions) {
-            if (mIdx >= lMatches.length) break;
-            const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
-            if (sessionLCourts.length === 0) continue;
+            const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
+            if (sessionCourts.length < leagues.length) continue;
             const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
-            const rotateMin = Number(courtRotationMinutes) > 0 ? Number(courtRotationMinutes) : 0;
-            for (let r = 0; r < roundsPossible && mIdx < lMatches.length; r++) {
-              // When a court-rotation interval is configured, shift the league's
-              // court ordering at every rotation boundary so teams visibly move
-              // between courts (e.g. rotate every 30min while cap is 15min →
-              // courts shift after every 2 rounds).
-              const rotateStep = rotateMin > 0
-                ? Math.floor((r * cap) / rotateMin)
-                : 0;
-              for (let ci = 0; ci < sessionLCourts.length && mIdx < lMatches.length; ci++) {
-                const m = lMatches[mIdx++];
+            for (let r = 0; r < roundsPossible; r++) {
+              const rotateStep = Math.floor((r * cap) / rotateMin);
+              let anyAssigned = false;
+              leagues.forEach((gn, gi) => {
+                const lMatches = byLeague.get(gn)!;
+                let i = mIdx.get(gn)!;
+                if (i >= lMatches.length) return;
+                const m = lMatches[i++];
                 const t = s.startMin + r * cap;
                 const h = Math.floor(t / 60);
                 const mm = t % 60;
                 m.date = s.date;
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                m.courtId = sessionLCourts[(ci + rotateStep) % sessionLCourts.length];
+                m.courtId = sessionCourts[(gi + rotateStep) % sessionCourts.length];
+                mIdx.set(gn, i);
+                anyAssigned = true;
+              });
+              if (!anyAssigned) break;
+            }
+          }
+        } else {
+          // ─── Static allocation (no rotation, or mixed caps) ───────────────
+          const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
+          const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+          let allocs = leagues.map((_, i) =>
+            Math.max(1, Math.floor((weights[i] / totalW) * courtIds.length))
+          );
+          let sum = allocs.reduce((a, b) => a + b, 0);
+          while (sum > courtIds.length) {
+            let idx = 0;
+            for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
+            if (allocs[idx] <= 1) break;
+            allocs[idx]--; sum--;
+          }
+          while (sum < courtIds.length) {
+            let best = 0; let bestVal = -Infinity;
+            for (let i = 0; i < leagues.length; i++) {
+              const v = weights[i] / allocs[i];
+              if (v > bestVal) { bestVal = v; best = i; }
+            }
+            allocs[best]++; sum++;
+          }
+          let cursor = 0;
+          const leagueCourts = new Map<number, number[]>();
+          leagues.forEach((gn, i) => {
+            if (cursor >= courtIds.length) {
+              leagueCourts.set(gn, [courtIds[i % courtIds.length]]);
+            } else {
+              leagueCourts.set(gn, courtIds.slice(cursor, cursor + allocs[i]));
+              cursor += allocs[i];
+            }
+          });
+
+          for (const gn of leagues) {
+            const cap = capFor(gn);
+            const lCourts = leagueCourts.get(gn)!;
+            const lMatches = byLeague.get(gn)!;
+            let mIdx2 = 0;
+            for (const s of sessions) {
+              if (mIdx2 >= lMatches.length) break;
+              const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
+              if (sessionLCourts.length === 0) continue;
+              const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
+              for (let r = 0; r < roundsPossible && mIdx2 < lMatches.length; r++) {
+                for (let ci = 0; ci < sessionLCourts.length && mIdx2 < lMatches.length; ci++) {
+                  const m = lMatches[mIdx2++];
+                  const t = s.startMin + r * cap;
+                  const h = Math.floor(t / 60);
+                  const mm = t % 60;
+                  m.date = s.date;
+                  m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                  m.courtId = sessionLCourts[ci];
+                }
               }
             }
           }

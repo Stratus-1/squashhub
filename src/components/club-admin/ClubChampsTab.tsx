@@ -739,26 +739,49 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     if (!startDate || !endDate || playDays.size === 0 || selectedCourtIds.size === 0) return null;
 
     const courtIds = Array.from(selectedCourtIds);
-    const allDates = eachDayOfInterval({
-      start: new Date(startDate),
-      end: new Date(endDate),
-    }).filter((d) => playDays.has(getDay(d)));
 
-    const [sh, sm] = startTime.split(":").map(Number);
-    const [eh, em] = endTime.split(":").map(Number);
-    const startMins = sh * 60 + sm;
-    const endMins = eh * 60 + em;
-    const slotsPerSession = Math.floor((endMins - startMins) / matchDuration);
-
-    const timeSlots: string[] = [];
-    for (let i = 0; i < slotsPerSession; i++) {
-      const mins = startMins + i * matchDuration;
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      timeSlots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    // Build "sessions" — concrete (date, start, end, courts) blocks the scheduler can fill.
+    // When the admin has set per-day overrides, use those; otherwise derive one session per
+    // play-day from the global Start/End times and all selected courts.
+    type Session = { date: string; startMin: number; endMin: number; courtIds: number[] };
+    const parseHM = (s: string) => {
+      const [h, m] = s.split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    let sessions: Session[] = [];
+    if (customizeDailySchedule && daySchedules.length > 0) {
+      sessions = daySchedules
+        .map((d) => {
+          const cs = (d.court_ids && d.court_ids.length > 0
+            ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+            : courtIds);
+          return {
+            date: d.date,
+            startMin: parseHM(d.start_time),
+            endMin: parseHM(d.end_time),
+            courtIds: cs,
+          };
+        })
+        .filter((s) => s.endMin > s.startMin && s.courtIds.length > 0)
+        .sort((a, b) => (a.date.localeCompare(b.date) || a.startMin - b.startMin));
+    } else {
+      const allDatesGlobal = eachDayOfInterval({
+        start: new Date(startDate),
+        end: new Date(endDate),
+      }).filter((d) => playDays.has(getDay(d)));
+      const gStart = parseHM(startTime);
+      const gEnd = parseHM(endTime);
+      sessions = allDatesGlobal.map((d) => ({
+        date: format(d, "yyyy-MM-dd"),
+        startMin: gStart,
+        endMin: gEnd,
+        courtIds,
+      }));
     }
+    if (sessions.length === 0) return null;
 
-    const totalSlots = allDates.length * timeSlots.length * courtIds.length;
+    // Distinct dates (for the summary card)
+    const allDates = Array.from(new Set(sessions.map((s) => s.date))).map((d) => parseISO(d));
 
     type MatchDef = {
       groupNum: number; roundNum: number;
@@ -768,69 +791,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       byeEntityId?: string;
       date?: string; time?: string; courtId?: number;
     };
-    const allMatches: MatchDef[] = [];
-    const fmt = roundFormat === "double_round_robin" ? "double" : "single";
 
-    const ingestRounds = (gi: number, ids: string[]) => {
-      const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
-      rounds.forEach((roundMatches, ri) => {
-        roundMatches.forEach(([a, b, leg]) => {
-          allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
-        });
-        // Record byes (only when there's actually an odd entity count and admin
-        // wants them tracked). Walkover/neutral are scoring concerns; the schedule
-        // simply notes who has the bye that round.
-        const byeId = byesPerRound[ri];
-        if (byeId && byeHandling !== "no_match") {
-          allMatches.push({
-            groupNum: gi + 1,
-            roundNum: ri + 1,
-            entityA: byeId,
-            entityB: byeId,
-            leg: null,
-            isBye: true,
-            byeEntityId: byeId,
-          });
-        }
-      });
-    };
-
-    if (isDoubles) {
-      (groups as DoublePair[][]).forEach((groupPairs, gi) => {
-        ingestRounds(gi, groupPairs.map((p) => p.id));
-      });
-    } else {
-      (groups as ClubMember[][]).forEach((groupPlayers, gi) => {
-        ingestRounds(gi, groupPlayers.map((p) => p.id));
-      });
-    }
-
-    // Scheduling with 2-day gap per entity
-    const entityLastDate = new Map<string, string>();
-    const canScheduleOn = (entityId: string, dateStr: string): boolean => {
-      const last = entityLastDate.get(entityId);
-      if (!last) return true;
-      const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
-      return diffDays >= 2;
-    };
-
-    // For doubles, also check individual players
-    const getPlayersForEntity = (entityId: string): string[] => {
-      if (!isDoubles) return [entityId];
-      const pair = doublesPairs.find((p) => p.id === entityId);
-      return pair ? [pair.player1Id, pair.player2Id] : [entityId];
-    };
-
+    // Build the universal slot list from sessions (used by non-Bells scheduling).
     type Slot = { date: string; time: string; courtId: number };
     const allSlots: Slot[] = [];
-    for (const d of allDates) {
-      const ds = format(d, "yyyy-MM-dd");
-      for (const ts of timeSlots) {
-        for (const cid of courtIds) {
-          allSlots.push({ date: ds, time: ts, courtId: cid });
+    for (const s of sessions) {
+      const n = Math.floor((s.endMin - s.startMin) / matchDuration);
+      for (let i = 0; i < n; i++) {
+        const mins = s.startMin + i * matchDuration;
+        const h = Math.floor(mins / 60);
+        const mm = mins % 60;
+        const ts = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+        for (const cid of s.courtIds) {
+          allSlots.push({ date: s.date, time: ts, courtId: cid });
         }
       }
     }
+    const totalSlots = allSlots.length;
+    const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
 
     const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
 

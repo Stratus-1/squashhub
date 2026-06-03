@@ -718,7 +718,13 @@ export function MarkerSetup({ onStart }: Props) {
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => setSelectedSourceId(m.id)}
+                      onClick={() => {
+                        if (m.scoringMode === "time_capped_points") {
+                          navigate(`/bells-marker/${m.id}`);
+                          return;
+                        }
+                        setSelectedSourceId(m.id);
+                      }}
                       className={`w-full text-left rounded-lg border p-3 transition-colors ${
                         isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
                       }`}

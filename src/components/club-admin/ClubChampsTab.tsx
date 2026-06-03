@@ -1037,20 +1037,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (editingChampId) {
-        const { data: oldMatches } = await fromExt("club_champs_matches")
-          .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
+        // SAFETY GUARD: never let Regenerate shrink the saved pair/player list.
+        // If the wizard is loaded with fewer entrants than what's already saved
+        // (e.g. registrations hadn't finished loading), abort instead of wiping.
+        const { data: existingEntries } = await fromExt("club_champs_entries")
+          .select("id")
           .eq("champ_id", editingChampId);
-        if (oldMatches && oldMatches.length > 0) {
-          const memberIds = [...new Set(oldMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
-          const { data: memberUsers } = await fromExt("club_members").select("id, user_id").in("id", memberIds);
-          const memberMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
-          for (const m of oldMatches) {
-            const userId = memberMap.get(m.player_a_member_id);
-            if (!userId || !m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
-            await fromExt("bookings").delete()
-              .eq("user_id", userId).eq("date", m.scheduled_date)
-              .eq("start_time", m.scheduled_time).eq("court_id", m.court_id);
-          }
+        const savedCount = existingEntries?.length || 0;
+        const currentCount = isDoubles
+          ? doublesPairs.length
+          : (groups as ClubMember[][]).flatMap((g) => g).length;
+        if (savedCount > 0 && currentCount < savedCount) {
+          throw new Error(
+            `Refusing to regenerate: only ${currentCount} ${isDoubles ? "pair" : "player"}(s) loaded but ${savedCount} are saved. Close the wizard, reopen the tournament, and try again so all entries load first.`
+          );
+        }
+
+        // Remove previously-auto-booked court slots (matched via stable external_id,
+        // with a legacy fallback by date/time/court for older rows).
+        await fromExt("bookings").delete().like("external_id", `champ:${editingChampId}:%`);
+        const { data: oldMatches } = await fromExt("club_champs_matches")
+          .select("scheduled_date, scheduled_time, court_id")
+          .eq("champ_id", editingChampId);
+        for (const m of oldMatches || []) {
+          if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+          await fromExt("bookings").delete()
+            .eq("date", m.scheduled_date)
+            .eq("start_time", m.scheduled_time)
+            .eq("court_id", m.court_id)
+            .eq("source", "club_event");
         }
         await fromExt("club_champs_matches").delete().eq("champ_id", editingChampId);
         await fromExt("club_champs_entries").delete().eq("champ_id", editingChampId);

@@ -310,7 +310,7 @@ export default function BellsMarker() {
         </button>
 
         {/* How-to */}
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-foreground/80 flex gap-2">
+        <div className="rounded-lg border border-primary/30 bg-card shadow-sm p-3 text-xs text-foreground flex gap-2">
           <Info className="w-4 h-4 mt-0.5 text-primary shrink-0" />
           <div className="space-y-0.5">
             <p><b>Start</b> — begin the {capMinutes}-minute countdown.</p>

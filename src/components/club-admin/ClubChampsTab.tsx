@@ -1480,20 +1480,22 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const deleteChamp = useMutation({
     mutationFn: async ({ id, withBookings }: { id: string; withBookings: boolean }) => {
       if (withBookings) {
+        // 1) Delete any bookings tagged with this champ's stable external_id
+        //    (created by the explicit "Make Court Bookings" flow).
+        await fromExt("bookings").delete().like("external_id", `champ:${id}:%`);
+
+        // 2) For legacy auto-booked rows (no external_id), match by the
+        //    scheduled date/time/court on each champ match.
         const { data: champMatches } = await fromExt("club_champs_matches")
-          .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
+          .select("scheduled_date, scheduled_time, court_id")
           .eq("champ_id", id);
-        if (champMatches && champMatches.length > 0) {
-          const memberIds = [...new Set(champMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
-          const { data: memberUsers } = await fromExt("club_members").select("id, user_id").in("id", memberIds);
-          const memberMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
-          for (const m of champMatches) {
-            const userId = memberMap.get(m.player_a_member_id);
-            if (!userId || !m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
-            await fromExt("bookings").delete()
-              .eq("user_id", userId).eq("date", m.scheduled_date)
-              .eq("start_time", m.scheduled_time).eq("court_id", m.court_id);
-          }
+        for (const m of (champMatches || []) as any[]) {
+          if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+          await fromExt("bookings").delete()
+            .eq("court_id", m.court_id)
+            .eq("date", m.scheduled_date)
+            .eq("start_time", m.scheduled_time)
+            .eq("source", "club_event");
         }
       }
       const { error } = await fromExt("club_champs").delete().eq("id", id);

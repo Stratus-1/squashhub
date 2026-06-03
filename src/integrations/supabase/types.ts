@@ -843,6 +843,7 @@ export type Database = {
           gender: string
           group_durations: Json
           id: string
+          include_visitors: boolean
           invite_methods: string[]
           match_duration_minutes: number
           match_type: string
@@ -863,6 +864,7 @@ export type Database = {
           start_time: string
           status: string
           updated_at: string
+          visitor_clubs: string[]
         }
         Insert: {
           bye_handling?: string
@@ -877,6 +879,7 @@ export type Database = {
           gender: string
           group_durations?: Json
           id?: string
+          include_visitors?: boolean
           invite_methods?: string[]
           match_duration_minutes?: number
           match_type?: string
@@ -897,6 +900,7 @@ export type Database = {
           start_time?: string
           status?: string
           updated_at?: string
+          visitor_clubs?: string[]
         }
         Update: {
           bye_handling?: string
@@ -911,6 +915,7 @@ export type Database = {
           gender?: string
           group_durations?: Json
           id?: string
+          include_visitors?: boolean
           invite_methods?: string[]
           match_duration_minutes?: number
           match_type?: string
@@ -931,6 +936,7 @@ export type Database = {
           start_time?: string
           status?: string
           updated_at?: string
+          visitor_clubs?: string[]
         }
         Relationships: [
           {

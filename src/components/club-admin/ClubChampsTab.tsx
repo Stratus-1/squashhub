@@ -916,7 +916,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
             if (sessionLCourts.length === 0) continue;
             const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
+            const rotateMin = Number(courtRotationMinutes) > 0 ? Number(courtRotationMinutes) : 0;
             for (let r = 0; r < roundsPossible && mIdx < lMatches.length; r++) {
+              // When a court-rotation interval is configured, shift the league's
+              // court ordering at every rotation boundary so teams visibly move
+              // between courts (e.g. rotate every 30min while cap is 15min →
+              // courts shift after every 2 rounds).
+              const rotateStep = rotateMin > 0
+                ? Math.floor((r * cap) / rotateMin)
+                : 0;
               for (let ci = 0; ci < sessionLCourts.length && mIdx < lMatches.length; ci++) {
                 const m = lMatches[mIdx++];
                 const t = s.startMin + r * cap;
@@ -924,7 +932,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const mm = t % 60;
                 m.date = s.date;
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                m.courtId = sessionLCourts[ci];
+                m.courtId = sessionLCourts[(ci + rotateStep) % sessionLCourts.length];
               }
             }
           }

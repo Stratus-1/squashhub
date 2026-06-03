@@ -834,6 +834,7 @@ export type Database = {
           bye_handling: string
           club_id: string
           court_ids: number[]
+          court_rotation_minutes: number | null
           created_at: string
           day_schedules: Json
           description: string | null
@@ -872,6 +873,7 @@ export type Database = {
           bye_handling?: string
           club_id: string
           court_ids?: number[]
+          court_rotation_minutes?: number | null
           created_at?: string
           day_schedules?: Json
           description?: string | null
@@ -910,6 +912,7 @@ export type Database = {
           bye_handling?: string
           club_id?: string
           court_ids?: number[]
+          court_rotation_minutes?: number | null
           created_at?: string
           day_schedules?: Json
           description?: string | null

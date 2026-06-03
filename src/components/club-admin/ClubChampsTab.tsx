@@ -209,6 +209,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchDuration, setMatchDuration] = useState(30);
   const [scoringMode, setScoringMode] = useState<"standard" | "time_capped_points">("standard");
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
+  const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
   const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
   const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
@@ -425,6 +426,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       match_duration_minutes: matchDuration,
       scoring_mode: scoringMode,
       group_durations: groupDurations,
+      court_rotation_minutes: courtRotationMinutes,
       round_format: roundFormat,
       bye_handling: byeHandling,
       source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -564,7 +566,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [
     showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode,
-    groupDurations, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
+    groupDurations, courtRotationMinutes, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
@@ -914,7 +916,15 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
             if (sessionLCourts.length === 0) continue;
             const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
+            const rotateMin = Number(courtRotationMinutes) > 0 ? Number(courtRotationMinutes) : 0;
             for (let r = 0; r < roundsPossible && mIdx < lMatches.length; r++) {
+              // When a court-rotation interval is configured, shift the league's
+              // court ordering at every rotation boundary so teams visibly move
+              // between courts (e.g. rotate every 30min while cap is 15min →
+              // courts shift after every 2 rounds).
+              const rotateStep = rotateMin > 0
+                ? Math.floor((r * cap) / rotateMin)
+                : 0;
               for (let ci = 0; ci < sessionLCourts.length && mIdx < lMatches.length; ci++) {
                 const m = lMatches[mIdx++];
                 const t = s.startMin + r * cap;
@@ -922,7 +932,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 const mm = t % 60;
                 m.date = s.date;
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                m.courtId = sessionLCourts[ci];
+                m.courtId = sessionLCourts[(ci + rotateStep) % sessionLCourts.length];
               }
             }
           }
@@ -961,7 +971,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, customizeDailySchedule, daySchedules]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, courtRotationMinutes, customizeDailySchedule, daySchedules]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -1005,6 +1015,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             group_durations: groupDurations,
+            court_rotation_minutes: courtRotationMinutes,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -1041,6 +1052,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             group_durations: groupDurations,
+            court_rotation_minutes: courtRotationMinutes,
             round_format: roundFormat,
             bye_handling: byeHandling,
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
@@ -1428,6 +1440,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(champ.match_duration_minutes || 30);
     setScoringMode(((champ as any).scoring_mode as any) || "standard");
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
+    setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setRoundFormat((champ.round_format as any) || "single_round_robin");
     setByeHandling((champ.bye_handling as any) || "no_match");
     const initialLeagueIds: string[] = Array.isArray(champ.source_league_ids) && champ.source_league_ids.length > 0
@@ -2645,6 +2658,39 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Leave blank to fall back to the default Match Duration above.
                   </p>
+
+                  <div className="mt-3">
+                    <Label className="text-sm font-medium">Rotate courts every (minutes)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="number"
+                        min={5}
+                        max={240}
+                        step={5}
+                        placeholder="Off — teams stay on their court"
+                        value={courtRotationMinutes ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value.trim();
+                          setCourtRotationMinutes(v === "" ? null : Math.max(1, Number(v)));
+                        }}
+                        className="h-8 text-sm max-w-[220px]"
+                      />
+                      {courtRotationMinutes != null && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setCourtRotationMinutes(null)}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Teams rotate between this league's allocated courts at every interval (e.g. 30 = shift courts every 30 minutes). Leave blank to keep courts fixed per round.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

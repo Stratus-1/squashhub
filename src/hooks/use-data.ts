@@ -427,12 +427,14 @@ export function useCancelBooking() {
 
 export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?: string | null }) {
   const { user } = useAuth();
+  const { club: activeClub } = useClubContext();
+  const activeClubId = activeClub?.id;
   const memberId = opts?.memberId;
   const targetId = overrideUserId || user?.id;
   const queryId = memberId || targetId;
 
   return useQuery({
-    queryKey: ["my-bookings", queryId],
+    queryKey: ["my-bookings", queryId, activeClubId ?? null],
     queryFn: async () => {
       if (!queryId) return [];
       let query = supabase
@@ -442,6 +444,12 @@ export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?
         .gte("date", new Date().toISOString().split("T")[0])
         .order("date")
         .order("start_time");
+
+      // Scope to the active club so users who belong to multiple clubs (e.g.
+      // super-admins) don't see bookings from other clubs leak across tenants.
+      if (activeClubId) {
+        query = query.eq("club_id", activeClubId);
+      }
 
       // Filter by club_member_id when available, else fall back to user_id
       if (memberId) {

@@ -2918,6 +2918,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </p>
             )}
 
+            {!awaitingPlayerPairs && editingChampId && (
+              <p className="text-xs text-muted-foreground rounded-lg border p-2 bg-muted/30">
+                <strong>Rebuild Schedule</strong> recreates the fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in. Court bookings are written separately via <strong>Make Court Bookings</strong>.
+              </p>
+            )}
+
             {!awaitingPlayerPairs && schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {Array.from({ length: numGroups }, (_, gi) => {

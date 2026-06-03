@@ -343,6 +343,7 @@ export default function Bookings() {
   const { data: me } = useProfile();
   const courtCheckinsEnabled = !!(me as any)?.court_checkins_enabled;
   const { data: myClubData } = useMyClub();
+  const { data: isFullAdmin } = useIsClubAdmin();
   const myClub = myClubData?.club;
   const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
     ((myClub as any)?.uses_gobook ? "gobook" : null);

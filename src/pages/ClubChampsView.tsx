@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
+const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
 export default function ClubChampsView() {
   const { champId } = useParams<{ champId: string }>();

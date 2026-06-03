@@ -19,7 +19,7 @@ import { useState } from "react";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 
-const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
+const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
 export default function Tournaments() {
   const navigate = useNavigate();

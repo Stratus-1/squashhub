@@ -59,6 +59,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuth();
   const { club } = useClubContext();
   const { activeMember, isAdmin } = useMemberContext();
+  const isFullAdmin = useIsClubAdmin();
+  const adminBypass = isAdmin || isFullAdmin;
   const { data: myClubData } = useQuery({
     queryKey: ["my-club-fallback"],
     queryFn: async () => {

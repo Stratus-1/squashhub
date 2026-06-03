@@ -441,6 +441,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
       day_schedules: customizeDailySchedule ? daySchedules : [],
+      court_ids: Array.from(selectedCourtIds),
     };
     try {
       if (editingChampId) {

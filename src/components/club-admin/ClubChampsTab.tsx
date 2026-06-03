@@ -32,7 +32,7 @@ interface ClubChampsTabProps {
 }
 
 type WizardStep = "category" | "registration" | "players" | "groups" | "schedule" | "review";
-type GenderCategory = "men" | "ladies" | "mixed";
+type GenderCategory = "men" | "ladies" | "mixed" | "open";
 type MatchType = "singles" | "doubles";
 
 const STEPS: WizardStep[] = ["category", "registration", "players", "groups", "schedule", "review"];
@@ -120,10 +120,13 @@ const GENDER_LABELS: Record<GenderCategory, string> = {
   men: "Men's",
   ladies: "Ladies'",
   mixed: "Mixed",
+  open: "Open",
 };
 
+// "mixed" = traditional 1 man + 1 lady doubles. "open" = any pair (M+M, F+F, M+F).
+// Both impose no per-player gender filter when selecting entrants.
 function memberMatchesTournamentGender(memberGender: string | null | undefined, tournamentGender: GenderCategory) {
-  if (tournamentGender === "mixed") return true;
+  if (tournamentGender === "mixed" || tournamentGender === "open") return true;
   const normalized = String(memberGender || "").toLowerCase();
   const matchValues = tournamentGender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
   return matchValues.includes(normalized);
@@ -336,7 +339,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     if (selectedVisitorClubs.size > 0) {
       list = list.filter((v) => selectedVisitorClubs.has(v.home_club_name));
     }
-    if (gender !== "mixed") {
+    if (gender !== "mixed" && gender !== "open") {
       const genderValue = gender === "men" ? "Men" : "Ladies";
       list = list.filter((v) => v.category === genderValue);
     }
@@ -369,7 +372,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   // Filter members by gender
   const genderMembers = useMemo(() => {
-    if (gender === "mixed") {
+    if (gender === "mixed" || gender === "open") {
       return members.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
     }
     return members
@@ -1301,7 +1304,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   }, [doublesPairs]);
 
   const availableForPairing = useMemo(() => {
-    if (gender === "mixed") return members.filter((m) => !usedPlayerIds.has(m.id));
+    if (gender === "mixed" || gender === "open") return members.filter((m) => !usedPlayerIds.has(m.id));
     const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return members
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()) && !usedPlayerIds.has(m.id));
@@ -1441,18 +1444,30 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           <CardContent className="space-y-6">
             <div>
               <Label className="text-sm font-medium mb-2 block">Gender Category</Label>
-              <div className="grid grid-cols-3 gap-3">
-                {(["men", "ladies", "mixed"] as GenderCategory[]).map((g) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {(["men", "ladies", "mixed", "open"] as GenderCategory[]).map((g) => (
                   <Button
                     key={g}
                     variant={gender === g ? "default" : "outline"}
                     className="h-16 text-base"
                     onClick={() => setGender(g)}
                   >
-                    {g === "men" ? "🏆 Men's" : g === "ladies" ? "🏆 Ladies'" : "🏆 Mixed"}
+                    {g === "men"
+                      ? "🏆 Men's"
+                      : g === "ladies"
+                      ? "🏆 Ladies'"
+                      : g === "mixed"
+                      ? "🏆 Mixed"
+                      : "🏆 Open"}
                   </Button>
                 ))}
               </div>
+              {gender === "mixed" && (
+                <p className="text-[11px] text-muted-foreground mt-1.5">Mixed = traditional 1 man + 1 lady pairs.</p>
+              )}
+              {gender === "open" && (
+                <p className="text-[11px] text-muted-foreground mt-1.5">Open = any pairing allowed (M+M, F+F, or M+F). Great for fundraisers.</p>
+              )}
             </div>
 
             <div>

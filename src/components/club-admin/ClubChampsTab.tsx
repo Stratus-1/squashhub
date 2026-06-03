@@ -1310,6 +1310,76 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     onError: (err: any) => toast.error(err.message || "Failed to create tournament"),
   });
 
+  // Create court bookings from the saved tournament matches.
+  // Idempotent: uses (club_id, source='club_event', external_id='champ:<champId>:match:<matchId>')
+  // unique index to skip matches that have already been booked.
+  const createBookings = useMutation({
+    mutationFn: async () => {
+      const champId = editingChampId;
+      if (!champId) throw new Error("Save the tournament first before booking courts.");
+
+      const { data: champMatches, error: mErr } = await fromExt("club_champs_matches")
+        .select("id, scheduled_date, scheduled_time, court_id, player_a_member_id, partner_a_member_id, group_number, is_bye")
+        .eq("champ_id", champId);
+      if (mErr) throw mErr;
+
+      const playable = (champMatches || []).filter((m: any) =>
+        !m.is_bye && m.scheduled_date && m.scheduled_time && m.court_id
+      );
+      if (playable.length === 0) throw new Error("No scheduled matches with date/time/court found.");
+
+      const memberUserMap = new Map<string, string>();
+      members.forEach((m) => { if (m.user_id) memberUserMap.set(m.id, m.user_id); });
+
+      const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
+
+      const rows = playable.map((m: any) => {
+        const bookerMemberId = m.partner_a_member_id || m.player_a_member_id;
+        const bookerUserId = memberUserMap.get(bookerMemberId) || memberUserMap.get(m.player_a_member_id);
+        const cap = isBellsMode
+          ? (Number(groupDurations[String(m.group_number)]) || matchDuration)
+          : matchDuration;
+        const start = String(m.scheduled_time).slice(0, 5);
+        const [h, min] = start.split(":").map(Number);
+        const endMins = h * 60 + min + cap;
+        const endH = Math.floor(endMins / 60) % 24;
+        const endM = endMins % 60;
+        const endTimeStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+        return {
+          club_id: clubId,
+          court_id: m.court_id,
+          user_id: bookerUserId || null,
+          club_member_id: m.player_a_member_id,
+          date: m.scheduled_date,
+          start_time: start,
+          end_time: endTimeStr,
+          status: "active",
+          is_friendly: false,
+          source: "club_event",
+          external_id: `champ:${champId}:match:${m.id}`,
+        };
+      });
+
+      const { data: inserted, error: bErr } = await fromExt("bookings")
+        .upsert(rows, { onConflict: "club_id,source,external_id", ignoreDuplicates: true })
+        .select("id");
+      if (bErr) throw bErr;
+
+      return { attempted: rows.length, created: inserted?.length ?? 0 };
+    },
+    onSuccess: (res: any) => {
+      const skipped = res.attempted - res.created;
+      toast.success(
+        skipped > 0
+          ? `${res.created} court booking${res.created === 1 ? "" : "s"} created · ${skipped} already booked`
+          : `${res.created} court booking${res.created === 1 ? "" : "s"} created`
+      );
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+      qc.invalidateQueries({ queryKey: ["my-bookings"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to create court bookings"),
+  });
+
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
   // Used by both the post-create prompt and the "Send / Re-send invites" button.
   async function sendChampInvites(champId: string, opts?: { confirm?: boolean }) {

@@ -1389,7 +1389,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   Club rules limit 1 hour per member. Select members to split the booking across.
                 </p>
 
-                {isAdmin && (
+                {adminBypass && (
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-medium">Book under Club name (free)</p>

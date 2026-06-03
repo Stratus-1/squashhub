@@ -2406,7 +2406,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       {/* Navigation */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={() => stepIdx === 0 ? setShowWizard(false) : setStep(activeSteps[stepIdx - 1])}>
+        <Button variant="outline" onClick={() => { if (stepIdx === 0) { setShowWizard(false); } else { setStep(activeSteps[stepIdx - 1]); void saveDraft(); } }}>
           <ChevronLeft className="w-4 h-4 mr-1" /> {stepIdx === 0 ? "Cancel" : "Back"}
         </Button>
         {step === "review" ? (

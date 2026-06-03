@@ -454,6 +454,57 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     }
   };
 
+  // Persist current player / pair selections + group assignments as a draft
+  // to club_champs_entries. Safe because entries get wiped & rewritten when
+  // matches are (re)generated. Requires the parent champ row to exist.
+  const saveEntriesDraft = async (champIdOverride?: string) => {
+    const champIdToUse = champIdOverride || editingChampId;
+    if (!champIdToUse) return;
+    try {
+      if (isDoubles) {
+        if (doublesPairs.length === 0) return;
+        const rows = doublesPairs.map((pair) => ({
+          champ_id: champIdToUse,
+          club_member_id: toDbId(pair.player1Id),
+          partner_member_id: toDbId(pair.player2Id),
+          group_number: (pairGroupAssignments.get(pair.id) ?? 0) + 1,
+        }));
+        await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+        await fromExt("club_champs_entries").insert(rows);
+      } else {
+        if (selectedPlayerIds.size === 0) return;
+        const rows = Array.from(selectedPlayerIds)
+          .filter((id) => !id.startsWith("visitor-"))
+          .map((id) => ({
+            champ_id: champIdToUse,
+            club_member_id: toDbId(id),
+            group_number: (groupAssignments.get(id) ?? 0) + 1,
+          }));
+        if (rows.length === 0) return;
+        await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
+        await fromExt("club_champs_entries").insert(rows);
+      }
+    } catch (e) {
+      console.warn("Tournament entries draft save failed:", e);
+    }
+  };
+
+  const handleManualSave = async () => {
+    if (!clubId || !startDate || !endDate) {
+      toast.error("Set a name and dates before saving");
+      return;
+    }
+    try {
+      await saveDraft();
+      await new Promise((r) => setTimeout(r, 0));
+      await saveEntriesDraft();
+      toast.success("Progress saved");
+    } catch {
+      toast.error("Could not save progress");
+    }
+  };
+
+
   const goToStep = (s: WizardStep) => {
     if (s === "players" && (step === "category" || step === "registration")) {
       // Don't override if league pre-fill already set the player list

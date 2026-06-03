@@ -426,6 +426,7 @@ export default function Bookings() {
   const [syncingGobook, setSyncingGobook] = useState(false);
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [cancellingGobook, setCancellingGobook] = useState(false);
+  const [moveSource, setMoveSource] = useState<any | null>(null);
   const queryClient = useQueryClient();
 
   const handleSyncGobook = async () => {
@@ -1027,6 +1028,49 @@ export default function Bookings() {
           }
         }
       }
+      // If this was a "move", cancel the source booking now that the new slot succeeded
+      if (bookingSucceeded && moveSource) {
+        const src: any = moveSource;
+        try {
+          if (src.source === "gobook") {
+            const startHour = Number(String(src.start_time || "00").slice(0, 2));
+            const srcCourtName = String(
+              src.court?.name
+              || src.court_name
+              || (courtsData || []).find((c: any) => c.id === src.court_id)?.name
+              || getCourtName(src.court_id)
+              || ""
+            );
+            const srcCourtNum = Number((srcCourtName.match(/(\d+)/) || [])[1]);
+            const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+            const t = toast.loading("Cancelling original GoBook slot…");
+            const { data, error } = await supabase.functions.invoke("gobook-book", {
+              body: {
+                action: "cancel",
+                club_member_id: cancelMemberId,
+                booking_id: src.id,
+                client_notes: src.external_booker_name || src.player_name || "Moved via SquashHub",
+                date: String(src.date),
+                start_hour: startHour,
+                court: srcCourtNum,
+              },
+            });
+            toast.dismiss(t);
+            const msg = await extractFunctionError(data, error);
+            if (msg) throw new Error(msg);
+            toast.success("Booking moved — original GoBook slot cancelled");
+          } else {
+            await cancelBooking.mutateAsync(String(src.id));
+            toast.success("Booking moved");
+          }
+          queryClient.invalidateQueries({ queryKey: ["bookings"] });
+          queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+        } catch (e: any) {
+          toast.error(`Moved to new slot, but failed to cancel the original: ${e?.message || e}. Please cancel it manually.`);
+        } finally {
+          setMoveSource(null);
+        }
+      }
       setSubmittingBooking(false);
     }
   };
@@ -1250,6 +1294,31 @@ export default function Bookings() {
           </Card>
         </div>
       )}
+
+      {/* Move-booking banner */}
+      {moveSource && (
+        <div className="px-4 mt-3">
+          <Card className="border-primary/50 bg-primary/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                <ArrowRightLeft className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">
+                  Moving booking — pick a new empty slot below
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  {`From ${getCourtName((moveSource as any).court_id) || "court"} · ${String((moveSource as any).date)} ${String((moveSource as any).start_time || "").slice(0,5)}`}
+                  {(moveSource as any).source === "gobook" ? " (GoBook)" : ""}.
+                  {" "}We'll create the new booking, then cancel the original automatically.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setMoveSource(null)}>Cancel move</Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
 
       {/* Other external providers (non-GoBook) — still read-only deep-link */}
       {usesExternalBooking && externalProvider !== "gobook" && (
@@ -1475,7 +1544,19 @@ export default function Bookings() {
                               return;
                             }
 
-                            setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
+                            // When in "move" mode, prefill duration from the source booking so we re-book the same length
+                            let prefillDuration = slotMinutes;
+                            if (moveSource) {
+                              const s = String((moveSource as any).start_time || "").slice(0,5);
+                              const e = String((moveSource as any).end_time || "").slice(0,5);
+                              if (s && e) {
+                                const [sh, sm] = s.split(":").map(Number);
+                                const [eh, em] = e.split(":").map(Number);
+                                const mins = (eh * 60 + em) - (sh * 60 + sm);
+                                if (mins > 0) prefillDuration = mins as any;
+                              }
+                            }
+                            setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: prefillDuration, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >
                           {isPeak && (
@@ -1718,6 +1799,30 @@ export default function Bookings() {
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
                   )}
+                  {(isBooker || isGoBookBooking) && (() => {
+                    const bd: any = bookingDetails;
+                    if (isGoBookBooking) {
+                      const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+                      const ownsBooking = !!cancelMemberId && (!bd.club_member_id || bd.club_member_id === cancelMemberId || bd.club_member_id === activeMember?.id);
+                      const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
+                      const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
+                      if (!hasGobookCreds || !ownsBooking || withinHour) return null;
+                    }
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setMoveSource(bd);
+                          setBookingDetails(null);
+                          toast.info("Pick a new empty slot in the grid to move this booking to.");
+                        }}
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" /> Move
+                      </Button>
+                    );
+                  })()}
                   {(isBooker || isGoBookBooking) && (
                     <>
                       {isGoBookBooking ? (() => {

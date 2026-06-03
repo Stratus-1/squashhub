@@ -476,11 +476,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       if (isDoubles) {
         if (doublesPairs.length === 0) return;
         const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
-          groupPairs.map((pair) => ({
+          groupPairs.map((pair, orderIndex) => ({
             champ_id: champIdToUse,
             club_member_id: toDbId(pair.player1Id),
             partner_member_id: toDbId(pair.player2Id),
             group_number: gi + 1,
+            order_index: orderIndex,
           }))
         );
         await fromExt("club_champs_entries").delete().eq("champ_id", champIdToUse);
@@ -490,10 +491,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
           groupPlayers
           .filter((p) => !p.id.startsWith("visitor-"))
-          .map((p) => ({
+          .map((p, orderIndex) => ({
             champ_id: champIdToUse,
             club_member_id: toDbId(p.id),
             group_number: gi + 1,
+            order_index: orderIndex,
           }))
         );
         if (rows.length === 0) return;
@@ -1139,25 +1141,24 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
       // Create entries
       if (isDoubles) {
-        const entries = doublesPairs.flatMap((pair) => {
-          const gi = pairGroupAssignments.get(pair.id) ?? 0;
-          return [
-            {
+        const entries = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
+          groupPairs.map((pair, orderIndex) => ({
               champ_id: champId,
               club_member_id: toDbId(pair.player1Id),
               partner_member_id: toDbId(pair.player2Id),
               group_number: gi + 1,
-            },
-          ];
-        });
+              order_index: orderIndex,
+          }))
+        );
         const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);
         if (entryErr) throw entryErr;
       } else {
         const entries = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
-          groupPlayers.map((p) => ({
+          groupPlayers.map((p, orderIndex) => ({
             champ_id: champId,
             club_member_id: toDbId(p.id),
             group_number: gi + 1,
+            order_index: orderIndex,
           }))
         );
         const { error: entryErr } = await fromExt("club_champs_entries").insert(entries);

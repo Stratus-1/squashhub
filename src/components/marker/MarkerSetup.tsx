@@ -325,7 +325,7 @@ export function MarkerSetup({ onStart }: Props) {
 
       const { data: champs } = await supabase
         .from("club_champs")
-        .select("id, name, club_id, match_type")
+        .select("id, name, club_id, match_type, scoring_mode")
         .in("id", champIds)
         .eq("club_id", clubId);
 

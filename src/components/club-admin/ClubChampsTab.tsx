@@ -2395,7 +2395,26 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <SelectItem value="60">60 min</SelectItem>
                   </SelectContent>
                 </Select>
+            </div>
+
+            <div>
+              <Label>Available Courts</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {courts.map((c) => (
+                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={selectedCourtIds.has(c.id)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(selectedCourtIds);
+                        checked ? next.add(c.id) : next.delete(c.id);
+                        setSelectedCourtIds(next);
+                      }}
+                    />
+                    <span className="text-sm">{c.name}</span>
+                  </label>
+                ))}
               </div>
+            </div>
             </div>
 
             {/* Per-day schedule overrides — useful for short tournaments (Fri eve, Sat morning, Sat afternoon). */}

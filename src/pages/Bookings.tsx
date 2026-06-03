@@ -55,7 +55,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
-import { useMyClub, useIsSuperAdmin } from "@/hooks/use-club";
+import { useMyClub, useIsSuperAdmin, useIsClubAdmin } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { enqueueOutbox } from "@/lib/outbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";

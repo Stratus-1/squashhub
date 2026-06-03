@@ -108,24 +108,24 @@ export default function Tournaments() {
       <div
         key={m.id}
         className={cn(
-          "w-full flex items-center gap-2 text-sm p-2 rounded",
+          "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded",
           today ? "bg-primary/10 border border-primary/20" : "bg-muted/50",
         )}
       >
         <button
           onClick={() => navigate(`/club-champs/${m.champ_id}`)}
-          className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 min-w-0 text-left hover:opacity-80"
         >
           <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground w-24 shrink-0">
+          <span className="text-muted-foreground shrink-0">
             {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
           </span>
-          <span className="text-muted-foreground w-12 shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
-          <span className="font-medium truncate">
+          <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
+          <span className="font-medium truncate basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
             {teamA} vs {teamB}
           </span>
           {champ && (
-            <Badge variant="outline" className="text-[10px] ml-auto shrink-0">
+            <Badge variant="outline" className="text-[10px] shrink-0 max-w-[140px] truncate">
               {champ.name}
             </Badge>
           )}
@@ -140,7 +140,7 @@ export default function Tournaments() {
         <Button
           size="sm"
           variant="default"
-          className="h-7 px-2 gap-1 shrink-0"
+          className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto"
           onClick={(e) => {
             e.stopPropagation();
             navigate(markRoute);

@@ -944,7 +944,7 @@ Deno.serve(async (req) => {
             }, 404);
           }
 
-          const bookingId = best.bid;
+          const bookingId = deterministicBid ?? best.bid;
 
           // GoBook's real cancel request (captured from the browser) posts
           // directly to /Bookings/Maintain from /Bookings/Client with

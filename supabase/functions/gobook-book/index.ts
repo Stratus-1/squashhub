@@ -677,28 +677,42 @@ Deno.serve(async (req) => {
             .trim();
           const datePatterns = [
             `${y}/${m}/${d}`,
+            `${y}/${Number(m)}/${Number(d)}`,
             `${d}/${m}/${y}`,
+            `${Number(m)}/${Number(d)}/${y}`,
+            `${m}/${d}/${y}`,
             `${y}-${m}-${d}`,
+            `${y}-${Number(m)}-${Number(d)}`,
             `${d}-${m}-${y}`,
+            `${Number(m)}-${Number(d)}-${y}`,
+            `${m}-${d}-${y}`,
             `${Number(d)} ${shortMonth} ${y}`,
             `${Number(d)} ${longMonth} ${y}`,
             `${String(d).padStart(2,"0")} ${shortMonth} ${y}`,
             `${String(d).padStart(2,"0")} ${longMonth} ${y}`,
             `${shortMonth} ${Number(d)}, ${y}`,
             `${longMonth} ${Number(d)}, ${y}`,
+            `${shortMonth} ${String(d).padStart(2,"0")}, ${y}`,
+            `${longMonth} ${String(d).padStart(2,"0")}, ${y}`,
             `${shortMonth} ${Number(d)} ${y}`,
             `${longMonth} ${Number(d)} ${y}`,
+            `${shortMonth} ${String(d).padStart(2,"0")} ${y}`,
+            `${longMonth} ${String(d).padStart(2,"0")} ${y}`,
             `${Number(d)}/${Number(m)}/${y}`,
             `${Number(d)}-${Number(m)}-${y}`,
           ].map(compact);
           const hourStr = String(startHour).padStart(2, "0");
-          const hasTimeMatch = (text: string) => new RegExp(`(^|\\D)0?${startHour}\\s*(?::|h)\\s*00(\\D|$)`, "i").test(text);
+          const hasTimeMatch = (text: string) => new RegExp(`(^|\\D)0?${startHour}\\s*(?::|h)\\s*00(\\D|$)`, "i").test(text)
+            || new RegExp(`(^|\\D)0?${startHour}\\s*(?:am|a\\.?m\\.?)(\\D|$)`, "i").test(text);
           const hasCourtMatch = (text: string) => {
             const escapedCourt = String(court).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const providerId = CSIR_COURT_CONSULTANT_IDS.get(court);
             return new RegExp(`\\bcourt\\s*(?:no\\.?|number|#)?\\s*${escapedCourt}\\b`, "i").test(text)
               || new RegExp(`\\bcrt\\s*${escapedCourt}\\b`, "i").test(text)
               || new RegExp(`\\bsquash(?:\\s+court)?\\s*${escapedCourt}\\b`, "i").test(text)
-              || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text);
+              || new RegExp(`\\b(?:csir|provider|consultant)\\D{0,16}${escapedCourt}\\b`, "i").test(text)
+              || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text)
+              || (!!providerId && new RegExp(`\\b${providerId}\\b`).test(text));
           };
           const extractBookingIds = (html: string): string[] => {
             const ids = new Set<string>();

@@ -2664,25 +2664,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </div>
             </div>
 
-            <div>
-              <Label>Available Courts</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {courts.map((c) => (
-                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={selectedCourtIds.has(c.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedCourtIds);
-                        checked ? next.add(c.id) : next.delete(c.id);
-                        setSelectedCourtIds(next);
-                      }}
-                    />
-                    <span className="text-sm">{c.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             {schedulePreview && (
               <div className="p-3 rounded bg-muted text-sm space-y-1">
                 <p>📊 <strong>{schedulePreview.totalMatches}</strong> matches to schedule</p>

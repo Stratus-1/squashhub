@@ -1544,7 +1544,19 @@ export default function Bookings() {
                               return;
                             }
 
-                            setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: slotMinutes, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
+                            // When in "move" mode, prefill duration from the source booking so we re-book the same length
+                            let prefillDuration = slotMinutes;
+                            if (moveSource) {
+                              const s = String((moveSource as any).start_time || "").slice(0,5);
+                              const e = String((moveSource as any).end_time || "").slice(0,5);
+                              if (s && e) {
+                                const [sh, sm] = s.split(":").map(Number);
+                                const [eh, em] = e.split(":").map(Number);
+                                const mins = (eh * 60 + em) - (sh * 60 + sm);
+                                if (mins > 0) prefillDuration = mins as any;
+                              }
+                            }
+                            setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: prefillDuration, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
                           }}
                         >
                           {isPeak && (

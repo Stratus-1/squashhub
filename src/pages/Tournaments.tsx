@@ -365,9 +365,13 @@ export default function Tournaments() {
                             </div>
                             <div className="space-y-3">
                               {groups.map((g: any) => {
-                                const rows = champMatches.filter(
-                                  (m: any) => (m.group_number ?? 0) === g,
-                                );
+                                const rows = champMatches
+                                  .filter((m: any) => (m.group_number ?? 0) === g)
+                                  .sort((a: any, b: any) => {
+                                    const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
+                                    const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
+                                    return aKey.localeCompare(bKey);
+                                  });
                                 return (
                                   <div key={g}>
                                     <p className="text-[11px] font-semibold text-muted-foreground mb-1">

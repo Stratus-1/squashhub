@@ -569,6 +569,58 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPairOrder(next);
   };
 
+  // Unified drag handler spanning ALL leagues — supports reordering within a
+  // league AND dragging a row across leagues (drop onto a league container or
+  // a row in another league).
+  const handleCrossLeagueDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    if (isDoubles) {
+      const sourceGi = pairGroupAssignments.get(activeId) ?? 0;
+      // Dropped on a league container
+      if (overId.startsWith("league-")) {
+        const targetGi = Number(overId.slice("league-".length));
+        if (targetGi === sourceGi) return;
+        const next = new Map(pairGroupAssignments);
+        next.set(activeId, targetGi);
+        setPairGroupAssignments(next);
+        return;
+      }
+      const targetGi = pairGroupAssignments.get(overId) ?? 0;
+      if (targetGi === sourceGi) {
+        handlePairDragEnd(sourceGi)(e);
+      } else {
+        const next = new Map(pairGroupAssignments);
+        next.set(activeId, targetGi);
+        setPairGroupAssignments(next);
+      }
+      return;
+    }
+
+    const sourceGi = groupAssignments.get(activeId) ?? 0;
+    if (overId.startsWith("league-")) {
+      const targetGi = Number(overId.slice("league-".length));
+      if (targetGi === sourceGi) return;
+      const next = new Map(groupAssignments);
+      next.set(activeId, targetGi);
+      setGroupAssignments(next);
+      return;
+    }
+    const targetGi = groupAssignments.get(overId) ?? 0;
+    if (targetGi === sourceGi) {
+      handlePlayerDragEnd(sourceGi)(e);
+    } else {
+      const next = new Map(groupAssignments);
+      next.set(activeId, targetGi);
+      setGroupAssignments(next);
+    }
+  };
+
+
+
   // Build groups
   const groups = useMemo(() => {
     if (isDoubles) {

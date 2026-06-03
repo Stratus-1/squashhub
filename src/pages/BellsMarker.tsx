@@ -64,6 +64,8 @@ export default function BellsMarker() {
   const [finished, setFinished] = useState(false);
   const [saving, setSaving] = useState(false);
   const tickRef = useRef<number | null>(null);
+  const liveSyncRef = useRef<number | null>(null);
+  const hydratedRef = useRef(false);
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
@@ -73,6 +75,7 @@ export default function BellsMarker() {
     setRemaining(capMinutes * 60);
     setFinished(match.status === "completed");
     setRunning(false);
+    hydratedRef.current = true;
   }, [match, capMinutes]);
 
   // Hold the PWA update poller while a Bells match is live (not finished).
@@ -81,6 +84,27 @@ export default function BellsMarker() {
     setScoringActive(true);
     return () => setScoringActive(false);
   }, [finished]);
+
+  // Persist live score to DB (debounced) so spectators can follow along.
+  useEffect(() => {
+    if (!hydratedRef.current || !match || finished) return;
+    if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
+    liveSyncRef.current = window.setTimeout(() => {
+      fromExt("club_champs_matches")
+        .update({
+          side_a_points: pointsA,
+          side_b_points: pointsB,
+          status: "in_progress",
+        })
+        .eq("id", match.id)
+        .then(({ error }) => {
+          if (error) console.warn("Live score sync failed:", error.message);
+        });
+    }, 500);
+    return () => {
+      if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
+    };
+  }, [pointsA, pointsB, match, finished]);
 
 
   // Countdown

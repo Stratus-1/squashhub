@@ -752,6 +752,59 @@ Deno.serve(async (req) => {
             return [...ids];
           };
 
+          // FAST PATH (deterministic) — GoBook's /Bookings/ClientUpcoming renders
+          // each booking as a <tr> with the BookingId in a hidden first <td>
+          // (<td style="display:none">3491531</td>), followed by Provider, Court,
+          // Date (YYYY/MM/DD), Start (HH:MM), End, Status. Parse columns directly.
+          // If we get a clean match we skip all the fuzzy regex scoring below.
+          let deterministicBid: string | null = null;
+          try {
+            const upRes = await fetch(`${GOBOOK_BASE}/Bookings/ClientUpcoming`, {
+              headers: {
+                cookie: cookieHeader(jar),
+                "User-Agent": "SquashHub/1.0 (+squashhub.co.za)",
+                "Referer": `${GOBOOK_BASE}/`,
+              },
+              redirect: "follow",
+            });
+            jarFromHeaders(upRes.headers, jar);
+            const upHtml = await upRes.text();
+            const targetDateCompact = `${y}${m}${d}`;
+            const trRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+            let trMatch: RegExpExecArray | null;
+            while ((trMatch = trRe.exec(upHtml)) !== null) {
+              const tdRe = /<td\b[^>]*>([\s\S]*?)<\/td>/gi;
+              const cells: string[] = [];
+              let tdMatch: RegExpExecArray | null;
+              while ((tdMatch = tdRe.exec(trMatch[1])) !== null) {
+                cells.push(
+                  tdMatch[1]
+                    .replace(/<[^>]+>/g, " ")
+                    .replace(/&nbsp;|&#160;/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim(),
+                );
+              }
+              if (cells.length < 7) continue;
+              const [bidCell, , courtCell, dateCell, startCell, , statusCell] = cells;
+              if (!/^\d{4,}$/.test(bidCell)) continue;
+              if (!/accepted/i.test(statusCell)) continue;
+              const courtNumMatch = courtCell.match(/#\s*0*(\d+)/) ||
+                courtCell.match(/\b0*(\d+)\b/);
+              if (!courtNumMatch || Number(courtNumMatch[1]) !== court) continue;
+              const dateNorm = dateCell.replace(/[^0-9]/g, "");
+              if (dateNorm !== targetDateCompact) continue;
+              const hourNumMatch = startCell.match(/^(\d{1,2})/);
+              if (!hourNumMatch || Number(hourNumMatch[1]) !== startHour) continue;
+              deterministicBid = bidCell;
+              console.log("gobook cancel fast-path matched bid", bidCell, "for", date, hourStr, "court", court);
+              break;
+            }
+          } catch (e) {
+            console.warn("gobook cancel fast-path failed", (e as Error).message);
+          }
+
+
           const bookingPagePaths = [
             "/Bookings/Client",
             "/Bookings/ClientUpcoming",

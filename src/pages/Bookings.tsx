@@ -1028,6 +1028,49 @@ export default function Bookings() {
           }
         }
       }
+      // If this was a "move", cancel the source booking now that the new slot succeeded
+      if (bookingSucceeded && moveSource) {
+        const src: any = moveSource;
+        try {
+          if (src.source === "gobook") {
+            const startHour = Number(String(src.start_time || "00").slice(0, 2));
+            const srcCourtName = String(
+              src.court?.name
+              || src.court_name
+              || (courtsData || []).find((c: any) => c.id === src.court_id)?.name
+              || getCourtName(src.court_id)
+              || ""
+            );
+            const srcCourtNum = Number((srcCourtName.match(/(\d+)/) || [])[1]);
+            const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+            const t = toast.loading("Cancelling original GoBook slot…");
+            const { data, error } = await supabase.functions.invoke("gobook-book", {
+              body: {
+                action: "cancel",
+                club_member_id: cancelMemberId,
+                booking_id: src.id,
+                client_notes: src.external_booker_name || src.player_name || "Moved via SquashHub",
+                date: String(src.date),
+                start_hour: startHour,
+                court: srcCourtNum,
+              },
+            });
+            toast.dismiss(t);
+            const msg = await extractFunctionError(data, error);
+            if (msg) throw new Error(msg);
+            toast.success("Booking moved — original GoBook slot cancelled");
+          } else {
+            await cancelBooking.mutateAsync(String(src.id));
+            toast.success("Booking moved");
+          }
+          queryClient.invalidateQueries({ queryKey: ["bookings"] });
+          queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+        } catch (e: any) {
+          toast.error(`Moved to new slot, but failed to cancel the original: ${e?.message || e}. Please cancel it manually.`);
+        } finally {
+          setMoveSource(null);
+        }
+      }
       setSubmittingBooking(false);
     }
   };

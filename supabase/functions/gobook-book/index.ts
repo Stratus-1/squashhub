@@ -895,7 +895,7 @@ Deno.serve(async (req) => {
           // MyBookings rows always include all three, but the date label
           // wording sometimes drifts (locale, "Tomorrow", etc.).
           const best = candidates[0];
-          const acceptable = !!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5;
+          const acceptable = !!deterministicBid || (!!best && best.hasTime && (best.hasCourt || best.hasDate) && best.score >= 5);
           if (!acceptable) {
             const bookingId = String(body.booking_id || "").trim();
             let liveSlotFree = false;

@@ -212,6 +212,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
   const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
+  // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).
+  // Each entry is one time window on one date. A date can appear multiple times (multi-session days).
+  type DaySchedule = { date: string; start_time: string; end_time: string; court_ids: number[] | null };
+  const [customizeDailySchedule, setCustomizeDailySchedule] = useState(false);
+  const [daySchedules, setDaySchedules] = useState<DaySchedule[]>([]);
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
 

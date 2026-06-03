@@ -9,7 +9,7 @@ import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check } from "lucide-react";
+import { Loader2, Bell, Plus, Minus, RotateCcw, Pause, Play, ArrowLeft, Check, Info } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BellsFormat, getTournamentFormat } from "@/lib/tournament-formats";
@@ -308,6 +308,18 @@ export default function BellsMarker() {
         >
           <ArrowLeft className="w-4 h-4" /> Back to tournament
         </button>
+
+        {/* How-to */}
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-foreground/80 flex gap-2">
+          <Info className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+          <div className="space-y-0.5">
+            <p><b>Start</b> — begin the {capMinutes}-minute countdown.</p>
+            <p>Tap each pair's big number (or <b>+</b>) to add a point during play.</p>
+            <p>The <b>bell</b> rings automatically when time is up. Use <b>Ring bell now</b> to end early (e.g. to test or stop a match), then <b>Save result</b> to post the score and move on to the next match.</p>
+          </div>
+        </div>
+
+
 
         {/* Timer */}
         <Card>

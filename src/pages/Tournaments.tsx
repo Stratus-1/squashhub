@@ -188,7 +188,7 @@ export default function Tournaments() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-1.5">{myUpcoming.slice(0, 8).map(renderMatchRow)}</div>
+                    <div className="space-y-1.5">{myUpcoming.map(renderMatchRow)}</div>
                   </CardContent>
                 </Card>
               )}

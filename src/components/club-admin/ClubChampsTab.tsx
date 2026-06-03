@@ -1440,12 +1440,16 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(30);
     setScoringMode("standard");
     setGroupDurations({});
+    setCourtRotationMinutes(null);
     setRoundFormat("single_round_robin");
     setByeHandling("no_match");
     setSelectedCourtIds(new Set());
+    setSelectedPlayerIds(new Set());
     setGroupAssignments(new Map());
+    setPlayerOrder([]);
     setDoublesPairs([]);
     setPairGroupAssignments(new Map());
+    setPairOrder([]);
     setSourceLeagueIds(new Set());
     setRegistrationMode("open");
     setPartnerMode("admin");

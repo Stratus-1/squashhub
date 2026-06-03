@@ -60,17 +60,14 @@ export default function Tournaments() {
     enabled: champIds.length > 0,
   });
 
-  // Upcoming matches across all tournaments (next 21 days)
-  const { data: upcomingMatches = [] } = useQuery({
-    queryKey: ["tournaments-upcoming-matches", champIds],
+  // All scheduled matches per tournament (full schedule view)
+  const { data: allMatches = [] } = useQuery({
+    queryKey: ["tournaments-all-matches", champIds],
     queryFn: async () => {
       if (!champIds.length) return [];
-      const today = format(new Date(), "yyyy-MM-dd");
       const { data, error } = await fromExt("club_champs_matches")
         .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name)")
         .in("champ_id", champIds)
-        .eq("status", "scheduled")
-        .gte("scheduled_date", today)
         .order("scheduled_date")
         .order("scheduled_time");
       if (error) throw error;
@@ -78,6 +75,11 @@ export default function Tournaments() {
     },
     enabled: champIds.length > 0,
   });
+
+  const today = format(new Date(), "yyyy-MM-dd");
+  const upcomingMatches = allMatches.filter(
+    (m: any) => m.status === "scheduled" && (!m.scheduled_date || m.scheduled_date >= today),
+  );
 
   const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
   const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));

@@ -1388,6 +1388,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setDescription("");
     setIncludeVisitors(false);
     setSelectedVisitorClubs(new Set());
+    setCustomizeDailySchedule(false);
+    setDaySchedules([]);
     setEditingChampId(null);
   };
 

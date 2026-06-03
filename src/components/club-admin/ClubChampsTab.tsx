@@ -1505,7 +1505,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
     const { data: entries } = await fromExt("club_champs_entries")
       .select("*")
-      .eq("champ_id", champ.id);
+      .eq("champ_id", champ.id)
+      .order("group_number", { ascending: true })
+      .order("order_index", { ascending: true })
+      .order("created_at", { ascending: true });
 
     // Also load admin-invited registrations so invite-mode tournaments
     // (where entries haven't been locked yet) still show their invitees.
@@ -1523,6 +1526,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           player2Id: e.partner_member_id,
         }));
         setDoublesPairs(pairs);
+        setPairOrder(pairs.map((p) => p.id));
         const assignments = new Map<string, number>();
         pairs.forEach((p, i) => {
           const entry = entries[i];
@@ -1531,6 +1535,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         setPairGroupAssignments(assignments);
       } else {
         setSelectedPlayerIds(new Set(entries.map((e: any) => e.club_member_id)));
+        setPlayerOrder(entries.map((e: any) => e.club_member_id));
         const assignments = new Map<string, number>();
         entries.forEach((e: any) => assignments.set(e.club_member_id, e.group_number - 1));
         setGroupAssignments(assignments);

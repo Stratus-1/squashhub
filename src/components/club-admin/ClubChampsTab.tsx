@@ -2423,7 +2423,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             <div className="text-sm space-y-2">
               <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
               <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoubles ? "Doubles" : "Singles"}</p>
-          <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationMode === "invite" ? selectedPlayerIds.size : "Open"} registrations before scheduling` : `${entityCount} in ${numGroups} group${numGroups > 1 ? "s" : ""}`}</p>
+          <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationMode === "invite" ? selectedPlayerIds.size : "Open"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
               <p><strong>Days:</strong> {Array.from(playDays).sort().map((d) => DAY_NAMES[d]).join(", ")}</p>
               <p><strong>Time:</strong> {startTime} – {endTime} ({matchDuration} min per match)</p>

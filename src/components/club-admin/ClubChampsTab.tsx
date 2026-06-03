@@ -2979,7 +2979,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         {step === "review" ? (
           <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
             {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-            {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Regenerate Matches" : "Generate Matches"}
+            {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
           </Button>
         ) : (
           <Button onClick={() => goToStep(activeSteps[stepIdx + 1])} disabled={!canProceed()}>

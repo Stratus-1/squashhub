@@ -304,19 +304,42 @@ async function syncClub(
     return result;
   }
 
-  // Name → club_member lookup (case-insensitive, exact full_name match)
+  // Name → club_member lookup (case-insensitive)
+  // Maps both: full name ("willem pretorius") AND initial form ("w. pretorius" / "w pretorius")
+  // so GoBook display names like "W. Pretorius" link back to the correct member.
   const nameMap = new Map<string, { id: string; user_id: string | null }>();
-  for (const m of memberRows ?? []) {
-    const key = String((m as any).name || "").trim().toLowerCase();
-    if (!key) continue;
+  const setKey = (key: string, val: { id: string; user_id: string | null }) => {
+    if (!key) return;
     if (nameMap.has(key)) {
-      // ambiguous — drop so we don't mis-link
-      nameMap.set(key, { id: "", user_id: null });
+      const existing = nameMap.get(key)!;
+      if (existing.id && existing.id !== val.id) {
+        // ambiguous — drop so we don't mis-link
+        nameMap.set(key, { id: "", user_id: null });
+      }
     } else {
-      nameMap.set(key, {
-        id: (m as any).id,
-        user_id: (m as any).user_id ?? null,
-      });
+      nameMap.set(key, val);
+    }
+  };
+  for (const m of memberRows ?? []) {
+    const raw = String((m as any).name || "").trim();
+    if (!raw) continue;
+    const val = {
+      id: (m as any).id,
+      user_id: (m as any).user_id ?? null,
+    };
+    const lower = raw.toLowerCase();
+    setKey(lower, val);
+    // Build initial form from full name: "Willem John Pretorius" -> "w. pretorius"
+    const parts = lower.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      const first = parts[0];
+      const surname = parts[parts.length - 1];
+      if (first && surname) {
+        const initial = first.charAt(0);
+        setKey(`${initial}. ${surname}`, val);
+        setKey(`${initial} ${surname}`, val);
+        setKey(`${initial}.${surname}`, val);
+      }
     }
   }
 

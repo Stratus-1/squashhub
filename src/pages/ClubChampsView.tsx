@@ -234,13 +234,13 @@ export default function ClubChampsView() {
 
   const exportCSV = () => {
     if (!champ) return;
-    const rows = [["Date", "Time", "Court", "Group", isDoubles ? "Team A" : "Player A", isDoubles ? "Team B" : "Player B", "Status", "Winner", "Score"]];
+    const rows = [["Date", "Time", "Court", "League", isDoubles ? "Team A" : "Player A", isDoubles ? "Team B" : "Player B", "Status", "Winner", "Score"]];
     matches.forEach((m: any) => {
       rows.push([
         m.scheduled_date || "",
         m.scheduled_time || "",
         m.court?.name || "",
-        `Group ${m.group_number}`,
+        `League ${m.group_number}`,
         getMatchTeamA(m),
         getMatchTeamB(m),
         m.status,

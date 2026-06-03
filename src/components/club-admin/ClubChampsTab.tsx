@@ -892,43 +892,50 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const leagues = Array.from(byLeague.keys()).sort((a, b) => a - b);
 
       if (leagues.length > 0 && courtIds.length > 0) {
-        const caps = leagues.map(capFor);
-        const allSameCap = caps.every((c) => c === caps[0]);
         const rotateMin = Number(courtRotationMinutes) > 0 ? Number(courtRotationMinutes) : 0;
 
         // ─── Rotation mode ──────────────────────────────────────────────────
-        // When the admin has enabled court rotation AND all leagues share the
-        // same time cap, run synchronised rounds: every league plays one match
-        // per round, and the court assignment for each league shifts every
-        // `rotateMin` minutes so teams visibly cycle across the courts.
-        if (rotateMin > 0 && allSameCap && courtIds.length >= leagues.length) {
-          const cap = caps[0];
-          const mIdx = new Map<number, number>(leagues.map((gn) => [gn, 0]));
-          for (const s of sessions) {
-            const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
-            if (sessionCourts.length < leagues.length) continue;
-            const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
-            for (let r = 0; r < roundsPossible; r++) {
-              const rotateStep = Math.floor((r * cap) / rotateMin);
-              let anyAssigned = false;
-              leagues.forEach((gn, gi) => {
-                const lMatches = byLeague.get(gn)!;
-                let i = mIdx.get(gn)!;
-                if (i >= lMatches.length) return;
-                const m = lMatches[i++];
-                const t = s.startMin + r * cap;
-                const h = Math.floor(t / 60);
-                const mm = t % 60;
-                m.date = s.date;
-                m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-                m.courtId = sessionCourts[(gi + rotateStep) % sessionCourts.length];
-                mIdx.set(gn, i);
-                anyAssigned = true;
-              });
-              if (!anyAssigned) break;
+        // Within each league, consecutive matches cycle across ALL selected
+        // courts (court shifts every `rotateMin` minutes of elapsed play).
+        // Across leagues, a global slot map prevents two matches from landing
+        // on the same court at the same time — when a slot is taken the league
+        // tries the next court, then the next time step.
+        if (rotateMin > 0) {
+          const usedSlots = new Set<string>(); // `${date}|${startMin}|${courtId}`
+          for (const gn of leagues) {
+            const cap = capFor(gn);
+            const lMatches = byLeague.get(gn)!;
+            let mi = 0;
+            let leagueElapsed = 0; // minutes of play assigned within this league
+            outer: for (const s of sessions) {
+              const sessionCourts = courtIds.filter((c) => s.courtIds.includes(c));
+              if (sessionCourts.length === 0) continue;
+              let t = s.startMin;
+              while (mi < lMatches.length && t + cap <= s.endMin) {
+                const baseIdx = Math.floor(leagueElapsed / rotateMin);
+                let assigned = false;
+                for (let off = 0; off < sessionCourts.length; off++) {
+                  const cid = sessionCourts[(baseIdx + off) % sessionCourts.length];
+                  const key = `${s.date}|${t}|${cid}`;
+                  if (usedSlots.has(key)) continue;
+                  const m = lMatches[mi++];
+                  const h = Math.floor(t / 60);
+                  const mm = t % 60;
+                  m.date = s.date;
+                  m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                  m.courtId = cid;
+                  usedSlots.add(key);
+                  assigned = true;
+                  break;
+                }
+                if (assigned) leagueElapsed += cap;
+                t += cap;
+                if (mi >= lMatches.length) break outer;
+              }
             }
           }
         } else {
+          const caps = leagues.map(capFor);
           // ─── Static allocation (no rotation, or mixed caps) ───────────────
           const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
           const totalW = weights.reduce((a, b) => a + b, 0) || 1;

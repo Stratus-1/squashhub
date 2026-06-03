@@ -245,7 +245,7 @@ export default function Tournaments() {
                   {upcomingMatches.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No scheduled games.</p>
                   ) : (
-                    <div className="space-y-1.5">{upcomingMatches.slice(0, 30).map(renderMatchRow)}</div>
+                    <div className="space-y-1.5">{upcomingMatches.map(renderMatchRow)}</div>
                   )}
                 </CardContent>
               </Card>

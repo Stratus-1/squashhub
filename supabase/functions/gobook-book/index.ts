@@ -706,12 +706,13 @@ Deno.serve(async (req) => {
             || new RegExp(`(^|\\D)0?${startHour}\\s*(?:am|a\\.?m\\.?)(\\D|$)`, "i").test(text);
           const hasCourtMatch = (text: string) => {
             const escapedCourt = String(court).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const courtToken = `0*${escapedCourt}`;
             const providerId = CSIR_COURT_CONSULTANT_IDS.get(court);
-            return new RegExp(`\\bcourt\\s*(?:no\\.?|number|#)?\\s*${escapedCourt}\\b`, "i").test(text)
-              || new RegExp(`\\bcrt\\s*${escapedCourt}\\b`, "i").test(text)
-              || new RegExp(`\\bsquash(?:\\s+court)?\\s*${escapedCourt}\\b`, "i").test(text)
-              || new RegExp(`\\b(?:csir|provider|consultant)\\D{0,16}${escapedCourt}\\b`, "i").test(text)
-              || new RegExp(`(^|\\s)#\\s*${escapedCourt}(\\s|$)`, "i").test(text)
+            return new RegExp(`\\bcourt\\s*(?:no\\.?|number|#)?\\s*${courtToken}\\b`, "i").test(text)
+              || new RegExp(`\\bcrt\\s*${courtToken}\\b`, "i").test(text)
+              || new RegExp(`\\bsquash(?:\\s+court)?\\s*${courtToken}\\b`, "i").test(text)
+              || new RegExp(`\\b(?:csir|provider|consultant)\\D{0,16}${courtToken}\\b`, "i").test(text)
+              || new RegExp(`(^|\\s)#\\s*${courtToken}(\\s|$)`, "i").test(text)
               || (!!providerId && new RegExp(`\\b${providerId}\\b`).test(text));
           };
           const extractBookingIds = (html: string): string[] => {

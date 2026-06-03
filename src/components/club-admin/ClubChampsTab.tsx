@@ -455,6 +455,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           .single();
         if (error) throw error;
         if (data?.id) setEditingChampId(data.id);
+        qc.invalidateQueries({ queryKey: ["club-champs"] });
         return data?.id || editingChampId;
       }
       qc.invalidateQueries({ queryKey: ["club-champs"] });

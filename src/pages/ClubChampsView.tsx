@@ -92,21 +92,38 @@ export default function ClubChampsView() {
     return `${getPlayerName(player)} & ${getPlayerName(partner)}`;
   };
 
-  // Build standings per group (includes substitutes who appear in completed matches but were not in original entries)
+  // Build standings per league (includes substitutes who appear in completed matches but were not in original entries)
   const byeHandling: string = (champ as any)?.bye_handling || "no_match";
   const tournamentFormat = getTournamentFormat((champ as any)?.scoring_mode);
   const standingsColumns = tournamentFormat.standingsColumns;
+  const isBells = tournamentFormat.key === "time_capped_points";
+
+  // Chronological sort for per-game point columns
+  const sortMatchesChrono = (arr: any[]) =>
+    [...arr].sort((a, b) => {
+      const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"} ${String(a.round_number ?? 99).padStart(3, "0")}`;
+      const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"} ${String(b.round_number ?? 99).padStart(3, "0")}`;
+      return aKey.localeCompare(bKey);
+    });
 
 
   const getGroupStandings = (groupNum: number) => {
     const groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     // Exclude byes from standings entirely; we'll add walkover credit separately.
-    const groupMatches = matches.filter(
-      (m: any) => m.group_number === groupNum && m.status === "completed" && !m.is_bye,
+    const groupMatchesAll = matches.filter(
+      (m: any) => m.group_number === groupNum && !m.is_bye,
     );
+    const groupMatches = sortMatchesChrono(groupMatchesAll.filter((m: any) => m.status === "completed"));
     const groupByes = matches.filter(
       (m: any) => m.group_number === groupNum && m.is_bye,
     );
+    // For per-game columns, count scheduled slots per pair (completed or not)
+    const scheduledForMember = (memberId: string) =>
+      sortMatchesChrono(groupMatchesAll).filter((m: any) =>
+        m.player_a_member_id === memberId ||
+        m.player_b_member_id === memberId ||
+        (isDoubles && (m.partner_a_member_id === memberId || m.partner_b_member_id === memberId))
+      );
 
     const computeFor = (memberId: string) => {
       const stats = {
@@ -120,7 +137,18 @@ export default function ClubChampsView() {
       groupMatches.forEach((m: any) => {
         tournamentFormat.applyMatchToStats(stats, m, memberId, isDoubles);
       });
-      return stats;
+      // Per-game points for the member, in chronological order across ALL scheduled matches
+      // (so an unplayed slot leaves a gap = '-')
+      const gamePoints: (number | null)[] = scheduledForMember(memberId).map((m: any) => {
+        if (m.status !== "completed") return null;
+        const isA =
+          m.player_a_member_id === memberId ||
+          (isDoubles && m.partner_a_member_id === memberId);
+        const a = Number(m.side_a_points) || 0;
+        const b = Number(m.side_b_points) || 0;
+        return isA ? a : b;
+      });
+      return { ...stats, gamePoints };
     };
 
     const buildRow = (stats: ReturnType<typeof computeFor>) => {

@@ -2924,6 +2924,26 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   );
                 })}
               </div>
+            {!awaitingPlayerPairs && schedulePreview && (
+              <>
+                <Separator />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 bg-muted/30">
+                  <div className="text-sm">
+                    <p className="font-medium">Make court bookings</p>
+                    <p className="text-xs text-muted-foreground">
+                      Reserve each scheduled match on its assigned court. Already-booked slots are skipped.
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => createBookings.mutate()}
+                    disabled={createBookings.isPending || !editingChampId}
+                  >
+                    {createBookings.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                    <CalendarIcon className="w-4 h-4 mr-1" /> Make Court Bookings
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

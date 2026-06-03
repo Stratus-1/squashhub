@@ -833,6 +833,7 @@ export type Database = {
         Row: {
           bye_handling: string
           club_id: string
+          court_ids: number[]
           created_at: string
           day_schedules: Json
           description: string | null
@@ -870,6 +871,7 @@ export type Database = {
         Insert: {
           bye_handling?: string
           club_id: string
+          court_ids?: number[]
           created_at?: string
           day_schedules?: Json
           description?: string | null
@@ -907,6 +909,7 @@ export type Database = {
         Update: {
           bye_handling?: string
           club_id?: string
+          court_ids?: number[]
           created_at?: string
           day_schedules?: Json
           description?: string | null

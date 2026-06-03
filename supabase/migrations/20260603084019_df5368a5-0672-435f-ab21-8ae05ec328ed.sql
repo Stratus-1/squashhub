@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs ADD COLUMN IF NOT EXISTS court_ids integer[] NOT NULL DEFAULT '{}';

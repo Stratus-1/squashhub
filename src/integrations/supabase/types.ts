@@ -834,6 +834,7 @@ export type Database = {
           bye_handling: string
           club_id: string
           created_at: string
+          day_schedules: Json
           description: string | null
           enable_playoffs: boolean
           end_date: string
@@ -870,6 +871,7 @@ export type Database = {
           bye_handling?: string
           club_id: string
           created_at?: string
+          day_schedules?: Json
           description?: string | null
           enable_playoffs?: boolean
           end_date: string
@@ -906,6 +908,7 @@ export type Database = {
           bye_handling?: string
           club_id?: string
           created_at?: string
+          day_schedules?: Json
           description?: string | null
           enable_playoffs?: boolean
           end_date?: string

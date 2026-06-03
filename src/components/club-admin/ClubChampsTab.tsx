@@ -212,6 +212,11 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
   const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
   const [selectedCourtIds, setSelectedCourtIds] = useState<Set<number>>(new Set());
+  // Per-day schedule overrides — for short tournaments (Fri eve, Sat morning, Sat afternoon).
+  // Each entry is one time window on one date. A date can appear multiple times (multi-session days).
+  type DaySchedule = { date: string; start_time: string; end_time: string; court_ids: number[] | null };
+  const [customizeDailySchedule, setCustomizeDailySchedule] = useState(false);
+  const [daySchedules, setDaySchedules] = useState<DaySchedule[]>([]);
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
   const [playerOrder, setPlayerOrder] = useState<string[]>([]);
 
@@ -435,6 +440,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       include_visitors: includeVisitors,
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
+      day_schedules: customizeDailySchedule ? daySchedules : [],
     };
     try {
       if (editingChampId) {
@@ -561,6 +567,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
+    customizeDailySchedule, daySchedules,
     // Selection / pair / group assignment state — persist immediately when changed
     selectedPlayerIds, doublesPairs, groupAssignments, pairGroupAssignments,
   ]);
@@ -732,26 +739,49 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     if (!startDate || !endDate || playDays.size === 0 || selectedCourtIds.size === 0) return null;
 
     const courtIds = Array.from(selectedCourtIds);
-    const allDates = eachDayOfInterval({
-      start: new Date(startDate),
-      end: new Date(endDate),
-    }).filter((d) => playDays.has(getDay(d)));
 
-    const [sh, sm] = startTime.split(":").map(Number);
-    const [eh, em] = endTime.split(":").map(Number);
-    const startMins = sh * 60 + sm;
-    const endMins = eh * 60 + em;
-    const slotsPerSession = Math.floor((endMins - startMins) / matchDuration);
-
-    const timeSlots: string[] = [];
-    for (let i = 0; i < slotsPerSession; i++) {
-      const mins = startMins + i * matchDuration;
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      timeSlots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    // Build "sessions" — concrete (date, start, end, courts) blocks the scheduler can fill.
+    // When the admin has set per-day overrides, use those; otherwise derive one session per
+    // play-day from the global Start/End times and all selected courts.
+    type Session = { date: string; startMin: number; endMin: number; courtIds: number[] };
+    const parseHM = (s: string) => {
+      const [h, m] = s.split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    let sessions: Session[] = [];
+    if (customizeDailySchedule && daySchedules.length > 0) {
+      sessions = daySchedules
+        .map((d) => {
+          const cs = (d.court_ids && d.court_ids.length > 0
+            ? d.court_ids.filter((id) => selectedCourtIds.has(id))
+            : courtIds);
+          return {
+            date: d.date,
+            startMin: parseHM(d.start_time),
+            endMin: parseHM(d.end_time),
+            courtIds: cs,
+          };
+        })
+        .filter((s) => s.endMin > s.startMin && s.courtIds.length > 0)
+        .sort((a, b) => (a.date.localeCompare(b.date) || a.startMin - b.startMin));
+    } else {
+      const allDatesGlobal = eachDayOfInterval({
+        start: new Date(startDate),
+        end: new Date(endDate),
+      }).filter((d) => playDays.has(getDay(d)));
+      const gStart = parseHM(startTime);
+      const gEnd = parseHM(endTime);
+      sessions = allDatesGlobal.map((d) => ({
+        date: format(d, "yyyy-MM-dd"),
+        startMin: gStart,
+        endMin: gEnd,
+        courtIds,
+      }));
     }
+    if (sessions.length === 0) return null;
 
-    const totalSlots = allDates.length * timeSlots.length * courtIds.length;
+    // Distinct dates (for the summary card)
+    const allDates = Array.from(new Set(sessions.map((s) => s.date))).map((d) => parseISO(d));
 
     type MatchDef = {
       groupNum: number; roundNum: number;
@@ -761,33 +791,44 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       byeEntityId?: string;
       date?: string; time?: string; courtId?: number;
     };
+
+    // Build the universal slot list from sessions (used by non-Bells scheduling).
+    type Slot = { date: string; time: string; courtId: number };
+    const allSlots: Slot[] = [];
+    for (const s of sessions) {
+      const n = Math.floor((s.endMin - s.startMin) / matchDuration);
+      for (let i = 0; i < n; i++) {
+        const mins = s.startMin + i * matchDuration;
+        const h = Math.floor(mins / 60);
+        const mm = mins % 60;
+        const ts = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+        for (const cid of s.courtIds) {
+          allSlots.push({ date: s.date, time: ts, courtId: cid });
+        }
+      }
+    }
+    const totalSlots = allSlots.length;
+    const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();
+
+    // Build round-robin matches
     const allMatches: MatchDef[] = [];
     const fmt = roundFormat === "double_round_robin" ? "double" : "single";
-
     const ingestRounds = (gi: number, ids: string[]) => {
       const { rounds, byesPerRound } = generateRoundRobinRounds(ids, fmt);
       rounds.forEach((roundMatches, ri) => {
         roundMatches.forEach(([a, b, leg]) => {
           allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
         });
-        // Record byes (only when there's actually an odd entity count and admin
-        // wants them tracked). Walkover/neutral are scoring concerns; the schedule
-        // simply notes who has the bye that round.
         const byeId = byesPerRound[ri];
         if (byeId && byeHandling !== "no_match") {
           allMatches.push({
-            groupNum: gi + 1,
-            roundNum: ri + 1,
-            entityA: byeId,
-            entityB: byeId,
-            leg: null,
-            isBye: true,
-            byeEntityId: byeId,
+            groupNum: gi + 1, roundNum: ri + 1,
+            entityA: byeId, entityB: byeId, leg: null,
+            isBye: true, byeEntityId: byeId,
           });
         }
       });
     };
-
     if (isDoubles) {
       (groups as DoublePair[][]).forEach((groupPairs, gi) => {
         ingestRounds(gi, groupPairs.map((p) => p.id));
@@ -806,31 +847,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const diffDays = Math.round((new Date(dateStr).getTime() - new Date(last).getTime()) / (1000 * 60 * 60 * 24));
       return diffDays >= 2;
     };
-
-    // For doubles, also check individual players
     const getPlayersForEntity = (entityId: string): string[] => {
       if (!isDoubles) return [entityId];
       const pair = doublesPairs.find((p) => p.id === entityId);
       return pair ? [pair.player1Id, pair.player2Id] : [entityId];
     };
 
-    type Slot = { date: string; time: string; courtId: number };
-    const allSlots: Slot[] = [];
-    for (const d of allDates) {
-      const ds = format(d, "yyyy-MM-dd");
-      for (const ts of timeSlots) {
-        for (const cid of courtIds) {
-          allSlots.push({ date: ds, time: ts, courtId: cid });
-        }
-      }
-    }
-
     const isBellsMode = scoringMode === "time_capped_points" && isDoubles;
 
     if (isBellsMode) {
-      // Bells: single-day, per-league time caps, auto-distribute courts across leagues,
-      // rotate pairs across their league's assigned courts as the schedule progresses.
-      const startDateOnly = format(new Date(startDate), "yyyy-MM-dd");
+      // Bells: per-league time caps; auto-distribute courts across leagues, then
+      // walk each league's matches through the available sessions, rotating courts.
       const capFor = (gn: number) =>
         Number(groupDurations[String(gn)]) || matchDuration;
 
@@ -843,21 +870,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const leagues = Array.from(byLeague.keys()).sort((a, b) => a - b);
 
       if (leagues.length > 0 && courtIds.length > 0) {
-        // Weight courts by (matches × cap) so longer/larger leagues get more courts.
         const weights = leagues.map((gn) => byLeague.get(gn)!.length * capFor(gn));
         const totalW = weights.reduce((a, b) => a + b, 0) || 1;
         let allocs = leagues.map((_, i) =>
           Math.max(1, Math.floor((weights[i] / totalW) * courtIds.length))
         );
         let sum = allocs.reduce((a, b) => a + b, 0);
-        // Trim excess from the largest allocation (never below 1).
         while (sum > courtIds.length) {
           let idx = 0;
           for (let i = 1; i < allocs.length; i++) if (allocs[i] > allocs[idx]) idx = i;
           if (allocs[idx] <= 1) break;
           allocs[idx]--; sum--;
         }
-        // Hand out remaining courts to the league with the highest load per court.
         while (sum < courtIds.length) {
           let best = 0; let bestVal = -Infinity;
           for (let i = 0; i < leagues.length; i++) {
@@ -866,45 +890,46 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
           }
           allocs[best]++; sum++;
         }
-        // If we have more leagues than courts, the trim loop leaves some at 1
-        // and others starved — fall back to one court per league, leagues share.
         let cursor = 0;
         const leagueCourts = new Map<number, number[]>();
         leagues.forEach((gn, i) => {
           if (cursor >= courtIds.length) {
-            // Share courts cyclically when court pool is too small.
             leagueCourts.set(gn, [courtIds[i % courtIds.length]]);
           } else {
-            leagueCourts.set(
-              gn,
-              courtIds.slice(cursor, cursor + allocs[i])
-            );
+            leagueCourts.set(gn, courtIds.slice(cursor, cursor + allocs[i]));
             cursor += allocs[i];
           }
         });
 
-        // Assign date / time / court for each match. Pairs naturally rotate across
-        // their league's courts because match index advances both court and round.
+        // Walk each league's matches across sessions. Within a session, fit as many
+        // rounds as the time cap allows on the league's allocated (in-session) courts.
         for (const gn of leagues) {
           const cap = capFor(gn);
           const lCourts = leagueCourts.get(gn)!;
           const lMatches = byLeague.get(gn)!;
-          lMatches.forEach((m, idx) => {
-            const round = Math.floor(idx / lCourts.length);
-            const courtIdx = idx % lCourts.length;
-            const t = startMins + round * cap;
-            const h = Math.floor(t / 60);
-            const mm = t % 60;
-            m.date = startDateOnly;
-            m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-            m.courtId = lCourts[courtIdx];
-          });
+          let mIdx = 0;
+          for (const s of sessions) {
+            if (mIdx >= lMatches.length) break;
+            const sessionLCourts = lCourts.filter((c) => s.courtIds.includes(c));
+            if (sessionLCourts.length === 0) continue;
+            const roundsPossible = Math.max(0, Math.floor((s.endMin - s.startMin) / cap));
+            for (let r = 0; r < roundsPossible && mIdx < lMatches.length; r++) {
+              for (let ci = 0; ci < sessionLCourts.length && mIdx < lMatches.length; ci++) {
+                const m = lMatches[mIdx++];
+                const t = s.startMin + r * cap;
+                const h = Math.floor(t / 60);
+                const mm = t % 60;
+                m.date = s.date;
+                m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+                m.courtId = sessionLCourts[ci];
+              }
+            }
+          }
         }
       }
     } else {
       const usedSlots = new Set<number>();
       for (const match of allMatches) {
-        // Bye placeholders don't get a court / slot.
         if (match.isBye) continue;
         const playersA = getPlayersForEntity(match.entityA);
         const playersB = getPlayersForEntity(match.entityB);
@@ -935,7 +960,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       allDates,
       timeSlots,
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, byeHandling, scoringMode, groupDurations, customizeDailySchedule, daySchedules]);
 
   // Create/update champ
   const createChamp = useMutation({
@@ -1381,6 +1406,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setDescription("");
     setIncludeVisitors(false);
     setSelectedVisitorClubs(new Set());
+    setCustomizeDailySchedule(false);
+    setDaySchedules([]);
     setEditingChampId(null);
   };
 
@@ -1416,6 +1443,9 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     setIncludeVisitors(!!champ.include_visitors);
     setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
+    const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];
+    setDaySchedules(Array.isArray(loadedDay) ? loadedDay : []);
+    setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
 
     const { data: entries } = await fromExt("club_champs_entries")
@@ -1532,8 +1562,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       case "groups":
         return numGroups >= 1 && numGroups <= Math.floor(entityCount / 2);
       case "schedule":
-        if (awaitingPlayerPairs) return startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0;
-        return startDate && endDate && playDays.size > 0 && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
+        if (awaitingPlayerPairs) return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0;
+        return startDate && endDate && (playDays.size > 0 || (customizeDailySchedule && daySchedules.length > 0)) && selectedCourtIds.size > 0 && schedulePreview && schedulePreview.totalSlots >= schedulePreview.totalMatches;
       case "review": return true;
       default: return false;
     }
@@ -2361,6 +2391,172 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 </Select>
               </div>
             </div>
+
+            {/* Per-day schedule overrides — useful for short tournaments (Fri eve, Sat morning, Sat afternoon). */}
+            <div className="rounded-lg border p-3 space-y-3">
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <Checkbox
+                  checked={customizeDailySchedule}
+                  onCheckedChange={(v) => {
+                    const on = !!v;
+                    setCustomizeDailySchedule(on);
+                    if (on && daySchedules.length === 0 && startDate && endDate) {
+                      const dates = eachDayOfInterval({
+                        start: parseISO(startDate),
+                        end: parseISO(endDate),
+                      }).filter((d) => playDays.size === 0 || playDays.has(getDay(d)));
+                      setDaySchedules(
+                        dates.map((d) => ({
+                          date: format(d, "yyyy-MM-dd"),
+                          start_time: startTime,
+                          end_time: endTime,
+                          court_ids: null,
+                        }))
+                      );
+                    }
+                  }}
+                />
+                <span>
+                  <span className="font-medium">Customize times per day</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Set different time windows (and optionally specific courts) for each play-day — e.g. Friday evening, Saturday morning, Saturday afternoon.
+                  </span>
+                </span>
+              </label>
+
+              {customizeDailySchedule && (
+                <div className="space-y-2">
+                  {daySchedules.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Pick dates and play days above, then add a window.</p>
+                  )}
+                  {daySchedules.map((d, idx) => {
+                    const allCourts = d.court_ids === null;
+                    return (
+                      <div key={idx} className="rounded border p-2 bg-muted/20 space-y-2">
+                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                          <div>
+                            <Label className="text-xs">Date</Label>
+                            <Input
+                              type="date"
+                              value={d.date}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, date: v } : x));
+                              }}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Start</Label>
+                            <Input
+                              type="time"
+                              value={d.start_time}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, start_time: v } : x));
+                              }}
+                              className="h-8 text-sm w-28"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">End</Label>
+                            <Input
+                              type="time"
+                              value={d.end_time}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, end_time: v } : x));
+                              }}
+                              className="h-8 text-sm w-28"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setDaySchedules((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Checkbox
+                              checked={allCourts}
+                              onCheckedChange={(v) => {
+                                setDaySchedules((prev) => prev.map((x, i) =>
+                                  i === idx
+                                    ? { ...x, court_ids: v ? null : Array.from(selectedCourtIds) }
+                                    : x
+                                ));
+                              }}
+                            />
+                            <span className="text-xs">All selected courts</span>
+                          </div>
+                          {!allCourts && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from(selectedCourtIds).map((cid) => {
+                                const active = d.court_ids?.includes(cid);
+                                return (
+                                  <button
+                                    key={cid}
+                                    type="button"
+                                    onClick={() => {
+                                      setDaySchedules((prev) => prev.map((x, i) => {
+                                        if (i !== idx) return x;
+                                        const cur = x.court_ids ?? [];
+                                        const next = cur.includes(cid)
+                                          ? cur.filter((c) => c !== cid)
+                                          : [...cur, cid];
+                                        return { ...x, court_ids: next };
+                                      }));
+                                    }}
+                                    className={`px-2 py-0.5 rounded text-xs border ${
+                                      active
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-background hover:bg-muted border-border"
+                                    }`}
+                                  >
+                                    Court {cid}
+                                  </button>
+                                );
+                              })}
+                              {selectedCourtIds.size === 0 && (
+                                <span className="text-xs text-muted-foreground">Select courts in the next step first.</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const last = daySchedules[daySchedules.length - 1];
+                      setDaySchedules((prev) => [
+                        ...prev,
+                        {
+                          date: last?.date || startDate || format(new Date(), "yyyy-MM-dd"),
+                          start_time: startTime,
+                          end_time: endTime,
+                          court_ids: null,
+                        },
+                      ]);
+                    }}
+                  >
+                    + Add time window
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Add the same date more than once to create multiple sessions (e.g. Saturday 09:00–12:00 and Saturday 14:00–17:00). When customized, the global Start/End times above are ignored by the scheduler.
+                  </p>
+                </div>
+              )}
+            </div>
+
 
             {/* Scoring format — driven by the tournament-format registry */}
             <div className="rounded-lg border p-3 bg-muted/30 space-y-3">

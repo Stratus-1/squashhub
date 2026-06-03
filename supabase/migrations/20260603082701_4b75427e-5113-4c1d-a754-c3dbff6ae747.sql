@@ -1,0 +1,1 @@
+ALTER TABLE public.club_champs ADD COLUMN IF NOT EXISTS day_schedules jsonb NOT NULL DEFAULT '[]'::jsonb;

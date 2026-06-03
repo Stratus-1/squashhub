@@ -1014,6 +1014,17 @@ export default function Bookings() {
         toast.dismiss(progressToastId);
         if (usingGobook && bookingSucceeded) {
           toast.success("Booking confirmed on GoBook");
+          // Auto-sync immediately so the new booking gets its GoBook BookingId locally
+          try {
+            setSyncingGobook(true);
+            await supabase.functions.invoke("gobook-sync", { body: { mode: "pull_today" } });
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+          } catch {
+            // non-fatal — user can click "Sync GoBook now" manually
+          } finally {
+            setSyncingGobook(false);
+          }
         }
       }
       setSubmittingBooking(false);

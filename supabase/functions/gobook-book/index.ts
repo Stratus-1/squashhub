@@ -1026,7 +1026,7 @@ Deno.serve(async (req) => {
             .eq("start_time", `${String(startHour).padStart(2, "0")}:00:00`)
             .eq("external_id", `${dateToGoBookKeyDate(date)}-${court}-${String(startHour).padStart(2, "0")}`);
 
-          return json({ ok: true, verified: true, booking_id: bookingId, match_score: best.score });
+          return json({ ok: true, verified: true, booking_id: bookingId, match_score: best?.score ?? null, deterministic: !!deterministicBid });
         }
 
         // book

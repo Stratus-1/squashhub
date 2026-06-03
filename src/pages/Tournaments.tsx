@@ -74,12 +74,16 @@ export default function Tournaments() {
       return data || [];
     },
     enabled: champIds.length > 0,
+    refetchInterval: 10000,
   });
 
   const today = format(new Date(), "yyyy-MM-dd");
   const upcomingMatches = allMatches
-    .filter((m: any) => m.status === "scheduled" && (!m.scheduled_date || m.scheduled_date >= today))
+    .filter((m: any) => (m.status === "scheduled" || m.status === "in_progress") && (!m.scheduled_date || m.scheduled_date >= today))
     .sort((a: any, b: any) => {
+      // Live matches float to the top
+      if (a.status === "in_progress" && b.status !== "in_progress") return -1;
+      if (b.status === "in_progress" && a.status !== "in_progress") return 1;
       const aKey = `${a.scheduled_date || "9999-12-31"} ${a.scheduled_time || "23:59:59"}`;
       const bKey = `${b.scheduled_date || "9999-12-31"} ${b.scheduled_time || "23:59:59"}`;
       return aKey.localeCompare(bKey);

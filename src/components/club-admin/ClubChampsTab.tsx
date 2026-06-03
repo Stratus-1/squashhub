@@ -568,7 +568,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
-    customizeDailySchedule, daySchedules,
+    customizeDailySchedule, daySchedules, selectedCourtIds,
     // Selection / pair / group assignment state — persist immediately when changed
     selectedPlayerIds, doublesPairs, groupAssignments, pairGroupAssignments,
   ]);

@@ -474,6 +474,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     const champIdToUse = champIdOverride || editingChampId;
     if (!champIdToUse) return;
     try {
+      let allocatedMemberIds: string[] = [];
       if (isDoubles) {
         if (doublesPairs.length === 0) return;
         const rows = (groups as DoublePair[][]).flatMap((groupPairs, gi) =>
@@ -489,6 +490,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (deleteErr) throw deleteErr;
         const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
         if (insertErr) throw insertErr;
+        allocatedMemberIds = rows.flatMap((r: any) => [r.club_member_id, r.partner_member_id]).filter(Boolean);
       } else {
         if (selectedPlayerIds.size === 0) return;
         const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
@@ -506,6 +508,31 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         if (deleteErr) throw deleteErr;
         const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
         if (insertErr) throw insertErr;
+        allocatedMemberIds = rows.map((r: any) => r.club_member_id).filter(Boolean);
+      }
+
+      // Auto-register every allocated player. Once admin places a member into a
+      // pair / group they are considered confirmed for the tournament — no
+      // separate payment / registration step is required.
+      const uniqueIds = Array.from(new Set(allocatedMemberIds));
+      if (uniqueIds.length > 0) {
+        const regRows = uniqueIds.map((memberId) => ({
+          champ_id: champIdToUse,
+          club_member_id: memberId,
+          status: "paid",
+          invited_by_admin: true,
+          fee_paid_cents: 0,
+        }));
+        await fromExt("club_champs_registrations").upsert(regRows, {
+          onConflict: "champ_id,club_member_id",
+        } as any);
+        // Force-promote any existing pending rows to paid (upsert may not
+        // overwrite status on conflict in all environments).
+        await fromExt("club_champs_registrations")
+          .update({ status: "paid" })
+          .eq("champ_id", champIdToUse)
+          .in("club_member_id", uniqueIds)
+          .in("status", ["pending_payment", "pending_eft", "invited"]);
       }
     } catch (e) {
       console.warn("Tournament entries draft save failed:", e);

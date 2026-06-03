@@ -1037,20 +1037,35 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (editingChampId) {
-        const { data: oldMatches } = await fromExt("club_champs_matches")
-          .select("scheduled_date, scheduled_time, court_id, player_a_member_id, player_b_member_id")
+        // SAFETY GUARD: never let Regenerate shrink the saved pair/player list.
+        // If the wizard is loaded with fewer entrants than what's already saved
+        // (e.g. registrations hadn't finished loading), abort instead of wiping.
+        const { data: existingEntries } = await fromExt("club_champs_entries")
+          .select("id")
           .eq("champ_id", editingChampId);
-        if (oldMatches && oldMatches.length > 0) {
-          const memberIds = [...new Set(oldMatches.flatMap((m: any) => [m.player_a_member_id, m.player_b_member_id]))];
-          const { data: memberUsers } = await fromExt("club_members").select("id, user_id").in("id", memberIds);
-          const memberMap = new Map((memberUsers || []).map((m: any) => [m.id, m.user_id]));
-          for (const m of oldMatches) {
-            const userId = memberMap.get(m.player_a_member_id);
-            if (!userId || !m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
-            await fromExt("bookings").delete()
-              .eq("user_id", userId).eq("date", m.scheduled_date)
-              .eq("start_time", m.scheduled_time).eq("court_id", m.court_id);
-          }
+        const savedCount = existingEntries?.length || 0;
+        const currentCount = isDoubles
+          ? doublesPairs.length
+          : (groups as ClubMember[][]).flatMap((g) => g).length;
+        if (savedCount > 0 && currentCount < savedCount) {
+          throw new Error(
+            `Refusing to regenerate: only ${currentCount} ${isDoubles ? "pair" : "player"}(s) loaded but ${savedCount} are saved. Close the wizard, reopen the tournament, and try again so all entries load first.`
+          );
+        }
+
+        // Remove previously-auto-booked court slots (matched via stable external_id,
+        // with a legacy fallback by date/time/court for older rows).
+        await fromExt("bookings").delete().like("external_id", `champ:${editingChampId}:%`);
+        const { data: oldMatches } = await fromExt("club_champs_matches")
+          .select("scheduled_date, scheduled_time, court_id")
+          .eq("champ_id", editingChampId);
+        for (const m of oldMatches || []) {
+          if (!m.scheduled_date || !m.scheduled_time || !m.court_id) continue;
+          await fromExt("bookings").delete()
+            .eq("date", m.scheduled_date)
+            .eq("start_time", m.scheduled_time)
+            .eq("court_id", m.court_id)
+            .eq("source", "club_event");
         }
         await fromExt("club_champs_matches").delete().eq("champ_id", editingChampId);
         await fromExt("club_champs_entries").delete().eq("champ_id", editingChampId);
@@ -2903,6 +2918,12 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
               </p>
             )}
 
+            {!awaitingPlayerPairs && editingChampId && (
+              <p className="text-xs text-muted-foreground rounded-lg border p-2 bg-muted/30">
+                <strong>Rebuild Schedule</strong> recreates the fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in. Court bookings are written separately via <strong>Make Court Bookings</strong>.
+              </p>
+            )}
+
             {!awaitingPlayerPairs && schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {Array.from({ length: numGroups }, (_, gi) => {
@@ -2964,7 +2985,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
         {step === "review" ? (
           <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
             {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-            {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Regenerate Matches" : "Generate Matches"}
+            {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
           </Button>
         ) : (
           <Button onClick={() => goToStep(activeSteps[stepIdx + 1])} disabled={!canProceed()}>

@@ -793,6 +793,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+            include_visitors: includeVisitors,
+            visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
           })
           .eq("id", editingChampId);
@@ -827,6 +829,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
+            include_visitors: includeVisitors,
+            visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
           })
           .select()
@@ -1177,6 +1181,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");
+    setIncludeVisitors(false);
+    setSelectedVisitorClubs(new Set());
     setEditingChampId(null);
   };
 
@@ -1210,6 +1216,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft")[])));
     setPaymentRequired(champ.payment_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
+    setIncludeVisitors(!!champ.include_visitors);
+    setSelectedVisitorClubs(new Set((champ.visitor_clubs as string[] | null) || []));
     setDescription(champ.description || "");
 
     const { data: entries } = await fromExt("club_champs_entries")

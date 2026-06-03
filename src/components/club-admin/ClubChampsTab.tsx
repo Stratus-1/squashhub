@@ -441,6 +441,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
       day_schedules: customizeDailySchedule ? daySchedules : [],
+      court_ids: Array.from(selectedCourtIds),
     };
     try {
       if (editingChampId) {
@@ -567,7 +568,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
-    customizeDailySchedule, daySchedules,
+    customizeDailySchedule, daySchedules, selectedCourtIds,
     // Selection / pair / group assignment state — persist immediately when changed
     selectedPlayerIds, doublesPairs, groupAssignments, pairGroupAssignments,
   ]);
@@ -1498,12 +1499,17 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       }
     }
 
-    const { data: champMatches } = await fromExt("club_champs_matches")
-      .select("court_id")
-      .eq("champ_id", champ.id);
-    if (champMatches) {
-      const courtIds = new Set(champMatches.map((m: any) => m.court_id).filter(Boolean) as number[]);
-      setSelectedCourtIds(courtIds);
+    const savedCourtIds = (champ as any).court_ids as number[] | null;
+    if (Array.isArray(savedCourtIds) && savedCourtIds.length > 0) {
+      setSelectedCourtIds(new Set(savedCourtIds));
+    } else {
+      const { data: champMatches } = await fromExt("club_champs_matches")
+        .select("court_id")
+        .eq("champ_id", champ.id);
+      if (champMatches) {
+        const courtIds = new Set(champMatches.map((m: any) => m.court_id).filter(Boolean) as number[]);
+        setSelectedCourtIds(courtIds);
+      }
     }
 
     // Open the wizard at step 1 so admin can review/edit every step.
@@ -2389,7 +2395,26 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                     <SelectItem value="60">60 min</SelectItem>
                   </SelectContent>
                 </Select>
+            </div>
+
+            <div>
+              <Label>Available Courts</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {courts.map((c) => (
+                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                    <Checkbox
+                      checked={selectedCourtIds.has(c.id)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(selectedCourtIds);
+                        checked ? next.add(c.id) : next.delete(c.id);
+                        setSelectedCourtIds(next);
+                      }}
+                    />
+                    <span className="text-sm">{c.name}</span>
+                  </label>
+                ))}
               </div>
+            </div>
             </div>
 
             {/* Per-day schedule overrides — useful for short tournaments (Fri eve, Sat morning, Sat afternoon). */}
@@ -2655,25 +2680,6 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Applies when an odd number of teams means one sits out per round.
                 </p>
-              </div>
-            </div>
-
-            <div>
-              <Label>Available Courts</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {courts.map((c) => (
-                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={selectedCourtIds.has(c.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedCourtIds);
-                        checked ? next.add(c.id) : next.delete(c.id);
-                        setSelectedCourtIds(next);
-                      }}
-                    />
-                    <span className="text-sm">{c.name}</span>
-                  </label>
-                ))}
               </div>
             </div>
 

@@ -541,11 +541,18 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
   // Debounced autosave: persist wizard settings as the admin edits any field.
   const saveDraftRef = useRef(saveDraft);
+  const saveEntriesDraftRef = useRef(saveEntriesDraft);
   useEffect(() => { saveDraftRef.current = saveDraft; });
+  useEffect(() => { saveEntriesDraftRef.current = saveEntriesDraft; });
   useEffect(() => {
     if (!showWizard) return;
     if (!clubId || !startDate || !endDate) return;
-    const t = setTimeout(() => { void saveDraftRef.current(); }, 600);
+    const t = setTimeout(() => {
+      void (async () => {
+        await saveDraftRef.current();
+        await saveEntriesDraftRef.current();
+      })();
+    }, 600);
     return () => clearTimeout(t);
   }, [
     showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
@@ -554,7 +561,10 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
     paymentMethods, paymentRequired, inviteMethods, includeVisitors,
     selectedVisitorClubs, description,
+    // Selection / pair / group assignment state — persist immediately when changed
+    selectedPlayerIds, doublesPairs, groupAssignments, pairGroupAssignments,
   ]);
+
 
 
 

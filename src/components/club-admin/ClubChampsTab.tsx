@@ -440,6 +440,7 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       include_visitors: includeVisitors,
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
+      day_schedules: customizeDailySchedule ? daySchedules : [],
     };
     try {
       if (editingChampId) {

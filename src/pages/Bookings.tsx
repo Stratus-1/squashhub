@@ -1762,6 +1762,30 @@ export default function Bookings() {
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
                   )}
+                  {(isBooker || isGoBookBooking) && (() => {
+                    const bd: any = bookingDetails;
+                    if (isGoBookBooking) {
+                      const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+                      const ownsBooking = !!cancelMemberId && (!bd.club_member_id || bd.club_member_id === cancelMemberId || bd.club_member_id === activeMember?.id);
+                      const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
+                      const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
+                      if (!hasGobookCreds || !ownsBooking || withinHour) return null;
+                    }
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setMoveSource(bd);
+                          setBookingDetails(null);
+                          toast.info("Pick a new empty slot in the grid to move this booking to.");
+                        }}
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" /> Move
+                      </Button>
+                    );
+                  })()}
                   {(isBooker || isGoBookBooking) && (
                     <>
                       {isGoBookBooking ? (() => {

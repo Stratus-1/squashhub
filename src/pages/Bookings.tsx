@@ -1295,6 +1295,31 @@ export default function Bookings() {
         </div>
       )}
 
+      {/* Move-booking banner */}
+      {moveSource && (
+        <div className="px-4 mt-3">
+          <Card className="border-primary/50 bg-primary/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                <ArrowRightLeft className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">
+                  Moving booking — pick a new empty slot below
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  {`From ${getCourtName((moveSource as any).court_id) || "court"} · ${String((moveSource as any).date)} ${String((moveSource as any).start_time || "").slice(0,5)}`}
+                  {(moveSource as any).source === "gobook" ? " (GoBook)" : ""}.
+                  {" "}We'll create the new booking, then cancel the original automatically.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setMoveSource(null)}>Cancel move</Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+
       {/* Other external providers (non-GoBook) — still read-only deep-link */}
       {usesExternalBooking && externalProvider !== "gobook" && (
         <div className="px-4 mt-3">

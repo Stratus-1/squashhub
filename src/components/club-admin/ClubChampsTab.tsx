@@ -40,7 +40,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
   category: "Category",
   registration: "Registration",
   players: "Players",
-  groups: "Groups",
+  groups: "Leagues",
   schedule: "Schedule",
   review: "Review & Generate",
 };

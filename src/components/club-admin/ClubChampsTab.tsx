@@ -2658,6 +2658,39 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Leave blank to fall back to the default Match Duration above.
                   </p>
+
+                  <div className="mt-3">
+                    <Label className="text-sm font-medium">Rotate courts every (minutes)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="number"
+                        min={5}
+                        max={240}
+                        step={5}
+                        placeholder="Off — teams stay on their court"
+                        value={courtRotationMinutes ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value.trim();
+                          setCourtRotationMinutes(v === "" ? null : Math.max(1, Number(v)));
+                        }}
+                        className="h-8 text-sm max-w-[220px]"
+                      />
+                      {courtRotationMinutes != null && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setCourtRotationMinutes(null)}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Teams rotate between this league's allocated courts at every interval (e.g. 30 = shift courts every 30 minutes). Leave blank to keep courts fixed per round.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

@@ -837,6 +837,7 @@ export type Database = {
           court_rotation_minutes: number | null
           created_at: string
           day_schedules: Json
+          default_break_minutes: number
           description: string | null
           enable_playoffs: boolean
           end_date: string
@@ -844,6 +845,7 @@ export type Database = {
           entries_locked: boolean
           entry_fee_cents: number
           gender: string
+          group_break_minutes: Json
           group_durations: Json
           id: string
           include_visitors: boolean
@@ -876,6 +878,7 @@ export type Database = {
           court_rotation_minutes?: number | null
           created_at?: string
           day_schedules?: Json
+          default_break_minutes?: number
           description?: string | null
           enable_playoffs?: boolean
           end_date: string
@@ -883,6 +886,7 @@ export type Database = {
           entries_locked?: boolean
           entry_fee_cents?: number
           gender: string
+          group_break_minutes?: Json
           group_durations?: Json
           id?: string
           include_visitors?: boolean
@@ -915,6 +919,7 @@ export type Database = {
           court_rotation_minutes?: number | null
           created_at?: string
           day_schedules?: Json
+          default_break_minutes?: number
           description?: string | null
           enable_playoffs?: boolean
           end_date?: string
@@ -922,6 +927,7 @@ export type Database = {
           entries_locked?: boolean
           entry_fee_cents?: number
           gender?: string
+          group_break_minutes?: Json
           group_durations?: Json
           id?: string
           include_visitors?: boolean

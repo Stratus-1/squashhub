@@ -1,50 +1,73 @@
-# Bells Doubles Tournament Format
+# Per-league break time + swap fixtures
 
-A new scoring mode for the existing tournament module. Pairs play time-capped round-robin games inside a "league" (group); standings = total points scored across all games.
+## 1. Per-league fixed slot + break time
 
-## Concept recap
+Keep the existing **slot length per league** (already stored in `club_champs.group_durations`). Add a new per-league **break minutes** so the bell rings *before* the end of the slot, leaving changeover time built into the schedule.
 
-- **Entry**: members sign up, pick a preferred partner. Admin confirms or overrides → list of doubles pairs.
-- **Allocation**: admin distributes pairs across Leagues (1, 2, 3…). Each league has its **own time cap** (e.g. 30 / 25 / 20 min).
-- **Play**: round-robin inside each league. A bell ends the game at the cap; the score at that moment is recorded.
-- **Standings**: total points scored across all games (per your answer). No win/loss column needed for ranking.
-- **Scoring entry**: a match marker / referee enters scores live on the night (uses existing Match Marker module).
+### Model
 
-## Schema additions (one migration, additive only — nothing existing breaks)
+For each league:
+- `slot_minutes` = existing `group_durations[league]` (e.g. 30, 15)
+- `break_minutes` = new per-league setting (e.g. 5, 2.5)
+- `bell_minutes` = `slot_minutes − break_minutes` ← what the Bells timer counts down to
 
-`club_champs`:
-- `scoring_mode text default 'standard'` — `'standard'` (current win-based) or `'time_capped_points'` (bells)
-- `group_durations jsonb default '{}'` — `{"1": 30, "2": 25, "3": 20}` overrides the champ-wide `match_duration_minutes` per league/group
+Example:
+- League 1: 30 min slot, 5 min break → bell at 25 min. Games at 08:00, 08:30, 09:00…
+- League 4: 15 min slot, 2.5 min break → bell at 12.5 min. Games at 08:00, 08:15, 08:30, 08:45, 09:00…
 
-`club_champs_matches`:
-- `side_a_points int` — points scored by Player A + Partner A when bell rang
-- `side_b_points int` — points scored by Player B + Partner B
-- (existing `score` text stays for backwards compat; new bells UI writes the two int columns and a derived `"15-12"` into `score`)
+Both leagues sync on the hour, courts never overlap, and players always have the same recovery between their own games.
 
-## UI changes
+### Schema (additive, one migration)
 
-1. **Create Tournament wizard** (`Tournaments.tsx` create flow) — new "Format" choice: *Standard knockout/round-robin* vs *Bells (time-capped, points-for)*. Bells locks `match_type = 'doubles'`.
-2. **Pair allocation step** — when `scoring_mode = 'time_capped_points'`, show a "Time cap per league" input next to each group/league header. Saves to `group_durations`.
-3. **Match marker dialog** for bells matches — replace the games-to-3/5 panel with: live countdown using that group's duration, two big point counters (Side A / Side B), a "Bell" button that locks the score, and a save.
-4. **Standings table** — when `scoring_mode = 'time_capped_points'`, columns become: *Pair · Games Played · Points For · Points Against · Diff*, sorted by Points For desc. (We compute & show Against/Diff but rank by Points For only, per your choice.)
-5. **Partner picker on signup** — registration form already supports `partner_mode = 'players'`. We surface a "Preferred partner" dropdown to the signing-up member; admin sees pending pairs in the existing Finalize Setup dialog and can override (that dialog already exists — `FinalizeTournamentSetupDialog.tsx`).
+- `club_champs.group_break_minutes jsonb default '{}'` — `{"1": 5, "2": 5, "3": 3, "4": 2.5}`
+- `club_champs.default_break_minutes numeric default 5` — fallback used when a league hasn't been customised
 
-## Out of scope (won't change)
+No data backfill needed; absent keys fall back to the default, and the default falls back to 0 for any legacy tournament (so existing tournaments behave exactly as today).
 
-- League allocation rules / sub eligibility (different module).
-- Existing standard tournaments — completely unaffected; only new champs with `scoring_mode = 'time_capped_points'` see the bells UI.
-- No new tables — all additive columns.
+### UI
+
+- **Bells admin wizard** (`ClubChampsTab.tsx` — "Time cap per league" row): add a second small input **"Break (min)"** next to the cap. Row label becomes *"League 1 — 30 min slot − 5 min break = bell at 25 min"* so admins see the effect.
+- **Champ wizard top section**: add a default-break input next to the default match duration.
+- Schedule list (the screenshot you sent) stays exactly the same — the start times already reflect the slot stride.
+
+### Scheduler change
+
+`ClubChampsTab.tsx` generator (≈ lines 890–1040) already strides each court by `matchDuration` per league. **No change needed** to slot placement — the start times you see in the screenshot are correct because they're slot-based, not bell-based. The only addition is persisting `group_break_minutes` so the timer can use it.
+
+### Bells marker timer
+
+`BellsFormat.getTimeCapMinutes(champ, groupNumber)` (in `src/lib/tournament-formats/bells.ts`) currently returns the league's slot length. Change it to return `slot_minutes − break_minutes` (clamped to ≥ 1 min). That's the only place the timer reads from, so the bell will now ring at the correct point and the changeover window is preserved.
+
+## 2. "Swap with another fixture" action
+
+On every scheduled row in the admin schedule (the list in your screenshot — `ClubChampsTab.tsx`) and the public schedule (`ClubChampsView.tsx`), add a small **Swap** button per row that opens a popover:
+
+- Lists all other scheduled matches in this tournament (date · time · court · pair vs pair).
+- Type-ahead search by player name to narrow the list quickly.
+- Clicking a target match **swaps `scheduled_date`, `scheduled_time`, and `court_id`** between the two rows in a single transaction.
+- Validation before swap:
+  - Neither set of four players ends up playing two matches at the same slot anywhere else in the schedule.
+  - If a conflict exists, the offending row is disabled in the list with a small "conflict" badge (same pattern already used in `FinalizeTournamentSetupDialog`).
+- No reshuffling of any other matches — pure A↔B swap.
+
+This works just as well on phones as on desktop and stays robust if the admin is tapping courtside. No drag-and-drop layer, per your call.
+
+## 3. Notifications
+
+Per your call: **no push/email**. Players see the updated time/court the next time they open the app (data is already live via React Query).
+
+## Out of scope
+
+- Who is paired with whom, which league they're in — unchanged.
+- Court bookings — admin still presses **Make Court Bookings** after a swap (existing button rewrites bookings from the schedule).
+- Standings, live scoring, marker UI — unchanged except for the corrected bell timing.
 
 ## Files touched
 
-```
-supabase migration                              (additive columns)
-src/pages/Tournaments.tsx                       (format toggle in wizard, standings split)
-src/components/tournaments/CreateChampDialog... (format + group durations)
-src/components/tournaments/AllocatePairsDialog  (per-group time cap inputs)
-src/components/tournaments/StandingsTable       (bells variant)
-src/pages/MatchMarker.tsx                       (bells timer + 2-counter mode when match is bells)
-src/components/tournaments/FinalizeTournamentSetupDialog.tsx  (already handles swaps — no change)
-```
+- `supabase/migrations/<new>.sql` — add `group_break_minutes`, `default_break_minutes`.
+- `src/components/club-admin/ClubChampsTab.tsx` — wizard inputs (default + per-league break), schedule row "Swap" action.
+- `src/pages/ClubChampsView.tsx` — same "Swap" action on the public schedule.
+- `src/lib/tournament-formats/bells.ts` — `getTimeCapMinutes` returns `slot − break`.
+- `src/lib/tournament-formats/types.ts` — extend `ChampLike` with the new fields.
 
-Estimated 1 migration + ~6 frontend file edits. No edge functions needed.
+One migration + four frontend edits. No edge functions.

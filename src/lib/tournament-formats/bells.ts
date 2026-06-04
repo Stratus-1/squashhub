@@ -30,11 +30,17 @@ export const BellsFormat: TournamentFormat = {
 
   getTimeCapMinutes(champ: ChampLike, groupNumber) {
     if (!champ) return null;
-    const map = (champ.group_durations || {}) as Record<string, number>;
-    const fromGroup = groupNumber != null ? Number(map[String(groupNumber)]) : 0;
-    if (fromGroup > 0) return fromGroup;
-    const fallback = Number(champ.match_duration_minutes);
-    return fallback > 0 ? fallback : 30;
+    const slotMap = (champ.group_durations || {}) as Record<string, number>;
+    const breakMap = ((champ as any).group_break_minutes || {}) as Record<string, number>;
+    const fromGroup = groupNumber != null ? Number(slotMap[String(groupNumber)]) : 0;
+    const slot = fromGroup > 0
+      ? fromGroup
+      : (Number(champ.match_duration_minutes) > 0 ? Number(champ.match_duration_minutes) : 30);
+    const groupBreakRaw = groupNumber != null ? Number(breakMap[String(groupNumber)]) : NaN;
+    const breakMin = Number.isFinite(groupBreakRaw) && groupBreakRaw >= 0
+      ? groupBreakRaw
+      : Math.max(0, Number((champ as any).default_break_minutes) || 0);
+    return Math.max(1, slot - breakMin);
   },
 
   applyMatchToStats(stats: StandingsStats, match: MatchLike, memberId: string, isDoubles: boolean) {

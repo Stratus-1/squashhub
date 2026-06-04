@@ -209,6 +209,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
   const [matchDuration, setMatchDuration] = useState(30);
   const [scoringMode, setScoringMode] = useState<"standard" | "time_capped_points">("standard");
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
+  const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
+  const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
   const [roundFormat, setRoundFormat] = useState<"single_round_robin" | "double_round_robin">("single_round_robin");
   const [byeHandling, setByeHandling] = useState<"no_match" | "walkover_win" | "neutral">("no_match");
@@ -426,6 +428,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
       match_duration_minutes: matchDuration,
       scoring_mode: scoringMode,
       group_durations: groupDurations,
+      group_break_minutes: groupBreakMinutes,
+      default_break_minutes: defaultBreakMinutes,
       court_rotation_minutes: courtRotationMinutes,
       round_format: roundFormat,
       bye_handling: byeHandling,
@@ -1112,6 +1116,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             group_durations: groupDurations,
+            group_break_minutes: groupBreakMinutes,
+            default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
             round_format: roundFormat,
             bye_handling: byeHandling,
@@ -1149,6 +1155,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             group_durations: groupDurations,
+            group_break_minutes: groupBreakMinutes,
+            default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
             round_format: roundFormat,
             bye_handling: byeHandling,
@@ -1567,6 +1575,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(30);
     setScoringMode("standard");
     setGroupDurations({});
+    setGroupBreakMinutes({});
+    setDefaultBreakMinutes(0);
     setCourtRotationMinutes(null);
     setRoundFormat("single_round_robin");
     setByeHandling("no_match");
@@ -1612,6 +1622,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
     setMatchDuration(champ.match_duration_minutes || 30);
     setScoringMode(((champ as any).scoring_mode as any) || "standard");
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
+    setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
+    setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);
     setRoundFormat((champ.round_format as any) || "single_round_robin");
     setByeHandling((champ.bye_handling as any) || "no_match");
@@ -2807,34 +2819,90 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
 
               {scoringMode === "time_capped_points" && numGroups > 0 && (
                 <div>
-                  <Label className="text-sm font-medium">Time cap per league (minutes)</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                    {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => (
-                      <div key={gn} className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-16 shrink-0">League {gn}</span>
-                        <Input
-                          type="number"
-                          min={5}
-                          max={120}
-                          placeholder={String(matchDuration)}
-                          value={groupDurations[String(gn)] ?? ""}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setGroupDurations((prev) => {
-                              const next = { ...prev };
-                              if (v === "") delete next[String(gn)];
-                              else next[String(gn)] = Math.max(1, Number(v));
-                              return next;
-                            });
-                          }}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-3 mb-1">
+                    <Label className="text-sm font-medium">Slot &amp; bell timing per league</Label>
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <span className="text-[11px] text-muted-foreground">Default break (min)</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={30}
+                        step={0.5}
+                        value={defaultBreakMinutes || ""}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const v = e.target.value.trim();
+                          setDefaultBreakMinutes(v === "" ? 0 : Math.max(0, Number(v)));
+                        }}
+                        className="h-8 text-sm w-20"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                    {Array.from({ length: numGroups }, (_, i) => i + 1).map((gn) => {
+                      const slot = Number(groupDurations[String(gn)]) || matchDuration;
+                      const brkRaw = groupBreakMinutes[String(gn)];
+                      const brk = brkRaw === undefined || brkRaw === null || Number.isNaN(Number(brkRaw))
+                        ? defaultBreakMinutes
+                        : Number(brkRaw);
+                      const bell = Math.max(1, slot - brk);
+                      return (
+                        <div key={gn} className="flex items-center gap-2 p-1.5 rounded border bg-muted/30">
+                          <span className="text-xs font-medium w-16 shrink-0">League {gn}</span>
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min={5}
+                              max={120}
+                              placeholder={String(matchDuration)}
+                              value={groupDurations[String(gn)] ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setGroupDurations((prev) => {
+                                  const next = { ...prev };
+                                  if (v === "") delete next[String(gn)];
+                                  else next[String(gn)] = Math.max(1, Number(v));
+                                  return next;
+                                });
+                              }}
+                              className="h-7 text-xs w-16"
+                            />
+                            <span className="text-[10px] text-muted-foreground">slot</span>
+                          </div>
+                          <span className="text-muted-foreground text-xs">−</span>
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={30}
+                              step={0.5}
+                              placeholder={String(defaultBreakMinutes || 0)}
+                              value={groupBreakMinutes[String(gn)] ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setGroupBreakMinutes((prev) => {
+                                  const next = { ...prev };
+                                  if (v === "") delete next[String(gn)];
+                                  else next[String(gn)] = Math.max(0, Number(v));
+                                  return next;
+                                });
+                              }}
+                              className="h-7 text-xs w-16"
+                            />
+                            <span className="text-[10px] text-muted-foreground">break</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
+                            bell @ <strong>{bell}</strong> min
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Leave blank to fall back to the default Match Duration above.
+                    Slot = how often games kick off on a court. Break = changeover time built into each slot — the bell rings at <em>slot − break</em>, leaving players time to swap on. Leave blank to use the defaults.
                   </p>
+
+
 
                   <div className="mt-3">
                     <Label className="text-sm font-medium">Rotate courts every (minutes)</Label>

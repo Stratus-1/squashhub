@@ -15,6 +15,7 @@ import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getTournamentFormat } from "@/lib/tournament-formats";
+import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -898,6 +899,15 @@ export default function ClubChampsView() {
                             ? `LIVE ${m.side_a_points ?? 0}-${m.side_b_points ?? 0}`
                             : m.status}
                       </Badge>
+                      {canManage && !completed && m.scheduled_date && m.scheduled_time && (
+                        <SwapFixtureButton
+                          match={m}
+                          allMatches={matches}
+                          getMatchLabel={(x) => `${getMatchTeamA(x)} vs ${getMatchTeamB(x)}`}
+                          getCourtName={(x) => x.court?.name || ""}
+                          invalidateKeys={[["club-champ-matches", champId]]}
+                        />
+                      )}
                     </div>
                   );
                 })}

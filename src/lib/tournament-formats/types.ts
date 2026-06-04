@@ -34,6 +34,8 @@ export type ChampLike = {
   scoring_mode?: string | null;
   match_duration_minutes?: number | null;
   group_durations?: Record<string, number> | null;
+  group_break_minutes?: Record<string, number> | null;
+  default_break_minutes?: number | null;
   match_type?: string | null;
   [key: string]: any;
 };

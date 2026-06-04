@@ -1038,6 +1038,8 @@ export type Database = {
       }
       club_champs_matches: {
         Row: {
+          bell_ends_at: string | null
+          bell_paused_seconds: number | null
           bye_member_id: string | null
           champ_id: string
           court_id: number | null
@@ -1062,6 +1064,8 @@ export type Database = {
           winner_member_id: string | null
         }
         Insert: {
+          bell_ends_at?: string | null
+          bell_paused_seconds?: number | null
           bye_member_id?: string | null
           champ_id: string
           court_id?: number | null
@@ -1086,6 +1090,8 @@ export type Database = {
           winner_member_id?: string | null
         }
         Update: {
+          bell_ends_at?: string | null
+          bell_paused_seconds?: number | null
           bye_member_id?: string | null
           champ_id?: string
           court_id?: number | null

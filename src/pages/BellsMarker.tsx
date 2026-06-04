@@ -456,18 +456,19 @@ export default function BellsMarker() {
           <Counter
             label={pairAName}
             value={pointsA}
-            onPlus={() => setPointsA((v) => v + 1)}
+            onPlus={() => handleIncrement("a")}
             onMinus={() => setPointsA((v) => Math.max(0, v - 1))}
             side="a"
           />
           <Counter
             label={pairBName}
             value={pointsB}
-            onPlus={() => setPointsB((v) => v + 1)}
+            onPlus={() => handleIncrement("b")}
             onMinus={() => setPointsB((v) => Math.max(0, v - 1))}
             side="b"
           />
         </div>
+
 
         {/* Save */}
         <Button

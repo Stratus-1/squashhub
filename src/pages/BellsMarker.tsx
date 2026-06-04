@@ -169,10 +169,41 @@ export default function BellsMarker() {
   const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}`;
   const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}`;
 
+  // ----- Timer persistence helpers -----
+  const persistTimer = (patch: { bell_ends_at?: string | null; bell_paused_seconds?: number | null; status?: string }) => {
+    if (!match) return;
+    fromExt("club_champs_matches").update(patch as any).eq("id", match.id).then(({ error }) => {
+      if (error) console.warn("Timer sync failed:", error.message);
+    });
+  };
+
+  const startTimer = () => {
+    if (finished || remaining <= 0) return;
+    const end = new Date(Date.now() + remaining * 1000).toISOString();
+    setRunning(true);
+    persistTimer({ bell_ends_at: end, bell_paused_seconds: null, status: "in_progress" });
+  };
+
+  const pauseTimer = () => {
+    setRunning(false);
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: remaining });
+  };
+
+  const toggleStart = () => (running ? pauseTimer() : startTimer());
+
+  const handleIncrement = (side: "a" | "b") => {
+    if (finished) return;
+    // Auto-start timer if marker forgot to press Start
+    if (!running && remaining > 0) startTimer();
+    if (side === "a") setPointsA((v) => v + 1);
+    else setPointsB((v) => v + 1);
+  };
+
   const ringBellNow = () => {
     if (tickRef.current) window.clearInterval(tickRef.current);
     setRunning(false);
     setFinished(true);
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: null });
   };
 
   const resetAll = () => {
@@ -181,7 +212,19 @@ export default function BellsMarker() {
     setRemaining(capMinutes * 60);
     setRunning(false);
     setFinished(false);
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled" });
   };
+
+  // When marker leaves via Back-to-dashboard, clear the LIVE flag in the upcoming
+  // games list (set status back to scheduled). Keep points and timer state so a
+  // second marker can resume seamlessly.
+  const handleLeaveToDashboard = () => {
+    if (!finished && match) {
+      persistTimer({ status: "scheduled" });
+    }
+    navigate("/dashboard");
+  };
+
 
   const saveResult = async () => {
     if (!match) return;

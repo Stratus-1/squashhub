@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
-import { BackToDashboard } from "@/components/BackToDashboard";
+
 import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ export default function BellsMarker() {
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
         .select(
-          "id, champ_id, group_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, scoring_mode, match_duration_minutes, group_durations, group_break_minutes, default_break_minutes)",
+          "id, champ_id, group_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, bell_ends_at, bell_paused_seconds, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, scoring_mode, match_duration_minutes, group_durations, group_break_minutes, default_break_minutes)",
         )
         .eq("id", matchId!)
         .single();
@@ -72,11 +72,28 @@ export default function BellsMarker() {
     if (!match) return;
     setPointsA(match.side_a_points ?? 0);
     setPointsB(match.side_b_points ?? 0);
-    setRemaining(capMinutes * 60);
     setFinished(match.status === "completed");
-    setRunning(false);
+
+    // Resume timer from persisted state so a second marker continues from
+    // where the first left off (don't reset to the full cap).
+    if (match.status === "completed") {
+      setRemaining(0);
+      setRunning(false);
+    } else if (match.bell_ends_at) {
+      const endMs = new Date(match.bell_ends_at).getTime();
+      const r = Math.max(0, Math.round((endMs - Date.now()) / 1000));
+      setRemaining(r);
+      setRunning(r > 0);
+    } else if (typeof match.bell_paused_seconds === "number" && match.bell_paused_seconds > 0) {
+      setRemaining(match.bell_paused_seconds);
+      setRunning(false);
+    } else {
+      setRemaining(capMinutes * 60);
+      setRunning(false);
+    }
     hydratedRef.current = true;
   }, [match, capMinutes]);
+
 
   // Hold the PWA update poller while a Bells match is live (not finished).
   useEffect(() => {
@@ -152,10 +169,41 @@ export default function BellsMarker() {
   const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}`;
   const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}`;
 
+  // ----- Timer persistence helpers -----
+  const persistTimer = (patch: { bell_ends_at?: string | null; bell_paused_seconds?: number | null; status?: string }) => {
+    if (!match) return;
+    fromExt("club_champs_matches").update(patch as any).eq("id", match.id).then(({ error }) => {
+      if (error) console.warn("Timer sync failed:", error.message);
+    });
+  };
+
+  const startTimer = () => {
+    if (finished || remaining <= 0) return;
+    const end = new Date(Date.now() + remaining * 1000).toISOString();
+    setRunning(true);
+    persistTimer({ bell_ends_at: end, bell_paused_seconds: null, status: "in_progress" });
+  };
+
+  const pauseTimer = () => {
+    setRunning(false);
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: remaining });
+  };
+
+  const toggleStart = () => (running ? pauseTimer() : startTimer());
+
+  const handleIncrement = (side: "a" | "b") => {
+    if (finished) return;
+    // Auto-start timer if marker forgot to press Start
+    if (!running && remaining > 0) startTimer();
+    if (side === "a") setPointsA((v) => v + 1);
+    else setPointsB((v) => v + 1);
+  };
+
   const ringBellNow = () => {
     if (tickRef.current) window.clearInterval(tickRef.current);
     setRunning(false);
     setFinished(true);
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: null });
   };
 
   const resetAll = () => {
@@ -164,7 +212,19 @@ export default function BellsMarker() {
     setRemaining(capMinutes * 60);
     setRunning(false);
     setFinished(false);
+    persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled" });
   };
+
+  // When marker leaves via Back-to-dashboard, clear the LIVE flag in the upcoming
+  // games list (set status back to scheduled). Keep points and timer state so a
+  // second marker can resume seamlessly.
+  const handleLeaveToDashboard = () => {
+    if (!finished && match) {
+      persistTimer({ status: "scheduled" });
+    }
+    navigate("/dashboard");
+  };
+
 
   const saveResult = async () => {
     if (!match) return;
@@ -329,11 +389,12 @@ export default function BellsMarker() {
 
       <div className="px-4 mt-3 mb-20 max-w-2xl mx-auto space-y-4">
         <button
-          onClick={() => navigate(`/club-champs/${match.champ_id}`)}
+          onClick={() => navigate("/tournaments")}
           className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to tournament
+          <ArrowLeft className="w-4 h-4" /> Back to tournaments
         </button>
+
 
         {/* How-to */}
         <div className="rounded-lg border border-primary/30 bg-card shadow-sm p-3 text-xs text-foreground flex gap-2">
@@ -370,12 +431,13 @@ export default function BellsMarker() {
             <div className="flex flex-wrap gap-2 justify-center">
               {!finished && (
                 <Button
-                  onClick={() => setRunning((r) => !r)}
+                  onClick={toggleStart}
                   variant={running ? "outline" : "default"}
                   className="gap-1"
                 >
                   {running ? <><Pause className="w-4 h-4" /> Pause</> : <><Play className="w-4 h-4" /> Start</>}
                 </Button>
+
               )}
               {!finished && (
                 <Button onClick={ringBellNow} variant="destructive" className="gap-1">
@@ -394,18 +456,19 @@ export default function BellsMarker() {
           <Counter
             label={pairAName}
             value={pointsA}
-            onPlus={() => setPointsA((v) => v + 1)}
+            onPlus={() => handleIncrement("a")}
             onMinus={() => setPointsA((v) => Math.max(0, v - 1))}
             side="a"
           />
           <Counter
             label={pairBName}
             value={pointsB}
-            onPlus={() => setPointsB((v) => v + 1)}
+            onPlus={() => handleIncrement("b")}
             onMinus={() => setPointsB((v) => Math.max(0, v - 1))}
             side="b"
           />
         </div>
+
 
         {/* Save */}
         <Button
@@ -421,7 +484,13 @@ export default function BellsMarker() {
           Tap each pair's number (or +) to add a point. When the bell rings, confirm the score to save.
         </p>
       </div>
-      <BackToDashboard />
+      <div className="px-4 py-4 mt-4">
+        <Button variant="outline" className="w-full h-10 text-sm" onClick={handleLeaveToDashboard}>
+          <ArrowLeft className="w-4 h-4 mr-1.5" />
+          Back to Dashboard
+        </Button>
+      </div>
+
     </div>
   );
 }

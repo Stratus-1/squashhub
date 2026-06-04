@@ -1116,6 +1116,8 @@ export function ClubChampsTab({ clubId }: ClubChampsTabProps) {
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             group_durations: groupDurations,
+            group_break_minutes: groupBreakMinutes,
+            default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
             round_format: roundFormat,
             bye_handling: byeHandling,

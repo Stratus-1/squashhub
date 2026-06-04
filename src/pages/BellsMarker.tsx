@@ -215,15 +215,22 @@ export default function BellsMarker() {
     persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled" });
   };
 
-  // When marker leaves via Back-to-dashboard, clear the LIVE flag in the upcoming
-  // games list (set status back to scheduled). Keep points and timer state so a
-  // second marker can resume seamlessly.
-  const handleLeaveToDashboard = () => {
+  // When marker leaves the page (Back to tournament/dashboard), clear the LIVE
+  // flag so another marker can take over. Keep points + paused remaining so
+  // the next marker resumes exactly where this one stopped.
+  const handleLeave = (to: string) => {
     if (!finished && match) {
-      persistTimer({ status: "scheduled" });
+      if (liveSyncRef.current) window.clearTimeout(liveSyncRef.current);
+      const patch: any = { status: "scheduled" };
+      if (running) {
+        patch.bell_ends_at = null;
+        patch.bell_paused_seconds = remaining;
+      }
+      persistTimer(patch);
     }
-    navigate("/dashboard");
+    navigate(to);
   };
+
 
 
   const saveResult = async () => {
